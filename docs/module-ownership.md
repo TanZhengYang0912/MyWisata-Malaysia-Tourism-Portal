@@ -1,95 +1,222 @@
-# Module Ownership
+# Module Ownership — 4 Members
 
-> **Rule**: Each table has exactly ONE owner. Only the owner writes migrations for that table.
-> Cross-domain reads are fine; cross-domain writes must go through an agreed service/API.
-
-## Member 1 (P1) — Platform, Identity & Communication
-
-### Sub-modules
-| Sub-module | Deliverable | Integration dependency |
-|------------|-------------|----------------------|
-| A1 App shell + Auth/RBAC | Login, register, demo switcher, route guard, role seed | Must ship Day 2 — all others depend on it |
-| A2 Profile + Mock Verification | Profile edit, email/phone status, KYC upload placeholder, admin review | Depends on A1 |
-| A3 Customer↔Vendor Chat | Thread, text messages, unread/read, vendor inbox, polling fallback | Needs outlet IDs from P2; integrates Day 8 |
-| A4 FAQ Bot + Support/Admin Shell | Rule-based FAQ, ticket creation, notification centre, audit helper | Integrates with D4 (withdrawal) and C4 (affiliate) |
-
-### Tables owned
-**Core:** users, roles, user_roles, chat_threads, chat_messages, support_tickets, notifications, audit_logs  
-**Mock:** email_verifications, phone_verifications, kyc_submissions, chat_message_reads, chatbot_sessions, chatbot_messages, chatbot_kb_documents, platform_settings  
-**Later:** chatbot_message_kb_refs
+> **Rule**: Each table has exactly ONE owner. Only the owner writes migrations
+> for that table. Cross-domain reads are fine; cross-domain writes go through
+> agreed API routes or the shared helpers (`money.ts`, `auditAndNotify()`,
+> `creditWallet()`).
 
 ---
 
-## Member 2 (P2) — Vendor, Outlet & Catalogue
+## Member 1 — Vendor & Marketplace Management
 
-### Sub-modules
-| Sub-module | Deliverable | Integration dependency |
-|------------|-------------|----------------------|
-| B1 Vendor onboarding | Vendor register, admin approve/reject, role assignment | Depends on A1 for user/role; admin approval in A4 |
-| B2 Outlet & Product catalogue | Outlet CRUD, product/variant/inventory, media URLs | Catalogue read contract frozen Day 4 |
-| B3 Booking slots + Vouchers | Slot capacity management, voucher CRUD, validation contract | D1 cart depends on slot/voucher contract |
-| B4 Vendor dashboard | Order view per outlet, fulfil/check-in status, simple stats | Depends on D2 order; chat inbox from A3 |
+### Scope
+- User login / role access
+- Vendor registration
+- Vendor outlet management
+- Product / activity / package management
+- Pricing and inventory
+- Voucher / promotion management
+- Admin approve vendor and listing
 
-### Tables owned
-**Core:** vendors, outlets, outlet_managers, categories, products, product_variants, inventory, booking_slots, vouchers  
-**Mock:** outlet_pages, price_rules, media_assets
+### Tables owned (17)
+**Auth foundation:**
+- `users`, `roles`, `user_roles`, `email_verifications`, `phone_verifications`
 
----
+**Vendor & outlet:**
+- `vendors`, `outlets`, `outlet_pages`, `outlet_managers`
 
-## Member 3 (P3) — Discovery, Recommendation & Growth
+**Catalogue:**
+- `categories`, `products`, `product_variants`, `price_rules`, `inventory`, `booking_slots`
 
-### Sub-modules
-| Sub-module | Deliverable | Integration dependency |
-|------------|-------------|----------------------|
-| C1 Discovery + Map | Home feed, search/filter, listing detail, Leaflet map pins, Near Me, Google Maps URL | Needs B2 catalogue (Day 5 — drop fixtures) |
-| C2 Preferences + Rule Recommendation | Onboarding survey, weighted score, reason tags, snapshot | Needs A1 user, A2 profile completion |
-| C3 Reviews + Share + Interaction | Completed-order gate, review form, save/share signals, Web Share API | Needs D2 completed ORDER_ITEMS |
-| C4 Vendor Recommendation + Affiliate | Community recommendation form, admin review, affiliate link/click, mock commission | Commission credits via D3 wallet helper |
+**Promotions:**
+- `vouchers`, `media_assets`
 
-### Tables owned
-**Core:** user_preferences, vendor_recommendations, affiliate_links, reviews, share_events, user_interactions  
-**Mock:** recommendation_conversions, recommendation_commissions, commission_rules, affiliate_clicks, affiliate_attributions, recommendation_snapshots  
-**Later:** geocode_cache
+### Key routes
+- `/login`, `/register`
+- `/vendor/dashboard`, `/vendor/products`, `/vendor/bookings`, `/vendor/vouchers`
+- `/admin/vendors`
 
-### Recommendation scoring (rule-v1 — no LLM/vectors)
-```
-score = interest_match(0.35) + recency(0.15) + rating(0.20) + proximity(0.20) + trending(0.10)
-```
-Record `model_version = 'rule-v1'` in recommendation_snapshots.
+### Provides to others
+- `AuthContext` via `useAuth()` hook — all members depend on this
+- Vendor / outlet / product read APIs — Member 2 (discovery), Member 3 (recommendation)
+- `is_admin(uid)`, `is_approver(uid)`, `get_my_roles()` RPCs
 
----
-
-## Member 4 (P4) — Cart, Order, Booking & Wallet
-
-### Sub-modules
-| Sub-module | Deliverable | Integration dependency |
-|------------|-------------|----------------------|
-| D1 Cart + Voucher + Mock Checkout | Cart CRUD, amount calculation, voucher redeem, Mock Pay success/fail | Needs B2 variant/slot/stock/price contract (Day 4–5) |
-| D2 Order + Booking | Order snapshot, booking QR, history, cancel/refund mock, vendor fulfil contract | Drives B4 vendor dashboard; C3 review gate |
-| D3 Wallet + Ledger | Pending/available balance, wallet payment, reward credit helper | C4 commission calls credit helper only |
-| D4 Withdrawal Approval | Destination placeholder, request, approve/reject, ledger reserve/release | Calls A4 audit/notification; dual approval for >RM500 |
-
-### Tables owned
-**Core:** voucher_redemptions, carts, cart_items, orders, order_items, bookings, wallets, wallet_ledger, withdrawal_requests, withdrawal_approvals  
-**Mock:** payments, refunds, payout_destinations  
-**Later:** payout_transactions
-
-### Wallet credit helper (D3 → called by C4, not a direct table write)
-```ts
-// Only P4 writes to wallet_ledger — never write directly from C4
-await creditWallet(userId, amount, 'reward_pending', referenceId, note);
-```
+### Deadline
+- **Day 2 — Gate 1**: Auth + `useAuth()` live, all demo accounts login-able
+- **Day 4 — Gate 2**: Catalogue read contract frozen, Member 2 stops using fixtures
 
 ---
 
-## Integration Schedule
+## Member 2 — Customer Booking, Map & AI Discovery
 
-| Day | Gate | Who merges what |
-|-----|------|----------------|
-| 2   | G1 Auth | P1: A1 → develop |
-| 4   | G2 Supply | P2: B2+B3 → develop; C1+D1 consume real data |
-| 5   | E2E #1 | discover → cart → mock pay must pass |
-| 6   | G3 Transaction | P4: D2 → develop; P2: B4 reads orders |
-| 8   | G4 Growth | P3: C4 → P4: D3 ledger; P4: D4 → P1: A4 audit |
-| 9   | E2E #2 + Chat | A3 chat flow integrated |
-| 10  | Feature freeze | Polish only — no new features |
+### Scope
+- Customer browse / search tourism activities
+- Cart
+- Booking
+- Checkout
+- Order / booking history
+- Interactive map (Leaflet + OSM)
+- Near Me / Get Directions
+- Customer-to-vendor chat
+
+### Tables owned (16)
+**Transaction:**
+- `carts`, `cart_items`
+- `orders`, `order_items`, `voucher_redemptions`
+- `bookings`
+- `payments`, `refunds`
+
+**Discovery & personalization:**
+- `user_preferences`, `recommendation_snapshots`, `user_interactions`
+- `reviews`
+
+**Map:**
+- `geocode_cache`
+
+**Chat:**
+- `chat_threads`, `chat_messages`, `chat_message_reads`
+
+### Key routes
+- `/discovery`, `/search`, `/vendors/[slug]`
+- `/cart`, `/orders`, `/orders/[id]`
+- `/vendor/inbox` (chat receive side)
+- `/profile/preferences`
+
+### Provides to others
+- `order.paid` domain event → Member 3 (commission trigger)
+- Order → review gate → Member 3 (via completed order_items only)
+
+### Deadline
+- **Day 5 — Gate 2 → E2E #1**: discover → cart → mock pay must run end-to-end
+- **Day 6 — Gate 3**: `orders` completes so Member 3 can hang reward/withdrawal off it
+
+---
+
+## Member 3 — Verification, Reward & Wallet Governance (YOU)
+
+### Scope
+- Verified user profile
+- KYC / document upload
+- Admin verification approval
+- Community recommendation submission
+- Hidden gem / vendor recommendation approval
+- Reward calculation
+- Wallet balance
+- Withdrawal request
+- Admin withdrawal approval
+
+### Tables owned (11)
+**Verification:**
+- `kyc_submissions`
+
+**Recommendation → Reward:**
+- `vendor_recommendations`, `recommendation_conversions`
+- `commission_rules`, `recommendation_commissions`
+
+**Wallet:**
+- `wallets`, `wallet_ledger`
+
+**Withdrawal:**
+- `payout_destinations`
+- `withdrawal_requests`, `withdrawal_approvals`
+- `payout_transactions` (mock in demo)
+
+### Key routes
+- `/profile` (KYC upload UI)
+- `/wallet` (balance + withdrawal request)
+- `/recommend` (submit vendor recommendation)
+- `/admin/kyc`, `/admin/recommendations`, `/admin/withdrawals`
+
+### Provides to others
+- `creditWallet(userId, amount, type, refId)` — Member 4 affiliate calls this to credit commissions
+- `submit_withdrawal`, `approve_withdrawal`, `review_kyc`, `convert_recommendation` RPCs
+
+### Detailed 14-day plan
+See **`docs/member-plans/member-3-trust-money-flow.md`** — includes state machines,
+transaction boundaries, 4 governance RPCs, quality-scoring functions (KYC + recommendation),
+and DoD per sub-module.
+
+### Deadline
+- **Day 6 — Gate 3**: Wallet + Withdrawal single-approval flow live
+- **Day 8 — Gate 4**: Recommendation convert → wallet credit chain complete
+- **Day 8 — Gate 5**: All approvals write to `audit_logs` + `notifications` via RPC
+
+---
+
+## Member 4 — Affiliate, Social Sharing & AI Support
+
+### Scope
+- Affiliate link generation
+- Affiliate click tracking
+- Conversion tracking
+- Commission calculation
+- Social sharing link
+- Share tracking
+- Admin support portal
+- AI chatbot / FAQ chatbot
+- Support ticket escalation
+
+### Tables owned (9)
+**Affiliate:**
+- `affiliate_links`, `affiliate_clicks`, `affiliate_attributions`
+
+**Social:**
+- `share_events`
+
+**Support & Chatbot:**
+- `chatbot_sessions`, `chatbot_messages`
+- `chatbot_kb_documents`, `chatbot_message_kb_refs`
+- `support_tickets`
+
+### Key routes
+- `/wallet` (affiliate link section, shared UI with Member 3)
+- `/admin/support`
+- Chatbot widget (embed on all pages)
+
+### Depends on
+- Member 3's `creditWallet()` helper for commission payout
+- Member 1's `vendors`, `products` (link targets)
+- Member 2's `orders` (conversion attribution)
+
+### Deadline
+- **Day 7**: Affiliate link generation + basic click tracking
+- **Day 8 — Gate 4**: Commission → `creditWallet()` chain complete
+
+---
+
+## Shared Infrastructure (no single owner)
+
+Any member reads freely, writes only via helpers.
+
+| Table | Written via | Read by |
+|-------|-------------|---------|
+| `notifications` | `send_notification` RPC / `auditAndNotify()` | Own user's inbox |
+| `audit_logs` | `record_audit_and_notify` RPC | Admin audit trail |
+| `platform_settings` | Super Admin only | Everyone (config) |
+| `idempotency_keys` | `withIdempotency()` middleware | Auto-managed |
+
+---
+
+## Integration Gate Timeline
+
+| Day | Gate | Blocker |
+|-----|------|---------|
+| 2 | **G1 — Identity** | Member 1 ships `useAuth()` + demo accounts |
+| 4 | **G2 — Supply** | Member 1 catalogue read contract frozen; Member 2 drops fixtures |
+| 5 | **E2E #1** | discover → cart → mock pay passes |
+| 6 | **G3 — Transaction** | Member 2 order + Member 3 wallet ships |
+| 7-8 | **G4 — Growth** | Member 3 commission → wallet; Member 4 affiliate → wallet (via `creditWallet`) |
+| 8 | **G5 — Governance** | All approve/reject write via `auditAndNotify` RPC |
+| 9 | **E2E #2 + Chat** | Chat flow integrated |
+| 10 | **Feature freeze** | Polish only, no new features |
+
+---
+
+## Cross-cutting Contracts (do not break)
+
+1. **Money** — `src/lib/money.ts` — sen-integer precision; every price/commission goes through this
+2. **Auth** — `useAuth()` hook + `get_my_roles()` RPC — never query `user_roles` directly with a join
+3. **Wallet writes** — `creditWallet()` helper — no direct `wallets`/`wallet_ledger` writes outside Member 3's domain
+4. **Approval helpers** — `auditAndNotify()` + `record_audit_and_notify` RPC — every approve/reject calls this
+5. **Idempotency** — `withIdempotency()` helper — every POST that writes money uses `Idempotency-Key` header
+6. **Domain events** — `src/lib/domain-events.ts` — `onOrderPaid`, `onWithdrawalReviewed`, `onRecommendationConverted`, `onOrderCompleted`

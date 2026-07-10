@@ -100,16 +100,21 @@ docs/
 
 ---
 
-## Module Ownership
+## Module Ownership (4 members)
 
-| Member | Sub-modules | Key Pages | Tables Owned |
-|--------|-------------|-----------|--------------|
-| **P1** | Auth/RBAC, Profile, Chat, FAQ Bot | `/login`, `/register`, `/profile`, `/vendor/inbox`, `/admin/support` | users, roles, user_roles, chat_*, notifications, audit_logs, support_tickets |
-| **P2** | Vendor onboarding, Catalogue, Slots, Vouchers | `/vendor/dashboard`, `/vendor/products`, `/vendor/bookings` | vendors, outlets, products, product_variants, inventory, booking_slots, vouchers |
-| **P3** | Discovery, Map, Preferences, Recommendations, Affiliate | `/discovery`, `/search`, `/vendors/[slug]`, `/profile/preferences` | user_preferences, vendor_recommendations, affiliate_links, reviews, share_events, user_interactions |
-| **P4** | Cart, Orders, Bookings, Wallet, Withdrawals | `/cart`, `/orders`, `/wallet`, `/admin/withdrawals` | carts, cart_items, orders, order_items, bookings, wallets, wallet_ledger, withdrawal_requests |
+| # | Member | Scope | Key Pages | Tables Owned |
+|---|--------|-------|-----------|--------------|
+| **1** | Vendor & Marketplace Management | Login/role access, vendor registration, outlet management, product / activity / package, pricing & inventory, voucher, admin approve vendor + listing | `/login`, `/register`, `/vendor/*`, `/admin/vendors` | users, roles, user_roles, email_verifications, phone_verifications, vendors, outlets, outlet_pages, outlet_managers, categories, products, product_variants, price_rules, inventory, booking_slots, vouchers, media_assets |
+| **2** | Customer Booking, Map & AI Discovery | Browse/search, cart, booking, checkout, order/booking history, interactive map, Near Me / Get Directions, customer↔vendor chat | `/discovery`, `/search`, `/vendors/[slug]`, `/cart`, `/orders`, `/vendor/inbox` | carts, cart_items, orders, order_items, voucher_redemptions, bookings, payments, refunds, user_preferences, recommendation_snapshots, user_interactions, reviews, geocode_cache, chat_threads, chat_messages, chat_message_reads |
+| **3** | Verification, Reward & Wallet Governance | Verified profile, KYC upload, admin verification approval, community recommendation submission + approval, reward calculation, wallet balance, withdrawal request, admin withdrawal approval | `/profile`, `/wallet`, `/recommend`, `/admin/kyc`, `/admin/recommendations`, `/admin/withdrawals` | kyc_submissions, vendor_recommendations, recommendation_conversions, commission_rules, recommendation_commissions, wallets, wallet_ledger, payout_destinations, withdrawal_requests, withdrawal_approvals, payout_transactions |
+| **4** | Affiliate, Social Sharing & AI Support | Affiliate link generation, click / conversion tracking, commission calc, social sharing link + tracking, admin support portal, AI chatbot / FAQ, support ticket escalation | `/wallet` (affiliate section), `/admin/support`, chatbot widget | affiliate_links, affiliate_clicks, affiliate_attributions, share_events, chatbot_sessions, chatbot_messages, chatbot_kb_documents, chatbot_message_kb_refs, support_tickets |
 
-**Rule: each team member only writes migrations for tables they own.** Cross-module data access goes through agreed API routes or Supabase queries.
+**Shared infrastructure** (any member reads, writes via helpers only):
+`notifications`, `audit_logs`, `platform_settings`, `idempotency_keys`
+
+**Rule: each member only writes migrations for tables they own.** Cross-module data access goes through the shared contracts (`money.ts`, `auditAndNotify()`, `creditWallet()`) or agreed API routes.
+
+Detailed 14-day execution plans per member live in `docs/member-plans/`.
 
 ---
 
