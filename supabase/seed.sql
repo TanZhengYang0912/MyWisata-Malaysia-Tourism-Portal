@@ -39,7 +39,13 @@ INSERT INTO users (id, email, full_name, kyc_status, email_verified_at, phone_ve
   ('aaaaaaaa-0000-0000-0000-000000000006', 'customer2@demo.local',       'Customer Bob',      'pending',  NOW(), NOW(), NULL),
   ('aaaaaaaa-0000-0000-0000-000000000007', 'customer3@demo.local',       'Customer Carol',    'unverified',NOW(), NULL, NULL),
   ('aaaaaaaa-0000-0000-0000-000000000008', 'customer4@demo.local',       'Customer Dave',     'unverified',NOW(), NULL, NULL)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  full_name            = EXCLUDED.full_name,
+  kyc_status           = EXCLUDED.kyc_status,
+  email_verified_at    = EXCLUDED.email_verified_at,
+  phone_verified_at    = EXCLUDED.phone_verified_at,
+  profile_completed_at = EXCLUDED.profile_completed_at,
+  updated_at           = NOW();
 
 -- ── User Roles ──────────────────────────────────────────────
 INSERT INTO user_roles (user_id, role_id, vendor_id, outlet_id)

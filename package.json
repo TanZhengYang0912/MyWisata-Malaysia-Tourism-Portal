@@ -13,6 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/database.generated.ts",
+    "seed:users": "node scripts/seed-demo-users.mjs",
     "ci": "npm run type-check && npm run lint && npm run test"
   },
   "dependencies": {
