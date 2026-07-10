@@ -91,11 +91,14 @@ src/
     database.ts        # TypeScript row types for all 56 tables
     index.ts           # Domain DTOs (AuthUser, CartSummary, etc.)
 supabase/
-  migrations/001_initial_schema.sql   # All 56 tables
-  seed.sql                            # Demo data (3 vendors, 5 outlets, 20 products, 8 users)
+  migrations/                         # 7 migrations (schema, RPCs, RLS, grants, policies)
+  seed.sql                            # Demo data (3 vendors, 5 outlets, 5 products, 8 users)
 docs/
-  module-ownership.md  # Who owns what table / page / API route
-  api-contracts.md     # Shared DTO contracts between modules
+  module-ownership.md                 # 4-member split + shared contracts
+  SETUP.md                            # Fresh-Supabase → running demo (8 steps)
+  source/                             # Original .docx proposal + 2-week module plan
+  member-plans/
+    member-3-trust-money-flow.md      # Detailed 14-day plan for Member 3
 ```
 
 ---
