@@ -1,0 +1,76 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --background: #f8faf7;
+  --foreground: #24313a;
+  --card: #ffffff;
+  --card-foreground: #24313a;
+  --popover: #ffffff;
+  --popover-foreground: #24313a;
+  --primary: #0f5d4a;
+  --primary-foreground: #f8faf7;
+  --secondary: #e6f2ee;
+  --secondary-foreground: #0f5d4a;
+  --muted: #eef2f0;
+  --muted-foreground: #5e7268;
+  --accent: #f2b84b;
+  --accent-foreground: #24313a;
+  --destructive: #c7363d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(15, 93, 74, 0.12);
+  --input: transparent;
+  --input-background: #eef2f0;
+  --ring: #0f5d4a;
+  --radius: 0.75rem;
+  --teal: #087e8b;
+  --sidebar: #24313a;
+  --sidebar-foreground: #f8faf7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+  --color-teal: var(--teal);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-plus-jakarta-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
