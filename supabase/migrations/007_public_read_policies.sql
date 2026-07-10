@@ -164,6 +164,7 @@ CREATE POLICY voucher_redemptions_own ON voucher_redemptions
 DROP POLICY IF EXISTS share_events_own ON share_events;
 CREATE POLICY share_events_own ON share_events
   FOR SELECT USING (user_id = auth.uid() OR is_admin(auth.uid()));
+DROP POLICY IF EXISTS share_events_insert_own ON share_events;
 CREATE POLICY share_events_insert_own ON share_events
   FOR INSERT WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
 
@@ -211,5 +212,6 @@ CREATE POLICY chat_reads_own ON chat_message_reads
 DROP POLICY IF EXISTS support_own_or_admin ON support_tickets;
 CREATE POLICY support_own_or_admin ON support_tickets
   FOR SELECT USING (user_id = auth.uid() OR is_admin(auth.uid()));
+DROP POLICY IF EXISTS support_insert_own ON support_tickets;
 CREATE POLICY support_insert_own ON support_tickets
   FOR INSERT WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
