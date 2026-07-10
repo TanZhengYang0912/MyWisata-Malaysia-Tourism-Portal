@@ -8,8 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > src/types/database.generated.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.generated.ts",
+    "ci": "npm run type-check && npm run lint && npm run test"
   },
   "dependencies": {
     "next": "15.3.3",
@@ -37,6 +41,8 @@
     "postcss": "^8",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "15.3.3"
+    "eslint-config-next": "15.3.3",
+    "vitest": "^2.1.9",
+    "@vitest/coverage-v8": "^2.1.9"
   }
 }

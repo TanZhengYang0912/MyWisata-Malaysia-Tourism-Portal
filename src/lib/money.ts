@@ -1,54 +1,102 @@
 // ── Money Helper ────────────────────────────────────────────
 // ALL monetary values in this app are in RM (Malaysian Ringgit).
-// Only this file does arithmetic on money. Call toRM() before display.
-// Never use JS floating point directly: use add/subtract/multiply.
+// This is the ONLY file that does arithmetic on money.
+//
+// Precision strategy: convert to integer sen (1 RM = 100 sen), operate, convert back.
+// This eliminates IEEE 754 half-value bugs like Math.round(0.145 * 100) → 14 (not 15).
+//
+// Public API contract:
+//   - Inputs: number (RM, up to 2 decimals) — anything else throws or is truncated
+//   - Outputs: number (RM, guaranteed ≤2 decimals) OR string (formatted)
+//   - Never returns NaN, Infinity, or a negative number from a positive input
 
 const CURRENCY = 'MYR';
 const LOCALE   = 'en-MY';
+const MAX_RM   = 1_000_000_000;   // sanity ceiling to catch bad inputs
 
-/** Round to 2 decimal places (banker's rounding via toFixed) */
+// ── Internal: sen (integer cents) representation ────────────
+
+function toSen(rm: number): number {
+  if (!Number.isFinite(rm)) throw new MoneyError('Non-finite money value', rm);
+  if (Math.abs(rm) > MAX_RM) throw new MoneyError('Amount exceeds sanity ceiling', rm);
+  // + Number.EPSILON adjusts for cases like 0.145 * 100 = 14.499999... → 15
+  return Math.round(rm * 100 + Number.EPSILON * Math.sign(rm));
+}
+
+function fromSen(sen: number): number {
+  return Math.round(sen) / 100;
+}
+
+export class MoneyError extends Error {
+  constructor(msg: string, public value: unknown) { super(`[money] ${msg}: ${value}`); }
+}
+
+// ── Public API ──────────────────────────────────────────────
+
+/** Round an RM value to 2 decimal places using half-away-from-zero. */
 export function roundRM(amount: number): number {
-  return Math.round(amount * 100) / 100;
+  return fromSen(toSen(amount));
 }
 
+/** Sum any number of RM amounts safely. */
 export function add(...amounts: number[]): number {
-  return roundRM(amounts.reduce((acc, n) => acc + n, 0));
+  const totalSen = amounts.reduce((acc, n) => acc + toSen(n), 0);
+  return fromSen(totalSen);
 }
 
+/** subtract(a, b) = a − b, rounded. Result may be negative. */
 export function subtract(a: number, b: number): number {
-  return roundRM(a - b);
+  return fromSen(toSen(a) - toSen(b));
 }
 
+/** multiply(amount, factor) — factor is a plain multiplier (e.g., quantity or tax rate). */
 export function multiply(amount: number, factor: number): number {
-  return roundRM(amount * factor);
+  if (!Number.isFinite(factor)) throw new MoneyError('Non-finite factor', factor);
+  return fromSen(Math.round(toSen(amount) * factor));
 }
 
-/** Apply a percentage discount (0–100) */
+/** Apply a percentage (0..100). applyPercent(200, 15) = 30.00 */
 export function applyPercent(amount: number, pct: number): number {
-  return roundRM(amount * (pct / 100));
+  if (pct < 0 || pct > 100) throw new MoneyError('Percentage out of range 0..100', pct);
+  return multiply(amount, pct / 100);
 }
 
-/** Format RM amount for display: "RM 55.00" */
+/** Format for user display: "RM 55.00" */
 export function toRM(amount: number): string {
   return new Intl.NumberFormat(LOCALE, {
     style: 'currency',
     currency: CURRENCY,
     minimumFractionDigits: 2,
-  }).format(amount);
+    maximumFractionDigits: 2,
+  }).format(roundRM(amount));
 }
 
-/** Parse "RM 55.00" or "55.00" back to number */
+/** Parse "RM 55.00" or "55.00" back to a number. Non-numeric → 0. */
 export function parseRM(str: string): number {
-  const n = parseFloat(str.replace(/[^0-9.-]/g, ''));
-  return isNaN(n) ? 0 : roundRM(n);
+  const cleaned = str.replace(/[^0-9.-]/g, '');
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n)) return 0;
+  return roundRM(n);
 }
 
-/** Compute variant price: product.base_price + variant.price_offset */
+/** Compute variant price: product.base_price + variant.price_offset. */
 export function variantPrice(basePrice: number, priceOffset: number): number {
-  return roundRM(basePrice + priceOffset);
+  return add(basePrice, priceOffset);
 }
 
-/** Compute line total for a cart/order item */
+/** Compute line total: unit_price × quantity. */
 export function lineTotal(unitPrice: number, quantity: number): number {
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    throw new MoneyError('Quantity must be a non-negative integer', quantity);
+  }
   return multiply(unitPrice, quantity);
+}
+
+/** Guard: is this a valid non-negative RM amount? */
+export function isValidRM(amount: unknown): amount is number {
+  return typeof amount === 'number'
+      && Number.isFinite(amount)
+      && amount >= 0
+      && amount <= MAX_RM
+      && Math.abs(amount * 100 - Math.round(amount * 100)) < 0.001;
 }
