@@ -27,9 +27,32 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); setLoading(false); return; }
-    router.push('/discovery');
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      setError(error?.message ?? 'Login failed');
+      setLoading(false);
+      return;
+    }
+
+    // Role-based landing page
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('roles(name)')
+      .eq('user_id', data.user.id);
+
+    const roles = (roleRows ?? [])
+      .map((r) => (r.roles as { name: string } | null)?.name)
+      .filter(Boolean) as string[];
+
+    let landing = '/discovery';
+    if (roles.includes('super_admin') || roles.includes('approver')) {
+      landing = '/admin/dashboard';
+    } else if (roles.includes('vendor_owner') || roles.includes('outlet_manager')) {
+      landing = '/vendor/dashboard';
+    }
+
+    router.push(landing);
     router.refresh();
   }
 
