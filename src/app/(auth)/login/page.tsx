@@ -35,24 +35,11 @@ export default function LoginPage() {
       return;
     }
 
-    // Role-based landing page
-    const { data: roleRows } = await supabase
-      .from('user_roles')
-      .select('roles(name)')
-      .eq('user_id', data.user.id);
+    // Server-side role lookup avoids JWT-propagation race on the client.
+    const res = await fetch('/api/auth/landing', { cache: 'no-store' });
+    const { landing } = await res.json().catch(() => ({ landing: '/discovery' }));
 
-    const roles = (roleRows ?? [])
-      .map((r) => (r.roles as { name: string } | null)?.name)
-      .filter(Boolean) as string[];
-
-    let landing = '/discovery';
-    if (roles.includes('super_admin') || roles.includes('approver')) {
-      landing = '/admin/dashboard';
-    } else if (roles.includes('vendor_owner') || roles.includes('outlet_manager')) {
-      landing = '/vendor/dashboard';
-    }
-
-    router.push(landing);
+    router.push(landing ?? '/discovery');
     router.refresh();
   }
 

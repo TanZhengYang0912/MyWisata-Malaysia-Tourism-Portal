@@ -40,15 +40,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Role-based guard for vendor/admin portals
+  // Role-based guard for vendor/admin portals.
+  // Uses get_my_roles() RPC (SECURITY DEFINER) — direct RLS-filtered SELECT
+  // on user_roles returns empty under the anon token in some contexts.
   if (user && (isVendor || isAdmin)) {
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('roles(name)')
-      .eq('user_id', user.id);
-
-    const roleNames = (roles ?? []).flatMap(
-      (r: { roles: { name: string } | null }) => r.roles?.name ?? [],
+    const { data: roles } = await supabase.rpc('get_my_roles');
+    const roleNames = (roles ?? []).map(
+      (r: { role_name: string }) => r.role_name,
     );
 
     if (isAdmin && !roleNames.includes('super_admin') && !roleNames.includes('approver')) {

@@ -17,33 +17,34 @@
     "ci": "npm run type-check && npm run lint && npm run test"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.468.0",
     "next": "15.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.47.10",
-    "@supabase/ssr": "^0.5.2",
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1",
-    "lucide-react": "^0.468.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.6.0",
-    "date-fns": "^4.1.0",
-    "zod": "^3.24.1",
     "react-hook-form": "^7.54.2",
-    "@hookform/resolvers": "^3.9.1"
+    "react-leaflet": "^4.2.1",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@types/leaflet": "^1.9.14",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/leaflet": "^1.9.14",
-    "tailwindcss": "^3.4.1",
-    "postcss": "^8",
+    "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "15.3.3",
-    "vitest": "^2.1.9",
-    "@vitest/coverage-v8": "^2.1.9"
+    "playwright": "^1.61.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }
