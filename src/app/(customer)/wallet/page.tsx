@@ -1,9 +1,9 @@
-// P4 — Member 4 owns this page
-// Sub-module: D3 Wallet + Ledger, D4 Withdrawal Approval
+// Member 3 (Trust & Money Flow) — TMF-3 Wallet Ledger + TMF-4 Withdrawal Governance
 
 import { createClient } from '@/lib/supabase/server';
 import { toRM } from '@/lib/money';
 import { StatusBadge } from '@/components/ui/badge';
+import { WithdrawFormButton } from '@/components/wallet/withdraw-form';
 
 export default async function WalletPage() {
   const supabase = await createClient();
@@ -44,11 +44,8 @@ export default async function WalletPage() {
         </div>
       </div>
 
-      {/* Withdraw button */}
-      {/* TODO P4/D4: Withdrawal request form — POST /api/wallet/withdraw */}
-      <button className="w-full border border-gray-300 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
-        Request Withdrawal
-      </button>
+      {/* Withdraw button — opens modal, POSTs /api/wallet/withdraw with idempotency */}
+      <WithdrawFormButton available={Number(wallet?.available_balance ?? 0)} />
 
       {/* Affiliate link */}
       {/* TODO P3/C4: show user's affiliate code + one-click copy */}

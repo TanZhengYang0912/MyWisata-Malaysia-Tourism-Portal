@@ -19,8 +19,12 @@ const MAX_RM   = 1_000_000_000;   // sanity ceiling to catch bad inputs
 function toSen(rm: number): number {
   if (!Number.isFinite(rm)) throw new MoneyError('Non-finite money value', rm);
   if (Math.abs(rm) > MAX_RM) throw new MoneyError('Amount exceeds sanity ceiling', rm);
-  // + Number.EPSILON adjusts for cases like 0.145 * 100 = 14.499999... → 15
-  return Math.round(rm * 100 + Number.EPSILON * Math.sign(rm));
+  // IEEE 754 half-value nudge: 1.005 * 100 = 100.4999... should round to 101,
+  // 0.145 * 100 = 14.4999... should round to 15. A 1e-9 offset at sen scale is
+  // above the double-precision error but below the smallest legitimate half-sen.
+  // Apply to abs(rm) so negatives round symmetrically (half-away-from-zero).
+  const sign = rm >= 0 ? 1 : -1;
+  return sign * Math.round(Math.abs(rm) * 100 + 1e-9);
 }
 
 function fromSen(sen: number): number {
