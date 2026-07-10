@@ -6,6 +6,21 @@ Tech stack: **Next.js 15 · TypeScript · Tailwind CSS · Supabase (PostgreSQL +
 
 ---
 
+## Repository Layout
+
+This repo hosts **two parallel tracks**:
+
+| Track | Location | Purpose | Status |
+|-------|----------|---------|--------|
+| **Main app** (Next.js + Supabase) | `src/`, `supabase/`, root config | Production track — real DB, 4-person collaborative build | Active — see plan below |
+| **Design prototype** (Vite + localStorage) | `design-prototype/` | UI/UX exploration by chihao0127; single-user localStorage mock | Reference only — not deployed |
+| **Source docs** | `docs/source/` | Original proposal + 2-week module plan (.docx) | Read-only reference |
+| **Working docs** | `docs/` | Ownership, contracts, member plans (Markdown) | Update as team decides |
+
+**Team convention**: the main app at repo root is the shared codebase. The Vite prototype in `design-prototype/` is a UI reference that any member can extract components from, but **it does NOT get deployed and does NOT share code with the main app**.
+
+---
+
 ## Quick Start
 
 ```bash
