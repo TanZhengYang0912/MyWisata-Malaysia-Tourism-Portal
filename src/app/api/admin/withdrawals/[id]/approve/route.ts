@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 import { withdrawalApproveSchema, parseBody, apiFail } from '@/lib/validation/schemas';
 import { withIdempotency } from '@/lib/idempotency';
 import { onWithdrawalReviewed } from '@/lib/domain-events';
+import { initiatePayout, StripeConfigError, StripePayoutError } from '@/lib/stripe';
+import { recordAudit } from '@/lib/audit';
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -60,5 +62,50 @@ export async function POST(request: Request, { params }: Props) {
   // Domain event → audit + notify recipient
   await onWithdrawalReviewed(requestId, user.id, req.user_id, parsed.data.action === 'approve');
 
-  return idem.record({ data: result, error: null });
+  // Auto-trigger Stripe payout when the withdrawal reaches 'approved' state.
+  // The RPC only returns 'approved' when single/final dual approval passes.
+  // If Stripe fails or is not configured, we leave status='approved' so admin can retry
+  // via POST /api/admin/withdrawals/[id]/payout.
+  let payoutInfo: { transferId?: string; status: string; error?: string } | null = null;
+  if (result?.status === 'approved') {
+    try {
+      const transfer = await initiatePayout({
+        amountRM:            Number(req.amount),
+        withdrawalRequestId: requestId,
+        recipientUserId:     req.user_id,
+      });
+      const { error: rpcErr } = await supabase.rpc('record_payout_pending', {
+        p_request_id:  requestId,
+        p_gateway:     'stripe',
+        p_gateway_ref: transfer.transferId,
+        p_metadata:    { amount_sen: transfer.amountSen, currency: 'myr' },
+      });
+      if (rpcErr) throw rpcErr;
+      payoutInfo = { transferId: transfer.transferId, status: 'processing' };
+      await recordAudit({
+        actorId:    user.id,
+        action:     'withdrawal.payout_initiated',
+        entityType: 'withdrawal_request',
+        entityId:   requestId,
+        afterData:  { stripe_transfer_id: transfer.transferId },
+      });
+    } catch (err) {
+      const isConfig = err instanceof StripeConfigError;
+      const code = isConfig ? 'STRIPE_NOT_CONFIGURED'
+                            : err instanceof StripePayoutError ? 'STRIPE_PAYOUT_FAILED'
+                            : 'STRIPE_UNKNOWN';
+      const message = err instanceof Error ? err.message : 'unknown';
+      console.warn(`[approve] payout deferred: ${code} — ${message}`);
+      payoutInfo = { status: 'deferred', error: `${code}: ${message}` };
+      await recordAudit({
+        actorId:    user.id,
+        action:     'withdrawal.payout_deferred',
+        entityType: 'withdrawal_request',
+        entityId:   requestId,
+        note:       `${code}: ${message}`,
+      });
+    }
+  }
+
+  return idem.record({ data: { ...result, payout: payoutInfo }, error: null });
 }

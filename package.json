@@ -30,6 +30,7 @@
     "react-hook-form": "^7.54.2",
     "react-leaflet": "^4.2.1",
     "sonner": "^2.0.7",
+    "stripe": "^22.3.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },
