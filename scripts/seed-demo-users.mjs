@@ -7,14 +7,36 @@
  *   SUPABASE_SERVICE_ROLE_KEY    — from same page (NEVER expose to client)
  *
  * Usage:
- *   node scripts/seed-demo-users.mjs
+ *   npm run seed:users
  *
- * Idempotent: if a user already exists (by id or email), it is skipped.
- * The auth trigger will auto-populate public.users + wallet + customer role.
+ * Env vars are auto-loaded from .env.local or .env (whichever exists first).
+ * Idempotent: existing users are skipped.
+ * The auth trigger auto-populates public.users + wallet + customer role.
  * Run supabase/seed.sql AFTER this succeeds.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+
+// ── Load env from .env.local or .env (Node script doesn't inherit Next.js loader) ──
+for (const filename of ['.env.local', '.env']) {
+  const filepath = path.resolve(process.cwd(), filename);
+  if (fs.existsSync(filepath)) {
+    const content = fs.readFileSync(filepath, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
+      if (match && !process.env[match[1]]) {
+        // Strip surrounding quotes if present
+        process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+      }
+    }
+    console.log(`ℹ  Loaded env from ${filename}`);
+    break;   // stop after the first file found
+  }
+}
 
 const url        = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
