@@ -29,7 +29,7 @@ export default function OrdersPage() {
         title="No orders yet"
         description="Your booking and order history will show up here once you check out."
         action={
-          <Link href="/explore">
+          <Link href="/customer/explore">
             <Button>Explore Experiences</Button>
           </Link>
         }
@@ -44,7 +44,7 @@ export default function OrdersPage() {
         {orders.map((order) => (
           <Link
             key={order.id}
-            href={`/orders/${order.id}`}
+            href={`/customer/orders/${order.id}`}
             className="block p-4 rounded-xl border border-border bg-card hover:bg-secondary transition-colors"
           >
             <div className="flex items-center justify-between mb-2">

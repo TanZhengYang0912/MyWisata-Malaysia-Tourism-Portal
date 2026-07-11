@@ -92,7 +92,7 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      <Link href="/orders">
+      <Link href="/customer/orders">
         <Button variant="outline" className="w-full">Back to Order History</Button>
       </Link>
     </div>

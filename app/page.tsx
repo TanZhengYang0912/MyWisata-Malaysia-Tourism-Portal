@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
 const HOME_BY_ROLE: Record<string, string> = {
-  customer: "/explore",
+  customer: "/customer/explore",
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",

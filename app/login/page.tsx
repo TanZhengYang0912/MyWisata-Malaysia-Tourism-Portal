@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { Role, User } from "@/lib/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/explore",
+  customer: "/customer/explore",
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",

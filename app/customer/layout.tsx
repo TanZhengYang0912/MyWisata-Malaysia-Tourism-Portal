@@ -7,11 +7,11 @@ import { useRequireRole } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 
 const NAV = [
-  { href: "/explore", label: "Explore", icon: Search },
-  { href: "/map", label: "Map", icon: Map },
-  { href: "/chat", label: "Chat", icon: MessageCircle },
-  { href: "/cart", label: "Cart", icon: ShoppingCart },
-  { href: "/orders", label: "Orders", icon: UserIcon },
+  { href: "/customer/explore", label: "Explore", icon: Search },
+  { href: "/customer/map", label: "Map", icon: Map },
+  { href: "/customer/chat", label: "Chat", icon: MessageCircle },
+  { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
+  { href: "/customer/orders", label: "Orders", icon: UserIcon },
 ];
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
-          <Link href="/explore" className="flex items-center gap-2 shrink-0">
+          <Link href="/customer/explore" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
               <Globe size={16} className="text-white" />
             </div>
@@ -47,7 +47,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             ))}
           </div>
 
-          <Link href="/cart" className="relative md:hidden ml-auto">
+          <Link href="/customer/cart" className="relative md:hidden ml-auto">
             <ShoppingCart size={20} className="text-foreground" />
             {count > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center bg-destructive">
@@ -57,7 +57,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           </Link>
 
           <div className="hidden md:flex items-center gap-3 ml-auto shrink-0">
-            <Link href="/cart" className="relative">
+            <Link href="/customer/cart" className="relative">
               <ShoppingCart size={18} className="text-foreground" />
               {count > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center bg-destructive">

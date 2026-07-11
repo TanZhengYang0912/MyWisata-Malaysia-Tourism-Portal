@@ -40,7 +40,7 @@ export default function CartPage() {
         title="Your cart is empty"
         description="Browse experiences and add a booking or product to get started."
         action={
-          <Link href="/explore">
+          <Link href="/customer/explore">
             <Button>Explore Experiences</Button>
           </Link>
         }
@@ -118,7 +118,7 @@ export default function CartPage() {
 
       <Button
         className="w-full h-12 rounded-full text-base"
-        onClick={() => router.push(appliedCode ? `/checkout?voucher=${appliedCode}` : "/checkout")}
+        onClick={() => router.push(appliedCode ? `/customer/checkout?voucher=${appliedCode}` : "/customer/checkout")}
       >
         Proceed to Checkout
       </Button>

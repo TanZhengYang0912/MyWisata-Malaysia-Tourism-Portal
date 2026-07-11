@@ -24,7 +24,7 @@ export default function ExplorePage() {
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+    router.push(`/customer/search?q=${encodeURIComponent(query)}`);
   }
 
   return (
@@ -134,7 +134,7 @@ export default function ExplorePage() {
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Popular Right Now</h2>
             </div>
-            <Link href="/search" className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
+            <Link href="/customer/search" className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
               View all <ChevronRight size={14} />
             </Link>
           </div>
@@ -161,7 +161,7 @@ export default function ExplorePage() {
             </h2>
             <p className="text-sm mt-0.5 text-muted-foreground">{activities?.length ?? 0} results</p>
           </div>
-          <Link href="/search" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground shrink-0">
+          <Link href="/customer/search" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground shrink-0">
             <SlidersHorizontal size={12} /> More Filters
           </Link>
         </div>
