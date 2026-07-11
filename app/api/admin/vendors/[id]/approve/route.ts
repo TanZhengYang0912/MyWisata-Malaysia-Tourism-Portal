@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: Props) {
     .select('roles(name)')
     .eq('user_id', user.id);
 
-  const roleNames = (roles ?? []).map(r => (r.roles as Record<string, any>)?.name as string);
+  const roleNames = (roles ?? []).map((r: any) => (r.roles as Record<string, any>)?.name as string);
   if (!roleNames.includes('super_admin') && !roleNames.includes('approver')) {
     return apiFail('FORBIDDEN', 'Only admin or approver can review vendors', 403);
   }

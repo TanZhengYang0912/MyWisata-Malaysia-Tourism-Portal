@@ -26,7 +26,7 @@ function voucherStatus(voucher: any) {
 
 async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
   const filters = input.filters || {};
-  const q = safe(filters.q);
+  const q = safe(filters.q as string | undefined);
 
   if (input.entity === 'products') {
     let query = db.from('products').select('id,name,slug').eq('vendor_id', vendorId);
@@ -60,7 +60,7 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
   if (input.entity === 'orders') {
     const { data, error } = await db.from('order_items').select('id,order_id,product_name,variant_name,fulfil_status,created_at,orders!inner(status,users(full_name,email))').eq('vendor_id', vendorId);
     if (error) throw error;
-    const searchTerm = (filters.q || '').toLowerCase().replace(/^#/, '');
+    const searchTerm = ((filters.q as string) || '').toLowerCase().replace(/^#/, '');
     return (data || []).filter((item: any) => {
       const order = relation(item.orders);
       const customer = relation(order?.users);
@@ -68,8 +68,8 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
       const matchesFulfil = !filters.fulfilStatus || item.fulfil_status === filters.fulfilStatus;
       const matchesOrder = !filters.orderStatus || order?.status === filters.orderStatus;
       const created = item.created_at ? new Date(item.created_at).getTime() : 0;
-      const from = filters.from ? new Date(filters.from).getTime() : null;
-      const to = filters.to ? new Date(filters.to + 'T23:59:59.999Z').getTime() : null;
+      const from = filters.from ? new Date(filters.from as string).getTime() : null;
+      const to = filters.to ? new Date((filters.to as string) + 'T23:59:59.999Z').getTime() : null;
       return matchesQ && matchesFulfil && matchesOrder && (!from || created >= from) && (!to || created <= to);
     }).map((item: any) => item.id);
   }
@@ -86,9 +86,9 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
   if (filters.status) query = query.eq('status', filters.status);
   const { data, error } = await query;
   if (error) throw error;
-  const searchTerm = (filters.q || '').toLowerCase().replace(/^#/, '');
-  const from = filters.from ? new Date(filters.from).getTime() : null;
-  const to = filters.to ? new Date(filters.to + 'T23:59:59.999Z').getTime() : null;
+  const searchTerm = ((filters.q as string) || '').toLowerCase().replace(/^#/, '');
+  const from = filters.from ? new Date(filters.from as string).getTime() : null;
+  const to = filters.to ? new Date((filters.to as string) + 'T23:59:59.999Z').getTime() : null;
   return (data || []).filter((item: any) => {
     const customer = relation(item.users);
     const orderItem = relation(item.order_items);

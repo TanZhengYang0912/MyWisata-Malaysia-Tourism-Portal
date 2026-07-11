@@ -47,7 +47,7 @@ export const outletCreateSchema = z.object({
   lng: z.number().min(-180).max(180).optional(),
   phone: z.string().max(50).optional(),
   email: z.string().email().max(255).optional().or(z.literal('')),
-  operatingHours: z.record(z.object({
+  operatingHours: z.record(z.string(), z.object({
     open: z.string(),
     close: z.string(),
   })).optional(),
@@ -156,7 +156,7 @@ export const vendorBatchSchema = z.object({
   action: z.enum(['archive', 'restore', 'close', 'activate', 'deactivate', 'ready', 'fulfilled', 'check_in', 'cancel']),
   ids: z.array(uuid).max(10_000).default([]),
   selectAllFiltered: z.boolean().default(false),
-  filters: z.record(z.string()).default({}),
+  filters: z.record(z.string(), z.string()).default({}),
 }).strict();
 
 // ── Export inferred types ──────────────────────────────────

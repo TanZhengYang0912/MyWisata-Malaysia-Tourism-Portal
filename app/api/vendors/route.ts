@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   // If category filter, post-filter vendors that have products in that category
   let filtered = data ?? [];
   if (category) {
-    const vendorIds = filtered.map(v => v.id);
+    const vendorIds = filtered.map((v: any) => v.id);
     const { data: products } = await supabase
       .from('products')
       .select('vendor_id, categories(slug)')
@@ -36,10 +36,10 @@ export async function GET(request: Request) {
 
     const matchingVendorIds = new Set(
       (products ?? [])
-        .filter(p => (p.categories as Record<string, any>)?.slug === category)
-        .map(p => p.vendor_id),
+        .filter((p: any) => (p.categories as Record<string, any>)?.slug === category)
+        .map((p: any) => p.vendor_id),
     );
-    filtered = filtered.filter(v => matchingVendorIds.has(v.id));
+    filtered = filtered.filter((v: any) => matchingVendorIds.has(v.id));
   }
 
   return apiOk(filtered);

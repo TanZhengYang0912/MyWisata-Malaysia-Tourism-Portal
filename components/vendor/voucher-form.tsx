@@ -20,8 +20,8 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const supabase = createClient();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<VoucherCreate>({
-    resolver: zodResolver(voucherCreateSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<any>({
+    resolver: zodResolver(voucherCreateSchema) as any,
     defaultValues: { voucherType: 'fixed', minSpend: 0 },
   });
 
@@ -39,7 +39,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
     return result;
   }
 
-  async function onSubmit(data: VoucherCreate) {
+  async function onSubmit(data: any) {
     setServerError(null);
     try {
       const res = await fetch(`/api/vendors/${vendorId}/vouchers`, {
@@ -89,12 +89,12 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
                 }
               }}>Auto</Button>
             </div>
-            {errors.code && <p className="text-red-500 text-xs mt-1">{errors.code.message}</p>}
+            {errors.code && <p className="text-red-500 text-xs mt-1">{(errors.code as any)?.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
             <Input {...register('name')} placeholder="e.g. Summer Special" />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+            {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as any)?.message}</p>}
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value *</label>
             <Input {...register('discountValue', { valueAsNumber: true })} type="number" step="0.01" />
-            {errors.discountValue && <p className="text-red-500 text-xs mt-1">{errors.discountValue.message}</p>}
+            {errors.discountValue && <p className="text-red-500 text-xs mt-1">{(errors.discountValue as any)?.message}</p>}
           </div>
         </div>
 

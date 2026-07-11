@@ -21,8 +21,8 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const supabase = createClient();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ProductCreate>({
-    resolver: zodResolver(productCreateSchema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<any>({
+    resolver: zodResolver(productCreateSchema) as any,
     defaultValues: initialData || { requiresBooking: false, productType: 'product' },
   });
 
@@ -31,7 +31,7 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
       .then(({ data }) => setOutlets(data ?? []));
   }, [vendorId, supabase]);
 
-  async function onSubmit(data: ProductCreate) {
+  async function onSubmit(data: any) {
     setServerError(null);
     try {
       const isEdit = !!initialData?.id;
@@ -73,7 +73,7 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
           <Input {...register('name')} placeholder="e.g. Guided City Tour" />
-          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+          {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as any)?.message}</p>}
         </div>
 
         <div>
@@ -100,7 +100,7 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (RM) *</label>
             <Input {...register('basePrice', { valueAsNumber: true })} type="number" step="0.01" />
-            {errors.basePrice && <p className="text-red-500 text-xs mt-1">{errors.basePrice.message}</p>}
+            {errors.basePrice && <p className="text-red-500 text-xs mt-1">{(errors.basePrice as any)?.message}</p>}
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
               <option value="">Select outlet...</option>
               {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
-            {errors.outletId && <p className="text-red-500 text-xs mt-1">{errors.outletId.message}</p>}
+            {errors.outletId && <p className="text-red-500 text-xs mt-1">{(errors.outletId as any)?.message}</p>}
           </div>
           <div className="flex items-center pt-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
