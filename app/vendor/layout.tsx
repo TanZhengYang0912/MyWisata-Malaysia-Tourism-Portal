@@ -1,84 +1,14 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart2, Calendar, Globe, Inbox, LogOut, Package, Tag } from "lucide-react";
-import { useRequireRole } from "@/components/providers/auth";
-import { getOutlets } from "@/backend/domains/catalogue";
-import type { Outlet } from "@/backend/core/types";
-
-const NAV = [
-  { href: "/vendor/dashboard", label: "Dashboard", icon: BarChart2 },
-  { href: "/vendor/listings", label: "Listings", icon: Package },
-  { href: "/vendor/bookings", label: "Bookings", icon: Calendar },
-  { href: "/vendor/vouchers", label: "Vouchers", icon: Tag },
-  { href: "/vendor/inbox", label: "Chat Inbox", icon: Inbox },
-];
-
-export async function scopedOutletIds(activeVendorId?: string, activeOutletIds?: string[]): Promise<string[]> {
-  if (activeOutletIds?.length) return activeOutletIds;
-  if (activeVendorId) {
-    const outlets = await getOutlets();
-    return outlets.filter((o) => o.vendorId === activeVendorId).map((o) => o.id);
-  }
-  return [];
-}
+import VendorSidebar from '@/components/layout/vendor-sidebar';
 
 export default function VendorLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading, activeVendorId, activeOutletIds } = useRequireRole(["vendor_owner", "outlet_manager"]);
-  const pathname = usePathname();
-  const [outlets, setOutlets] = useState<Outlet[]>([]);
-
-  useEffect(() => {
-    scopedOutletIds(activeVendorId, activeOutletIds).then(async (ids) => {
-      const all = await getOutlets();
-      setOutlets(all.filter((o) => ids.includes(o.id)));
-    });
-  }, [activeVendorId, activeOutletIds]);
-
-  if (loading || !currentUser) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
-  }
-
   return (
-    <div className="flex min-h-screen">
-      <div className="flex flex-col w-60 shrink-0 bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
-            <Globe size={16} className="text-white" />
-          </div>
-          <span className="font-bold font-[family-name:var(--font-display)]">MyWisata</span>
+    <div className="min-h-screen bg-gray-50">
+      <VendorSidebar />
+      <main className="ml-56">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {children}
         </div>
-        <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[10px] uppercase tracking-wider mb-1 text-white/40">Signed in as</p>
-          <p className="text-sm font-bold">{currentUser.name}</p>
-          <p className="text-xs text-white/50 mt-0.5">{outlets.map((o) => o.name).join(", ") || "No outlets assigned"}</p>
-        </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-              style={{
-                backgroundColor: pathname === item.href ? "var(--primary)" : "transparent",
-                color: pathname === item.href ? "white" : "rgba(255,255,255,0.55)",
-              }}
-            >
-              <item.icon size={16} /> {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-white/10">
-          <Link href="/login" className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/40">
-            <LogOut size={15} /> Switch account
-          </Link>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
-        {children}
-      </div>
+      </main>
     </div>
   );
 }

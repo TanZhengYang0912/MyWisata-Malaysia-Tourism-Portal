@@ -1,110 +1,46 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Send } from "lucide-react";
-import { useAuth } from "@/components/providers/auth";
-import { scopedOutletIds } from "../layout";
-import { getMessages, getThreadsForOutlets, getUsers, sendMessage } from "@/backend/domains/identity";
-import { getOutlets } from "@/backend/domains/catalogue";
-import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage, ChatThread, Outlet, User } from "@/backend/core/types";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MessageCircle, Send, UserRound } from 'lucide-react';
+import { format } from 'date-fns';
+import { useAuth } from '@/hooks/use-auth';
+
+interface Thread { id: string; status: string; last_message_at: string | null; customer?: { full_name?: string; email?: string }; outlets?: { name?: string }; chat_messages?: Message[] }
+interface Message { id: string; sender_id: string; body: string; created_at: string }
 
 export default function VendorInboxPage() {
-  const { currentUser, activeVendorId, activeOutletIds } = useAuth();
-  const [threads, setThreads] = useState<ChatThread[]>([]);
-  const [selected, setSelected] = useState<ChatThread | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [text, setText] = useState("");
-  const [users, setUsers] = useState<Map<string, User>>(new Map());
-  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
+  const { user } = useAuth();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      const outletIds = await scopedOutletIds(activeVendorId, activeOutletIds);
-      const [list, allUsers, allOutlets] = await Promise.all([getThreadsForOutlets(outletIds), getUsers(), getOutlets()]);
-      setThreads(list);
-      setUsers(new Map(allUsers.map((u) => [u.id, u])));
-      setOutlets(new Map(allOutlets.map((o) => [o.id, o])));
-      setSelected((prev) => prev ?? list[0] ?? null);
-    })();
-  }, [activeVendorId, activeOutletIds]);
+  const loadThreads = useCallback(async () => {
+    if (!user?.activeVendorId) return;
+    const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
+    const payload = await response.json();
+    setThreads(payload.data || []);
+    setLoading(false);
+  }, [user?.activeVendorId]);
 
-  useEffect(() => {
-    if (selected) getMessages(selected.id).then(setMessages);
-  }, [selected]);
+  useEffect(() => { loadThreads(); const timer = setInterval(loadThreads, 30000); return () => clearInterval(timer); }, [loadThreads]);
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected || !text.trim() || !currentUser) return;
-    const msg = await sendMessage(selected.id, currentUser.id, "vendor", text.trim());
-    setMessages((prev) => [...prev, msg]);
-    setText("");
-  }
+  const selected = useMemo(() => threads.find((thread) => thread.id === active) || null, [active, threads]);
 
-  if (threads.length === 0) {
-    return <div className="p-8"><EmptyState title="No conversations yet" description="Customer messages to your outlets will show up here." /></div>;
+  async function sendMessage() {
+    if (!draft.trim() || !active || !user?.activeVendorId) return;
+    await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: active, body: draft }) });
+    setDraft('');
+    loadThreads();
   }
 
   return (
-    <div className="flex" style={{ height: "100vh" }}>
-      <div className="w-72 shrink-0 border-r border-border overflow-y-auto">
-        <div className="p-4 border-b border-border">
-          <h1 className="font-bold text-foreground">Chat Inbox</h1>
-        </div>
-        {threads.map((t) => {
-          const customer = users.get(t.customerId);
-          return (
-            <button
-              key={t.id}
-              onClick={() => setSelected(t)}
-              className="w-full flex items-center gap-3 p-3 text-left border-b border-border"
-              style={{ backgroundColor: selected?.id === t.id ? "var(--secondary)" : "transparent" }}
-            >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0 bg-primary">
-                {customer?.avatarInitial ?? "?"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{customer?.name ?? "Customer"}</p>
-                <p className="text-xs text-muted-foreground">{outlets.get(t.outletId)?.name}</p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex-1 flex flex-col p-6">
-        {selected ? (
-          <>
-            <div className="flex-1 overflow-y-auto space-y-3 mb-4">
-              {messages.map((m) => (
-                <div key={m.id} className={`flex ${m.senderRole === "vendor" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className="max-w-[70%] px-3.5 py-2.5 rounded-2xl text-sm"
-                    style={{
-                      backgroundColor: m.senderRole === "vendor" ? "var(--primary)" : "var(--muted)",
-                      color: m.senderRole === "vendor" ? "white" : "var(--foreground)",
-                    }}
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <form onSubmit={handleSend} className="flex gap-2">
-              <input
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Reply to customer…"
-                className="flex-1 text-sm px-4 py-2.5 rounded-full border border-border bg-input-background outline-none text-foreground"
-              />
-              <button type="submit" disabled={!text.trim()} className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 disabled:opacity-50 bg-primary">
-                <Send size={15} />
-              </button>
-            </form>
-          </>
-        ) : (
-          <EmptyState title="Select a conversation" />
-        )}
+    <div className="space-y-4">
+      <div><div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"><MessageCircle size={15} /> Traveller conversations</div><h1 className="text-2xl font-bold text-gray-950">Inbox</h1><p className="mt-1 text-sm text-gray-500">Reply to customer questions from your Malaysia outlets.</p></div>
+      <div className="flex h-[calc(100vh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="w-80 shrink-0 border-r border-gray-200"><div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-900">Messages <span className="ml-1 text-xs font-normal text-gray-400">{threads.length}</span></div><div className="overflow-y-auto">
+          {loading ? <p className="px-4 py-10 text-center text-xs text-gray-400">Loading conversations…</p> : threads.length === 0 ? <p className="px-4 py-10 text-center text-xs text-gray-400">No conversations yet.</p> : threads.map((thread) => <button key={thread.id} type="button" onClick={() => setActive(thread.id)} className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-emerald-50 ${active === thread.id ? 'bg-emerald-50' : ''}`}><div className="flex items-start gap-3"><span className="rounded-full bg-emerald-100 p-2 text-emerald-700"><UserRound size={16} /></span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-gray-900">{thread.customer?.full_name || 'Traveller'}</span><span className="mt-1 block truncate text-xs text-gray-500">{thread.outlets?.name || 'Malaysia outlet'}</span><span className="mt-1 block text-[11px] text-gray-400">{thread.last_message_at ? format(new Date(thread.last_message_at), 'd MMM, HH:mm') : 'New conversation'}</span></span></div></button>)}</div></div>
+        <div className="flex min-w-0 flex-1 flex-col">{!selected ? <div className="flex flex-1 flex-col items-center justify-center text-gray-400"><MessageCircle size={34} className="mb-3 opacity-30" /><p className="text-sm">Select a conversation</p></div> : <><div className="border-b border-gray-100 px-5 py-4"><p className="font-semibold text-gray-900">{selected.customer?.full_name || 'Traveller'}</p><p className="mt-1 text-xs text-gray-500">{selected.customer?.email} · {selected.outlets?.name}</p></div><div className="flex-1 space-y-3 overflow-y-auto bg-gray-50/50 p-5">{(selected.chat_messages || []).sort((a, b) => a.created_at.localeCompare(b.created_at)).map((message) => <div key={message.id} className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${message.sender_id === user?.id ? 'rounded-br-md bg-emerald-700 text-white' : 'rounded-bl-md bg-white text-gray-700 shadow-sm'}`}><p>{message.body}</p><p className={`mt-1 text-[10px] ${message.sender_id === user?.id ? 'text-emerald-100' : 'text-gray-400'}`}>{format(new Date(message.created_at), 'd MMM, HH:mm')}</p></div></div>)}</div><div className="flex gap-2 border-t border-gray-100 p-4"><input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendMessage(); }} placeholder="Write a reply…" className="min-w-0 flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><button type="button" onClick={sendMessage} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"><Send size={15} /> Send</button></div></>}</div>
       </div>
     </div>
   );
