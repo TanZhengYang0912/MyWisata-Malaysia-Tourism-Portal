@@ -1,0 +1,37 @@
+// Owner: Member 3 (Discovery/Recommendation/Growth)
+import { supabase } from "@/backend/supabase";
+import type { VendorRecommendation } from "@/backend/core/types";
+
+type RecRow = {
+  id: string;
+  recommender_id: string;
+  vendor_name: string;
+  status: string;
+  categories: { name: string } | null;
+};
+
+const REC_SELECT = "id,recommender_id,vendor_name,status,categories(name)";
+
+function mapRecommendation(row: RecRow): VendorRecommendation {
+  return {
+    id: row.id,
+    submittedBy: row.recommender_id,
+    name: row.vendor_name,
+    category: row.categories?.name ?? "",
+    state: "",
+    status: row.status as VendorRecommendation["status"],
+    qualityScore: 0,
+    duplicate: false,
+  };
+}
+
+export async function getVendorRecommendations(): Promise<VendorRecommendation[]> {
+  const { data, error } = await supabase.from("vendor_recommendations").select(REC_SELECT);
+  if (error) throw error;
+  return (data as unknown as RecRow[]).map(mapRecommendation);
+}
+
+export async function reviewRecommendation(id: string, status: "approved" | "rejected"): Promise<void> {
+  const { error } = await supabase.from("vendor_recommendations").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}

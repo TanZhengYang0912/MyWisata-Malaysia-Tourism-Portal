@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Gem, Inbox, LogOut, Package, Shield, DollarSign } from "lucide-react";
-import { useRequireRole } from "@/lib/auth";
+import { useRequireRole } from "@/components/providers/auth";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },

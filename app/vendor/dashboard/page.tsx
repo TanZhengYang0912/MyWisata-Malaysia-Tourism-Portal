@@ -2,33 +2,42 @@
 
 import { useEffect, useState } from "react";
 import { Bell, Calendar, DollarSign, MessageCircle, Package } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getActivities, getOutlets } from "@/lib/db/repos/catalogue";
-import { getOrdersForOutlets } from "@/lib/db/repos/commerce";
-import { getThreadsForOutlets, getMessages } from "@/lib/db/repos/identity";
+import { getActivities, getOutlets } from "@/backend/domains/catalogue";
+import { getOrdersForOutlets } from "@/backend/domains/commerce";
+import { getThreadsForOutlets, getMessages } from "@/backend/domains/identity";
 import { StatusBadge } from "@/components/shared/status-badge";
-import type { Order } from "@/lib/types";
+import type { Activity, Order, Outlet } from "@/backend/core/types";
 
 export default function VendorDashboardPage() {
   const { activeVendorId, activeOutletIds, currentUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [outletIds, setOutletIds] = useState<string[]>([]);
+  const [listings, setListings] = useState<Activity[]>([]);
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    const ids = scopedOutletIds(activeVendorId, activeOutletIds);
-    setOutletIds(ids);
-    setOrders(getOrdersForOutlets(ids));
-  }, [activeVendorId, activeOutletIds]);
+    (async () => {
+      const outletIds = await scopedOutletIds(activeVendorId, activeOutletIds);
+      const [ordersForOutlets, activities, allOutlets, threads] = await Promise.all([
+        getOrdersForOutlets(outletIds),
+        getActivities(),
+        getOutlets(),
+        getThreadsForOutlets(outletIds),
+      ]);
+      setOrders(ordersForOutlets);
+      setListings(activities.filter((a) => outletIds.includes(a.outletId)));
+      setOutlets(allOutlets.filter((o) => outletIds.includes(o.id)));
 
-  const listings = getActivities().filter((a) => outletIds.includes(a.outletId));
-  const outlets = getOutlets().filter((o) => outletIds.includes(o.id));
-  const threads = getThreadsForOutlets(outletIds);
-  const unreadThreads = threads.filter((t) => {
-    const msgs = getMessages(t.id);
-    const last = msgs[msgs.length - 1];
-    return last && last.senderRole === "customer";
-  });
+      const threadMessages = await Promise.all(threads.map((t) => getMessages(t.id)));
+      const unread = threadMessages.filter((msgs) => {
+        const last = msgs[msgs.length - 1];
+        return last && last.senderRole === "customer";
+      });
+      setUnreadCount(unread.length);
+    })();
+  }, [activeVendorId, activeOutletIds]);
 
   const revenue = orders.filter((o) => o.status === "PAID" || o.status === "COMPLETED").reduce((sum, o) => sum + o.total, 0);
 
@@ -36,7 +45,7 @@ export default function VendorDashboardPage() {
     { label: "Revenue (Demo)", value: `RM ${revenue.toFixed(2)}`, icon: DollarSign },
     { label: "Orders", value: String(orders.length), icon: Calendar },
     { label: "Active Listings", value: String(listings.length), icon: Package },
-    { label: "Unread Chats", value: String(unreadThreads.length), icon: MessageCircle },
+    { label: "Unread Chats", value: String(unreadCount), icon: MessageCircle },
   ];
 
   return (

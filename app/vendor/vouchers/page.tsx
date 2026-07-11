@@ -1,9 +1,15 @@
 "use client";
 
-import { getVouchers } from "@/lib/db/repos/catalogue";
+import { useEffect, useState } from "react";
+import { getVouchers } from "@/backend/domains/catalogue";
+import type { Voucher } from "@/backend/core/types";
 
 export default function VendorVouchersPage() {
-  const vouchers = getVouchers();
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+
+  useEffect(() => {
+    getVouchers().then(setVouchers);
+  }, []);
 
   return (
     <div className="p-6 sm:p-8">

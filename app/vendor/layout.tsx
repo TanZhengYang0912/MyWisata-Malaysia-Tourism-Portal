@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart2, Calendar, Globe, Inbox, LogOut, Package, Tag } from "lucide-react";
-import { useRequireRole } from "@/lib/auth";
-import { getOutlets } from "@/lib/db/repos/catalogue";
+import { useRequireRole } from "@/components/providers/auth";
+import { getOutlets } from "@/backend/domains/catalogue";
+import type { Outlet } from "@/backend/core/types";
 
 const NAV = [
   { href: "/vendor/dashboard", label: "Dashboard", icon: BarChart2 },
@@ -14,21 +16,30 @@ const NAV = [
   { href: "/vendor/inbox", label: "Chat Inbox", icon: Inbox },
 ];
 
-export function scopedOutletIds(activeVendorId?: string, activeOutletIds?: string[]): string[] {
+export async function scopedOutletIds(activeVendorId?: string, activeOutletIds?: string[]): Promise<string[]> {
   if (activeOutletIds?.length) return activeOutletIds;
-  if (activeVendorId) return getOutlets().filter((o) => o.vendorId === activeVendorId).map((o) => o.id);
+  if (activeVendorId) {
+    const outlets = await getOutlets();
+    return outlets.filter((o) => o.vendorId === activeVendorId).map((o) => o.id);
+  }
   return [];
 }
 
 export default function VendorLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, loading, activeVendorId, activeOutletIds } = useRequireRole(["vendor_owner", "outlet_manager"]);
   const pathname = usePathname();
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
+
+  useEffect(() => {
+    scopedOutletIds(activeVendorId, activeOutletIds).then(async (ids) => {
+      const all = await getOutlets();
+      setOutlets(all.filter((o) => ids.includes(o.id)));
+    });
+  }, [activeVendorId, activeOutletIds]);
 
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
   }
-
-  const outlets = getOutlets().filter((o) => scopedOutletIds(activeVendorId, activeOutletIds).includes(o.id));
 
   return (
     <div className="flex min-h-screen">

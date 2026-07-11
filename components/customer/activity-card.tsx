@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle, Clock, Heart, MapPin, Star } from "lucide-react";
 import { AiTag } from "./ai-tag";
-import type { ComputedActivity } from "@/lib/types";
+import type { ComputedActivity } from "@/backend/core/types";
 
 export function ActivityCard({ activity }: { activity: ComputedActivity }) {
   const [saved, setSaved] = useState(false);
 
   return (
     <Link
-      href={`/activity/${activity.id}`}
+      href={`/customer/activity/${activity.id}`}
       className="rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 hover:-translate-y-1 bg-card block"
       style={{ boxShadow: "0 2px 16px rgba(36,49,58,0.08)" }}
     >

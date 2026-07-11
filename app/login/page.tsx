@@ -3,16 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Globe, RotateCcw } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { getUsers } from "@/lib/db/repos/identity";
-import { resetDemo } from "@/lib/db";
+import { useAuth } from "@/components/providers/auth";
+import { getUsers } from "@/backend/domains/identity";
+import { resetDemo } from "@/backend/core/mockdb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Role, User } from "@/lib/types";
+import type { Role, User } from "@/backend/core/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/explore",
+  customer: "/customer/explore",
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",
@@ -35,11 +35,11 @@ export default function LoginPage() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers());
+    getUsers().then(setUsers);
   }, []);
 
-  function pick(user: User) {
-    switchUser(user.id);
+  async function pick(user: User) {
+    await switchUser(user.id);
     router.push(HOME_BY_ROLE[user.role]);
   }
 

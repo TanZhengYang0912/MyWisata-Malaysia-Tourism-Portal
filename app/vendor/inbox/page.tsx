@@ -2,34 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getMessages, getThreadsForOutlets, getUser, sendMessage } from "@/lib/db/repos/identity";
-import { getOutlet } from "@/lib/db/repos/catalogue";
+import { getMessages, getThreadsForOutlets, getUsers, sendMessage } from "@/backend/domains/identity";
+import { getOutlets } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage, ChatThread } from "@/lib/types";
+import type { ChatMessage, ChatThread, Outlet, User } from "@/backend/core/types";
 
 export default function VendorInboxPage() {
-  const { activeVendorId, activeOutletIds } = useAuth();
+  const { currentUser, activeVendorId, activeOutletIds } = useAuth();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selected, setSelected] = useState<ChatThread | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
+  const [users, setUsers] = useState<Map<string, User>>(new Map());
+  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
 
   useEffect(() => {
-    const list = getThreadsForOutlets(scopedOutletIds(activeVendorId, activeOutletIds));
-    setThreads(list);
-    setSelected((prev) => prev ?? list[0] ?? null);
+    (async () => {
+      const outletIds = await scopedOutletIds(activeVendorId, activeOutletIds);
+      const [list, allUsers, allOutlets] = await Promise.all([getThreadsForOutlets(outletIds), getUsers(), getOutlets()]);
+      setThreads(list);
+      setUsers(new Map(allUsers.map((u) => [u.id, u])));
+      setOutlets(new Map(allOutlets.map((o) => [o.id, o])));
+      setSelected((prev) => prev ?? list[0] ?? null);
+    })();
   }, [activeVendorId, activeOutletIds]);
 
   useEffect(() => {
-    if (selected) setMessages(getMessages(selected.id));
+    if (selected) getMessages(selected.id).then(setMessages);
   }, [selected]);
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected || !text.trim()) return;
-    const msg = sendMessage(selected.id, selected.outletId, "vendor", text.trim());
+    if (!selected || !text.trim() || !currentUser) return;
+    const msg = await sendMessage(selected.id, currentUser.id, "vendor", text.trim());
     setMessages((prev) => [...prev, msg]);
     setText("");
   }
@@ -45,7 +52,7 @@ export default function VendorInboxPage() {
           <h1 className="font-bold text-foreground">Chat Inbox</h1>
         </div>
         {threads.map((t) => {
-          const customer = getUser(t.customerId);
+          const customer = users.get(t.customerId);
           return (
             <button
               key={t.id}
@@ -58,7 +65,7 @@ export default function VendorInboxPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{customer?.name ?? "Customer"}</p>
-                <p className="text-xs text-muted-foreground">{getOutlet(t.outletId)?.name}</p>
+                <p className="text-xs text-muted-foreground">{outlets.get(t.outletId)?.name}</p>
               </div>
             </button>
           );

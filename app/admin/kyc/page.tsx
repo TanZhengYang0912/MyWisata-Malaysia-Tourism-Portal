@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { getUsers, setVerificationTier } from "@/lib/db/repos/identity";
-import { recordApproval } from "@/lib/audit";
+import { useAuth } from "@/components/providers/auth";
+import { getUsers, setVerificationTier } from "@/backend/domains/identity";
+import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { User } from "@/lib/types";
+import type { User } from "@/backend/core/types";
 
 const TIER_LABEL: Record<User["verificationTier"], string> = {
   guest: "Guest",
@@ -21,14 +21,14 @@ export default function AdminKycPage() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers().filter((u) => u.role === "customer"));
+    getUsers().then((all) => setUsers(all.filter((u) => u.role === "customer")));
   }, []);
 
-  function review(user: User, approve: boolean) {
+  async function review(user: User, approve: boolean) {
     if (!currentUser) return;
     const nextTier = approve ? "kyc_verified" : user.verificationTier;
-    setVerificationTier(user.id, nextTier);
-    recordApproval({
+    await setVerificationTier(user.id, nextTier);
+    await recordApproval({
       actorId: currentUser.id,
       action: approve ? "kyc.approve" : "kyc.reject",
       targetType: "user",
