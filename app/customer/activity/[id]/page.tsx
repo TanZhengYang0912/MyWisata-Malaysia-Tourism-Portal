@@ -30,12 +30,14 @@ export default function ActivityDetailPage() {
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const a = getComputedActivity(params.id);
-    setActivity(a);
-    if (a) {
-      setVariantId(a.variants[0]?.id ?? "");
-      if (a.requiresBooking) setSlots(getBookingSlots(a.id));
-    }
+    (async () => {
+      const a = await getComputedActivity(params.id);
+      setActivity(a);
+      if (a) {
+        setVariantId(a.variants[0]?.id ?? "");
+        if (a.requiresBooking) setSlots(await getBookingSlots(a.id));
+      }
+    })();
   }, [params.id]);
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
@@ -64,8 +66,8 @@ export default function ActivityDetailPage() {
 
   async function handleChat() {
     if (!currentUser) return;
-    const thread = getOrCreateThread(currentUser.id, activity!.outletId);
-    router.push(`/chat/${thread.id}`);
+    const thread = await getOrCreateThread(currentUser.id, activity!.outletId);
+    router.push(`/customer/chat/${thread.id}`);
   }
 
   async function handleShare() {

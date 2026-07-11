@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import * as commerce from "@/backend/domains/commerce";
 import { getActivities } from "@/backend/domains/catalogue";
 import { cartTotals } from "@/backend/core/helpers";
-import type { CartItem, Voucher } from "@/backend/core/types";
+import type { Activity, CartItem, Voucher } from "@/backend/core/types";
 
 interface CartContextValue {
   items: CartItem[];
@@ -20,10 +20,12 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setItems(commerce.getCart());
+    getActivities().then(setActivities);
     setMounted(true);
   }, []);
 
@@ -45,8 +47,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const totals = useCallback(
-    (voucher?: Voucher) => cartTotals(items, getActivities(), voucher),
-    [items],
+    (voucher?: Voucher) => cartTotals(items, activities, voucher),
+    [items, activities],
   );
 
   const count = mounted ? items.reduce((sum, i) => sum + i.qty, 0) : 0;

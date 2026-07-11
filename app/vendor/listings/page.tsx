@@ -3,17 +3,22 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getActivities, getOutlet } from "@/backend/domains/catalogue";
+import { getActivities, getOutlets } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Activity } from "@/backend/core/types";
+import type { Activity, Outlet } from "@/backend/core/types";
 
 export default function VendorListingsPage() {
   const { activeVendorId, activeOutletIds } = useAuth();
   const [listings, setListings] = useState<Activity[]>([]);
+  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
 
   useEffect(() => {
-    const outletIds = scopedOutletIds(activeVendorId, activeOutletIds);
-    setListings(getActivities().filter((a) => outletIds.includes(a.outletId)));
+    (async () => {
+      const outletIds = await scopedOutletIds(activeVendorId, activeOutletIds);
+      const [activities, allOutlets] = await Promise.all([getActivities(), getOutlets()]);
+      setListings(activities.filter((a) => outletIds.includes(a.outletId)));
+      setOutlets(new Map(allOutlets.map((o) => [o.id, o])));
+    })();
   }, [activeVendorId, activeOutletIds]);
 
   return (
@@ -35,7 +40,7 @@ export default function VendorListingsPage() {
               {listings.map((l) => (
                 <tr key={l.id}>
                   <td className="px-6 py-4 font-semibold text-sm text-foreground">{l.name}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{getOutlet(l.outletId)?.name}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{outlets.get(l.outletId)?.name}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{l.category}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{l.requiresBooking ? "Yes" : "No"}</td>
                   <td className="px-6 py-4 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">RM {l.price}</td>

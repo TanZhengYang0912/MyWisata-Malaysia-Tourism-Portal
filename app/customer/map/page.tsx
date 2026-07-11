@@ -17,7 +17,7 @@ export default function MapPage() {
   const [activities, setActivities] = useState<ComputedActivity[] | null>(null);
 
   useEffect(() => {
-    setActivities(searchActivities({ category, near: userLoc ?? undefined, sort: userLoc ? "distance_asc" : "recommended" }));
+    searchActivities({ category, near: userLoc ?? undefined, sort: userLoc ? "distance_asc" : "recommended" }).then(setActivities);
   }, [category, userLoc]);
 
   function handleNearMe() {
@@ -46,7 +46,7 @@ export default function MapPage() {
     lng: a.outlet.lng,
     label: a.name,
     sublabel: `RM ${a.price} · ${a.outlet.city}`,
-    href: `/activity/${a.id}`,
+    href: `/customer/activity/${a.id}`,
   }));
 
   return (
@@ -106,7 +106,7 @@ export default function MapPage() {
           {activities.map((a) => (
             <Link
               key={a.id}
-              href={`/activity/${a.id}`}
+              href={`/customer/activity/${a.id}`}
               className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary transition-colors"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}

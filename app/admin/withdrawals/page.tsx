@@ -3,26 +3,28 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { getWithdrawals, reviewWithdrawal } from "@/backend/domains/commerce";
-import { getUser } from "@/backend/domains/identity";
+import { getUsers } from "@/backend/domains/identity";
 import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { WithdrawalRequest } from "@/backend/core/types";
+import type { User, WithdrawalRequest } from "@/backend/core/types";
 
 export default function AdminWithdrawalsPage() {
   const { currentUser } = useAuth();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [users, setUsers] = useState<Map<string, User>>(new Map());
 
   useEffect(() => {
-    setWithdrawals(getWithdrawals());
+    getWithdrawals().then(setWithdrawals);
+    getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
   }, []);
 
-  function review(w: WithdrawalRequest, approve: boolean) {
+  async function review(w: WithdrawalRequest, approve: boolean) {
     if (!currentUser) return;
     const status = approve ? "approved" : "rejected";
-    reviewWithdrawal(w.id, status);
-    recordApproval({
+    await reviewWithdrawal(w.id, status);
+    await recordApproval({
       actorId: currentUser.id,
       action: approve ? "withdrawal.approve" : "withdrawal.reject",
       targetType: "withdrawal",
@@ -52,7 +54,7 @@ export default function AdminWithdrawalsPage() {
         ) : (
           <div className="divide-y divide-border">
             {pending.map((w) => {
-              const user = getUser(w.userId);
+              const user = users.get(w.userId);
               return (
                 <div key={w.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-teal">{user?.avatarInitial ?? "?"}</div>
@@ -80,7 +82,7 @@ export default function AdminWithdrawalsPage() {
         </div>
         <div className="divide-y divide-border">
           {reviewed.map((w) => {
-            const user = getUser(w.userId);
+            const user = users.get(w.userId);
             return (
               <div key={w.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
                 <p className="text-sm text-foreground">{user?.name} — RM {w.amount.toFixed(2)}</p>

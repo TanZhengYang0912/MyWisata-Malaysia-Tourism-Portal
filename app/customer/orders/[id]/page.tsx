@@ -16,9 +16,11 @@ export default function OrderDetailPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
-    const o = getOrder(params.id) ?? null;
-    setOrder(o);
-    if (o) setBookings(getBookingsForOrder(o.id));
+    (async () => {
+      const o = (await getOrder(params.id)) ?? null;
+      setOrder(o);
+      if (o) setBookings(await getBookingsForOrder(o.id));
+    })();
   }, [params.id]);
 
   if (order === undefined) {

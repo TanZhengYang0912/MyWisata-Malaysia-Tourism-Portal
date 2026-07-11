@@ -1,36 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Tag, Trash2 } from "lucide-react";
 import { useCart } from "@/components/providers/cart";
-import { getActivities, getOutlet, getVoucherByCode } from "@/backend/domains/catalogue";
+import { getActivities, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
 import { unitPrice, validateVoucher } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import type { Activity, Outlet, Voucher } from "@/backend/core/types";
 
 export default function CartPage() {
   const { items, updateQty, removeItem, totals } = useCart();
   const router = useRouter();
   const [code, setCode] = useState("");
-  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
 
-  const activities = useMemo(() => getActivities(), []);
-  const voucher = appliedCode ? getVoucherByCode(appliedCode) : undefined;
-  const { subtotal, discount, total } = totals(voucher);
+  useEffect(() => {
+    getActivities().then(setActivities);
+    getOutlets().then((list) => setOutlets(new Map(list.map((o) => [o.id, o]))));
+  }, []);
 
-  function applyVoucher() {
-    const v = getVoucherByCode(code);
+  const { subtotal, discount, total } = totals(appliedVoucher ?? undefined);
+
+  async function applyVoucher() {
+    const v = await getVoucherByCode(code);
     const result = validateVoucher(v, subtotal);
     if (!result.ok) {
       setVoucherError(result.reason);
-      setAppliedCode(null);
+      setAppliedVoucher(null);
       return;
     }
     setVoucherError(null);
-    setAppliedCode(code);
+    setAppliedVoucher(v ?? null);
   }
 
   if (items.length === 0) {
@@ -56,7 +62,7 @@ export default function CartPage() {
         {items.map((item, i) => {
           const activity = activities.find((a) => a.id === item.activityId);
           if (!activity) return null;
-          const outlet = getOutlet(activity.outletId);
+          const outlet = outlets.get(activity.outletId);
           const variant = activity.variants.find((v) => v.id === item.variantId);
           const price = unitPrice(activity, item.variantId);
           return (
@@ -96,7 +102,7 @@ export default function CartPage() {
           <Button variant="outline" onClick={applyVoucher} disabled={!code}>Apply</Button>
         </div>
         {voucherError && <p className="text-xs text-destructive mt-2">{voucherError}</p>}
-        {appliedCode && !voucherError && <p className="text-xs text-primary mt-2">Voucher {appliedCode} applied!</p>}
+        {appliedVoucher && !voucherError && <p className="text-xs text-primary mt-2">Voucher {appliedVoucher.code} applied!</p>}
       </div>
 
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
@@ -118,7 +124,7 @@ export default function CartPage() {
 
       <Button
         className="w-full h-12 rounded-full text-base"
-        onClick={() => router.push(appliedCode ? `/customer/checkout?voucher=${appliedCode}` : "/customer/checkout")}
+        onClick={() => router.push(appliedVoucher ? `/customer/checkout?voucher=${appliedVoucher.code}` : "/customer/checkout")}
       >
         Proceed to Checkout
       </Button>

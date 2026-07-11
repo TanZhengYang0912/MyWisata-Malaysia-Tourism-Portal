@@ -15,7 +15,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
-    if (currentUser) setOrders(getOrdersForUser(currentUser.id));
+    if (currentUser) getOrdersForUser(currentUser.id).then(setOrders);
   }, [currentUser]);
 
   if (orders === null) {

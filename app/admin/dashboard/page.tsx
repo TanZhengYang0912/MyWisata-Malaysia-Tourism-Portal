@@ -11,12 +11,22 @@ export default function AdminDashboardPage() {
   const [counts, setCounts] = useState<{ vendors: number; kyc: number; withdrawals: number; recs: number; tickets: number } | null>(null);
 
   useEffect(() => {
-    const pendingVendors = getOutlets().filter((o) => !o.verified).length;
-    const pendingKyc = getUsers().filter((u) => u.role === "customer" && u.verificationTier !== "kyc_verified").length;
-    const pendingWithdrawals = getWithdrawals().filter((w) => w.status === "pending").length;
-    const pendingRecs = getVendorRecommendations().filter((r) => r.status === "pending").length;
-    const openTickets = getSupportTickets().filter((t) => t.status === "open").length;
-    setCounts({ vendors: pendingVendors, kyc: pendingKyc, withdrawals: pendingWithdrawals, recs: pendingRecs, tickets: openTickets });
+    (async () => {
+      const [outlets, users, withdrawals, recs, tickets] = await Promise.all([
+        getOutlets(),
+        getUsers(),
+        getWithdrawals(),
+        getVendorRecommendations(),
+        getSupportTickets(),
+      ]);
+      setCounts({
+        vendors: outlets.filter((o) => !o.verified).length,
+        kyc: users.filter((u) => u.role === "customer" && u.verificationTier !== "kyc_verified").length,
+        withdrawals: withdrawals.filter((w) => w.status === "pending").length,
+        recs: recs.filter((r) => r.status === "pending").length,
+        tickets: tickets.filter((t) => t.status === "open").length,
+      });
+    })();
   }, []);
 
   const metrics = counts

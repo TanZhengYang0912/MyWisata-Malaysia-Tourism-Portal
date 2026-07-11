@@ -11,7 +11,7 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
 
   return (
     <Link
-      href={`/activity/${activity.id}`}
+      href={`/customer/activity/${activity.id}`}
       className="rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 hover:-translate-y-1 bg-card block"
       style={{ boxShadow: "0 2px 16px rgba(36,49,58,0.08)" }}
     >

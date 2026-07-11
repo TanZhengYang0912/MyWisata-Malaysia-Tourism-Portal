@@ -31,6 +31,13 @@ export interface AuthState {
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────
+export interface VendorSummary {
+  id: string;
+  name: string;
+  status: string; // "pending" | "approved" | "rejected"
+  outlets: { id: string; name: string; city: string; state: string }[];
+}
+
 export interface Outlet {
   id: string;
   vendorId: string;

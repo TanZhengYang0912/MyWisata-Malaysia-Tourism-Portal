@@ -22,13 +22,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
-    setLoading(false);
+    getCurrentUser().then((u) => {
+      setCurrentUser(u);
+      setLoading(false);
+    });
   }, []);
 
   const switchUser = useCallback((id: string) => {
     setCurrentUserId(id);
-    setCurrentUser(getUsers().find((u) => u.id === id) ?? null);
+    getUsers().then((users) => setCurrentUser(users.find((u) => u.id === id) ?? null));
   }, []);
 
   const value: AuthContextValue = {

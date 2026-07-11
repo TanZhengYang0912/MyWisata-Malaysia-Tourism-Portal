@@ -9,6 +9,7 @@ import { createOrder } from "@/backend/domains/commerce";
 import { getVoucherByCode } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import type { Voucher } from "@/backend/core/types";
 
 const METHODS = [
   { id: "card", label: "Card", icon: CreditCard },
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const { currentUser } = useAuth();
   const { items, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
+  const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [method, setMethod] = useState("card");
   const [paying, setPaying] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -29,7 +31,10 @@ export default function CheckoutPage() {
     setVoucherCode(new URLSearchParams(window.location.search).get("voucher"));
   }, []);
 
-  const voucher = voucherCode ? getVoucherByCode(voucherCode) : undefined;
+  useEffect(() => {
+    if (voucherCode) getVoucherByCode(voucherCode).then(setVoucher);
+  }, [voucherCode]);
+
   const { subtotal, discount, total } = totals(voucher);
 
   if (items.length === 0) {
@@ -40,14 +45,14 @@ export default function CheckoutPage() {
     if (paying) return; // double-submit guard
     setPaying(true);
     setFailed(false);
-    setTimeout(() => {
+    setTimeout(async () => {
       if (!shouldSucceed) {
         setFailed(true);
         setPaying(false);
         return;
       }
-      const order = createOrder(currentUser!.id, voucherCode ?? undefined);
-      router.push(`/orders/${order.id}`);
+      const order = await createOrder(currentUser!.id, voucherCode ?? undefined);
+      router.push(`/customer/orders/${order.id}`);
     }, 600);
   }
 

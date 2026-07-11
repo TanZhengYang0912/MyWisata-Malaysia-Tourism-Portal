@@ -17,7 +17,7 @@ export default function ExplorePage() {
   const [activities, setActivities] = useState<ComputedActivity[] | null>(null);
 
   useEffect(() => {
-    setActivities(searchActivities({ state, category }));
+    searchActivities({ state, category }).then(setActivities);
   }, [state, category]);
 
   const picked = useMemo(() => (activities ?? []).slice(0, 4), [activities]);

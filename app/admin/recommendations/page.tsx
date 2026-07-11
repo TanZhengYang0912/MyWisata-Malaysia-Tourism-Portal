@@ -3,26 +3,28 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations, reviewRecommendation } from "@/backend/domains/discovery";
-import { getUser } from "@/backend/domains/identity";
+import { getUsers } from "@/backend/domains/identity";
 import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { VendorRecommendation } from "@/backend/core/types";
+import type { User, VendorRecommendation } from "@/backend/core/types";
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
+  const [users, setUsers] = useState<Map<string, User>>(new Map());
 
   useEffect(() => {
-    setRecs(getVendorRecommendations());
+    getVendorRecommendations().then(setRecs);
+    getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
   }, []);
 
-  function review(r: VendorRecommendation, approve: boolean) {
+  async function review(r: VendorRecommendation, approve: boolean) {
     if (!currentUser) return;
     const status = approve ? "approved" : "rejected";
-    reviewRecommendation(r.id, status);
-    recordApproval({
+    await reviewRecommendation(r.id, status);
+    await recordApproval({
       actorId: currentUser.id,
       action: approve ? "recommendation.approve" : "recommendation.reject",
       targetType: "vendor_recommendation",
@@ -52,7 +54,7 @@ export default function AdminRecommendationsPage() {
         ) : (
           <div className="divide-y divide-border">
             {pending.map((r) => {
-              const submitter = getUser(r.submittedBy);
+              const submitter = users.get(r.submittedBy);
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">

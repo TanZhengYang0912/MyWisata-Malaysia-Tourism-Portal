@@ -4,36 +4,37 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Send } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getMessages, sendMessage } from "@/backend/domains/identity";
+import { getMessages, getThread, sendMessage } from "@/backend/domains/identity";
 import { getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage } from "@/backend/core/types";
+import type { ChatMessage, Outlet } from "@/backend/core/types";
 
 export default function ChatThreadPage() {
   const params = useParams<{ threadId: string }>();
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [outlet, setOutlet] = useState<Outlet | undefined>(undefined);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMessages(getMessages(params.threadId));
+    (async () => {
+      const [msgs, thread] = await Promise.all([getMessages(params.threadId), getThread(params.threadId)]);
+      setMessages(msgs);
+      if (thread) setOutlet(await getOutlet(thread.outletId));
+    })();
   }, [params.threadId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  const outlet = getOutlet(
-    messages.find((m) => m.senderRole === "vendor")?.senderId ?? "",
-  );
-
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (sending || !text.trim() || !currentUser) return;
     setSending(true);
-    const msg = sendMessage(params.threadId, currentUser.id, "customer", text.trim());
+    const msg = await sendMessage(params.threadId, currentUser.id, "customer", text.trim());
     setMessages((prev) => [...prev, msg]);
     setText("");
     setSending(false);

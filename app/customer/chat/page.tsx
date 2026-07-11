@@ -5,16 +5,25 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getMessages, getThreadsForUser } from "@/backend/domains/identity";
-import { getOutlet } from "@/backend/domains/catalogue";
+import { getOutlets } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatThread } from "@/backend/core/types";
+import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
 
 export default function ChatListPage() {
   const { currentUser } = useAuth();
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
+  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
+  const [lastMessages, setLastMessages] = useState<Map<string, ChatMessage>>(new Map());
 
   useEffect(() => {
-    if (currentUser) setThreads(getThreadsForUser(currentUser.id));
+    if (!currentUser) return;
+    (async () => {
+      const [list, allOutlets] = await Promise.all([getThreadsForUser(currentUser.id), getOutlets()]);
+      setThreads(list);
+      setOutlets(new Map(allOutlets.map((o) => [o.id, o])));
+      const messagesByThread = await Promise.all(list.map((t) => getMessages(t.id)));
+      setLastMessages(new Map(list.map((t, i) => [t.id, messagesByThread[i][messagesByThread[i].length - 1]]).filter(([, m]) => m) as [string, ChatMessage][]));
+    })();
   }, [currentUser]);
 
   if (threads === null) {
@@ -39,13 +48,12 @@ export default function ChatListPage() {
           .slice()
           .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
           .map((thread) => {
-            const outlet = getOutlet(thread.outletId);
-            const messages = getMessages(thread.id);
-            const last = messages[messages.length - 1];
+            const outlet = outlets.get(thread.outletId);
+            const last = lastMessages.get(thread.id);
             return (
               <Link
                 key={thread.id}
-                href={`/chat/${thread.id}`}
+                href={`/customer/chat/${thread.id}`}
                 className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary transition-colors"
               >
                 <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 bg-teal">

@@ -13,7 +13,7 @@ export default function VendorBookingsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    setOrders(getOrdersForOutlets(scopedOutletIds(activeVendorId, activeOutletIds)));
+    scopedOutletIds(activeVendorId, activeOutletIds).then((ids) => getOrdersForOutlets(ids)).then(setOrders);
   }, [activeVendorId, activeOutletIds]);
 
   return (

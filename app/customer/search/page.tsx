@@ -30,7 +30,7 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
-    setResults(searchActivities({ q, category, state, priceMax, openOnly, sort }));
+    searchActivities({ q, category, state, priceMax, openOnly, sort }).then(setResults);
   }, [q, category, state, priceMax, openOnly, sort]);
 
   return (

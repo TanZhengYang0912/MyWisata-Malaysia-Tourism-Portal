@@ -21,14 +21,14 @@ export default function AdminKycPage() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers().filter((u) => u.role === "customer"));
+    getUsers().then((all) => setUsers(all.filter((u) => u.role === "customer")));
   }, []);
 
-  function review(user: User, approve: boolean) {
+  async function review(user: User, approve: boolean) {
     if (!currentUser) return;
     const nextTier = approve ? "kyc_verified" : user.verificationTier;
-    setVerificationTier(user.id, nextTier);
-    recordApproval({
+    await setVerificationTier(user.id, nextTier);
+    await recordApproval({
       actorId: currentUser.id,
       action: approve ? "kyc.approve" : "kyc.reject",
       targetType: "user",

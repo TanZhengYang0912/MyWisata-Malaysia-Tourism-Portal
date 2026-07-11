@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSupportTickets, getUser, resolveTicket } from "@/backend/domains/identity";
+import { getSupportTickets, getUsers, resolveTicket } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { SupportTicket } from "@/backend/core/types";
+import type { SupportTicket, User } from "@/backend/core/types";
 
 export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [users, setUsers] = useState<Map<string, User>>(new Map());
 
   useEffect(() => {
-    setTickets(getSupportTickets());
+    getSupportTickets().then(setTickets);
+    getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
   }, []);
 
-  function resolve(id: string) {
-    resolveTicket(id);
+  async function resolve(id: string) {
+    await resolveTicket(id);
     setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, status: "resolved" as const } : t)));
   }
 
@@ -27,7 +29,7 @@ export default function AdminSupportPage() {
         <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
           <div className="divide-y divide-border">
             {tickets.map((t) => {
-              const user = getUser(t.userId);
+              const user = users.get(t.userId);
               return (
                 <div key={t.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">

@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers());
+    getUsers().then(setUsers);
   }, []);
 
   function pick(user: User) {

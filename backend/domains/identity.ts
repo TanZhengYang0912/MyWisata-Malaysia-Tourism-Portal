@@ -1,88 +1,180 @@
 // Owner: Member 1 (Platform/Identity/Chat)
-import { getCollection, getValue, KEYS, setCollection, setValue } from "../core/mockdb";
-import type { ChatMessage, ChatThread, Notification, SupportTicket, User } from "@/backend/core/types";
+import { supabase } from "@/backend/supabase";
+import type { ChatMessage, ChatThread, Role, SupportTicket, User } from "@/backend/core/types";
 
-export function getUsers(): User[] {
-  return getCollection<User>(KEYS.users);
+type UserRow = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  city: string | null;
+  kyc_status: string;
+  user_roles: { vendor_id: string | null; outlet_id: string | null; roles: { name: string } | null }[];
+};
+
+const USER_SELECT = "id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))";
+
+function mapUser(row: UserRow): User {
+  const ur = row.user_roles[0];
+  const name = row.full_name ?? row.email;
+  return {
+    id: row.id,
+    name,
+    email: row.email,
+    role: (ur?.roles?.name ?? "customer") as Role,
+    avatarInitial: name[0]?.toUpperCase() ?? "?",
+    city: row.city ?? undefined,
+    verificationTier: row.kyc_status as User["verificationTier"],
+    vendorId: ur?.vendor_id ?? undefined,
+    outletId: ur?.outlet_id ?? undefined,
+  };
 }
 
-export function getUser(id: string): User | undefined {
-  return getUsers().find((u) => u.id === id);
+export async function getUsers(): Promise<User[]> {
+  const { data, error } = await supabase.from("users").select(USER_SELECT);
+  if (error) throw error;
+  return (data as unknown as UserRow[]).map(mapUser);
 }
+
+export async function getUser(id: string): Promise<User | undefined> {
+  const { data, error } = await supabase.from("users").select(USER_SELECT).eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? mapUser(data as unknown as UserRow) : undefined;
+}
+
+const CURRENT_USER_KEY = "tp_current_user_id";
 
 export function getCurrentUserId(): string | null {
-  return getValue<string>(KEYS.currentUserId);
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(CURRENT_USER_KEY);
 }
 
 export function setCurrentUserId(id: string): void {
-  setValue(KEYS.currentUserId, id);
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CURRENT_USER_KEY, id);
 }
 
-export function getCurrentUser(): User | null {
+export async function getCurrentUser(): Promise<User | null> {
   const id = getCurrentUserId();
   if (!id) return null;
-  return getUser(id) ?? null;
+  return (await getUser(id)) ?? null;
 }
 
 // ─── Chat ───────────────────────────────────────────────────────────────────
-export function getThreadsForUser(userId: string): ChatThread[] {
-  return getCollection<ChatThread>(KEYS.chatThreads).filter((t) => t.customerId === userId);
+function mapThread(row: { id: string; customer_id: string; outlet_id: string; last_message_at: string | null; created_at: string }): ChatThread {
+  return { id: row.id, customerId: row.customer_id, outletId: row.outlet_id, lastMessageAt: row.last_message_at ?? row.created_at };
 }
 
-export function getThreadsForOutlets(outletIds: string[]): ChatThread[] {
-  return getCollection<ChatThread>(KEYS.chatThreads).filter((t) => outletIds.includes(t.outletId));
+export async function getThread(threadId: string): Promise<ChatThread | undefined> {
+  const { data, error } = await supabase.from("chat_threads").select("*").eq("id", threadId).maybeSingle();
+  if (error) throw error;
+  return data ? mapThread(data) : undefined;
 }
 
-export function getOrCreateThread(customerId: string, outletId: string): ChatThread {
-  const threads = getCollection<ChatThread>(KEYS.chatThreads);
-  const existing = threads.find((t) => t.customerId === customerId && t.outletId === outletId);
-  if (existing) return existing;
-  const thread: ChatThread = { id: `t-${Date.now()}`, customerId, outletId, lastMessageAt: new Date().toISOString() };
-  setCollection(KEYS.chatThreads, [...threads, thread]);
-  const messages = getCollection<ChatMessage>(KEYS.chatMessages);
-  const welcome: ChatMessage = {
-    id: `m-${Date.now()}`, threadId: thread.id, senderId: outletId, senderRole: "vendor",
-    text: "Welcome! Thanks for your interest. Any questions?", sentAt: new Date().toISOString(),
-  };
-  setCollection(KEYS.chatMessages, [...messages, welcome]);
-  return thread;
+export async function getThreadsForUser(userId: string): Promise<ChatThread[]> {
+  const { data, error } = await supabase.from("chat_threads").select("*").eq("customer_id", userId);
+  if (error) throw error;
+  return (data ?? []).map(mapThread);
 }
 
-export function getMessages(threadId: string): ChatMessage[] {
-  return getCollection<ChatMessage>(KEYS.chatMessages)
-    .filter((m) => m.threadId === threadId)
-    .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+export async function getThreadsForOutlets(outletIds: string[]): Promise<ChatThread[]> {
+  if (outletIds.length === 0) return [];
+  const { data, error } = await supabase.from("chat_threads").select("*").in("outlet_id", outletIds);
+  if (error) throw error;
+  return (data ?? []).map(mapThread);
 }
 
-export function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string): ChatMessage {
-  const messages = getCollection<ChatMessage>(KEYS.chatMessages);
-  const message: ChatMessage = { id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, threadId, senderId, senderRole, text, sentAt: new Date().toISOString() };
-  setCollection(KEYS.chatMessages, [...messages, message]);
+export async function getOrCreateThread(customerId: string, outletId: string): Promise<ChatThread> {
+  const { data: existing, error: findErr } = await supabase
+    .from("chat_threads")
+    .select("*")
+    .eq("customer_id", customerId)
+    .eq("outlet_id", outletId)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (existing) return mapThread(existing);
 
-  const threads = getCollection<ChatThread>(KEYS.chatThreads);
-  setCollection(KEYS.chatThreads, threads.map((t) => (t.id === threadId ? { ...t, lastMessageAt: message.sentAt } : t)));
-  return message;
+  const { data: created, error: createErr } = await supabase
+    .from("chat_threads")
+    .insert({ customer_id: customerId, outlet_id: outletId })
+    .select("*")
+    .single();
+  if (createErr) throw createErr;
+
+  // Welcome message is sent "as the vendor" — chat_messages.sender_id is a users.id,
+  // so we use the outlet's vendor owner as the sender (outlets have no login of their own).
+  const { data: outlet } = await supabase.from("outlets").select("vendor_id").eq("id", outletId).single();
+  const { data: vendor } = outlet
+    ? await supabase.from("vendors").select("owner_id").eq("id", outlet.vendor_id).single()
+    : { data: null };
+  if (vendor) {
+    await supabase.from("chat_messages").insert({
+      thread_id: created.id,
+      sender_id: vendor.owner_id,
+      body: "Welcome! Thanks for your interest. Any questions?",
+    });
+  }
+  return mapThread(created);
 }
 
-// ─── Notifications ──────────────────────────────────────────────────────────
-export function getNotifications(userId: string): Notification[] {
-  return getCollection<Notification>(KEYS.notifications)
-    .filter((n) => n.userId === userId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export async function getMessages(threadId: string): Promise<ChatMessage[]> {
+  const { data: thread, error: threadErr } = await supabase
+    .from("chat_threads")
+    .select("customer_id")
+    .eq("id", threadId)
+    .single();
+  if (threadErr) throw threadErr;
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("*")
+    .eq("thread_id", threadId)
+    .order("created_at");
+  if (error) throw error;
+
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    threadId: m.thread_id,
+    senderId: m.sender_id,
+    senderRole: m.sender_id === thread.customer_id ? ("customer" as const) : ("vendor" as const),
+    text: m.body,
+    sentAt: m.created_at,
+  }));
+}
+
+export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string): Promise<ChatMessage> {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert({ thread_id: threadId, sender_id: senderId, body: text })
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  await supabase.from("chat_threads").update({ last_message_at: data.created_at }).eq("id", threadId);
+
+  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at };
 }
 
 // ─── Support tickets ────────────────────────────────────────────────────────
-export function getSupportTickets(): SupportTicket[] {
-  return getCollection<SupportTicket>(KEYS.supportTickets).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export async function getSupportTickets(): Promise<SupportTicket[]> {
+  const { data, error } = await supabase.from("support_tickets").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    userId: t.user_id,
+    category: t.body,
+    subject: t.subject,
+    status: t.status as SupportTicket["status"],
+    createdAt: t.created_at,
+  }));
 }
 
-export function resolveTicket(id: string): void {
-  const tickets = getSupportTickets();
-  setCollection(KEYS.supportTickets, tickets.map((t) => (t.id === id ? { ...t, status: "resolved" as const } : t)));
+export async function resolveTicket(id: string): Promise<void> {
+  const { error } = await supabase.from("support_tickets").update({ status: "resolved", resolved_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
 }
 
 // ─── Verification tier (KYC review proxy) ──────────────────────────────────
-export function setVerificationTier(userId: string, tier: User["verificationTier"]): void {
-  const users = getUsers();
-  setCollection(KEYS.users, users.map((u) => (u.id === userId ? { ...u, verificationTier: tier } : u)));
+export async function setVerificationTier(userId: string, tier: User["verificationTier"]): Promise<void> {
+  const { error } = await supabase.from("users").update({ kyc_status: tier }).eq("id", userId);
+  if (error) throw error;
 }

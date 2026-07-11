@@ -1,9 +1,8 @@
 // Contract #6: every approve/reject action must go through this one function
-// so AUDIT_LOGS + NOTIFICATIONS always stay in sync.
-import { getCollection, KEYS, setCollection } from "./mockdb";
-import type { AuditLog, Notification } from "./types";
+// so audit_logs + notifications always stay in sync.
+import { supabase } from "@/backend/supabase";
 
-export function recordApproval(args: {
+export async function recordApproval(args: {
   actorId: string;
   action: string; // e.g. "vendor.approve", "withdrawal.reject"
   targetType: string;
@@ -13,28 +12,22 @@ export function recordApproval(args: {
   note?: string;
   before?: unknown;
   after?: unknown;
-}): void {
-  const auditLogs = getCollection<AuditLog>(KEYS.auditLogs);
-  const log: AuditLog = {
-    id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    actorId: args.actorId,
+}): Promise<void> {
+  const { error: logErr } = await supabase.from("audit_logs").insert({
+    actor_id: args.actorId,
     action: args.action,
-    targetType: args.targetType,
-    targetId: args.targetId,
-    note: args.note,
-    before: args.before,
-    after: args.after,
-    createdAt: new Date().toISOString(),
-  };
-  setCollection(KEYS.auditLogs, [log, ...auditLogs]);
+    entity_type: args.targetType,
+    entity_id: args.targetId,
+    note: args.note ?? null,
+    before_data: args.before ?? null,
+    after_data: args.after ?? null,
+  });
+  if (logErr) throw logErr;
 
-  const notifications = getCollection<Notification>(KEYS.notifications);
-  const notification: Notification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    userId: args.notifyUserId,
-    text: args.notifyText,
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-  setCollection(KEYS.notifications, [notification, ...notifications]);
+  const { error: notifErr } = await supabase.from("notifications").insert({
+    user_id: args.notifyUserId,
+    type: args.action,
+    title: args.notifyText,
+  });
+  if (notifErr) throw notifErr;
 }
