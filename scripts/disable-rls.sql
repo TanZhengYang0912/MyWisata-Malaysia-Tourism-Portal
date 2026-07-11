@@ -1,6 +1,12 @@
 -- Run this script in the Supabase SQL Editor to disable Row Level Security (RLS) on all tables.
 -- Since the application uses a local localStorage-based mock auth, client-side queries
 -- are treated as anonymous by Supabase. Disabling RLS allows these client-side queries to work.
+--
+-- Also drops the mutually-recursive orders ↔ order_items RLS policies that caused:
+--   ERROR 42P17: infinite recursion detected in policy for relation "orders"
+
+DROP POLICY IF EXISTS orders_own_or_admin      ON orders;
+DROP POLICY IF EXISTS order_items_own_or_vendor ON order_items;
 
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE roles DISABLE ROW LEVEL SECURITY;

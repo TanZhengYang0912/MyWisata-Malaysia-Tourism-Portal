@@ -1,0 +1,61 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import type { AuthUser } from '@/types';
+import type { RoleName } from '@/lib/constants';
+
+export const dynamic = 'force-dynamic';
+
+type RoleRow = {
+  vendor_id: string | null;
+  outlet_id: string | null;
+  roles?: { name: RoleName } | { name: RoleName }[] | null;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  kyc_status: AuthUser['kycStatus'] | null;
+  email_verified_at: string | null;
+  phone_verified_at: string | null;
+  profile_completed_at: string | null;
+};
+
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+
+  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
+    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,email_verified_at,phone_verified_at,profile_completed_at').eq('id', authUser.id).maybeSingle(),
+    supabase.from('user_roles').select('vendor_id,outlet_id,roles(name)').eq('user_id', authUser.id),
+  ]);
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (rolesError) return NextResponse.json({ error: rolesError.message }, { status: 500 });
+
+  const profileRow = profile as ProfileRow | null;
+  const rows = (roleRows || []) as RoleRow[];
+  const roles = rows.map((row) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return role?.name;
+  }).filter((role): role is RoleName => Boolean(role));
+  const vendorIds = [...new Set(rows.map((row) => row.vendor_id).filter((id): id is string => Boolean(id)))];
+  const outletIds = [...new Set(rows.map((row) => row.outlet_id).filter((id): id is string => Boolean(id)))];
+
+  return NextResponse.json({
+    user: {
+      id: authUser.id,
+      email: authUser.email || profileRow?.email || '',
+      fullName: profileRow?.full_name || null,
+      avatarUrl: profileRow?.avatar_url || null,
+      kycStatus: profileRow?.kyc_status || 'unverified',
+      emailVerified: Boolean(profileRow?.email_verified_at),
+      phoneVerified: Boolean(profileRow?.phone_verified_at),
+      profileComplete: Boolean(profileRow?.profile_completed_at),
+      roles,
+      activeVendorId: vendorIds[0] || null,
+      activeOutletIds: outletIds,
+    },
+  });
+}

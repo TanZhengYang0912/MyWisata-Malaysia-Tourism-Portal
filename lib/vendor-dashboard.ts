@@ -1,9 +1,32 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import type { RecentOrder } from '@/components/vendor/recent-transactions';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m';
 
-type DashboardRow = Record<string, any>;
+type DashboardRow = {
+  id: string;
+  order_id: string;
+  outlet_id: string;
+  product_id: string | null;
+  product_name: string;
+  quantity: number;
+  line_total: number;
+  fulfil_status: string;
+  slot_id: string | null;
+  slot_starts_at: string | null;
+  created_at: string;
+  status?: string;
+  name?: string;
+  city?: string | null;
+  cover_url?: string | null;
+  product_type?: string | null;
+  requires_booking?: boolean | null;
+  rating?: number;
+  orders?: { status?: string | null };
+};
+
+type RecentOrderDraft = RecentOrder & { fulfil_statuses: string[] };
 
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
 
@@ -60,7 +83,7 @@ function bucketLabel(key: string, filter: DashboardFilter) {
 }
 
 function isRevenueItem(item: DashboardRow) {
-  return ['paid', 'completed'].includes(item.orders?.status);
+  return ['paid', 'completed'].includes(item.orders?.status ?? '');
 }
 
 function sumRevenue(items: DashboardRow[]) {
@@ -73,9 +96,9 @@ function percentChange(current: number, previous: number) {
 }
 
 export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
-  const authDb = await createClient() as any;
+  const authDb = await createClient();
   const { data: { user } } = await authDb.auth.getUser();
-  if (!user) throw new Error('Sign in required');
+  if (!user) return null;
 
   const { data: vendors, error: vendorError } = await authDb
     .from('vendors').select('id,name,status').eq('owner_id', user.id).eq('status', 'approved').limit(1);
@@ -87,12 +110,12 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   // two tables through the anon session triggers Postgres policy recursion.
   // Ownership is verified above with the user session; this server-only
   // service client is then restricted to that verified vendor scope.
-  const db = createServiceClient() as any;
+  const db = createServiceClient();
 
   const { data: outlets, error: outletError } = await db
     .from('outlets').select('id,name,city,state,status').eq('vendor_id', vendor.id).order('name');
   if (outletError) throw outletError;
-  const outletRows = (outlets || []) as DashboardRow[];
+  const outletRows = (outlets || []) as unknown as DashboardRow[];
   const outletIds = outletRows.map((outlet) => outlet.id);
   const { now, start, previousStart, previousEnd } = rangeFor(filter);
 
@@ -112,8 +135,8 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   const previousItems = allItems.filter((item) => new Date(item.created_at) >= previousStart && new Date(item.created_at) < previousEnd);
   const currentOrderIds = new Set(currentItems.map((item) => item.order_id));
   const previousOrderIds = new Set(previousItems.map((item) => item.order_id));
-  const products = (productsResult.data || []) as DashboardRow[];
-  const reviews = (reviewsResult.data || []) as DashboardRow[];
+  const products = (productsResult.data || []) as unknown as DashboardRow[];
+  const reviews = (reviewsResult.data || []) as unknown as DashboardRow[];
   const outletNames = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outlet.name]));
   // Strip the vendor brand prefix from each outlet name to get a unique location label.
   // e.g. "Rasa Malaysia — Ipoh Old Town" → "Ipoh Old Town"
@@ -169,8 +192,9 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   const ratingMap = new Map<string, { total: number; count: number }>();
   for (const review of reviews) {
     const key = review.product_id;
+    if (!key) continue;
     const product = productById[key];
-    if (!key || !product || (!product.requires_booking && !['activity', 'experience'].includes(product.product_type))) continue;
+    if (!product || (!product.requires_booking && !['activity', 'experience'].includes(product.product_type ?? ''))) continue;
     const rating = ratingMap.get(key) || { total: 0, count: 0 };
     rating.total += number(review.rating);
     rating.count += 1;
@@ -180,11 +204,11 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
     name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count,
   }));
 
-  const recentOrderMap = new Map<string, DashboardRow>();
+  const recentOrderMap = new Map<string, RecentOrderDraft>();
   for (const item of currentItems) {
     const itemWithNames = { ...item, outlet_name: outletNames[item.outlet_id] || 'Unknown outlet', order_status: item.orders?.status || 'unknown' };
     if (!recentOrderMap.has(item.order_id)) {
-      recentOrderMap.set(item.order_id, { order_id: item.order_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, quantity: 0, item_count: 0, product_name: item.product_name, outlet_name: itemWithNames.outlet_name, fulfil_statuses: [], items: [] });
+      recentOrderMap.set(item.order_id, { order_id: item.order_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, quantity: 0, item_count: 0, product_name: item.product_name, outlet_name: itemWithNames.outlet_name, fulfil_status: 'pending', fulfil_statuses: [], items: [] });
     }
     const order = recentOrderMap.get(item.order_id)!;
     order.created_at = new Date(item.created_at) > new Date(order.created_at) ? item.created_at : order.created_at;
@@ -200,7 +224,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
     .map((order) => ({
       ...order,
       product_name: order.item_count > 1 ? order.product_name + ' + ' + (order.item_count - 1) + ' more' : order.product_name,
-      fulfil_status: order.fulfil_statuses.includes('pending') ? 'pending' : order.fulfil_statuses.includes('ready') ? 'ready' : order.fulfil_statuses.every((status: string) => status === 'fulfilled') ? 'fulfilled' : order.fulfil_statuses[0] || 'pending',
+      fulfil_status: order.fulfil_statuses.includes('pending') ? 'pending' : order.fulfil_statuses.includes('ready') ? 'ready' : order.fulfil_statuses.every((status) => status === 'fulfilled') ? 'fulfilled' : order.fulfil_statuses[0] || 'pending',
     }));
   const totalRevenue = sumRevenue(currentItems);
   const previousRevenue = sumRevenue(previousItems);

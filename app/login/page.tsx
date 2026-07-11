@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Globe, RotateCcw } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getUsers } from "@/backend/domains/identity";
 import { resetDemo } from "@/backend/core/mockdb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +32,27 @@ export default function LoginPage() {
   const { switchUser } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getUsers().then(setUsers);
+    fetch('/api/auth/demo-users')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load demo accounts');
+        return response.json() as Promise<User[]>;
+      })
+      .then(setUsers)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load demo accounts'));
   }, []);
 
   async function pick(user: User) {
-    await switchUser(user.id);
-    router.push(HOME_BY_ROLE[user.role]);
+    setError(null);
+    try {
+      await switchUser(user.id, user);
+      router.push(HOME_BY_ROLE[user.role]);
+      router.refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to sign in');
+    }
   }
 
   return (
@@ -57,6 +69,7 @@ export default function LoginPage() {
           <CardContent className="px-4 pt-2">
             <h1 className="font-bold text-lg text-foreground mb-1">Choose a demo account</h1>
             <p className="text-sm text-muted-foreground mb-4">No password needed — this is a mock-auth demo. Pick a seeded role to continue.</p>
+            {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
             <div className="space-y-2">
               {users.map((user) => (
                 <button

@@ -124,7 +124,9 @@ type BookingRow = {
   order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
 };
 
-function mapBooking(row: BookingRow): Booking {
+function mapBooking(row: BookingRow): Booking | null {
+  // order_items can be undefined if the RLS join returns no related row
+  if (!row.order_items) return null;
   return {
     id: row.id,
     orderId: row.order_items.order_id,
@@ -142,14 +144,14 @@ const BOOKING_SELECT = "id,demo_qr_code,order_items!inner(order_id,product_id,pr
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);
   if (error) throw error;
-  return (data as unknown as BookingRow[]).map(mapBooking);
+  return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
 }
 
 export async function getBookingsForOutlets(outletIds: string[]): Promise<Booking[]> {
   if (outletIds.length === 0) return [];
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).in("order_items.outlet_id", outletIds);
   if (error) throw error;
-  return (data as unknown as BookingRow[]).map(mapBooking);
+  return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
 }
 
 /** Checkout: creates a PAID order from the current cart, snapshots items,

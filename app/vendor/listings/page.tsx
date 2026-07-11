@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
-import { scopedOutletIds } from "../layout";
+import { scopedOutletIds } from "@/lib/vendor-scope";
 import { getActivities, getOutlets } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { Activity, Outlet } from "@/backend/core/types";

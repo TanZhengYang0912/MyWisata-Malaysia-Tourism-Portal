@@ -1,6 +1,7 @@
 // Owner: Member 1 (Platform/Identity/Chat)
 import { supabase } from "@/backend/supabase";
 import type { ChatMessage, ChatThread, Role, SupportTicket, User } from "@/backend/core/types";
+import { getCurrentUserId, setCurrentUserId } from "@/backend/domains/current-user";
 
 type UserRow = {
   id: string;
@@ -41,17 +42,7 @@ export async function getUser(id: string): Promise<User | undefined> {
   return data ? mapUser(data as unknown as UserRow) : undefined;
 }
 
-const CURRENT_USER_KEY = "tp_current_user_id";
-
-export function getCurrentUserId(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(CURRENT_USER_KEY);
-}
-
-export function setCurrentUserId(id: string): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(CURRENT_USER_KEY, id);
-}
+export { getCurrentUserId, setCurrentUserId };
 
 export async function getCurrentUser(): Promise<User | null> {
   const id = getCurrentUserId();

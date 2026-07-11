@@ -1,9 +1,10 @@
 "use client";
 
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, getUsers, setCurrentUserId } from "@/backend/domains/identity";
+import { setCurrentUserId } from "@/backend/domains/current-user";
+import { createClient } from "@/lib/supabase/client";
 import type { Role, User } from "@/backend/core/types";
 
 interface AuthContextValue {
@@ -12,7 +13,7 @@ interface AuthContextValue {
   activeVendorId?: string;
   activeOutletIds?: string[];
   loading: boolean;
-  switchUser: (id: string) => Promise<void>;
+  switchUser: (id: string, user?: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,18 +21,87 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(() => createClient(), []);
+
+  const loadSupabaseUser = useCallback(async (authUserId: string) => {
+    const { data: row, error } = await supabase
+      .from("users")
+      .select("id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))")
+      .eq("id", authUserId)
+      .maybeSingle();
+    if (error) throw error;
+
+    const assignment = row?.user_roles?.[0];
+    const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
+    const name = row?.full_name ?? row?.email ?? "User";
+    const user: User | null = row ? {
+      id: row.id,
+      name,
+      email: row.email,
+      role: (assignmentRole?.name ?? "customer") as Role,
+      avatarInitial: name[0]?.toUpperCase() ?? "?",
+      city: row.city ?? undefined,
+      verificationTier: row.kyc_status as User["verificationTier"],
+      vendorId: assignment?.vendor_id ?? undefined,
+      outletId: assignment?.outlet_id ?? undefined,
+    } : null;
+    setCurrentUser(user ?? null);
+    if (user) setCurrentUserId(authUserId);
+    return user ?? null;
+  }, [supabase]);
 
   useEffect(() => {
-    getCurrentUser().then((u) => {
-      setCurrentUser(u);
+    let active = true;
+
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active) return;
+      if (!user) {
+        // Do not trust the old localStorage-only demo selection. Server pages
+        // authenticate through Supabase cookies, so both sides must agree.
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+      await loadSupabaseUser(user.id);
+      if (active) setLoading(false);
+    }
+
+    load().catch(() => {
+      if (!active) return;
+      setCurrentUser(null);
       setLoading(false);
     });
-  }, []);
 
-  const switchUser = useCallback(async (id: string) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setCurrentUser(null);
+        setLoading(false);
+        return;
+      }
+      loadSupabaseUser(session.user.id).finally(() => setLoading(false));
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [loadSupabaseUser, supabase]);
+
+  const switchUser = useCallback(async (id: string, selectedUser?: User) => {
+    const user = selectedUser;
+    if (!user || user.id !== id) throw new Error('Demo account is unavailable');
+
+    const response = await fetch('/api/auth/demo-signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email }),
+    });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(result.error || 'Unable to sign in');
+
     setCurrentUserId(id);
-    const users = await getUsers();
-    setCurrentUser(users.find((u) => u.id === id) ?? null);
+    setCurrentUser(user);
   }, []);
 
   const value: AuthContextValue = {

@@ -34,7 +34,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const params = await searchParams;
   const filter = normalizeFilter(params?.filter);
   const data = await getVendorDashboardData(filter);
-  if (!data) redirect('/profile');
+  if (!data) redirect('/login');
 
   const stats = [
     { label: 'Total revenue', value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
@@ -88,7 +88,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">Latest orders across your Malaysian outlets</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100">View all <ArrowRight size={15} /></Link></div>
-        <RecentTransactions items={data.recentTransactions as any} />
+        <RecentTransactions items={data.recentTransactions} />
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

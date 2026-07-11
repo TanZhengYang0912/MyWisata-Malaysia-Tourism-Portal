@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Eye, PackageCheck, X } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/badge';
 
-interface RecentItem { id: string; product_name: string; quantity: number; line_total: number; fulfil_status: string; outlet_name: string }
-interface RecentOrder { order_id: string; created_at: string; product_name: string; outlet_name: string; order_total: number; quantity: number; item_count: number; fulfil_status: string; order_status: string; items: RecentItem[] }
+export interface RecentItem { id: string; product_name: string; quantity: number; line_total: number; fulfil_status: string; outlet_name: string }
+export interface RecentOrder { order_id: string; created_at: string; product_name: string; outlet_name: string; order_total: number; quantity: number; item_count: number; fulfil_status: string; order_status: string; items: RecentItem[] }
 
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });

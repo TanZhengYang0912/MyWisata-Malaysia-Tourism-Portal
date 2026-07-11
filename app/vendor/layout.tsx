@@ -1,16 +1,12 @@
 import VendorSidebar from '@/components/layout/vendor-sidebar';
-import { getOutlets } from "@/backend/domains/catalogue";
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-export async function scopedOutletIds(activeVendorId?: string, activeOutletIds?: string[]): Promise<string[]> {
-  if (activeOutletIds?.length) return activeOutletIds;
-  if (activeVendorId) {
-    const outlets = await getOutlets();
-    return outlets.filter((o) => o.vendorId === activeVendorId).map((o) => o.id);
-  }
-  return [];
-}
+export default async function VendorLayout({ children }: { children: React.ReactNode }) {
+  const db = await createClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) redirect('/login');
 
-export default function VendorLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <VendorSidebar />
@@ -22,4 +18,3 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
     </div>
   );
 }
-
