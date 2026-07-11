@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle, Clock, Heart, MapPin, Star } from "lucide-react";
 import { AiTag } from "./ai-tag";
-import type { ComputedActivity } from "@/lib/types";
+import type { ComputedActivity } from "@/backend/core/types";
 
 export function ActivityCard({ activity }: { activity: ComputedActivity }) {
   const [saved, setSaved] = useState(false);

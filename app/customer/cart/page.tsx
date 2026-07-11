@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Tag, Trash2 } from "lucide-react";
-import { useCart } from "@/lib/cart";
-import { getActivities, getOutlet, getVoucherByCode } from "@/lib/db/repos/catalogue";
-import { unitPrice, validateVoucher } from "@/lib/helpers";
+import { useCart } from "@/components/providers/cart";
+import { getActivities, getOutlet, getVoucherByCode } from "@/backend/domains/catalogue";
+import { unitPrice, validateVoucher } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
-import { CartProvider } from "@/lib/cart";
+import { AuthProvider } from "@/components/providers/auth";
+import { CartProvider } from "@/components/providers/cart";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"] });

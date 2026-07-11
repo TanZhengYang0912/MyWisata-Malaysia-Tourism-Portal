@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CheckCircle, Clock, Globe, MapPin, MessageCircle, Navigation, Share2, Star, Users } from "lucide-react";
-import { getBookingSlots, getComputedActivity } from "@/lib/db/repos/catalogue";
-import { getOrCreateThread } from "@/lib/db/repos/identity";
-import { useAuth } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
-import { unitPrice } from "@/lib/helpers";
+import { getBookingSlots, getComputedActivity } from "@/backend/domains/catalogue";
+import { getOrCreateThread } from "@/backend/domains/identity";
+import { useAuth } from "@/components/providers/auth";
+import { useCart } from "@/components/providers/cart";
+import { unitPrice } from "@/backend/core/helpers";
 import { AiTag } from "@/components/customer/ai-tag";
 import { MapView } from "@/components/map/map-view";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import type { BookingSlot, ComputedActivity } from "@/lib/types";
+import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 
 export default function ActivityDetailPage() {
   const params = useParams<{ id: string }>();

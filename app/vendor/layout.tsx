@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart2, Calendar, Globe, Inbox, LogOut, Package, Tag } from "lucide-react";
-import { useRequireRole } from "@/lib/auth";
-import { getOutlets } from "@/lib/db/repos/catalogue";
+import { useRequireRole } from "@/components/providers/auth";
+import { getOutlets } from "@/backend/domains/catalogue";
 
 const NAV = [
   { href: "/vendor/dashboard", label: "Dashboard", icon: BarChart2 },

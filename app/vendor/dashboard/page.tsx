@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Bell, Calendar, DollarSign, MessageCircle, Package } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getActivities, getOutlets } from "@/lib/db/repos/catalogue";
-import { getOrdersForOutlets } from "@/lib/db/repos/commerce";
-import { getThreadsForOutlets, getMessages } from "@/lib/db/repos/identity";
+import { getActivities, getOutlets } from "@/backend/domains/catalogue";
+import { getOrdersForOutlets } from "@/backend/domains/commerce";
+import { getThreadsForOutlets, getMessages } from "@/backend/domains/identity";
 import { StatusBadge } from "@/components/shared/status-badge";
-import type { Order } from "@/lib/types";
+import type { Order } from "@/backend/core/types";
 
 export default function VendorDashboardPage() {
   const { activeVendorId, activeOutletIds, currentUser } = useAuth();

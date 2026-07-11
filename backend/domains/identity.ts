@@ -1,6 +1,6 @@
 // Owner: Member 1 (Platform/Identity/Chat)
-import { getCollection, getValue, KEYS, setCollection, setValue } from "../index";
-import type { ChatMessage, ChatThread, Notification, SupportTicket, User } from "@/lib/types";
+import { getCollection, getValue, KEYS, setCollection, setValue } from "../core/mockdb";
+import type { ChatMessage, ChatThread, Notification, SupportTicket, User } from "@/backend/core/types";
 
 export function getUsers(): User[] {
   return getCollection<User>(KEYS.users);

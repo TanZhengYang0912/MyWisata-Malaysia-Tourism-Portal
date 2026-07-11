@@ -1,5 +1,5 @@
 // Owner: Member 1 (Platform/Identity/Chat)
-import type { ChatMessage, ChatThread, SupportTicket, User } from "@/lib/types";
+import type { ChatMessage, ChatThread, SupportTicket, User } from "@/backend/core/types";
 
 // Customer first: seedAll() uses users[0] as the default logged-in demo user.
 export const USERS: User[] = [

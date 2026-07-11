@@ -1,6 +1,6 @@
 // Contract #6: every approve/reject action must go through this one function
 // so AUDIT_LOGS + NOTIFICATIONS always stay in sync.
-import { getCollection, KEYS, setCollection } from "./db";
+import { getCollection, KEYS, setCollection } from "./mockdb";
 import type { AuditLog, Notification } from "./types";
 
 export function recordApproval(args: {

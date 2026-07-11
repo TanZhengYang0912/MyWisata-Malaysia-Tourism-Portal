@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CreditCard, ShieldCheck, Smartphone, Wallet } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
-import { createOrder } from "@/lib/db/repos/commerce";
-import { getVoucherByCode } from "@/lib/db/repos/catalogue";
+import { useAuth } from "@/components/providers/auth";
+import { useCart } from "@/components/providers/cart";
+import { createOrder } from "@/backend/domains/commerce";
+import { getVoucherByCode } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import * as commerce from "./db/repos/commerce";
-import { getActivities } from "./db/repos/catalogue";
-import { cartTotals } from "./helpers";
-import type { CartItem, Voucher } from "./types";
+import * as commerce from "@/backend/domains/commerce";
+import { getActivities } from "@/backend/domains/catalogue";
+import { cartTotals } from "@/backend/core/helpers";
+import type { CartItem, Voucher } from "@/backend/core/types";
 
 interface CartContextValue {
   items: CartItem[];

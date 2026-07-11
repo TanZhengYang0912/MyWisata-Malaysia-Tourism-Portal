@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { getOutlets, setOutletVerified } from "@/lib/db/repos/catalogue";
-import { recordApproval } from "@/lib/audit";
+import { useAuth } from "@/components/providers/auth";
+import { getOutlets, setOutletVerified } from "@/backend/domains/catalogue";
+import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Outlet } from "@/lib/types";
+import type { Outlet } from "@/backend/core/types";
 
 export default function AdminVendorsPage() {
   const { currentUser } = useAuth();

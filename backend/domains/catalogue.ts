@@ -1,7 +1,7 @@
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
-import { getCollection, KEYS, setCollection } from "../index";
-import { haversineKm } from "@/lib/helpers";
-import type { Activity, BookingSlot, ComputedActivity, Outlet, Voucher } from "@/lib/types";
+import { getCollection, KEYS, setCollection } from "../core/mockdb";
+import { haversineKm } from "@/backend/core/helpers";
+import type { Activity, BookingSlot, ComputedActivity, Outlet, Voucher } from "@/backend/core/types";
 
 export function getOutlets(): Outlet[] {
   return getCollection<Outlet>(KEYS.outlets);

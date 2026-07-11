@@ -1,5 +1,5 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
-import type { Booking, Order, WithdrawalRequest } from "@/lib/types";
+import type { Booking, Order, WithdrawalRequest } from "@/backend/core/types";
 
 export const ORDERS: Order[] = [
   {

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, DollarSign, Gem, Package, Shield } from "lucide-react";
-import { getOutlets } from "@/lib/db/repos/catalogue";
-import { getUsers, getSupportTickets } from "@/lib/db/repos/identity";
-import { getWithdrawals } from "@/lib/db/repos/commerce";
-import { getVendorRecommendations } from "@/lib/db/repos/discovery";
+import { getOutlets } from "@/backend/domains/catalogue";
+import { getUsers, getSupportTickets } from "@/backend/domains/identity";
+import { getWithdrawals } from "@/backend/domains/commerce";
+import { getVendorRecommendations } from "@/backend/domains/discovery";
 
 export default function AdminDashboardPage() {
   const [counts, setCounts] = useState<{ vendors: number; kyc: number; withdrawals: number; recs: number; tickets: number } | null>(null);

@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Package } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { getOrdersForUser } from "@/lib/db/repos/commerce";
+import { useAuth } from "@/components/providers/auth";
+import { getOrdersForUser } from "@/backend/domains/commerce";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
-import type { Order } from "@/lib/types";
+import type { Order } from "@/backend/core/types";
 
 export default function OrdersPage() {
   const { currentUser } = useAuth();

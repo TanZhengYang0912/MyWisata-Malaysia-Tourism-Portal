@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/utils";
 
 const STYLES: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",

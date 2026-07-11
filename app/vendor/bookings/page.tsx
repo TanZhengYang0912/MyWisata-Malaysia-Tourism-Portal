@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getOrdersForOutlets } from "@/lib/db/repos/commerce";
+import { getOrdersForOutlets } from "@/backend/domains/commerce";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Order } from "@/lib/types";
+import type { Order } from "@/backend/core/types";
 
 export default function VendorBookingsPage() {
   const { activeVendorId, activeOutletIds } = useAuth();

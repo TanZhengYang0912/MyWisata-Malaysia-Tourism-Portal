@@ -1,6 +1,6 @@
 // Owner: Member 3 (Discovery/Recommendation/Growth)
-import { getCollection, KEYS, setCollection } from "../index";
-import type { VendorRecommendation } from "@/lib/types";
+import { getCollection, KEYS, setCollection } from "../core/mockdb";
+import type { VendorRecommendation } from "@/backend/core/types";
 
 export function getVendorRecommendations(): VendorRecommendation[] {
   return getCollection<VendorRecommendation>(KEYS.vendorRecommendations);

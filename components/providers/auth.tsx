@@ -3,8 +3,8 @@
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, getUsers, setCurrentUserId } from "./db/repos/identity";
-import type { Role, User } from "./types";
+import { getCurrentUser, getUsers, setCurrentUserId } from "@/backend/domains/identity";
+import type { Role, User } from "@/backend/core/types";
 
 interface AuthContextValue {
   currentUser: User | null;

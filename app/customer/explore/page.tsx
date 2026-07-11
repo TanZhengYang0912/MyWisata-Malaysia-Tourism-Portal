@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Sparkles, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { CATEGORIES, STATES_MY, searchActivities } from "@/lib/db/repos/catalogue";
+import { CATEGORIES, STATES_MY, searchActivities } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ComputedActivity } from "@/lib/types";
+import type { ComputedActivity } from "@/backend/core/types";
 
 export default function ExplorePage() {
   const router = useRouter();

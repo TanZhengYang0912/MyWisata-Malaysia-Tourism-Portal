@@ -1,5 +1,5 @@
 // Owner: Member 3 (Discovery/Recommendation/Growth)
-import type { VendorRecommendation } from "@/lib/types";
+import type { VendorRecommendation } from "@/backend/core/types";
 
 export const VENDOR_RECOMMENDATIONS: VendorRecommendation[] = [
   { id: "r1", submittedBy: "u5", name: "Perak Waterfall Hidden Cave", category: "Hidden Gems", state: "Perak", status: "pending", qualityScore: 92, duplicate: false },

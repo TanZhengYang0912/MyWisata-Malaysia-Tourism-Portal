@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { CATEGORIES, STATES_MY, searchActivities, type SearchFilters } from "@/lib/db/repos/catalogue";
-import type { ComputedActivity } from "@/lib/types";
+import { CATEGORIES, STATES_MY, searchActivities, type SearchFilters } from "@/backend/domains/catalogue";
+import type { ComputedActivity } from "@/backend/core/types";
 
 const PRICE_OPTIONS = [
   { label: "Any price", value: undefined },

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSupportTickets, getUser, resolveTicket } from "@/lib/db/repos/identity";
+import { getSupportTickets, getUser, resolveTicket } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { SupportTicket } from "@/lib/types";
+import type { SupportTicket } from "@/backend/core/types";
 
 export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);

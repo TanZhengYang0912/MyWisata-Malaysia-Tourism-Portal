@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getMessages, getThreadsForOutlets, getUser, sendMessage } from "@/lib/db/repos/identity";
-import { getOutlet } from "@/lib/db/repos/catalogue";
+import { getMessages, getThreadsForOutlets, getUser, sendMessage } from "@/backend/domains/identity";
+import { getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage, ChatThread } from "@/lib/types";
+import type { ChatMessage, ChatThread } from "@/backend/core/types";
 
 export default function VendorInboxPage() {
   const { activeVendorId, activeOutletIds } = useAuth();

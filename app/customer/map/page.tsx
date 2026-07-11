@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LocateFixed, Star } from "lucide-react";
 import { MapView } from "@/components/map/map-view";
-import { CATEGORIES, searchActivities } from "@/lib/db/repos/catalogue";
+import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ComputedActivity } from "@/lib/types";
+import type { ComputedActivity } from "@/backend/core/types";
 
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 

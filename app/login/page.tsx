@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Globe, RotateCcw } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { getUsers } from "@/lib/db/repos/identity";
-import { resetDemo } from "@/lib/db";
+import { useAuth } from "@/components/providers/auth";
+import { getUsers } from "@/backend/domains/identity";
+import { resetDemo } from "@/backend/core/mockdb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { Role, User } from "@/lib/types";
+import type { Role, User } from "@/backend/core/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
   customer: "/customer/explore",

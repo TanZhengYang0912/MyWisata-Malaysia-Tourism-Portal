@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 import { scopedOutletIds } from "../layout";
-import { getActivities, getOutlet } from "@/lib/db/repos/catalogue";
+import { getActivities, getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { Activity } from "@/lib/types";
+import type { Activity } from "@/backend/core/types";
 
 export default function VendorListingsPage() {
   const { activeVendorId, activeOutletIds } = useAuth();

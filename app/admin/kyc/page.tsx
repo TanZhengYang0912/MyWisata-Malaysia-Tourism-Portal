@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { getUsers, setVerificationTier } from "@/lib/db/repos/identity";
-import { recordApproval } from "@/lib/audit";
+import { useAuth } from "@/components/providers/auth";
+import { getUsers, setVerificationTier } from "@/backend/domains/identity";
+import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { User } from "@/lib/types";
+import type { User } from "@/backend/core/types";
 
 const TIER_LABEL: Record<User["verificationTier"], string> = {
   guest: "Guest",

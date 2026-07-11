@@ -1,6 +1,6 @@
 "use client";
 
-import { getVouchers } from "@/lib/db/repos/catalogue";
+import { getVouchers } from "@/backend/domains/catalogue";
 
 export default function VendorVouchersPage() {
   const vouchers = getVouchers();

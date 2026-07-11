@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, QrCode } from "lucide-react";
-import { getBookingsForOrder, getOrder } from "@/lib/db/repos/commerce";
+import { getBookingsForOrder, getOrder } from "@/backend/domains/commerce";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import type { Booking, Order } from "@/lib/types";
+import type { Booking, Order } from "@/backend/core/types";
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();

@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Send } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { getMessages, sendMessage } from "@/lib/db/repos/identity";
-import { getOutlet } from "@/lib/db/repos/catalogue";
+import { useAuth } from "@/components/providers/auth";
+import { getMessages, sendMessage } from "@/backend/domains/identity";
+import { getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage } from "@/backend/core/types";
 
 export default function ChatThreadPage() {
   const params = useParams<{ threadId: string }>();

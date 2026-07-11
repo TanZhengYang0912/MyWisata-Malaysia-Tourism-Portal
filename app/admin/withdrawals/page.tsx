@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { getWithdrawals, reviewWithdrawal } from "@/lib/db/repos/commerce";
-import { getUser } from "@/lib/db/repos/identity";
-import { recordApproval } from "@/lib/audit";
+import { useAuth } from "@/components/providers/auth";
+import { getWithdrawals, reviewWithdrawal } from "@/backend/domains/commerce";
+import { getUser } from "@/backend/domains/identity";
+import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { WithdrawalRequest } from "@/lib/types";
+import type { WithdrawalRequest } from "@/backend/core/types";
 
 export default function AdminWithdrawalsPage() {
   const { currentUser } = useAuth();

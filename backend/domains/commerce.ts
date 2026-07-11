@@ -1,9 +1,9 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
-import { getCollection, KEYS, setCollection } from "../index";
-import { cartTotals } from "@/lib/helpers";
-import { emit } from "@/lib/events";
+import { getCollection, KEYS, setCollection } from "../core/mockdb";
+import { cartTotals } from "@/backend/core/helpers";
+import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
-import type { Booking, CartItem, Order, OrderItem, Voucher, WithdrawalRequest } from "@/lib/types";
+import type { Booking, CartItem, Order, OrderItem, Voucher, WithdrawalRequest } from "@/backend/core/types";
 
 // ─── Cart ───────────────────────────────────────────────────────────────────
 export function getCart(): CartItem[] {

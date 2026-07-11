@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { getMessages, getThreadsForUser } from "@/lib/db/repos/identity";
-import { getOutlet } from "@/lib/db/repos/catalogue";
+import { useAuth } from "@/components/providers/auth";
+import { getMessages, getThreadsForUser } from "@/backend/domains/identity";
+import { getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatThread } from "@/lib/types";
+import type { ChatThread } from "@/backend/core/types";
 
 export default function ChatListPage() {
   const { currentUser } = useAuth();

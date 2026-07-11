@@ -1,5 +1,5 @@
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
-import type { Activity, BookingSlot, Outlet, Voucher } from "@/lib/types";
+import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 
 export const OUTLETS: Outlet[] = [
   { id: "o1", vendorId: "v1", name: "Penang Heritage Tours", category: "Food & Dining", state: "Penang", city: "George Town", address: "12 Lebuh Chulia, George Town, Penang", lat: 5.4141, lng: 100.3288, hours: "9:00 AM – 9:00 PM", verified: true, open: true, rating: 4.8, reviews: 234 },

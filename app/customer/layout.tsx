@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Globe, Map, MessageCircle, Search, ShoppingCart, User as UserIcon } from "lucide-react";
-import { useRequireRole } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
+import { useRequireRole } from "@/components/providers/auth";
+import { useCart } from "@/components/providers/cart";
 
 const NAV = [
   { href: "/customer/explore", label: "Explore", icon: Search },

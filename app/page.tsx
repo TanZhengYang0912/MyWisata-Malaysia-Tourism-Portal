@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth";
 
 const HOME_BY_ROLE: Record<string, string> = {
   customer: "/customer/explore",

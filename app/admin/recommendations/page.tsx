@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { getVendorRecommendations, reviewRecommendation } from "@/lib/db/repos/discovery";
-import { getUser } from "@/lib/db/repos/identity";
-import { recordApproval } from "@/lib/audit";
+import { useAuth } from "@/components/providers/auth";
+import { getVendorRecommendations, reviewRecommendation } from "@/backend/domains/discovery";
+import { getUser } from "@/backend/domains/identity";
+import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { VendorRecommendation } from "@/lib/types";
+import type { VendorRecommendation } from "@/backend/core/types";
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
