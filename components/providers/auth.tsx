@@ -12,7 +12,7 @@ interface AuthContextValue {
   activeVendorId?: string;
   activeOutletIds?: string[];
   loading: boolean;
-  switchUser: (id: string) => void;
+  switchUser: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -28,9 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const switchUser = useCallback((id: string) => {
+  const switchUser = useCallback(async (id: string) => {
     setCurrentUserId(id);
-    getUsers().then((users) => setCurrentUser(users.find((u) => u.id === id) ?? null));
+    const users = await getUsers();
+    setCurrentUser(users.find((u) => u.id === id) ?? null);
   }, []);
 
   const value: AuthContextValue = {

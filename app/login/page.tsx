@@ -38,8 +38,8 @@ export default function LoginPage() {
     getUsers().then(setUsers);
   }, []);
 
-  function pick(user: User) {
-    switchUser(user.id);
+  async function pick(user: User) {
+    await switchUser(user.id);
     router.push(HOME_BY_ROLE[user.role]);
   }
 
