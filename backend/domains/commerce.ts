@@ -280,6 +280,28 @@ export async function getWithdrawals(): Promise<WithdrawalRequest[]> {
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
 }
 
+export async function getMyWithdrawals(userId: string): Promise<WithdrawalRequest[]> {
+  const { data, error } = await supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId);
+  if (error) throw error;
+  return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
+}
+
+export async function requestWithdrawal(userId: string, amount: number, destination: string): Promise<WithdrawalRequest> {
+  const { data, error } = await supabase
+    .from("withdrawal_requests")
+    .insert({ user_id: userId, amount, destination, status: "pending", requires_dual_approval: amount >= 500 })
+    .select(WITHDRAWAL_SELECT)
+    .single();
+  if (error) throw error;
+  return mapWithdrawal(data as unknown as WithdrawalRow);
+}
+
+export async function getWalletBalance(userId: string): Promise<number> {
+  const { data, error } = await supabase.from("wallets").select("balance_sen").eq("user_id", userId).maybeSingle();
+  if (error) return 0;
+  return data ? (data as { balance_sen: number }).balance_sen / 100 : 0;
+}
+
 export async function reviewWithdrawal(id: string, status: "approved" | "rejected"): Promise<void> {
   const { error } = await supabase.from("withdrawal_requests").update({ status }).eq("id", id);
   if (error) throw error;

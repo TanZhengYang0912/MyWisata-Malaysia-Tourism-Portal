@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, LogOut } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
   { href: '/vendor/bookings',   label: 'Bookings',   icon: CalendarDays },
   { href: '/vendor/vouchers',   label: 'Vouchers',   icon: TicketPercent },
   { href: '/vendor/orders',     label: 'Orders',     icon: ShoppingBag },
+  { href: '/vendor/wallet',     label: 'Wallet',     icon: Wallet },
   { href: '/vendor/inbox',      label: 'Inbox',      icon: MessageCircle },
   { href: '/vendor/analytics',  label: 'Analytics',  icon: ChartNoAxesCombined },
 ];

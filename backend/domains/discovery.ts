@@ -31,6 +31,22 @@ export async function getVendorRecommendations(): Promise<VendorRecommendation[]
   return (data as unknown as RecRow[]).map(mapRecommendation);
 }
 
+export async function getMyRecommendations(userId: string): Promise<VendorRecommendation[]> {
+  const { data, error } = await supabase.from("vendor_recommendations").select(REC_SELECT).eq("recommender_id", userId);
+  if (error) throw error;
+  return (data as unknown as RecRow[]).map(mapRecommendation);
+}
+
+export async function submitRecommendation(userId: string, name: string, categoryId: string, state: string): Promise<VendorRecommendation> {
+  const { data, error } = await supabase
+    .from("vendor_recommendations")
+    .insert({ recommender_id: userId, vendor_name: name, category_id: categoryId, state, status: "pending" })
+    .select(REC_SELECT)
+    .single();
+  if (error) throw error;
+  return mapRecommendation(data as unknown as RecRow);
+}
+
 export async function reviewRecommendation(id: string, status: "approved" | "rejected"): Promise<void> {
   const { error } = await supabase.from("vendor_recommendations").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
   if (error) throw error;

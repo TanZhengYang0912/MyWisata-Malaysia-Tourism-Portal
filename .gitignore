@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# figma design reference screenshots (kept locally, not versioned)
+scripts/figma-screenshots/

@@ -102,7 +102,7 @@ export default function ExplorePage() {
           <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Browse by Category</h2>
           <p className="text-sm mt-1 text-muted-foreground">What kind of experience are you looking for?</p>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-10 gap-3">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -119,6 +119,27 @@ export default function ExplorePage() {
                 {cat.label}
               </p>
             </button>
+          ))}
+          {[
+            { href: "/customer/kyc", icon: "🪪", label: "KYC Verify" },
+            { href: "/customer/wallet", icon: "👛", label: "My Wallet" },
+            { href: "/customer/recommendations", icon: "⭐", label: "Recommend" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-all hover:-translate-y-0.5 border-2 no-underline"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--accent) 8%, var(--card))",
+                borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
+                boxShadow: "0 1px 8px rgba(36,49,58,0.06)",
+              }}
+            >
+              <span className="text-2xl">{item.icon}</span>
+              <p className="text-[10px] font-bold text-center leading-tight" style={{ color: "var(--accent)" }}>
+                {item.label}
+              </p>
+            </Link>
           ))}
         </div>
       </section>

@@ -14,6 +14,7 @@ interface AuthContextValue {
   activeOutletIds?: string[];
   loading: boolean;
   switchUser: (id: string, user?: User) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
     const { data: row, error } = await supabase
       .from("users")
-      .select("id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))")
+      .select("id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name))")
       .eq("id", authUserId)
       .maybeSingle();
     if (error) throw error;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: (assignmentRole?.name ?? "customer") as Role,
       avatarInitial: name[0]?.toUpperCase() ?? "?",
       city: row.city ?? undefined,
+      phone: row.phone ?? undefined,
       verificationTier: row.kyc_status as User["verificationTier"],
       vendorId: assignment?.vendor_id ?? undefined,
       outletId: assignment?.outlet_id ?? undefined,
@@ -104,6 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await loadSupabaseUser(user.id);
+  }, [loadSupabaseUser, supabase]);
+
   const value: AuthContextValue = {
     currentUser,
     roles: currentUser ? [currentUser.role] : [],
@@ -111,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     activeOutletIds: currentUser?.outletId ? [currentUser.outletId] : undefined,
     loading,
     switchUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

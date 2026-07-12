@@ -17,7 +17,8 @@ export interface User {
   role: Role;
   avatarInitial: string;
   city?: string;
-  verificationTier: "guest" | "registered" | "phone_verified" | "profile_complete" | "kyc_verified";
+  phone?: string;
+  verificationTier: "guest" | "registered" | "phone_verified" | "profile_complete" | "kyc_submitted" | "kyc_verified";
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -144,6 +145,16 @@ export interface Booking {
   slotStartsAt?: string;
   qty: number;
   qrCode: string; // demo placeholder string
+}
+
+export interface KycSubmission {
+  userId: string;
+  icNumber: string;
+  docType: string;
+  documentUrl: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 }
 
 // ─── Identity/Chat domain (P1) ──────────────────────────────────────────────

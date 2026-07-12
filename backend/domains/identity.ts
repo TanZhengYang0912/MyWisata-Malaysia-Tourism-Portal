@@ -1,18 +1,19 @@
 // Owner: Member 1 (Platform/Identity/Chat)
 import { supabase } from "@/backend/supabase";
-import type { ChatMessage, ChatThread, Role, SupportTicket, User } from "@/backend/core/types";
-import { getCurrentUserId, setCurrentUserId } from "@/backend/domains/current-user";
+import type { ChatMessage, ChatThread, KycSubmission, Role, SupportTicket, User } from "@/backend/core/types";
+import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
 
 type UserRow = {
   id: string;
   email: string;
   full_name: string | null;
   city: string | null;
+  phone: string | null;
   kyc_status: string;
   user_roles: { vendor_id: string | null; outlet_id: string | null; roles: { name: string } | null }[];
 };
 
-const USER_SELECT = "id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))";
+const USER_SELECT = "id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name))";
 
 function mapUser(row: UserRow): User {
   const ur = row.user_roles[0];
@@ -24,29 +25,51 @@ function mapUser(row: UserRow): User {
     role: (ur?.roles?.name ?? "customer") as Role,
     avatarInitial: name[0]?.toUpperCase() ?? "?",
     city: row.city ?? undefined,
+    phone: row.phone ?? undefined,
     verificationTier: row.kyc_status as User["verificationTier"],
     vendorId: ur?.vendor_id ?? undefined,
     outletId: ur?.outlet_id ?? undefined,
   };
 }
 
+// Hardcoded demo users shown when Supabase has fewer than 3 roles seeded.
+const DEMO_USERS: User[] = [
+  { id: "demo-customer-1", name: "Demo Customer", email: "customer@demo.local", role: "customer", avatarInitial: "C", verificationTier: "registered" },
+  { id: "demo-vendor-1", name: "Demo Vendor Owner", email: "vendor@demo.local", role: "vendor_owner", avatarInitial: "V", verificationTier: "kyc_verified" },
+  { id: "demo-admin-1", name: "Demo Admin", email: "admin@demo.local", role: "admin", avatarInitial: "A", verificationTier: "kyc_verified" },
+  { id: "demo-approver-1", name: "Demo Approver", email: "approver@demo.local", role: "approver", avatarInitial: "P", verificationTier: "kyc_verified" },
+];
+
 export async function getUsers(): Promise<User[]> {
-  const { data, error } = await supabase.from("users").select(USER_SELECT);
-  if (error) throw error;
-  return (data as unknown as UserRow[]).map(mapUser);
+  try {
+    const { data, error } = await supabase.from("users").select(USER_SELECT);
+    if (error) throw error;
+    const real = (data as unknown as UserRow[]).map(mapUser);
+    const existingRoles = new Set(real.map((u) => u.role));
+    const missing = DEMO_USERS.filter((u) => !existingRoles.has(u.role));
+    return [...real, ...missing];
+  } catch {
+    return DEMO_USERS;
+  }
 }
 
 export async function getUser(id: string): Promise<User | undefined> {
+  // Check demo users first so mock IDs always resolve.
+  const demo = DEMO_USERS.find((u) => u.id === id);
+  if (demo) return demo;
   const { data, error } = await supabase.from("users").select(USER_SELECT).eq("id", id).maybeSingle();
   if (error) throw error;
   return data ? mapUser(data as unknown as UserRow) : undefined;
 }
 
-export { getCurrentUserId, setCurrentUserId };
+export { getCurrentUserId, setCurrentUserId, setCurrentUser };
 
 export async function getCurrentUser(): Promise<User | null> {
   const id = getCurrentUserId();
   if (!id) return null;
+  // Prefer the stored User object so mock/demo users survive a page refresh.
+  const stored = getStoredCurrentUser(id);
+  if (stored) return stored;
   return (await getUser(id)) ?? null;
 }
 
@@ -164,8 +187,113 @@ export async function resolveTicket(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Profile update ─────────────────────────────────────────────────────────
+export async function updateProfile(userId: string, data: { fullName: string; city: string; phone: string }): Promise<User> {
+  const isDemo = DEMO_USERS.some((u) => u.id === userId);
+  if (!isDemo) {
+    const { error } = await supabase
+      .from("users")
+      .update({ full_name: data.fullName, city: data.city, phone: data.phone })
+      .eq("id", userId);
+    if (error) throw error;
+    // Re-fetch from DB so the trigger-updated kyc_status is reflected
+    const fresh = await getUser(userId);
+    if (!fresh) throw new Error("User not found after profile update");
+    setCurrentUser(fresh);
+    return fresh;
+  }
+  // Demo user: update in-memory only (no DB write)
+  const current = await getCurrentUser();
+  if (!current || current.id !== userId) throw new Error("User not found");
+  const updated: User = {
+    ...current,
+    name: data.fullName.trim() || current.name,
+    avatarInitial: (data.fullName.trim() || current.name)[0]?.toUpperCase() ?? "?",
+    city: data.city,
+    phone: data.phone,
+  };
+  setCurrentUser(updated);
+  return updated;
+}
+
+// ─── KYC submissions ────────────────────────────────────────────────────────
+const KYC_BUCKET = "kyc-documents";
+export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+export const KYC_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const KYC_SIGNED_URL_TTL = 3600; // 1 hour
+
+export function validateKycFile(file: File | null): string | null {
+  if (!file) return "Please upload a document photo";
+  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "File must be JPG, PNG, or PDF";
+  if (file.size > KYC_MAX_FILE_SIZE) return `File must be under 5 MB (current: ${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+  return null;
+}
+
+export async function uploadKycDocument(userId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() ?? "bin").toLowerCase();
+  const path = `${userId}/document.${ext}`;
+  const { error } = await supabase.storage.from(KYC_BUCKET).upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+  if (error) throw error;
+  return path;
+}
+
+export async function getKycDocumentSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(KYC_BUCKET).createSignedUrl(path, KYC_SIGNED_URL_TTL);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function upsertKycSubmission(userId: string, data: { icNumber: string; docType: string; documentUrl: string }): Promise<void> {
+  const isDemo = DEMO_USERS.some((u) => u.id === userId);
+  if (isDemo) return;
+  const { error } = await supabase.from("kyc_submissions").upsert(
+    { user_id: userId, ic_number: data.icNumber, document_type: data.docType, document_url: data.documentUrl, status: "pending" },
+    { onConflict: "user_id" }
+  );
+  if (error) throw error;
+}
+
+export async function getKycSubmissions(): Promise<KycSubmission[]> {
+  const { data, error } = await supabase
+    .from("kyc_submissions")
+    .select("user_id,ic_number,document_type,document_url,created_at,reviewed_at,reviewer_id");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    userId: r.user_id,
+    icNumber: r.ic_number ?? "",
+    docType: r.document_type ?? "",
+    documentUrl: r.document_url ?? "",
+    submittedAt: r.created_at,
+    reviewedAt: r.reviewed_at ?? undefined,
+    reviewedBy: r.reviewer_id ?? undefined,
+  }));
+}
+
+export async function recordKycReview(userId: string, reviewedBy: string, approved: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("kyc_submissions")
+    .update({
+      reviewed_at: new Date().toISOString(),
+      reviewer_id: reviewedBy,
+      status: approved ? "approved" : "rejected",
+    })
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 // ─── Verification tier (KYC review proxy) ──────────────────────────────────
 export async function setVerificationTier(userId: string, tier: User["verificationTier"]): Promise<void> {
-  const { error } = await supabase.from("users").update({ kyc_status: tier }).eq("id", userId);
-  if (error) throw error;
+  const isDemo = DEMO_USERS.some((u) => u.id === userId);
+  if (!isDemo) {
+    const { error } = await supabase.from("users").update({ kyc_status: tier }).eq("id", userId);
+    if (error) throw error;
+  }
+  // Keep localStorage in sync so demo users and page-refreshes see the updated tier.
+  const current = await getCurrentUser();
+  if (current && current.id === userId) {
+    setCurrentUser({ ...current, verificationTier: tier });
+  }
 }
