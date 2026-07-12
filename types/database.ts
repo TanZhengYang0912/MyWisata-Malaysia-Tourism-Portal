@@ -48,6 +48,7 @@ export interface Database {
       outlet_managers: { Row: OutletManagerRow; Insert: Partial<OutletManagerRow>; Update: Partial<OutletManagerRow> };
       payments: { Row: PaymentRow; Insert: Partial<PaymentRow>; Update: Partial<PaymentRow> };
       payout_destinations: { Row: PayoutDestinationRow; Insert: Partial<PayoutDestinationRow>; Update: Partial<PayoutDestinationRow> };
+      wallet_transactions: { Row: WalletTransactionRow; Insert: Partial<WalletTransactionRow>; Update: Partial<WalletTransactionRow> };
     };
   };
 }
@@ -69,6 +70,8 @@ export interface UserRow {
   profile_completed_at: string | null;
   kyc_status: 'unverified' | 'pending' | 'approved' | 'rejected';
   status: 'active' | 'suspended' | 'deleted';
+  stripe_customer_id: string | null;
+  stripe_connect_account_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -288,6 +291,8 @@ export interface WalletRow {
   user_id: string;
   available_balance: number;
   pending_balance: number;
+  topup_sen: number;
+  earnings_sen: number;
   currency: string;
   updated_at: string;
 }
@@ -308,12 +313,28 @@ export interface WithdrawalRequestRow {
   user_id: string;
   wallet_id: string;
   destination_id: string | null;
+  destination_label: string | null;
   amount: number;
   status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed';
   requires_dual_approval: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface WalletTransactionRow {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  type: 'topup' | 'spend' | 'earnings' | 'withdrawal_reserve' | 'withdrawal_complete' | 'withdrawal_cancel';
+  amount_sen: number;
+  bucket: 'topup' | 'earnings';
+  direction: 'credit' | 'debit';
+  stripe_event_id: string | null;
+  stripe_ref: string | null;
+  withdrawal_id: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface WithdrawalApprovalRow {
