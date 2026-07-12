@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
-import { createServiceClient } from '@/lib/supabase/service';
 import type Stripe from 'stripe';
+
+// credit_topup is SECURITY DEFINER — anon role has execute (Postgres default).
+// Service role key is not required here; Stripe signature check is the auth gate.
+function makeDb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false } },
+  );
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
     }
 
-    const db = createServiceClient();
+    const db = makeDb();
     const { error } = await db.rpc('credit_topup', {
       p_user_id:         userId,
       p_amount_sen:      session.amount_total,  // Stripe MYR amount_total is already in sen

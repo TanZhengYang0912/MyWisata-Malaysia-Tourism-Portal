@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
-import { getWithdrawals, reviewWithdrawal } from "@/backend/domains/commerce";
+import { getWithdrawals } from "@/backend/domains/commerce";
 import { getUsers } from "@/backend/domains/identity";
 import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
@@ -14,36 +14,99 @@ export default function AdminWithdrawalsPage() {
   const { currentUser } = useAuth();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [users, setUsers] = useState<Map<string, User>>(new Map());
+  const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
     getWithdrawals().then(setWithdrawals);
     getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
   }, []);
 
-  async function review(w: WithdrawalRequest, approve: boolean) {
-    if (!currentUser) return;
-    const status = approve ? "approved" : "rejected";
-    await reviewWithdrawal(w.id, status);
-    await recordApproval({
-      actorId: currentUser.id,
-      action: approve ? "withdrawal.approve" : "withdrawal.reject",
-      targetType: "withdrawal",
-      targetId: w.id,
-      notifyUserId: w.userId,
-      notifyText: `Your withdrawal request of RM ${w.amount.toFixed(2)} was ${status}.`,
-      before: { status: w.status },
-      after: { status },
-    });
-    setWithdrawals((prev) => prev.map((x) => (x.id === w.id ? { ...x, status } : x)));
+  async function approve(w: WithdrawalRequest) {
+    if (!currentUser || loading) return;
+    setLoading(w.id);
+    try {
+      const res = await fetch(`/api/admin/withdrawals/${w.id}/approve`, { method: "POST" });
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert(json.error ?? "Approval failed");
+        return;
+      }
+
+      if (json.status === "pending_second_approval") {
+        alert(`First approval recorded (${json.approval_count}/2). Waiting for a second approver.`);
+        await recordApproval({
+          actorId:      currentUser.id,
+          action:       "withdrawal.approve",
+          targetType:   "withdrawal",
+          targetId:     w.id,
+          notifyUserId: w.userId,
+          notifyText:   `Your withdrawal of RM ${w.amount.toFixed(2)} has received first approval — awaiting second.`,
+          before: { status: w.status },
+          after:  { status: "pending" },
+        });
+        return;
+      }
+
+      // status === 'processing' — Stripe Transfer + Payout created
+      await recordApproval({
+        actorId:      currentUser.id,
+        action:       "withdrawal.approve",
+        targetType:   "withdrawal",
+        targetId:     w.id,
+        notifyUserId: w.userId,
+        notifyText:   `Your withdrawal of RM ${w.amount.toFixed(2)} has been approved and is being processed.`,
+        before: { status: w.status },
+        after:  { status: "processing" },
+      });
+      setWithdrawals((prev) =>
+        prev.map((x) => (x.id === w.id ? { ...x, status: "processing" } : x))
+      );
+    } finally {
+      setLoading(null);
+    }
   }
 
-  const pending = withdrawals.filter((w) => w.status === "pending");
+  async function reject(w: WithdrawalRequest) {
+    if (!currentUser || loading) return;
+    setLoading(w.id);
+    try {
+      const res = await fetch(`/api/admin/withdrawals/${w.id}/reject`, { method: "POST" });
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert(json.error ?? "Rejection failed");
+        return;
+      }
+
+      await recordApproval({
+        actorId:      currentUser.id,
+        action:       "withdrawal.reject",
+        targetType:   "withdrawal",
+        targetId:     w.id,
+        notifyUserId: w.userId,
+        notifyText:   `Your withdrawal request of RM ${w.amount.toFixed(2)} was rejected. Funds have been returned to your earnings balance.`,
+        before: { status: w.status },
+        after:  { status: "rejected" },
+      });
+      setWithdrawals((prev) =>
+        prev.map((x) => (x.id === w.id ? { ...x, status: "rejected" } : x))
+      );
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const pending  = withdrawals.filter((w) => w.status === "pending");
   const reviewed = withdrawals.filter((w) => w.status !== "pending");
 
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-1">Withdrawal Approvals</h1>
-      <p className="text-xs text-muted-foreground mb-6">Demo payouts — no real bank/e-wallet transfer occurs.</p>
+      <p className="text-xs text-muted-foreground mb-6">
+        Approve triggers a real Stripe Transfer + Payout to the vendor&apos;s Connect account.
+        Reject restores earnings to the user&apos;s wallet immediately.
+      </p>
 
       <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
@@ -55,20 +118,31 @@ export default function AdminWithdrawalsPage() {
           <div className="divide-y divide-border">
             {pending.map((w) => {
               const user = users.get(w.userId);
+              const busy = loading === w.id;
               return (
                 <div key={w.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-teal">{user?.avatarInitial ?? "?"}</div>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-teal">
+                    {user?.avatarInitial ?? "?"}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-foreground">{user?.name}</p>
                       {w.requiresDualApproval && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/25 text-[#B08020]">Dual Approval</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/25 text-[#B08020]">
+                          Dual Approval Required
+                        </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">{w.destination}</p>
                   </div>
-                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">RM {w.amount.toFixed(2)}</p>
-                  <ApproveRejectBar onApprove={() => review(w, true)} onReject={() => review(w, false)} />
+                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
+                    RM {w.amount.toFixed(2)}
+                  </p>
+                  <ApproveRejectBar
+                    onApprove={() => approve(w)}
+                    onReject={() => reject(w)}
+                    disabled={busy}
+                  />
                 </div>
               );
             })}
@@ -85,7 +159,9 @@ export default function AdminWithdrawalsPage() {
             const user = users.get(w.userId);
             return (
               <div key={w.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">{user?.name} — RM {w.amount.toFixed(2)}</p>
+                <p className="text-sm text-foreground">
+                  {user?.name} — RM {w.amount.toFixed(2)}
+                </p>
                 <StatusBadge status={w.status} />
               </div>
             );

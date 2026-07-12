@@ -60,6 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_wallet_txn_user
 
 ALTER TABLE wallet_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "wallet_txn_read_own_or_admin" ON wallet_transactions;
 CREATE POLICY "wallet_txn_read_own_or_admin"
   ON wallet_transactions FOR SELECT
   USING (user_id = auth.uid() OR is_admin(auth.uid()));

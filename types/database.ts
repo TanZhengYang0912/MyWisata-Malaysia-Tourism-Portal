@@ -315,9 +315,11 @@ export interface WithdrawalRequestRow {
   destination_id: string | null;
   destination_label: string | null;
   amount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'failed';
   requires_dual_approval: boolean;
   notes: string | null;
+  stripe_transfer_id: string | null;
+  stripe_payout_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -14,7 +14,9 @@ const DESTINATIONS = ["Maybank", "CIMB", "Public Bank", "Touch 'n Go eWallet", "
 function WalletContent() {
   const { currentUser } = useAuth();
   const searchParams = useSearchParams();
-  const topupSuccess = searchParams.get("topup") === "success";
+  const topupSuccess   = searchParams.get("topup")   === "success";
+  const connectSuccess = searchParams.get("connect") === "success";
+  const connectRefresh = searchParams.get("connect") === "refresh";
 
   const [buckets, setBuckets]       = useState<{ topup: number; earnings: number } | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
@@ -83,9 +85,10 @@ function WalletContent() {
     }
   }
 
-  const totalBalance   = (buckets?.topup ?? 0) + (buckets?.earnings ?? 0);
-  const pending        = (withdrawals ?? []).filter((w) => w.status === "pending");
-  const history        = (withdrawals ?? []).filter((w) => w.status !== "pending");
+  const totalBalance = (buckets?.topup ?? 0) + (buckets?.earnings ?? 0);
+  const pending      = (withdrawals ?? []).filter((w) => w.status === "pending");
+  const processing   = (withdrawals ?? []).filter((w) => w.status === "processing");
+  const history      = (withdrawals ?? []).filter((w) => !["pending", "processing"].includes(w.status));
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -94,11 +97,23 @@ function WalletContent() {
         <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">My Wallet</h1>
       </div>
 
-      {/* Top-up success banner */}
+      {/* Banners */}
       {topupSuccess && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>Top-up initiated! Your balance will update once the payment clears (usually within a minute).</span>
+        </div>
+      )}
+      {connectSuccess && (
+        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>Bank account linked successfully! You can now receive withdrawal payouts.</span>
+        </div>
+      )}
+      {connectRefresh && (
+        <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-3 text-amber-800 text-sm">
+          <Clock size={16} className="shrink-0" />
+          <span>Bank account setup was not completed. Please try again.</span>
         </div>
       )}
 
@@ -224,21 +239,26 @@ function WalletContent() {
         </form>
       )}
 
-      {/* Pending withdrawals */}
-      {pending.length > 0 && (
+      {/* Pending + processing withdrawals */}
+      {(pending.length > 0 || processing.length > 0) && (
         <div className="rounded-2xl overflow-hidden border border-border bg-card mb-4">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
             <Clock size={14} className="text-accent" />
-            <h2 className="font-bold text-foreground text-sm">Pending ({pending.length})</h2>
+            <h2 className="font-bold text-foreground text-sm">
+              In Progress ({pending.length + processing.length})
+            </h2>
           </div>
           <div className="divide-y divide-border">
-            {pending.map((w) => (
+            {[...pending, ...processing].map((w) => (
               <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{w.destination}</p>
                   <p className="text-xs text-muted-foreground">{new Date(w.createdAt).toLocaleDateString("en-MY")}</p>
                 </div>
-                <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
+                <div className="text-right">
+                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
+                  <StatusBadge status={w.status} />
+                </div>
               </div>
             ))}
           </div>
@@ -259,10 +279,12 @@ function WalletContent() {
             {history.map((w) => (
               <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  {w.status === "approved" ? (
+                  {w.status === "completed" || w.status === "approved" ? (
                     <CheckCircle2 size={16} className="text-primary shrink-0" />
-                  ) : (
+                  ) : w.status === "failed" || w.status === "rejected" ? (
                     <XCircle size={16} className="text-destructive shrink-0" />
+                  ) : (
+                    <Clock size={16} className="text-accent shrink-0" />
                   )}
                   <div>
                     <p className="text-sm text-foreground">{w.destination}</p>
