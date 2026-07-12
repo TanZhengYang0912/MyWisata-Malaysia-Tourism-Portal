@@ -35,8 +35,14 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const filter = normalizeFilter(params?.filter);
   const data = await getVendorDashboardData(filter);
   if (!data) redirect('/login');
+  const isOutletManager = data.role === 'outlet_manager';
 
-  const stats = [
+  const stats = isOutletManager ? [
+    { label: 'Orders to fulfil', value: data.stats.pendingOrders.toLocaleString(), note: 'Assigned outlet operations', icon: ShoppingBag, tone: 'blue' },
+    { label: 'Booking activity', value: data.stats.bookingItems.toLocaleString(), note: 'Bookings in this period', icon: CalendarDays, tone: 'teal' },
+    { label: 'Active listings', value: data.stats.activeProducts.toLocaleString(), note: 'View-only catalogue', icon: Compass, tone: 'amber' },
+    { label: 'Outlet scope', value: data.stats.activeOutlets.toLocaleString(), note: 'Your assigned outlet', icon: MapPinned, tone: 'rose' },
+  ] : [
     { label: 'Total revenue', value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: 'Total orders', value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: 'Active listings', value: data.stats.activeProducts.toLocaleString(), note: 'Published products and experiences', icon: Compass, tone: 'amber' },
@@ -49,11 +55,11 @@ export default async function VendorDashboard({ searchParams }: Props) {
       <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700"><Landmark size={15} /> Malaysia tourism partner portal</div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-950">Overview</h1>
-          <p className="mt-1 text-sm text-gray-500">Here&apos;s what&apos;s happening with <span className="font-semibold text-gray-800">{data.vendor.name}</span> today.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-950">{isOutletManager ? 'Outlet operations' : 'Overview'}</h1>
+          <p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Keep your assigned outlet moving today.' : <>Here&apos;s what&apos;s happening with <span className="font-semibold text-gray-800">{data.vendor.name}</span> today.</>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <DashboardFilterControl />
+          {!isOutletManager && <DashboardFilterControl />}
           <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>Live</div>
         </div>
       </header>
@@ -69,12 +75,12 @@ export default async function VendorDashboard({ searchParams }: Props) {
         ))}
       </section>
 
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {!isOutletManager && <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
         <OutletPieChart data={data.salesByOutlet} total={data.totalOutletSales} />
-      </section>
+      </section>}
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      {!isOutletManager && <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top selling products</h2><p className="mt-1 text-sm text-gray-500">Based on paid order quantity</p></div><Utensils className="text-emerald-700" size={20} /></div>
           <div className="divide-y divide-gray-100">{data.topSelling.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-emerald-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind={item.name.toLowerCase().includes('food') ? 'food' : 'product'} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.quantity} units sold</p></div><div className="text-right"><p className="text-sm font-bold text-gray-900">{formatRM(item.revenue)}</p><p className="mt-1 text-[11px] text-gray-400">Revenue</p></div></div>)}{!data.topSelling.length && <div className="px-4 py-10 text-center text-gray-400">No paid products in this period.</div>}</div>
@@ -84,17 +90,17 @@ export default async function VendorDashboard({ searchParams }: Props) {
           <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top rated experiences</h2><p className="mt-1 text-sm text-gray-500">Visible activity and experience reviews</p></div><Landmark className="text-amber-600" size={20} /></div>
           <div className="divide-y divide-gray-100">{data.topRated.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-amber-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind="experience" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.reviews} traveller reviews</p></div><div className="text-right"><p className="text-sm font-bold text-amber-600">★ {item.rating.toFixed(1)}</p><p className="mt-1 text-[11px] text-gray-400">Rating</p></div></div>)}{!data.topRated.length && <div className="px-4 py-10 text-center text-gray-400">No experience reviews yet.</div>}</div>
         </div>
-      </section>
+      </section>}
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">Latest orders across your Malaysian outlets</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100">View all <ArrowRight size={15} /></Link></div>
+        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Latest orders for your assigned outlet' : 'Latest orders across your Malaysian outlets'}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100">View all <ArrowRight size={15} /></Link></div>
         <RecentTransactions items={data.recentTransactions} />
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><CalendarDays className="text-emerald-700" /><div><p className="text-sm font-semibold text-gray-900">Booking activity</p><p className="text-xs text-gray-500">{data.stats.bookingItems} items in this period</p></div></Link>
         <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><Compass className="text-sky-700" /><div><p className="text-sm font-semibold text-gray-900">Manage listings</p><p className="text-xs text-gray-500">Keep your experiences current</p></div></Link>
-        <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><TicketPercent className="text-amber-700" /><div><p className="text-sm font-semibold text-gray-900">Voucher campaigns</p><p className="text-xs text-gray-500">Create offers for travellers</p></div></Link>
+        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><TicketPercent className="text-amber-700" /><div><p className="text-sm font-semibold text-gray-900">Voucher campaigns</p><p className="text-xs text-gray-500">Create offers for travellers</p></div></Link>}
       </div>
     </div>
   );

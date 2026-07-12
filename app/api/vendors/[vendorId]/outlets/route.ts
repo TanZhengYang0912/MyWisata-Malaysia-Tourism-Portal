@@ -2,22 +2,18 @@
 // GET /api/vendors/[vendorId]/outlets — list outlets
 // POST /api/vendors/[vendorId]/outlets — create outlet
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: vendor } = await authDb.from('vendors').select('id,owner_id,status').eq('id', vendorId).maybeSingle();
-  if (!vendor || vendor.owner_id !== user.id || vendor.status !== 'approved') return apiFail('FORBIDDEN', 'You cannot view this vendor outlets list', 403);
-  const { createServiceClient } = await import('@/lib/supabase/service');
-  const supabase = createServiceClient() as any;
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(24, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
@@ -28,14 +24,13 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('outlets')
-    .select('id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,status,created_at,outlet_pages(hero_url,brand_colour),products(count)', { count: 'exact' })
-    .eq('vendor_id', vendorId)
+    .select('id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email))', { count: 'exact' })
+    .in('id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (q) {
     const safeQ = q.replace(/[%(),]/g, ' ');
-    const uuidQ = /^[0-9a-f-]{36}$/i.test(q);
-    query = uuidQ ? query.or(`id.eq.${q},name.ilike.%${safeQ}%,city.ilike.%${safeQ}%`) : query.or(`name.ilike.%${safeQ}%,city.ilike.%${safeQ}%`);
+    query = query.or(`display_id.ilike.%${safeQ}%,name.ilike.%${safeQ}%,city.ilike.%${safeQ}%`);
   }
   if (state) query = query.eq('state', state);
   if (status) query = query.eq('status', status);
@@ -43,24 +38,24 @@ export async function GET(request: Request, { params }: Props) {
 
   const [{ data, error, count }, { data: stateRows, error: stateError }] = await Promise.all([
     query,
-    supabase.from('outlets').select('state').eq('vendor_id', vendorId).not('state', 'is', null).order('state'),
+    supabase.from('outlets').select('state').in('id', access.access.outletIds.length ? access.access.outletIds : ['none']).not('state', 'is', null).order('state'),
   ]);
   if (error || stateError) return apiFail('DB_ERROR', (error || stateError).message, 500);
   const items = (data ?? []).map((outlet: any) => {
     const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
-    return { ...outlet, coverUrl: outletPage?.hero_url || null, productsCount: outlet.products?.[0]?.count ?? 0 };
+    const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;
+    const manager = Array.isArray(assignment?.users) ? assignment.users[0] : assignment?.users;
+    return { ...outlet, coverUrl: outletPage?.hero_url || null, productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null };
   });
   return apiOk({ items, availableStates: [...new Set((stateRows || []).map((row: any) => row.state))], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const supabase = await createClient();
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Verify vendor ownership
   const { data: vendor } = await supabase
     .from('vendors')
     .select('id, owner_id, status')
@@ -68,7 +63,6 @@ export async function POST(request: Request, { params }: Props) {
     .single();
 
   if (!vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-  if (vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
   if (vendor.status !== 'approved') return apiFail('INVALID_STATE', 'Vendor not approved', 400);
 
   const parsed = await parseBody(request, outletCreateSchema);
@@ -91,6 +85,8 @@ export async function POST(request: Request, { params }: Props) {
     phone: body.phone ?? null,
     email: body.email || null,
     operating_hours: body.operatingHours ?? null,
+    status: 'inactive',
+    review_status: 'pending_review',
   }).select().single();
 
   if (error) return apiFail('DB_ERROR', error.message, 400);

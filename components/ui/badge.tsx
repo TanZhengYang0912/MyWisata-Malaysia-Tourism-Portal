@@ -55,6 +55,7 @@ const COLOURS: Record<string, string> = {
   pending:         'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
   pending_payment: 'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
   pending_approval:'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
+  pending_review:  'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
   processing:      'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
   open:            'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
   in_progress:     'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400',
@@ -64,6 +65,7 @@ const COLOURS: Record<string, string> = {
   archived:        'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
   closed:          'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
   rejected:        'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
+  change_requested:'bg-orange-100 text-orange-700 border-transparent dark:bg-orange-900/30 dark:text-orange-400',
   cancelled:       'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
   failed:          'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
   full:            'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
@@ -75,4 +77,3 @@ export function StatusBadge({ status }: { status: string }) {
   const colorClass = COLOURS[status] ?? 'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400';
   return <Badge className={colorClass}>{label}</Badge>;
 }
-

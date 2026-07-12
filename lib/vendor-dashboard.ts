@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import type { RecentOrder } from '@/components/vendor/recent-transactions';
+import { outletLocation, outletShortName } from '@/lib/outlet-display';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m';
 
@@ -19,14 +20,15 @@ type DashboardRow = {
   status?: string;
   name?: string;
   city?: string | null;
+  state?: string | null;
   cover_url?: string | null;
   product_type?: string | null;
   requires_booking?: boolean | null;
   rating?: number;
-  orders?: { status?: string | null };
+  orders?: { display_id?: string | null; status?: string | null };
 };
 
-type RecentOrderDraft = RecentOrder & { fulfil_statuses: string[] };
+type RecentOrderDraft = RecentOrder & { display_id?: string | null; fulfil_statuses: string[] };
 
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
 
@@ -100,10 +102,37 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return null;
 
-  const { data: vendors, error: vendorError } = await authDb
+  const { data: ownedVendors, error: vendorError } = await authDb
     .from('vendors').select('id,name,status').eq('owner_id', user.id).eq('status', 'approved').limit(1);
   if (vendorError) throw vendorError;
-  const vendor = vendors?.[0];
+  let vendor = ownedVendors?.[0];
+  let role: 'vendor_owner' | 'outlet_manager' = 'vendor_owner';
+  let scopedOutletIds: string[] | null = null;
+
+  if (!vendor) {
+    const { data: assignments, error: assignmentError } = await authDb
+      .from('outlet_managers')
+      .select('outlet_id,outlets(vendor_id)')
+      .eq('user_id', user.id);
+    if (assignmentError) throw assignmentError;
+    const managerAssignments = assignments || [];
+    const managerVendorIds = [...new Set(managerAssignments.map((assignment: any) => {
+      const outlet = Array.isArray(assignment.outlets) ? assignment.outlets[0] : assignment.outlets;
+      return outlet?.vendor_id;
+    }).filter(Boolean))];
+    const managerVendorId = managerVendorIds[0];
+    if (managerVendorId) {
+      const { data: managerVendors, error: managerVendorError } = await authDb
+        .from('vendors').select('id,name,status').eq('id', managerVendorId).eq('status', 'approved').limit(1);
+      if (managerVendorError) throw managerVendorError;
+      vendor = managerVendors?.[0];
+      role = 'outlet_manager';
+      scopedOutletIds = managerAssignments.filter((assignment: any) => {
+        const outlet = Array.isArray(assignment.outlets) ? assignment.outlets[0] : assignment.outlets;
+        return outlet?.vendor_id === managerVendorId && assignment.outlet_id;
+      }).map((assignment: any) => assignment.outlet_id);
+    }
+  }
   if (!vendor) return null;
 
   // The checked-in orders RLS policy joins back to order_items. Querying the
@@ -115,25 +144,30 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   const { data: outlets, error: outletError } = await db
     .from('outlets').select('id,name,city,state,status').eq('vendor_id', vendor.id).order('name');
   if (outletError) throw outletError;
-  const outletRows = (outlets || []) as unknown as DashboardRow[];
+  const outletRows = ((scopedOutletIds ? (outlets || []).filter((outlet: any) => scopedOutletIds?.includes(outlet.id)) : outlets || [])) as unknown as DashboardRow[];
   const outletIds = outletRows.map((outlet) => outlet.id);
   const { now, start, previousStart, previousEnd } = rangeFor(filter);
 
-  const [itemsResult, productsResult, reviewsResult] = await Promise.all([
+  const [itemsResult, productsResult, reviewsResult, pendingResult] = await Promise.all([
     outletIds.length
-      ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(status,total_amount,created_at,paid_at,completed_at)').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
+      ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,total_amount,created_at,paid_at,completed_at)').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
-    db.from('products').select('id,name,base_price,product_type,status,outlet_id,cover_url').eq('vendor_id', vendor.id),
+    db.from('products').select('id,name,base_price,product_type,status,outlet_id,cover_url').eq('vendor_id', vendor.id).in('outlet_id', outletIds.length ? outletIds : ['none']),
     db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true),
+    outletIds.length
+      ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
+      : Promise.resolve({ data: [], error: null })
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;
   if (reviewsResult.error) throw reviewsResult.error;
+  if (pendingResult.error) throw pendingResult.error;
 
   const allItems = (itemsResult.data || []) as DashboardRow[];
   const currentItems = allItems.filter((item) => new Date(item.created_at) >= start);
   const previousItems = allItems.filter((item) => new Date(item.created_at) >= previousStart && new Date(item.created_at) < previousEnd);
   const currentOrderIds = new Set(currentItems.map((item) => item.order_id));
+  const pendingOrdersCount = new Set((pendingResult.data || []).map((item: any) => item.order_id)).size;
   const previousOrderIds = new Set(previousItems.map((item) => item.order_id));
   const products = (productsResult.data || []) as unknown as DashboardRow[];
   const reviews = (reviewsResult.data || []) as unknown as DashboardRow[];
@@ -141,14 +175,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   // Strip the vendor brand prefix from each outlet name to get a unique location label.
   // e.g. "Rasa Malaysia — Ipoh Old Town" → "Ipoh Old Town"
   // Falls back to city or the full name if no dash separator is found.
-  const vendorPrefix = `${vendor.name} — `;
-  const rawShortNames = outletRows.map((outlet) => {
-    const name: string = outlet.name || '';
-    const shortName = name.startsWith(vendorPrefix)
-      ? name.slice(vendorPrefix.length).trim()
-      : (outlet.city as string) || name;
-    return { id: outlet.id, shortName };
-  });
+  const rawShortNames = outletRows.map((outlet) => ({ id: outlet.id, shortName: outletShortName(outlet.name, vendor.name) }));
   // Disambiguate duplicates: if two outlets resolve to the same label, append (2), (3) …
   const seenCounts = new Map<string, number>();
   const outletShortNames = Object.fromEntries(
@@ -158,6 +185,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
       return [id, count === 1 ? shortName : `${shortName} (${count})`];
     }),
   );
+  const outletLocations = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outletLocation(outlet.city, outlet.state)]));
   const productNames = Object.fromEntries(products.map((product) => [product.id, product.name]));
   const productById = Object.fromEntries(products.map((product) => [product.id, product]));
 
@@ -206,9 +234,9 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
 
   const recentOrderMap = new Map<string, RecentOrderDraft>();
   for (const item of currentItems) {
-    const itemWithNames = { ...item, outlet_name: outletNames[item.outlet_id] || 'Unknown outlet', order_status: item.orders?.status || 'unknown' };
+    const itemWithNames = { ...item, outlet_name: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet', outlet_location: outletLocations[item.outlet_id] || 'Malaysia', order_status: item.orders?.status || 'unknown' };
     if (!recentOrderMap.has(item.order_id)) {
-      recentOrderMap.set(item.order_id, { order_id: item.order_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, quantity: 0, item_count: 0, product_name: item.product_name, outlet_name: itemWithNames.outlet_name, fulfil_status: 'pending', fulfil_statuses: [], items: [] });
+      recentOrderMap.set(item.order_id, { order_id: item.order_id, display_id: item.orders?.display_id, created_at: item.created_at, order_status: itemWithNames.order_status, order_total: 0, quantity: 0, item_count: 0, product_name: item.product_name, outlet_name: itemWithNames.outlet_name, outlet_id: item.outlet_id, outlet_location: itemWithNames.outlet_location, fulfil_status: 'pending', fulfil_statuses: [], items: [] });
     }
     const order = recentOrderMap.get(item.order_id)!;
     order.created_at = new Date(item.created_at) > new Date(order.created_at) ? item.created_at : order.created_at;
@@ -216,7 +244,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
     order.quantity += number(item.quantity);
     order.item_count += 1;
     order.fulfil_statuses.push(item.fulfil_status);
-    order.items.push({ id: item.id, product_name: item.product_name, quantity: item.quantity, line_total: item.line_total, fulfil_status: item.fulfil_status, outlet_name: itemWithNames.outlet_name });
+    order.items.push({ id: item.id, product_name: item.product_name, quantity: item.quantity, line_total: item.line_total, fulfil_status: item.fulfil_status, outlet_name: itemWithNames.outlet_name, outlet_id: item.outlet_id, outlet_location: itemWithNames.outlet_location });
   }
   const recentTransactions = [...recentOrderMap.values()]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -235,11 +263,14 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
 
   return {
     vendor,
+    role,
+    outletId: role === 'outlet_manager' ? outletIds[0] || null : null,
     filter,
     range: { start: start.toISOString(), end: now.toISOString() },
     stats: {
       totalRevenue: Math.round(totalRevenue * 100) / 100,
       totalOrders: currentOrderIds.size,
+      pendingOrders: pendingOrdersCount,
       activeProducts,
       activeOutlets,
       bookingItems,

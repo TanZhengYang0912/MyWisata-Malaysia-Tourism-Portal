@@ -5,7 +5,7 @@ import { MessageCircle, Send, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/use-auth';
 
-interface Thread { id: string; status: string; last_message_at: string | null; customer?: { full_name?: string; email?: string }; outlets?: { name?: string }; chat_messages?: Message[] }
+interface Thread { id: string; status: string; last_message_at: string | null; customer?: { full_name?: string; email?: string }; outlets?: { id?: string; name?: string; city?: string; state?: string }; chat_messages?: Message[] }
 interface Message { id: string; sender_id: string; body: string; created_at: string }
 
 export default function VendorInboxPage() {

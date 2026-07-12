@@ -1,37 +1,36 @@
 // P2 — Member 2: Voucher CRUD (B3)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
+import { outletShortName } from '@/lib/outlet-display';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: vendor } = await authDb.from('vendors').select('owner_id,status').eq('id', vendorId).maybeSingle();
-  if (!vendor || vendor.owner_id !== user.id || vendor.status !== 'approved') return apiFail('FORBIDDEN', 'You cannot view this vendor vouchers list', 403);
-  const { createServiceClient } = await import('@/lib/supabase/service');
-  const supabase = createServiceClient() as any;
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
   const q = (url.searchParams.get('q') || '').trim().replace(/[%(),]/g, ' ');
   const statusFilter = url.searchParams.get('status') || 'all';
 
-  let query = supabase.from('vouchers').select('*, outlets(name)', { count: 'exact' }).eq('vendor_id', vendorId).order('created_at', { ascending: false });
+  let query = supabase.from('vouchers').select('*, outlets(id,name,city,state)', { count: 'exact' }).eq('vendor_id', vendorId).order('created_at', { ascending: false });
+  if (access.access.isOutletManager) query = query.in('outlet_id', access.access.outletIds);
   if (q) query = query.or(`code.ilike.%${q}%,name.ilike.%${q}%`);
   const { data, error } = await query;
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const now = Date.now();
   const withStatus = (data ?? []).map((voucher: any) => {
+    if (voucher.review_status && voucher.review_status !== 'approved') return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status: voucher.review_status };
     const validFrom = voucher.valid_from ? new Date(voucher.valid_from).getTime() : null;
     const validUntil = voucher.valid_until ? new Date(voucher.valid_until).getTime() : null;
     const status = !voucher.is_active ? 'inactive' : validFrom && validFrom > now ? 'scheduled' : validUntil && validUntil < now ? 'expired' : voucher.max_uses && voucher.uses_count >= voucher.max_uses ? 'expired' : 'active';
-    return { ...voucher, status };
+    return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status };
   }).filter((voucher: any) => statusFilter === 'all' || voucher.status === statusFilter);
   const start = (page - 1) * pageSize;
   const items = withStatus.slice(start, start + pageSize);
@@ -44,17 +43,16 @@ export async function GET(request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   const { data: vendor } = await supabase
     .from('vendors')
     .select('owner_id, status')
     .eq('id', vendorId)
     .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  if (!vendor) return apiFail('FORBIDDEN', 'Not your vendor', 403);
   if (vendor.status !== 'approved') return apiFail('INVALID_STATE', 'Vendor not approved', 400);
 
   const parsed = await parseBody(request, voucherCreateSchema);
@@ -83,7 +81,8 @@ export async function POST(request: Request, { params }: Props) {
     max_uses: body.maxUses ?? null,
     valid_from: body.validFrom ?? null,
     valid_until: body.validUntil ?? null,
-    is_active: true,
+    is_active: false,
+    review_status: 'pending_review',
   }).select().single();
 
   if (error) {

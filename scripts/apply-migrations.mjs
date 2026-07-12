@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * One-shot migration runner: drops public schema and re-applies all 8 migrations.
+ * One-shot migration runner: drops public schema and re-applies all migrations.
  * Run with: node scripts/apply-migrations.mjs
  */
 
@@ -10,7 +10,22 @@ import path from 'node:path';
 
 const { Client } = pg;
 
-const CONNECTION_STRING = 'postgresql://postgres.ncdlaehknicabzjqskvk:ChunJie0213@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres';
+for (const filename of ['.env.local', '.env']) {
+  const filepath = path.resolve(process.cwd(), filename);
+  if (!fs.existsSync(filepath)) continue;
+  const content = fs.readFileSync(filepath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.trim().match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
+    if (match && !process.env[match[1]]) process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+  }
+  break;
+}
+
+const CONNECTION_STRING = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+if (!CONNECTION_STRING) {
+  console.error('❌ Missing SUPABASE_DB_URL or DATABASE_URL. Refusing to connect without an explicit environment variable.');
+  process.exit(1);
+}
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'supabase/migrations');
 const MIGRATION_FILES = [
@@ -22,6 +37,11 @@ const MIGRATION_FILES = [
   '006_fix_default_grants.sql',
   '007_public_read_policies.sql',
   '008_vendor_realtime_and_chat_policies.sql',
+  '009_outlet_manager_one_to_one.sql',
+  '010_allow_auth_user_profile_defaults.sql',
+  '011_add_display_ids.sql',
+  '012_add_booking_display_ids.sql',
+  '013_content_review_workflow.sql',
 ];
 
 async function run() {

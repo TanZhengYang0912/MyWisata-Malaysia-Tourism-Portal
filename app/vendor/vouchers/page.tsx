@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 
-interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { name?: string } | null }
+interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 const statuses = ['all', 'active', 'scheduled', 'inactive', 'expired'];
 

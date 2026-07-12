@@ -27,13 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
     const { data: row, error } = await supabase
       .from("users")
-      .select("id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name))")
+      .select("id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
     if (error) throw error;
 
-    const assignment = row?.user_roles?.[0];
+    const assignments = row?.user_roles ?? [];
+    const assignment = assignments.find((item: any) => {
+      const role = Array.isArray(item.roles) ? item.roles[0] : item.roles;
+      return role?.name === 'vendor_owner';
+    }) ?? assignments[0];
     const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
+    const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
+    const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
     const name = row?.full_name ?? row?.email ?? "User";
     const user: User | null = row ? {
       id: row.id,
@@ -44,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       city: row.city ?? undefined,
       phone: row.phone ?? undefined,
       verificationTier: row.kyc_status as User["verificationTier"],
-      vendorId: assignment?.vendor_id ?? undefined,
+      vendorId: vendorId ?? undefined,
       outletId: assignment?.outlet_id ?? undefined,
     } : null;
     setCurrentUser(user ?? null);

@@ -17,6 +17,7 @@ export interface AuthUser {
   roles: RoleName[];
   activeVendorId: string | null;
   activeOutletIds: string[];
+  activeOutletName?: string | null;
 }
 
 // ── Catalogue DTO (P2 → used by P3 discovery & P4 cart) ─────

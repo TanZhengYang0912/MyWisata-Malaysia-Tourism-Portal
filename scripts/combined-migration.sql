@@ -303,6 +303,23 @@ CREATE TABLE outlet_managers (
   UNIQUE (outlet_id, user_id)
 );
 
+-- Outlet ownership: one primary operator per outlet and one outlet per manager.
+INSERT INTO public.outlet_managers (user_id, outlet_id)
+SELECT ur.user_id, ur.outlet_id
+FROM public.user_roles ur
+JOIN public.roles r ON r.id = ur.role_id
+WHERE r.name = 'outlet_manager' AND ur.outlet_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM public.outlet_managers om WHERE om.user_id = ur.user_id OR om.outlet_id = ur.outlet_id)
+ON CONFLICT DO NOTHING;
+
+CREATE UNIQUE INDEX IF NOT EXISTS outlet_managers_one_manager_per_outlet
+  ON public.outlet_managers (outlet_id);
+CREATE UNIQUE INDEX IF NOT EXISTS outlet_managers_one_outlet_per_manager
+  ON public.outlet_managers (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS user_roles_one_outlet_manager_assignment
+  ON public.user_roles (user_id, role_id)
+  WHERE outlet_id IS NOT NULL;
+
 -- [P2-core] Products and activities
 CREATE TABLE products (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2287,5 +2304,3 @@ BEGIN
   EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages';
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
-
-

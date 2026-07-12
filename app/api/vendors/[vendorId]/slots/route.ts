@@ -1,20 +1,17 @@
 // P2 — Member 2: Booking slot CRUD (B3)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { slotCreateSchema } from '@/lib/validation/vendor-schemas';
+import { outletShortName } from '@/lib/outlet-display';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: vendor } = await authDb.from('vendors').select('owner_id,status').eq('id', vendorId).maybeSingle();
-  if (!vendor || vendor.owner_id !== user.id || vendor.status !== 'approved') return apiFail('FORBIDDEN', 'You cannot view this vendor slots list', 403);
-  const { createServiceClient } = await import('@/lib/supabase/service');
-  const supabase = createServiceClient() as any;
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
   const request = _request;
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
@@ -23,25 +20,25 @@ export async function GET(_request: Request, { params }: Props) {
   const status = url.searchParams.get('status');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const outletId = url.searchParams.get('outletId');
+  const productId = url.searchParams.get('productId');
 
   // Get vendor outlets
-  const { data: outlets } = await supabase
-    .from('outlets')
-    .select('id')
-    .eq('vendor_id', vendorId);
-  const outletIds = (outlets ?? []).map((o: any) => o.id);
+  const outletIds = access.access.outletIds;
 
   let query = supabase
     .from('booking_slots')
-    .select('id,product_id,outlet_id,starts_at,ends_at,capacity,booked,price_override,status,products(name,base_price,cover_url),outlets(name,city,state)', { count: 'exact' })
+    .select('id,product_id,outlet_id,starts_at,ends_at,capacity,booked,price_override,status,products(name,base_price,cover_url),outlets(id,name,city,state)', { count: 'exact' })
     .in('outlet_id', outletIds.length ? outletIds : ['none']);
+  if (outletId && outletIds.includes(outletId)) query = query.eq('outlet_id', outletId);
+  if (productId) query = query.eq('product_id', productId);
   if (status && status !== 'all') query = query.eq('status', status);
   if (from) query = query.gte('starts_at', from);
   if (to) query = query.lte('starts_at', to);
   if (q) {
     const [{ data: productMatches }, { data: outletMatches }] = await Promise.all([
       supabase.from('products').select('id').eq('vendor_id', vendorId).or(`name.ilike.%${q}%,slug.ilike.%${q}%`).limit(100),
-      supabase.from('outlets').select('id').eq('vendor_id', vendorId).or(`name.ilike.%${q}%,city.ilike.%${q}%`).limit(100),
+      supabase.from('outlets').select('id').in('id', outletIds.length ? outletIds : ['none']).or(`name.ilike.%${q}%,city.ilike.%${q}%`).limit(100),
     ]);
     const conditions = [
       ...((productMatches || []).map((item: any) => `product_id.eq.${item.id}`)),
@@ -53,26 +50,23 @@ export async function GET(_request: Request, { params }: Props) {
   const { data, error, count } = await query.order('starts_at').range((page - 1) * pageSize, page * pageSize - 1);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk({ items: data ?? [], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
+  const items = (data ?? []).map((slot: any) => ({ ...slot, outlets: slot.outlets ? { ...slot.outlets, full_name: slot.outlets.name, name: outletShortName(slot.outlets.name) } : slot.outlets }));
+  return apiOk({ items, pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   const parsed = await parseBody(request, slotCreateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+
+  if (!access.access.outletIds.includes(body.outletId)) {
+    return apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403);
+  }
 
   // Verify product requires booking and belongs to vendor
   const { data: product } = await supabase
@@ -80,6 +74,7 @@ export async function POST(request: Request, { params }: Props) {
     .select('id, requires_booking')
     .eq('id', body.productId)
     .eq('vendor_id', vendorId)
+    .eq('outlet_id', body.outletId)
     .single();
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
   if (!product.requires_booking) {

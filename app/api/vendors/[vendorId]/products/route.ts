@@ -2,22 +2,19 @@
 // GET /api/vendors/[vendorId]/products — list products
 // POST /api/vendors/[vendorId]/products — create product + default variant
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
+import { outletShortName } from '@/lib/outlet-display';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: vendor } = await authDb.from('vendors').select('id,owner_id,status').eq('id', vendorId).maybeSingle();
-  if (!vendor || vendor.owner_id !== user.id || vendor.status !== 'approved') return apiFail('FORBIDDEN', 'You cannot view this vendor catalogue', 403);
-  const { createServiceClient } = await import('@/lib/supabase/service');
-  const supabase = createServiceClient() as any;
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(24, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
@@ -30,8 +27,9 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('products')
-    .select('id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,outlet_id,created_at,tags,outlets(name,city,state),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved))', { count: 'exact' })
+    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,outlets(id,display_id,name,city,state),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved))', { count: 'exact' })
     .eq('vendor_id', vendorId)
+    .in('outlet_id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (outletId) query = query.eq('outlet_id', outletId);
@@ -40,8 +38,8 @@ export async function GET(request: Request, { params }: Props) {
   if (productType) query = query.eq('product_type', productType);
   if (q) {
     const safeQ = q.replace(/[%(),]/g, ' ');
-    const uuidQ = /^[0-9a-f-]{36}$/i.test(q);
-    query = uuidQ ? query.or(`id.eq.${q},name.ilike.%${safeQ}%,slug.ilike.%${safeQ}%`) : query.or(`name.ilike.%${safeQ}%,slug.ilike.%${safeQ}%`);
+    // We now have a true database display_id, so we can natively search it!
+    query = query.or(`display_id.ilike.%${safeQ}%,name.ilike.%${safeQ}%,slug.ilike.%${safeQ}%`);
   }
   query = query.order(sort === 'name' ? 'name' : sort === 'price_low' ? 'base_price' : 'created_at', { ascending: sort === 'name' || sort === 'price_low' });
 
@@ -49,7 +47,7 @@ export async function GET(request: Request, { params }: Props) {
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const items = (data ?? []).map((product: any) => ({
     ...product,
-    outlet: product.outlets,
+    outlet: product.outlets ? { ...product.outlets, full_name: product.outlets.name, name: outletShortName(product.outlets.name) } : product.outlets,
     variants: product.product_variants ?? [],
     availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Number(variant.inventory?.[0]?.quantity ?? 0), 0),
   }));
@@ -58,12 +56,10 @@ export async function GET(request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const supabase = await createClient();
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Verify vendor ownership
   const { data: vendor } = await supabase
     .from('vendors')
     .select('id, owner_id, status')
@@ -71,7 +67,6 @@ export async function POST(request: Request, { params }: Props) {
     .single();
 
   if (!vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-  if (vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
   if (vendor.status !== 'approved') return apiFail('INVALID_STATE', 'Vendor not approved', 400);
 
   const parsed = await parseBody(request, productCreateSchema);
@@ -102,7 +97,8 @@ export async function POST(request: Request, { params }: Props) {
     base_price: body.basePrice,
     cover_url: body.coverUrl || null,
     tags: body.tags ?? null,
-    status: 'active',
+    status: 'inactive',
+    review_status: 'pending_review',
   }).select().single();
 
   if (prodErr) return apiFail('DB_ERROR', prodErr.message, 400);

@@ -1,28 +1,23 @@
 // P2 — Member 2: Single slot PATCH/DELETE (B3)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { slotUpdateSchema } from '@/lib/validation/vendor-schemas';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string; slotId: string }> }
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, slotId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   const parsed = await parseBody(request, slotUpdateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+  if (access.access.isOutletManager && body.priceOverride !== undefined) {
+    return apiFail('FORBIDDEN', 'Outlet managers cannot change slot pricing', 403);
+  }
 
   const updateData: Record<string, unknown> = {};
   if (body.capacity !== undefined) updateData.capacity = body.capacity;
@@ -33,6 +28,7 @@ export async function PATCH(request: Request, { params }: Props) {
     .from('booking_slots')
     .update(updateData)
     .eq('id', slotId)
+    .in('outlet_id', access.access.outletIds)
     .select()
     .single();
 
@@ -42,23 +38,16 @@ export async function PATCH(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, slotId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   // Only allow cancel if no bookings
   const { data: slot } = await supabase
     .from('booking_slots')
     .select('booked')
     .eq('id', slotId)
+    .in('outlet_id', access.access.outletIds)
     .single();
 
   if (!slot) return apiFail('NOT_FOUND', 'Slot not found', 404);
@@ -69,7 +58,8 @@ export async function DELETE(_request: Request, { params }: Props) {
   const { error } = await supabase
     .from('booking_slots')
     .update({ status: 'cancelled' })
-    .eq('id', slotId);
+    .eq('id', slotId)
+    .in('outlet_id', access.access.outletIds);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   return apiOk({ id: slotId, status: 'cancelled' });

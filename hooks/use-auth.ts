@@ -33,9 +33,11 @@ export function useAuth() {
 
   const isAdmin = user?.roles.includes('super_admin') ?? false;
   const isApprover = user?.roles.includes('approver') ?? false;
-  const isVendor = user?.roles.includes('vendor_owner') || user?.roles.includes('outlet_manager') ? true : false;
+  const isVendorOwner = user?.roles.includes('vendor_owner') ?? false;
+  const isOutletManager = user?.roles.includes('outlet_manager') ?? false;
+  const isVendor = isVendorOwner || isOutletManager;
   const isKyc = user?.kycStatus === 'approved';
   const canEarn = isKyc && !!user?.profileComplete;
 
-  return { user, loading, isAdmin, isApprover, isVendor, isKyc, canEarn };
+  return { user, loading, isAdmin, isApprover, isVendor, isVendorOwner, isOutletManager, isKyc, canEarn };
 }

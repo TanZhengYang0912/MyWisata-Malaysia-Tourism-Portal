@@ -38,7 +38,11 @@ INSERT INTO users (id, email, full_name, kyc_status, email_verified_at, phone_ve
   ('aaaaaaaa-0000-0000-0000-000000000005', 'customer1@demo.local',       'Customer Alice',    'approved', NOW(), NOW(), NOW()),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'customer2@demo.local',       'Customer Bob',      'pending',  NOW(), NOW(), NULL),
   ('aaaaaaaa-0000-0000-0000-000000000007', 'customer3@demo.local',       'Customer Carol',    'unverified',NOW(), NULL, NULL),
-  ('aaaaaaaa-0000-0000-0000-000000000008', 'customer4@demo.local',       'Customer Dave',     'unverified',NOW(), NULL, NULL)
+  ('aaaaaaaa-0000-0000-0000-000000000008', 'customer4@demo.local',       'Customer Dave',     'unverified',NOW(), NULL, NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000009', 'manager.klcc@demo.local',    'Outlet Manager Hana','approved', NOW(), NOW(), NOW()),
+  ('aaaaaaaa-0000-0000-0000-000000000010', 'manager.georgetown@demo.local','Outlet Manager Ravi','approved', NOW(), NOW(), NOW()),
+  ('aaaaaaaa-0000-0000-0000-000000000011', 'manager.batu@demo.local',     'Outlet Manager Siti','approved', NOW(), NOW(), NOW()),
+  ('aaaaaaaa-0000-0000-0000-000000000012', 'manager.melaka@demo.local',   'Outlet Manager Lim', 'approved', NOW(), NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
   full_name            = EXCLUDED.full_name,
   kyc_status           = EXCLUDED.kyc_status,
@@ -125,6 +129,29 @@ ON CONFLICT DO NOTHING;
 INSERT INTO user_roles (user_id, role_id, vendor_id, outlet_id)
 SELECT 'aaaaaaaa-0000-0000-0000-000000000004', r.id, NULL, o.id
 FROM roles r, outlets o WHERE r.name = 'outlet_manager' AND o.id = 'cccccccc-0000-0000-0000-000000000001'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO user_roles (user_id, role_id, vendor_id, outlet_id)
+SELECT managers.user_id, r.id, NULL, managers.outlet_id
+FROM (VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000009'::uuid, 'cccccccc-0000-0000-0000-000000000002'::uuid),
+  ('aaaaaaaa-0000-0000-0000-000000000010'::uuid, 'cccccccc-0000-0000-0000-000000000003'::uuid),
+  ('aaaaaaaa-0000-0000-0000-000000000011'::uuid, 'cccccccc-0000-0000-0000-000000000004'::uuid),
+  ('aaaaaaaa-0000-0000-0000-000000000012'::uuid, 'cccccccc-0000-0000-0000-000000000005'::uuid)
+) AS managers(user_id, outlet_id), roles r
+WHERE r.name = 'outlet_manager'
+ON CONFLICT DO NOTHING;
+
+-- The demo manager owns exactly one outlet. Other outlets can be assigned by the vendor owner.
+INSERT INTO outlet_managers (user_id, outlet_id)
+VALUES ('aaaaaaaa-0000-0000-0000-000000000004', 'cccccccc-0000-0000-0000-000000000001')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO outlet_managers (user_id, outlet_id) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000009', 'cccccccc-0000-0000-0000-000000000002'),
+  ('aaaaaaaa-0000-0000-0000-000000000010', 'cccccccc-0000-0000-0000-000000000003'),
+  ('aaaaaaaa-0000-0000-0000-000000000011', 'cccccccc-0000-0000-0000-000000000004'),
+  ('aaaaaaaa-0000-0000-0000-000000000012', 'cccccccc-0000-0000-0000-000000000005')
 ON CONFLICT DO NOTHING;
 
 -- ── Products ─────────────────────────────────────────────────

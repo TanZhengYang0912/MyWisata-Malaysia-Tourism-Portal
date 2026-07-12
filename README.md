@@ -1,8 +1,8 @@
 # MyWisata — Malaysia Tourism Portal (FYP)
 
-A local-mock, multi-role demo of a Malaysia-wide tourism discovery & commerce
-platform: Customer, Vendor, and Admin areas sharing one canonical seed dataset.
-No backend yet — all data lives in the browser's `localStorage`.
+A Supabase-backed, multi-role prototype of a Malaysia-wide tourism discovery &
+commerce platform: Customer, Vendor, and Admin areas share one canonical
+database and role-aware access policies.
 
 Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User%20greeting/)
 (palette, fonts, screen layouts). The full screen/flow spec is in
@@ -35,7 +35,7 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 
 ## Demo accounts
 
-At `/login`, pick a seeded role — no password (mock auth):
+At `/login`, use Supabase Auth or pick a seeded demo account:
 
 - **Customer** (4 seeded, different verification tiers)
 - **Vendor Owner** / **Outlet Manager**
@@ -46,35 +46,50 @@ Each role is routed and guarded to its own area:
 - Vendor → `/vendor/dashboard`, `/vendor/listings`, `/vendor/bookings`, `/vendor/vouchers`, `/vendor/inbox`
 - Admin → `/admin/dashboard`, `/admin/vendors`, `/admin/kyc`, `/admin/withdrawals`, `/admin/recommendations`, `/admin/support`
 
-## Resetting data
+## Supabase setup
 
-All data lives in the browser's `localStorage`, seeded once on first load.
-Click **"Reset demo data"** on the `/login` page (or run `resetDemo()` from
-`lib/db` in the console) to wipe and reseed from the canonical dataset —
-useful before every demo run.
+Copy the required values into `.env.local` and never commit that file:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+# Optional Qwen Cloud / Alibaba Cloud Model Studio provider; leave unset to defer AI suggestions.
+QWEN_API_KEY=...
+QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+QWEN_MODEL=qwen-flash-2025-07-28
+QWEN_FALLBACK_MODEL=
+QWEN_MAX_OUTPUT_TOKENS=500
+```
+
+Apply migrations in order with the Supabase CLI or SQL Editor, then run the
+remote seed script when demo records are needed. The application reads
+operational data from Supabase; it does not use browser localStorage as a
+database.
 
 ## Tech notes
 
 - **Map**: Leaflet + OpenStreetMap tiles — no API key required.
 - **Get Directions**: opens a Google Maps URL (`google.com/maps/dir/?api=1&destination=...`) — no API key.
 - **Payment / KYC / booking**: Demo/Mock only. No real money moves, no real ID data stored.
-- **Chat**: local text messages only, no realtime backend.
-- **AI features** (recommendation / itinerary / smart search): deferred. The discovery layer is structured so a scored/LLM layer can slot in later without UI changes.
+- **Chat**: Supabase-backed text messages with realtime policies where enabled.
+- **AI listing assistant**: optional Qwen Cloud integration in cost-safe
+  `qwen-flash-2025-07-28` free-tier mode. It is
+  disabled safely when no key is configured and all suggestions require vendor
+  review before saving/publishing.
 
 ## Architecture
 
 ```
-lib/types.ts        — shared domain types (the integration contract)
+types/index.ts      — shared domain types (the integration contract)
 lib/money.ts         — RM formatting, single rounding function
 lib/events.ts        — domain event dispatch (order.paid, withdrawal.reviewed, ...)
 lib/audit.ts          — single approve/reject helper (writes AUDIT_LOGS + NOTIFICATIONS)
 lib/helpers.ts        — cart totals, voucher validation, distance, order state machine
-lib/auth.tsx           — AuthContext, demo account switcher, useRequireRole() guard
-lib/cart.tsx            — Cart context (localStorage-backed)
-lib/db/
-  index.ts              — localStorage engine + resetDemo()
-  seed/                  — canonical seed data, one file per domain
-  repos/                 — data-access functions, one file per domain
+hooks/use-auth.ts       — Supabase session and role helpers
+components/providers/auth.tsx — auth context and role guard
+lib/supabase/           — browser/server/service Supabase clients
+supabase/migrations/    — schema, RLS and approval workflow migrations
 app/
   login/                 — demo account switcher
   (customer)/            — Customer journey (Member 2)
@@ -87,12 +102,8 @@ components/
 
 ## Ownership map (extension points for teammates)
 
-Each `lib/db/seed/<domain>.ts` + `lib/db/repos/<domain>.ts` file has one
-owner. Add your domain by writing your own seed/repo files and route
-screens; consume other domains only through their exported repo functions
-(the swap point for a real backend later). Any approve/reject action goes
-through `lib/audit.ts`; cross-domain effects fire through `lib/events.ts`;
-all money goes through `lib/money.ts`.
+Each domain API route validates input before writing to Supabase. Approval and
+state transitions use `lib/audit.ts`; all money goes through `lib/money.ts`.
 
 | Member | Route area | Owns seed/repo |
 |---|---|---|
@@ -102,8 +113,8 @@ all money goes through `lib/money.ts`.
 | M3 — Discovery, Recommendation & Growth | recommendations, reviews, affiliate | `lib/db/*/discovery` |
 | M4 — Cart, Order, Booking & Wallet | wallet, withdrawals, checkout internals | `lib/db/*/commerce` |
 
-## Deferred (not in this phase)
+## Deferred by configuration
 
-AI recommendation/itinerary/smart search, real backend/Supabase, real
-auth/passwords, realtime chat, real payment gateway, real QR generation, KYC
-OCR, OG-meta social sharing, native mobile app.
+AI listing suggestions remain deferred until an optional Qwen Cloud API key is
+configured. Real payment settlement, QR generation, KYC OCR, OG-meta social
+sharing and native mobile remain outside this prototype scope.

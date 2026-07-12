@@ -1,42 +1,17 @@
 // P2 — Member 2: Check-in booking (B4)
 // POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin
 
-import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string; bookingId: string }> }
 
 export async function POST(_request: Request, { params }: Props) {
   const { vendorId, bookingId } = await params;
-  const authDb = await createClient() as any;
-
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Verify vendor ownership
-  const { data: vendor } = await authDb
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-
-  if (!vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-
-  const supabase = createServiceClient() as any;
-  const { data: outlets } = await supabase.from('outlets').select('id').eq('vendor_id', vendorId);
-  const outletIds = ((outlets as Record<string, unknown>[]) ?? []).map((outlet) => String(outlet.id));
-
-  const isOwner = vendor.owner_id === user.id;
-  if (!isOwner) {
-    const { data: mgr } = await supabase
-      .from('outlet_managers')
-      .select('id')
-      .eq('user_id', user.id)
-      .in('outlet_id', outletIds.length ? outletIds : ['none'])
-      .limit(1);
-    if (!mgr?.length) return apiFail('FORBIDDEN', 'Not authorized', 403);
-  }
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
+  const outletIds = access.access.outletIds;
 
   // Get booking
   const { data: booking } = await supabase

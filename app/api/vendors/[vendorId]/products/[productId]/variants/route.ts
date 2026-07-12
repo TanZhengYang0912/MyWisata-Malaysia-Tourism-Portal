@@ -1,14 +1,19 @@
 // P2 — Member 2: Variant list + create (B2)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { variantCreateSchema } from '@/lib/validation/vendor-schemas';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
 
 export async function GET(_request: Request, { params }: Props) {
-  const { productId } = await params;
-  const supabase = await createClient();
+  const { vendorId, productId } = await params;
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
+
+  const { data: product } = await supabase.from('products').select('id').eq('id', productId).eq('vendor_id', vendorId).in('outlet_id', access.access.outletIds).maybeSingle();
+  if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
 
   const { data, error } = await supabase
     .from('product_variants')
@@ -22,17 +27,9 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   // Verify product belongs to vendor
   const { data: product } = await supabase
@@ -40,6 +37,7 @@ export async function POST(request: Request, { params }: Props) {
     .select('id, requires_booking')
     .eq('id', productId)
     .eq('vendor_id', vendorId)
+    .in('outlet_id', access.access.outletIds)
     .single();
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
 

@@ -1,14 +1,16 @@
 // P2 — Member 2: Single outlet GET/PATCH/DELETE (B2)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletUpdateSchema } from '@/lib/validation/vendor-schemas';
+import { authorizeOutlet, authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string; outletId: string }> }
 
 export async function GET(_request: Request, { params }: Props) {
-  const { outletId } = await params;
-  const supabase = await createClient();
+  const { vendorId, outletId } = await params;
+  const access = await authorizeOutlet(vendorId, outletId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   const { data, error } = await supabase
     .from('outlets')
@@ -22,22 +24,16 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Verify vendor ownership
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeOutlet(vendorId, outletId);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   const parsed = await parseBody(request, outletUpdateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+  if (access.access.isOutletManager && Object.keys(body).some((key) => key !== 'operatingHours')) {
+    return apiFail('FORBIDDEN', 'Outlet managers can update operating hours only', 403);
+  }
 
   const updateData: Record<string, unknown> = {};
   if (body.name !== undefined) updateData.name = body.name;
@@ -51,6 +47,15 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.phone !== undefined) updateData.phone = body.phone;
   if (body.email !== undefined) updateData.email = body.email || null;
   if (body.operatingHours !== undefined) updateData.operating_hours = body.operatingHours;
+
+  const contentChanged = Object.keys(body).some((key) => key !== 'operatingHours');
+  if (contentChanged && !access.access.isOutletManager) {
+    updateData.review_status = 'pending_review';
+    updateData.review_note = null;
+    updateData.reviewed_by = null;
+    updateData.reviewed_at = null;
+    updateData.status = 'inactive';
+  }
 
   const { data, error } = await supabase
     .from('outlets')
@@ -66,17 +71,9 @@ export async function PATCH(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('owner_id')
-    .eq('id', vendorId)
-    .single();
-  if (!vendor || vendor.owner_id !== user.id) return apiFail('FORBIDDEN', 'Not your vendor', 403);
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  if (!access.ok) return access.response;
+  const supabase = access.access.serviceDb;
 
   // Soft delete — set status to 'closed'
   const { error } = await supabase

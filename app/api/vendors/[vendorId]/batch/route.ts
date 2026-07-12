@@ -1,7 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { vendorBatchSchema, type VendorBatch } from '@/lib/validation/vendor-schemas';
+import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -24,12 +23,13 @@ function voucherStatus(voucher: any) {
   return 'active';
 }
 
-async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
+async function findFilteredIds(db: any, vendorId: string, input: VendorBatch, scopedOutletIds?: string[]) {
   const filters = input.filters || {};
   const q = safe(filters.q as string | undefined);
 
   if (input.entity === 'products') {
     let query = db.from('products').select('id,name,slug').eq('vendor_id', vendorId);
+    if (scopedOutletIds) query = query.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     if (filters.productType) query = query.eq('product_type', filters.productType);
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.outletId) query = query.eq('outlet_id', filters.outletId);
@@ -41,6 +41,7 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
 
   if (input.entity === 'outlets') {
     let query = db.from('outlets').select('id,name,city').eq('vendor_id', vendorId);
+    if (scopedOutletIds) query = query.in('id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     if (filters.state) query = query.eq('state', filters.state);
     if (filters.status) query = query.eq('status', filters.status);
     if (q) query = query.or('name.ilike.%' + q + '%,city.ilike.%' + q + '%');
@@ -57,8 +58,24 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
     return (data || []).filter((item: any) => !filters.status || voucherStatus(item) === filters.status).map((item: any) => item.id);
   }
 
+  if (input.entity === 'slots') {
+    const outletIds = scopedOutletIds ?? ((await db.from('outlets').select('id').eq('vendor_id', vendorId)).data || []).map((item: any) => item.id);
+    let query = db.from('booking_slots').select('id,product_id,outlet_id,starts_at,status,products(name),outlets(name,city)').in('outlet_id', outletIds.length ? outletIds : ['none']);
+    if (filters.status) query = query.eq('status', filters.status);
+    if (filters.outletId) query = query.eq('outlet_id', filters.outletId);
+    if (filters.productId) query = query.eq('product_id', filters.productId);
+    if (filters.from) query = query.gte('starts_at', filters.from);
+    if (filters.to) query = query.lte('starts_at', filters.to + 'T23:59:59.999Z');
+    const { data, error } = await query;
+    if (error) throw error;
+    const searchTerm = q.toLowerCase();
+    return (data || []).filter((item: any) => !searchTerm || [item.id, item.products?.name, item.outlets?.name, item.outlets?.city].some((value) => String(value || '').toLowerCase().includes(searchTerm))).map((item: any) => item.id);
+  }
+
   if (input.entity === 'orders') {
-    const { data, error } = await db.from('order_items').select('id,order_id,product_name,variant_name,fulfil_status,created_at,orders!inner(status,users(full_name,email))').eq('vendor_id', vendorId);
+    let orderQuery = db.from('order_items').select('id,order_id,product_name,variant_name,fulfil_status,created_at,outlet_id,orders!inner(status,users(full_name,email))').eq('vendor_id', vendorId);
+    if (scopedOutletIds) orderQuery = orderQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    const { data, error } = await orderQuery;
     if (error) throw error;
     const searchTerm = ((filters.q as string) || '').toLowerCase().replace(/^#/, '');
     return (data || []).filter((item: any) => {
@@ -74,9 +91,7 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
     }).map((item: any) => item.id);
   }
 
-  const { data: outlets, error: outletError } = await db.from('outlets').select('id').eq('vendor_id', vendorId);
-  if (outletError) throw outletError;
-  const outletIds = (outlets || []).map((item: any) => item.id);
+  const outletIds = scopedOutletIds ?? ((await db.from('outlets').select('id').eq('vendor_id', vendorId)).data || []).map((item: any) => item.id);
   if (!outletIds.length) return [];
   const { data: slots, error: slotError } = await db.from('booking_slots').select('id,starts_at').in('outlet_id', outletIds);
   if (slotError) throw slotError;
@@ -101,17 +116,24 @@ async function findFilteredIds(db: any, vendorId: string, input: VendorBatch) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
-  const { data: { user } } = await authDb.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: vendor } = await authDb.from('vendors').select('owner_id,status').eq('id', vendorId).maybeSingle();
-  if (!vendor || vendor.owner_id !== user.id || vendor.status !== 'approved') return apiFail('FORBIDDEN', 'You cannot update this vendor data', 403);
+  const access = await authorizeVendor(vendorId);
+  if (!access.ok) return access.response;
 
   const parsed = await parseBody(request, vendorBatchSchema);
   if (!parsed.ok) return parsed.response;
   const input = parsed.data;
-  const db = createServiceClient() as any;
-  let targetIds = input.selectAllFiltered ? await findFilteredIds(db, vendorId, input) : input.ids;
+  if (access.access.isOutletManager && !['orders', 'bookings', 'slots'].includes(input.entity)) {
+    return apiFail('FORBIDDEN', 'Outlet Managers can only batch-update bookings, orders, and availability', 403);
+  }
+  const db = access.access.serviceDb;
+  const scopedOutletIds = access.access.isOutletManager ? access.access.outletIds : undefined;
+  let scopedSlotIds: string[] | undefined;
+  if (scopedOutletIds) {
+    const { data: slots, error } = await db.from('booking_slots').select('id').in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    if (error) return apiFail('DB_ERROR', error.message, 500);
+    scopedSlotIds = (slots || []).map((item: any) => item.id);
+  }
+  let targetIds = input.selectAllFiltered ? await findFilteredIds(db, vendorId, input, scopedOutletIds) : input.ids;
   targetIds = [...new Set(targetIds)];
   if (!targetIds.length) return apiOk({ entity: input.entity, action: input.action, requested: 0, updated: 0, skipped: 0 });
 
@@ -138,7 +160,9 @@ export async function POST(request: Request, { params }: Props) {
     updatedIds = (data || []).map((item: any) => item.id);
   } else if (input.entity === 'orders') {
     if (!['ready', 'fulfilled'].includes(input.action)) return apiFail('INVALID_ACTION', 'Orders support ready or fulfilled only', 400);
-    const { data: items, error } = await db.from('order_items').select('id,order_id,fulfil_status,orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
+    let itemQuery = db.from('order_items').select('id,order_id,fulfil_status,orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
+    if (scopedOutletIds) itemQuery = itemQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    const { data: items, error } = await itemQuery;
     if (error) return apiFail('DB_ERROR', error.message, 500);
     const valid = (items || []).filter((item: any) => {
       const orderStatus = relation(item.orders)?.status;
@@ -148,23 +172,46 @@ export async function POST(request: Request, { params }: Props) {
     const updateData: Record<string, unknown> = { fulfil_status: input.action };
     if (input.action === 'fulfilled') updateData.fulfilled_at = new Date().toISOString();
     if (valid.length) {
-      const { data, error: updateError } = await db.from('order_items').update(updateData).in('id', valid).select('id');
+      let updateQuery = db.from('order_items').update(updateData).in('id', valid);
+      if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+      const { data, error: updateError } = await updateQuery.select('id');
       if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
       updatedIds = (data || []).map((item: any) => item.id);
     }
-  } else {
+  } else if (input.entity === 'bookings') {
     if (!['check_in', 'cancel'].includes(input.action)) return apiFail('INVALID_ACTION', 'Bookings support check-in or cancel only', 400);
-    const { data: bookings, error } = await db.from('bookings').select('id,status,order_item_id').in('id', targetIds);
+    let bookingQuery = db.from('bookings').select('id,status,order_item_id,slot_id').in('id', targetIds);
+    if (scopedSlotIds) bookingQuery = bookingQuery.in('slot_id', scopedSlotIds.length ? scopedSlotIds : ['none']);
+    const { data: bookings, error } = await bookingQuery;
     if (error) return apiFail('DB_ERROR', error.message, 500);
     const valid = (bookings || []).filter((item: any) => input.action === 'check_in' ? item.status === 'confirmed' : item.status === 'confirmed').map((item: any) => item.id);
     skippedIds = targetIds.filter((id: string) => !valid.includes(id));
     if (valid.length) {
       const updateData = input.action === 'check_in' ? { status: 'checked_in', check_in_at: new Date().toISOString() } : { status: 'cancelled', cancelled_at: new Date().toISOString() };
-      const { data, error: updateError } = await db.from('bookings').update(updateData).in('id', valid).select('id,order_item_id');
+      let updateQuery = db.from('bookings').update(updateData).in('id', valid);
+      if (scopedSlotIds) updateQuery = updateQuery.in('slot_id', scopedSlotIds.length ? scopedSlotIds : ['none']);
+      const { data, error: updateError } = await updateQuery.select('id,order_item_id');
       if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
       updatedIds = (data || []).map((item: any) => item.id);
       const orderItemIds = (data || []).map((item: any) => item.order_item_id).filter(Boolean);
       if (input.action === 'check_in' && orderItemIds.length) await db.from('order_items').update({ fulfil_status: 'fulfilled', fulfilled_at: new Date().toISOString() }).in('id', orderItemIds);
+    }
+  } else {
+    if (!['cancel', 'restore'].includes(input.action)) return apiFail('INVALID_ACTION', 'Slots support cancel or restore only', 400);
+    const targetStatus = input.action === 'cancel' ? 'cancelled' : 'available';
+    const validStatuses = input.action === 'cancel' ? ['available', 'full'] : ['cancelled'];
+    let slotQuery = db.from('booking_slots').select('id,status,booked').in('id', targetIds);
+    if (scopedOutletIds) slotQuery = slotQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    const { data: slots, error } = await slotQuery;
+    if (error) return apiFail('DB_ERROR', error.message, 500);
+    const valid = (slots || []).filter((item: any) => validStatuses.includes(item.status) && (input.action === 'cancel' ? true : item.booked === 0)).map((item: any) => item.id);
+    skippedIds = targetIds.filter((id: string) => !valid.includes(id));
+    if (valid.length) {
+      let updateQuery = db.from('booking_slots').update({ status: targetStatus }).in('id', valid);
+      if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+      const { data, error: updateError } = await updateQuery.select('id');
+      if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
+      updatedIds = (data || []).map((item: any) => item.id);
     }
   }
 
