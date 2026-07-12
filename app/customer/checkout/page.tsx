@@ -51,8 +51,14 @@ export default function CheckoutPage() {
         setPaying(false);
         return;
       }
-      const order = await createOrder(currentUser!.id, voucherCode ?? undefined);
-      router.push(`/customer/orders/${order.id}`);
+      try {
+        const order = await createOrder(currentUser!.id, voucherCode ?? undefined);
+        router.push(`/customer/orders/${order.id}`);
+      } catch (err) {
+        console.error("Order creation failed:", err);
+        setFailed(true);
+        setPaying(false);
+      }
     }, 600);
   }
 

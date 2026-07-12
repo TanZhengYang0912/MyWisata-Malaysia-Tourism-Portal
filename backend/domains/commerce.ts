@@ -171,7 +171,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     .from("orders")
     .insert({
       user_id: userId,
-      status: "PAID",
+      status: "paid",
       subtotal: totals.subtotal,
       discount_amount: totals.discount,
       total_amount: totals.total,
@@ -244,7 +244,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     discount: totals.discount,
     total: totals.total,
     voucherCode: appliedVoucherCode,
-    status: "PAID",
+    status: "paid",
     createdAt: orderRow.created_at,
   };
 }
