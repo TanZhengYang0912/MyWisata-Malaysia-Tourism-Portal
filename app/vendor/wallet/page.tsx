@@ -53,7 +53,7 @@ export default function VendorWalletPage() {
     }
     setSubmitting(true);
     try {
-      const w = await requestWithdrawal(currentUser.id, amount, form.destination);
+      const w = await requestWithdrawal(currentUser.id, amount);
       setWithdrawals((prev) => [w, ...(prev ?? [])]);
       setShowModal(false);
       setForm({ amount: "", destination: DESTINATIONS[0] });

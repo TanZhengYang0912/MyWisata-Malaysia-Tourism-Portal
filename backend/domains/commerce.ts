@@ -256,18 +256,18 @@ type WithdrawalRow = {
   amount: number;
   status: string;
   requires_dual_approval: boolean;
+  destination_label: string | null;
   created_at: string;
-  payout_destinations: { label: string | null } | null;
 };
 
-const WITHDRAWAL_SELECT = "id,user_id,amount,status,requires_dual_approval,created_at,payout_destinations(label)";
+const WITHDRAWAL_SELECT = "id,user_id,amount,status,requires_dual_approval,destination_label,created_at";
 
 function mapWithdrawal(row: WithdrawalRow): WithdrawalRequest {
   return {
     id: row.id,
     userId: row.user_id,
     amount: Number(row.amount),
-    destination: row.payout_destinations?.label ?? "",
+    destination: row.destination_label ?? "",
     status: row.status as WithdrawalRequest["status"],
     requiresDualApproval: row.requires_dual_approval,
     createdAt: row.created_at,
@@ -286,20 +286,58 @@ export async function getMyWithdrawals(userId: string): Promise<WithdrawalReques
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
 }
 
-export async function requestWithdrawal(userId: string, amount: number, destination: string): Promise<WithdrawalRequest> {
+export async function requestWithdrawal(userId: string, amount: number): Promise<WithdrawalRequest> {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc("debit_withdrawal", {
+    p_user_id:   userId,
+    p_amount_rm: amount,
+  });
+  if (rpcErr) throw rpcErr;
+  const requestId = (rpcData as { request_id: string }).request_id;
   const { data, error } = await supabase
     .from("withdrawal_requests")
-    .insert({ user_id: userId, amount, destination, status: "pending", requires_dual_approval: amount >= 500 })
     .select(WITHDRAWAL_SELECT)
+    .eq("id", requestId)
     .single();
   if (error) throw error;
   return mapWithdrawal(data as unknown as WithdrawalRow);
 }
 
+export async function getWalletBuckets(userId: string): Promise<{ topup: number; earnings: number }> {
+  const { data } = await supabase
+    .from("wallets")
+    .select("topup_sen,earnings_sen")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return { topup: 0, earnings: 0 };
+  const row = data as { topup_sen: number; earnings_sen: number };
+  return { topup: row.topup_sen / 100, earnings: row.earnings_sen / 100 };
+}
+
 export async function getWalletBalance(userId: string): Promise<number> {
-  const { data, error } = await supabase.from("wallets").select("balance_sen").eq("user_id", userId).maybeSingle();
-  if (error) return 0;
-  return data ? (data as { balance_sen: number }).balance_sen / 100 : 0;
+  const { topup, earnings } = await getWalletBuckets(userId);
+  return topup + earnings;
+}
+
+export async function getConnectStatus(userId: string): Promise<{
+  accountId: string | null;
+  payoutsEnabled: boolean;
+  kycStatus: string;
+}> {
+  const { data } = await supabase
+    .from("users")
+    .select("stripe_connect_account_id, stripe_payouts_enabled, kyc_status")
+    .eq("id", userId)
+    .maybeSingle();
+  const row = data as {
+    stripe_connect_account_id: string | null;
+    stripe_payouts_enabled: boolean;
+    kyc_status: string;
+  } | null;
+  return {
+    accountId:      row?.stripe_connect_account_id ?? null,
+    payoutsEnabled: row?.stripe_payouts_enabled    ?? false,
+    kycStatus:      row?.kyc_status                ?? "unverified",
+  };
 }
 
 export async function reviewWithdrawal(id: string, status: "approved" | "rejected"): Promise<void> {
