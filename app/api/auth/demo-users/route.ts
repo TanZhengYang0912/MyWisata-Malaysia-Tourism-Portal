@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/service';
+import { createClient } from '@/lib/supabase/server';
 import type { Role, User } from '@/backend/core/types';
 
 export const dynamic = 'force-dynamic';
@@ -18,12 +18,12 @@ type DemoUserRow = {
 };
 
 /**
- * Demo-only account picker. It exposes seeded demo identities without exposing
- * service credentials or allowing arbitrary user enumeration.
+ * Demo-only account picker. Uses the anon client — relies on the
+ * allow_anon_select_users RLS policy to enumerate @demo.local accounts.
  */
 export async function GET() {
   try {
-    const db = createServiceClient();
+    const db = await createClient();
     const { data, error } = await db
       .from('users')
       .select('id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))')
