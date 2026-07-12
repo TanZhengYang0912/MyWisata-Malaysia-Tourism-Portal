@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
   const { data: userRow, error: userErr } = await db
     .from('users')
-    .select('kyc_status, stripe_connect_account_id, full_name, email')
+    .select('kyc_status, stripe_connect_account_id, full_name, phone, email')
     .eq('id', authUser.id)
     .single();
 
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     kyc_status: string;
     stripe_connect_account_id: string | null;
     full_name: string | null;
+    phone: string | null;
     email: string | null;
   };
 
@@ -35,12 +36,24 @@ export async function POST(req: Request) {
 
   let accountId = row.stripe_connect_account_id ?? '';
   if (!accountId) {
+    // Pre-fill individual details from profile
+    const email = row.email ?? authUser.email ?? undefined;
+    const nameParts = (row.full_name ?? '').trim().split(/\s+/);
+    const firstName = nameParts[0] || undefined;
+    const lastName  = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+
     const account = await stripe.accounts.create({
-      type: 'express',
-      country: 'MY',
-      email: row.email ?? authUser.email ?? undefined,
-      capabilities: { transfers: { requested: true } },
+      type:          'express',
+      country:       'MY',
+      email,
+      capabilities:  { transfers: { requested: true } },
       business_type: 'individual',
+      individual: {
+        first_name: firstName,
+        last_name:  lastName,
+        email,
+        ...(row.phone ? { phone: row.phone } : {}),
+      },
       metadata: { supabase_user_id: authUser.id },
     });
     accountId = account.id;
@@ -52,10 +65,10 @@ export async function POST(req: Request) {
 
   const origin = req.headers.get('origin') ?? 'http://localhost:3000';
   const accountLink = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `${origin}/customer/wallet?connect=refresh`,
-    return_url:  `${origin}/customer/wallet?connect=success`,
-    type: 'account_onboarding',
+    account:     accountId,
+    refresh_url: `${origin}/customer/wallet?onboarding=refresh`,
+    return_url:  `${origin}/customer/wallet?onboarding=complete`,
+    type:        'account_onboarding',
   });
 
   return NextResponse.json({ url: accountLink.url });

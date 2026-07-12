@@ -286,11 +286,10 @@ export async function getMyWithdrawals(userId: string): Promise<WithdrawalReques
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
 }
 
-export async function requestWithdrawal(userId: string, amount: number, destination: string): Promise<WithdrawalRequest> {
-  const { data: rpcData, error: rpcErr } = await supabase.rpc("request_withdrawal", {
-    p_user_id:           userId,
-    p_amount_rm:         amount,
-    p_destination_label: destination,
+export async function requestWithdrawal(userId: string, amount: number): Promise<WithdrawalRequest> {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc("debit_withdrawal", {
+    p_user_id:   userId,
+    p_amount_rm: amount,
   });
   if (rpcErr) throw rpcErr;
   const requestId = (rpcData as { request_id: string }).request_id;
@@ -317,6 +316,28 @@ export async function getWalletBuckets(userId: string): Promise<{ topup: number;
 export async function getWalletBalance(userId: string): Promise<number> {
   const { topup, earnings } = await getWalletBuckets(userId);
   return topup + earnings;
+}
+
+export async function getConnectStatus(userId: string): Promise<{
+  accountId: string | null;
+  payoutsEnabled: boolean;
+  kycStatus: string;
+}> {
+  const { data } = await supabase
+    .from("users")
+    .select("stripe_connect_account_id, stripe_payouts_enabled, kyc_status")
+    .eq("id", userId)
+    .maybeSingle();
+  const row = data as {
+    stripe_connect_account_id: string | null;
+    stripe_payouts_enabled: boolean;
+    kyc_status: string;
+  } | null;
+  return {
+    accountId:      row?.stripe_connect_account_id ?? null,
+    payoutsEnabled: row?.stripe_payouts_enabled    ?? false,
+    kycStatus:      row?.kyc_status                ?? "unverified",
+  };
 }
 
 export async function reviewWithdrawal(id: string, status: "approved" | "rejected"): Promise<void> {

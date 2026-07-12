@@ -220,7 +220,7 @@ export interface WithdrawalRequest {
   userId: string;
   amount: number;
   destination: string;
-  status: "pending" | "approved" | "rejected" | "processing" | "completed" | "failed";
+  status: "pending" | "approved" | "rejected" | "processing" | "completed" | "failed" | "paid";
   requiresDualApproval: boolean;
   createdAt: string;
 }

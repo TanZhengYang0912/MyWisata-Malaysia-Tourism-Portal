@@ -72,6 +72,7 @@ export interface UserRow {
   status: 'active' | 'suspended' | 'deleted';
   stripe_customer_id: string | null;
   stripe_connect_account_id: string | null;
+  stripe_payouts_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -315,7 +316,7 @@ export interface WithdrawalRequestRow {
   destination_id: string | null;
   destination_label: string | null;
   amount: number;
-  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'failed' | 'paid';
   requires_dual_approval: boolean;
   notes: string | null;
   stripe_transfer_id: string | null;

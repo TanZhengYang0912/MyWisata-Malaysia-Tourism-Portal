@@ -61,12 +61,13 @@ export async function POST(req: Request) {
 
   if (event.type === 'account.updated') {
     const account = event.data.object as Stripe.Account;
-    console.log(
-      '[connect-webhook] account.updated:',
-      account.id,
-      '| charges_enabled:', account.charges_enabled,
-      '| payouts_enabled:', account.payouts_enabled,
-    );
+    const { error } = await db.rpc('update_connect_status', {
+      p_connect_account_id: account.id,
+      p_payouts_enabled:    account.payouts_enabled ?? false,
+    });
+    if (error) {
+      console.error('[connect-webhook] update_connect_status:', error);
+    }
   }
 
   return NextResponse.json({ received: true });

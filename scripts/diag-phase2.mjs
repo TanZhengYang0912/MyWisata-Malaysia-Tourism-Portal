@@ -90,29 +90,31 @@ async function run() {
   else fail('Withdraw button missing');
 
   // ─── 3. Submit withdrawal (if earnings available) ─────────────────────────────
-  let withdrawalId = null;
   if (earningsRM >= 50) {
     console.log('\n━━━ 3. Submit withdrawal request ━━━');
     await page.locator('button', { hasText: /withdraw/i }).first().click();
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
 
+    // Phase 5: JIT intercept modal may appear if no Connect account
+    const modal     = await page.locator('text=Bank account required').isVisible({ timeout: 2000 }).catch(() => false);
     const amountInput = page.locator('form input[type="number"]').first();
-    if (await amountInput.isVisible()) {
-      await amountInput.fill('50');
+    const formVisible = await amountInput.isVisible({ timeout: 1000 }).catch(() => false);
 
+    if (modal) {
+      ok('JIT intercept modal shown (Connect account required — correct Phase 5 behavior)');
+      // Dismiss modal
+      await page.locator('button:has-text("Later"), button:has-text("OK")').first().click().catch(() => {});
+    } else if (formVisible) {
+      await amountInput.fill('50');
       await page.locator('form button[type="submit"]').first().click();
       await page.waitForTimeout(2000);
       await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
-
-      // Check withdrawal appeared in "In Progress" section
       const inProgress = await page.locator('text=In Progress').isVisible();
       if (inProgress) ok('Withdrawal submitted — appears in "In Progress"');
       else            fail('"In Progress" section not visible after submission');
-
-      // Get withdrawal ID from the pending list via the page
       ok('Withdrawal request submitted (RM 50.00)');
     } else {
-      fail('Amount input not visible after clicking Withdraw');
+      fail('Neither JIT modal nor withdrawal form appeared');
     }
   } else {
     skip('Withdrawal submission', 'earnings < RM 50 — seed first');
