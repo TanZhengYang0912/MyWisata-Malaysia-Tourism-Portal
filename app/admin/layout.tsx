@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Gem, Inbox, LogOut, Package, Shield, DollarSign } from "lucide-react";
+import { Activity, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2 } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign },
   { href: "/admin/recommendations", label: "Recommendations", icon: Gem },
   { href: "/admin/support", label: "Support Tickets", icon: Inbox },
+  { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

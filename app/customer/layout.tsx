@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Globe, Map, MessageCircle, Search, ShoppingCart, User as UserIcon } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
+import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 
 const NAV = [
   { href: "/customer/explore", label: "Explore", icon: Search },
@@ -90,6 +91,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       </nav>
 
       <main className="flex-1">{children}</main>
+      <ChatbotWidget />
     </div>
   );
 }
