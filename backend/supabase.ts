@@ -1,7 +1,5 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/client";
 
-// Uses createBrowserClient so cookie-based auth sessions are included in RLS checks
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+// Shares the one browser client singleton with components/providers/auth.tsx
+// so there's a single GoTrue instance and one session for RLS checks.
+export const supabase = createClient();

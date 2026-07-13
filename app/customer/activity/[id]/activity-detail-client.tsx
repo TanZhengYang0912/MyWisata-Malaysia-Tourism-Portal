@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CheckCircle, Clock, Globe, MapPin, MessageCircle, Navigation, Star, Users } from "lucide-react";
+import { Bike, Bus, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Star, Users } from "lucide-react";
 import { getBookingSlots, getComputedActivity } from "@/backend/domains/catalogue";
 import { getOrCreateThread } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
@@ -14,6 +14,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
+
+const TRAVEL_MODES = [
+  { id: "DRIVING", urlParam: "driving", label: "Drive", icon: Car },
+  { id: "WALKING", urlParam: "walking", label: "Walk", icon: Footprints },
+  { id: "BICYCLING", urlParam: "bicycling", label: "Cycle", icon: Bike },
+  { id: "TRANSIT", urlParam: "transit", label: "Transit", icon: Bus },
+] as const;
+type TravelModeId = (typeof TRAVEL_MODES)[number]["id"];
 
 export function ActivityDetailClient() {
   const params = useParams<{ id: string }>();
@@ -28,6 +36,11 @@ export function ActivityDetailClient() {
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [travelMode, setTravelMode] = useState<TravelModeId>("DRIVING");
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapsReady, setMapsReady] = useState(false);
+  const [eta, setEta] = useState<{ durationText: string; distanceText: string } | null>(null);
+  const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "denied" | "error">("idle");
 
   useEffect(() => {
     (async () => {
@@ -41,6 +54,57 @@ export function ActivityDetailClient() {
   }, [params.id]);
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
+
+  // Retries the ETA calc once the Maps script finishes loading, covering the
+  // race where the user picks a travel mode before google.maps is ready.
+  useEffect(() => {
+    if (mapsReady && userLoc && activity) computeEta(userLoc, travelMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapsReady]);
+
+  function computeEta(origin: { lat: number; lng: number }, mode: TravelModeId) {
+    if (!mapsReady || !activity) return;
+    setEtaStatus("loading");
+    new google.maps.DirectionsService()
+      .route({
+        origin,
+        destination: { lat: activity.outlet.lat, lng: activity.outlet.lng },
+        travelMode: google.maps.TravelMode[mode],
+      })
+      .then((result) => {
+        const leg = result.routes[0]?.legs[0];
+        if (!leg?.duration || !leg.distance) throw new Error("no route");
+        setEta({ durationText: leg.duration.text, distanceText: leg.distance.text });
+        setEtaStatus("idle");
+      })
+      .catch(() => {
+        setEta(null);
+        setEtaStatus("error");
+      });
+  }
+
+  function handleTravelModeChange(mode: TravelModeId) {
+    setTravelMode(mode);
+    setEta(null);
+    if (userLoc) {
+      computeEta(userLoc, mode);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setEtaStatus("denied");
+      return;
+    }
+    setEtaStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLoc(loc);
+        computeEta(loc, mode);
+      },
+      () => setEtaStatus("denied"),
+      { timeout: 5000 },
+    );
+  }
 
   if (activity === undefined) {
     return <div className="max-w-3xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
@@ -61,7 +125,13 @@ export function ActivityDetailClient() {
   }
 
   function handleDirections() {
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${activity!.outlet.lat},${activity!.outlet.lng}`, "_blank");
+    const params = new URLSearchParams({
+      api: "1",
+      destination: `${activity!.outlet.lat},${activity!.outlet.lng}`,
+      travelmode: TRAVEL_MODES.find((m) => m.id === travelMode)!.urlParam,
+    });
+    if (userLoc) params.set("origin", `${userLoc.lat},${userLoc.lng}`);
+    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, "_blank");
   }
 
   async function handleChat() {
@@ -194,6 +264,30 @@ export function ActivityDetailClient() {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="text-xs font-semibold text-muted-foreground mr-1">Directions:</span>
+        {TRAVEL_MODES.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => handleTravelModeChange(m.id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+            style={{
+              borderColor: travelMode === m.id ? "var(--primary)" : "var(--border)",
+              backgroundColor: travelMode === m.id ? "var(--primary)" : "transparent",
+              color: travelMode === m.id ? "white" : "var(--foreground)",
+            }}
+          >
+            <m.icon size={13} /> {m.label}
+          </button>
+        ))}
+        <span className="text-xs text-muted-foreground ml-1">
+          {etaStatus === "loading" && "Calculating…"}
+          {etaStatus === "denied" && "Enable location for ETA"}
+          {etaStatus === "error" && "ETA unavailable"}
+          {etaStatus === "idle" && eta && `${eta.durationText} · ${eta.distanceText}`}
+        </span>
+      </div>
+
       <div className="flex gap-3 mb-8 flex-wrap">
         <Button
           onClick={handleAddToCart}
@@ -221,6 +315,7 @@ export function ActivityDetailClient() {
           center={[activity.outlet.lat, activity.outlet.lng]}
           zoom={14}
           height={260}
+          onApiLoaded={() => setMapsReady(true)}
         />
       </div>
     </div>

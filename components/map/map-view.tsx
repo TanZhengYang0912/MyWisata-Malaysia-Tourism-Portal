@@ -1,10 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { MapPin } from "./leaflet-map";
+import type { MapPin } from "./google-map";
 
-// react-leaflet touches `window` at import time — must be client-only, no SSR.
-const LeafletMap = dynamic(() => import("./leaflet-map").then((m) => m.LeafletMap), {
+export type { MapPin };
+
+// @vis.gl/react-google-maps touches `window` at import time — must be client-only, no SSR.
+const GoogleMap = dynamic(() => import("./google-map").then((m) => m.GoogleMap), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground" style={{ height: 320 }}>
@@ -13,6 +15,15 @@ const LeafletMap = dynamic(() => import("./leaflet-map").then((m) => m.LeafletMa
   ),
 });
 
-export function MapView(props: { pins: MapPin[]; center: [number, number]; zoom?: number; height?: number }) {
-  return <LeafletMap {...props} />;
+export function MapView(props: {
+  pins: MapPin[];
+  center: [number, number];
+  zoom?: number;
+  height?: number;
+  cluster?: boolean;
+  radiusCenter?: [number, number];
+  radiusKm?: number;
+  onApiLoaded?: () => void;
+}) {
+  return <GoogleMap {...props} />;
 }

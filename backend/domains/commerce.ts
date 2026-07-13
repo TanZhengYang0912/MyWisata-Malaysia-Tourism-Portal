@@ -93,7 +93,8 @@ function mapOrder(row: OrderRow): Order {
     discount: Number(row.discount_amount),
     total: Number(row.total_amount),
     voucherCode: row.voucher_code ?? undefined,
-    status: row.status as Order["status"],
+    // orders.status is stored lowercase in the DB (check constraint); the app-wide OrderStatus type is uppercase.
+    status: row.status.toUpperCase() as Order["status"],
     createdAt: row.created_at,
   };
 }
@@ -171,7 +172,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     .from("orders")
     .insert({
       user_id: userId,
-      status: "paid",
+      status: "paid", // lowercase — matches the orders.status CHECK constraint
       subtotal: totals.subtotal,
       discount_amount: totals.discount,
       total_amount: totals.total,
