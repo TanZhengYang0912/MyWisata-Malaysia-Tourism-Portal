@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Award, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2 } from "lucide-react";
+import { Activity, Award, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2 } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },
   { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
+  { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
   { href: "/admin/kyc", label: "KYC Review", icon: Shield },
   { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign },
   { href: "/admin/recommendations", label: "Recommendations", icon: Gem },

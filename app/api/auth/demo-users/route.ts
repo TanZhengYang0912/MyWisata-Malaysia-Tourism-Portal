@@ -14,6 +14,8 @@ type DemoUserRow = {
     vendor_id: string | null;
     outlet_id: string | null;
     roles?: { name: Role } | { name: Role }[] | null;
+    vendors?: { name: string } | { name: string }[] | null;
+    outlets?: { name: string } | { name: string }[] | null;
   }>;
 };
 
@@ -26,17 +28,26 @@ export async function GET() {
     const db = await createClient();
     const { data, error } = await db
       .from('users')
-      .select('id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))')
+      .select('id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name),vendors(name),outlets(name))')
       .like('email', '%@demo.local')
       .order('email');
 
     if (error) throw error;
 
     const users = ((data || []) as DemoUserRow[]).map((row) => {
-      const assignment = row.user_roles?.[0];
+      const assignment = [...(row.user_roles || [])].sort((left, right) => {
+        const roleName = (value: typeof left) => {
+          const role = Array.isArray(value.roles) ? value.roles[0] : value.roles;
+          return role?.name || 'customer';
+        };
+        const priority = (name: string) => name === 'vendor_owner' ? 0 : name === 'outlet_manager' ? 1 : 2;
+        return priority(roleName(left)) - priority(roleName(right));
+      })[0];
       const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
       const role = assignmentRole?.name || 'customer';
       const name = row.full_name || row.email;
+      const vendor = Array.isArray(assignment?.vendors) ? assignment?.vendors[0] : assignment?.vendors;
+      const outlet = Array.isArray(assignment?.outlets) ? assignment?.outlets[0] : assignment?.outlets;
       return {
         id: row.id,
         name,
@@ -47,6 +58,8 @@ export async function GET() {
         verificationTier: row.kyc_status,
         vendorId: assignment?.vendor_id || undefined,
         outletId: assignment?.outlet_id || undefined,
+        vendorName: vendor?.name || undefined,
+        outletName: outlet?.name || undefined,
       };
     });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, CirclePlus, Copy, Eye, Percent, Search, ToggleLeft, ToggleRight, X } from 'lucide-react';
+import { CirclePlus, Copy, Eye, Percent, Search, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import VoucherForm from '@/components/vendor/voucher-form';
 import { StatusBadge } from '@/components/ui/badge';
@@ -9,7 +9,8 @@ import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
-interface VoucherAnalytics { voucherId: string; code: string; name: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number }
+interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
+interface OutletOption { id: string; name: string }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 const statuses = ['all', 'active', 'scheduled', 'inactive', 'expired'];
 
@@ -33,6 +34,11 @@ export default function VendorVouchersPage() {
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchMessage, setBatchMessage] = useState('');
   const [analytics, setAnalytics] = useState<VoucherAnalytics[]>([]);
+  const [outlets, setOutlets] = useState<OutletOption[]>([]);
+  const [analyticsRange, setAnalyticsRange] = useState<'all' | '7d' | '30d' | '12m' | 'custom'>('30d');
+  const [analyticsFrom, setAnalyticsFrom] = useState('');
+  const [analyticsTo, setAnalyticsTo] = useState('');
+  const [analyticsOutlet, setAnalyticsOutlet] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
 
   const loadVouchers = useCallback(async (page = 1) => {
@@ -49,7 +55,26 @@ export default function VendorVouchersPage() {
   }, [q, status, vendorId]);
 
   useEffect(() => { loadVouchers(1); }, [loadVouchers]);
-  useEffect(() => { if (vendorId) fetch(`/api/vendors/${vendorId}/vouchers/analytics`, { cache: 'no-store' }).then((response) => response.json()).then((payload) => setAnalytics(payload.data || [])); }, [vendorId]);
+  useEffect(() => {
+    if (!vendorId) return;
+    fetch(`/api/vendors/${vendorId}/outlets?page=1&pageSize=100&sort=name`, { cache: 'no-store' }).then((response) => response.json()).then((payload) => setOutlets((payload.data?.items || []).map((outlet: OutletOption) => ({ id: outlet.id, name: outlet.name }))));
+  }, [vendorId]);
+  const loadAnalytics = useCallback(async () => {
+    if (!vendorId) return;
+    const params = new URLSearchParams();
+    if (analyticsOutlet) params.set('outletId', analyticsOutlet);
+    if (analyticsRange !== 'all') {
+      const now = new Date();
+      const end = analyticsRange === 'custom' ? analyticsTo : now.toISOString().slice(0, 10);
+      const start = analyticsRange === 'custom' ? analyticsFrom : new Date(now.getTime() - (analyticsRange === '7d' ? 6 : analyticsRange === '12m' ? 364 : 29) * 86400000).toISOString().slice(0, 10);
+      if (start) params.set('from', start);
+      if (end) params.set('to', end);
+    }
+    const response = await fetch(`/api/vendors/${vendorId}/vouchers/analytics?${params.toString()}`, { cache: 'no-store' });
+    const payload = await response.json();
+    if (response.ok) setAnalytics(payload.data || []);
+  }, [analyticsFrom, analyticsOutlet, analyticsRange, analyticsTo, vendorId]);
+  useEffect(() => { void loadAnalytics(); }, [loadAnalytics]);
 
   async function toggleActive(voucher: VoucherData) {
     if (!vendorId) return;
@@ -85,7 +110,7 @@ export default function VendorVouchersPage() {
 
       <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Active</p><p className="mt-1 text-2xl font-bold text-emerald-700">{stats.active || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Scheduled</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.scheduled || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Expired</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.expired || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Inactive</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.inactive || 0}</p></div></div>
 
-      {analytics.length > 0 && <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold text-gray-900">Voucher performance</p><p className="mt-1 text-xs text-gray-600">Redemption rate and revenue impact from completed demo orders.</p></div><span className="text-xs font-semibold text-amber-700">{analytics.reduce((sum, item) => sum + item.redemptions, 0)} redemptions</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{analytics.slice(0, 4).map((item) => <div key={item.voucherId} className="rounded-xl border border-amber-100 bg-white px-3 py-3 text-xs"><div className="flex justify-between gap-3"><span className="font-mono font-bold text-amber-700">{item.code}</span><span className="font-semibold text-gray-800">{item.redemptions} uses</span></div><p className="mt-1 text-gray-500">{item.redemptionRate === null ? 'Unlimited usage' : `${item.redemptionRate}% redemption rate`} · RM {item.discount.toFixed(2)} discount · RM {item.revenue.toFixed(2)} order revenue</p></div>)}</div></section>}
+      <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-semibold text-gray-900">Voucher performance</p><p className="mt-1 text-xs text-gray-600">Redemption rate, discount cost and net revenue impact from Supabase order data.</p></div><div className="flex flex-wrap gap-2"><select value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as typeof analyticsRange)} className="h-9 rounded-lg border border-amber-200 bg-white px-2 text-xs font-semibold text-gray-700"><option value="all">All time</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="12m">Last 12 months</option><option value="custom">Custom dates</option></select><select value={analyticsOutlet} onChange={(event) => setAnalyticsOutlet(event.target.value)} className="h-9 max-w-48 rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-700"><option value="">All outlets</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select>{analyticsRange === 'custom' && <><input type="date" value={analyticsFrom} onChange={(event) => setAnalyticsFrom(event.target.value)} className="h-9 rounded-lg border border-amber-200 bg-white px-2 text-xs" /><input type="date" value={analyticsTo} min={analyticsFrom || undefined} onChange={(event) => setAnalyticsTo(event.target.value)} className="h-9 rounded-lg border border-amber-200 bg-white px-2 text-xs" /></>}</div></div><div className="mt-4 grid gap-2 sm:grid-cols-3"><div className="rounded-xl bg-white px-3 py-2"><p className="text-[11px] text-gray-500">Redemptions</p><p className="mt-1 font-bold text-gray-900">{analytics.reduce((sum, item) => sum + item.redemptions, 0)}</p></div><div className="rounded-xl bg-white px-3 py-2"><p className="text-[11px] text-gray-500">Discount cost</p><p className="mt-1 font-bold text-gray-900">RM {analytics.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}</p></div><div className="rounded-xl bg-white px-3 py-2"><p className="text-[11px] text-gray-500">Net revenue impact</p><p className="mt-1 font-bold text-emerald-700">RM {analytics.reduce((sum, item) => sum + item.revenueImpact, 0).toFixed(2)}</p></div></div><div className="mt-3 grid gap-2 md:grid-cols-2">{analytics.slice(0, 6).map((item) => <div key={item.voucherId} className="rounded-xl border border-amber-100 bg-white px-3 py-3 text-xs"><div className="flex justify-between gap-3"><span className="font-mono font-bold text-amber-700">{item.code}</span><span className="font-semibold text-gray-800">{item.redemptions} uses</span></div><p className="mt-1 text-gray-500">{item.outletName} · {item.redemptionRate === null ? 'Unlimited usage' : `${item.redemptionRate}% of usage cap`} · RM {item.discount.toFixed(2)} discount · RM {item.revenueImpact.toFixed(2)} net impact</p></div>)}{analytics.length === 0 && <p className="text-sm text-gray-500">No vouchers match this date and outlet filter.</p>}</div></section>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between"><div className="flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1">{statuses.map((item) => <button key={item} type="button" onClick={() => { setStatus(item); setPagination((current) => ({ ...current, page: 1 })); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold capitalize ${status === item ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>{item}</button>)}</div><label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} /><input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search voucher code or campaign" className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-amber-500 md:w-64" /></label></div>
       <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(vouchers.map((voucher) => voucher.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'activate', label: 'Activate selected' }, { value: 'deactivate', label: 'Deactivate selected' }]} busy={batchBusy} message={batchMessage} />

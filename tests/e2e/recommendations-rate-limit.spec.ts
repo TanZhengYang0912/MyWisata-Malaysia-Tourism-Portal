@@ -64,7 +64,7 @@ test.describe('Recommendation rate limit (PR 019)', () => {
     // State might be a select or input
     const stateField = page.getByLabel(/state/i).first();
     if (await stateField.getAttribute('role') === 'combobox' || await stateField.evaluate(el => el.tagName) === 'SELECT') {
-      await stateField.selectOption({ label: /Selangor/i });
+      await stateField.selectOption({ label: 'Selangor' });
     } else {
       await stateField.fill('Selangor');
     }

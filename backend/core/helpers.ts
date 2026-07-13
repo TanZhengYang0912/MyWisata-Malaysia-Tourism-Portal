@@ -5,9 +5,10 @@ import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./type
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   DRAFT: ["PENDING_PAYMENT"],
   PENDING_PAYMENT: ["PAID", "CANCELLED"],
-  PAID: ["COMPLETED", "CANCELLED"],
+  PAID: ["COMPLETED", "CANCELLED", "REFUNDED"],
   COMPLETED: [],
   CANCELLED: [],
+  REFUNDED: [],
 };
 
 export function canTransition(from: OrderStatus, to: OrderStatus): boolean {

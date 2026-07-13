@@ -3,7 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import type { RecentOrder } from '@/components/vendor/recent-transactions';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
 
-export type DashboardFilter = 'today' | '7d' | '30d' | '12m';
+export type DashboardFilter = 'today' | '7d' | '30d' | '12m' | 'custom';
+export type DashboardCustomRange = { from?: string; to?: string };
 
 type DashboardRow = {
   id: string;
@@ -29,6 +30,7 @@ type DashboardRow = {
 };
 
 type RecentOrderDraft = RecentOrder & { display_id?: string | null; fulfil_statuses: string[] };
+export type StockAlert = { variantId: string; productId: string; productName: string; variantName: string; outletId: string; quantity: number; reserved: number; available: number; threshold: number; coverUrl: string | null };
 
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
 
@@ -50,18 +52,27 @@ function malaysiaMidnight(date: Date) {
   return new Date(Date.UTC(Number(local.year), Number(local.month) - 1, Number(local.day)) - 8 * 60 * 60 * 1000);
 }
 
-function rangeFor(filter: DashboardFilter) {
+function rangeFor(filter: DashboardFilter, customRange?: DashboardCustomRange) {
   const now = new Date();
   const today = malaysiaMidnight(now);
   let start = today;
+  let end = now;
+  if (filter === 'custom' && customRange?.from) {
+    const from = new Date(`${customRange.from}T00:00:00+08:00`);
+    const to = new Date(`${customRange.to || customRange.from}T23:59:59.999+08:00`);
+    if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && from <= to) {
+      start = from;
+      end = to < now ? to : now;
+    }
+  }
   if (filter === '7d') start = new Date(today.getTime() - 6 * 86400000);
   if (filter === '30d') start = new Date(today.getTime() - 29 * 86400000);
   if (filter === '12m') {
     const local = parts(now);
     start = new Date(Date.UTC(Number(local.year), Number(local.month) - 11, 1) - 8 * 60 * 60 * 1000);
   }
-  const duration = now.getTime() - start.getTime();
-  return { now, start, previousStart: new Date(start.getTime() - duration), previousEnd: start };
+  const duration = Math.max(1, end.getTime() - start.getTime());
+  return { now: end, start, previousStart: new Date(start.getTime() - duration), previousEnd: start };
 }
 
 function bucketKey(date: Date, filter: DashboardFilter) {
@@ -97,7 +108,7 @@ function percentChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
+export async function getVendorDashboardData(filter: DashboardFilter = '7d', customRange?: DashboardCustomRange) {
   const authDb = await createClient();
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return null;
@@ -146,9 +157,9 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   if (outletError) throw outletError;
   const outletRows = ((scopedOutletIds ? (outlets || []).filter((outlet: any) => scopedOutletIds?.includes(outlet.id)) : outlets || [])) as unknown as DashboardRow[];
   const outletIds = outletRows.map((outlet) => outlet.id);
-  const { now, start, previousStart, previousEnd } = rangeFor(filter);
+  const { now, start, previousStart, previousEnd } = rangeFor(filter, customRange);
 
-  const [itemsResult, productsResult, reviewsResult, pendingResult] = await Promise.all([
+  const [itemsResult, productsResult, reviewsResult, pendingResult, inventoryResult] = await Promise.all([
     outletIds.length
       ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,total_amount,created_at,paid_at,completed_at)').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
@@ -156,12 +167,14 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
     db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true),
     outletIds.length
       ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
-      : Promise.resolve({ data: [], error: null })
+      : Promise.resolve({ data: [], error: null }),
+    db.from('inventory').select('variant_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,products!inner(id,name,outlet_id,cover_url))'),
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;
   if (reviewsResult.error) throw reviewsResult.error;
   if (pendingResult.error) throw pendingResult.error;
+  if (inventoryResult.error) throw inventoryResult.error;
 
   const allItems = (itemsResult.data || []) as DashboardRow[];
   const currentItems = allItems.filter((item) => new Date(item.created_at) >= start);
@@ -188,6 +201,16 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
   const outletLocations = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outletLocation(outlet.city, outlet.state)]));
   const productNames = Object.fromEntries(products.map((product) => [product.id, product.name]));
   const productById = Object.fromEntries(products.map((product) => [product.id, product]));
+  const stockAlerts = ((inventoryResult.data || []) as any[]).flatMap((row) => {
+    const variant = Array.isArray(row.product_variants) ? row.product_variants[0] : row.product_variants;
+    const product = Array.isArray(variant?.products) ? variant.products[0] : variant?.products;
+    if (!variant || !product || !outletIds.includes(product.outlet_id)) return [];
+    const quantity = number(row.quantity);
+    const reserved = number(row.reserved);
+    const available = Math.max(0, quantity - reserved);
+    const threshold = Math.max(0, number(row.low_stock_threshold ?? 5));
+    return available <= threshold ? [{ variantId: row.variant_id, productId: product.id, productName: product.name, variantName: variant.name, outletId: product.outlet_id, quantity, reserved, available, threshold, coverUrl: product.cover_url || null }] : [];
+  }).sort((a, b) => a.available - b.available).slice(0, 12) as StockAlert[];
 
   const chartMap = new Map<string, { revenue: number; orders: Set<string> }>();
   for (const item of currentItems) {
@@ -283,6 +306,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d') {
     topSelling,
     topRated,
     recentTransactions,
+    stockAlerts,
   };
 }
 

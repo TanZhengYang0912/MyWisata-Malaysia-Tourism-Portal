@@ -3,13 +3,38 @@ import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
+function parseCsv(source: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (char === '"' && quoted && next === '"') { cell += '"'; index += 1; continue; }
+    if (char === '"') { quoted = !quoted; continue; }
+    if (char === ',' && !quoted) { row.push(cell.trim()); cell = ''; continue; }
+    if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') index += 1;
+      row.push(cell.trim()); cell = '';
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += char;
+  }
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  return rows;
+}
+
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorizeVendor(vendorId, ['vendor_owner']);
   if (!access.ok) return access.response;
   const body = await request.json().catch(() => ({})) as { csv?: unknown };
   if (typeof body.csv !== 'string' || body.csv.trim().length < 10) return apiFail('INVALID_CSV', 'Upload a CSV with a header row and at least one voucher.', 400);
-  const rows = body.csv.trim().split(/\r?\n/).filter(Boolean).map((line) => line.split(',').map((value) => value.trim().replace(/^"|"$/g, '')));
+  const rows = parseCsv(body.csv.trim());
   const headers = rows.shift()?.map((header) => header.toLowerCase()) || [];
   const index = (name: string) => headers.indexOf(name);
   const records = rows.map((row) => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, QrCode } from "lucide-react";
+import { CheckCircle2, Package, QrCode } from "lucide-react";
 import { getBookingsForOrder, getOrder } from "@/backend/domains/commerce";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -31,7 +31,7 @@ export default function OrderDetailPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
+    <div className="order-receipt-page mx-auto max-w-lg px-4 py-8 sm:px-6 print:max-w-none print:px-0 print:py-0">
       {order.status === "PAID" || order.status === "COMPLETED" ? (
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3 bg-primary/15">
@@ -51,8 +51,11 @@ export default function OrderDetailPage() {
         </div>
         <div className="space-y-2 mb-3">
           {order.items.map((item, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="text-foreground">{item.qty}× {item.activityName} ({item.variantLabel})</span>
+            <div key={i} className="flex items-center gap-3 text-sm">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary text-primary print:h-16 print:w-16">
+                {item.imageUrl ? <img src={item.imageUrl} alt={item.activityName} className="h-full w-full object-cover" /> : <Package size={22} />}
+              </div>
+              <span className="min-w-0 flex-1 text-foreground">{item.qty}× {item.activityName} ({item.variantLabel})</span>
               <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">RM {(item.unitPrice * item.qty).toFixed(2)}</span>
             </div>
           ))}
@@ -94,7 +97,7 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 print:hidden">
         <Button type="button" variant="outline" className="flex-1" onClick={() => window.print()}>Print receipt</Button>
         <Link href="/customer/orders" className="flex-1"><Button variant="outline" className="w-full">Back to Order History</Button></Link>
       </div>

@@ -1,0 +1,72 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import { FileUp, LoaderCircle, RefreshCw } from 'lucide-react';
+
+interface UploadedMedia {
+  url: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  kind: string;
+}
+
+interface Props {
+  vendorId: string;
+  productId?: string;
+  kind?: 'image' | 'digital';
+  value?: string | null;
+  onUploaded: (media: UploadedMedia) => void;
+  onError?: (message: string) => void;
+}
+
+export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, onUploaded, onError }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(file: File) {
+    setUploading(true);
+    onError?.('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('kind', kind);
+      if (productId) formData.append('productId', productId);
+      const response = await fetch('/api/vendors/' + vendorId + '/media/upload', { method: 'POST', body: formData });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'Upload failed.');
+      onUploaded(payload.data);
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        {value ? (
+          kind === 'image'
+            ? <img src={value} alt="Uploaded product media preview" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+            : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">FILE READY</div>
+        ) : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400"><FileUp size={20} /></div>}
+        <div className="min-w-0 flex-1">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={kind === 'digital' ? '.pdf,.zip,application/pdf,application/zip' : 'image/jpeg,image/png,image/webp'}
+            onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }}
+            className="sr-only"
+          />
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-50">
+            {uploading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {value ? 'Replace file' : 'Upload file'}
+          </button>
+          <p className="mt-1 text-[11px] text-gray-500">{kind === 'digital' ? 'PDF or ZIP · max 10 MB' : 'JPG, PNG or WebP · max 10 MB'}</p>
+        </div>
+      </div>
+    </div>
+  );
+}

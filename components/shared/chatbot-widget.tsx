@@ -100,7 +100,7 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50 print:hidden">
       {open && (
         <div
           className="mb-3 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background shadow-xl flex flex-col overflow-hidden"

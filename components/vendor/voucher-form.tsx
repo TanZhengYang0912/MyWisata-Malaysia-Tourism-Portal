@@ -19,6 +19,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  const [generatingCode, setGeneratingCode] = useState(false);
   const supabase = useMemo(() => createClient(), []);
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<any>({
@@ -33,13 +34,18 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
     ]).then(([outletResult, productResult]) => { setOutlets(outletResult.data ?? []); setProducts(productResult.data ?? []); });
   }, [vendorId, supabase]);
 
-  function generateCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  async function generateCode() {
+    setGeneratingCode(true);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/vouchers/generate-code`, { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'Could not generate a unique code.');
+      setValue('code', payload.data.code, { shouldDirty: true, shouldValidate: true });
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'Could not generate a unique code.');
+    } finally {
+      setGeneratingCode(false);
     }
-    return result;
   }
 
   async function onSubmit(data: any) {
@@ -86,13 +92,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
             <div className="flex gap-2">
               <Input {...register('code')} className="uppercase" placeholder="e.g. SUMMER24" />
-              <Button type="button" variant="outline" onClick={() => {
-                const el = document.querySelector('input[name="code"]') as HTMLInputElement;
-                if (el) {
-                  const code = generateCode();
-                  setValue('code', code, { shouldDirty: true, shouldValidate: true });
-                }
-              }}>Auto</Button>
+              <Button type="button" variant="outline" disabled={generatingCode} onClick={() => void generateCode()}>{generatingCode ? '…' : 'Auto'}</Button>
             </div>
             {errors.code && <p className="text-red-500 text-xs mt-1">{(errors.code as any)?.message}</p>}
           </div>

@@ -113,7 +113,7 @@ export interface ComputedActivity extends Activity {
 }
 
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────
-export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED";
+export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED";
 
 export interface CartItem {
   activityId: string;
@@ -140,6 +140,7 @@ export interface Voucher {
 export interface OrderItem {
   activityId: string;
   activityName: string; // snapshot
+  imageUrl?: string; // snapshot
   variantLabel: string; // snapshot
   slotStartsAt?: string; // snapshot
   unitPrice: number; // snapshot
@@ -168,6 +169,7 @@ export interface Booking {
   outletId: string;
   slotStartsAt?: string;
   qty: number;
+  status: "confirmed" | "checked_in" | "no_show" | "cancelled";
   qrCode: string; // demo placeholder string
 }
 

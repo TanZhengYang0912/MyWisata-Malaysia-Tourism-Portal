@@ -87,6 +87,7 @@ export async function clearCart(userId: string): Promise<void> {
 type OrderItemRow = {
   product_id: string | null;
   product_name: string;
+  image_url: string | null;
   variant_name: string | null;
   slot_starts_at: string | null;
   unit_price: number;
@@ -98,6 +99,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
   return {
     activityId: row.product_id ?? "",
     activityName: row.product_name,
+    imageUrl: row.image_url ?? undefined,
     variantLabel: row.variant_name ?? "Standard",
     slotStartsAt: row.slot_starts_at ?? undefined,
     unitPrice: Number(row.unit_price),
@@ -120,7 +122,7 @@ type OrderRow = {
 };
 
 const ORDER_SELECT =
-  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,variant_name,slot_starts_at,unit_price,quantity,outlet_id)";
+  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -131,7 +133,7 @@ function mapOrder(row: OrderRow): Order {
     discount: Number(row.discount_amount),
     total: Number(row.total_amount),
     voucherCode: row.voucher_code ?? undefined,
-    status: row.status as Order["status"],
+    status: row.status.toUpperCase() as Order["status"],
     createdAt: row.created_at,
     paymentMethod: row.payment_method ?? undefined,
   };
@@ -160,6 +162,7 @@ export async function getOrdersForOutlets(outletIds: string[]): Promise<Order[]>
 type BookingRow = {
   id: string;
   demo_qr_code: string | null;
+  status: Booking["status"];
   order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
 };
 
@@ -174,11 +177,12 @@ function mapBooking(row: BookingRow): Booking | null {
     outletId: row.order_items.outlet_id,
     slotStartsAt: row.order_items.slot_starts_at ?? undefined,
     qty: row.order_items.quantity,
+    status: row.status,
     qrCode: row.demo_qr_code ?? "",
   };
 }
 
-const BOOKING_SELECT = "id,demo_qr_code,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
+const BOOKING_SELECT = "id,status,demo_qr_code,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);
@@ -241,6 +245,7 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
       variant_id: c.variantId,
       slot_id: c.slotId ?? null,
       product_name: activity.name,
+      image_url: activity.image || null,
       variant_name: variant?.label ?? "Standard",
       unit_price: lineUnitPrice,
       quantity: c.qty,
@@ -295,6 +300,7 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
       return {
         activityId: activity.id,
         activityName: activity.name,
+        imageUrl: activity.image || undefined,
         variantLabel: variant?.label ?? "Standard",
         unitPrice: lineUnitPrice,
         qty: c.qty,

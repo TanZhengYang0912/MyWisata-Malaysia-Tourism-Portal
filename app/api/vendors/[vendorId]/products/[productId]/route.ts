@@ -3,8 +3,18 @@
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
+type StockVariant = { is_active: boolean; inventory?: { quantity?: number | null; reserved?: number | null }[] };
+
+async function refreshStockStatus(serviceDb: SupabaseClient, vendorId: string, productId: string) {
+  const { data: product } = await serviceDb.from('products').select('requires_booking,review_status,status').eq('id', productId).eq('vendor_id', vendorId).maybeSingle();
+  if (!product || product.requires_booking) return;
+  const { data: variants } = await serviceDb.from('product_variants').select('is_active,inventory(quantity,reserved)').eq('product_id', productId);
+  const available = ((variants || []) as StockVariant[]).some((variant) => variant.is_active && Number(variant.inventory?.[0]?.quantity || 0) - Number(variant.inventory?.[0]?.reserved || 0) > 0);
+  await serviceDb.from('products').update({ status: available && product.review_status === 'approved' ? 'active' : 'inactive' }).eq('id', productId).eq('vendor_id', vendorId).neq('status', 'archived');
+}
 
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
@@ -19,6 +29,7 @@ export async function GET(_request: Request, { params }: Props) {
       outlets(name, city),
       categories(name, slug),
       product_variants(*, inventory(*)),
+      media_assets(id,url,alt_text,sort_order),
       booking_slots(*)
     `)
     .eq('id', productId)
@@ -49,7 +60,7 @@ export async function PATCH(request: Request, { params }: Props) {
   const body = parsed.data;
 
   const updateData: Record<string, unknown> = {};
-  const contentChanged = ['name', 'description', 'productType', 'requiresBooking', 'basePrice', 'categoryId', 'coverUrl', 'tags'].some((key) => body[key as keyof typeof body] !== undefined);
+  const contentChanged = ['name', 'description', 'productType', 'requiresBooking', 'basePrice', 'categoryId', 'coverUrl', 'tags', 'defaultCapacity', 'digitalAssetUrl', 'digitalAssetName', 'digitalAssetType', 'digitalAssetSize'].some((key) => body[key as keyof typeof body] !== undefined);
   if (body.name !== undefined) updateData.name = body.name;
   if (body.description !== undefined) updateData.description = body.description;
   if (body.productType !== undefined) updateData.product_type = body.productType;
@@ -59,8 +70,13 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.coverUrl !== undefined) updateData.cover_url = body.coverUrl || null;
   if (body.tags !== undefined) updateData.tags = body.tags;
   if (body.status !== undefined) updateData.status = body.status;
+  if (body.defaultCapacity !== undefined) updateData.default_capacity = body.defaultCapacity;
+  if (body.digitalAssetUrl !== undefined) updateData.digital_asset_url = body.digitalAssetUrl || null;
+  if (body.digitalAssetName !== undefined) updateData.digital_asset_name = body.digitalAssetName || null;
+  if (body.digitalAssetType !== undefined) updateData.digital_asset_type = body.digitalAssetType || null;
+  if (body.digitalAssetSize !== undefined) updateData.digital_asset_size = body.digitalAssetSize ?? null;
   if (contentChanged) {
-    updateData.review_status = 'pending_review';
+    updateData.review_status = body.submissionMode === 'draft' ? 'draft' : 'pending_review';
     updateData.review_note = null;
     updateData.reviewed_by = null;
     updateData.reviewed_at = null;
@@ -77,6 +93,50 @@ export async function PATCH(request: Request, { params }: Props) {
     .single();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+
+  if (body.gallery?.length) {
+    const { data: existingMedia } = await access.access.serviceDb
+      .from('media_assets')
+      .select('url')
+      .eq('product_id', productId);
+    const existingUrls = new Set((existingMedia || []).map((media: { url: string }) => media.url));
+    const newMedia = body.gallery
+      .filter((media) => !existingUrls.has(media.url))
+      .map((media, index) => ({
+        vendor_id: vendorId,
+        outlet_id: existingProduct.outlet_id,
+        product_id: productId,
+        url: media.url,
+        alt_text: media.alt || String(body.name || 'Product image'),
+        media_type: 'image',
+        sort_order: (existingMedia?.length || 0) + index,
+      }));
+    if (newMedia.length) {
+      const { error: mediaError } = await access.access.serviceDb.from('media_assets').insert(newMedia);
+      if (mediaError) return apiFail('DB_ERROR', mediaError.message, 500);
+    }
+  }
+
+  if (body.availableStock !== undefined || body.lowStockThreshold !== undefined) {
+    const { data: variant } = await access.access.serviceDb
+      .from('product_variants')
+      .select('id')
+      .eq('product_id', productId)
+      .eq('is_default', true)
+      .maybeSingle();
+    if (variant && body.productType !== 'digital' && body.requiresBooking !== true) {
+      const { error: inventoryError } = await access.access.serviceDb
+        .from('inventory')
+        .upsert({
+          variant_id: variant.id,
+          quantity: body.availableStock ?? 0,
+          low_stock_threshold: body.lowStockThreshold ?? 5,
+        }, { onConflict: 'variant_id' });
+      if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
+      await refreshStockStatus(access.access.serviceDb, vendorId, productId);
+    }
+  }
+
   return apiOk(data);
 }
 

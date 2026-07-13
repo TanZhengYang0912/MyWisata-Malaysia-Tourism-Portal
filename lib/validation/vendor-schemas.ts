@@ -6,8 +6,13 @@ import { z } from 'zod';
 // ── Common building blocks ─────────────────────────────────
 
 const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
+const optionalUuid = uuid.or(z.literal('')).optional();
 const rmMoney = z.number().finite().min(0).max(100_000).multipleOf(0.01);
 const slug = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Must be a valid slug (lowercase, hyphens only)');
+const productMediaSchema = z.object({
+  url: z.string().url().max(2000),
+  alt: z.string().trim().max(255).optional(),
+}).strict();
 
 // ── Vendor ─────────────────────────────────────────────────
 
@@ -19,6 +24,8 @@ export const vendorRegisterSchema = z.object({
   logoUrl: z.string().url().max(2000).optional().or(z.literal('')),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
 }).strict();
+
+export const vendorUpdateSchema = vendorRegisterSchema.partial();
 
 export const vendorApproveSchema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -67,6 +74,15 @@ export const productCreateSchema = z.object({
   categoryId: uuid.optional(),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
   tags: z.array(z.string().max(50)).max(20).optional(),
+  submissionMode: z.enum(['draft', 'review']).default('review'),
+  availableStock: z.number().int().min(0).max(999_999).optional(),
+  lowStockThreshold: z.number().int().min(0).max(999_999).optional(),
+  defaultCapacity: z.number().int().min(1).max(10_000).optional(),
+  digitalAssetUrl: z.string().url().max(2000).optional().or(z.literal('')),
+  digitalAssetName: z.string().max(255).optional(),
+  digitalAssetType: z.string().max(120).optional(),
+  digitalAssetSize: z.number().int().min(0).max(100_000_000).optional(),
+  gallery: z.array(productMediaSchema).max(8).optional(),
   outletId: uuid,
 }).strict();
 
@@ -186,11 +202,18 @@ export const fulfilSchema = z.object({
 }).strict();
 
 export const vendorBatchSchema = z.object({
-  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings']),
+  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings', 'slots']),
   action: z.enum(['archive', 'restore', 'close', 'activate', 'deactivate', 'ready', 'fulfilled', 'check_in', 'cancel']),
   ids: z.array(uuid).max(10_000).default([]),
   selectAllFiltered: z.boolean().default(false),
   filters: z.record(z.string(), z.string()).default({}),
+}).strict();
+
+export const contentReviewSchema = z.object({
+  entityType: z.enum(['outlet', 'product', 'voucher']),
+  entityId: uuid,
+  action: z.enum(['approve', 'reject']),
+  note: z.string().trim().max(500).optional(),
 }).strict();
 
 // ── Export inferred types ──────────────────────────────────

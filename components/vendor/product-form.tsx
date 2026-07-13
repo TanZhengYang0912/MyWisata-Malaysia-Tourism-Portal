@@ -4,11 +4,14 @@
 import { useState, useEffect } from 'react';
 import { useForm, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { productCreateSchema, productUpdateSchema, type ProductCreate } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { Sparkles } from 'lucide-react';
+import { Check, ImagePlus, Sparkles, Trash2 } from 'lucide-react';
+import { normalizeProductTags, validateProductReviewReadiness } from '@/lib/vendor/product-form-helpers';
+import ProductMediaUploader from '@/components/vendor/product-media-uploader';
 
 interface Props {
   vendorId: string;
@@ -24,16 +27,23 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null);
+  const [submitIntent, setSubmitIntent] = useState<'draft' | 'review'>('review');
   const supabase = createClient();
   const validationSchema = initialData?.id ? productUpdateSchema : productCreateSchema;
+  const formSchema = validationSchema.extend({
+    tags: z.union([z.string(), z.array(z.string().max(50)).max(20)]).optional(),
+  });
 
-  const { register, handleSubmit, getValues, setValue, formState: { errors, isSubmitting } } = useForm<any>({
-    resolver: zodResolver(validationSchema) as any,
+  const { register, handleSubmit, getValues, setValue, watch, formState: { errors, isSubmitting } } = useForm<any>({
+    resolver: zodResolver(formSchema) as any,
     shouldFocusError: true,
     defaultValues: initialData
-      ? { ...initialData, tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '' }
-      : { requiresBooking: false, productType: 'product', tags: '' },
+      ? { ...initialData, tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '', submissionMode: 'review' }
+      : { requiresBooking: false, productType: 'product', tags: '', submissionMode: 'review', lowStockThreshold: 5 },
   });
+  const productType = watch('productType');
+  const tags = normalizeProductTags(watch('tags'));
+  const gallery = (watch('gallery') || []) as { url: string; alt?: string }[];
 
   useEffect(() => {
     let outletsQuery = supabase.from('outlets').select('id, name, city, state').eq('vendor_id', vendorId);
@@ -95,8 +105,9 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     setServerError(firstError?.message || 'Please check the highlighted fields before saving.');
   }
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: any, intent: 'draft' | 'review' = data.submissionMode === 'draft' ? 'draft' : submitIntent) {
     setServerError(null);
+    const normalizedTags = normalizeProductTags(data.tags);
     const normalizedData = {
       name: String(data.name || '').trim(),
       description: data.description ? String(data.description).trim() : undefined,
@@ -105,11 +116,32 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       basePrice: Number(data.basePrice),
       categoryId: data.categoryId || undefined,
       coverUrl: data.coverUrl || undefined,
-      tags: typeof data.tags === 'string'
-        ? data.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
-        : Array.isArray(data.tags) ? data.tags : undefined,
+      tags: normalizedTags.length ? normalizedTags : undefined,
+      submissionMode: intent,
+      availableStock: data.availableStock === '' || data.availableStock == null ? undefined : Number(data.availableStock),
+      lowStockThreshold: data.lowStockThreshold === '' || data.lowStockThreshold == null ? undefined : Number(data.lowStockThreshold),
+      defaultCapacity: data.defaultCapacity === '' || data.defaultCapacity == null ? undefined : Number(data.defaultCapacity),
+      digitalAssetUrl: data.digitalAssetUrl || undefined,
+      digitalAssetName: data.digitalAssetName || undefined,
+      digitalAssetType: data.digitalAssetType || undefined,
+      digitalAssetSize: data.digitalAssetSize == null ? undefined : Number(data.digitalAssetSize),
+      gallery: gallery.length ? gallery : undefined,
       ...(initialData?.id ? {} : { outletId: data.outletId }),
     };
+    if (intent === 'review') {
+      const readinessErrors = validateProductReviewReadiness({
+        productType: normalizedData.productType,
+        coverUrl: normalizedData.coverUrl,
+        availableStock: normalizedData.availableStock,
+        defaultCapacity: normalizedData.defaultCapacity,
+        digitalAssetUrl: normalizedData.digitalAssetUrl,
+      });
+      const firstReadinessError = Object.values(readinessErrors)[0];
+      if (firstReadinessError) {
+        setServerError(firstReadinessError);
+        return;
+      }
+    }
     try {
       const isEdit = !!initialData?.id;
       const url = isEdit 
@@ -137,7 +169,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+    <form onSubmit={handleSubmit((data) => onSubmit(data, data.submissionMode === 'draft' ? 'draft' : submitIntent), onInvalid)} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{initialData?.id ? 'Edit Product' : 'Add Product'}</h2>
         {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
@@ -208,7 +240,56 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
           <Input {...register('tags')} placeholder="food, heritage, family-friendly" />
-          <p className="mt-1 text-xs text-gray-400">Separate tags with commas.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setValue('tags', tags.filter((item) => item !== tag).join(', '), { shouldDirty: true })}
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                title={'Remove ' + tag}
+              >
+                {tag} <Trash2 size={12} />
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-400">Separate tags with commas. Duplicate tags are removed when saved.</p>
+        </div>
+
+        <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ImagePlus size={17} className="text-emerald-700" />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Media</p>
+              <p className="text-xs text-gray-500">Cover image is required before review submission.</p>
+            </div>
+          </div>
+          <ProductMediaUploader
+            vendorId={vendorId}
+            productId={initialData?.id}
+            value={watch('coverUrl')}
+            onUploaded={(media) => setValue('coverUrl', media.url, { shouldDirty: true, shouldValidate: true })}
+            onError={(message) => setServerError(message || null)}
+          />
+          <Input {...register('coverUrl')} placeholder="Or paste an image URL" className="mt-2" />
+          {errors.coverUrl && <p className="mt-1 text-xs text-red-600">{(errors.coverUrl as any)?.message}</p>}
+          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2"><img src={watch('coverUrl')} alt="Product cover preview" className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500">{watch('coverUrl')}</span></div>}
+          <div className="mt-4 border-t border-gray-200 pt-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gallery</p>
+              <span className="text-[11px] text-gray-400">{gallery.length}/8 images</span>
+            </div>
+            {gallery.length < 8 && (
+              <ProductMediaUploader
+                vendorId={vendorId}
+                productId={initialData?.id}
+                value={null}
+                onUploaded={(media) => setValue('gallery', [...gallery, { url: media.url, alt: media.fileName }], { shouldDirty: true })}
+                onError={(message) => setServerError(message || null)}
+              />
+            )}
+            {gallery.length > 0 && <div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((media, index) => <div key={media.url} className="group relative overflow-hidden rounded-lg border border-gray-200"><img src={media.url} alt={media.alt || ('Gallery image ' + (index + 1))} className="h-16 w-full object-cover" /><button type="button" onClick={() => setValue('gallery', gallery.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="absolute right-1 top-1 rounded-md bg-gray-950/70 p-1 text-white opacity-0 transition group-hover:opacity-100" aria-label={'Remove gallery image ' + (index + 1)}><Trash2 size={12} /></button></div>)}</div>}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -227,14 +308,69 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </label>
           </div>
         </div>
+
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Availability</p>
+              <p className="mt-1 text-xs text-gray-500">This section changes based on the product type.</p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{productType}</span>
+          </div>
+          {['product', 'food'].includes(productType) && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Initial stock *</label>
+                <Input {...register('availableStock', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="0" />
+                {errors.availableStock && <p className="mt-1 text-xs text-red-600">{(errors.availableStock as any)?.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Low-stock alert at</label>
+                <Input {...register('lowStockThreshold', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="5" />
+              </div>
+            </div>
+          )}
+          {['activity', 'experience'].includes(productType) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Default booking capacity *</label>
+              <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder="e.g. 12" />
+              {errors.defaultCapacity && <p className="mt-1 text-xs text-red-600">{(errors.defaultCapacity as any)?.message}</p>}
+              <p className="mt-1 text-xs text-gray-500">Create exact time slots from the Bookings page after saving.</p>
+            </div>
+          )}
+          {productType === 'digital' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Download URL *</label>
+              <ProductMediaUploader
+                vendorId={vendorId}
+                productId={initialData?.id}
+                kind="digital"
+                value={watch('digitalAssetUrl')}
+                onUploaded={(media) => {
+                  setValue('digitalAssetUrl', media.url, { shouldDirty: true, shouldValidate: true });
+                  setValue('digitalAssetName', media.fileName, { shouldDirty: true });
+                  setValue('digitalAssetType', media.fileType, { shouldDirty: true });
+                  setValue('digitalAssetSize', media.fileSize, { shouldDirty: true });
+                }}
+                onError={(message) => setServerError(message || null)}
+              />
+              <Input {...register('digitalAssetUrl')} placeholder="Or paste a download URL" className="mt-2" />
+              {errors.digitalAssetUrl && <p className="mt-1 text-xs text-red-600">{(errors.digitalAssetUrl as any)?.message}</p>}
+              <p className="mt-1 text-xs text-gray-500">Upload a PDF or ZIP asset before review submission.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
         )}
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Product'}
+        <Button type="submit" variant="outline" disabled={isSubmitting} onClick={() => { setSubmitIntent('draft'); setValue('submissionMode', 'draft'); }}>
+          {isSubmitting && submitIntent === 'draft' ? 'Saving draft...' : 'Save Draft'}
+        </Button>
+        <Button type="submit" disabled={isSubmitting} onClick={() => { setSubmitIntent('review'); setValue('submissionMode', 'review'); }}>
+          {isSubmitting && submitIntent === 'review' ? 'Submitting...' : <><Check size={15} /> Submit for Review</>}
         </Button>
       </div>
     </form>

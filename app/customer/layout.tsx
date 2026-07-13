@@ -27,7 +27,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
-      <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+      <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
           <Link href="/customer/explore" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
