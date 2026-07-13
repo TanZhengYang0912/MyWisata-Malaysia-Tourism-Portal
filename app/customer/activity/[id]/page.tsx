@@ -4,9 +4,14 @@
 // be exported from a Server Component. Split into this thin server wrapper +
 // the pre-existing client component so shared links preview properly
 // (WhatsApp, etc.) without touching how the page fetches its own data.
+//
+// Now also fetches the activity + booking slots server-side (SSR) and passes
+// them as props, so the page has real content on first paint instead of a
+// client-only "Loading…" flash, and is crawlable/shareable.
 
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getBookingSlots, getComputedActivity } from "@/backend/domains/catalogue";
 import { ActivityDetailClient } from "./activity-detail-client";
 
 interface Props {
@@ -37,6 +42,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function ActivityDetailPage() {
-  return <ActivityDetailClient />;
+export default async function ActivityDetailPage({ params }: Props) {
+  const { id } = await params;
+  const db = await createClient();
+  const activity = await getComputedActivity(id, undefined, db);
+  const slots = activity?.requiresBooking ? await getBookingSlots(activity.id, db) : [];
+
+  return <ActivityDetailClient initialActivity={activity} initialSlots={slots} />;
 }

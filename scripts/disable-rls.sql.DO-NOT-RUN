@@ -1,3 +1,20 @@
+-- ============================================================
+-- DO NOT RUN THIS SCRIPT. Kept for historical/incident record only.
+--
+-- Running this against the remote DB caused a live PII leak: with RLS off,
+-- the public anon key could read every row of users, orders, order_items,
+-- bookings, kyc_submissions (IC numbers), wallets, chat_messages,
+-- support_tickets, and withdrawal_requests. Fixed by
+-- supabase/migrations/028_reenable_rls.sql, which re-enables RLS on every
+-- table this script disabled and recreates the two policies it dropped
+-- (recursion-safe this time). See that migration for the full writeup.
+--
+-- The mock-auth rationale below is obsolete: the app now uses real
+-- Supabase auth (auth.uid() resolves for logged-in users, incl. demo
+-- accounts via signInWithPassword), so there is no longer any reason RLS
+-- would need to be off.
+-- ============================================================
+
 -- Run this script in the Supabase SQL Editor to disable Row Level Security (RLS) on all tables.
 -- Since the application uses a local localStorage-based mock auth, client-side queries
 -- are treated as anonymous by Supabase. Disabling RLS allows these client-side queries to work.

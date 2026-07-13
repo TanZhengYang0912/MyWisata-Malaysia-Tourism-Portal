@@ -1,4 +1,5 @@
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, VendorSummary, Voucher } from "@/backend/core/types";
@@ -52,8 +53,8 @@ function mapOutlet(row: OutletRow): Outlet {
   };
 }
 
-export async function getOutlets(): Promise<Outlet[]> {
-  const { data, error } = await supabase.from("outlets").select(OUTLET_SELECT);
+export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[]> {
+  const { data, error } = await db.from("outlets").select(OUTLET_SELECT);
   if (error) throw error;
   return (data as unknown as OutletRow[]).map(mapOutlet);
 }
@@ -102,14 +103,14 @@ function mapActivity(row: ProductRow): Activity {
   };
 }
 
-export async function getActivities(): Promise<Activity[]> {
-  const { data, error } = await supabase.from("products").select(ACTIVITY_SELECT).eq("status", "active").eq("review_status", "approved");
+export async function getActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
+  const { data, error } = await db.from("products").select(ACTIVITY_SELECT).eq("status", "active").eq("review_status", "approved");
   if (error) throw error;
   return (data as unknown as ProductRow[]).map(mapActivity);
 }
 
-export async function getBookingSlots(activityId: string): Promise<BookingSlot[]> {
-  const { data, error } = await supabase.from("booking_slots").select("id,product_id,starts_at,capacity,booked,price_override").eq("product_id", activityId).order("starts_at");
+export async function getBookingSlots(activityId: string, db: SupabaseClient = supabase): Promise<BookingSlot[]> {
+  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
   return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
@@ -119,16 +120,16 @@ function toComputed(activity: Activity, outlet: Outlet | undefined, from?: { lat
   return { ...activity, outlet, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
 }
 
-async function getComputedActivities(from?: { lat: number; lng: number }): Promise<ComputedActivity[]> {
-  const [activities, outlets] = await Promise.all([getActivities(), getOutlets()]);
+async function getComputedActivities(from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
   const outletMap = new Map(outlets.map((o) => [o.id, o]));
   return activities
     .map((a) => toComputed(a, outletMap.get(a.outletId), from))
     .filter((a): a is ComputedActivity => a !== null);
 }
 
-export async function getComputedActivity(id: string, from?: { lat: number; lng: number }): Promise<ComputedActivity | null> {
-  const all = await getComputedActivities(from);
+export async function getComputedActivity(id: string, from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity | null> {
+  const all = await getComputedActivities(from, db);
   return all.find((a) => a.id === id) ?? null;
 }
 
@@ -142,8 +143,8 @@ export interface SearchFilters {
   sort?: "recommended" | "price_asc" | "rating_desc" | "distance_asc";
 }
 
-export async function searchActivities(filters: SearchFilters): Promise<ComputedActivity[]> {
-  let results = await getComputedActivities(filters.near);
+export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  let results = await getComputedActivities(filters.near, db);
 
   if (filters.q) {
     const q = filters.q.toLowerCase();
