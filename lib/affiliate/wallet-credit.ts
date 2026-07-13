@@ -47,3 +47,30 @@ export async function creditAffiliateCommission(
   });
   if (error) throw error;
 }
+
+/**
+ * Credits amountRM into the pending_earnings_sen hold bucket via
+ * credit_pending_earnings(). Money is not withdrawable until the hold window
+ * clears (confirm_pending_earnings moves it to earnings_sen).
+ */
+export async function creditPendingCommission(
+  service: SupabaseClient,
+  userId: string,
+  amountRM: number,
+  orderId: string,
+): Promise<void> {
+  const { data: wallet } = await service.from('wallets').select('id').eq('user_id', userId).maybeSingle();
+  if (!wallet) {
+    const { error: createErr } = await service.from('wallets').insert({ user_id: userId });
+    if (createErr) throw createErr;
+  }
+
+  const amountSen = Math.round(amountRM * 100);
+  const { error } = await service.rpc('credit_pending_earnings', {
+    p_user_id: userId,
+    p_amount_sen: amountSen,
+    p_ref_id: orderId,
+    p_note: `Affiliate commission pending — order ${orderId.slice(0, 8)}`,
+  });
+  if (error) throw error;
+}

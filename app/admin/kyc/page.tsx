@@ -2,20 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
-import { getUsers, setVerificationTier, getKycSubmissions, recordKycReview, getKycDocumentSignedUrl } from "@/backend/domains/identity";
-import { recordApproval } from "@/backend/core/audit";
+import { getUsers, getKycSubmissions, getKycDocumentSignedUrl } from "@/backend/domains/identity";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { KycSubmission, User } from "@/backend/core/types";
-
-const TIER_LABEL: Record<User["verificationTier"], string> = {
-  guest: "Guest",
-  registered: "Registered",
-  phone_verified: "Phone Verified",
-  profile_complete: "Profile Complete",
-  kyc_submitted: "KYC Under Review",
-  kyc_verified: "KYC Verified",
-};
 
 const DOC_LABEL: Record<string, string> = {
   national_id: "MyKad",
@@ -27,6 +17,8 @@ export default function AdminKycPage() {
   const { currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, KycSubmission>>(new Map());
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getUsers().then((all) => setUsers(all.filter((u) => u.role === "customer")));
@@ -36,30 +28,40 @@ export default function AdminKycPage() {
   }, []);
 
   async function review(user: User, approve: boolean) {
-    if (!currentUser) return;
-    const nextTier = approve ? "kyc_verified" : "profile_complete";
-    await setVerificationTier(user.id, nextTier);
-    await recordKycReview(user.id, currentUser.id, approve);
-    await recordApproval({
-      actorId: currentUser.id,
-      action: approve ? "kyc.approve" : "kyc.reject",
-      targetType: "user",
-      targetId: user.id,
-      notifyUserId: user.id,
-      notifyText: approve ? "Your KYC verification was approved!" : "Your KYC submission needs re-upload — please try again.",
-      before: { verificationTier: user.verificationTier },
-      after: { verificationTier: nextTier },
-    });
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, verificationTier: nextTier } : u)));
+    if (!currentUser || reviewing) return;
+    setReviewing(user.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/kyc/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, action: approve ? 'approve' : 'reject' }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error?.message ?? 'Review failed.');
+        return;
+      }
+      const nextTier = approve ? "kyc_verified" : "profile_complete";
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, verificationTier: nextTier } : u)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Review failed.');
+    } finally {
+      setReviewing(null);
+    }
   }
 
-  const pending = users.filter((u) => u.verificationTier === "kyc_submitted");
+  const pending  = users.filter((u) => u.verificationTier === "kyc_submitted");
   const verified = users.filter((u) => u.verificationTier === "kyc_verified");
 
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-1">KYC Review</h1>
       <p className="text-xs text-muted-foreground mb-6">Review submitted KYC documents and approve or reject each application.</p>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
+      )}
 
       <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
@@ -78,7 +80,7 @@ export default function AdminKycPage() {
                     <p className="font-semibold text-sm text-foreground">{u.name}</p>
                     {sub ? (
                       <p className="text-xs text-muted-foreground">
-                        {DOC_LABEL[sub.docType] ?? sub.docType} · IC: {sub.icNumber}
+                        {DOC_LABEL[sub.docType] ?? sub.docType}
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">No submission data</p>
@@ -100,7 +102,11 @@ export default function AdminKycPage() {
                       View Document
                     </button>
                   )}
-                  <ApproveRejectBar onApprove={() => review(u, true)} onReject={() => review(u, false)} />
+                  <ApproveRejectBar
+                    onApprove={() => review(u, true)}
+                    onReject={() => review(u, false)}
+                    disabled={reviewing === u.id}
+                  />
                 </div>
               );
             })}

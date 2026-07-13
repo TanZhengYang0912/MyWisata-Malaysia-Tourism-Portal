@@ -93,6 +93,25 @@ export function lineTotal(unitPrice: number, quantity: number): number {
   return multiply(unitPrice, quantity);
 }
 
+/**
+ * Convert RM to integer sen using banker's (half-even) rounding.
+ * At exactly 0.5 sen, rounds to the nearest even integer — unbiased
+ * over many transactions. Use for all commission calculations.
+ *
+ *   roundSen(0.005) → 0   (0 is even)
+ *   roundSen(0.015) → 2   (2 is even)
+ */
+export function roundSen(rm: number): number {
+  if (!Number.isFinite(rm)) throw new MoneyError('Non-finite money value', rm);
+  if (Math.abs(rm) > MAX_RM)  throw new MoneyError('Amount exceeds sanity ceiling', rm);
+  const scaled   = rm * 100;
+  const floor    = Math.floor(scaled);
+  const fraction = scaled - floor;
+  if (fraction > 0.5) return floor + 1;
+  if (fraction < 0.5) return floor;
+  return floor % 2 === 0 ? floor : floor + 1;  // half-even tie-break
+}
+
 /** Guard: is this a valid non-negative RM amount? */
 export function isValidRM(amount: unknown): amount is number {
   return typeof amount === 'number'

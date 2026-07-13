@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Star, Plus, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getMyRecommendations, submitRecommendation } from "@/backend/domains/discovery";
 import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -13,24 +12,74 @@ export default function RecommendationsPage() {
   const { currentUser } = useAuth();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", category: CATEGORIES[0].id, state: "Kuala Lumpur" });
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    category: CATEGORIES[0].id,
+    state: "Kuala Lumpur",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (currentUser) getMyRecommendations(currentUser.id).then(setRecs);
+    if (!currentUser) return;
+    fetch('/api/recommendations')
+      .then((r) => r.json())
+      .then((body) => {
+        if (body?.data) {
+          setRecs(body.data.map((r: any) => ({
+            id: r.id,
+            submittedBy: currentUser.id,
+            name: r.vendor_name,
+            category: r.categories?.name ?? "",
+            state: r.state ?? "",
+            status: r.status,
+            qualityScore: 0,
+            duplicate: false,
+          })));
+        }
+      })
+      .catch(() => setRecs([]));
   }, [currentUser]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser) return;
     setError("");
+
+    if (form.name.trim().length < 3) { setError("Vendor name must be at least 3 characters."); return; }
+    if (form.description.trim().length < 20) { setError("Description must be at least 20 characters."); return; }
+
     setSubmitting(true);
     try {
-      const rec = await submitRecommendation(currentUser.id, form.name, form.category, form.state);
-      setRecs((prev) => [rec, ...(prev ?? [])]);
+      const res = await fetch('/api/recommendations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendorName:  form.name.trim(),
+          description: form.description.trim(),
+          categoryId:  form.category || undefined,
+          state:       form.state,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body?.error?.message ?? 'Failed to submit.');
+        return;
+      }
+      const newRec: VendorRecommendation = {
+        id:           body.data.id,
+        submittedBy:  currentUser.id,
+        name:         body.data.vendor_name,
+        category:     form.category,
+        state:        form.state,
+        status:       'pending',
+        qualityScore: 0,
+        duplicate:    false,
+      };
+      setRecs((prev) => [newRec, ...(prev ?? [])]);
       setShowForm(false);
-      setForm({ name: "", category: CATEGORIES[0].id, state: "Kuala Lumpur" });
+      setForm({ name: "", description: "", category: CATEGORIES[0].id, state: "Kuala Lumpur" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit.");
     } finally {
@@ -38,7 +87,7 @@ export default function RecommendationsPage() {
     }
   }
 
-  const pending = (recs ?? []).filter((r) => r.status === "pending");
+  const pending  = (recs ?? []).filter((r) => r.status === "pending");
   const reviewed = (recs ?? []).filter((r) => r.status !== "pending");
 
   return (
@@ -56,7 +105,6 @@ export default function RecommendationsPage() {
         Know a great local experience that deserves to be on MyWisata? Nominate them here — earn commission if they join.
       </p>
 
-      {/* Submission form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-5 mb-6 space-y-4">
           <h2 className="font-bold text-foreground">New Recommendation</h2>
@@ -70,6 +118,19 @@ export default function RecommendationsPage() {
               placeholder="e.g. Aunty Lim's Nyonya Kitchen"
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description</label>
+            <textarea
+              required
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Describe what makes this vendor special (at least 20 characters)…"
+              rows={3}
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+            <p className="text-[10px] text-muted-foreground text-right">{form.description.length}/2000</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -107,7 +168,6 @@ export default function RecommendationsPage() {
         </form>
       )}
 
-      {/* Pending */}
       {pending.length > 0 && (
         <div className="rounded-2xl overflow-hidden border border-border bg-card mb-4">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
@@ -128,7 +188,6 @@ export default function RecommendationsPage() {
         </div>
       )}
 
-      {/* History */}
       <div className="rounded-2xl overflow-hidden border border-border bg-card">
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-bold text-foreground text-sm">My Recommendations</h2>

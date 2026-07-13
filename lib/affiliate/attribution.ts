@@ -1,99 +1,182 @@
-// P4 — Member 4: conversion + commission. See CLAUDE.md Step 4.
+// onOrderPaid() is the single integration point called from the checkout flow.
+// It coordinates two independent attribution pipelines:
+//   1. Affiliate link attribution (orders.affiliate_click_id, tier-rated commission)
+//   2. Recommendation attribution (vendor conversion bonus + 90-day ongoing)
 //
-// onOrderPaid() is the single integration point the checkout owner should
-// eventually call from the end of commerce.ts::createOrder() — see CLAUDE.md
-// Section 6. Do not call it from anywhere else in this module except the dev
-// purchase simulator (Step 5), and do not refactor createOrder() to add the
-// call yourself.
+// Contract: accepts only orderId. Both pipelines are idempotent — calling
+// onOrderPaid(orderId) multiple times is safe (duplicate inserts are rejected
+// by unique indexes on affiliate_attributions and recommendation_commissions).
 //
-// Reads next/headers' cookies() to get mw_ref, so this must be invoked from a
-// real server request context (Route Handler / Server Action) — it cannot be
-// called from a plain client-side function call.
+// Checkout owners: write the mw_ref cookie value to orders.affiliate_click_id
+// at order-creation time. onOrderPaid() reads from that column, not from
+// browser cookies, so it is callable from any context (webhooks, cron, admin).
 
-import { cookies } from 'next/headers';
 import { createServiceClient } from '@/lib/supabase/service';
-import { applyPercent } from '@/lib/money';
-import { getAttributionCookieDays } from './settings';
-import { getAffiliateCommissionRate } from './commission';
-import { creditAffiliateCommission } from './wallet-credit';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { applyPercent, roundSen } from '@/lib/money';
+import { getAttributionCookieDays, getEarningsHoldDays } from './settings';
+import { computeAffiliateTier } from './commission';
+import { creditPendingCommission } from './wallet-credit';
 
-const MW_REF_COOKIE = 'mw_ref';
-
-/**
- * Safe to call twice for the same order (the UNIQUE(order_id) constraint on
- * affiliate_attributions — migration 009 — makes the second call a no-op).
- * Never throws into the caller's checkout flow.
- */
 export async function onOrderPaid(orderId: string): Promise<void> {
   try {
-    const cookieStore = await cookies();
-    const clickId = cookieStore.get(MW_REF_COOKIE)?.value;
-    if (!clickId) return; // nobody referred them
-
-    // Service-role throughout: affiliate_links only has an owner-only SELECT
-    // policy, and this hook has no reason to run as any particular user's
-    // session anyway (it credits a third party's wallet). See CLAUDE.md
-    // Section 2 for the full per-table RLS/grants breakdown.
     const service = createServiceClient();
-
-    const { data: click } = await service
-      .from('affiliate_clicks')
-      .select('id, created_at, link_id')
-      .eq('id', clickId)
-      .maybeSingle();
-    if (!click) return;
-
-    const { data: link } = await service
-      .from('affiliate_links')
-      .select('user_id')
-      .eq('id', click.link_id)
-      .maybeSingle();
-    if (!link) return;
-    const linkOwnerId = link.user_id as string;
-
-    // EXPIRY GUARD
-    const cookieDays = await getAttributionCookieDays(service);
-    const clickAgeMs = Date.now() - new Date(click.created_at).getTime();
-    if (clickAgeMs > cookieDays * 86_400_000) return;
-
-    const { data: order } = await service
-      .from('orders')
-      .select('id, user_id, status, total_amount')
-      .eq('id', orderId)
-      .maybeSingle();
-    if (!order) return;
-    if (order.status !== 'paid' && order.status !== 'completed') return;
-
-    // SELF-REFERRAL GUARD
-    if (order.user_id === linkOwnerId) return;
-
-    const rate = await getAffiliateCommissionRate(service);
-    const commission = applyPercent(Number(order.total_amount), rate * 100);
-
-    const { data: attribution, error: attrErr } = await service
-      .from('affiliate_attributions')
-      .insert({
-        click_id: click.id,
-        order_id: orderId,
-        commission_rate: rate,
-        commission_amount: commission,
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (attrErr) {
-      // DUPLICATE-PAYOUT GUARD: 23505 = unique_violation on order_id. This
-      // order was already attributed by a previous call — not an error.
-      if (attrErr.code === '23505') return;
-      throw attrErr;
-    }
-    if (!attribution) return;
-
-    await creditAffiliateCommission(service, linkOwnerId, commission, orderId);
-
-    cookieStore.delete(MW_REF_COOKIE);
+    await Promise.allSettled([
+      processAffiliateAttribution(service, orderId),
+      processRecommendationAttribution(service, orderId),
+    ]);
   } catch (error) {
-    console.error('[affiliate] onOrderPaid failed', error instanceof Error ? error.message : error);
+    console.error('[attribution] onOrderPaid failed', error instanceof Error ? error.message : error);
+  }
+}
+
+// ── 1. Affiliate attribution ──────────────────────────────────────────────────
+
+async function processAffiliateAttribution(service: SupabaseClient, orderId: string): Promise<void> {
+  // Fetch order along with the click ID written at checkout creation time.
+  // affiliate_click_id is set by whoever creates the order (checkout owner)
+  // from the mw_ref cookie — it is NOT read from cookies here.
+  const { data: order } = await service
+    .from('orders')
+    .select('id, user_id, status, total_amount, affiliate_click_id')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (!order?.affiliate_click_id) return;
+  if (order.status !== 'paid' && order.status !== 'completed') return;
+
+  const clickId = order.affiliate_click_id as string;
+
+  const { data: click } = await service
+    .from('affiliate_clicks')
+    .select('id, created_at, link_id')
+    .eq('id', clickId)
+    .maybeSingle();
+  if (!click) return;
+
+  const { data: link } = await service
+    .from('affiliate_links')
+    .select('user_id')
+    .eq('id', click.link_id)
+    .maybeSingle();
+  if (!link) return;
+  const linkOwnerId = link.user_id as string;
+
+  const cookieDays = await getAttributionCookieDays(service);
+  const clickAgeMs = Date.now() - new Date(click.created_at).getTime();
+  if (clickAgeMs > cookieDays * 86_400_000) return;
+
+  if (order.user_id === linkOwnerId) return; // self-referral guard
+
+  const rate       = await computeAffiliateTier(service, linkOwnerId);
+  const commission = applyPercent(Number(order.total_amount), rate * 100);
+  const holdDays   = await getEarningsHoldDays(service);
+  const holdUntil  = new Date(Date.now() + holdDays * 86_400_000).toISOString();
+
+  const { data: attribution, error: attrErr } = await service
+    .from('affiliate_attributions')
+    .insert({
+      click_id:          click.id,
+      order_id:          orderId,
+      commission_rate:   rate,
+      commission_amount: commission,
+      status:            'pending',
+      hold_until:        holdUntil,
+    })
+    .select('id')
+    .single();
+
+  if (attrErr) {
+    if (attrErr.code === '23505') return; // duplicate — idempotent
+    throw attrErr;
+  }
+  if (!attribution) return;
+
+  await creditPendingCommission(service, linkOwnerId, commission, orderId);
+}
+
+// ── 2. Recommendation attribution ─────────────────────────────────────────────
+
+async function processRecommendationAttribution(service: SupabaseClient, orderId: string): Promise<void> {
+  const { data: order } = await service
+    .from('orders')
+    .select('user_id, total_amount, status')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) return;
+  if (order.status !== 'paid' && order.status !== 'completed') return;
+
+  const { data: items } = await service
+    .from('order_items')
+    .select('outlet_id')
+    .eq('order_id', orderId);
+  if (!items?.length) return;
+
+  const outletIds = [...new Set(items.map((i: any) => i.outlet_id).filter(Boolean))];
+  if (!outletIds.length) return;
+
+  const { data: outlets } = await service
+    .from('outlets')
+    .select('vendor_id')
+    .in('id', outletIds);
+  if (!outlets?.length) return;
+
+  const vendorIds = [...new Set(outlets.map((o: any) => o.vendor_id).filter(Boolean))];
+
+  await Promise.allSettled(
+    vendorIds.map((vendorId) =>
+      creditRecommendationForVendor(service, vendorId, orderId, order.user_id, Number(order.total_amount))
+    ),
+  );
+}
+
+async function creditRecommendationForVendor(
+  service:    SupabaseClient,
+  vendorId:   string,
+  orderId:    string,
+  buyerId:    string,
+  orderTotal: number,
+): Promise<void> {
+  const { data: conversion } = await service
+    .from('recommendation_conversions')
+    .select('id, recommendation_id, attribution_ends_at')
+    .eq('converted_vendor_id', vendorId)
+    .gt('attribution_ends_at', new Date().toISOString())
+    .maybeSingle();
+  if (!conversion) return;
+
+  const { data: rec } = await service
+    .from('vendor_recommendations')
+    .select('recommender_id')
+    .eq('id', conversion.recommendation_id)
+    .maybeSingle();
+  if (!rec) return;
+
+  if (rec.recommender_id === buyerId) return; // self-referral guard
+
+  // RM 50 first-sale bonus — idempotent via uniq_rec_comm_bonus index.
+  // RPC also syncs first_sale_awarded_at on the conversion row.
+  await service.rpc('credit_pending_recommendation', {
+    p_user_id:         rec.recommender_id,
+    p_amount_sen:      5000,
+    p_commission_type: 'bonus',
+    p_conversion_id:   conversion.id,
+    p_order_id:        orderId,
+    p_note:            `First-sale RM 50 bonus — vendor ${vendorId.slice(0, 8)}`,
+  });
+
+  // Ongoing 3% commission — idempotent via uniq_rec_comm_ongoing index.
+  const ONGOING_RATE = 0.03;
+  const ongoingSen   = roundSen(orderTotal * ONGOING_RATE);
+  if (ongoingSen > 0) {
+    await service.rpc('credit_pending_recommendation', {
+      p_user_id:         rec.recommender_id,
+      p_amount_sen:      ongoingSen,
+      p_commission_type: 'ongoing',
+      p_conversion_id:   conversion.id,
+      p_order_id:        orderId,
+      p_commission_rate: ONGOING_RATE,
+      p_note:            `Ongoing 3% recommendation commission — order ${orderId.slice(0, 8)}`,
+    });
   }
 }

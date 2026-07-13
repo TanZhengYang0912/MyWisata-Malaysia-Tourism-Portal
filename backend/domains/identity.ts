@@ -32,8 +32,9 @@ function mapUser(row: UserRow): User {
   };
 }
 
-// Hardcoded demo users shown when Supabase has fewer than 3 roles seeded.
-const DEMO_USERS: User[] = [
+// Hardcoded demo users — only active in development. In production all auth must
+// come from Supabase so there are no backdoor accounts.
+const DEMO_USERS: User[] = process.env.NODE_ENV === 'production' ? [] : [
   { id: "demo-customer-1", name: "Demo Customer", email: "customer@demo.local", role: "customer", avatarInitial: "C", verificationTier: "registered" },
   { id: "demo-vendor-1", name: "Demo Vendor Owner", email: "vendor@demo.local", role: "vendor_owner", avatarInitial: "V", verificationTier: "kyc_verified" },
   { id: "demo-admin-1", name: "Demo Admin", email: "admin@demo.local", role: "admin", avatarInitial: "A", verificationTier: "kyc_verified" },
@@ -295,5 +296,10 @@ export async function setVerificationTier(userId: string, tier: User["verificati
   const current = await getCurrentUser();
   if (current && current.id === userId) {
     setCurrentUser({ ...current, verificationTier: tier });
+  }
+  // Auto-provision affiliate link when user reaches full KYC. SECURITY DEFINER
+  // RPC handles the idempotency — safe to call even if a link already exists.
+  if (tier === "kyc_verified") {
+    await supabase.rpc("gen_affiliate_code", { p_user_id: userId }).then(() => undefined);
   }
 }

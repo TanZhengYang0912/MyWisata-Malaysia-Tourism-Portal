@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { UserCircle, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
-import { updateProfile } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 
 const profileSchema = z.object({
@@ -55,7 +54,15 @@ export default function ProfilePage() {
     if (!currentUser) return;
     setSaving(true);
     try {
-      await updateProfile(currentUser.id, result.data);
+      const res = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.data),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? 'Failed to save profile.');
+      }
       await refreshUser();
       router.push("/customer/kyc");
     } catch (err) {

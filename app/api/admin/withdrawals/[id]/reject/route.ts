@@ -27,6 +27,7 @@ export async function POST(
   if (error) {
     const msg = error.message;
     if (msg.includes('admin_required'))            return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (msg.includes('self_dealing'))              return NextResponse.json({ error: 'You cannot reject your own withdrawal' }, { status: 403 });
     if (msg.includes('not_found_or_wrong_status')) return NextResponse.json({ error: 'Withdrawal not found or not in pending status' }, { status: 409 });
     console.error('[admin-reject] admin_reject_withdrawal:', error);
     return NextResponse.json({ error: 'Rejection failed' }, { status: 500 });

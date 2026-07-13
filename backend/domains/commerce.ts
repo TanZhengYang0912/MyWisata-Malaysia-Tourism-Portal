@@ -291,7 +291,13 @@ export async function requestWithdrawal(userId: string, amount: number): Promise
     p_user_id:   userId,
     p_amount_rm: amount,
   });
-  if (rpcErr) throw rpcErr;
+  if (rpcErr) {
+    const msg = rpcErr.message;
+    if (msg.includes('below_min_withdrawal'))      throw new Error('Amount is below the minimum withdrawal threshold.');
+    if (msg.includes('pending_withdrawal_exists')) throw new Error('You already have a pending withdrawal. Please wait for it to be processed.');
+    if (msg.includes('insufficient_earnings'))     throw new Error('Insufficient earnings balance.');
+    throw rpcErr;
+  }
   const requestId = (rpcData as { request_id: string }).request_id;
   const { data, error } = await supabase
     .from("withdrawal_requests")
