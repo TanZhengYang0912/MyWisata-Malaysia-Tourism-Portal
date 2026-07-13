@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Map, MessageCircle, Search, ShoppingCart, User as UserIcon } from "lucide-react";
+import { Gift, Globe, Inbox, Map, MessageCircle, Search, ShoppingCart, User as UserIcon } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
+
+const UNREAD_POLL_MS = 30_000;
 
 const NAV = [
   { href: "/customer/explore", label: "Explore", icon: Search },
@@ -13,13 +16,44 @@ const NAV = [
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
   { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
   { href: "/customer/orders", label: "Orders", icon: UserIcon },
-  { href: "/customer/calendar", label: "Calendar", icon: UserIcon },
+  { href: "/customer/affiliate", label: "Earn & Share", icon: Gift },
+  { href: "/customer/support", label: "Support", icon: Inbox },
 ];
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"]);
   const { count } = useCart();
   const pathname = usePathname();
+  // CLAUDE-FIXES-2.md item 1: a dot on the Support nav item when there's an
+  // unread admin reply anywhere in my tickets. Polled — no realtime chat
+  // infra exists elsewhere in this repo to piggyback on.
+  const [unreadTickets, setUnreadTickets] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    async function poll() {
+      try {
+        const res = await fetch("/api/support/unread-count");
+        const body = (await res.json()) as { data: { count: number } | null };
+        if (!cancelled && res.ok && body.data) setUnreadTickets(body.data.count);
+      } catch {
+        // best-effort — a failed poll just leaves the last-known count showing
+      }
+    }
+    (async () => {
+      await poll();
+    })();
+    const interval = setInterval(() => {
+      (async () => {
+        await poll();
+      })();
+    }, UNREAD_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentUser]);
 
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
@@ -41,10 +75,13 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium transition-colors hover:opacity-70"
+                className="relative text-sm font-medium transition-colors hover:opacity-70"
                 style={{ color: pathname.startsWith(item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
                 {item.label}
+                {item.href === "/customer/support" && unreadTickets > 0 && (
+                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-destructive" />
+                )}
               </Link>
             ))}
           </div>
@@ -67,9 +104,6 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 </span>
               )}
             </Link>
-            <Link href="/customer/profile" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Edit Profile
-            </Link>
             <Link href="/login" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white bg-primary">
                 {currentUser.avatarInitial}
@@ -85,10 +119,13 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
+              className="relative flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
               style={{ color: pathname.startsWith(item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
               <item.icon size={13} /> {item.label}
+              {item.href === "/customer/support" && unreadTickets > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+              )}
             </Link>
           ))}
         </div>

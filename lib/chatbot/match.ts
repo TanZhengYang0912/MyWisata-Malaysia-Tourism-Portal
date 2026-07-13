@@ -15,7 +15,7 @@ const MATCH_THRESHOLD = 0.3;
 
 // Deliberately modest — this is a keyword matcher, not a full NLP stopword
 // list. Some of these (e.g. 'how') are themselves seeded as real keywords on
-// some KB docs (see migration 009's note); stripping them from the QUESTION
+// some KB docs (see migration 011's note); stripping them from the QUESTION
 // only, never from a doc's own keyword list, is what keeps that working.
 const STOPWORDS = new Set([
   "a", "an", "the", "is", "are", "am", "was", "were", "be", "been", "being",

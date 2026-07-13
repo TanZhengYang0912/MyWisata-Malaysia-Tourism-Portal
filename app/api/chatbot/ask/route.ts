@@ -1,5 +1,6 @@
 // P4 — Member 4: FAQ chatbot
-// POST /api/chatbot/ask — body { sessionKey?, question }. See CLAUDE.md Step 7.
+// POST /api/chatbot/ask — body { sessionKey?, question }. See CLAUDE.md Step 7,
+// upgraded to the RAG/LLM pipeline in CLAUDE-PHASE2.md Feature A.
 //
 // chatbot_sessions/chatbot_messages have RLS enabled with SELECT-only
 // policies (own-or-guest) — no INSERT policy exists on either table
@@ -10,9 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { chatbotAskSchema } from '@/lib/validation/chatbot-schemas';
-import { answerQuestion, type KbDoc } from '@/lib/chatbot/match';
-
-const FALLBACK_ANSWER = "Sorry, I don't know that one. Would you like our team to help?";
+import { answerQuestion } from '@/lib/chatbot/answer';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
@@ -48,31 +47,25 @@ export async function POST(request: Request) {
     .insert({ session_id: session.id, role: 'user', body: question });
   if (userMsgErr) return apiFail('DB_ERROR', userMsgErr.message, 500);
 
-  const { data: kbRows, error: kbErr } = await service
-    .from('chatbot_kb_documents')
-    .select('id, title, body, keywords, category')
-    .eq('is_active', true);
-  if (kbErr) return apiFail('DB_ERROR', kbErr.message, 500);
+  const result = await answerQuestion(question);
 
-  const docs: KbDoc[] = (kbRows ?? []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    keywords: row.keywords ?? [],
-    category: row.category,
-  }));
-
-  const match = answerQuestion(question, docs);
-  const answer = match ? match.body : FALLBACK_ANSWER;
-  const canEscalate = !match;
-
-  const { error: botMsgErr } = await service.from('chatbot_messages').insert({
-    session_id: session.id,
-    role: 'bot',
-    body: answer,
-    kb_matched: Boolean(match),
-  });
+  const { data: botMsg, error: botMsgErr } = await service
+    .from('chatbot_messages')
+    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched })
+    .select('id')
+    .single();
   if (botMsgErr) return apiFail('DB_ERROR', botMsgErr.message, 500);
 
-  return apiOk({ sessionKey: session.session_key, answer, canEscalate });
+  // Provenance — which KB docs (and their similarity, for RAG mode) backed
+  // this answer. See CLAUDE-PHASE2.md Feature A: "show which KB docs it
+  // used and their similarity scores." Best-effort: a failure here shouldn't
+  // fail the whole request, the user already has their answer.
+  if (result.usedKb.length > 0) {
+    const { error: refErr } = await service.from('chatbot_message_kb_refs').insert(
+      result.usedKb.map((k) => ({ message_id: botMsg.id, document_id: k.id, score: k.similarity })),
+    );
+    if (refErr) console.error('[chatbot] failed to log kb refs', refErr.message);
+  }
+
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, canEscalate: result.canEscalate });
 }

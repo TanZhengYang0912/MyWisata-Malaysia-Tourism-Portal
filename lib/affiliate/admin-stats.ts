@@ -2,10 +2,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { add } from '@/lib/money';
-import { getAffiliateCommissionRate } from './commission';
+import { getActiveTiers, resolveTier, type CommissionTier } from './tier';
 
-const HIGH_CLICKS_NO_REFERRALS_THRESHOLD = 5;
-const CLUSTERED_VISITOR_THRESHOLD = 3;
 const TOP_EARNERS_LIMIT = 10;
 
 export interface AffiliateAdminTotals {
@@ -13,7 +11,6 @@ export interface AffiliateAdminTotals {
   totalClicks: number;
   totalReferrals: number;
   totalCommission: number; // non-reversed attributions only
-  currentRate: number; // 0..1 fraction
 }
 
 export interface TopEarner {
@@ -21,18 +18,7 @@ export interface TopEarner {
   userName: string;
   referrals: number;
   commission: number;
-}
-
-export type SuspiciousReason = 'high_clicks_no_referrals' | 'clustered_visitor';
-
-export interface SuspiciousLink {
-  linkId: string;
-  userId: string;
-  userName: string;
-  affiliateCode: string;
-  clicks: number;
-  referrals: number;
-  reasons: SuspiciousReason[];
+  tierName: string;
 }
 
 export interface AffiliateAttributionRow {
@@ -49,8 +35,8 @@ export interface AffiliateAttributionRow {
 
 export interface AffiliateAdminStats {
   totals: AffiliateAdminTotals;
+  tiers: CommissionTier[];
   topEarners: TopEarner[];
-  suspiciousLinks: SuspiciousLink[];
   attributions: AffiliateAttributionRow[];
 }
 
@@ -59,11 +45,11 @@ function userDisplayName(row: { full_name: string | null; email: string } | unde
 }
 
 export async function getAffiliateAdminStats(service: SupabaseClient): Promise<AffiliateAdminStats> {
-  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, currentRate] = await Promise.all([
+  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, tiers] = await Promise.all([
     service.from('affiliate_links').select('id, user_id, affiliate_code, is_active'),
     service.from('affiliate_clicks').select('id, link_id, target_type, target_id, ip_hash, created_at'),
     service.from('affiliate_attributions').select('id, click_id, order_id, commission_amount, status, created_at'),
-    getAffiliateCommissionRate(service),
+    getActiveTiers(service),
   ]);
 
   const links = linksData ?? [];
@@ -82,15 +68,12 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
   const activeAttributions = attributions.filter((a) => a.status !== 'reversed');
   const totalCommission = activeAttributions.reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
 
-  // ── Clicks/referrals per link ───────────────────────────────
-  const clicksByLink = new Map<string, typeof clicks>();
-  for (const click of clicks) {
-    const list = clicksByLink.get(click.link_id) ?? [];
-    list.push(click);
-    clicksByLink.set(click.link_id, list);
-  }
-
+  // ── Referrals per link ───────────────────────────────────────
   const referralsByLink = new Map<string, { count: number; commission: number }>();
+  // Tiers are keyed off lifetime CONFIRMED referrals only (see tier.ts) —
+  // separate count, since referralsByLink above intentionally includes
+  // pending ones too (for the "Referrals" totals card).
+  const confirmedCountByLink = new Map<string, number>();
   for (const attribution of activeAttributions) {
     const click = clickById.get(attribution.click_id);
     if (!click) continue;
@@ -98,55 +81,28 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
     entry.count += 1;
     entry.commission = add(entry.commission, Number(attribution.commission_amount));
     referralsByLink.set(click.link_id, entry);
+
+    if (attribution.status === 'confirmed') {
+      confirmedCountByLink.set(click.link_id, (confirmedCountByLink.get(click.link_id) ?? 0) + 1);
+    }
   }
 
   // ── Top earners ──────────────────────────────────────────────
   const topEarners: TopEarner[] = links
     .map((link) => {
       const referral = referralsByLink.get(link.id);
+      const tier = resolveTier(tiers, confirmedCountByLink.get(link.id) ?? 0);
       return {
         userId: link.user_id,
         userName: userDisplayName(usersById.get(link.user_id)),
         referrals: referral?.count ?? 0,
         commission: referral?.commission ?? 0,
+        tierName: tier.tierName,
       };
     })
     .filter((e) => e.commission > 0)
     .sort((a, b) => b.commission - a.commission)
     .slice(0, TOP_EARNERS_LIMIT);
-
-  // ── Suspicious activity ──────────────────────────────────────
-  const suspiciousLinks: SuspiciousLink[] = [];
-  for (const link of links) {
-    const linkClicks = clicksByLink.get(link.id) ?? [];
-    const referral = referralsByLink.get(link.id);
-    const reasons: SuspiciousReason[] = [];
-
-    if (linkClicks.length >= HIGH_CLICKS_NO_REFERRALS_THRESHOLD && !referral) {
-      reasons.push('high_clicks_no_referrals');
-    }
-
-    const byVisitor = new Map<string, number>();
-    for (const click of linkClicks) {
-      if (!click.ip_hash) continue;
-      byVisitor.set(click.ip_hash, (byVisitor.get(click.ip_hash) ?? 0) + 1);
-    }
-    if ([...byVisitor.values()].some((count) => count >= CLUSTERED_VISITOR_THRESHOLD)) {
-      reasons.push('clustered_visitor');
-    }
-
-    if (reasons.length > 0) {
-      suspiciousLinks.push({
-        linkId: link.id,
-        userId: link.user_id,
-        userName: userDisplayName(usersById.get(link.user_id)),
-        affiliateCode: link.affiliate_code,
-        clicks: linkClicks.length,
-        referrals: referral?.count ?? 0,
-        reasons,
-      });
-    }
-  }
 
   // ── Attribution detail rows (product names resolved below) ────
   const productIds = [
@@ -188,10 +144,9 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
       totalClicks: clicks.length,
       totalReferrals: activeAttributions.length,
       totalCommission,
-      currentRate,
     },
+    tiers,
     topEarners,
-    suspiciousLinks,
     attributions: attributionRows,
   };
 }

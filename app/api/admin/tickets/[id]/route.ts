@@ -1,5 +1,7 @@
-// P4 — Member 4: admin ticket status update
-// PATCH /api/admin/tickets/[id] — body { status }. See CLAUDE.md Step 9.
+// P4 — Member 4: admin ticket status + category update
+// PATCH /api/admin/tickets/[id] — body { status? } and/or { category? }. See
+// CLAUDE.md Step 9, extended with a manual category override per
+// CLAUDE-FIXES-2.md item 6 ("AI classification is a helper, not an authority").
 // Gated on super_admin/approver, checked server-side.
 
 import { createClient } from '@/lib/supabase/server';
@@ -7,6 +9,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { updateTicketStatusSchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { notifyTicketResolved } from '@/lib/support/notify';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -23,7 +26,17 @@ export async function PATCH(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, updateTicketStatusSchema);
   if (!parsed.ok) return parsed.response;
-  const { status } = parsed.data;
+  const { status, category } = parsed.data;
+
+  const updates: { status?: string; resolved_at?: string | null; category?: string; classification_method?: string } = {};
+  if (status !== undefined) {
+    updates.status = status;
+    updates.resolved_at = status === 'resolved' ? new Date().toISOString() : null;
+  }
+  if (category !== undefined) {
+    updates.category = category;
+    updates.classification_method = 'manual';
+  }
 
   // support_tickets has SELECT/INSERT RLS policies but no UPDATE policy at
   // all (007_public_read_policies.sql) — same shape as orders/order_items —
@@ -31,16 +44,17 @@ export async function PATCH(request: Request, { params }: Props) {
   const service = createServiceClient();
   const { data, error } = await service
     .from('support_tickets')
-    .update({
-      status,
-      resolved_at: status === 'resolved' ? new Date().toISOString() : null,
-    })
+    .update(updates)
     .eq('id', id)
-    .select('id, status')
+    .select('id, subject, user_id, assigned_to, status, category')
     .maybeSingle();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   if (!data) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-  return apiOk(data);
+  if (status === 'resolved') {
+    await notifyTicketResolved(service, data);
+  }
+
+  return apiOk({ id: data.id, status: data.status, category: data.category });
 }

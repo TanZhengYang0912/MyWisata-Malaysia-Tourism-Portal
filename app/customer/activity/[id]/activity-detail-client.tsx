@@ -40,8 +40,7 @@ export function ActivityDetailClient() {
     })();
   }, [params.id]);
 
-  const selectedSlot = slots.find((slot) => slot.id === slotId);
-  const price = useMemo(() => (activity ? selectedSlot?.priceOverride ?? unitPrice(activity, variantId, qty) : 0), [activity, selectedSlot, variantId, qty]);
+  const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
 
   if (activity === undefined) {
     return <div className="max-w-3xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
@@ -50,17 +49,15 @@ export function ActivityDetailClient() {
     return <EmptyState title="Experience not found" description="This listing may have been removed." />;
   }
 
-  async function handleAddToCart() {
+  function handleAddToCart() {
     if (adding) return; // double-submit guard
     if (activity!.requiresBooking && !slotId) return;
-    if (!activity!.requiresBooking && activity!.availableStock !== undefined && qty > activity!.availableStock) return;
     setAdding(true);
-    try {
-      await addItem({ activityId: activity!.id, variantId, slotId: slotId || undefined, qty, priceOverride: selectedSlot?.priceOverride });
-      setAdded(true);
-    } finally {
+    addItem({ activityId: activity!.id, variantId, slotId: slotId || undefined, qty });
+    setAdded(true);
+    setTimeout(() => {
       setAdding(false);
-    }
+    }, 400);
   }
 
   function handleDirections() {
@@ -192,21 +189,15 @@ export function ActivityDetailClient() {
           <div className="flex items-center gap-2">
             <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
             <span className="w-6 text-center text-sm font-semibold text-foreground">{qty}</span>
-            <button onClick={() => setQty((q) => q + 1)} disabled={!activity.requiresBooking && activity.availableStock !== undefined && qty >= activity.availableStock} className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40">+</button>
+            <button onClick={() => setQty((q) => q + 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">+</button>
           </div>
         </div>
-        {!activity.requiresBooking && activity.availableStock !== undefined && (
-          <div className={`mt-4 rounded-xl border px-3 py-2 text-xs font-semibold ${activity.availableStock === 0 ? "border-red-200 bg-red-50 text-red-700" : activity.availableStock <= (activity.lowStockThreshold ?? 5) ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-100 bg-emerald-50 text-emerald-800"}`}>
-            {activity.availableStock === 0 ? "Out of stock" : `${activity.availableStock} in stock`}
-            {activity.availableStock > 0 && activity.availableStock <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}
-          </div>
-        )}
       </div>
 
       <div className="flex gap-3 mb-8 flex-wrap">
         <Button
           onClick={handleAddToCart}
-          disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && activity.availableStock === 0) || (!activity.requiresBooking && activity.availableStock !== undefined && qty > activity.availableStock)}
+          disabled={adding || (activity.requiresBooking && !slotId)}
           className="flex-1 min-w-[140px] h-12 rounded-full text-base"
         >
           {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}

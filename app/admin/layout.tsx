@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Award, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2 } from "lucide-react";
+import { Activity, Award, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
+
+const UNREAD_POLL_MS = 30_000;
 
 const NAV = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },
@@ -14,13 +17,42 @@ const NAV = [
   { href: "/admin/recommendations", label: "Recommendations", icon: Gem },
   { href: "/admin/support", label: "Support Tickets", icon: Inbox },
   { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
-  { href: "/admin/rewards",  label: "Rewards",   icon: Award },
+  { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["admin", "approver", "super_admin"]);
 
   const pathname = usePathname();
+  // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
+  // queue-wide, any ticket with an unread customer reply, not just mine.
+  const [unreadTickets, setUnreadTickets] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    async function poll() {
+      try {
+        const res = await fetch("/api/support/unread-count");
+        const body = (await res.json()) as { data: { count: number } | null };
+        if (!cancelled && res.ok && body.data) setUnreadTickets(body.data.count);
+      } catch {
+        // best-effort — a failed poll just leaves the last-known count showing
+      }
+    }
+    (async () => {
+      await poll();
+    })();
+    const interval = setInterval(() => {
+      (async () => {
+        await poll();
+      })();
+    }, UNREAD_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentUser]);
 
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
@@ -57,6 +89,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }}
             >
               <item.icon size={15} /> {item.label}
+              {item.href === "/admin/support" && unreadTickets > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center bg-destructive">
+                  {unreadTickets}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
