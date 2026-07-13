@@ -122,8 +122,8 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, vendorBatchSchema);
   if (!parsed.ok) return parsed.response;
   const input = parsed.data;
-  if (access.access.isOutletManager && !['orders', 'bookings', 'slots'].includes(input.entity)) {
-    return apiFail('FORBIDDEN', 'Outlet Managers can only batch-update bookings, orders, and availability', 403);
+  if (access.access.isOutletManager && !['products', 'orders', 'bookings', 'slots'].includes(input.entity)) {
+    return apiFail('FORBIDDEN', 'Outlet Managers can only batch-update products, bookings, orders, and availability', 403);
   }
   const db = access.access.serviceDb;
   const scopedOutletIds = access.access.isOutletManager ? access.access.outletIds : undefined;
@@ -143,7 +143,9 @@ export async function POST(request: Request, { params }: Props) {
   if (input.entity === 'products') {
     const status = input.action === 'archive' ? 'archived' : input.action === 'restore' ? 'active' : null;
     if (!status) return apiFail('INVALID_ACTION', 'Products support archive or restore only', 400);
-    const { data, error } = await db.from('products').update({ status }).eq('vendor_id', vendorId).in('id', targetIds).select('id');
+    let updateQuery = db.from('products').update({ status }).eq('vendor_id', vendorId).in('id', targetIds);
+    if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+    const { data, error } = await updateQuery.select('id');
     if (error) return apiFail('DB_ERROR', error.message, 500);
     updatedIds = (data || []).map((item: any) => item.id);
   } else if (input.entity === 'outlets') {

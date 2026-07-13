@@ -1,6 +1,14 @@
 // P4 — DEV ONLY: fakes the checkout → order.paid trigger that real checkout
 // doesn't fire yet (see CLAUDE.md Section 6). Deleted at merge — never imply
 // a real payment happened. See CLAUDE.md Step 5.
+//
+// ⚠️ Now populates orders.affiliate_click_id (migration
+// 019_pr_industrial_atomicity.sql, pulled in from a teammate) from the
+// mw_ref cookie at order-creation time — the same thing real checkout is
+// expected to do once it's wired up. This means the simulator exercises
+// onOrderPaid()'s REAL path (reading the column) rather than its cookie
+// fallback, so the demo actually proves the intended integration works, not
+// just the compatibility shim.
 
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
@@ -43,22 +51,29 @@ export async function POST(request: Request) {
   const amount = Number(product.base_price);
   const now = new Date().toISOString();
 
-  // Read affiliate click from cookie and clear it — real checkout owners do the same.
-  // This is the only place mw_ref cookie is consumed; onOrderPaid() reads from the DB column.
+  // Look the cookie up rather than trusting it blindly — affiliate_click_id
+  // has a real FK to affiliate_clicks(id), so a stale/forged cookie value
+  // would otherwise fail the whole order insert instead of just silently
+  // not attributing (which is how onOrderPaid() itself treats an unknown
+  // click id).
   const cookieStore = await cookies();
-  const affiliateClickId = cookieStore.get('mw_ref')?.value ?? null;
-  if (affiliateClickId) cookieStore.delete('mw_ref');
+  const mwRefCookie = cookieStore.get('mw_ref')?.value ?? null;
+  let affiliateClickId: string | null = null;
+  if (mwRefCookie) {
+    const { data: existingClick } = await service.from('affiliate_clicks').select('id').eq('id', mwRefCookie).maybeSingle();
+    affiliateClickId = existingClick?.id ?? null;
+  }
 
   const { data: order, error: orderErr } = await service
     .from('orders')
     .insert({
-      user_id:            user.id,
-      status:             'paid',
-      subtotal:           amount,
-      discount_amount:    0,
-      total_amount:       amount,
-      payment_method:     'mock_card',
-      paid_at:            now,
+      user_id: user.id,
+      status: 'paid', // lowercase — matches the orders.status CHECK constraint
+      subtotal: amount,
+      discount_amount: 0,
+      total_amount: amount,
+      payment_method: 'mock_card',
+      paid_at: now,
       affiliate_click_id: affiliateClickId,
     })
     .select('id')

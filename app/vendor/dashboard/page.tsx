@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
-  ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent, Utensils,
+  AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent, Utensils,
 } from 'lucide-react';
 import { getVendorDashboardData, formatGrowth, formatRM, type DashboardFilter } from '@/lib/vendor-dashboard';
 import SalesChart from '@/components/vendor/sales-chart';
@@ -13,9 +13,9 @@ import DashboardRealtime from '@/components/vendor/dashboard-realtime';
 import RecentTransactions from '@/components/vendor/recent-transactions';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 
-interface Props { searchParams?: Promise<{ filter?: string }> }
+interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string }> }
 
-const FILTERS: DashboardFilter[] = ['today', '7d', '30d', '12m'];
+const FILTERS: DashboardFilter[] = ['today', '7d', '30d', '12m', 'custom'];
 
 function normalizeFilter(value: string | undefined): DashboardFilter {
   return FILTERS.includes(value as DashboardFilter) ? value as DashboardFilter : '7d';
@@ -33,15 +33,15 @@ function statTone(tone: string) {
 export default async function VendorDashboard({ searchParams }: Props) {
   const params = await searchParams;
   const filter = normalizeFilter(params?.filter);
-  const data = await getVendorDashboardData(filter);
+  const data = await getVendorDashboardData(filter, { from: params?.from, to: params?.to });
   if (!data) redirect('/login');
   const isOutletManager = data.role === 'outlet_manager';
 
   const stats = isOutletManager ? [
-    { label: 'Orders to fulfil', value: data.stats.pendingOrders.toLocaleString(), note: 'Assigned outlet operations', icon: ShoppingBag, tone: 'blue' },
+    { label: 'Total revenue', value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
+    { label: 'Total orders', value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: 'Booking activity', value: data.stats.bookingItems.toLocaleString(), note: 'Bookings in this period', icon: CalendarDays, tone: 'teal' },
-    { label: 'Active listings', value: data.stats.activeProducts.toLocaleString(), note: 'View-only catalogue', icon: Compass, tone: 'amber' },
-    { label: 'Outlet scope', value: data.stats.activeOutlets.toLocaleString(), note: 'Your assigned outlet', icon: MapPinned, tone: 'rose' },
+    { label: 'Orders to fulfil', value: data.stats.pendingOrders.toLocaleString(), note: 'Assigned outlet operations', icon: ShoppingBag, tone: 'amber' },
   ] : [
     { label: 'Total revenue', value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: 'Total orders', value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
@@ -59,7 +59,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
           <p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Keep your assigned outlet moving today.' : <>Here&apos;s what&apos;s happening with <span className="font-semibold text-gray-800">{data.vendor.name}</span> today.</>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {!isOutletManager && <DashboardFilterControl />}
+          <DashboardFilterControl />
           <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>Live</div>
         </div>
       </header>
@@ -75,12 +75,14 @@ export default async function VendorDashboard({ searchParams }: Props) {
         ))}
       </section>
 
-      {!isOutletManager && <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-sky-950">No orders in this period</p><p className="mt-1 text-sm text-sky-800">Check another date range, or publish a listing so travellers can start booking.</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-sky-800 ring-1 ring-sky-200">Manage listings</Link><Link href="/vendor/orders" className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white">View orders</Link></div></section>}
+
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
         <OutletPieChart data={data.salesByOutlet} total={data.totalOutletSales} />
-      </section>}
+      </section>
 
-      {!isOutletManager && <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top selling products</h2><p className="mt-1 text-sm text-gray-500">Based on paid order quantity</p></div><Utensils className="text-emerald-700" size={20} /></div>
           <div className="divide-y divide-gray-100">{data.topSelling.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-emerald-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind={item.name.toLowerCase().includes('food') ? 'food' : 'product'} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.quantity} units sold</p></div><div className="text-right"><p className="text-sm font-bold text-gray-900">{formatRM(item.revenue)}</p><p className="mt-1 text-[11px] text-gray-400">Revenue</p></div></div>)}{!data.topSelling.length && <div className="px-4 py-10 text-center text-gray-400">No paid products in this period.</div>}</div>
@@ -90,11 +92,19 @@ export default async function VendorDashboard({ searchParams }: Props) {
           <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top rated experiences</h2><p className="mt-1 text-sm text-gray-500">Visible activity and experience reviews</p></div><Landmark className="text-amber-600" size={20} /></div>
           <div className="divide-y divide-gray-100">{data.topRated.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-amber-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind="experience" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.reviews} traveller reviews</p></div><div className="text-right"><p className="text-sm font-bold text-amber-600">★ {item.rating.toFixed(1)}</p><p className="mt-1 text-[11px] text-gray-400">Rating</p></div></div>)}{!data.topRated.length && <div className="px-4 py-10 text-center text-gray-400">No experience reviews yet.</div>}</div>
         </div>
-      </section>}
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Latest orders for your assigned outlet' : 'Latest orders across your Malaysian outlets'}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100">View all <ArrowRight size={15} /></Link></div>
         <RecentTransactions items={data.recentTransactions} />
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-2 border-b border-amber-100 bg-amber-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700" /><h2 className="font-semibold text-lg text-gray-900">Stock alerts</h2></div><p className="mt-1 text-sm text-gray-600">Supabase inventory updates appear here automatically when stock reaches its threshold.</p></div>
+          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-50">Review catalogue <ArrowRight size={15} /></Link>
+        </div>
+        {data.stockAlerts.length ? <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.stockAlerts.map((alert) => <div key={alert.variantId} className={`flex items-center gap-3 rounded-xl border p-3 ${alert.available === 0 ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/40'}`}><CompactThumbnail src={alert.coverUrl} alt={alert.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{alert.productName}</p><p className="mt-1 truncate text-xs text-gray-600">{alert.variantName} · {alert.available === 0 ? 'Out of stock' : `${alert.available} available`} · alert at {alert.threshold}</p></div></div>)}</div> : <div className="px-5 py-8 text-sm text-gray-500">No low-stock items in your assigned outlets.</div>}
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

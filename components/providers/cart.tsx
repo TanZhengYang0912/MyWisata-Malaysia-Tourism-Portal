@@ -4,15 +4,17 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import * as commerce from "@/backend/domains/commerce";
 import { getActivities } from "@/backend/domains/catalogue";
 import { cartTotals } from "@/backend/core/helpers";
+import { useAuth } from "@/components/providers/auth";
+import { supabase } from "@/backend/supabase";
 import type { Activity, CartItem, Voucher } from "@/backend/core/types";
 
 interface CartContextValue {
   items: CartItem[];
   count: number;
-  addItem: (item: CartItem) => void;
-  updateQty: (index: number, qty: number) => void;
-  removeItem: (index: number) => void;
-  clear: () => void;
+  addItem: (item: CartItem) => Promise<void>;
+  updateQty: (index: number, qty: number) => Promise<void>;
+  removeItem: (index: number) => Promise<void>;
+  clear: () => Promise<void>;
   totals: (voucher?: Voucher) => ReturnType<typeof cartTotals>;
 }
 
@@ -22,29 +24,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [mounted, setMounted] = useState(false);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    setItems(commerce.getCart());
-    getActivities().then(setActivities);
-    setMounted(true);
+    let active = true;
+    setMounted(false);
+    getActivities().then((nextActivities) => { if (active) setActivities(nextActivities); });
+    if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => { if (active) { setItems(nextItems); setMounted(true); } });
+    else { setItems([]); setMounted(true); }
+    return () => { active = false; };
+  }, [currentUser]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("customer-inventory-refresh")
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => {
+        getActivities().then(setActivities).catch(() => undefined);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
   }, []);
 
-  const addItem = useCallback((item: CartItem) => {
-    setItems(commerce.addToCart(item));
-  }, []);
+  const addItem = useCallback(async (item: CartItem) => {
+    if (!currentUser) return;
+    setItems(await commerce.addToCart(currentUser.id, item));
+  }, [currentUser]);
 
-  const updateQty = useCallback((index: number, qty: number) => {
-    setItems(commerce.updateCartQty(index, qty));
-  }, []);
+  const updateQty = useCallback(async (index: number, qty: number) => {
+    if (!currentUser) return;
+    setItems(await commerce.updateCartQty(currentUser.id, index, qty));
+  }, [currentUser]);
 
-  const removeItem = useCallback((index: number) => {
-    setItems(commerce.removeFromCart(index));
-  }, []);
+  const removeItem = useCallback(async (index: number) => {
+    if (!currentUser) return;
+    setItems(await commerce.removeFromCart(currentUser.id, index));
+  }, [currentUser]);
 
-  const clear = useCallback(() => {
-    commerce.clearCart();
+  const clear = useCallback(async () => {
+    if (!currentUser) return;
+    await commerce.clearCart(currentUser.id);
     setItems([]);
-  }, []);
+  }, [currentUser]);
 
   const totals = useCallback(
     (voucher?: Voucher) => cartTotals(items, activities, voucher),

@@ -37,7 +37,7 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 
 ## Demo accounts
 
-At `/login`, use Supabase Auth or pick a seeded demo account:
+At `/login`, pick a seeded role — no password (mock auth):
 
 - **Customer** (4 seeded, different verification tiers)
 - **Vendor Owner** / **Outlet Manager**
@@ -48,50 +48,35 @@ Each role is routed and guarded to its own area:
 - Vendor → `/vendor/dashboard`, `/vendor/listings`, `/vendor/bookings`, `/vendor/vouchers`, `/vendor/inbox`
 - Admin → `/admin/dashboard`, `/admin/vendors`, `/admin/kyc`, `/admin/withdrawals`, `/admin/recommendations`, `/admin/support`
 
-## Supabase setup
+## Resetting data
 
-Copy the required values into `.env.local` and never commit that file:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
-# Optional Qwen Cloud / Alibaba Cloud Model Studio provider; leave unset to defer AI suggestions.
-QWEN_API_KEY=...
-QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-QWEN_MODEL=qwen-flash-2025-07-28
-QWEN_FALLBACK_MODEL=
-QWEN_MAX_OUTPUT_TOKENS=500
-```
-
-Apply migrations in order with the Supabase CLI or SQL Editor, then run the
-remote seed script when demo records are needed. The application reads
-operational data from Supabase; it does not use browser localStorage as a
-database.
+All data lives in the browser's `localStorage`, seeded once on first load.
+Click **"Reset demo data"** on the `/login` page (or run `resetDemo()` from
+`lib/db` in the console) to wipe and reseed from the canonical dataset —
+useful before every demo run.
 
 ## Tech notes
 
 - **Map**: Leaflet + OpenStreetMap tiles — no API key required.
 - **Get Directions**: opens a Google Maps URL (`google.com/maps/dir/?api=1&destination=...`) — no API key.
 - **Payment / KYC / booking**: Demo/Mock only. No real money moves, no real ID data stored.
-- **Chat**: Supabase-backed text messages with realtime policies where enabled.
-- **AI listing assistant**: optional Qwen Cloud integration in cost-safe
-  `qwen-flash-2025-07-28` free-tier mode. It is
-  disabled safely when no key is configured and all suggestions require vendor
-  review before saving/publishing.
+- **Chat**: local text messages only, no realtime backend.
+- **AI features** (recommendation / itinerary / smart search): deferred. The discovery layer is structured so a scored/LLM layer can slot in later without UI changes.
 
 ## Architecture
 
 ```
-types/index.ts      — shared domain types (the integration contract)
+lib/types.ts        — shared domain types (the integration contract)
 lib/money.ts         — RM formatting, single rounding function
 lib/events.ts        — domain event dispatch (order.paid, withdrawal.reviewed, ...)
 lib/audit.ts          — single approve/reject helper (writes AUDIT_LOGS + NOTIFICATIONS)
 lib/helpers.ts        — cart totals, voucher validation, distance, order state machine
-hooks/use-auth.ts       — Supabase session and role helpers
-components/providers/auth.tsx — auth context and role guard
-lib/supabase/           — browser/server/service Supabase clients
-supabase/migrations/    — schema, RLS and approval workflow migrations
+lib/auth.tsx           — AuthContext, demo account switcher, useRequireRole() guard
+lib/cart.tsx            — Cart context (localStorage-backed)
+lib/db/
+  index.ts              — localStorage engine + resetDemo()
+  seed/                  — canonical seed data, one file per domain
+  repos/                 — data-access functions, one file per domain
 app/
   login/                 — demo account switcher
   (customer)/            — Customer journey (Member 2)
@@ -104,8 +89,12 @@ components/
 
 ## Ownership map (extension points for teammates)
 
-Each domain API route validates input before writing to Supabase. Approval and
-state transitions use `lib/audit.ts`; all money goes through `lib/money.ts`.
+Each `lib/db/seed/<domain>.ts` + `lib/db/repos/<domain>.ts` file has one
+owner. Add your domain by writing your own seed/repo files and route
+screens; consume other domains only through their exported repo functions
+(the swap point for a real backend later). Any approve/reject action goes
+through `lib/audit.ts`; cross-domain effects fire through `lib/events.ts`;
+all money goes through `lib/money.ts`.
 
 | Member | Route area | Owns seed/repo |
 |---|---|---|
@@ -114,12 +103,6 @@ state transitions use `lib/audit.ts`; all money goes through `lib/money.ts`.
 | M2/M1 — Vendor & Catalogue | `vendor/*` | `lib/db/*/catalogue` |
 | M3 — Discovery, Recommendation & Growth | recommendations, reviews, affiliate | `lib/db/*/discovery` |
 | M4 — Cart, Order, Booking & Wallet | wallet, withdrawals, checkout internals | `lib/db/*/commerce` |
-
-## Deferred by configuration
-
-AI listing suggestions remain deferred until an optional Qwen Cloud API key is
-configured. Real payment settlement, QR generation, KYC OCR, OG-meta social
-sharing and native mobile remain outside this prototype scope.
 
 ## Affiliate, Sharing & AI Support (P4)
 
@@ -170,7 +153,15 @@ paste each into the SQL editor, in order) before testing anything below:
 4. In a normal window, sign in as **Bob** (`customer2@demo.local`) → go to
    `/dev` → **Simulate purchase (demo only)** on the same activity.
 5. Sign back in as Alice → `/customer/affiliate` → 1 click, 1 referral, and
-   Pending earnings showing 5% of that activity's price.
+   Pending earnings showing a commission at Alice's current tier rate. **Not
+   a flat 5% anymore** — Phase 2 (Feature B) made this tiered (Bronze /
+   Silver / Gold by lifetime confirmed referrals), and Phase 2 fixes
+   confirmed the live rates were separately overwritten by a teammate's
+   migration (`016_reward_final.sql`) to Bronze 3%/0, Silver 4%/4, Gold
+   5%/8 — not the 3%/5%/7% originally spec'd. A fresh KYC'd affiliate starts
+   at Bronze (3%); check `/admin/affiliate`'s Commission Tiers panel for
+   whatever the live rate actually is, since it's admin-editable and can
+   drift from any number written down here.
 6. Press **Simulate purchase** again for the same visitor/activity —
    referrals should **not** increase. The duplicate-payout guard held.
 7. Click your *own* affiliate link and simulate a purchase as yourself — no

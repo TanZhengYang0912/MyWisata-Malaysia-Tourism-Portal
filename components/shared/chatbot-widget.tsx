@@ -6,8 +6,14 @@
 // (Step 8) — that route doesn't exist yet, so escalation will fail
 // gracefully (shown as "couldn't create a ticket") until Step 8 lands. This
 // is the expected shape once it does, not a stub to rewrite later.
+//
+// CLAUDE-FIXES.md Fix 2: "close the loop" — escalation used to tell the
+// user nothing beyond "a ticket has been created." Now it names the ticket
+// and links to My Tickets, since that page (and the reply mechanism behind
+// it) exists now.
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +39,7 @@ export function ChatbotWidget() {
   const [canEscalate, setCanEscalate] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [escalateNote, setEscalateNote] = useState<string | null>(null);
+  const [escalatedTicketId, setEscalatedTicketId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,11 +93,16 @@ export function ChatbotWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject: lastQuestion, body: lastQuestion }),
       });
-      setEscalateNote(
-        res.ok
-          ? "A ticket has been created — our team will follow up."
-          : "Couldn't create a ticket right now. Please try again later.",
-      );
+      const result = (await res.json()) as { data: { id: string; category: string } | null };
+      if (res.ok && result.data) {
+        setEscalatedTicketId(result.data.id);
+        const shortId = result.data.id.slice(0, 8).toUpperCase();
+        setEscalateNote(
+          `I've created ticket #${shortId} for you. Our team will reply — you'll get a notification, and you can see it under My Tickets.`,
+        );
+      } else {
+        setEscalateNote("Couldn't create a ticket right now. Please try again later.");
+      }
     } catch {
       setEscalateNote("Couldn't create a ticket right now. Please try again later.");
     } finally {
@@ -100,7 +112,7 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50 print:hidden">
       {open && (
         <div
           className="mb-3 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background shadow-xl flex flex-col overflow-hidden"
@@ -108,9 +120,14 @@ export function ChatbotWidget() {
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary text-white">
             <span className="text-sm font-semibold">MyWisata Support</span>
-            <button onClick={() => setOpen(false)} aria-label="Close chat">
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-3">
+              <Link href="/customer/support" className="text-[11px] underline opacity-90 hover:opacity-100">
+                My Tickets
+              </Link>
+              <button onClick={() => setOpen(false)} aria-label="Close chat">
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
@@ -134,7 +151,16 @@ export function ChatbotWidget() {
                 </Button>
               </div>
             )}
-            {escalateNote && <p className="text-xs text-muted-foreground text-center pt-1">{escalateNote}</p>}
+            {escalateNote && (
+              <div className="pt-1 text-center">
+                <p className="text-xs text-muted-foreground">{escalateNote}</p>
+                {escalatedTicketId && (
+                  <Link href={`/customer/support/${escalatedTicketId}`} className="text-xs text-primary underline">
+                    View my tickets
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 px-3 py-3 border-t border-border">

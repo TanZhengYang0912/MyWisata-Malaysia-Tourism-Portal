@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Role, User } from "@/backend/core/types";
 
+type DemoUser = User & { vendorName?: string; outletName?: string };
+
 const HOME_BY_ROLE: Record<Role, string> = {
   customer: "/customer/explore",
   vendor_owner: "/vendor/dashboard",
@@ -31,7 +33,7 @@ const ROLE_LABEL: Record<Role, string> = {
 export default function LoginPage() {
   const { switchUser } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<DemoUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +44,7 @@ export default function LoginPage() {
     fetch('/api/auth/demo-users')
       .then(async (response) => {
         if (!response.ok) throw new Error('Unable to load demo accounts');
-        return response.json() as Promise<User[]>;
+        return response.json() as Promise<DemoUser[]>;
       })
       .then(setUsers)
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load demo accounts'));
@@ -94,7 +96,7 @@ export default function LoginPage() {
               <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
               <Button type="submit" className="w-full" disabled={signingIn}>{signingIn ? 'Signing in…' : 'Sign in'}</Button>
             </form>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seeded demo accounts</p>
+            <div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seeded demo accounts</p><span className="text-[11px] text-muted-foreground">Quick entry</span></div>
             <div className="space-y-2">
               {users.map((user) => (
                 <button
@@ -107,7 +109,7 @@ export default function LoginPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.vendorName || user.outletName || user.email}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0">{ROLE_LABEL[user.role]}</Badge>
                 </button>

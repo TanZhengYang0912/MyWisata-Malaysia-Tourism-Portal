@@ -1,6 +1,7 @@
-// P4 — Member 4: ticket escalation
+// P4 — Member 4: ticket escalation + the customer's own ticket list
 // POST /api/support/tickets — body { sessionKey?, subject, body }. See
 // CLAUDE.md Step 8.
+// GET  /api/support/tickets — "My Tickets" list (CLAUDE-FIXES.md Fix 2).
 //
 // support_tickets has real RLS policies (support_own_or_admin SELECT,
 // support_insert_own INSERT WITH CHECK user_id = auth.uid() OR NULL —
@@ -9,12 +10,46 @@
 // to link session_id — so unlike Step 7, this route needs no service-role
 // client. Guest ticket submission is intentionally allowed by the schema
 // (user_id nullable, RLS explicitly permits NULL), so this doesn't require
-// login the way affiliate link creation does.
+// login the way affiliate link creation does. GET, unlike POST, DOES
+// require login — a guest has no stable identity across requests to list
+// tickets "by".
 
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { supportTicketSchema } from '@/lib/validation/chatbot-schemas';
-import { classifyTicket } from '@/lib/chatbot/classify';
+import { classifyTicketSmart } from '@/lib/chatbot/classify-ai';
+import { getLatestReplyTimestamps, isUnread } from '@/lib/support/unread';
+
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select('id, subject, category, status, created_at, last_reply_at, customer_last_read_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) return apiFail('DB_ERROR', error.message, 500);
+
+  const rows = data ?? [];
+  // support_ticket_replies' own RLS (own-ticket-or-admin) already scopes
+  // this correctly under the cookie-aware client — every row here is one of
+  // MY tickets, so no service-role client needed.
+  const latestAdminReplies = await getLatestReplyTimestamps(supabase, rows.map((t) => t.id), 'admin');
+
+  return apiOk(
+    rows.map((t) => ({
+      id: t.id,
+      subject: t.subject,
+      category: t.category,
+      status: t.status,
+      createdAt: t.created_at,
+      lastActivityAt: t.last_reply_at ?? t.created_at,
+      unread: isUnread(t.customer_last_read_at, latestAdminReplies.get(t.id)),
+    })),
+  );
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -34,7 +69,11 @@ export async function POST(request: Request) {
     sessionId = session?.id ?? null;
   }
 
-  const category = classifyTicket(`${subject} ${body}`);
+  // AI classification (Gemini) with the keyword classifier as a safety net —
+  // CLAUDE-FIXES-2.md item 6. classifyTicketSmart() never throws: no
+  // LLM_API_KEY, an API error/timeout, or a reply outside the six valid
+  // categories all fall through to the keyword version automatically.
+  const { category, method } = await classifyTicketSmart(subject, body);
 
   const { data, error } = await supabase
     .from('support_tickets')
@@ -44,6 +83,7 @@ export async function POST(request: Request) {
       subject,
       body,
       category,
+      classification_method: method,
       status: 'open',
     })
     .select('id')

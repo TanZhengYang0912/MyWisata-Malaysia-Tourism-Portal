@@ -1,55 +1,93 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
-import { getCollection, KEYS, setCollection } from "../core/mockdb";
-import { cartTotals } from "@/backend/core/helpers";
+import { cartTotals, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
+import type { PaymentMethod } from "@/lib/constants";
 import type { Booking, CartItem, Order, OrderItem, WithdrawalRequest } from "@/backend/core/types";
 
-// ─── Cart ───────────────────────────────────────────────────────────────────
-// Kept in localStorage (not Supabase): cart is ephemeral session state, and
-// there's no signed-in session (demo auth) to key a server-side cart on.
-// carts/cart_items tables exist in the schema but stay unused for now.
-export function getCart(): CartItem[] {
-  return getCollection<CartItem>(KEYS.cart);
+// ─── Supabase cart ──────────────────────────────────────────────────────────
+type CartItemRow = {
+  id: string;
+  variant_id: string | null;
+  slot_id: string | null;
+  quantity: number;
+  unit_price: number;
+  product_variants: { product_id: string } | { product_id: string }[] | null;
+  booking_slots: { product_id: string } | { product_id: string }[] | null;
+};
+
+const CART_ITEM_SELECT = "id,variant_id,slot_id,quantity,unit_price,product_variants(product_id),booking_slots(product_id)";
+
+function relation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-export function addToCart(item: CartItem): CartItem[] {
-  const cart = getCart();
-  const existingIndex = cart.findIndex(
-    (c) => c.activityId === item.activityId && c.variantId === item.variantId && c.slotId === item.slotId,
-  );
-  let next: CartItem[];
-  if (existingIndex >= 0) {
-    next = cart.map((c, i) => (i === existingIndex ? { ...c, qty: c.qty + item.qty } : c));
+async function getOrCreateCart(userId: string): Promise<{ id: string }> {
+  const { data: existing, error: readError } = await supabase.from("carts").select("id").eq("user_id", userId).maybeSingle();
+  if (readError) throw readError;
+  if (existing) return existing;
+  const { data: created, error: createError } = await supabase.from("carts").insert({ user_id: userId }).select("id").single();
+  if (createError) throw createError;
+  return created;
+}
+
+async function getCartRows(userId: string): Promise<CartItemRow[]> {
+  const cart = await getOrCreateCart(userId);
+  const { data, error } = await supabase.from("cart_items").select(CART_ITEM_SELECT).eq("cart_id", cart.id).order("created_at");
+  if (error) throw error;
+  return (data ?? []) as unknown as CartItemRow[];
+}
+
+function mapCartItem(row: CartItemRow): CartItem {
+  const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
+  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, qty: row.quantity, priceOverride: row.slot_id && row.unit_price > 0 ? Number(row.unit_price) : undefined };
+}
+
+export async function getCart(userId: string): Promise<CartItem[]> {
+  return (await getCartRows(userId)).map(mapCartItem).filter((item) => item.activityId);
+}
+
+export async function addToCart(userId: string, item: CartItem): Promise<CartItem[]> {
+  const cart = await getOrCreateCart(userId);
+  const rows = await getCartRows(userId);
+  const existing = rows.find((row) => row.variant_id === item.variantId && row.slot_id === (item.slotId ?? null));
+  if (existing) {
+    const { error } = await supabase.from("cart_items").update({ quantity: existing.quantity + item.qty }).eq("id", existing.id);
+    if (error) throw error;
   } else {
-    next = [...cart, item];
+    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, quantity: item.qty, unit_price: item.priceOverride ?? 0 });
+    if (error) throw error;
   }
-  setCollection(KEYS.cart, next);
-  return next;
+  return getCart(userId);
 }
 
-export function updateCartQty(index: number, qty: number): CartItem[] {
-  const cart = getCart();
-  const next = qty <= 0 ? cart.filter((_, i) => i !== index) : cart.map((c, i) => (i === index ? { ...c, qty } : c));
-  setCollection(KEYS.cart, next);
-  return next;
+export async function updateCartQty(userId: string, index: number, qty: number): Promise<CartItem[]> {
+  const rows = await getCartRows(userId);
+  const row = rows[index];
+  if (!row) return rows.map(mapCartItem);
+  const { error } = qty <= 0
+    ? await supabase.from("cart_items").delete().eq("id", row.id)
+    : await supabase.from("cart_items").update({ quantity: qty }).eq("id", row.id);
+  if (error) throw error;
+  return getCart(userId);
 }
 
-export function removeFromCart(index: number): CartItem[] {
-  const next = getCart().filter((_, i) => i !== index);
-  setCollection(KEYS.cart, next);
-  return next;
+export async function removeFromCart(userId: string, index: number): Promise<CartItem[]> {
+  return updateCartQty(userId, index, 0);
 }
 
-export function clearCart(): void {
-  setCollection<CartItem>(KEYS.cart, []);
+export async function clearCart(userId: string): Promise<void> {
+  const cart = await getOrCreateCart(userId);
+  const { error } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+  if (error) throw error;
 }
 
 // ─── Orders + bookings ──────────────────────────────────────────────────────
 type OrderItemRow = {
   product_id: string | null;
   product_name: string;
+  image_url: string | null;
   variant_name: string | null;
   slot_starts_at: string | null;
   unit_price: number;
@@ -61,6 +99,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
   return {
     activityId: row.product_id ?? "",
     activityName: row.product_name,
+    imageUrl: row.image_url ?? undefined,
     variantLabel: row.variant_name ?? "Standard",
     slotStartsAt: row.slot_starts_at ?? undefined,
     unitPrice: Number(row.unit_price),
@@ -76,13 +115,14 @@ type OrderRow = {
   subtotal: number;
   discount_amount: number;
   total_amount: number;
+  payment_method: string | null;
   voucher_code: string | null;
   created_at: string;
   order_items: OrderItemRow[];
 };
 
 const ORDER_SELECT =
-  "id,user_id,status,subtotal,discount_amount,total_amount,voucher_code,created_at,order_items(product_id,product_name,variant_name,slot_starts_at,unit_price,quantity,outlet_id)";
+  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -93,8 +133,9 @@ function mapOrder(row: OrderRow): Order {
     discount: Number(row.discount_amount),
     total: Number(row.total_amount),
     voucherCode: row.voucher_code ?? undefined,
-    status: row.status as Order["status"],
+    status: row.status.toUpperCase() as Order["status"],
     createdAt: row.created_at,
+    paymentMethod: row.payment_method ?? undefined,
   };
 }
 
@@ -121,6 +162,7 @@ export async function getOrdersForOutlets(outletIds: string[]): Promise<Order[]>
 type BookingRow = {
   id: string;
   demo_qr_code: string | null;
+  status: Booking["status"];
   order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
 };
 
@@ -135,11 +177,12 @@ function mapBooking(row: BookingRow): Booking | null {
     outletId: row.order_items.outlet_id,
     slotStartsAt: row.order_items.slot_starts_at ?? undefined,
     qty: row.order_items.quantity,
+    status: row.status,
     qrCode: row.demo_qr_code ?? "",
   };
 }
 
-const BOOKING_SELECT = "id,demo_qr_code,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
+const BOOKING_SELECT = "id,status,demo_qr_code,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);
@@ -154,10 +197,16 @@ export async function getBookingsForOutlets(outletIds: string[]): Promise<Bookin
   return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
 }
 
+export async function getBookingsForUser(userId: string): Promise<Booking[]> {
+  const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("customer_id", userId).order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
+}
+
 /** Checkout: creates a PAID order from the current cart, snapshots items,
  * generates bookings for requiresBooking activities, and clears the cart. */
-export async function createOrder(userId: string, voucherCode?: string): Promise<Order> {
-  const cart = getCart();
+export async function createOrder(userId: string, voucherCode?: string, paymentMethod: PaymentMethod = "mock_card"): Promise<Order> {
+  const cart = await getCart(userId);
   const activities = await getActivities();
   const voucher = voucherCode ? await getVoucherByCode(voucherCode) : undefined;
   const totals = cartTotals(cart, activities, voucher);
@@ -175,6 +224,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
       subtotal: totals.subtotal,
       discount_amount: totals.discount,
       total_amount: totals.total,
+      payment_method: paymentMethod,
       voucher_code: appliedVoucherCode ?? null,
       paid_at: new Date().toISOString(),
     })
@@ -182,10 +232,11 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     .single();
   if (orderErr) throw orderErr;
 
+  const cartProductIds = cart.map((item) => item.activityId);
   const itemRows = cart.map((c) => {
     const activity = activities.find((a) => a.id === c.activityId)!;
     const variant = activity.variants.find((v) => v.id === c.variantId);
-    const unitPrice = activity.price + (variant?.priceDelta ?? 0);
+    const lineUnitPrice = c.priceOverride ?? unitPrice(activity, c.variantId, c.qty, new Date(), cartProductIds);
     return {
       order_id: orderRow.id,
       vendor_id: vendorByOutlet.get(activity.outletId) ?? null,
@@ -194,16 +245,24 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
       variant_id: c.variantId,
       slot_id: c.slotId ?? null,
       product_name: activity.name,
+      image_url: activity.image || null,
       variant_name: variant?.label ?? "Standard",
-      unit_price: unitPrice,
+      unit_price: lineUnitPrice,
       quantity: c.qty,
-      line_total: unitPrice * c.qty,
+      line_total: lineUnitPrice * c.qty,
       fulfil_status: "fulfilled",
     };
   });
 
   const { data: insertedItems, error: itemsErr } = await supabase.from("order_items").insert(itemRows).select("*");
   if (itemsErr) throw itemsErr;
+
+  for (const item of cart) {
+    const activity = activities.find((candidate) => candidate.id === item.activityId);
+    if (!activity || activity.requiresBooking) continue;
+    const { data: stockUpdated, error: stockError } = await supabase.rpc("decrement_inventory", { p_variant_id: item.variantId, p_quantity: item.qty });
+    if (stockError || stockUpdated !== true) throw new Error("One or more products are out of stock.");
+  }
 
   const bookingRows = insertedItems
     .filter((item) => item.slot_id && activities.find((a) => a.id === item.product_id)?.requiresBooking)
@@ -219,10 +278,16 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
   }
 
   if (appliedVoucherCode && voucher) {
-    await supabase.from("vouchers").update({ uses_count: voucher.usageCount + 1 }).eq("code", appliedVoucherCode);
+    const { data: redeemed, error: redemptionError } = await supabase.rpc("redeem_voucher", {
+      p_voucher_id: voucher.id,
+      p_order_id: orderRow.id,
+      p_user_id: userId,
+      p_discount: totals.discount,
+    });
+    if (redemptionError || redeemed !== true) throw new Error("This voucher is no longer available.");
   }
 
-  clearCart();
+  await clearCart(userId);
   emit("order.paid", { orderId: orderRow.id, userId, total: totals.total });
 
   return {
@@ -231,11 +296,13 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     items: cart.map((c) => {
       const activity = activities.find((a) => a.id === c.activityId)!;
       const variant = activity.variants.find((v) => v.id === c.variantId);
+      const lineUnitPrice = c.priceOverride ?? unitPrice(activity, c.variantId, c.qty, new Date(), cartProductIds);
       return {
         activityId: activity.id,
         activityName: activity.name,
+        imageUrl: activity.image || undefined,
         variantLabel: variant?.label ?? "Standard",
-        unitPrice: activity.price + (variant?.priceDelta ?? 0),
+        unitPrice: lineUnitPrice,
         qty: c.qty,
         outletId: activity.outletId,
       };
@@ -246,6 +313,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     voucherCode: appliedVoucherCode,
     status: "PAID",
     createdAt: orderRow.created_at,
+    paymentMethod,
   };
 }
 

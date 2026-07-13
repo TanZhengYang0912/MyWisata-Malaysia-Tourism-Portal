@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import type { Voucher } from "@/backend/core/types";
 
 const METHODS = [
-  { id: "card", label: "Card", icon: CreditCard },
+  { id: "stripe_card", label: "Card via Stripe Test Mode", icon: CreditCard },
   { id: "ewallet", label: "Touch 'n Go / GrabPay", icon: Smartphone },
+  { id: "bank_transfer", label: "Bank transfer (demo)", icon: CreditCard },
   { id: "wallet", label: "MyWisata Wallet Balance", icon: Wallet },
 ];
 
@@ -23,7 +24,7 @@ export default function CheckoutPage() {
   const { items, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
-  const [method, setMethod] = useState("card");
+  const [method, setMethod] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -34,6 +35,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (voucherCode) getVoucherByCode(voucherCode).then(setVoucher);
   }, [voucherCode]);
+
+  useEffect(() => {
+    const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
+    if (!sessionId || !currentUser || items.length === 0 || paying) return;
+    setPaying(true);
+    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card").then((order) => router.push(`/customer/orders/${order.id}`)).catch(() => { setFailed(true); setPaying(false); });
+  }, [currentUser, items.length, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
 
@@ -52,7 +60,7 @@ export default function CheckoutPage() {
         return;
       }
       try {
-        const order = await createOrder(currentUser!.id, voucherCode ?? undefined);
+        const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card");
         router.push(`/customer/orders/${order.id}`);
       } catch (err) {
         console.error("Order creation failed:", err);
@@ -86,7 +94,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <p className="text-xs font-semibold text-muted-foreground mb-2">Payment method (Demo)</p>
+      <p className="text-xs font-semibold text-muted-foreground mb-2">Payment method</p>
       <div className="space-y-2 mb-6">
         {METHODS.map((m) => (
           <button

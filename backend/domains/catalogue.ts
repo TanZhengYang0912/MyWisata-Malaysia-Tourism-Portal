@@ -1,7 +1,7 @@
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Activity, BookingSlot, ComputedActivity, Outlet, VendorSummary, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, VendorSummary, Voucher } from "@/backend/core/types";
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
 export async function getVendors(): Promise<VendorSummary[]> {
@@ -73,11 +73,14 @@ type ProductRow = {
   cover_url: string | null;
   base_price: number;
   requires_booking: boolean;
+  status: string;
+  review_status: string;
   categories: { name: string } | null;
-  product_variants: { id: string; name: string; price_offset: number }[];
+  product_variants: { id: string; name: string; price_offset: number; inventory?: { quantity: number; reserved: number; low_stock_threshold: number }[] }[];
+  price_rules: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,categories(name),product_variants(id,name,price_offset)";
+const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,categories(name),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 
 function mapActivity(row: ProductRow): Activity {
   return {
@@ -93,19 +96,22 @@ function mapActivity(row: ProductRow): Activity {
     duration: "",
     requiresBooking: row.requires_booking,
     variants: (row.product_variants ?? []).map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
+    priceRules: (row.price_rules ?? []).filter((rule) => rule.is_active).map((rule) => ({ id: rule.id, productId: row.id, ruleType: rule.rule_type, label: rule.label ?? undefined, multiplier: rule.multiplier === null ? undefined : Number(rule.multiplier), fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount), validFrom: rule.valid_from ?? undefined, validUntil: rule.valid_until ?? undefined, minQuantity: rule.min_quantity ?? undefined, bundleProductIds: rule.bundle_product_ids ?? undefined, priority: Number(rule.priority ?? 0), isActive: rule.is_active })),
+    availableStock: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
+    lowStockThreshold: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((threshold, variant) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
   };
 }
 
 export async function getActivities(): Promise<Activity[]> {
-  const { data, error } = await supabase.from("products").select(ACTIVITY_SELECT);
+  const { data, error } = await supabase.from("products").select(ACTIVITY_SELECT).eq("status", "active").eq("review_status", "approved");
   if (error) throw error;
   return (data as unknown as ProductRow[]).map(mapActivity);
 }
 
 export async function getBookingSlots(activityId: string): Promise<BookingSlot[]> {
-  const { data, error } = await supabase.from("booking_slots").select("*").eq("product_id", activityId).order("starts_at");
+  const { data, error } = await supabase.from("booking_slots").select("id,product_id,starts_at,capacity,booked,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
-  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked }));
+  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
 
 function toComputed(activity: Activity, outlet: Outlet | undefined, from?: { lat: number; lng: number }): ComputedActivity | null {
@@ -183,6 +189,7 @@ export async function searchActivities(filters: SearchFilters): Promise<Computed
 function mapVoucher(row: {
   id: string; code: string; voucher_type: string; discount_value: number; min_spend: number | null;
   max_uses: number | null; uses_count: number; valid_until: string | null;
+  product_id?: string | null; buy_quantity?: number | null; free_quantity?: number | null;
 }): Voucher {
   return {
     id: row.id,
@@ -193,6 +200,9 @@ function mapVoucher(row: {
     usageCap: row.max_uses ?? Infinity,
     usageCount: row.uses_count,
     expiresAt: row.valid_until ?? "",
+    productId: row.product_id ?? undefined,
+    buyQuantity: row.buy_quantity ?? undefined,
+    freeQuantity: row.free_quantity ?? undefined,
   };
 }
 
@@ -203,7 +213,7 @@ export async function getVouchers(): Promise<Voucher[]> {
 }
 
 export async function getVoucherByCode(code: string): Promise<Voucher | undefined> {
-  const { data, error } = await supabase.from("vouchers").select("*").ilike("code", code).maybeSingle();
+  const { data, error } = await supabase.from("vouchers").select("*").ilike("code", code).eq("is_active", true).eq("review_status", "approved").maybeSingle();
   if (error) throw error;
   return data ? mapVoucher(data) : undefined;
 }

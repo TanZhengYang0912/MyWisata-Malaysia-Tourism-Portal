@@ -70,17 +70,25 @@ export async function POST(request: Request, { params }: Props) {
     if (!outlet) return apiFail('INVALID_OUTLET', 'Outlet not found or not owned by this vendor', 400);
   }
 
+  if (body.voucherType === 'bogo') {
+    const { data: product } = await supabase.from('products').select('id').eq('id', body.productId).eq('vendor_id', vendorId).maybeSingle();
+    if (!product) return apiFail('INVALID_PRODUCT', 'BOGO product not found for this vendor', 400);
+  }
+
   const { data, error } = await supabase.from('vouchers').insert({
     vendor_id: vendorId,
     outlet_id: body.outletId ?? null,
     code: body.code,
     name: body.name,
     voucher_type: body.voucherType,
-    discount_value: body.discountValue,
+    discount_value: body.discountValue ?? 0,
     min_spend: body.minSpend,
     max_uses: body.maxUses ?? null,
     valid_from: body.validFrom ?? null,
     valid_until: body.validUntil ?? null,
+    product_id: body.productId ?? null,
+    buy_quantity: body.buyQuantity ?? null,
+    free_quantity: body.freeQuantity ?? null,
     is_active: false,
     review_status: 'pending_review',
   }).select().single();

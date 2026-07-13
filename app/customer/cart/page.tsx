@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ShoppingCart, Tag, Trash2 } from "lucide-react";
 import { useCart } from "@/components/providers/cart";
 import { getActivities, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
-import { unitPrice, validateVoucher } from "@/backend/core/helpers";
+import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Activity, Outlet, Voucher } from "@/backend/core/types";
@@ -28,13 +28,25 @@ export default function CartPage() {
   const { subtotal, discount, total } = totals(appliedVoucher ?? undefined);
 
   async function applyVoucher() {
-    const v = await getVoucherByCode(code);
-    const result = validateVoucher(v, subtotal);
-    if (!result.ok) {
-      setVoucherError(result.reason);
+    const response = await fetch("/api/vouchers/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code,
+        cartSubtotal: subtotal,
+        items: items.map((item) => {
+          const activity = activities.find((candidate) => candidate.id === item.activityId);
+          return { productId: item.activityId, quantity: item.qty, unitPrice: activity ? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId)) : 0 };
+        }),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.data?.valid) {
+      setVoucherError(payload.data?.reason || "Voucher validation failed.");
       setAppliedVoucher(null);
       return;
     }
+    const v = await getVoucherByCode(code);
     setVoucherError(null);
     setAppliedVoucher(v ?? null);
   }
@@ -64,7 +76,8 @@ export default function CartPage() {
           if (!activity) return null;
           const outlet = outlets.get(activity.outletId);
           const variant = activity.variants.find((v) => v.id === item.variantId);
-          const price = unitPrice(activity, item.variantId);
+          const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));
+          const stockLimit = !activity.requiresBooking ? activity.availableStock : undefined;
           return (
             <div key={`${item.activityId}-${item.variantId}-${item.slotId ?? "x"}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -72,12 +85,13 @@ export default function CartPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{activity.name}</p>
                 <p className="text-xs text-muted-foreground">{outlet?.name} · {variant?.label}</p>
-                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">RM {price}</p>
+                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">RM {price.toFixed(2)} × {item.qty}</p>
+                {stockLimit !== undefined && <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700" : "text-emerald-700"}`}>{stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => updateQty(i, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                 <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
-                <button onClick={() => updateQty(i, item.qty + 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">+</button>
+                <button onClick={() => updateQty(i, item.qty + 1)} disabled={stockLimit !== undefined && item.qty >= stockLimit} className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40">+</button>
               </div>
               <button onClick={() => removeItem(i)} className="text-destructive shrink-0" title="Remove">
                 <Trash2 size={16} />

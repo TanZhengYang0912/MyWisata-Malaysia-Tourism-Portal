@@ -19,6 +19,7 @@ export default function DashboardRealtime({ vendorId }: { vendorId: string }) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `vendor_id=eq.${vendorId}` }, () => router.refresh())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => router.refresh())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `vendor_id=eq.${vendorId}` }, () => router.refresh())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => router.refresh())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'outlets', filter: `vendor_id=eq.${vendorId}` }, () => router.refresh())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `vendor_id=eq.${vendorId}` }, () => router.refresh())
         .subscribe();

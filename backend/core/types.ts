@@ -62,12 +62,28 @@ export interface Variant {
   priceDelta: number; // added to base price
 }
 
+export interface PriceRule {
+  id: string;
+  productId: string;
+  ruleType: "date_range" | "group_size" | "weekend" | "peak" | "off_peak" | "bundle" | "tiered";
+  label?: string;
+  multiplier?: number;
+  fixedAmount?: number;
+  validFrom?: string;
+  validUntil?: string;
+  minQuantity?: number;
+  bundleProductIds?: string[];
+  priority: number;
+  isActive: boolean;
+}
+
 export interface BookingSlot {
   id: string;
   activityId: string;
   startsAt: string; // ISO datetime
   capacity: number;
   booked: number;
+  priceOverride?: number;
 }
 
 // ─── Contract #2: Catalogue DTO ────────────────────────────────────────────
@@ -84,6 +100,9 @@ export interface Activity {
   duration: string;
   requiresBooking: boolean;
   variants: Variant[];
+  priceRules?: PriceRule[];
+  availableStock?: number;
+  lowStockThreshold?: number;
   aiTag?: string; // static label for now; AI scoring deferred
   hot?: boolean;
 }
@@ -94,29 +113,34 @@ export interface ComputedActivity extends Activity {
 }
 
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────
-export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED";
+export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED";
 
 export interface CartItem {
   activityId: string;
   variantId: string;
   slotId?: string;
   qty: number;
+  priceOverride?: number;
 }
 
 export interface Voucher {
   id: string;
   code: string;
-  type: "percent" | "fixed";
+  type: "percent" | "fixed" | "bogo";
   value: number;
   minSpend: number;
   usageCap: number;
   usageCount: number;
   expiresAt: string; // ISO date
+  productId?: string;
+  buyQuantity?: number;
+  freeQuantity?: number;
 }
 
 export interface OrderItem {
   activityId: string;
   activityName: string; // snapshot
+  imageUrl?: string; // snapshot
   variantLabel: string; // snapshot
   slotStartsAt?: string; // snapshot
   unitPrice: number; // snapshot
@@ -134,6 +158,7 @@ export interface Order {
   voucherCode?: string;
   status: OrderStatus;
   createdAt: string;
+  paymentMethod?: string;
 }
 
 export interface Booking {
@@ -144,6 +169,7 @@ export interface Booking {
   outletId: string;
   slotStartsAt?: string;
   qty: number;
+  status: "confirmed" | "checked_in" | "no_show" | "cancelled";
   qrCode: string; // demo placeholder string
 }
 

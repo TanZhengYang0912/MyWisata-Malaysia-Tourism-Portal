@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, voucherValidateSchema);
   if (!parsed.ok) return parsed.response;
-  const { code, cartSubtotal, vendorId } = parsed.data;
+  const { code, cartSubtotal, vendorId, items } = parsed.data;
 
   // Find voucher
   const { data: voucher } = await supabase
@@ -57,9 +57,21 @@ export async function POST(request: Request) {
     });
   }
 
+  if (voucher.review_status && voucher.review_status !== 'approved') {
+    return apiOk({ valid: false, reason: 'This voucher is still awaiting approval' });
+  }
+
   // Calculate discount
   let discountAmount: number;
-  if (voucher.voucher_type === 'percent') {
+  if (voucher.voucher_type === 'bogo') {
+    const eligible = (items ?? []).find((item) => item.productId === voucher.product_id);
+    const buyQuantity = Number(voucher.buy_quantity ?? 0);
+    const freeQuantity = Number(voucher.free_quantity ?? 0);
+    if (!eligible || buyQuantity < 1 || freeQuantity < 1) {
+      return apiOk({ valid: false, reason: 'Add the eligible product to your cart to use this voucher' });
+    }
+    discountAmount = Math.min(cartSubtotal, Math.floor(eligible.quantity / buyQuantity) * freeQuantity * eligible.unitPrice);
+  } else if (voucher.voucher_type === 'percent') {
     discountAmount = applyPercent(cartSubtotal, voucher.discount_value);
   } else {
     // Fixed amount — cannot exceed cart subtotal

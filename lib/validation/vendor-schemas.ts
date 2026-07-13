@@ -6,8 +6,13 @@ import { z } from 'zod';
 // ── Common building blocks ─────────────────────────────────
 
 const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
+const optionalUuid = uuid.or(z.literal('')).optional();
 const rmMoney = z.number().finite().min(0).max(100_000).multipleOf(0.01);
 const slug = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Must be a valid slug (lowercase, hyphens only)');
+const productMediaSchema = z.object({
+  url: z.string().url().max(2000),
+  alt: z.string().trim().max(255).optional(),
+}).strict();
 
 // ── Vendor ─────────────────────────────────────────────────
 
@@ -69,6 +74,15 @@ export const productCreateSchema = z.object({
   categoryId: uuid.optional(),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
   tags: z.array(z.string().max(50)).max(20).optional(),
+  submissionMode: z.enum(['draft', 'review']).default('review'),
+  availableStock: z.number().int().min(0).max(999_999).optional(),
+  lowStockThreshold: z.number().int().min(0).max(999_999).optional(),
+  defaultCapacity: z.number().int().min(1).max(10_000).optional(),
+  digitalAssetUrl: z.string().url().max(2000).optional().or(z.literal('')),
+  digitalAssetName: z.string().max(255).optional(),
+  digitalAssetType: z.string().max(120).optional(),
+  digitalAssetSize: z.number().int().min(0).max(100_000_000).optional(),
+  gallery: z.array(productMediaSchema).max(8).optional(),
   outletId: uuid,
 }).strict();
 
@@ -117,25 +131,54 @@ export const slotUpdateSchema = z.object({
 export const voucherCreateSchema = z.object({
   code: z.string().trim().min(3).max(50).toUpperCase(),
   name: z.string().trim().min(2).max(255),
-  voucherType: z.enum(['percent', 'fixed']), // BOGO deferred
-  discountValue: rmMoney.min(0.01),
+  voucherType: z.enum(['percent', 'fixed', 'bogo']),
+  discountValue: rmMoney.min(0.01).optional(),
   minSpend: rmMoney.default(0),
   maxUses: z.number().int().min(1).max(100_000).optional(),
   validFrom: z.string().datetime().optional(),
   validUntil: z.string().datetime().optional(),
   outletId: uuid.optional(), // null = all outlets under this vendor
+  productId: optionalUuid,
+  buyQuantity: z.number().int().min(1).max(999).optional(),
+  freeQuantity: z.number().int().min(1).max(999).optional(),
 }).strict().refine(
-  (data) => data.voucherType !== 'percent' || data.discountValue <= 100,
+  (data) => data.voucherType !== 'percent' || (data.discountValue !== undefined && data.discountValue <= 100),
   { message: 'Percent discount must be between 0 and 100', path: ['discountValue'] },
+).refine(
+  (data) => data.voucherType === 'bogo' || data.discountValue !== undefined,
+  { message: 'Discount value is required for percentage and fixed vouchers', path: ['discountValue'] },
+).refine(
+  (data) => data.voucherType !== 'bogo' || (data.productId && data.buyQuantity && data.freeQuantity),
+  { message: 'BOGO vouchers require a product, buy quantity and free quantity', path: ['productId'] },
 );
 
 export const voucherUpdateSchema = z.object({
   name: z.string().trim().min(2).max(255).optional(),
+  voucherType: z.enum(['percent', 'fixed', 'bogo']).optional(),
   discountValue: rmMoney.min(0.01).optional(),
   minSpend: rmMoney.optional(),
   maxUses: z.number().int().min(1).max(100_000).nullable().optional(),
   validFrom: z.string().datetime().nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
+  productId: optionalUuid.nullable().optional(),
+  buyQuantity: z.number().int().min(1).max(999).nullable().optional(),
+  freeQuantity: z.number().int().min(1).max(999).nullable().optional(),
+  isActive: z.boolean().optional(),
+}).strict();
+
+export const priceRuleCreateSchema = z.object({
+  ruleType: z.enum(['date_range', 'group_size', 'weekend', 'peak', 'off_peak', 'bundle', 'tiered']),
+  label: z.string().trim().min(2).max(100),
+  multiplier: z.number().finite().positive().max(100).optional(),
+  fixedAmount: rmMoney.optional(),
+  validFrom: z.string().date().optional(),
+  validUntil: z.string().date().optional(),
+  minQuantity: z.number().int().min(1).max(999_999).optional(),
+  bundleProductIds: z.array(uuid).max(50).optional(),
+  priority: z.number().int().min(-1000).max(1000).optional(),
+}).strict();
+
+export const priceRuleUpdateSchema = priceRuleCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 }).strict();
 
@@ -145,6 +188,11 @@ export const voucherValidateSchema = z.object({
   code: z.string().trim().min(1).max(50).toUpperCase(),
   cartSubtotal: rmMoney,
   vendorId: uuid.optional(),
+  items: z.array(z.object({
+    productId: uuid,
+    quantity: z.number().int().positive(),
+    unitPrice: rmMoney,
+  })).max(100).optional(),
 }).strict();
 
 // ── Fulfil ─────────────────────────────────────────────────
@@ -168,6 +216,13 @@ export const vendorBatchSchema = z.object({
   filters: z.record(z.string(), z.string()).default({}),
 }).strict();
 
+export const contentReviewSchema = z.object({
+  entityType: z.enum(['outlet', 'product', 'voucher']),
+  entityId: uuid,
+  action: z.enum(['approve', 'reject']),
+  note: z.string().trim().max(500).optional(),
+}).strict();
+
 // ── Export inferred types ──────────────────────────────────
 
 export type VendorRegister = z.infer<typeof vendorRegisterSchema>;
@@ -185,6 +240,8 @@ export type SlotCreate = z.infer<typeof slotCreateSchema>;
 export type SlotUpdate = z.infer<typeof slotUpdateSchema>;
 export type VoucherCreate = z.infer<typeof voucherCreateSchema>;
 export type VoucherUpdate = z.infer<typeof voucherUpdateSchema>;
+export type PriceRuleCreate = z.infer<typeof priceRuleCreateSchema>;
+export type PriceRuleUpdate = z.infer<typeof priceRuleUpdateSchema>;
 export type VoucherValidate = z.infer<typeof voucherValidateSchema>;
 export type FulfilUpdate = z.infer<typeof fulfilSchema>;
 export type VendorBatch = z.infer<typeof vendorBatchSchema>;

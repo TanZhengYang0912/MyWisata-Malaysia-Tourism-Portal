@@ -3,8 +3,16 @@
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, TrendingUp } from "lucide-react";
+import { AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
+
+interface AdminTier {
+  id: string;
+  tierName: string;
+  rate: number; // 0..1 fraction
+  minReferrals: number;
+}
 
 interface AdminAffiliateStats {
   totals: {
@@ -12,18 +20,9 @@ interface AdminAffiliateStats {
     totalClicks: number;
     totalReferrals: number;
     totalCommission: number;
-    currentRate: number;
   };
-  topEarners: { userId: string; userName: string; referrals: number; commission: number }[];
-  suspiciousLinks: {
-    linkId: string;
-    userId: string;
-    userName: string;
-    affiliateCode: string;
-    clicks: number;
-    referrals: number;
-    reasons: string[];
-  }[];
+  tiers: AdminTier[];
+  topEarners: { userId: string; userName: string; referrals: number; commission: number; tierName: string }[];
   attributions: {
     id: string;
     userId: string;
@@ -37,12 +36,56 @@ interface AdminAffiliateStats {
   }[];
 }
 
+interface FraudFlag {
+  id: string;
+  linkId: string | null;
+  userId: string | null;
+  userName: string;
+  affiliateCode: string | null;
+  orderId: string | null;
+  flagType: string;
+  severity: "low" | "medium" | "high";
+  detail: Record<string, unknown> | null;
+  status: "open" | "reviewed" | "dismissed";
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+interface FraudCounters {
+  selfReferralsBlocked: number;
+  duplicatePayoutsPrevented: number;
+  openFlags: number;
+  linksDisabled: number;
+}
+
+interface DisabledLink {
+  linkId: string;
+  userId: string;
+  userName: string;
+  affiliateCode: string;
+}
+
 type SortKey = "createdAt" | "userName" | "productName" | "status";
 
-const REASON_LABEL: Record<string, string> = {
-  high_clicks_no_referrals: "Many clicks, zero referrals",
-  clustered_visitor: "Clicks clustered on one visitor",
+const FLAG_TYPE_LABEL: Record<string, string> = {
+  self_referral: "Self-referral",
+  duplicate_attribution: "Duplicate payout attempt",
+  expired_attribution: "Expired attribution window",
+  click_velocity: "Click velocity spike",
+  visitor_clustering: "Clicks clustered on one visitor",
+  zero_conversion: "Many clicks, zero referrals",
 };
+
+const SEVERITY_STYLE: Record<string, string> = {
+  high: "bg-destructive/10 text-destructive",
+  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  low: "bg-muted text-muted-foreground",
+};
+
+// Avoids floating-point noise like "7.000000000000001" from 0.07 * 100.
+function formatRatePercent(rate: number): string {
+  return Number((rate * 100).toFixed(2)).toString();
+}
 
 export default function AdminAffiliatePage() {
   const [stats, setStats] = useState<AdminAffiliateStats | null | undefined>(undefined);
@@ -50,18 +93,171 @@ export default function AdminAffiliatePage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [clearing, setClearing] = useState(false);
+  const [clearingResult, setClearingResult] = useState<string | null>(null);
+  const [tierDrafts, setTierDrafts] = useState<Record<string, { ratePercent: string; minReferrals: string }>>({});
+  const [savingTierId, setSavingTierId] = useState<string | null>(null);
+  const [tierError, setTierError] = useState<string | null>(null);
+
+  const [fraudFlags, setFraudFlags] = useState<FraudFlag[] | null | undefined>(undefined);
+  const [fraudCounters, setFraudCounters] = useState<FraudCounters | null>(null);
+  const [disabledLinks, setDisabledLinks] = useState<DisabledLink[]>([]);
+  const [fraudTypeFilter, setFraudTypeFilter] = useState("all");
+  const [fraudSeverityFilter, setFraudSeverityFilter] = useState("all");
+  const [fraudStatusFilter, setFraudStatusFilter] = useState("open");
+  const [sweeping, setSweeping] = useState(false);
+  const [sweepResult, setSweepResult] = useState<string | null>(null);
+  const [reviewingFlagId, setReviewingFlagId] = useState<string | null>(null);
+  const [reactivatingLinkId, setReactivatingLinkId] = useState<string | null>(null);
+
+  async function loadStats() {
+    try {
+      const res = await fetch("/api/admin/affiliate/stats");
+      const body = (await res.json()) as { data: AdminAffiliateStats | null };
+      const data = res.ok && body.data ? body.data : null;
+      setStats(data);
+      if (data) {
+        setTierDrafts(
+          Object.fromEntries(
+            data.tiers.map((t) => [t.id, { ratePercent: formatRatePercent(t.rate), minReferrals: String(t.minReferrals) }]),
+          ),
+        );
+      }
+    } catch {
+      setStats(null);
+    }
+  }
+
+  async function saveTier(tier: AdminTier) {
+    if (!tier.id) return; // sentinel fallback tier — nothing to PATCH
+    const draft = tierDrafts[tier.id];
+    if (!draft) return;
+    setSavingTierId(tier.id);
+    setTierError(null);
+    try {
+      const res = await fetch(`/api/admin/affiliate/tiers/${tier.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ratePercent: Number(draft.ratePercent),
+          minReferrals: Number(draft.minReferrals),
+        }),
+      });
+      const body = (await res.json()) as { error: { message: string } | null };
+      if (!res.ok) {
+        setTierError(body.error?.message ?? "Failed to save tier.");
+        return;
+      }
+      await loadStats();
+    } catch {
+      setTierError("Failed to save tier.");
+    } finally {
+      setSavingTierId(null);
+    }
+  }
+
+  async function loadFraudFlags() {
+    try {
+      const res = await fetch("/api/admin/affiliate/fraud-flags");
+      const body = (await res.json()) as {
+        data: { flags: FraudFlag[]; counters: FraudCounters; disabledLinks: DisabledLink[] } | null;
+      };
+      if (res.ok && body.data) {
+        setFraudFlags(body.data.flags);
+        setFraudCounters(body.data.counters);
+        setDisabledLinks(body.data.disabledLinks);
+      } else {
+        setFraudFlags(null);
+      }
+    } catch {
+      setFraudFlags(null);
+    }
+  }
+
+  async function reactivateLink(linkId: string) {
+    if (reactivatingLinkId) return;
+    setReactivatingLinkId(linkId);
+    try {
+      await fetch(`/api/admin/affiliate/links/${linkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reactivate" }),
+      });
+      await loadFraudFlags();
+    } finally {
+      setReactivatingLinkId(null);
+    }
+  }
 
   useEffect(() => {
     (async () => {
-      try {
-        const res = await fetch("/api/admin/affiliate/stats");
-        const body = (await res.json()) as { data: AdminAffiliateStats | null };
-        setStats(res.ok && body.data ? body.data : null);
-      } catch {
-        setStats(null);
-      }
+      await Promise.all([loadStats(), loadFraudFlags()]);
     })();
   }, []);
+
+  async function runFraudSweepAction() {
+    if (sweeping) return;
+    setSweeping(true);
+    setSweepResult(null);
+    try {
+      const res = await fetch("/api/admin/affiliate/fraud-sweep", { method: "POST" });
+      const body = (await res.json()) as {
+        data: { linksScanned: number; flagsCreated: unknown[] } | null;
+        error: { message: string } | null;
+      };
+      if (res.ok && body.data) {
+        setSweepResult(`Scanned ${body.data.linksScanned} links, ${body.data.flagsCreated.length} new flag(s)`);
+        await loadFraudFlags();
+      } else {
+        setSweepResult(body.error?.message ?? "Fraud sweep failed.");
+      }
+    } catch {
+      setSweepResult("Fraud sweep failed.");
+    } finally {
+      setSweeping(false);
+    }
+  }
+
+  async function reviewFlag(id: string, action: "dismiss" | "confirm") {
+    if (reviewingFlagId) return;
+    setReviewingFlagId(id);
+    try {
+      await fetch(`/api/admin/affiliate/fraud-flags/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      await Promise.all([loadFraudFlags(), loadStats()]);
+    } finally {
+      setReviewingFlagId(null);
+    }
+  }
+
+  async function runClearing() {
+    if (clearing) return;
+    setClearing(true);
+    setClearingResult(null);
+    try {
+      const res = await fetch("/api/admin/affiliate/run-clearing", { method: "POST" });
+      const body = (await res.json()) as {
+        data: { cleared: unknown[]; reversed: unknown[]; skipped: number; errors: unknown[] } | null;
+        error: { message: string } | null;
+      };
+      if (res.ok && body.data) {
+        setClearingResult(
+          `Cleared ${body.data.cleared.length}, reversed ${body.data.reversed.length}, skipped ${body.data.skipped}` +
+            (body.data.errors.length ? `, ${body.data.errors.length} error(s)` : ""),
+        );
+        await loadStats();
+      } else {
+        setClearingResult(body.error?.message ?? "Clearing run failed.");
+      }
+    } catch {
+      setClearingResult("Clearing run failed.");
+    } finally {
+      setClearing(false);
+    }
+  }
 
   const filteredAttributions = useMemo(() => {
     if (!stats) return [];
@@ -80,6 +276,15 @@ export default function AdminAffiliatePage() {
       return sortDir === "asc" ? diff : -diff;
     });
   }, [stats, statusFilter, search, sortKey, sortDir]);
+
+  const filteredFraudFlags = useMemo(() => {
+    if (!fraudFlags) return [];
+    let rows = fraudFlags;
+    if (fraudTypeFilter !== "all") rows = rows.filter((f) => f.flagType === fraudTypeFilter);
+    if (fraudSeverityFilter !== "all") rows = rows.filter((f) => f.severity === fraudSeverityFilter);
+    if (fraudStatusFilter !== "all") rows = rows.filter((f) => f.status === fraudStatusFilter);
+    return rows;
+  }, [fraudFlags, fraudTypeFilter, fraudSeverityFilter, fraudStatusFilter]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -104,10 +309,70 @@ export default function AdminAffiliatePage() {
 
   return (
     <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-1">Affiliate Oversight</h1>
-      <p className="text-xs text-muted-foreground mb-6">
-        Current commission rate: {(stats.totals.currentRate * 100).toFixed(1)}%
-      </p>
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-1">
+        <h1 className="font-bold text-lg text-foreground">Affiliate Oversight</h1>
+        <div className="text-right flex items-start gap-2">
+          <div>
+            <Button size="sm" variant="outline" onClick={runClearing} disabled={clearing}>
+              <RefreshCw size={13} className={clearing ? "animate-spin" : ""} /> {clearing ? "Running…" : "Run clearing"}
+            </Button>
+            {clearingResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{clearingResult}</p>}
+          </div>
+          <div>
+            <Button size="sm" variant="outline" onClick={runFraudSweepAction} disabled={sweeping}>
+              <AlertTriangle size={13} className={sweeping ? "animate-pulse" : ""} /> {sweeping ? "Scanning…" : "Run fraud sweep"}
+            </Button>
+            {sweepResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Commission tiers</p>
+        <div className="space-y-2">
+          {stats.tiers.map((tier) => {
+            const draft = tierDrafts[tier.id] ?? { ratePercent: formatRatePercent(tier.rate), minReferrals: String(tier.minReferrals) };
+            return (
+              <div key={tier.id || tier.tierName} className="flex items-center gap-3 flex-wrap text-sm">
+                <span className="w-16 capitalize text-foreground font-medium">{tier.tierName}</span>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  Rate
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={draft.ratePercent}
+                    disabled={!tier.id}
+                    onChange={(e) =>
+                      setTierDrafts((d) => ({ ...d, [tier.id]: { ...draft, ratePercent: e.target.value } }))
+                    }
+                    className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+                  />
+                  %
+                </label>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  Min referrals
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={draft.minReferrals}
+                    disabled={!tier.id}
+                    onChange={(e) =>
+                      setTierDrafts((d) => ({ ...d, [tier.id]: { ...draft, minReferrals: e.target.value } }))
+                    }
+                    className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+                  />
+                </label>
+                <Button size="sm" variant="outline" disabled={!tier.id || savingTierId === tier.id} onClick={() => saveTier(tier)}>
+                  {savingTierId === tier.id ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+        {tierError && <p className="text-[11px] text-destructive mt-2">{tierError}</p>}
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
@@ -123,7 +388,7 @@ export default function AdminAffiliatePage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
             <TrendingUp size={13} /> Top earners
@@ -135,7 +400,7 @@ export default function AdminAffiliatePage() {
               {stats.topEarners.map((e, i) => (
                 <div key={e.userId} className="flex items-center justify-between text-sm">
                   <span className="text-foreground">
-                    {i + 1}. {e.userName}
+                    {i + 1}. {e.userName} <span className="capitalize text-muted-foreground font-normal">({e.tierName})</span>
                   </span>
                   <span className="text-muted-foreground">
                     {e.referrals} referrals · <span className="font-semibold text-foreground">RM {e.commission.toFixed(2)}</span>
@@ -148,29 +413,163 @@ export default function AdminAffiliatePage() {
 
         <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-destructive mb-3 flex items-center gap-1.5">
-            <AlertTriangle size={13} /> Suspicious activity
+            <AlertTriangle size={13} /> Fraud guards — proof they work
           </p>
-          {stats.suspiciousLinks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing flagged.</p>
+          {fraudCounters ? (
+            <div className="space-y-1.5 text-sm">
+              <p className="text-foreground">
+                <span className="font-bold">{fraudCounters.selfReferralsBlocked}</span> self-referral
+                {fraudCounters.selfReferralsBlocked === 1 ? "" : "s"} blocked
+              </p>
+              <p className="text-foreground">
+                <span className="font-bold">{fraudCounters.duplicatePayoutsPrevented}</span> duplicate payout
+                {fraudCounters.duplicatePayoutsPrevented === 1 ? "" : "s"} prevented
+              </p>
+              <p className="text-muted-foreground text-xs pt-1">
+                {fraudCounters.openFlags} open flag{fraudCounters.openFlags === 1 ? "" : "s"} to review ·{" "}
+                {fraudCounters.linksDisabled} link{fraudCounters.linksDisabled === 1 ? "" : "s"} currently disabled
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Disabled links</p>
+          {disabledLinks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No links are currently disabled.</p>
           ) : (
             <div className="space-y-2">
-              {stats.suspiciousLinks.map((l) => (
-                <div key={l.linkId} className="text-sm">
-                  <p className="text-foreground font-medium">
+              {disabledLinks.map((l) => (
+                <div key={l.linkId} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-foreground">
                     {l.userName} <span className="text-muted-foreground font-normal">({l.affiliateCode})</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {l.clicks} clicks · {l.referrals} referrals — {l.reasons.map((r) => REASON_LABEL[r] ?? r).join(", ")}
-                  </p>
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={reactivatingLinkId === l.linkId}
+                    onClick={() => reactivateLink(l.linkId)}
+                  >
+                    {reactivatingLinkId === l.linkId ? "Re-enabling…" : "Re-enable"}
+                  </Button>
                 </div>
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground mt-3 pt-3 border-t border-border">
-            Self-referrals are rejected at attribution time and never stored — there is no row to show
-            here for them.
-          </p>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-primary">Fraud flags</p>
+        <div className="flex items-center gap-2">
+          <select
+            value={fraudTypeFilter}
+            onChange={(e) => setFraudTypeFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+          >
+            <option value="all">All types</option>
+            {Object.entries(FLAG_TYPE_LABEL).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={fraudSeverityFilter}
+            onChange={(e) => setFraudSeverityFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+          >
+            <option value="all">All severities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select
+            value={fraudStatusFilter}
+            onChange={(e) => setFraudStatusFilter(e.target.value)}
+            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+          >
+            <option value="all">All statuses</option>
+            <option value="open">Open</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="rounded-xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+            <tr>
+              <th className="text-left px-4 py-2.5 font-semibold">Affiliate</th>
+              <th className="text-left px-4 py-2.5 font-semibold">Type</th>
+              <th className="text-left px-4 py-2.5 font-semibold">Severity</th>
+              <th className="text-left px-4 py-2.5 font-semibold">Evidence</th>
+              <th className="text-left px-4 py-2.5 font-semibold">When</th>
+              <th className="text-left px-4 py-2.5 font-semibold">Status</th>
+              <th className="text-right px-4 py-2.5 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fraudFlags === undefined ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  Loading…
+                </td>
+              </tr>
+            ) : filteredFraudFlags.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  Nothing flagged.
+                </td>
+              </tr>
+            ) : (
+              filteredFraudFlags.map((f) => (
+                <tr key={f.id} className="border-t border-border align-top">
+                  <td className="px-4 py-2.5 text-foreground">
+                    {f.userName}
+                    {f.affiliateCode && <span className="text-muted-foreground"> ({f.affiliateCode})</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-foreground">{FLAG_TYPE_LABEL[f.flagType] ?? f.flagType}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs capitalize ${SEVERITY_STYLE[f.severity] ?? ""}`}>
+                      {f.severity}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-xs max-w-[240px]">
+                    {f.detail ? Object.entries(f.detail).map(([k, v]) => `${k}: ${v}`).join(" · ") : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{new Date(f.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5 text-foreground capitalize">{f.status}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {f.status === "open" && (
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reviewingFlagId === f.id}
+                          onClick={() => reviewFlag(f.id, "dismiss")}
+                        >
+                          Dismiss
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reviewingFlagId === f.id || !f.linkId}
+                          onClick={() => reviewFlag(f.id, "confirm")}
+                        >
+                          Confirm & disable
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
