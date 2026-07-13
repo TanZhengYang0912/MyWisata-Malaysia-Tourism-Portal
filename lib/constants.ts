@@ -23,7 +23,7 @@ export const PRODUCT_TYPES = [
   'product', 'activity', 'experience', 'food', 'digital',
 ] as const;
 
-export const PAYMENT_METHODS = ['mock_card', 'wallet'] as const;
+export const PAYMENT_METHODS = ['mock_card', 'stripe_card', 'ewallet', 'bank_transfer', 'wallet'] as const;
 
 // Demo OTP code — never send real SMS in demo
 export const DEMO_OTP_CODE = '123456';

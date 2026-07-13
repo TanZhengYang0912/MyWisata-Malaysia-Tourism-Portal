@@ -94,9 +94,10 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      <Link href="/customer/orders">
-        <Button variant="outline" className="w-full">Back to Order History</Button>
-      </Link>
+      <div className="flex gap-3">
+        <Button type="button" variant="outline" className="flex-1" onClick={() => window.print()}>Print receipt</Button>
+        <Link href="/customer/orders" className="flex-1"><Button variant="outline" className="w-full">Back to Order History</Button></Link>
+      </div>
     </div>
   );
 }

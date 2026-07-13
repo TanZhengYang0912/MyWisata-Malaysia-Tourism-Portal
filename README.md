@@ -3,8 +3,8 @@
 A local-mock, multi-role demo of a Malaysia-wide tourism discovery & commerce
 platform: Customer, Vendor, and Admin areas sharing one canonical seed dataset.
 Backed by a real Supabase project (Postgres + Auth + RLS, see
-`supabase/migrations/`) — only the shopping cart still lives in the browser's
-`localStorage`, since there's no signed-in session to key a server-side cart on.
+`supabase/migrations/`) — catalogue, carts, orders, inventory and vouchers all
+read and write through Supabase.
 
 Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User%20greeting/)
 (palette, fonts, screen layouts). The full screen/flow spec is in

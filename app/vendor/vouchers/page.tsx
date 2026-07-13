@@ -9,6 +9,7 @@ import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
+interface VoucherAnalytics { voucherId: string; code: string; name: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 const statuses = ['all', 'active', 'scheduled', 'inactive', 'expired'];
 
@@ -31,6 +32,8 @@ export default function VendorVouchersPage() {
   const [allFilteredSelected, setAllFilteredSelected] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchMessage, setBatchMessage] = useState('');
+  const [analytics, setAnalytics] = useState<VoucherAnalytics[]>([]);
+  const [bulkMessage, setBulkMessage] = useState('');
 
   const loadVouchers = useCallback(async (page = 1) => {
     if (!vendorId) return;
@@ -46,6 +49,7 @@ export default function VendorVouchersPage() {
   }, [q, status, vendorId]);
 
   useEffect(() => { loadVouchers(1); }, [loadVouchers]);
+  useEffect(() => { if (vendorId) fetch(`/api/vendors/${vendorId}/vouchers/analytics`, { cache: 'no-store' }).then((response) => response.json()).then((payload) => setAnalytics(payload.data || [])); }, [vendorId]);
 
   async function toggleActive(voucher: VoucherData) {
     if (!vendorId) return;
@@ -55,6 +59,14 @@ export default function VendorVouchersPage() {
   }
 
   async function copyCode(code: string) { await navigator.clipboard?.writeText(code); }
+  async function uploadCsv(file: File) {
+    if (!vendorId) return;
+    const csv = await file.text();
+    const response = await fetch(`/api/vendors/${vendorId}/vouchers/bulk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
+    const payload = await response.json();
+    if (!response.ok) { setBulkMessage(payload.error?.message || 'CSV upload failed'); return; }
+    setBulkMessage(`${payload.data?.inserted || 0} vouchers uploaded for admin review.`); loadVouchers(1);
+  }
   function toggleSelected(voucherId: string) { setAllFilteredSelected(false); setSelectedIds((current) => current.includes(voucherId) ? current.filter((id) => id !== voucherId) : [...current, voucherId]); }
   async function applyBatch(action: string) {
     if (!vendorId) return;
@@ -68,9 +80,12 @@ export default function VendorVouchersPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700"><Percent size={15} /> Campaign control</div><h1 className="text-2xl font-bold tracking-tight text-gray-950">Vouchers</h1><p className="mt-1 text-sm text-gray-500">Keep discounts visible, current and easy to switch off.</p></div><button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700"><CirclePlus size={17} /> Create voucher</button></header>
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700"><Percent size={15} /> Campaign control</div><h1 className="text-2xl font-bold tracking-tight text-gray-950">Vouchers</h1><p className="mt-1 text-sm text-gray-500">Keep discounts visible, current and easy to switch off.</p></div><div className="flex gap-2"><label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"><input type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCsv(file); event.currentTarget.value = ''; }} /> Upload CSV</label><button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700"><CirclePlus size={17} /> Create voucher</button></div></header>
+      {bulkMessage && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{bulkMessage} <span className="ml-1 text-xs">CSV columns: code, name, voucherType, discountValue, minSpend, maxUses, validFrom, validUntil.</span></div>}
 
       <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Active</p><p className="mt-1 text-2xl font-bold text-emerald-700">{stats.active || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Scheduled</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.scheduled || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Expired</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.expired || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Inactive</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.inactive || 0}</p></div></div>
+
+      {analytics.length > 0 && <section className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold text-gray-900">Voucher performance</p><p className="mt-1 text-xs text-gray-600">Redemption rate and revenue impact from completed demo orders.</p></div><span className="text-xs font-semibold text-amber-700">{analytics.reduce((sum, item) => sum + item.redemptions, 0)} redemptions</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{analytics.slice(0, 4).map((item) => <div key={item.voucherId} className="rounded-xl border border-amber-100 bg-white px-3 py-3 text-xs"><div className="flex justify-between gap-3"><span className="font-mono font-bold text-amber-700">{item.code}</span><span className="font-semibold text-gray-800">{item.redemptions} uses</span></div><p className="mt-1 text-gray-500">{item.redemptionRate === null ? 'Unlimited usage' : `${item.redemptionRate}% redemption rate`} · RM {item.discount.toFixed(2)} discount · RM {item.revenue.toFixed(2)} order revenue</p></div>)}</div></section>}
 
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between"><div className="flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1">{statuses.map((item) => <button key={item} type="button" onClick={() => { setStatus(item); setPagination((current) => ({ ...current, page: 1 })); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold capitalize ${status === item ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>{item}</button>)}</div><label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} /><input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search voucher code or campaign" className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-amber-500 md:w-64" /></label></div>
       <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(vouchers.map((voucher) => voucher.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'activate', label: 'Activate selected' }, { value: 'deactivate', label: 'Deactivate selected' }]} busy={batchBusy} message={batchMessage} />

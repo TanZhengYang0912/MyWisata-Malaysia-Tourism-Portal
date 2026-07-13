@@ -62,12 +62,28 @@ export interface Variant {
   priceDelta: number; // added to base price
 }
 
+export interface PriceRule {
+  id: string;
+  productId: string;
+  ruleType: "date_range" | "group_size" | "weekend" | "peak" | "off_peak" | "bundle" | "tiered";
+  label?: string;
+  multiplier?: number;
+  fixedAmount?: number;
+  validFrom?: string;
+  validUntil?: string;
+  minQuantity?: number;
+  bundleProductIds?: string[];
+  priority: number;
+  isActive: boolean;
+}
+
 export interface BookingSlot {
   id: string;
   activityId: string;
   startsAt: string; // ISO datetime
   capacity: number;
   booked: number;
+  priceOverride?: number;
 }
 
 // ─── Contract #2: Catalogue DTO ────────────────────────────────────────────
@@ -84,6 +100,9 @@ export interface Activity {
   duration: string;
   requiresBooking: boolean;
   variants: Variant[];
+  priceRules?: PriceRule[];
+  availableStock?: number;
+  lowStockThreshold?: number;
   aiTag?: string; // static label for now; AI scoring deferred
   hot?: boolean;
 }
@@ -101,17 +120,21 @@ export interface CartItem {
   variantId: string;
   slotId?: string;
   qty: number;
+  priceOverride?: number;
 }
 
 export interface Voucher {
   id: string;
   code: string;
-  type: "percent" | "fixed";
+  type: "percent" | "fixed" | "bogo";
   value: number;
   minSpend: number;
   usageCap: number;
   usageCount: number;
   expiresAt: string; // ISO date
+  productId?: string;
+  buyQuantity?: number;
+  freeQuantity?: number;
 }
 
 export interface OrderItem {
@@ -134,6 +157,7 @@ export interface Order {
   voucherCode?: string;
   status: OrderStatus;
   createdAt: string;
+  paymentMethod?: string;
 }
 
 export interface Booking {

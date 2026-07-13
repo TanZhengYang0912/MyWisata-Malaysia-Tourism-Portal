@@ -1,10 +1,10 @@
 'use client';
 // P2 — Member 2: Voucher creation form (B3)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { voucherCreateSchema, type VoucherCreate } from '@/lib/validation/vendor-schemas';
+import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
@@ -18,16 +18,19 @@ interface Props {
 export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
-  const supabase = createClient();
+  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  const supabase = useMemo(() => createClient(), []);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<any>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<any>({
     resolver: zodResolver(voucherCreateSchema) as any,
     defaultValues: { voucherType: 'fixed', minSpend: 0 },
   });
 
   useEffect(() => {
-    supabase.from('outlets').select('id, name').eq('vendor_id', vendorId)
-      .then(({ data }) => setOutlets(data ?? []));
+    Promise.all([
+      supabase.from('outlets').select('id, name').eq('vendor_id', vendorId),
+      supabase.from('products').select('id, name').eq('vendor_id', vendorId).order('name'),
+    ]).then(([outletResult, productResult]) => { setOutlets(outletResult.data ?? []); setProducts(productResult.data ?? []); });
   }, [vendorId, supabase]);
 
   function generateCode() {
@@ -42,10 +45,15 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   async function onSubmit(data: any) {
     setServerError(null);
     try {
+      const payload = {
+        ...data,
+        validFrom: data.validFrom ? new Date(data.validFrom).toISOString() : undefined,
+        validUntil: data.validUntil ? new Date(data.validUntil).toISOString() : undefined,
+      };
       const res = await fetch(`/api/vendors/${vendorId}/vouchers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
       const result = await res.json();
@@ -82,10 +90,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
                 const el = document.querySelector('input[name="code"]') as HTMLInputElement;
                 if (el) {
                   const code = generateCode();
-                  el.value = code;
-                  // Trigger change event for react-hook-form
-                  const event = new Event('input', { bubbles: true });
-                  el.dispatchEvent(event);
+                  setValue('code', code, { shouldDirty: true, shouldValidate: true });
                 }
               }}>Auto</Button>
             </div>
@@ -104,14 +109,22 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
             <select {...register('voucherType')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="fixed">Fixed Amount (RM)</option>
               <option value="percent">Percentage (%)</option>
+              <option value="bogo">Buy X Get Y</option>
             </select>
           </div>
-          <div>
+          <div className={watch('voucherType') === 'bogo' ? 'hidden' : ''}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value *</label>
             <Input {...register('discountValue', { valueAsNumber: true })} type="number" step="0.01" />
             {errors.discountValue && <p className="text-red-500 text-xs mt-1">{(errors.discountValue as any)?.message}</p>}
           </div>
         </div>
+
+        {watch('voucherType') === 'bogo' && <div className="grid grid-cols-3 gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="col-span-3"><label className="block text-sm font-medium text-gray-700 mb-1">Eligible product *</label><select {...register('productId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select product...</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select>{errors.productId && <p className="text-red-500 text-xs mt-1">{(errors.productId as any)?.message}</p>}</div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1">Buy quantity *</label><Input {...register('buyQuantity', { valueAsNumber: true })} type="number" min="1" /></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1">Free quantity *</label><Input {...register('freeQuantity', { valueAsNumber: true })} type="number" min="1" /></div>
+          <p className="col-span-3 text-xs text-amber-800">Example: Buy 1 Get 1 applies the free item to every complete eligible set in the cart.</p>
+        </div>}
 
         <div className="grid grid-cols-2 gap-4">
           <div>

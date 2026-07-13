@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('products')
-    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,outlets(id,display_id,name,city,state),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved))', { count: 'exact' })
+    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,outlets(id,display_id,name,city,state),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved,low_stock_threshold))', { count: 'exact' })
     .eq('vendor_id', vendorId)
     .in('outlet_id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
@@ -49,14 +49,15 @@ export async function GET(request: Request, { params }: Props) {
     ...product,
     outlet: product.outlets ? { ...product.outlets, full_name: product.outlets.name, name: outletShortName(product.outlets.name) } : product.outlets,
     variants: product.product_variants ?? [],
-    availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Number(variant.inventory?.[0]?.quantity ?? 0), 0),
+    availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
+    lowStockThreshold: (product.product_variants ?? []).reduce((threshold: number, variant: any) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
   }));
   return apiOk({ items, pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 
@@ -81,6 +82,9 @@ export async function POST(request: Request, { params }: Props) {
     .eq('vendor_id', vendorId)
     .single();
   if (!outlet) return apiFail('INVALID_OUTLET', 'Outlet not found or not owned by this vendor', 400);
+  if (!access.access.outletIds.includes(body.outletId)) {
+    return apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403);
+  }
 
   const finalSlug = body.slug || slugify(body.name);
 

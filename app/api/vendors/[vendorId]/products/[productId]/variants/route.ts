@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 

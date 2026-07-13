@@ -7,10 +7,11 @@ type RecRow = {
   recommender_id: string;
   vendor_name: string;
   status: string;
+  state: string | null;
   categories: { name: string } | null;
 };
 
-const REC_SELECT = "id,recommender_id,vendor_name,status,categories(name)";
+const REC_SELECT = "id,recommender_id,vendor_name,status,state,categories(name)";
 
 function mapRecommendation(row: RecRow): VendorRecommendation {
   return {
@@ -18,7 +19,7 @@ function mapRecommendation(row: RecRow): VendorRecommendation {
     submittedBy: row.recommender_id,
     name: row.vendor_name,
     category: row.categories?.name ?? "",
-    state: "",
+    state: row.state ?? "",
     status: row.status as VendorRecommendation["status"],
     qualityScore: 0,
     duplicate: false,
@@ -48,6 +49,6 @@ export async function submitRecommendation(userId: string, name: string, categor
 }
 
 export async function reviewRecommendation(id: string, status: "approved" | "rejected"): Promise<void> {
-  const { error } = await supabase.from("vendor_recommendations").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await supabase.rpc("review_vendor_recommendation", { p_recommendation_id: id, p_action: status, p_admin_id: (await supabase.auth.getUser()).data.user?.id });
   if (error) throw error;
 }

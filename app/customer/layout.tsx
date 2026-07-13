@@ -13,6 +13,7 @@ const NAV = [
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
   { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
   { href: "/customer/orders", label: "Orders", icon: UserIcon },
+  { href: "/customer/calendar", label: "Calendar", icon: UserIcon },
 ];
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {

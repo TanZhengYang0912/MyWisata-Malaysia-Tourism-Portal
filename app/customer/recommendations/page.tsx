@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Star, Plus, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getMyRecommendations, submitRecommendation } from "@/backend/domains/discovery";
-import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
+import { STATES_MY } from "@/backend/domains/catalogue";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { VendorRecommendation } from "@/backend/core/types";
@@ -13,13 +14,16 @@ export default function RecommendationsPage() {
   const { currentUser } = useAuth();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", category: CATEGORIES[0].id, state: "Kuala Lumpur" });
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [form, setForm] = useState({ name: "", category: "", state: "Kuala Lumpur" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const supabase = useMemo(() => createClient(), []);
   useEffect(() => {
     if (currentUser) getMyRecommendations(currentUser.id).then(setRecs);
-  }, [currentUser]);
+    supabase.from("categories").select("id,name").eq("is_active", true).order("sort_order").then(({ data }) => setCategories(data ?? []));
+  }, [currentUser, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +34,7 @@ export default function RecommendationsPage() {
       const rec = await submitRecommendation(currentUser.id, form.name, form.category, form.state);
       setRecs((prev) => [rec, ...(prev ?? [])]);
       setShowForm(false);
-      setForm({ name: "", category: CATEGORIES[0].id, state: "Kuala Lumpur" });
+      setForm({ name: "", category: "", state: "Kuala Lumpur" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit.");
     } finally {
@@ -80,7 +84,8 @@ export default function RecommendationsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               >
-                {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                <option value="">Select category...</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 

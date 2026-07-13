@@ -1,9 +1,7 @@
 // P2 — Member 2: Single product GET/PATCH/DELETE (B2)
 
-import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productUpdateSchema } from '@/lib/validation/vendor-schemas';
-import { createServiceClient } from '@/lib/supabase/service';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
@@ -34,8 +32,17 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+
+  const { data: existingProduct } = await access.access.serviceDb
+    .from('products')
+    .select('id,outlet_id')
+    .eq('id', productId)
+    .eq('vendor_id', vendorId)
+    .in('outlet_id', access.access.outletIds)
+    .maybeSingle();
+  if (!existingProduct) return apiFail('NOT_FOUND', 'Product not found', 404);
 
   const parsed = await parseBody(request, productUpdateSchema);
   if (!parsed.ok) return parsed.response;
@@ -60,11 +67,12 @@ export async function PATCH(request: Request, { params }: Props) {
     updateData.status = 'inactive';
   }
 
-  const { data, error } = await createServiceClient()
+  const { data, error } = await access.access.serviceDb
     .from('products')
     .update(updateData)
     .eq('id', productId)
     .eq('vendor_id', vendorId)
+    .in('outlet_id', access.access.outletIds)
     .select()
     .single();
 
@@ -74,15 +82,16 @@ export async function PATCH(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, productId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 
   // Soft delete
-  const { error } = await createServiceClient()
+  const { error } = await access.access.serviceDb
     .from('products')
     .update({ status: 'archived' })
     .eq('id', productId)
-    .eq('vendor_id', vendorId);
+    .eq('vendor_id', vendorId)
+    .in('outlet_id', access.access.outletIds);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   return apiOk({ id: productId, status: 'archived' });

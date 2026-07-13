@@ -1,5 +1,5 @@
 import { round2 } from "./money";
-import type { Activity, CartItem, OrderStatus, Voucher } from "./types";
+import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./types";
 
 // ─── Contract #4: order state machine ──────────────────────────────────────
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -29,15 +29,40 @@ export function validateVoucher(
   return { ok: true };
 }
 
-export function voucherDiscount(voucher: Voucher, subtotal: number): number {
+export function voucherDiscount(voucher: Voucher, subtotal: number, items: CartItem[] = [], activities: Activity[] = []): number {
+  if (voucher.type === "bogo") {
+    const product = activities.find((activity) => activity.id === voucher.productId);
+    const item = items.find((cartItem) => cartItem.activityId === voucher.productId);
+    if (!product || !item || !voucher.buyQuantity || !voucher.freeQuantity) return 0;
+    const freeUnits = Math.floor(item.qty / voucher.buyQuantity) * voucher.freeQuantity;
+    return round2(Math.min(freeUnits * unitPrice(product, item.variantId), subtotal));
+  }
   const raw = voucher.type === "percent" ? (subtotal * voucher.value) / 100 : voucher.value;
   return round2(Math.min(raw, subtotal));
 }
 
 // ─── Cart totals ────────────────────────────────────────────────────────────
-export function unitPrice(activity: Activity, variantId: string): number {
+function ruleApplies(rule: PriceRule, activity: Activity, quantity: number, now: Date, cartProductIds: string[]): boolean {
+  const today = now.toISOString().slice(0, 10);
+  if (rule.validFrom && today < rule.validFrom) return false;
+  if (rule.validUntil && today > rule.validUntil) return false;
+  if (rule.ruleType === "weekend") {
+    const day = now.getDay();
+    return day === 0 || day === 6;
+  }
+  if (["group_size", "tiered"].includes(rule.ruleType)) return quantity >= (rule.minQuantity ?? 1);
+  if (rule.ruleType === "bundle") return (rule.bundleProductIds ?? []).every((id) => cartProductIds.includes(id));
+  return true;
+}
+
+export function unitPrice(activity: Activity, variantId: string, quantity = 1, now: Date = new Date(), cartProductIds: string[] = [activity.id]): number {
   const variant = activity.variants.find((v) => v.id === variantId);
-  return round2(activity.price + (variant?.priceDelta ?? 0));
+  const base = activity.price + (variant?.priceDelta ?? 0);
+  const rule = (activity.priceRules ?? []).filter((candidate) => ruleApplies(candidate, activity, quantity, now, cartProductIds)).sort((a, b) => b.priority - a.priority)[0];
+  if (!rule) return round2(base);
+  if (rule.fixedAmount !== undefined) return round2(Math.max(0, rule.fixedAmount));
+  if (rule.multiplier !== undefined) return round2(base * rule.multiplier);
+  return round2(base);
 }
 
 export function cartTotals(
@@ -50,7 +75,9 @@ export function cartTotals(
     items.reduce((sum, item) => {
       const activity = activities.find((a) => a.id === item.activityId);
       if (!activity) return sum;
-      return sum + unitPrice(activity, item.variantId) * item.qty;
+      const cartProductIds = items.map((cartItem) => cartItem.activityId);
+      const linePrice = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, now, cartProductIds);
+      return sum + linePrice * item.qty;
     }, 0),
   );
 
@@ -59,7 +86,7 @@ export function cartTotals(
   if (voucher) {
     const validation = validateVoucher(voucher, subtotal, now);
     if (validation.ok) {
-      discount = voucherDiscount(voucher, subtotal);
+      discount = voucherDiscount(voucher, subtotal, items, activities);
     } else {
       voucherError = validation.reason;
     }

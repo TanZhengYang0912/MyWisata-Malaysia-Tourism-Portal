@@ -12,12 +12,13 @@ import { Sparkles } from 'lucide-react';
 
 interface Props {
   vendorId: string;
+  outletIds?: string[];
   initialData?: ProductCreate & { id?: string };
   onSuccess?: () => void;
   onClose?: () => void;
 }
 
-export default function ProductForm({ vendorId, initialData, onSuccess, onClose }: Props) {
+export default function ProductForm({ vendorId, outletIds, initialData, onSuccess, onClose }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string; city?: string | null; state?: string | null }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -35,8 +36,10 @@ export default function ProductForm({ vendorId, initialData, onSuccess, onClose 
   });
 
   useEffect(() => {
+    let outletsQuery = supabase.from('outlets').select('id, name, city, state').eq('vendor_id', vendorId);
+    if (outletIds?.length) outletsQuery = outletsQuery.in('id', outletIds);
     Promise.all([
-      supabase.from('outlets').select('id, name, city, state').eq('vendor_id', vendorId),
+      outletsQuery,
       supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order'),
     ]).then(([outletResult, categoryResult]) => {
       setOutlets(outletResult.data ?? []);
