@@ -7,11 +7,12 @@ import { useAuth } from "@/components/providers/auth";
 import { getMessages, getThread, sendMessage } from "@/backend/domains/identity";
 import { getOutlet } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { ChatMessage, Outlet } from "@/backend/core/types";
+import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
 
 export default function ChatThreadPage() {
   const params = useParams<{ threadId: string }>();
   const { currentUser } = useAuth();
+  const [thread, setThread] = useState<ChatThread | null | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [outlet, setOutlet] = useState<Outlet | undefined>(undefined);
   const [text, setText] = useState("");
@@ -20,9 +21,10 @@ export default function ChatThreadPage() {
 
   useEffect(() => {
     (async () => {
-      const [msgs, thread] = await Promise.all([getMessages(params.threadId), getThread(params.threadId)]);
+      const [msgs, t] = await Promise.all([getMessages(params.threadId), getThread(params.threadId)]);
       setMessages(msgs);
-      if (thread) setOutlet(await getOutlet(thread.outletId));
+      setThread(t ?? null);
+      if (t) setOutlet(await getOutlet(t.outletId));
     })();
   }, [params.threadId]);
 
@@ -40,8 +42,11 @@ export default function ChatThreadPage() {
     setSending(false);
   }
 
-  if (messages.length === 0) {
-    return <EmptyState title="Conversation not found" description="This chat thread has no messages yet." />;
+  if (thread === undefined) {
+    return <div className="max-w-2xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (thread === null) {
+    return <EmptyState title="Conversation not found" description="This chat thread doesn't exist." />;
   }
 
   return (
