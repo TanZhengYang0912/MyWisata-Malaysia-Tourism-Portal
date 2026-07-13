@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // ── Common building blocks ─────────────────────────────────
 
-const uuid    = z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i, 'Invalid UUID');
+const uuid    = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
 const rmMoney = z.number().finite().min(0.01).max(100_000).multipleOf(0.01);
 const shortId = z.string().min(1).max(128);
 
@@ -61,7 +61,7 @@ export const withdrawalApproveSchema = z.object({
 
 // ── Idempotency ────────────────────────────────────────────
 
-export const idempotencyHeaderSchema = z.string().uuid().or(z.string().min(16).max(128));
+export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).or(z.string().min(16).max(128));
 
 // ── Response envelope ──────────────────────────────────────
 

@@ -5,19 +5,8 @@ import { z } from 'zod';
 
 // ── Common building blocks ─────────────────────────────────
 
-const uuid = z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i, 'Invalid UUID');
-// Native <select> controls submit an empty string when their placeholder is
-// selected. Treat that value as "not provided" for optional foreign keys.
-const optionalUuid = z.preprocess((value) => value === '' ? undefined : value, uuid.optional());
+const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
 const rmMoney = z.number().finite().min(0).max(100_000).multipleOf(0.01);
-// Text inputs use comma-separated text, while the database/API uses an array.
-// Accept both shapes so edit forms do not fail before submit normalization.
-const productTags = z.preprocess(
-  (value) => typeof value === 'string'
-    ? value.split(',').map((tag) => tag.trim()).filter(Boolean)
-    : value,
-  z.array(z.string().max(50)).max(20).optional(),
-);
 const slug = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Must be a valid slug (lowercase, hyphens only)');
 
 // ── Vendor ─────────────────────────────────────────────────
@@ -29,10 +18,6 @@ export const vendorRegisterSchema = z.object({
   businessType: z.string().max(50).optional(),
   logoUrl: z.string().url().max(2000).optional().or(z.literal('')),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
-}).strict();
-
-export const vendorUpdateSchema = vendorRegisterSchema.partial().extend({
-  name: z.string().trim().min(2).max(255).optional(),
 }).strict();
 
 export const vendorApproveSchema = z.object({
@@ -63,11 +48,9 @@ export const outletCreateSchema = z.object({
   phone: z.string().max(50).optional(),
   email: z.string().email().max(255).optional().or(z.literal('')),
   operatingHours: z.record(z.string(), z.object({
-    open: z.string().optional(),
-    close: z.string().optional(),
-    closed: z.boolean().optional(),
-    note: z.string().max(200).optional(),
-  }).strict()).optional(),
+    open: z.string(),
+    close: z.string(),
+  })).optional(),
 }).strict();
 
 export const outletUpdateSchema = outletCreateSchema.partial();
@@ -81,21 +64,13 @@ export const productCreateSchema = z.object({
   productType: z.enum(['product', 'activity', 'experience', 'food', 'digital']),
   requiresBooking: z.boolean().default(false),
   basePrice: rmMoney.min(0.01),
-  categoryId: optionalUuid,
+  categoryId: uuid.optional(),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
-  tags: productTags,
+  tags: z.array(z.string().max(50)).max(20).optional(),
   outletId: uuid,
 }).strict();
 
-// Older edit-form bundles submitted the record id and outlet id along with the
-// editable fields. Accept and discard those two legacy fields at the boundary
-// so an old tab cannot make an otherwise valid edit fail with an unknown-key
-// error. All other unknown keys remain rejected by the strict object schema.
-export const productUpdateSchema = productCreateSchema.partial().omit({ outletId: true }).extend({
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
-  id: uuid.optional(),
-  outletId: uuid.optional(),
-}).transform(({ id: _id, outletId: _outletId, ...data }) => data);
+export const productUpdateSchema = productCreateSchema.partial().omit({ outletId: true }).extend({ status: z.enum(['active', 'inactive', 'archived']).optional() });
 
 // ── Variant ────────────────────────────────────────────────
 
@@ -211,27 +186,16 @@ export const fulfilSchema = z.object({
 }).strict();
 
 export const vendorBatchSchema = z.object({
-  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings', 'slots']),
+  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings']),
   action: z.enum(['archive', 'restore', 'close', 'activate', 'deactivate', 'ready', 'fulfilled', 'check_in', 'cancel']),
   ids: z.array(uuid).max(10_000).default([]),
   selectAllFiltered: z.boolean().default(false),
   filters: z.record(z.string(), z.string()).default({}),
 }).strict();
 
-export const contentReviewSchema = z.object({
-  entityType: z.enum(['outlet', 'product', 'voucher']),
-  entityId: uuid,
-  action: z.enum(['approve', 'change_requested', 'reject']),
-  note: z.string().trim().max(1000).optional(),
-}).strict().refine(
-  (data) => data.action === 'approve' || (data.note && data.note.length >= 5),
-  { message: 'A note of at least 5 characters is required for this action', path: ['note'] },
-);
-
 // ── Export inferred types ──────────────────────────────────
 
 export type VendorRegister = z.infer<typeof vendorRegisterSchema>;
-export type VendorUpdate = z.infer<typeof vendorUpdateSchema>;
 export type VendorApprove = z.infer<typeof vendorApproveSchema>;
 export type VendorSuspend = z.infer<typeof vendorSuspendSchema>;
 export type OutletCreate = z.infer<typeof outletCreateSchema>;
@@ -249,4 +213,3 @@ export type PriceRuleUpdate = z.infer<typeof priceRuleUpdateSchema>;
 export type VoucherValidate = z.infer<typeof voucherValidateSchema>;
 export type FulfilUpdate = z.infer<typeof fulfilSchema>;
 export type VendorBatch = z.infer<typeof vendorBatchSchema>;
-export type ContentReview = z.infer<typeof contentReviewSchema>;

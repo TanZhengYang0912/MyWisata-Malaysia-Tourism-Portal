@@ -67,6 +67,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 </span>
               )}
             </Link>
+            <Link href="/customer/profile" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Edit Profile
+            </Link>
             <Link href="/login" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white bg-primary">
                 {currentUser.avatarInitial}

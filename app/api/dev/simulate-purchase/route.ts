@@ -2,6 +2,7 @@
 // doesn't fire yet (see CLAUDE.md Section 6). Deleted at merge — never imply
 // a real payment happened. See CLAUDE.md Step 5.
 
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
@@ -42,16 +43,23 @@ export async function POST(request: Request) {
   const amount = Number(product.base_price);
   const now = new Date().toISOString();
 
+  // Read affiliate click from cookie and clear it — real checkout owners do the same.
+  // This is the only place mw_ref cookie is consumed; onOrderPaid() reads from the DB column.
+  const cookieStore = await cookies();
+  const affiliateClickId = cookieStore.get('mw_ref')?.value ?? null;
+  if (affiliateClickId) cookieStore.delete('mw_ref');
+
   const { data: order, error: orderErr } = await service
     .from('orders')
     .insert({
-      user_id: user.id,
-      status: 'paid', // lowercase — matches the orders.status CHECK constraint
-      subtotal: amount,
-      discount_amount: 0,
-      total_amount: amount,
-      payment_method: 'mock_card',
-      paid_at: now,
+      user_id:            user.id,
+      status:             'paid',
+      subtotal:           amount,
+      discount_amount:    0,
+      total_amount:       amount,
+      payment_method:     'mock_card',
+      paid_at:            now,
+      affiliate_click_id: affiliateClickId,
     })
     .select('id')
     .single();

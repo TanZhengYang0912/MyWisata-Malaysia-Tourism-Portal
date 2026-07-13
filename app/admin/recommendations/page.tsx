@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
-import { getVendorRecommendations, reviewRecommendation } from "@/backend/domains/discovery";
+import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { getUsers } from "@/backend/domains/identity";
-import { recordApproval } from "@/backend/core/audit";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -14,6 +13,8 @@ export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
   const [users, setUsers] = useState<Map<string, User>>(new Map());
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getVendorRecommendations().then(setRecs);
@@ -21,29 +22,43 @@ export default function AdminRecommendationsPage() {
   }, []);
 
   async function review(r: VendorRecommendation, approve: boolean) {
-    if (!currentUser) return;
-    const status = approve ? "approved" : "rejected";
-    await reviewRecommendation(r.id, status);
-    await recordApproval({
-      actorId: currentUser.id,
-      action: approve ? "recommendation.approve" : "recommendation.reject",
-      targetType: "vendor_recommendation",
-      targetId: r.id,
-      notifyUserId: r.submittedBy,
-      notifyText: `Your recommendation "${r.name}" was ${status}.`,
-      before: { status: r.status },
-      after: { status },
-    });
-    setRecs((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
+    if (!currentUser || reviewing) return;
+    setReviewing(r.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/recommendations/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recommendationId: r.id,
+          action: approve ? 'approve' : 'reject',
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error?.message ?? 'Review failed.');
+        return;
+      }
+      const status = approve ? "approved" : "rejected";
+      setRecs((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Review failed.');
+    } finally {
+      setReviewing(null);
+    }
   }
 
-  const pending = recs.filter((r) => r.status === "pending");
+  const pending  = recs.filter((r) => r.status === "pending");
   const reviewed = recs.filter((r) => r.status !== "pending");
 
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-1">Recommendation Moderation</h1>
       <p className="text-xs text-muted-foreground mb-6">Community-submitted vendors and hidden gems.</p>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
+      )}
 
       <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
@@ -75,7 +90,11 @@ export default function AdminRecommendationsPage() {
                       {r.qualityScore}
                     </span>
                   </div>
-                  <ApproveRejectBar onApprove={() => review(r, true)} onReject={() => review(r, false)} />
+                  <ApproveRejectBar
+                    onApprove={() => review(r, true)}
+                    onReject={() => review(r, false)}
+                    disabled={reviewing === r.id}
+                  />
                 </div>
               );
             })}

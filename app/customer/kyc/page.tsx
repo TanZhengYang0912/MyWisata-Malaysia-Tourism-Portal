@@ -5,7 +5,7 @@ import { ShieldCheck, Upload, CheckCircle2, Clock, FileCheck2, UserCircle } from
 import Link from "next/link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
-import { setVerificationTier, upsertKycSubmission, uploadKycDocument, validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
+import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/backend/core/types";
 
@@ -89,13 +89,15 @@ export default function KycPage() {
 
     setSubmitting(true);
     try {
-      const documentUrl = await uploadKycDocument(currentUser.id, docFile!);
-      await upsertKycSubmission(currentUser.id, {
-        icNumber: result.data.icNumber.toUpperCase(),
-        docType: result.data.docType,
-        documentUrl,
-      });
-      await setVerificationTier(currentUser.id, "kyc_submitted");
+      const fd = new FormData();
+      fd.append('icNumber', result.data.icNumber.toUpperCase());
+      fd.append('docType', result.data.docType);
+      fd.append('file', docFile!);
+      const res = await fetch('/api/kyc/upload', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? 'Submission failed.');
+      }
       await refreshUser();
       setSubmitted(true);
     } catch (err) {
