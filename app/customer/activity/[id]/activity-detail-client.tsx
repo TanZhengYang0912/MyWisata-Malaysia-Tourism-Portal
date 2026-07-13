@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Bike, Bus, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Star, Users } from "lucide-react";
-import { getBookingSlots, getComputedActivity } from "@/backend/domains/catalogue";
 import { getOrCreateThread } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -23,15 +22,20 @@ const TRAVEL_MODES = [
 ] as const;
 type TravelModeId = (typeof TRAVEL_MODES)[number]["id"];
 
-export function ActivityDetailClient() {
-  const params = useParams<{ id: string }>();
+export function ActivityDetailClient({
+  initialActivity,
+  initialSlots,
+}: {
+  initialActivity: ComputedActivity | null;
+  initialSlots: BookingSlot[];
+}) {
   const router = useRouter();
   const { currentUser } = useAuth();
   const { addItem } = useCart();
 
-  const [activity, setActivity] = useState<ComputedActivity | null | undefined>(undefined);
-  const [slots, setSlots] = useState<BookingSlot[]>([]);
-  const [variantId, setVariantId] = useState<string>("");
+  const [activity] = useState<ComputedActivity | null>(initialActivity);
+  const [slots] = useState<BookingSlot[]>(initialSlots);
+  const [variantId, setVariantId] = useState<string>(initialActivity?.variants[0]?.id ?? "");
   const [slotId, setSlotId] = useState<string>("");
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -41,17 +45,6 @@ export function ActivityDetailClient() {
   const [mapsReady, setMapsReady] = useState(false);
   const [eta, setEta] = useState<{ durationText: string; distanceText: string } | null>(null);
   const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "denied" | "error">("idle");
-
-  useEffect(() => {
-    (async () => {
-      const a = await getComputedActivity(params.id);
-      setActivity(a);
-      if (a) {
-        setVariantId(a.variants[0]?.id ?? "");
-        if (a.requiresBooking) setSlots(await getBookingSlots(a.id));
-      }
-    })();
-  }, [params.id]);
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
 
@@ -106,9 +99,6 @@ export function ActivityDetailClient() {
     );
   }
 
-  if (activity === undefined) {
-    return <div className="max-w-3xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
-  }
   if (activity === null) {
     return <EmptyState title="Experience not found" description="This listing may have been removed." />;
   }
