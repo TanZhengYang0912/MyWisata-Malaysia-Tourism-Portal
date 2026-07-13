@@ -7,4 +7,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "."),
     },
   },
+  test: {
+    exclude: ['tests/e2e/**', 'node_modules/**'],
+  },
 });

@@ -50,8 +50,8 @@ function WalletContent() {
     if (!currentUser) return;
     getWalletBuckets(currentUser.id).then(setBuckets);
     getMyWithdrawals(currentUser.id).then(setWithdrawals);
-    getConnectStatus(currentUser.id).then(({ accountId, payoutsEnabled, kycStatus }) => {
-      if (kycStatus !== "approved")   setConnectStatus("kyc_required");
+    getConnectStatus(currentUser.id).then(({ accountId, payoutsEnabled, tier }) => {
+      if (tier !== "kyc_verified")    setConnectStatus("kyc_required");
       else if (!accountId)            setConnectStatus("unlinked");
       else if (payoutsEnabled)        setConnectStatus("verified");
       else                            setConnectStatus("onboarding");

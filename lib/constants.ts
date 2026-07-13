@@ -3,6 +3,31 @@
 export const USER_STATUS = ['active', 'suspended', 'deleted'] as const;
 export const KYC_STATUS  = ['unverified', 'pending', 'approved', 'rejected'] as const;
 
+// ── Verification tier ladder (ADR-025) ────────────────────────────────────────
+// Order is authoritative — use meetsMinTier() for comparisons, never string equality.
+export const TIER_ORDER = [
+  'email_verified',
+  'phone_verified',
+  'profile_complete',
+  'kyc_verified',
+] as const;
+
+export type Tier = typeof TIER_ORDER[number];
+
+export const REQUIRED_TIER = {
+  CHECKOUT:        'phone_verified',
+  RECOMMENDATION:  'profile_complete',
+  AFFILIATE_BASIC: 'profile_complete',
+  AFFILIATE_FULL:  'kyc_verified',
+  WITHDRAWAL:      'kyc_verified',
+} as const satisfies Record<string, Tier>;
+
+export function meetsMinTier(actual: string, required: Tier): boolean {
+  const ai = TIER_ORDER.indexOf(actual as Tier);
+  const ri = TIER_ORDER.indexOf(required);
+  return ai !== -1 && ai >= ri;
+}
+
 export const VENDOR_STATUS  = ['pending', 'approved', 'rejected', 'suspended'] as const;
 export const PRODUCT_STATUS = ['active', 'inactive', 'archived'] as const;
 export const SLOT_STATUS    = ['available', 'full', 'cancelled', 'expired'] as const;

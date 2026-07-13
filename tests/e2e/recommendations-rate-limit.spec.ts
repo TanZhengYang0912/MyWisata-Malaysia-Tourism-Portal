@@ -15,8 +15,8 @@ test.describe('Recommendation rate limit (PR 019)', () => {
   test('6th submission within 24 h is rejected with RATE_LIMITED', async ({ page }) => {
     // ── 1. Sign in ──────────────────────────────────────────────────────────
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(CUSTOMER_EMAIL);
-    await page.getByLabel(/password/i).fill(CUSTOMER_PASS);
+    await page.locator('input[type="email"]').fill(CUSTOMER_EMAIL);
+    await page.locator('input[type="password"]').fill(CUSTOMER_PASS);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
     await page.waitForURL(/\/customer\//);
 
@@ -64,7 +64,7 @@ test.describe('Recommendation rate limit (PR 019)', () => {
     // State might be a select or input
     const stateField = page.getByLabel(/state/i).first();
     if (await stateField.getAttribute('role') === 'combobox' || await stateField.evaluate(el => el.tagName) === 'SELECT') {
-      await stateField.selectOption({ label: /Selangor/i });
+      await stateField.selectOption({ label: 'Selangor' });
     } else {
       await stateField.fill('Selangor');
     }

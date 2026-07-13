@@ -9,7 +9,7 @@ type DemoUserRow = {
   email: string;
   full_name: string | null;
   city: string | null;
-  kyc_status: User['verificationTier'];
+  tier: User['verificationTier'];
   user_roles?: Array<{
     vendor_id: string | null;
     outlet_id: string | null;
@@ -26,7 +26,7 @@ export async function GET() {
     const db = await createClient();
     const { data, error } = await db
       .from('users')
-      .select('id,email,full_name,city,kyc_status,user_roles(vendor_id,outlet_id,roles(name))')
+      .select('id,email,full_name,city,tier,user_roles(vendor_id,outlet_id,roles(name))')
       .like('email', '%@demo.local')
       .order('email');
 
@@ -44,7 +44,7 @@ export async function GET() {
         role,
         avatarInitial: name[0]?.toUpperCase() || '?',
         city: row.city || undefined,
-        verificationTier: row.kyc_status,
+        verificationTier: row.tier,
         vendorId: assignment?.vendor_id || undefined,
         outletId: assignment?.outlet_id || undefined,
       };

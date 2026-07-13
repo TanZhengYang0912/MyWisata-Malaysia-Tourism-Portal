@@ -20,6 +20,8 @@ export const vendorRegisterSchema = z.object({
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
 }).strict();
 
+export const vendorUpdateSchema = vendorRegisterSchema.partial();
+
 export const vendorApproveSchema = z.object({
   action: z.enum(['approve', 'reject']),
   reason: z.string().max(500).optional(),
@@ -151,8 +153,15 @@ export const fulfilSchema = z.object({
   status: z.enum(['ready', 'fulfilled']),
 }).strict();
 
+export const contentReviewSchema = z.object({
+  entityType: z.enum(['outlet', 'product', 'voucher']),
+  entityId: uuid,
+  action: z.enum(['approve', 'reject']),
+  note: z.string().max(1000).optional(),
+}).strict();
+
 export const vendorBatchSchema = z.object({
-  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings']),
+  entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings', 'slots']),
   action: z.enum(['archive', 'restore', 'close', 'activate', 'deactivate', 'ready', 'fulfilled', 'check_in', 'cancel']),
   ids: z.array(uuid).max(10_000).default([]),
   selectAllFiltered: z.boolean().default(false),
@@ -162,7 +171,9 @@ export const vendorBatchSchema = z.object({
 // ── Export inferred types ──────────────────────────────────
 
 export type VendorRegister = z.infer<typeof vendorRegisterSchema>;
+export type VendorUpdate = z.infer<typeof vendorUpdateSchema>;
 export type VendorApprove = z.infer<typeof vendorApproveSchema>;
+export type ContentReview = z.infer<typeof contentReviewSchema>;
 export type VendorSuspend = z.infer<typeof vendorSuspendSchema>;
 export type OutletCreate = z.infer<typeof outletCreateSchema>;
 export type OutletUpdate = z.infer<typeof outletUpdateSchema>;

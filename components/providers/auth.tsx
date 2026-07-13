@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
     const { data: row, error } = await supabase
       .from("users")
-      .select("id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
+      .select("id,email,full_name,city,phone,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
     if (error) throw error;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarInitial: name[0]?.toUpperCase() ?? "?",
       city: row.city ?? undefined,
       phone: row.phone ?? undefined,
-      verificationTier: row.kyc_status as User["verificationTier"],
+      verificationTier: (row.tier ?? "email_verified") as User["verificationTier"],
       vendorId: vendorId ?? undefined,
       outletId: assignment?.outlet_id ?? undefined,
     } : null;
@@ -108,9 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await response.json() as { error?: string };
     if (!response.ok) throw new Error(result.error || 'Unable to sign in');
 
-    setCurrentUserId(id);
-    setCurrentUser(user);
-  }, []);
+    await loadSupabaseUser(id);
+    setLoading(false);
+  }, [loadSupabaseUser]);
 
   const refreshUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();

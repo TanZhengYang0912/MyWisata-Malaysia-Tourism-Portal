@@ -9,11 +9,11 @@ type UserRow = {
   full_name: string | null;
   city: string | null;
   phone: string | null;
-  kyc_status: string;
+  tier: string;
   user_roles: { vendor_id: string | null; outlet_id: string | null; roles: { name: string } | null }[];
 };
 
-const USER_SELECT = "id,email,full_name,city,phone,kyc_status,user_roles(vendor_id,outlet_id,roles(name))";
+const USER_SELECT = "id,email,full_name,city,phone,tier,user_roles(vendor_id,outlet_id,roles(name))";
 
 function mapUser(row: UserRow): User {
   const ur = row.user_roles[0];
@@ -26,7 +26,7 @@ function mapUser(row: UserRow): User {
     avatarInitial: name[0]?.toUpperCase() ?? "?",
     city: row.city ?? undefined,
     phone: row.phone ?? undefined,
-    verificationTier: row.kyc_status as User["verificationTier"],
+    verificationTier: (row.tier ?? "email_verified") as User["verificationTier"],
     vendorId: ur?.vendor_id ?? undefined,
     outletId: ur?.outlet_id ?? undefined,
   };
@@ -35,7 +35,7 @@ function mapUser(row: UserRow): User {
 // Hardcoded demo users — only active in development. In production all auth must
 // come from Supabase so there are no backdoor accounts.
 const DEMO_USERS: User[] = process.env.NODE_ENV === 'production' ? [] : [
-  { id: "demo-customer-1", name: "Demo Customer", email: "customer@demo.local", role: "customer", avatarInitial: "C", verificationTier: "registered" },
+  { id: "demo-customer-1", name: "Demo Customer", email: "customer@demo.local", role: "customer", avatarInitial: "C", verificationTier: "email_verified" },
   { id: "demo-vendor-1", name: "Demo Vendor Owner", email: "vendor@demo.local", role: "vendor_owner", avatarInitial: "V", verificationTier: "kyc_verified" },
   { id: "demo-admin-1", name: "Demo Admin", email: "admin@demo.local", role: "admin", avatarInitial: "A", verificationTier: "kyc_verified" },
   { id: "demo-approver-1", name: "Demo Approver", email: "approver@demo.local", role: "approver", avatarInitial: "P", verificationTier: "kyc_verified" },
@@ -258,15 +258,21 @@ export async function upsertKycSubmission(userId: string, data: { icNumber: stri
 }
 
 export async function getKycSubmissions(): Promise<KycSubmission[]> {
+  // Fetch active submissions only (append-only: each submission is a row)
   const { data, error } = await supabase
     .from("kyc_submissions")
-    .select("user_id,ic_number,document_type,document_url,created_at,reviewed_at,reviewer_id");
+    .select("id,user_id,document_type,document_url,status,queue_position,created_at,reviewed_at,reviewer_id")
+    .in("status", ["pending", "info_requested"])
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((r) => ({
+    id: r.id,
     userId: r.user_id,
-    icNumber: r.ic_number ?? "",
+    icNumber: "",
     docType: r.document_type ?? "",
     documentUrl: r.document_url ?? "",
+    status: r.status as KycSubmission["status"],
+    queuePosition: r.queue_position ?? undefined,
     submittedAt: r.created_at,
     reviewedAt: r.reviewed_at ?? undefined,
     reviewedBy: r.reviewer_id ?? undefined,
@@ -289,7 +295,7 @@ export async function recordKycReview(userId: string, reviewedBy: string, approv
 export async function setVerificationTier(userId: string, tier: User["verificationTier"]): Promise<void> {
   const isDemo = DEMO_USERS.some((u) => u.id === userId);
   if (!isDemo) {
-    const { error } = await supabase.from("users").update({ kyc_status: tier }).eq("id", userId);
+    const { error } = await supabase.from("users").update({ tier }).eq("id", userId);
     if (error) throw error;
   }
   // Keep localStorage in sync so demo users and page-refreshes see the updated tier.

@@ -6,23 +6,11 @@ export const dynamic = 'force-dynamic';
 
 // Per-tier top-up limits in sen (100 sen = RM 1)
 const TOPUP_LIMIT_SEN: Record<string, number> = {
-  guest:            10_000,   // RM 100
-  registered:       10_000,   // RM 100
+  email_verified:   10_000,   // RM 100
   phone_verified:   10_000,   // RM 100
   profile_complete: 50_000,   // RM 500
-  kyc_submitted:    50_000,   // RM 500
   kyc_verified:     Infinity, // unlimited
 };
-
-function deriveVerificationTier(row: {
-  profile_completed_at: string | null;
-  kyc_status: string;
-}): string {
-  if (row.kyc_status === 'approved') return 'kyc_verified';
-  if (row.kyc_status === 'pending')  return 'kyc_submitted';
-  if (row.profile_completed_at)      return 'profile_complete';
-  return 'registered';
-}
 
 export async function POST(req: Request) {
   const db = await createClient();
@@ -45,17 +33,14 @@ export async function POST(req: Request) {
 
   const { data: userRow, error: userErr } = await db
     .from('users')
-    .select('email, full_name, stripe_customer_id, profile_completed_at, kyc_status')
+    .select('email, full_name, stripe_customer_id, tier')
     .eq('id', authUser.id)
     .single();
   if (userErr || !userRow) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  const tier = deriveVerificationTier(userRow as {
-    profile_completed_at: string | null;
-    kyc_status: string;
-  });
+  const tier = (userRow as { tier?: string | null }).tier ?? 'email_verified';
   const limitSen = TOPUP_LIMIT_SEN[tier] ?? 10_000;
   if (Number.isFinite(limitSen) && amountSen > limitSen) {
     return NextResponse.json(

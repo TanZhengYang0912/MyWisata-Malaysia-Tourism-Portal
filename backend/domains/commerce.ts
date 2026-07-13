@@ -244,7 +244,7 @@ export async function createOrder(userId: string, voucherCode?: string): Promise
     discount: totals.discount,
     total: totals.total,
     voucherCode: appliedVoucherCode,
-    status: "paid",
+    status: "PAID",
     createdAt: orderRow.created_at,
   };
 }
@@ -327,22 +327,22 @@ export async function getWalletBalance(userId: string): Promise<number> {
 export async function getConnectStatus(userId: string): Promise<{
   accountId: string | null;
   payoutsEnabled: boolean;
-  kycStatus: string;
+  tier: string;
 }> {
   const { data } = await supabase
     .from("users")
-    .select("stripe_connect_account_id, stripe_payouts_enabled, kyc_status")
+    .select("stripe_connect_account_id, stripe_payouts_enabled, tier")
     .eq("id", userId)
     .maybeSingle();
   const row = data as {
     stripe_connect_account_id: string | null;
     stripe_payouts_enabled: boolean;
-    kyc_status: string;
+    tier: string;
   } | null;
   return {
     accountId:      row?.stripe_connect_account_id ?? null,
     payoutsEnabled: row?.stripe_payouts_enabled    ?? false,
-    kycStatus:      row?.kyc_status                ?? "unverified",
+    tier:           row?.tier                      ?? "email_verified",
   };
 }
 

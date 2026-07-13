@@ -22,7 +22,8 @@ type ProfileRow = {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
-  kyc_status: AuthUser['kycStatus'] | null;
+  kyc_status: string | null;
+  tier: string | null;
   email_verified_at: string | null;
   phone_verified_at: string | null;
   profile_completed_at: string | null;
@@ -34,7 +35,7 @@ export async function GET() {
   if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
   const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }] = await Promise.all([
-    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,email_verified_at,phone_verified_at,profile_completed_at').eq('id', authUser.id).maybeSingle(),
+    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at').eq('id', authUser.id).maybeSingle(),
     supabase.from('user_roles').select('vendor_id,outlet_id,roles(name),outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
   ]);
@@ -69,6 +70,7 @@ export async function GET() {
       fullName: profileRow?.full_name || null,
       avatarUrl: profileRow?.avatar_url || null,
       kycStatus: profileRow?.kyc_status || 'unverified',
+      tier: profileRow?.tier || 'email_verified',
       emailVerified: Boolean(profileRow?.email_verified_at),
       phoneVerified: Boolean(profileRow?.phone_verified_at),
       profileComplete: Boolean(profileRow?.profile_completed_at),
