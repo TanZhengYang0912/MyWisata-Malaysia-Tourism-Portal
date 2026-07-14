@@ -15,7 +15,7 @@
 - The connected-account configuration must assign `losses.payments = stripe`, `fees.payer = account`, `requirement_collection = stripe`, and `stripe_dashboard.type = full`.
 - Preserve the existing KYC/tier gate: only `tier = 'kyc_verified'` may start onboarding.
 - Do not change unrelated uncommitted work in `app/api/admin/kyc/submissions/route.ts`.
-- Do not change the wallet ledger or bypass the existing withdrawal RPC/state guards.
+- Do not change the wallet ledger, withdrawal state machine, webhook module, or any other contributor's module.
 
 ---
 
@@ -126,36 +126,32 @@
   git commit -m "feat: use real Standard Stripe Connect onboarding"
   ```
 
-### Task 3: Harden status synchronization and payout account validation
+### Task 3: Review existing status synchronization without touching other modules
 
 **Files:**
-- Modify: `app/api/stripe/connect-webhook/route.ts`
-- Modify: `app/api/admin/withdrawals/[id]/approve/route.ts`
-- Test: `app/api/stripe/connect-webhook/__tests__/route.test.ts` (create if absent)
+- Read-only review: `app/api/stripe/connect-webhook/route.ts`
+- Read-only review: `app/api/admin/withdrawals/[id]/approve/route.ts`
 
 **Interfaces:**
 - `account.updated` continues to call `update_connect_status` with the real `acct_*` ID and Stripe's `payouts_enabled` value.
-- Withdrawal approval rejects any `acct_demo_*` value before calling Stripe.
+- Existing withdrawal approval remains fail-closed because Stripe account
+  retrieval fails for an invalid ID; no other contributor's module is edited.
 
-- [ ] **Step 1: Add a failing fake-account payout test**
+- [ ] **Step 1: Verify the existing webhook and payout guards**
 
-  Assert that an approval request with `stripe_connect_account_id = 'acct_demo_...'` returns 422 and that `stripe.accounts.retrieve`, `stripe.transfers.create`, and `stripe.payouts.create` are not called.
+  Confirm by inspection that `account.updated` uses the event's
+  `payouts_enabled` value and that approval retrieves the Stripe account before
+  creating a transfer or payout. Record any discrepancy and stop for user
+  approval instead of editing those modules.
 
-- [ ] **Step 2: Add the real-account guard**
-
-  Before retrieving the account in the approval route, reject IDs that do not match `/^acct_[A-Za-z0-9]+$/` or that start with `acct_demo_`. Keep the withdrawal in its retryable/approved state.
-
-- [ ] **Step 3: Verify webhook signature and status behavior**
-
-  Add a focused `account.updated` test proving `p_payouts_enabled` comes from the Stripe event and is not hard-coded. Preserve the existing signature verification and payout event handlers.
-
-- [ ] **Step 4: Run focused tests and commit**
+- [ ] **Step 2: Verify no module changes occurred**
 
   ```powershell
-  npx vitest run app/api/stripe/connect-webhook/__tests__/route.test.ts app/api/admin/withdrawals
-  git add app/api/stripe/connect-webhook/route.ts app/api/admin/withdrawals/[id]/approve/route.ts app/api/stripe/connect-webhook/__tests__/route.test.ts
-  git commit -m "fix: fail closed for synthetic Stripe payout accounts"
+  git status --short
   ```
+
+  Expected: only the onboarding route and its test are changed by this plan;
+  pre-existing `app/api/admin/kyc/submissions/route.ts` changes remain intact.
 
 ### Task 4: Full verification and Stripe test-mode smoke check
 
@@ -197,4 +193,3 @@
   git status --short
   git diff --check
   ```
-
