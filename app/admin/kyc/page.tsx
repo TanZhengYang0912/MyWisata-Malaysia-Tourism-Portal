@@ -117,7 +117,7 @@ export default function AdminKycPage() {
       )}
 
       {/* Pending submissions */}
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">Pending Review ({pending.length})</h2>
         </div>
@@ -133,14 +133,14 @@ export default function AdminKycPage() {
               return (
                 <div key={u.id}>
                   <div className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 bg-teal">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 bg-primary">
                       {u.avatarInitial}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm text-foreground">{u.name}</p>
                         {isInfoRequested && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFF4CC] text-[#7A5A00]">
                             Info Requested
                           </span>
                         )}
@@ -266,7 +266,7 @@ export default function AdminKycPage() {
       </div>
 
       {/* Verified users */}
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">KYC Verified ({verified.length})</h2>
         </div>

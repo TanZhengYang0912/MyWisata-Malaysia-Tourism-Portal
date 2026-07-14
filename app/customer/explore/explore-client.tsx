@@ -41,7 +41,7 @@ export function ExploreClient({ initialActivities }: { initialActivities: Comput
       <section className="relative overflow-hidden" style={{ minHeight: 420 }}>
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(135deg, #24313AE0 0%, #0F5D4A99 40%, #087E8B55 100%)" }}
+          style={{ background: "linear-gradient(135deg, rgba(15,23,42,.94) 0%, rgba(1,0,102,.90) 100%)" }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -74,7 +74,7 @@ export function ExploreClient({ initialActivities }: { initialActivities: Comput
                   placeholder="Search experiences, places or vendors…"
                 />
               </div>
-              <button type="submit" className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-primary">
+              <button type="submit" className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white">
                 Search
               </button>
             </form>
@@ -159,7 +159,7 @@ export function ExploreClient({ initialActivities }: { initialActivities: Comput
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles size={16} className="text-accent" />
-                <span className="text-xs font-bold uppercase tracking-wider text-accent">Top Picks</span>
+                <span className="text-travel-blue text-xs font-bold uppercase tracking-wider">Top Picks</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Popular Right Now</h2>
             </div>

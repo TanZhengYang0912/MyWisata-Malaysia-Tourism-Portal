@@ -73,14 +73,12 @@ export function ActivityDetailClient({
   // A slot switch can leave qty above the new slot's remaining seats — clamp down.
   useEffect(() => {
     if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotId]);
 
   // Retries the ETA calc once the Maps script finishes loading, covering the
   // race where the user picks a travel mode before google.maps is ready.
   useEffect(() => {
     if (mapsReady && userLoc && activity) computeEta(userLoc, travelMode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapsReady]);
 
   function computeEta(origin: { lat: number; lng: number }, mode: TravelModeId) {
@@ -179,12 +177,12 @@ export function ActivityDetailClient({
               <MapPin size={13} /> {activity.outlet.city}, {activity.outlet.state}
             </div>
             <div className="flex items-center gap-1.5">
-              <Star size={13} fill="#F2B84B" stroke="none" />
+              <Star size={13} fill="var(--highlight-yellow)" stroke="none" />
               <span className="font-bold text-foreground">{activity.rating}</span>
               <span className="text-muted-foreground">({activity.reviews} reviews)</span>
             </div>
-            <div className="flex items-center gap-1.5" style={{ color: activity.outlet.open ? "var(--primary)" : "#aaa" }}>
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: activity.outlet.open ? "var(--primary)" : "#aaa" }} />
+            <div className="flex items-center gap-1.5" style={{ color: activity.outlet.open ? "var(--nature-green-ink)" : "#64748b" }}>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: activity.outlet.open ? "var(--nature-green)" : "#94a3b8" }} />
               {activity.outlet.open ? "Open Now" : "Currently Closed"}
             </div>
           </div>
@@ -338,8 +336,8 @@ export function ActivityDetailClient({
                 onClick={() => handleTravelModeChange(m.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
                 style={{
-                  borderColor: travelMode === m.id ? "var(--primary)" : "var(--border)",
-                  backgroundColor: travelMode === m.id ? "var(--primary)" : "transparent",
+                  borderColor: travelMode === m.id ? "var(--travel-blue)" : "var(--border)",
+                  backgroundColor: travelMode === m.id ? "var(--travel-blue)" : "transparent",
                   color: travelMode === m.id ? "white" : "var(--foreground)",
                 }}
               >
@@ -354,7 +352,7 @@ export function ActivityDetailClient({
             </span>
           </div>
 
-          <Button variant="outline" onClick={handleDirections} className="mb-4 rounded-full">
+          <Button variant="default" onClick={handleDirections} className="mb-4 rounded-full bg-primary text-white hover:bg-primary/90">
             <Navigation size={16} className="mr-1.5" /> Get Directions
           </Button>
 

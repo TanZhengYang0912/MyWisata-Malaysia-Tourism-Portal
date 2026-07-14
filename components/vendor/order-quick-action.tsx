@@ -27,7 +27,7 @@ export default function OrderQuickAction({ vendorId, itemId, status, orderStatus
     }
   }
 
-  return <button type="button" onClick={updateStatus} disabled={loading} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60">
+  return <button type="button" onClick={updateStatus} disabled={loading} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60">
     {loading ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
     {nextStatus === 'ready' ? 'Mark ready' : 'Fulfil'}
   </button>;

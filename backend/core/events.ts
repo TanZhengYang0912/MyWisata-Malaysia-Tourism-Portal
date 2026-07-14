@@ -16,7 +16,6 @@ export function on(name: DomainEventName, fn: Listener) {
 export function emit<T>(name: DomainEventName, payload: T) {
   const event: DomainEvent<T> = { name, payload, at: new Date().toISOString() };
   if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
     console.log("[event]", name, payload);
   }
   for (const fn of listeners.get(name) ?? []) fn(event);

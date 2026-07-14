@@ -67,7 +67,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <input
           {...register('name')}
           placeholder="e.g. Rasa Malaysia Kitchen"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
         />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
       </div>
@@ -79,7 +79,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           {...register('description')}
           rows={3}
           placeholder="Describe your business..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent resize-none"
         />
         {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
       </div>
@@ -89,7 +89,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
         <select
           {...register('businessType')}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
         >
           <option value="">Select type...</option>
           <option value="restaurant">Restaurant / Food & Beverage</option>
@@ -108,7 +108,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <input
           {...register('logoUrl')}
           placeholder="https://..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
         />
         {errors.logoUrl && <p className="text-red-500 text-xs mt-1">{errors.logoUrl.message}</p>}
       </div>
@@ -118,7 +118,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 bg-primary-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Application'}
         </button>

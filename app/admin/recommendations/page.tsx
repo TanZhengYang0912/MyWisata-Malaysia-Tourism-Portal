@@ -63,7 +63,7 @@ export default function AdminRecommendationsPage() {
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
 
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">Pending ({pending.length})</h2>
         </div>
@@ -107,7 +107,7 @@ export default function AdminRecommendationsPage() {
         )}
       </div>
 
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">Reviewed</h2>
         </div>

@@ -74,7 +74,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
                 onClick={() => setRadiusKm(km)}
                 className="px-2.5 py-1.5"
                 style={{
-                  backgroundColor: radiusKm === km ? "var(--primary)" : "transparent",
+                  backgroundColor: radiusKm === km ? "var(--travel-blue)" : "transparent",
                   color: radiusKm === km ? "white" : "var(--foreground)",
                 }}
               >
@@ -84,7 +84,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
           </div>
           <button
             onClick={handleNearMe}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-primary"
+            className="flex items-center gap-1.5 rounded-full bg-travel-blue px-4 py-2 text-xs font-bold text-white"
           >
             <LocateFixed size={13} /> Near Me
           </button>
@@ -101,8 +101,8 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
             onClick={() => setCategory(null)}
             className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm"
             style={{
-              borderColor: category === null ? "var(--primary)" : "var(--border)",
-              backgroundColor: category === null ? "var(--primary)" : "var(--card)",
+              borderColor: category === null ? "var(--travel-blue)" : "var(--border)",
+              backgroundColor: category === null ? "var(--travel-blue)" : "var(--card)",
               color: category === null ? "white" : "var(--foreground)",
             }}
           >
@@ -114,8 +114,8 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
               onClick={() => setCategory(category === c.id ? null : c.id)}
               className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm whitespace-nowrap"
               style={{
-                borderColor: category === c.id ? "var(--primary)" : "var(--border)",
-                backgroundColor: category === c.id ? "var(--primary)" : "var(--card)",
+                borderColor: category === c.id ? "var(--travel-blue)" : "var(--border)",
+                backgroundColor: category === c.id ? "var(--travel-blue)" : "var(--card)",
                 color: category === c.id ? "white" : "var(--foreground)",
               }}
             >
@@ -156,7 +156,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
                 </p>
               </div>
               <div className="flex items-center gap-1 text-xs shrink-0">
-                <Star size={11} fill="#F2B84B" stroke="none" />
+                <Star size={11} fill="var(--highlight-yellow)" stroke="none" />
                 <span className="font-semibold text-foreground">{a.rating}</span>
               </div>
               <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] shrink-0">RM {a.price}</p>

@@ -166,7 +166,7 @@ function WalletContent() {
       {/* ── Balance card ── */}
       <div
         className="rounded-2xl p-6 mb-6 text-white"
-        style={{ background: "linear-gradient(135deg, #0F5D4A 0%, #087E8B 100%)" }}
+        style={{ background: "linear-gradient(135deg, #010066 0%, #1D2A8A 100%)" }}
       >
         <p className="text-sm opacity-75 mb-1">Total Spendable Balance</p>
         <p className="text-4xl font-bold font-[family-name:var(--font-mono)]">

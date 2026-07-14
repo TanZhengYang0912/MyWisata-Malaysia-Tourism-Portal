@@ -27,7 +27,7 @@ export default function VendorListingsPage() {
       {listings.length === 0 ? (
         <EmptyState title="No listings yet" description="Listings for your outlets will appear here once created." />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <table className="w-full">
             <thead>
               <tr className="bg-muted">

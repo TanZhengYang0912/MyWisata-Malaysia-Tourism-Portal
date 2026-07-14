@@ -50,20 +50,20 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, onChan
   }
 
   return (
-    <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+    <div className="rounded-xl border border-primary/10 bg-secondary/60 p-3">
       <div className="flex items-start gap-2">
-        <UserRound size={16} className="mt-0.5 text-emerald-700" />
+        <UserRound size={16} className="mt-0.5 text-primary" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">Outlet Manager</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Outlet Manager</p>
           {manager ? <div className="mt-1"><p className="font-semibold text-gray-900">{manager.fullName}</p><p className="truncate text-xs text-gray-500">{manager.email}</p></div> : <p className="mt-1 text-sm text-gray-600">No manager assigned yet.</p>}
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-2 text-xs text-gray-700">
+        <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-primary/20 bg-white px-2.5 py-2 text-xs text-gray-700">
           <option value="">Select a manager account</option>
           {eligibleManagers.map((eligible) => <option key={eligible.id} value={eligible.id}>{eligible.fullName} · {eligible.email}</option>)}
         </select>
-        <button type="button" disabled={!selectedUserId || busy} onClick={assign} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"><UserRoundPlus size={14} /> Assign</button>
+        <button type="button" disabled={!selectedUserId || busy} onClick={assign} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"><UserRoundPlus size={14} /> Assign</button>
         {manager && <button type="button" disabled={busy} onClick={remove} title="Remove manager" className="rounded-lg border border-red-200 px-2.5 text-red-600 disabled:opacity-50"><UserRoundX size={14} /></button>}
       </div>
       {message && <p className="mt-2 text-xs text-gray-600">{message}</p>}

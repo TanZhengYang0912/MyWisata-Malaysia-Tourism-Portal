@@ -338,7 +338,7 @@ export default function AdminAffiliatePage() {
           </div>
         </div>
       </div>
-      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Commission tiers</p>
         <div className="space-y-2">
           {stats.tiers.map((tier) => {
@@ -393,7 +393,7 @@ export default function AdminAffiliatePage() {
           { label: "Referrals", value: String(stats.totals.totalReferrals) },
           { label: "Commission committed", value: `RM ${stats.totals.totalCommission.toFixed(2)}` },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+          <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
             <p className="text-xl font-bold text-foreground">{card.value}</p>
           </div>
@@ -401,7 +401,7 @@ export default function AdminAffiliatePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
             <TrendingUp size={13} /> Top earners
           </p>
@@ -423,7 +423,7 @@ export default function AdminAffiliatePage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-destructive mb-3 flex items-center gap-1.5">
             <AlertTriangle size={13} /> Fraud guards — proof they work
           </p>
@@ -447,7 +447,7 @@ export default function AdminAffiliatePage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Disabled links</p>
           {disabledLinks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No links are currently disabled.</p>
@@ -511,7 +511,7 @@ export default function AdminAffiliatePage() {
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
@@ -606,7 +606,7 @@ export default function AdminAffiliatePage() {
         </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>

@@ -117,7 +117,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     {v.name}
-                    {v.is_default && <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 font-medium tracking-wide uppercase">Default</span>}
+                    {v.is_default && <span className="px-1.5 py-0.5 rounded text-[10px] bg-secondary text-primary font-medium tracking-wide uppercase">Default</span>}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -127,7 +127,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                   <td className="px-3 py-2 text-right">
                     <button 
                       onClick={() => handleInventoryUpdate(v.id, v.inventory?.[0]?.quantity ?? 0)}
-                      className="hover:underline text-primary-600"
+                      className="hover:underline text-primary"
                     >
                       {v.inventory?.[0]?.quantity ?? 0}
                     </button>
@@ -136,7 +136,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                 )}
                 <td className="px-3 py-2 text-right space-x-2">
                   {!v.is_default && (
-                    <button onClick={() => handleSetDefault(v.id)} className="text-xs text-blue-600 hover:underline">Set Default</button>
+                    <button onClick={() => handleSetDefault(v.id)} className="text-xs text-primary hover:underline">Set Default</button>
                   )}
                   {variants.length > 1 && (
                     <button onClick={() => handleDelete(v.id)} className="text-xs text-red-500 hover:underline">Archive</button>

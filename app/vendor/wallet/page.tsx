@@ -85,16 +85,16 @@ export default function VendorWalletPage() {
 
       {/* Balance cards */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, #0F5D4A 0%, #087E8B 100%)", boxShadow: "0 4px 20px rgba(15,93,74,0.3)" }}>
+        <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, var(--primary) 0%, #11115A 100%)", boxShadow: "0 4px 20px rgba(0,0,77,0.28)" }}>
           <p className="text-xs opacity-70 mb-1">Total Balance</p>
           <p className="text-2xl font-bold font-[family-name:var(--font-mono)]">RM {balance.toFixed(2)}</p>
         </div>
-        <div className="rounded-2xl p-5 bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl p-5 bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs text-muted-foreground mb-1">Available</p>
           <p className="text-2xl font-bold text-primary font-[family-name:var(--font-mono)]">RM {available.toFixed(2)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">Ready to withdraw</p>
         </div>
-        <div className="rounded-2xl p-5 bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl p-5 bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs text-muted-foreground mb-1">Pending Approval</p>
           <p className="text-2xl font-bold text-amber-600 font-[family-name:var(--font-mono)]">RM {pendingAmount.toFixed(2)}</p>
           <p className="text-[10px] text-muted-foreground mt-1">{pending.length} request{pending.length !== 1 ? "s" : ""} in review</p>
@@ -103,7 +103,7 @@ export default function VendorWalletPage() {
 
       {/* Pending withdrawals */}
       {pending.length > 0 && (
-        <div className="rounded-2xl overflow-hidden bg-card mb-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden bg-card mb-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="px-6 py-4 border-b border-border flex items-center gap-2">
             <Clock size={14} className="text-amber-500" />
             <h2 className="font-bold text-foreground text-sm">Pending Approval ({pending.length})</h2>
@@ -129,7 +129,7 @@ export default function VendorWalletPage() {
       )}
 
       {/* History */}
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-4 border-b border-border">
           <h2 className="font-bold text-foreground text-sm">Transaction History</h2>
         </div>

@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
@@ -30,7 +28,7 @@ export async function GET(request: Request, { params }: Props) {
   if (to) slotQuery = slotQuery.lte('starts_at', to);
   const { data: slots, error: slotError } = await slotQuery;
   if (slotError) return apiFail('DB_ERROR', slotError.message, 500);
-  const slotIds = (slots || []).map((slot: any) => slot.id);
+  const slotIds = (slots || []).map((slot: { id: string }) => slot.id);
   if (!slotIds.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 }, stats: {} });
 
   let query = service.from('bookings').select('id,display_id,status,created_at,check_in_at,demo_qr_code,customer_id,slot_id,order_item_id,order_items!inner(product_name,quantity,line_total,slot_starts_at,product_id,outlet_id,products(name,cover_url),outlets(id,name,city,state)),users(full_name,email),booking_slots!inner(starts_at,ends_at,capacity,booked,products(name,cover_url),outlets(id,name,city,state))', { count: 'exact' }).in('slot_id', slotIds);
@@ -42,9 +40,9 @@ export async function GET(request: Request, { params }: Props) {
       service.from('order_items').select('id').eq('vendor_id', vendorId).in('outlet_id', vendorOutletIds).ilike('product_name', `%${q}%`).limit(100),
       service.from('bookings').select('id').in('slot_id', slotIds).ilike('display_id', `%${q}%`).limit(100),
     ]);
-    const userIds = (matchingUsers || []).map((item: any) => item.id);
-    const itemIds = (matchingItems || []).map((item: any) => item.id);
-    const matchingBookingIds = (bookingIds || []).map((item: any) => item.id);
+    const userIds = (matchingUsers || []).map((item: { id: string }) => item.id);
+    const itemIds = (matchingItems || []).map((item: { id: string }) => item.id);
+    const matchingBookingIds = (bookingIds || []).map((item: { id: string }) => item.id);
     const conditions = [];
     if (userIds.length) conditions.push(`customer_id.in.(${userIds.join(',')})`);
     if (itemIds.length) conditions.push(`order_item_id.in.(${itemIds.join(',')})`);
@@ -56,11 +54,11 @@ export async function GET(request: Request, { params }: Props) {
   const { data, error, count } = await query.order('created_at', { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const { data: statRows } = await service.from('bookings').select('status').in('slot_id', slotIds);
-  const stats = (statRows || []).reduce((result: Record<string, number>, item: any) => {
+  const stats = (statRows || []).reduce((result: Record<string, number>, item: { status: string }) => {
     result[item.status] = (result[item.status] || 0) + 1;
     return result;
   }, {});
-  const items = (data || []).map((booking: any) => ({
+  const items = (data || []).map((booking: { users: unknown; order_items: unknown; booking_slots: unknown; [key: string]: unknown }) => ({
     ...booking,
     customer: Array.isArray(booking.users) ? booking.users[0] : booking.users,
     orderItem: (() => { const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items; return item ? { ...item, outlets: item.outlets ? { ...item.outlets, full_name: item.outlets.name, name: outletShortName(item.outlets.name) } : item.outlets } : item; })(),

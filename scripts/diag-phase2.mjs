@@ -224,6 +224,7 @@ async function run() {
       // 422 → no Connect account (correct for demo user without onboarding)
       // processing → Connect account exists, Stripe fired
       // dialog/alert visible
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const alertText = await adminPage.evaluate(() => window.__lastAlert ?? '');
 
       const processingBadge = await adminPage.locator('text=Processing').isVisible({ timeout: 3000 }).catch(() => false);

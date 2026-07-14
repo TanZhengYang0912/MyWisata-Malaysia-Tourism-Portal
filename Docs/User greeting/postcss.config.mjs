@@ -12,4 +12,5 @@
  *
  * Otherwise, you can leave this file empty.
  */
+// eslint-disable-next-line import/no-anonymous-default-export
 export default {}

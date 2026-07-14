@@ -42,6 +42,7 @@ export function useCart() {
     setLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchCart(); }, [fetchCart]);
 
   async function addToCart(variantId?: string, slotId?: string, quantity = 1) {

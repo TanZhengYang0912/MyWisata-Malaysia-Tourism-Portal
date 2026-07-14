@@ -1,7 +1,7 @@
 // P2 — Member 2: Vendor order items view (B4)
 // GET /api/vendors/[vendorId]/orders
 
-import { createClient } from '@/lib/supabase/server';
+
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
@@ -10,7 +10,6 @@ interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const authDb = await createClient() as any;
   const url = new URL(request.url);
   const fulfilStatus = url.searchParams.get('fulfil_status');
   const orderStatus = url.searchParams.get('order_status');
@@ -24,7 +23,7 @@ export async function GET(request: Request, { params }: Props) {
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 
-  const { createServiceClient } = await import('@/lib/supabase/service');
+
   const supabase = access.access.serviceDb;
 
   // Get vendor outlets
@@ -57,13 +56,13 @@ export async function GET(request: Request, { params }: Props) {
     ]);
     const searchTerm = rawQ.toLowerCase();
     const matchingOrderIds = [
-      ...(vendorItems || []).filter((item: any) => String(item.product_name || '').toLowerCase().includes(searchTerm) || String(item.variant_name || '').toLowerCase().includes(searchTerm)).map((item: any) => item.order_id),
-      ...(matchingOrders || []).map((item: any) => item.id)
+      ...(vendorItems || []).filter((item: { order_id: string; product_name: string | null; variant_name: string | null }) => String(item.product_name || '').toLowerCase().includes(searchTerm) || String(item.variant_name || '').toLowerCase().includes(searchTerm)).map((item: { order_id: string }) => item.order_id),
+      ...(matchingOrders || []).map((item: { id: string }) => item.id)
     ];
-    const userIds = (matchingUsers || []).map((item: any) => item.id);
+    const userIds = (matchingUsers || []).map((item: { id: string }) => item.id);
     if (userIds.length) {
       const { data: userOrders } = await supabase.from('orders').select('id').in('user_id', userIds).limit(10000);
-      matchingOrderIds.push(...(userOrders || []).map((item: any) => item.id));
+      matchingOrderIds.push(...(userOrders || []).map((item: { id: string }) => item.id));
     }
     const conditions = [];
     if (matchingOrderIds.length) conditions.push(`id.in.(${[...new Set(matchingOrderIds)].join(',')})`);
@@ -76,17 +75,17 @@ export async function GET(request: Request, { params }: Props) {
   const { data, error, count } = await query.range((page - 1) * pageSize, page * pageSize - 1);
   if (error) return apiFail('DB_ERROR', error.message, 500);
 
-  const items = (data ?? []).map((order: any) => {
+  const items = (data ?? []).map((order: { order_items: Array<{ vendor_id: string; fulfil_status: string; line_total: number | string | null; outlets: { name: string; } | { name: string; }[] | null; quantity: number; product_name: string; }>; [key: string]: unknown; }) => {
     // Ensure we only process this vendor's items
-    const vendorItems = (order.order_items || []).filter((i: any) => i.vendor_id === vendorId);
-    const total = vendorItems.reduce((sum: number, item: any) => sum + Number(item.line_total || 0), 0);
-    const uniqueOutlets = [...new Set(vendorItems.map((item: any) => item.outlets?.name ? outletShortName(item.outlets.name) : null).filter(Boolean))];
+    const vendorItems = (order.order_items || []).filter((i: { vendor_id: string }) => i.vendor_id === vendorId);
+    const total = vendorItems.reduce((sum: number, item: { line_total: number | string | null }) => sum + Number(item.line_total || 0), 0);
+    const uniqueOutlets = [...new Set(vendorItems.map((item: { outlets: { name: string; } | { name: string; }[] | null }) => { const outletName = Array.isArray(item.outlets) ? item.outlets[0]?.name : item.outlets?.name; return outletName ? outletShortName(outletName) : null; }).filter(Boolean))];
 
     let fulfil_status = 'pending';
     if (vendorItems.length > 0) {
-      if (vendorItems.every((item: any) => item.fulfil_status === 'fulfilled')) fulfil_status = 'fulfilled';
-      else if (vendorItems.every((item: any) => item.fulfil_status === 'cancelled')) fulfil_status = 'cancelled';
-      else if (vendorItems.every((item: any) => item.fulfil_status === 'ready' || item.fulfil_status === 'fulfilled')) fulfil_status = 'ready';
+      if (vendorItems.every((item: { fulfil_status: string }) => item.fulfil_status === 'fulfilled')) fulfil_status = 'fulfilled';
+      else if (vendorItems.every((item: { fulfil_status: string }) => item.fulfil_status === 'cancelled')) fulfil_status = 'cancelled';
+      else if (vendorItems.every((item: { fulfil_status: string }) => item.fulfil_status === 'ready' || item.fulfil_status === 'fulfilled')) fulfil_status = 'ready';
     }
 
     return {
@@ -96,7 +95,7 @@ export async function GET(request: Request, { params }: Props) {
       outlets_summary: uniqueOutlets.length > 1 ? 'Multiple outlets' : (uniqueOutlets[0] || 'Unknown outlet'),
       vendor_fulfil_status: fulfil_status,
       // Provide a product summary string
-      product_summary: vendorItems.map((i: any) => `${i.quantity}x ${i.product_name}`).join(', ')
+      product_summary: vendorItems.map((i: { quantity: number; product_name: string }) => `${i.quantity}x ${i.product_name}`).join(', ')
     };
   });
 

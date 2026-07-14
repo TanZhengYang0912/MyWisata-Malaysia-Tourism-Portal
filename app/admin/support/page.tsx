@@ -114,7 +114,6 @@ function AdminSupportContent() {
     (async () => {
       await loadTickets();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, statusFilter, assignedToMeFilter, unreadOnlyFilter]);
 
   // Default queue ordering: unanswered tickets first (oldest waiting first
@@ -158,7 +157,6 @@ function AdminSupportContent() {
   // there's no async operation here at all.
   useEffect(() => {
     const ticketId = searchParams.get("ticket");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (ticketId) setOpenTicketId(ticketId);
   }, [searchParams]);
 
@@ -252,7 +250,7 @@ function AdminSupportContent() {
             { label: "Resolved", value: stats.resolved, alert: false },
             { label: "Unanswered", value: stats.unanswered, alert: stats.unanswered > 0 },
           ].map((card) => (
-            <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+            <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
               <p className={`text-xl font-bold ${card.alert ? "text-destructive" : "text-foreground"}`}>{card.value}</p>
             </div>
@@ -318,7 +316,7 @@ function AdminSupportContent() {
       ) : tickets.length === 0 ? (
         <EmptyState title="No support tickets" />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="divide-y divide-border">
             {sortedTickets.map((t) => (
               <div key={t.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">

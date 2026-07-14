@@ -68,6 +68,7 @@ async function run() {
   }
 
   const custHdrs = hdrs(customerToken);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const apprHdrs = hdrs(approverToken);
 
   // ── Schema: orders.affiliate_click_id ────────────────────────────────────
@@ -133,6 +134,7 @@ async function run() {
   console.log('\n━━━ 6. Concurrency — 10 parallel submit_recommendation ━━━');
   // First clean up any existing recommendations from today for this user
   // (we can't delete via REST without admin; just count the existing ones)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const existingRes = await fetch(
     `${SUPABASE_URL}/rest/v1/vendor_recommendations`
     + `?select=id&recommender_id=eq.${encodeURIComponent(
@@ -183,6 +185,7 @@ async function run() {
   // ── submit_recommendation duplicate guard ─────────────────────────────────
   console.log('\n━━━ 8. submit_recommendation — duplicate guard ━━━');
   const dupName = `Dup Test ${Date.now()}`;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const first = await rpc(customerToken, 'submit_recommendation', {
     p_vendor_name:  dupName,
     p_description:  'First submission for duplicate detection test.',

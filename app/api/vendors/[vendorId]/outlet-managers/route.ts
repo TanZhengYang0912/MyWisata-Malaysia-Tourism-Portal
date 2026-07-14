@@ -14,34 +14,34 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data: outlets, error: outletError } = await db.from('outlets').select('id,name,city,state').eq('vendor_id', vendorId).order('name');
   if (outletError) return apiFail('DB_ERROR', outletError.message, 500);
-  const outletIds = (outlets || []).map((outlet: any) => outlet.id);
+  const outletIds = (outlets || []).map((outlet: { id: string; name: string; city: string; state: string; [key: string]: unknown }) => outlet.id);
 
   const [{ data: assignments, error: assignmentError }, { data: role, error: roleError }] = await Promise.all([
     db.from('outlet_managers').select('outlet_id,user_id,users(id,full_name,email)').in('outlet_id', outletIds.length ? outletIds : ['none']),
     db.from('roles').select('id').eq('name', 'outlet_manager').maybeSingle(),
   ]);
-  if (assignmentError || roleError) return apiFail('DB_ERROR', (assignmentError || roleError).message, 500);
+  if (assignmentError || roleError) return apiFail('DB_ERROR', (assignmentError || roleError)?.message || 'Unknown error', 500);
 
   const { data: roleUsers, error: roleUsersError } = role
     ? await db.from('user_roles').select('user_id,users(id,full_name,email)').eq('role_id', role.id)
     : { data: [], error: null };
   if (roleUsersError) return apiFail('DB_ERROR', roleUsersError.message, 500);
 
-  const normalizeUser = (value: any) => {
+  const normalizeUser = (value: { id: string; full_name: string; email: string } | { id: string; full_name: string; email: string }[] | null | undefined) => {
     const user = Array.isArray(value) ? value[0] : value;
     return user ? { id: user.id, fullName: user.full_name, email: user.email } : null;
   };
-  const assignmentByOutlet = new Map((assignments || []).map((assignment: any) => [assignment.outlet_id, {
+  const assignmentsByOutlet = new Map((assignments || []).map((assignment: { outlet_id: string; user_id: string; users: { id: string; full_name: string; email: string } | { id: string; full_name: string; email: string }[] | null }) => [assignment.outlet_id, {
     userId: assignment.user_id,
     user: normalizeUser(assignment.users),
   }]));
-  const eligibleManagers = [...new Map((roleUsers || []).map((row: any) => {
+  const eligibleManagers = [...new Map((roleUsers || []).map((row: { users: { id: string; full_name: string; email: string } | { id: string; full_name: string; email: string }[] | null }) => {
     const user = normalizeUser(row.users);
     return user ? [user.id, user] : null;
   }).filter(Boolean) as Array<[string, { id: string; fullName: string; email: string }]>).values()];
 
   return apiOk({
-    outlets: (outlets || []).map((outlet: any) => ({ ...outlet, manager: assignmentByOutlet.get(outlet.id) || null })),
+    outlets: (outlets || []).map((outlet: { id: string; name: string; city: string; state: string; [key: string]: unknown }) => ({ ...outlet, manager: assignmentsByOutlet.get(outlet.id) || null })),
     eligibleManagers,
   });
 }

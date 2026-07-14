@@ -47,7 +47,7 @@ export default function VendorSidebar() {
       <div className="px-5 py-5 border-b border-gray-700">
         <p className="text-xs text-gray-400 uppercase tracking-wider">Vendor Portal</p>
         <p className="font-semibold text-white mt-0.5">Malaysia Tourism</p>
-        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-900/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200"><ShieldCheck size={11} /> Outlet operations</p>}
+        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> Outlet operations</p>}
         {!loading && isOutletManager && user?.activeOutletName && <p className="mt-2 truncate text-xs text-gray-400" title={user.activeOutletName}>{user.activeOutletName}</p>}
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
@@ -56,7 +56,7 @@ export default function VendorSidebar() {
             key={href} href={href}
             className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors
               ${pathname.startsWith(href)
-                ? 'bg-primary-600 text-white'
+                ? 'bg-gray-800 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <Icon size={17} />

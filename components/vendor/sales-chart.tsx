@@ -20,7 +20,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
     <div className="flex min-h-[380px] flex-col">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             <LineChartIcon size={15} /> Live performance
           </div>
           <h2 className="text-lg font-semibold text-gray-900">Sales performance</h2>
@@ -73,7 +73,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
 
       <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500">
         <button type="button" onClick={() => setMetric('revenue')} className={`rounded-full px-3 py-1 ${metric === 'revenue' ? 'bg-amber-50 font-semibold text-amber-700' : ''}`}>Revenue</button>
-        <button type="button" onClick={() => setMetric('orders')} className={`rounded-full px-3 py-1 ${metric === 'orders' ? 'bg-emerald-50 font-semibold text-emerald-700' : ''}`}>Orders</button>
+        <button type="button" onClick={() => setMetric('orders')} className={`rounded-full px-3 py-1 ${metric === 'orders' ? 'bg-secondary font-semibold text-primary' : ''}`}>Orders</button>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
                    || 'https://ncdlaehknicabzjqskvk.supabase.co';
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
                    || 'sb_publishable_JCerWL_ufnLwzqmwvFsEWg_y0q0d-tH';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BASE         = 'http://localhost:3000';
 
 // User seeded with earnings_sen = 10000 (RM 100)

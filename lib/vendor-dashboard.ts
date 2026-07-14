@@ -127,7 +127,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
       .eq('user_id', user.id);
     if (assignmentError) throw assignmentError;
     const managerAssignments = assignments || [];
-    const managerVendorIds = [...new Set(managerAssignments.map((assignment: any) => {
+    const managerVendorIds = [...new Set(managerAssignments.map((assignment: { outlets: { vendor_id: string } | { vendor_id: string }[]; outlet_id?: string }) => {
       const outlet = Array.isArray(assignment.outlets) ? assignment.outlets[0] : assignment.outlets;
       return outlet?.vendor_id;
     }).filter(Boolean))];
@@ -138,10 +138,10 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
       if (managerVendorError) throw managerVendorError;
       vendor = managerVendors?.[0];
       role = 'outlet_manager';
-      scopedOutletIds = managerAssignments.filter((assignment: any) => {
+      scopedOutletIds = managerAssignments.filter((assignment: { outlets: { vendor_id: string } | { vendor_id: string }[]; outlet_id?: string }) => {
         const outlet = Array.isArray(assignment.outlets) ? assignment.outlets[0] : assignment.outlets;
         return outlet?.vendor_id === managerVendorId && assignment.outlet_id;
-      }).map((assignment: any) => assignment.outlet_id);
+      }).map((assignment: { outlet_id: string }) => assignment.outlet_id);
     }
   }
   if (!vendor) return null;
@@ -155,7 +155,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const { data: outlets, error: outletError } = await db
     .from('outlets').select('id,name,city,state,status').eq('vendor_id', vendor.id).order('name');
   if (outletError) throw outletError;
-  const outletRows = ((scopedOutletIds ? (outlets || []).filter((outlet: any) => scopedOutletIds?.includes(outlet.id)) : outlets || [])) as unknown as DashboardRow[];
+  const outletRows = ((scopedOutletIds ? (outlets || []).filter((outlet: { id: string }) => scopedOutletIds?.includes(outlet.id)) : outlets || [])) as unknown as DashboardRow[];
   const outletIds = outletRows.map((outlet) => outlet.id);
   const { now, start, previousStart, previousEnd } = rangeFor(filter, customRange);
 
@@ -180,7 +180,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const currentItems = allItems.filter((item) => new Date(item.created_at) >= start);
   const previousItems = allItems.filter((item) => new Date(item.created_at) >= previousStart && new Date(item.created_at) < previousEnd);
   const currentOrderIds = new Set(currentItems.map((item) => item.order_id));
-  const pendingOrdersCount = new Set((pendingResult.data || []).map((item: any) => item.order_id)).size;
+  const pendingOrdersCount = new Set((pendingResult.data || []).map((item: { order_id: string }) => item.order_id)).size;
   const previousOrderIds = new Set(previousItems.map((item) => item.order_id));
   const products = (productsResult.data || []) as unknown as DashboardRow[];
   const reviews = (reviewsResult.data || []) as unknown as DashboardRow[];
@@ -201,7 +201,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const outletLocations = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outletLocation(outlet.city, outlet.state)]));
   const productNames = Object.fromEntries(products.map((product) => [product.id, product.name]));
   const productById = Object.fromEntries(products.map((product) => [product.id, product]));
-  const stockAlerts = ((inventoryResult.data || []) as any[]).flatMap((row) => {
+  const stockAlerts = ((inventoryResult.data || []) as Array<{ product_variants: unknown; quantity: number | string | null; reserved: number | string | null; low_stock_threshold: number | string | null; variant_id: string }>).flatMap((row) => {
     const variant = Array.isArray(row.product_variants) ? row.product_variants[0] : row.product_variants;
     const product = Array.isArray(variant?.products) ? variant.products[0] : variant?.products;
     if (!variant || !product || !outletIds.includes(product.outlet_id)) return [];

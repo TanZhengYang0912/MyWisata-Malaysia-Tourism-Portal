@@ -35,13 +35,13 @@ export default function OutletPieChart({ data, total }: { data: OutletSale[]; to
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             Across Malaysia
           </div>
           <h2 className="text-lg font-semibold text-gray-900">Sales by outlet</h2>
           <p className="text-sm text-gray-500">Revenue distribution for this period</p>
         </div>
-        <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700">
+        <div className="rounded-xl bg-secondary p-2 text-primary">
           <MapPinned size={20} />
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Award, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
+import { Activity, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 
 const UNREAD_POLL_MS = 30_000;
@@ -60,9 +60,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex min-h-screen">
-      <div className="flex flex-col w-60 shrink-0" style={{ backgroundColor: "#1A272F" }}>
+      <div className="flex flex-col w-60 shrink-0 bg-gray-900">
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-destructive">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-800">
             <Shield size={16} className="text-white" />
           </div>
           <div>
@@ -73,7 +73,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="px-4 py-3 border-b border-white/10">
           <p className="text-[10px] uppercase tracking-wider mb-1 text-white/35">Signed in as</p>
           <p className="text-sm font-bold text-white">{currentUser.name}</p>
-          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-destructive/25 text-destructive">
+          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-800 text-gray-300">
             <Shield size={9} /> {currentUser.role.replace("_", " ")}
           </div>
         </div>
@@ -82,15 +82,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={item.href}
               href={item.href}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={{
-                backgroundColor: pathname === item.href ? "var(--destructive)" : "transparent",
-                color: pathname === item.href ? "white" : "rgba(255,255,255,0.45)",
-              }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               <item.icon size={15} /> {item.label}
               {item.href === "/admin/support" && unreadTickets > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center bg-destructive">
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
                   {unreadTickets}
                 </span>
               )}

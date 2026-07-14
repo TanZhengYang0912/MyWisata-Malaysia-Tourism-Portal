@@ -49,9 +49,9 @@ export default function AdminDashboardPage() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {metrics.map((m) => (
-            <div key={m.label} className="rounded-2xl p-5 relative overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+            <div key={m.label} className="rounded-2xl p-5 relative overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
               {m.urgent && <div className="absolute top-0 left-0 right-0 h-0.5 bg-destructive" />}
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-teal/15 text-teal">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-primary/10 text-primary">
                 <m.icon size={18} />
               </div>
               <p className="text-3xl font-bold text-foreground font-[family-name:var(--font-mono)]">{m.value}</p>

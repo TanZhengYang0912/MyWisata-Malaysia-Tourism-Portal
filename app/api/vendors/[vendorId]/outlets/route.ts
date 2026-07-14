@@ -40,7 +40,7 @@ export async function GET(request: Request, { params }: Props) {
     query,
     supabase.from('outlets').select('state').in('id', access.access.outletIds.length ? access.access.outletIds : ['none']).not('state', 'is', null).order('state'),
   ]);
-  if (error || stateError) return apiFail('DB_ERROR', (error || stateError).message, 500);
+  if (error || stateError) return apiFail('DB_ERROR', (error || stateError)?.message || 'Unknown error', 500);
   const items = (data ?? []).map((outlet: any) => {
     const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
     const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;

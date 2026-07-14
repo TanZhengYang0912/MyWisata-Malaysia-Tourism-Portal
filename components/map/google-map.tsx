@@ -96,7 +96,7 @@ function Markers({
           <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedPin.label}</div>
           {selectedPin.sublabel && <div style={{ fontSize: 11, color: "#666" }}>{selectedPin.sublabel}</div>}
           {selectedPin.href && (
-            <a href={selectedPin.href} style={{ fontSize: 11, fontWeight: 600, color: "#0F5D4A" }}>
+            <a href={selectedPin.href} style={{ fontSize: 11, fontWeight: 600, color: "var(--travel-blue)" }}>
               View details →
             </a>
           )}
@@ -154,10 +154,10 @@ export function GoogleMap({
           <Circle
             center={{ lat: radiusCenter[0], lng: radiusCenter[1] }}
             radius={radiusKm * 1000}
-            strokeColor="#0F5D4A"
+            strokeColor="#010066"
             strokeOpacity={0.5}
             strokeWeight={1.5}
-            fillColor="#0F5D4A"
+            fillColor="#010066"
             fillOpacity={0.06}
           />
         )}

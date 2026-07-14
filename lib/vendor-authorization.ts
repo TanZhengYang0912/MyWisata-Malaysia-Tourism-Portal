@@ -1,3 +1,4 @@
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
@@ -11,8 +12,8 @@ export interface VendorAccess {
   outletIds: string[];
   isOwner: boolean;
   isOutletManager: boolean;
-  authDb: any;
-  serviceDb: any;
+  authDb: SupabaseClient;
+  serviceDb: SupabaseClient;
 }
 
 type AccessResult = { ok: true; access: VendorAccess } | { ok: false; response: Response };
@@ -26,7 +27,7 @@ function relation<T>(value: T | T[] | null | undefined): T | null {
  * The service client is only returned after the caller is scoped to this vendor.
  */
 export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole[] = ['vendor_owner', 'outlet_manager']): Promise<AccessResult> {
-  const authDb = await createClient() as any;
+  const authDb = (await createClient()) as SupabaseClient;
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return { ok: false, response: apiFail('UNAUTHORIZED', 'Sign in required', 401) };
 
@@ -52,7 +53,7 @@ export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole
         isOwner: true,
         isOutletManager: false,
         authDb,
-        serviceDb: createServiceClient() as any,
+        serviceDb: createServiceClient() as SupabaseClient,
       },
     };
   }
@@ -68,11 +69,11 @@ export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole
   if (assignmentError) return { ok: false, response: apiFail('DB_ERROR', assignmentError.message, 500) };
 
   const outletIds: string[] = (assignments || [])
-    .filter((assignment: any) => {
-      const outletVendorId = relation<{ vendor_id: string }>(assignment.outlets)?.vendor_id;
+    .filter((assignment: { outlet_id: string; outlets: unknown; [key: string]: unknown }) => {
+      const outletVendorId = relation<{ vendor_id: string }>(assignment.outlets as { vendor_id: string })?.vendor_id;
       return outletVendorId === vendorId && Boolean(assignment.outlet_id);
     })
-    .map((assignment: any) => String(assignment.outlet_id));
+    .map((assignment: { outlet_id: string; outlets: unknown; [key: string]: unknown }) => String(assignment.outlet_id));
 
   if (!outletIds.length) return { ok: false, response: apiFail('FORBIDDEN', 'You are not assigned to an outlet in this vendor', 403) };
 
@@ -86,7 +87,7 @@ export async function authorizeVendor(vendorId: string, allowedRoles: VendorRole
       isOwner: false,
       isOutletManager: true,
       authDb,
-      serviceDb: createServiceClient() as any,
+      serviceDb: createServiceClient() as SupabaseClient,
     },
   };
 }

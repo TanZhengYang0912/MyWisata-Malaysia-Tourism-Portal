@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,8 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const [generatingCode, setGeneratingCode] = useState(false);
   const supabase = useMemo(() => createClient(), []);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<any>({
-    resolver: zodResolver(voucherCreateSchema) as any,
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(voucherCreateSchema),
     defaultValues: { voucherType: 'fixed', minSpend: 0 },
   });
 
@@ -53,7 +54,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
     }
   }
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: z.infer<typeof voucherCreateSchema>) {
     setServerError(null);
     try {
       const payload = {
@@ -102,12 +103,12 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
               <Input {...register('code')} className="uppercase" placeholder="e.g. SUMMER24" />
               <Button type="button" variant="outline" disabled={generatingCode} onClick={() => void generateCode()}>{generatingCode ? '…' : 'Auto'}</Button>
             </div>
-            {errors.code && <p className="text-red-500 text-xs mt-1">{(errors.code as any)?.message}</p>}
+            {errors.code && <p className="text-red-500 text-xs mt-1">{(errors.code as { message?: string })?.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
             <Input {...register('name')} placeholder="e.g. Summer Special" />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as any)?.message}</p>}
+            {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as { message?: string })?.message}</p>}
           </div>
         </div>
 
@@ -120,15 +121,18 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
               <option value="bogo">Buy X Get Y</option>
             </select>
           </div>
+          
+          {/* eslint-disable-next-line react-hooks/incompatible-library */}
           <div className={watch('voucherType') === 'bogo' ? 'hidden' : ''}>
             <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value *</label>
             <Input {...register('discountValue', { valueAsNumber: true })} type="number" step="0.01" />
-            {errors.discountValue && <p className="text-red-500 text-xs mt-1">{(errors.discountValue as any)?.message}</p>}
+            {errors.discountValue && <p className="text-red-500 text-xs mt-1">{(errors.discountValue as { message?: string })?.message}</p>}
           </div>
         </div>
 
+        {/* eslint-disable-next-line react-hooks/incompatible-library */}
         {watch('voucherType') === 'bogo' && <div className="grid grid-cols-3 gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <div className="col-span-3"><label className="block text-sm font-medium text-gray-700 mb-1">Eligible product *</label><select {...register('productId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select product...</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select>{errors.productId && <p className="text-red-500 text-xs mt-1">{(errors.productId as any)?.message}</p>}</div>
+          <div className="col-span-3"><label className="block text-sm font-medium text-gray-700 mb-1">Eligible product *</label><select {...register('productId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select product...</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select>{errors.productId && <p className="text-red-500 text-xs mt-1">{(errors.productId as { message?: string })?.message}</p>}</div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Buy quantity *</label><Input {...register('buyQuantity', { valueAsNumber: true })} type="number" min="1" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Free quantity *</label><Input {...register('freeQuantity', { valueAsNumber: true })} type="number" min="1" /></div>
           <p className="col-span-3 text-xs text-amber-800">Example: Buy 1 Get 1 applies the free item to every complete eligible set in the cart.</p>

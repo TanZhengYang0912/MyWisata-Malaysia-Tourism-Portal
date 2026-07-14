@@ -25,9 +25,9 @@ function normalizeFilter(value: string | undefined): DashboardFilter {
 
 function statTone(tone: string) {
   return {
-    teal: 'bg-emerald-50 text-emerald-700',
+    teal: 'bg-secondary text-primary',
     amber: 'bg-amber-50 text-amber-700',
-    blue: 'bg-sky-50 text-sky-700',
+    blue: 'bg-secondary text-primary',
     rose: 'bg-rose-50 text-rose-700',
   }[tone] || 'bg-gray-100 text-gray-700';
 }
@@ -56,13 +56,13 @@ export default async function VendorDashboard({ searchParams }: Props) {
       <DashboardRealtime vendorId={data.vendor.id} />
       <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700"><Landmark size={15} /> Malaysia tourism partner portal</div>
+          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary"><Landmark size={15} /> Malaysia tourism partner portal</div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-950">{isOutletManager ? 'Outlet operations' : 'Overview'}</h1>
           <p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Keep your assigned outlet moving today.' : <>Here&apos;s what&apos;s happening with <span className="font-semibold text-gray-800">{data.vendor.name}</span> today.</>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DashboardFilterControl />
-          <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>Live</div>
+          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/10 bg-secondary px-4 py-2 text-sm font-semibold text-primary"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-nature-green/60 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" /></span>Live</div>
         </div>
       </header>
 
@@ -72,12 +72,12 @@ export default async function VendorDashboard({ searchParams }: Props) {
             <div className="absolute -right-3 -top-3 opacity-[0.045] transition group-hover:scale-110"><Icon size={104} /></div>
             <div className="mb-5 flex items-center gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${statTone(tone)}`}><Icon size={20} /></div><p className="font-medium text-gray-600">{label}</p></div>
             <p className="text-3xl font-bold tracking-tight text-gray-950">{value}</p>
-            <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-50 text-gray-500'}`}><ArrowUpRight size={13} />{note}</div>
+            <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 text-gray-500'}`}><ArrowUpRight size={13} />{note}</div>
           </article>
         ))}
       </section>
 
-      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-sky-950">No orders in this period</p><p className="mt-1 text-sm text-sky-800">Check another date range, or publish a listing so travellers can start booking.</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-sky-800 ring-1 ring-sky-200">Manage listings</Link><Link href="/vendor/orders" className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white">View orders</Link></div></section>}
+      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">No orders in this period</p><p className="mt-1 text-sm text-primary">Check another date range, or publish a listing so travellers can start booking.</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">Manage listings</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">View orders</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
@@ -90,7 +90,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Latest orders for your assigned outlet' : 'Latest orders across your Malaysian outlets'}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100">View all <ArrowRight size={15} /></Link></div>
+        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900">Recent transactions</h2><p className="mt-1 text-sm text-gray-500">{isOutletManager ? 'Latest orders for your assigned outlet' : 'Latest orders across your Malaysian outlets'}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-primary transition hover:bg-secondary/80">View all <ArrowRight size={15} /></Link></div>
         <RecentTransactions items={data.recentTransactions} />
       </section>
 
@@ -103,9 +103,9 @@ export default async function VendorDashboard({ searchParams }: Props) {
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><CalendarDays className="text-emerald-700" /><div><p className="text-sm font-semibold text-gray-900">Booking activity</p><p className="text-xs text-gray-500">{data.stats.bookingItems} items in this period</p></div></Link>
-        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><Compass className="text-sky-700" /><div><p className="text-sm font-semibold text-gray-900">Manage listings</p><p className="text-xs text-gray-500">Keep your experiences current</p></div></Link>
-        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"><TicketPercent className="text-amber-700" /><div><p className="text-sm font-semibold text-gray-900">Voucher campaigns</p><p className="text-xs text-gray-500">Create offers for travellers</p></div></Link>}
+        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900">Booking activity</p><p className="text-xs text-gray-500">{data.stats.bookingItems} items in this period</p></div></Link>
+        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900">Manage listings</p><p className="text-xs text-gray-500">Keep your experiences current</p></div></Link>
+        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700" /><div><p className="text-sm font-semibold text-gray-900">Voucher campaigns</p><p className="text-xs text-gray-500">Create offers for travellers</p></div></Link>}
       </div>
     </div>
   );

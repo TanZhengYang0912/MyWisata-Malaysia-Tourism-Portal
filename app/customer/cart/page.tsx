@@ -79,7 +79,6 @@ export default function CartPage() {
     Promise.all(bookingActivityIds.map((id) => getBookingSlots(id))).then((lists) => {
       setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingActivityKey]);
 
   const { subtotal, discount, total } = totals(appliedVoucher ?? undefined);

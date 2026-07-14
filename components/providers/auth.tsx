@@ -145,7 +145,6 @@ export function useRequireRole(allowed: Role[]): AuthContextValue {
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
       router.replace("/login");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.loading, auth.currentUser?.role]);
 
   return auth;

@@ -56,7 +56,7 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-xs">
-            <Star size={11} fill="#F2B84B" stroke="none" />
+            <Star size={11} fill="var(--highlight-yellow)" stroke="none" />
             <span className="font-semibold text-foreground">{activity.rating}</span>
             <span className="text-muted-foreground">({activity.reviews})</span>
           </div>
@@ -73,7 +73,7 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
             <span className="text-lg font-bold text-primary font-[family-name:var(--font-mono)]">RM {activity.price}</span>
             <span className="text-xs ml-1 text-muted-foreground">/ person</span>
           </div>
-          <span className="px-3 py-1.5 rounded-full text-xs font-bold text-white bg-primary">
+          <span className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white">
             {activity.requiresBooking ? "Book Now" : "Buy Now"}
           </span>
         </div>

@@ -27,7 +27,7 @@ function isStatus(status: string): status is KycSubmissionStatus {
 }
 
 function isReasonCode(reason: string | null | undefined): reason is KycReviewReasonCode {
-  return reason !== null && Object.hasOwn(SAFE_REASON_COPY, reason);
+  return !!reason && Object.hasOwn(SAFE_REASON_COPY, reason);
 }
 
 export function safeKycReasonCopy(reasonCode: string | null | undefined): string {

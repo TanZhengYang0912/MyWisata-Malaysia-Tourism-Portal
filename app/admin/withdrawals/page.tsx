@@ -102,7 +102,7 @@ export default function AdminWithdrawalsPage() {
     const busy = loading === w.id;
     return (
       <div className="px-6 py-4 flex items-center gap-4 flex-wrap">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-teal">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-primary">
           {user?.avatarInitial ?? "?"}
         </div>
         <div className="flex-1 min-w-0">
@@ -143,7 +143,7 @@ export default function AdminWithdrawalsPage() {
       </p>
 
       {/* Pending */}
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">Pending ({pending.length})</h2>
         </div>
@@ -158,7 +158,7 @@ export default function AdminWithdrawalsPage() {
 
       {/* Approved — Stripe failed, needs retry */}
       {needRetry.length > 0 && (
-        <div className="rounded-2xl overflow-hidden bg-card mb-6 border border-amber-200" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden bg-card mb-6 border border-amber-200" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="px-6 py-5 border-b border-amber-200 bg-amber-50">
             <h2 className="font-bold text-amber-800">Stripe Failed — Retry ({needRetry.length})</h2>
             <p className="text-xs text-amber-700 mt-0.5">Admin approved but Stripe payout failed. Retry or reject to refund.</p>
@@ -170,7 +170,7 @@ export default function AdminWithdrawalsPage() {
       )}
 
       {/* Reviewed */}
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
           <h2 className="font-bold text-foreground">History</h2>
         </div>

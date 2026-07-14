@@ -1,30 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8faf7;
-  --foreground: #24313a;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #24313a;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #24313a;
-  --primary: #0f5d4a;
-  --primary-foreground: #f8faf7;
-  --secondary: #e6f2ee;
-  --secondary-foreground: #0f5d4a;
-  --muted: #eef2f0;
+  --popover-foreground: #0f172a;
+  --primary: #010066;
+  --primary-foreground: #f8fafc;
+  --secondary: #eef2ff;
+  --secondary-foreground: #010066;
+  --muted: #f1f5f9;
   --muted-foreground: #5e7268;
-  --accent: #f2b84b;
-  --accent-foreground: #24313a;
-  --destructive: #c7363d;
+  --accent: #ffcc00;
+  --accent-foreground: #010066;
+  --destructive: #cc0001;
   --destructive-foreground: #ffffff;
   --border: rgba(15, 93, 74, 0.12);
   --input: transparent;
-  --input-background: #eef2f0;
-  --ring: #0f5d4a;
+  --input-background: #f1f5f9;
+  --ring: #010066;
   --radius: 0.75rem;
-  --teal: #087e8b;
-  --sidebar: #24313a;
-  --sidebar-foreground: #f8faf7;
+  --teal: #010066;
+  --travel-blue: #010066;
+  --travel-blue-surface: #eef2ff;
+  --malaysia-blue: #010066;
+  --malaysia-red: #cc0001;
+  --malaysia-red-surface: #fef2f2;
+  --malaysia-yellow: #ffcc00;
+  --malaysia-yellow-foreground: #010066;
+  --nature-green: #10b981;
+  --nature-green-ink: #062a20;
+  --cta-orange: #f97316;
+  --cta-orange-foreground: #0f172a;
+  --highlight-yellow: #ffcc00;
+  --highlight-yellow-foreground: #010066;
+  --ai-purple: #7c3aed;
+  --ai-purple-surface: #f3e8ff;
+  --sidebar: #010066;
+  --sidebar-foreground: #f8fafc;
+}
+
+.vendor-portal {
+  --primary: #00004d;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e9f7;
+  --secondary-foreground: #00004d;
+  --ring: #00004d;
+  --travel-blue: #00004d;
+  --travel-blue-surface: #e9e9f7;
+  --malaysia-blue: #00004d;
 }
 
 @theme inline {
@@ -49,6 +75,21 @@
   --color-input-background: var(--input-background);
   --color-ring: var(--ring);
   --color-teal: var(--teal);
+  --color-travel-blue: var(--travel-blue);
+  --color-travel-blue-surface: var(--travel-blue-surface);
+  --color-malaysia-blue: var(--malaysia-blue);
+  --color-malaysia-red: var(--malaysia-red);
+  --color-malaysia-red-surface: var(--malaysia-red-surface);
+  --color-malaysia-yellow: var(--malaysia-yellow);
+  --color-malaysia-yellow-foreground: var(--malaysia-yellow-foreground);
+  --color-nature-green: var(--nature-green);
+  --color-nature-green-ink: var(--nature-green-ink);
+  --color-cta-orange: var(--cta-orange);
+  --color-cta-orange-foreground: var(--cta-orange-foreground);
+  --color-highlight-yellow: var(--highlight-yellow);
+  --color-highlight-yellow-foreground: var(--highlight-yellow-foreground);
+  --color-ai-purple: var(--ai-purple);
+  --color-ai-purple-surface: var(--ai-purple-surface);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --radius-sm: calc(var(--radius) - 4px);

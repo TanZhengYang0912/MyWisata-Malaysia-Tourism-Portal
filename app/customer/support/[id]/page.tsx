@@ -63,7 +63,6 @@ export default function CustomerTicketDetailPage() {
       // this happens to fail.
       await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function sendReply() {

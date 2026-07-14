@@ -212,7 +212,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           <textarea
             {...register('description')}
             rows={3}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
             placeholder="Product details..."
           />
         </div>
@@ -252,7 +252,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
                 key={tag}
                 type="button"
                 onClick={() => setValue('tags', tags.filter((item) => item !== tag).join(', '), { shouldDirty: true })}
-                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-primary hover:bg-secondary/80"
                 title={'Remove ' + tag}
               >
                 {tag} <Trash2 size={12} />
@@ -264,7 +264,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
 
         <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
           <div className="mb-3 flex items-center gap-2">
-            <ImagePlus size={17} className="text-emerald-700" />
+            <ImagePlus size={17} className="text-primary" />
             <div>
               <p className="text-sm font-semibold text-gray-900">Media</p>
               <p className="text-xs text-gray-500">Cover image is required before review submission.</p>
@@ -318,7 +318,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           </div>
           <div className="flex items-center pt-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-              <input type="checkbox" {...register('requiresBooking')} className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              <input type="checkbox" {...register('requiresBooking')} className="rounded border-gray-300 text-primary focus:ring-primary/20" />
               Requires Booking (Timeslots)
             </label>
           </div>

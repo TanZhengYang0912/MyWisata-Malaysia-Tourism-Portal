@@ -195,17 +195,17 @@ export default function AdminChatbotPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Questions asked</p>
           <p className="text-xl font-bold text-foreground">{stats.totalQuestions}</p>
         </div>
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Answer rate</p>
           <p className="text-xl font-bold text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
         </div>
       </div>
 
-      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> Top unanswered questions
         </p>
@@ -236,7 +236,7 @@ export default function AdminChatbotPage() {
       </div>
 
       {editingId && (
-        <div className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? "New KB document" : "Edit KB document"}</p>
           <input
             value={form.title}
@@ -281,7 +281,7 @@ export default function AdminChatbotPage() {
         </div>
       )}
 
-      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         {sortedDocs.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No KB documents yet.</p>
         ) : (

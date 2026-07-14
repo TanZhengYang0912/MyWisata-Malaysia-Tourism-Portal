@@ -41,7 +41,6 @@ export default function AdminRewardsPage() {
 
   useEffect(() => {
     if (currentUser) loadPending();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   async function runClearance() {
@@ -111,7 +110,7 @@ export default function AdminRewardsPage() {
         </p>
 
         {lastResult && (
-          <div className="flex items-center gap-2 text-sm text-emerald-600 mb-4">
+          <div className="flex items-center gap-2 text-sm text-primary mb-4">
             <CheckCircle2 size={15} />
             Confirmed {lastResult.confirmed} attribution{lastResult.confirmed !== 1 ? "s" : ""}.
           </div>
