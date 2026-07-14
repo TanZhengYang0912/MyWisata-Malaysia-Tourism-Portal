@@ -8,7 +8,7 @@ ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS ic_hash_version TEXT NOT NU
 ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS legacy_single_document BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS review_reason_code TEXT;
 ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS review_reason_detail TEXT;
-ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS evidence_purge_claimed_at TIMESTAMPTZ;
+ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS evidence_retention_started_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 
 ALTER TABLE kyc_submissions DROP CONSTRAINT IF EXISTS kyc_submissions_review_reason_code_check;
@@ -38,8 +38,10 @@ CREATE TABLE IF NOT EXISTS kyc_submission_documents (
   storage_path TEXT NOT NULL UNIQUE,
   mime_type TEXT NOT NULL CHECK (mime_type IN ('image/jpeg', 'image/png', 'application/pdf')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  purge_claimed_at TIMESTAMPTZ,
   UNIQUE (submission_id, side)
 );
+ALTER TABLE kyc_submission_documents ADD COLUMN IF NOT EXISTS purge_claimed_at TIMESTAMPTZ;
 ALTER TABLE kyc_submission_documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS kyc_documents_no_client_read ON kyc_submission_documents;
 REVOKE ALL ON TABLE kyc_submission_documents FROM PUBLIC, anon, authenticated;
@@ -53,42 +55,49 @@ DROP POLICY IF EXISTS kyc_doc_insert_own ON storage.objects;
 DROP POLICY IF EXISTS kyc_doc_update_own ON storage.objects;
 DROP POLICY IF EXISTS kyc_doc_select_own_or_admin ON storage.objects;
 
--- Legacy object URLs are not promoted to the dual-evidence model.  Active
--- legacy records require a new two-sided submission; terminal rows stay audit-only.
+-- Legacy object URLs are not promoted to the dual-evidence model.  Every old
+-- single-document record is marked legacy; active records require resubmission.
 UPDATE kyc_submissions
-   SET legacy_single_document = true
- WHERE status IN ('approved', 'rejected')
-   AND document_url IS NOT NULL;
+   SET legacy_single_document = true,
+       evidence_retention_started_at = CASE
+         WHEN status IN ('approved', 'rejected') THEN COALESCE(evidence_retention_started_at, now())
+         ELSE evidence_retention_started_at
+       END
+ WHERE ic_hash_version = 'legacy_sha256'
+   AND NOT EXISTS (SELECT 1 FROM kyc_submission_documents d WHERE d.submission_id = kyc_submissions.id);
 UPDATE kyc_submissions
    SET status = 'info_requested',
        review_reason_code = 'document_incomplete',
        review_reason_detail = NULL
  WHERE status IN ('pending', 'info_requested')
-   AND document_url IS NOT NULL
+   AND legacy_single_document
    AND NOT EXISTS (SELECT 1 FROM kyc_submission_documents d WHERE d.submission_id = kyc_submissions.id);
 
+DROP FUNCTION IF EXISTS begin_kyc_submission(TEXT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION begin_kyc_submission(
-  p_ic_hash TEXT, p_ic_hash_version TEXT, p_doc_type TEXT
+  p_user_id UUID, p_ic_hash TEXT, p_ic_hash_version TEXT, p_doc_type TEXT
 ) RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_id UUID;
 BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  -- Only the server route possesses KYC_IC_HMAC_KEY.  It authenticates the
+  -- browser user, calculates the HMAC, then calls this service-role RPC.
+  IF auth.role() <> 'service_role' THEN RAISE EXCEPTION 'service_role_required'; END IF;
   IF p_ic_hash_version <> 'hmac_sha256_v1' OR p_ic_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'invalid_ic_fingerprint';
   END IF;
   IF p_doc_type NOT IN ('national_id', 'passport', 'driving_license') THEN RAISE EXCEPTION 'invalid_document_type'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND tier_rank(tier) >= tier_rank('profile_complete')) THEN
+  IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_user_id AND tier_rank(tier) >= tier_rank('profile_complete')) THEN
     RAISE EXCEPTION 'tier_insufficient';
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtext('kyc_submit:' || auth.uid()::text));
-  UPDATE kyc_submissions SET status = 'superseded'
-    WHERE user_id = auth.uid() AND status = 'info_requested';
-  IF EXISTS (SELECT 1 FROM kyc_submissions WHERE user_id = auth.uid() AND status IN ('draft', 'pending')) THEN
+  PERFORM pg_advisory_xact_lock(hashtext('kyc_submit:' || p_user_id::text));
+  UPDATE kyc_submissions SET status = 'superseded', evidence_retention_started_at = now()
+    WHERE user_id = p_user_id AND status = 'info_requested';
+  IF EXISTS (SELECT 1 FROM kyc_submissions WHERE user_id = p_user_id AND status IN ('draft', 'pending')) THEN
     RAISE EXCEPTION 'active_submission_exists';
   END IF;
   INSERT INTO kyc_submissions (user_id, ic_hash, ic_hash_version, document_type, document_url, status)
-  VALUES (auth.uid(), p_ic_hash, p_ic_hash_version, p_doc_type, NULL, 'draft') RETURNING id INTO v_id;
+  VALUES (p_user_id, p_ic_hash, p_ic_hash_version, p_doc_type, NULL, 'draft') RETURNING id INTO v_id;
   RETURN v_id;
 END;
 $$;
@@ -97,14 +106,15 @@ CREATE OR REPLACE FUNCTION finalize_kyc_submission(
   p_submission_id UUID, p_front_path TEXT, p_back_path TEXT
 ) RETURNS UUID
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE v_pos INT; v_prefix TEXT; v_front_mime TEXT; v_back_mime TEXT;
+DECLARE v_pos INT; v_prefix TEXT; v_front_mime TEXT; v_back_mime TEXT; v_front_token TEXT; v_back_token TEXT;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthorized'; END IF;
   PERFORM 1 FROM kyc_submissions WHERE id = p_submission_id AND user_id = auth.uid() AND status = 'draft' FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'draft_not_found'; END IF;
   v_prefix := auth.uid()::text || '/' || p_submission_id::text || '/';
-  IF p_front_path = p_back_path OR p_front_path !~ ('^' || v_prefix || 'front\.(jpg|jpeg|png|pdf)$')
-     OR p_back_path !~ ('^' || v_prefix || 'back\.(jpg|jpeg|png|pdf)$') THEN
+  SELECT (regexp_match(p_front_path, '^' || v_prefix || '([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/front\.(jpg|jpeg|png|pdf)$'))[1] INTO v_front_token;
+  SELECT (regexp_match(p_back_path, '^' || v_prefix || '([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/back\.(jpg|jpeg|png|pdf)$'))[1] INTO v_back_token;
+  IF p_front_path = p_back_path OR v_front_token IS NULL OR v_back_token IS NULL OR v_front_token <> v_back_token THEN
     RAISE EXCEPTION 'invalid_document_path';
   END IF;
   SELECT COALESCE(metadata->>'mimetype', CASE WHEN name ~* '\.pdf$' THEN 'application/pdf' WHEN name ~* '\.png$' THEN 'image/png' ELSE 'image/jpeg' END)
@@ -154,6 +164,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'kyc_not_active_or_not_found'; END IF;
   v_status := CASE p_action WHEN 'approve' THEN 'approved' WHEN 'reject' THEN 'rejected' ELSE 'info_requested' END;
   UPDATE kyc_submissions SET status = v_status, reviewed_at = now(), reviewer_id = auth.uid(),
+    evidence_retention_started_at = CASE WHEN p_action = 'reject' THEN now() ELSE evidence_retention_started_at END,
     review_reason_code = CASE WHEN p_action = 'approve' THEN NULL ELSE p_reason_code END,
     review_reason_detail = CASE WHEN p_action = 'approve' THEN NULL ELSE NULLIF(btrim(p_reason_detail), '') END
     WHERE id = v_submission_id;
@@ -184,17 +195,21 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION get_kyc_document_view(p_submission_id UUID, p_side TEXT)
+DROP FUNCTION IF EXISTS get_kyc_document_view(UUID, TEXT);
+CREATE OR REPLACE FUNCTION get_kyc_document_view(p_submission_id UUID, p_side TEXT, p_actor_id UUID)
 RETURNS TEXT
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_path TEXT;
 BEGIN
-  IF NOT is_admin(auth.uid()) THEN RAISE EXCEPTION 'admin_required'; END IF;
+  -- A browser never receives a raw object path: the server route authenticates
+  -- p_actor_id then calls this function with service-role credentials.
+  IF auth.role() <> 'service_role' THEN RAISE EXCEPTION 'service_role_required'; END IF;
+  IF NOT is_admin(p_actor_id) THEN RAISE EXCEPTION 'admin_required'; END IF;
   IF p_side NOT IN ('front', 'back') THEN RAISE EXCEPTION 'invalid_document_side'; END IF;
   SELECT storage_path INTO v_path FROM kyc_submission_documents WHERE submission_id = p_submission_id AND side = p_side;
   IF NOT FOUND THEN RAISE EXCEPTION 'document_not_found'; END IF;
   INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, after_data)
-  VALUES (auth.uid(), 'kyc.document_viewed', 'kyc_submission', p_submission_id,
+  VALUES (p_actor_id, 'kyc.document_viewed', 'kyc_submission', p_submission_id,
     jsonb_build_object('submission_id', p_submission_id, 'side', p_side));
   RETURN v_path;
 END;
@@ -209,15 +224,16 @@ BEGIN
   WITH eligible AS (
     SELECT d.id, d.submission_id, d.side, d.storage_path
       FROM kyc_submission_documents d JOIN kyc_submissions s ON s.id = d.submission_id JOIN users u ON u.id = s.user_id
-     WHERE d.storage_path IS NOT NULL AND (d.created_at <= now() - interval '90 days')
-       AND (s.status IN ('rejected', 'superseded')
+     WHERE d.storage_path IS NOT NULL
+       AND ((s.status IN ('rejected', 'superseded') AND s.evidence_retention_started_at <= now() - interval '90 days')
          OR (s.status = 'approved' AND ((u.status = 'deleted' AND COALESCE(u.closed_at, u.updated_at) <= now() - interval '90 days')
            OR EXISTS (SELECT 1 FROM kyc_submissions replacement WHERE replacement.user_id = s.user_id AND replacement.status = 'approved' AND replacement.reviewed_at > s.reviewed_at AND replacement.reviewed_at <= now() - interval '90 days'))))
-       AND (s.evidence_purge_claimed_at IS NULL OR s.evidence_purge_claimed_at < now() - interval '1 hour')
-     FOR UPDATE OF s SKIP LOCKED
+       AND (d.purge_claimed_at IS NULL OR d.purge_claimed_at < now() - interval '1 hour')
+     ORDER BY d.submission_id, d.side
+     FOR UPDATE OF d SKIP LOCKED
   ), claimed AS (
-    UPDATE kyc_submissions s SET evidence_purge_claimed_at = now() FROM eligible e WHERE s.id = e.submission_id RETURNING e.submission_id, e.side, e.storage_path
-  ) SELECT * FROM claimed;
+    UPDATE kyc_submission_documents d SET purge_claimed_at = now() FROM eligible e WHERE d.id = e.id RETURNING e.submission_id, e.side, e.storage_path
+  ) SELECT * FROM claimed ORDER BY submission_id, side;
 END;
 $$;
 
@@ -235,12 +251,14 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION begin_kyc_submission(TEXT, TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION begin_kyc_submission(UUID, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION begin_kyc_submission(UUID, TEXT, TEXT, TEXT) TO service_role;
 GRANT EXECUTE ON FUNCTION finalize_kyc_submission(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION abandon_kyc_submission(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_review_kyc(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_review_kyc(UUID, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_kyc_document_view(UUID, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION get_kyc_document_view(UUID, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_kyc_document_view(UUID, TEXT, UUID) TO service_role;
 REVOKE ALL ON FUNCTION submit_kyc(UUID, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION purge_expired_kyc_evidence() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION confirm_purged_kyc_evidence(UUID, TEXT) FROM PUBLIC, anon, authenticated;

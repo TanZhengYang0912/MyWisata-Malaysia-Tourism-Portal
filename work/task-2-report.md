@@ -67,3 +67,63 @@
 The existing single-file `/api/kyc/upload` route intentionally no longer has
 database permission to use `submit_kyc`; Task 3 must replace it with the
 two-file service-upload → finalise flow before that endpoint is deployed.
+
+## Review hardening follow-up
+
+### Security changes
+
+- Evidence paths now have the binding
+  `<user-id>/<submission-id>/<UUIDv4-token>/<side>.<ext>`. Finalisation checks
+  the authenticated user and draft, requires valid UUIDv4-shaped random tokens,
+  and requires the same token for the `front` and `back` objects. The server
+  route is responsible for generating the cryptographically random UUID; SQL
+  enforces its shape and binding without attempting to manufacture entropy.
+- Draft creation is now service-role-only and accepts an explicit user ID. The
+  later server route authenticates the browser user, calculates the HMAC with
+  `KYC_IC_HMAC_KEY`, then calls the RPC. No SQL function reads, stores, or
+  duplicates that secret, and browser callers cannot submit arbitrary hash
+  values to the draft RPC.
+- Raw evidence paths are now returned only by the service-role-only
+  three-argument `get_kyc_document_view(submission, side, actor)` boundary.
+  The server route supplies the already-authenticated admin ID for the safe
+  audit actor. The previous browser-callable signature is removed; browser
+  clients cannot obtain a raw path.
+- Retention claims are stored per evidence row, not per submission. The worklist
+  is returned in submission/side order and each side can be confirmed exactly
+  once. Rejected/superseded retention starts at the transition event, never at
+  object creation. Approved retention starts from account closure or replacement
+  approval as applicable.
+- All existing legacy SHA-256 single-document rows are marked legacy regardless
+  of their historical status. Legacy active records move to `info_requested`;
+  historical terminal rows start a new conservative 90-day retention clock at
+  migration time when no terminal-event timestamp was available.
+- The replay command now requires `KYC_TEST_DATABASE_URL`; it refuses generic
+  database variables and verifies that the direct/pooler URL host or username
+  identifies the project in `KYC_TEST_SUPABASE_URL`.
+
+### TDD evidence
+
+1. Replaced the direct integration suite with RED assertions for a server-only
+   draft RPC, UUIDv4-token paths, same-token front/back binding, browser denial
+   of raw document paths, per-side retention claiming, and safe audit payloads.
+   Before migration updates: 6 of 8 tests failed because the server-only
+   signature and boundaries did not exist.
+2. After the initial migration update: 6 of 8 passed. The remaining failures
+   showed the browser could no longer resolve the old raw-path signature (safe,
+   but the assertion expected the wrong error wording) and that an existing
+   document table needed an additive `purge_claimed_at` migration statement.
+3. Added that additive column and corrected the assertion to require no browser
+   result/path rather than a particular PostgREST error. A stale test worklist
+   exposed global eligible rows, so the retention assertion was scoped to its
+   own submission while still proving each of its two sides is claimed once.
+4. GREEN: focused integration passed 8/8.
+
+### Follow-up verification
+
+- Full clean replay with the hardened designated-test runner — passed through
+  `033_kyc_security_hardening.sql`.
+- `RUN_KYC_DB_INTEGRATION=1 npx vitest run tests/integration/kyc-security.spec.ts`
+  after replay — passed: 1 file, 8 tests.
+- `npm test` — passed: 45 tests with 8 database integration tests skipped as
+  intended when the run flag is absent.
+- `npm run lint` and `git diff --check` — passed.

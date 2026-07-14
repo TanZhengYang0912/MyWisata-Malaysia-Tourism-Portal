@@ -14,8 +14,16 @@ for (const filename of ['.env.local', '.env']) {
   break;
 }
 
-const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
-if (!connectionString) throw new Error('Missing SUPABASE_DB_URL or DATABASE_URL');
+const connectionString = process.env.KYC_TEST_DATABASE_URL;
+const testSupabaseUrl = process.env.KYC_TEST_SUPABASE_URL;
+if (!connectionString || !testSupabaseUrl) {
+  throw new Error('KYC_TEST_DATABASE_URL and KYC_TEST_SUPABASE_URL are required; generic database variables are refused.');
+}
+const projectRef = new URL(testSupabaseUrl).hostname.split('.')[0];
+const databaseUrl = new URL(connectionString);
+if (!`${databaseUrl.hostname}/${databaseUrl.username}`.includes(projectRef)) {
+  throw new Error('KYC_TEST_DATABASE_URL must target the project named by KYC_TEST_SUPABASE_URL.');
+}
 
 const migrations = fs.readdirSync(path.resolve('supabase/migrations'))
   .filter((filename) => filename.endsWith('.sql'))

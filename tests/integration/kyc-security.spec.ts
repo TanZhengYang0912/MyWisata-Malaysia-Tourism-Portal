@@ -33,6 +33,43 @@ async function createEmailVerifiedClient(): Promise<{ id: string; client: Supaba
   return { id: data.user.id, client };
 }
 
+async function beginServerSubmission(userId: string, hash = 'a'.repeat(64)): Promise<string> {
+  const { data, error } = await service!.rpc('begin_kyc_submission', {
+    p_user_id: userId,
+    p_ic_hash: hash,
+    p_ic_hash_version: 'hmac_sha256_v1',
+    p_doc_type: 'national_id',
+  });
+  expect(error).toBeNull();
+  expect(data).toMatch(/^[0-9a-f-]{36}$/i);
+  return data as string;
+}
+
+function evidencePaths(userId: string, submissionId: string) {
+  const token = crypto.randomUUID();
+  return {
+    front: `${userId}/${submissionId}/${token}/front.jpg`,
+    back: `${userId}/${submissionId}/${token}/back.jpg`,
+  };
+}
+
+async function uploadEvidence(paths: { front: string; back: string }) {
+  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+  expect((await service!.storage.from('kyc-documents').upload(paths.front, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
+  expect((await service!.storage.from('kyc-documents').upload(paths.back, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
+}
+
+async function createAdminClient(): Promise<{ id: string; client: SupabaseClient }> {
+  const admin = await createEmailVerifiedClient();
+  const { data: role, error } = await service!.from('roles')
+    .upsert({ name: 'approver', description: 'KYC integration-test approver' }, { onConflict: 'name' })
+    .select('id')
+    .single();
+  expect(error).toBeNull();
+  expect((await service!.from('user_roles').insert({ user_id: admin.id, role_id: role!.id })).error).toBeNull();
+  return admin;
+}
+
 afterEach(async () => {
   if (service) await Promise.all(createdUserIds.splice(0).map((id) => service.auth.admin.deleteUser(id)));
 });
@@ -40,122 +77,141 @@ afterEach(async () => {
 describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
   it('denies a direct withdrawal RPC call from a user without KYC', async () => {
     const { id, client } = await createEmailVerifiedClient();
-    await service.from('wallets').update({ earnings_sen: 10_000 }).eq('user_id', id);
-
-    const { error } = await client.rpc('debit_withdrawal', { p_user_id: id, p_amount_rm: 10 });
-
-    expect(error?.message).toContain('kyc_required');
+    await service!.from('wallets').update({ earnings_sen: 10_000 }).eq('user_id', id);
+    expect((await client.rpc('debit_withdrawal', { p_user_id: id, p_amount_rm: 10 })).error?.message).toContain('kyc_required');
   });
 
   it('denies a direct recommendation RPC call below profile_complete', async () => {
     const { client } = await createEmailVerifiedClient();
-
-    const { error } = await client.rpc('submit_recommendation', {
+    expect((await client.rpc('submit_recommendation', {
       p_vendor_name: 'Direct RPC Gate Test',
       p_description: 'A direct RPC submission must be rejected below the required verification tier.',
-      p_state: 'Selangor',
-      p_category_id: null,
-      p_vendor_address: null,
-    });
-
-    expect(error?.message).toContain('tier_insufficient');
+      p_state: 'Selangor', p_category_id: null, p_vendor_address: null,
+    })).error?.message).toContain('tier_insufficient');
   });
 
-  it('creates a draft but refuses to finalise it without both immutable document objects', async () => {
+  it('allows only the server boundary to create a draft with an HMAC fingerprint', async () => {
     const { id, client } = await createEmailVerifiedClient();
-    await service.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    const submissionId = await beginServerSubmission(id);
 
-    const { data: submissionId, error: beginError } = await client.rpc('begin_kyc_submission', {
-      p_ic_hash: 'a'.repeat(64),
-      p_ic_hash_version: 'hmac_sha256_v1',
-      p_doc_type: 'national_id',
+    const { error } = await client.rpc('begin_kyc_submission', {
+      p_user_id: id, p_ic_hash: 'b'.repeat(64), p_ic_hash_version: 'hmac_sha256_v1', p_doc_type: 'national_id',
     });
-    expect(beginError).toBeNull();
+    expect(error?.message).toContain('permission denied');
     expect(submissionId).toMatch(/^[0-9a-f-]{36}$/i);
+  });
 
-    const { error: finaliseError } = await client.rpc('finalize_kyc_submission', {
+  it('binds random-token front and back paths to the caller draft and requires both objects', async () => {
+    const { id, client } = await createEmailVerifiedClient();
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    const submissionId = await beginServerSubmission(id);
+    const paths = evidencePaths(id, submissionId);
+
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error?.message).toContain('documents_missing');
+    expect((await client.rpc('finalize_kyc_submission', {
       p_submission_id: submissionId,
       p_front_path: `${id}/${submissionId}/front.jpg`,
       p_back_path: `${id}/${submissionId}/back.jpg`,
-    });
-    expect(finaliseError?.message).toContain('documents_missing');
-  });
+    })).error?.message).toContain('invalid_document_path');
 
-  it('does not leave the legacy single-document submission RPC available to applicants', async () => {
-    const { id, client } = await createEmailVerifiedClient();
-    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
-
-    const { error } = await client.rpc('submit_kyc', {
-      p_user_id: id,
-      p_ic_hash: 'd'.repeat(64),
-      p_doc_type: 'national_id',
-      p_doc_url: `${id}/legacy.jpg`,
-    });
-
-    expect(error?.message).toContain('permission denied');
-  });
-
-  it('does not expose evidence metadata or allow an authenticated storage overwrite', async () => {
-    const { id, client } = await createEmailVerifiedClient();
-    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
-
-    const { data: submissionId, error: beginError } = await client.rpc('begin_kyc_submission', {
-      p_ic_hash: 'b'.repeat(64),
-      p_ic_hash_version: 'hmac_sha256_v1',
-      p_doc_type: 'national_id',
-    });
-    expect(beginError).toBeNull();
-
-    const frontPath = `${id}/${submissionId}/front.jpg`;
-    const backPath = `${id}/${submissionId}/back.jpg`;
-    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
-    expect((await service!.storage.from('kyc-documents').upload(frontPath, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
-    expect((await service!.storage.from('kyc-documents').upload(backPath, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
+    await uploadEvidence(paths);
     expect((await client.rpc('finalize_kyc_submission', {
-      p_submission_id: submissionId,
-      p_front_path: frontPath,
-      p_back_path: backPath,
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error).toBeNull();
+  });
+
+  it('does not leave legacy single-document submission or evidence metadata available to applicants', async () => {
+    const { id, client } = await createEmailVerifiedClient();
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    const submissionId = await beginServerSubmission(id, 'c'.repeat(64));
+    const paths = evidencePaths(id, submissionId);
+    await uploadEvidence(paths);
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
 
-    const { data: documents, error: readError } = await client
-      .from('kyc_submission_documents')
-      .select('storage_path')
-      .eq('submission_id', submissionId);
-    expect(readError).toBeTruthy();
-    expect(documents).toBeNull();
+    expect((await client.rpc('submit_kyc', {
+      p_user_id: id, p_ic_hash: 'd'.repeat(64), p_doc_type: 'national_id', p_doc_url: `${id}/legacy.jpg`,
+    })).error?.message).toContain('permission denied');
+    const { data, error } = await client.from('kyc_submission_documents').select('storage_path').eq('submission_id', submissionId);
+    expect(error).toBeTruthy();
+    expect(data).toBeNull();
+    expect((await client.storage.from('kyc-documents').update(paths.front, new Uint8Array([1]), { contentType: 'image/jpeg' })).error).toBeTruthy();
+  });
 
-    const { error: overwriteError } = await client.storage.from('kyc-documents').update(frontPath, bytes, { contentType: 'image/jpeg' });
-    expect(overwriteError).toBeTruthy();
+  it('keeps raw document paths behind the server-only view boundary and audits safely', async () => {
+    const { id: applicantId, client: applicant } = await createEmailVerifiedClient();
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', applicantId);
+    const submissionId = await beginServerSubmission(applicantId, 'e'.repeat(64));
+    const paths = evidencePaths(applicantId, submissionId);
+    await uploadEvidence(paths);
+    expect((await applicant.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error).toBeNull();
+    const admin = await createAdminClient();
+
+    const browserView = await admin.client.rpc('get_kyc_document_view', { p_submission_id: submissionId, p_side: 'front' });
+    expect(browserView.error).toBeTruthy();
+    expect(browserView.error?.message).not.toContain(paths.front);
+    const { data: path, error } = await service!.rpc('get_kyc_document_view', {
+      p_submission_id: submissionId, p_side: 'front', p_actor_id: admin.id,
+    });
+    expect(error).toBeNull();
+    expect(path).toBe(paths.front);
+    const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.document_viewed').eq('entity_id', submissionId);
+    expect(audits).toHaveLength(1);
+    expect(JSON.stringify(audits![0].after_data)).not.toContain(paths.front);
   });
 
   it('enforces review reason restrictions at the RPC boundary', async () => {
     const { id: applicantId, client: applicant } = await createEmailVerifiedClient();
     await service!.from('users').update({ tier: 'profile_complete' }).eq('id', applicantId);
-    const { data: submissionId, error: beginError } = await applicant.rpc('begin_kyc_submission', {
-      p_ic_hash: 'c'.repeat(64), p_ic_hash_version: 'hmac_sha256_v1', p_doc_type: 'national_id',
-    });
-    expect(beginError).toBeNull();
-    const frontPath = `${applicantId}/${submissionId}/front.jpg`;
-    const backPath = `${applicantId}/${submissionId}/back.jpg`;
-    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
-    await service!.storage.from('kyc-documents').upload(frontPath, bytes, { contentType: 'image/jpeg' });
-    await service!.storage.from('kyc-documents').upload(backPath, bytes, { contentType: 'image/jpeg' });
+    const submissionId = await beginServerSubmission(applicantId, 'f'.repeat(64));
+    const paths = evidencePaths(applicantId, submissionId);
+    await uploadEvidence(paths);
     expect((await applicant.rpc('finalize_kyc_submission', {
-      p_submission_id: submissionId, p_front_path: frontPath, p_back_path: backPath,
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
+    const admin = await createAdminClient();
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'request_info', p_reason: 'document_suspected_tampering',
+    })).error?.message).toContain('reason_code_not_allowed');
+  });
 
-    const { id: adminId, client: admin } = await createEmailVerifiedClient();
-    const { data: adminRole, error: roleError } = await service!.from('roles')
-      .upsert({ name: 'approver', description: 'KYC integration-test approver' }, { onConflict: 'name' })
-      .select('id')
-      .single();
-    expect(roleError).toBeNull();
-    await service!.from('user_roles').insert({ user_id: adminId, role_id: adminRole!.id });
-    const { error } = await admin.rpc('admin_review_kyc', {
-      p_user_id: applicantId,
-      p_action: 'request_info',
-      p_reason: 'document_suspected_tampering',
-    });
-    expect(error?.message).toContain('reason_code_not_allowed');
+  it('claims each expired evidence side once using terminal-event retention and preserves submission metadata', async () => {
+    const { id, client } = await createEmailVerifiedClient();
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    const submissionId = await beginServerSubmission(id, '1'.repeat(64));
+    const paths = evidencePaths(id, submissionId);
+    await uploadEvidence(paths);
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error).toBeNull();
+    await service!.from('kyc_submissions').update({
+      status: 'rejected', evidence_retention_started_at: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString(),
+    }).eq('id', submissionId);
+
+    expect((await client.rpc('purge_expired_kyc_evidence')).error?.message).toContain('permission denied');
+    const { data: worklist, error } = await service!.rpc('purge_expired_kyc_evidence');
+    expect(error).toBeNull();
+    const claimed = (worklist as Array<{ submission_id: string; side: string; storage_path: string }>)
+      .filter((item) => item.submission_id === submissionId);
+    expect(claimed).toEqual([
+      { submission_id: submissionId, side: 'back', storage_path: paths.back },
+      { submission_id: submissionId, side: 'front', storage_path: paths.front },
+    ]);
+    expect(((await service!.rpc('purge_expired_kyc_evidence')).data as Array<{ submission_id: string }>)
+      .filter((item) => item.submission_id === submissionId)).toEqual([]);
+    for (const item of claimed) {
+      expect((await service!.rpc('confirm_purged_kyc_evidence', { p_submission_id: item.submission_id, p_side: item.side })).error).toBeNull();
+    }
+    expect((await service!.from('kyc_submissions').select('id').eq('id', submissionId).maybeSingle()).data?.id).toBe(submissionId);
+    const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.evidence_purged').eq('entity_id', submissionId);
+    expect(audits).toHaveLength(2);
+    expect(JSON.stringify(audits)).not.toContain(paths.front);
+    expect(JSON.stringify(audits)).not.toContain(paths.back);
   });
 });
