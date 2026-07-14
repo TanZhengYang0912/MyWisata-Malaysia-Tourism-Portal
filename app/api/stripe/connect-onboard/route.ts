@@ -70,7 +70,10 @@ export async function POST(req: Request) {
         country: 'MY',
         email: row.email ?? authUser.email ?? undefined,
         business_type: 'individual',
-        capabilities: { transfers: { requested: true } },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
         controller: {
           losses: { payments: 'stripe' },
           fees: { payer: 'account' },

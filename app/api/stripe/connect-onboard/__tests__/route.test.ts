@@ -76,6 +76,10 @@ describe('POST /api/stripe/connect-onboard', () => {
     expect(await response.json()).toEqual({ url: 'https://connect.stripe.test/onboarding' });
     expect(mocks.accountsCreate).toHaveBeenCalledWith(expect.objectContaining({
       country: 'MY',
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
       controller: {
         losses: { payments: 'stripe' },
         fees: { payer: 'account' },
