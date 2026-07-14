@@ -28,18 +28,8 @@ ALTER TABLE wallets
 
 -- ── 2. wallet_transactions — extend type CHECK ────────────────────────────────
 -- Drop the existing inline CHECK and replace with expanded set.
-DO $$
-DECLARE v_con TEXT;
-BEGIN
-  SELECT conname INTO v_con
-    FROM pg_constraint
-   WHERE conrelid = 'wallet_transactions'::regclass
-     AND contype  = 'c'
-     AND pg_get_constraintdef(oid) LIKE '%type IN%';
-  IF v_con IS NOT NULL THEN
-    EXECUTE 'ALTER TABLE wallet_transactions DROP CONSTRAINT ' || quote_ident(v_con);
-  END IF;
-END $$;
+ALTER TABLE wallet_transactions
+  DROP CONSTRAINT IF EXISTS wallet_transactions_type_check;
 
 ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check
   CHECK (type IN (
@@ -56,18 +46,8 @@ ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check
 
 
 -- ── 3. wallet_transactions — extend bucket CHECK ─────────────────────────────
-DO $$
-DECLARE v_con TEXT;
-BEGIN
-  SELECT conname INTO v_con
-    FROM pg_constraint
-   WHERE conrelid = 'wallet_transactions'::regclass
-     AND contype  = 'c'
-     AND pg_get_constraintdef(oid) LIKE '%bucket IN%';
-  IF v_con IS NOT NULL THEN
-    EXECUTE 'ALTER TABLE wallet_transactions DROP CONSTRAINT ' || quote_ident(v_con);
-  END IF;
-END $$;
+ALTER TABLE wallet_transactions
+  DROP CONSTRAINT IF EXISTS wallet_transactions_bucket_check;
 
 ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_bucket_check
   CHECK (bucket IN ('topup', 'earnings', 'pending_earnings'));
