@@ -55,4 +55,24 @@ describe('KYC server-side security gates', () => {
 
     expect(error?.message).toContain('tier_insufficient');
   });
+
+  it('creates a draft but refuses to finalise it without both immutable document objects', async () => {
+    const { id, client } = await createEmailVerifiedClient();
+    await service.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+
+    const { data: submissionId, error: beginError } = await client.rpc('begin_kyc_submission', {
+      p_ic_hash: 'a'.repeat(64),
+      p_ic_hash_version: 'hmac_sha256_v1',
+      p_doc_type: 'national_id',
+    });
+    expect(beginError).toBeNull();
+    expect(submissionId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const { error: finaliseError } = await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId,
+      p_front_path: `${id}/${submissionId}/front.jpg`,
+      p_back_path: `${id}/${submissionId}/back.jpg`,
+    });
+    expect(finaliseError?.message).toContain('documents_missing');
+  });
 });

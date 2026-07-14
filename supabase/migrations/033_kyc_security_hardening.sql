@@ -87,3 +87,71 @@ $$;
 
 GRANT EXECUTE ON FUNCTION debit_withdrawal(UUID, NUMERIC) TO authenticated;
 GRANT EXECUTE ON FUNCTION submit_recommendation(TEXT, TEXT, TEXT, UUID, TEXT) TO authenticated;
+
+-- Immutable dual-sided KYC evidence.
+ALTER TABLE kyc_submissions DROP CONSTRAINT IF EXISTS kyc_submissions_status_check;
+ALTER TABLE kyc_submissions ADD CONSTRAINT kyc_submissions_status_check
+  CHECK (status IN ('draft', 'pending', 'info_requested', 'approved', 'rejected', 'superseded'));
+ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS ic_hash_version TEXT NOT NULL DEFAULT 'legacy_sha256';
+ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS legacy_single_document BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS review_reason_code TEXT;
+ALTER TABLE kyc_submissions ADD COLUMN IF NOT EXISTS review_reason_detail TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kyc_one_active_or_draft_per_user
+  ON kyc_submissions(user_id) WHERE status IN ('draft', 'pending', 'info_requested');
+
+CREATE TABLE IF NOT EXISTS kyc_submission_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  submission_id UUID NOT NULL REFERENCES kyc_submissions(id) ON DELETE RESTRICT,
+  side TEXT NOT NULL CHECK (side IN ('front', 'back')),
+  storage_path TEXT NOT NULL UNIQUE,
+  mime_type TEXT NOT NULL CHECK (mime_type IN ('image/jpeg', 'image/png', 'application/pdf')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (submission_id, side)
+);
+ALTER TABLE kyc_submission_documents ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS kyc_documents_no_client_read ON kyc_submission_documents;
+CREATE POLICY kyc_documents_no_client_read ON kyc_submission_documents FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM kyc_submissions s WHERE s.id = submission_id AND (s.user_id = auth.uid() OR is_admin(auth.uid()))));
+
+DROP POLICY IF EXISTS kyc_doc_insert_own ON storage.objects;
+DROP POLICY IF EXISTS kyc_doc_update_own ON storage.objects;
+DROP POLICY IF EXISTS kyc_doc_select_own_or_admin ON storage.objects;
+
+CREATE OR REPLACE FUNCTION begin_kyc_submission(
+  p_ic_hash TEXT, p_ic_hash_version TEXT, p_doc_type TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_id UUID;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND tier_rank(tier) >= tier_rank('profile_complete')) THEN RAISE EXCEPTION 'tier_insufficient'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('kyc_submit:' || auth.uid()::text));
+  UPDATE kyc_submissions SET status = 'superseded'
+    WHERE user_id = auth.uid() AND status = 'info_requested';
+  IF EXISTS (SELECT 1 FROM kyc_submissions WHERE user_id = auth.uid() AND status IN ('draft', 'pending')) THEN RAISE EXCEPTION 'active_submission_exists'; END IF;
+  INSERT INTO kyc_submissions (user_id, ic_hash, ic_hash_version, document_type, document_url, status)
+  VALUES (auth.uid(), p_ic_hash, p_ic_hash_version, p_doc_type, NULL, 'draft') RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION finalize_kyc_submission(
+  p_submission_id UUID, p_front_path TEXT, p_back_path TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_pos INT;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM kyc_submissions WHERE id = p_submission_id AND user_id = auth.uid() AND status = 'draft') THEN RAISE EXCEPTION 'draft_not_found'; END IF;
+  IF p_front_path !~ ('^' || auth.uid()::text || '/' || p_submission_id::text || '/front\.')
+     OR p_back_path !~ ('^' || auth.uid()::text || '/' || p_submission_id::text || '/back\.') THEN RAISE EXCEPTION 'invalid_document_path'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = 'kyc-documents' AND name = p_front_path)
+     OR NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = 'kyc-documents' AND name = p_back_path) THEN RAISE EXCEPTION 'documents_missing'; END IF;
+  INSERT INTO kyc_submission_documents (submission_id, side, storage_path, mime_type)
+  VALUES (p_submission_id, 'front', p_front_path, CASE WHEN p_front_path ~ '\.pdf$' THEN 'application/pdf' WHEN p_front_path ~ '\.png$' THEN 'image/png' ELSE 'image/jpeg' END),
+         (p_submission_id, 'back', p_back_path, CASE WHEN p_back_path ~ '\.pdf$' THEN 'application/pdf' WHEN p_back_path ~ '\.png$' THEN 'image/png' ELSE 'image/jpeg' END);
+  SELECT COALESCE(MAX(queue_position), 0) + 1 INTO v_pos FROM kyc_submissions WHERE status = 'pending';
+  UPDATE kyc_submissions SET status = 'pending', queue_position = v_pos WHERE id = p_submission_id;
+  UPDATE users SET kyc_status = 'pending', updated_at = now() WHERE id = auth.uid();
+  RETURN p_submission_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION begin_kyc_submission(TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION finalize_kyc_submission(UUID, TEXT, TEXT) TO authenticated;
