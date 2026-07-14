@@ -58,7 +58,10 @@ export default function KycPage() {
   const tierIndex = TIER_STEPS.findIndex((s) => s.value === tier);
 
   useEffect(() => {
-    if (!currentUser?.id) { setActiveSubmission(null); return; }
+    if (!currentUser?.id) {
+      const timer = window.setTimeout(() => setActiveSubmission(null), 0);
+      return () => window.clearTimeout(timer);
+    }
     let active = true;
     (async () => {
       try {
@@ -318,7 +321,7 @@ export default function KycPage() {
           {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
 
           <Button type="submit" disabled={submitDisabled} className="w-full">
-            {submitting ? "Submitting…" : "Submit for Review"}
+            {submitting ? "Submitting…" : activeSubmission?.status === "rejected" || activeSubmission?.status === "info_requested" ? "Start New Submission" : "Submit for Review"}
           </Button>
         </form>
       )}
