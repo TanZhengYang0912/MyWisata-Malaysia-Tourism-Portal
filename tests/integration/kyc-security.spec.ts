@@ -194,6 +194,9 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     const admin = await createAdminClient();
 
     expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: null, p_reason_code: null, p_reason_detail: null,
+    })).error?.message).toContain('invalid_action');
+    expect((await admin.client.rpc('admin_review_kyc', {
       p_user_id: applicantId, p_action: 'reject', p_reason_code: null, p_reason_detail: null,
     })).error?.message).toContain('invalid_reason_code');
     expect((await admin.client.rpc('admin_review_kyc', {

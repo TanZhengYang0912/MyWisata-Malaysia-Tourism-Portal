@@ -151,9 +151,9 @@ CREATE OR REPLACE FUNCTION admin_review_kyc(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_submission_id UUID; v_status TEXT; v_note TEXT;
 BEGIN
+  IF p_action IS NULL OR p_action NOT IN ('approve', 'reject', 'request_info') THEN RAISE EXCEPTION 'invalid_action'; END IF;
   IF NOT is_admin(auth.uid()) THEN RAISE EXCEPTION 'admin_required'; END IF;
   IF auth.uid() = p_user_id THEN RAISE EXCEPTION 'self_dealing'; END IF;
-  IF p_action NOT IN ('approve', 'reject', 'request_info') THEN RAISE EXCEPTION 'invalid_action'; END IF;
   IF p_action = 'approve' AND (p_reason_code IS NOT NULL OR p_reason_detail IS NOT NULL) THEN RAISE EXCEPTION 'reason_not_allowed'; END IF;
   IF p_action <> 'approve' AND (p_reason_code IS NULL OR p_reason_code NOT IN ('document_unreadable', 'document_incomplete', 'document_mismatch', 'document_expired', 'document_suspected_tampering', 'other')) THEN
     RAISE EXCEPTION 'invalid_reason_code';
