@@ -274,10 +274,11 @@ export default function KycPage() {
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <label htmlFor="kyc-ic-number" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               IC / Passport Number
             </label>
             <input
+              id="kyc-ic-number"
               value={form.icNumber}
               onChange={(e) => { setForm((f) => ({ ...f, icNumber: e.target.value })); setFormError(null); }}
               placeholder={IC_PATTERNS[form.docType]?.hint ?? "e.g. 900101-14-5678"}

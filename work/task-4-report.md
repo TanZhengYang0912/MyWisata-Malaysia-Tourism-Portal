@@ -7,7 +7,7 @@
 - The customer page now renders the newest submission irrespective of status. Rejected and information-requested states show mapped standard customer-safe copy, optional reviewer detail, review time and an explicit “Start New KYC Submission” flow. Resubmission invokes the existing server-side `begin_kyc_submission` procedure rather than replacing evidence objects.
 - Split KYC contracts into `CustomerKycSubmission` and `AdminKycSubmission`. The latter carries only `{ side: 'front' | 'back' }` metadata. Browser code no longer imports or calls `getKycDocumentSignedUrl`; admin document viewing exclusively requests the guarded `/api/admin/kyc/documents/[submissionId]/[side]` endpoint.
 - Added a guarded admin-submissions route so the admin browser receives safe metadata only. Raw paths remain server-only.
-- Added deterministic Playwright browser route fixtures: valid PNG bytes for the dual-file contract (with a mocked successful upload), and a separate mocked newest-submission response for the rejected-state UI. The rejected fixture asserts safe standard reason copy, optional reviewer detail, review time/status, and the new-submission action; it does not confuse upload validation failure with rejection.
+- Added deterministic Playwright browser route fixtures: valid PNG bytes plus a valid MyKad value for the dual-file contract (with a mocked successful upload), and a separate mocked newest-submission response for the rejected-state UI. The rejected fixture asserts safe standard reason copy, optional reviewer detail, review time/status, and the new-submission action; it does not confuse upload validation failure with rejection.
 
 ## TDD evidence
 

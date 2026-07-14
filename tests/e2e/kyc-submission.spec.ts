@@ -26,6 +26,7 @@ test.describe('KYC submission', () => {
 
     const submit = page.getByRole('button', { name: 'Submit for Review' });
     await expect(submit).toBeDisabled();
+    await page.getByLabel(/IC \/ Passport Number/i).fill('900101145678');
     await page.getByLabel(/front of document/i).setInputFiles({ name: 'front.png', mimeType: 'image/png', buffer: VALID_PNG });
     await expect(submit).toBeDisabled();
     await page.getByLabel(/back of document/i).setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: VALID_PNG });
