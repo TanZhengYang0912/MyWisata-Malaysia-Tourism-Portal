@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { CheckSquare, XCircle, MessageSquare } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getUsers, getKycSubmissions, getKycDocumentSignedUrl } from "@/backend/domains/identity";
+import { getUsers } from "@/backend/domains/identity";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import type { KycSubmission, User } from "@/backend/core/types";
+import type { AdminKycSubmission, User } from "@/backend/core/types";
 
 const DOC_LABEL: Record<string, string> = {
   national_id:     "MyKad",
@@ -23,16 +23,16 @@ type PendingAction = {
 export default function AdminKycPage() {
   const { currentUser } = useAuth();
   const [users,         setUsers]         = useState<User[]>([]);
-  const [submissions,   setSubmissions]   = useState<Map<string, KycSubmission>>(new Map());
+  const [submissions,   setSubmissions]   = useState<Map<string, AdminKycSubmission>>(new Map());
   const [reviewing,     setReviewing]     = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [error,         setError]         = useState<string | null>(null);
 
   useEffect(() => {
     getUsers().then((all) => setUsers(all.filter((u) => u.role === "customer")));
-    getKycSubmissions().then((subs) =>
-      setSubmissions(new Map(subs.map((s) => [s.userId, s])))
-    );
+    fetch('/api/admin/kyc/submissions')
+      .then((res) => res.json())
+      .then((body) => setSubmissions(new Map((body.data?.submissions ?? []).map((s: AdminKycSubmission) => [s.userId, s]))));
   }, []);
 
   async function review(userId: string, action: "approve" | "reject" | "request_info", reason?: string) {
@@ -51,7 +51,7 @@ export default function AdminKycPage() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError((body as any)?.error?.message ?? "Review failed.");
+        setError((body as { error?: { message?: string } })?.error?.message ?? "Review failed.");
         return;
       }
       // Remove from submissions map (no longer active)
@@ -122,22 +122,25 @@ export default function AdminKycPage() {
                       )}
                     </div>
 
-                    {sub?.documentUrl && (
+                    {sub?.documents.map(({ side }) => (
                       <button
+                        key={side}
                         type="button"
                         onClick={async () => {
                           try {
-                            const url = await getKycDocumentSignedUrl(sub.documentUrl);
-                            window.open(url, "_blank", "noopener,noreferrer");
+                            const res = await fetch(`/api/admin/kyc/documents/${sub.id}/${side}`);
+                            const body = await res.json().catch(() => ({}));
+                            if (!res.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? "Failed to load document");
+                            window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
                           } catch (err) {
                             alert(err instanceof Error ? err.message : "Failed to load document");
                           }
                         }}
                         className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border hover:bg-secondary transition-colors"
                       >
-                        View Document
+                        View {side}
                       </button>
-                    )}
+                    ))}
 
                     {/* Action buttons */}
                     <div className="flex gap-1.5 shrink-0">

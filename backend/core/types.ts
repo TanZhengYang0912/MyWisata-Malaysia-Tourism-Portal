@@ -173,18 +173,35 @@ export interface Booking {
   qrCode: string; // demo placeholder string
 }
 
-export interface KycSubmission {
-  id?: string;
-  userId: string;
-  icNumber: string;
+export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";
+
+export interface CustomerKycSubmission {
+  id: string;
+  status: KycSubmissionStatus;
   docType: string;
-  documentUrl: string;
-  status?: "pending" | "info_requested" | "approved" | "rejected";
-  queuePosition?: number;
+  queuePosition: number | null;
   submittedAt: string;
-  reviewedAt?: string;
-  reviewedBy?: string;
+  reviewedAt: string | null;
+  reviewReasonCode: string | null;
+  reviewReasonDetail: string | null;
 }
+
+export interface AdminKycSubmission {
+  id: string;
+  userId: string;
+  docType: string;
+  status: KycSubmissionStatus;
+  queuePosition: number | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewReasonCode: string | null;
+  reviewReasonDetail: string | null;
+  documents: { side: "front" | "back" }[];
+}
+
+/** @deprecated Use CustomerKycSubmission or AdminKycSubmission at the relevant boundary. */
+export type KycSubmission = AdminKycSubmission;
 
 // ─── Identity/Chat domain (P1) ──────────────────────────────────────────────
 export interface ChatThread {
