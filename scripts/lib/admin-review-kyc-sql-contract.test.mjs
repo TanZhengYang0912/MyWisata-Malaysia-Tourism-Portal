@@ -12,7 +12,7 @@ const migrationPath = path.resolve(
 test('admin_review_kyc rejects a null action before any review logic', () => {
   const migration = fs.readFileSync(migrationPath, 'utf8');
   const functionBody = migration.match(
-    /CREATE OR REPLACE FUNCTION admin_review_kyc\(\n  p_user_id UUID, p_action TEXT, p_reason_code TEXT DEFAULT NULL, p_reason_detail TEXT DEFAULT NULL\n\)[\s\S]*?\n\$\$;/,
+    /CREATE OR REPLACE FUNCTION admin_review_kyc\(\r?\n  p_user_id UUID, p_action TEXT, p_reason_code TEXT DEFAULT NULL, p_reason_detail TEXT DEFAULT NULL\r?\n\)[\s\S]*?\r?\n\$\$;/,
   )?.[0];
 
   assert.ok(functionBody, 'four-argument admin_review_kyc function must exist');
