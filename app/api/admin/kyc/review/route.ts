@@ -5,11 +5,11 @@ import { auditAndNotify } from '@/lib/audit';
 
 const kycReviewSchema = z.object({
   userId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
-  action: z.enum(['approve', 'reject']),
+  action: z.enum(['approve', 'reject', 'request_info']),
   reason: z.string().max(500).optional(),
 }).strict().refine(
   (d) => d.action === 'approve' || (!!d.reason && d.reason.length >= 10),
-  { message: 'Reject requires a reason of at least 10 characters', path: ['reason'] },
+  { message: 'Non-approve actions require a reason of at least 10 characters', path: ['reason'] },
 );
 
 export async function POST(request: Request) {
@@ -21,8 +21,6 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const { userId, action, reason } = parsed.data;
 
-  // Atomic: update kyc_submissions + users.kyc_status + gen_affiliate_code (on approve)
-  // RPC enforces is_admin(auth.uid()) internally.
   const { error: rpcErr } = await supabase.rpc('admin_review_kyc', {
     p_user_id: userId,
     p_action:  action,
@@ -32,35 +30,39 @@ export async function POST(request: Request) {
   if (rpcErr) {
     if (rpcErr.message.includes('admin_required'))
       return apiFail('FORBIDDEN', 'Admin role required', 403);
-    if (rpcErr.message.includes('self_dealing'))
-      return apiFail('FORBIDDEN', 'You cannot review your own KYC submission', 403);
-    if (rpcErr.message.includes('kyc_not_pending_or_not_found'))
-      return apiFail('CONFLICT', 'KYC already reviewed or user not found. If incorrect, ask the user to re-submit.', 409);
+    if (rpcErr.message.includes('kyc_not_active_or_not_found'))
+      return apiFail('CONFLICT', 'No active KYC submission found for this user', 409);
+    if (rpcErr.message.includes('tier_insufficient'))
+      return apiFail('CONFLICT', 'User has not completed profile — use admin_set_tier first', 409);
     return apiFail('RPC_ERROR', rpcErr.message, 500);
   }
 
-  const newTier = action === 'approve' ? 'kyc_verified' : 'profile_complete';
+  const tierAfter = action === 'approve' ? 'kyc_verified' : 'profile_complete';
+
+  const notifType = action === 'approve' ? 'kyc_approved'
+                  : action === 'reject'   ? 'kyc_rejected'
+                  :                         'kyc_info_requested';
 
   await auditAndNotify(
     {
       action:     `kyc.${action}`,
       entityType: 'user',
       entityId:   userId,
-      afterData:  { verificationTier: newTier },
+      afterData:  { tier: tierAfter },
       note:       reason,
     },
     [{
       userId,
-      type:  action === 'approve' ? 'kyc_approved' : 'kyc_rejected',
-      title: action === 'approve'
-        ? 'Your KYC verification was approved!'
-        : 'Your KYC submission was rejected',
-      body:  action === 'approve'
-        ? 'You can now withdraw your earnings and access premium features.'
-        : (reason ?? 'Please re-upload your documents and try again.'),
-      link:  '/customer/kyc',
+      type:  notifType,
+      title: action === 'approve'       ? 'KYC verification approved!'
+           : action === 'request_info'  ? 'Additional info needed for your KYC'
+           :                              'KYC submission rejected',
+      body: action === 'approve'
+          ? 'You can now withdraw your earnings and access premium features.'
+          : (reason ?? 'Please check your notification for details and re-submit.'),
+      link: '/customer/kyc',
     }],
   );
 
-  return apiOk({ userId, verificationTier: newTier });
+  return apiOk({ userId, tier: tierAfter, action });
 }

@@ -1,0 +1,45 @@
+import { createClient } from '@/lib/supabase/server';
+import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
+import { verifyOtpSchema } from '@/lib/validation/phone-schemas';
+import { verifyOtp } from '@/lib/twilio';
+
+export async function POST(request: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const parsed = await parseBody(request, verifyOtpSchema);
+  if (!parsed.ok) return parsed.response;
+  const { phone, code } = parsed.data;
+
+  // Verify OTP via Twilio
+  const result = await verifyOtp(phone, code);
+  if (!result.ok) {
+    return apiFail(result.code.toUpperCase(), result.message, 422);
+  }
+
+  // Post-verify: advance tier + record verified phone (atomic, with advisory lock in RPC)
+  const { error } = await supabase.rpc('promote_to_phone_verified', {
+    p_user_id: user.id,
+    p_phone:   phone,
+  });
+
+  if (error) {
+    if (error.message.includes('user_not_found'))
+      return apiFail('NOT_FOUND', 'User not found', 404);
+    // unique_violation: phone claimed by another account between pre-send and post-verify
+    if (error.message.includes('unique') || error.message.includes('duplicate'))
+      return apiFail('PHONE_ALREADY_CLAIMED', 'This number was just registered to another account', 409);
+    return apiFail('DB_ERROR', error.message, 500);
+  }
+
+  // Mark the phone_verifications row as verified
+  await supabase
+    .from('phone_verifications')
+    .update({ verified_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .eq('phone', phone)
+    .is('verified_at', null);
+
+  return apiOk({ verified: true, phone, tier: 'phone_verified' });
+}

@@ -58,14 +58,23 @@ export async function POST(request: Request) {
     .upload(path, buffer, { contentType: file.type, upsert: true });
   if (uploadErr) return apiFail('UPLOAD_FAILED', uploadErr.message, 500);
 
-  // Atomic: upsert kyc_submissions + advance kyc_status
-  const { error: rpcErr } = await supabase.rpc('submit_kyc', {
+  const { data: submissionId, error: rpcErr } = await supabase.rpc('submit_kyc', {
     p_user_id:  user.id,
     p_ic_hash:  icHash,
     p_doc_type: docType,
     p_doc_url:  path,
   });
-  if (rpcErr) return apiFail('SUBMIT_FAILED', rpcErr.message, 500);
+  if (rpcErr) {
+    if (rpcErr.message.includes('tier_insufficient'))
+      return apiFail('TIER_INSUFFICIENT', 'Complete your profile before submitting KYC', 403);
+    return apiFail('SUBMIT_FAILED', rpcErr.message, 500);
+  }
 
-  return apiOk({ verificationTier: 'kyc_submitted' });
+  const { data: sub } = await supabase
+    .from('kyc_submissions')
+    .select('queue_position')
+    .eq('id', submissionId as string)
+    .maybeSingle();
+
+  return apiOk({ submissionId, queuePosition: (sub as any)?.queue_position ?? null }, { status: 201 });
 }

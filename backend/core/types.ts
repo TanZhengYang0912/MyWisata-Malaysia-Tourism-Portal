@@ -18,7 +18,7 @@ export interface User {
   avatarInitial: string;
   city?: string;
   phone?: string;
-  verificationTier: "guest" | "registered" | "phone_verified" | "profile_complete" | "kyc_submitted" | "kyc_verified";
+  verificationTier: "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -174,10 +174,13 @@ export interface Booking {
 }
 
 export interface KycSubmission {
+  id?: string;
   userId: string;
   icNumber: string;
   docType: string;
   documentUrl: string;
+  status?: "pending" | "info_requested" | "approved" | "rejected";
+  queuePosition?: number;
   submittedAt: string;
   reviewedAt?: string;
   reviewedBy?: string;

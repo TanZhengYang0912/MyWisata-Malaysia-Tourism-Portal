@@ -6,6 +6,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { affiliateUrl, getAffiliateLink, getOrCreateAffiliateLink } from '@/lib/affiliate/links';
+import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -26,15 +27,12 @@ export async function POST(request: Request) {
 
   const { data: profile, error: profileErr } = await supabase
     .from('users')
-    .select('kyc_status')
+    .select('tier')
     .eq('id', user.id)
     .single();
   if (profileErr || !profile) return apiFail('NOT_FOUND', 'User profile not found', 404);
-  // 'kyc_verified', not 'approved' — the live kyc_status vocabulary doesn't
-  // match supabase/migrations/001_initial_schema.sql's CHECK constraint.
-  // See lib/affiliate/verification.ts.
-  if (profile.kyc_status !== 'kyc_verified') {
-    return apiFail('FORBIDDEN', 'Verify your account (KYC verified) before generating an affiliate link', 403);
+  if (!meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_FULL)) {
+    return apiFail('TIER_INSUFFICIENT', 'KYC verification required to generate an affiliate link', 403);
   }
 
   let result: Awaited<ReturnType<typeof getOrCreateAffiliateLink>>;

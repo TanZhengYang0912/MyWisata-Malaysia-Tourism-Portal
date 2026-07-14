@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
+import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 
 const recSubmitSchema = z.object({
   vendorName:    z.string().trim().min(3).max(255),
@@ -14,6 +15,16 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  // Tier gate: profile_complete required to submit recommendations (ADR-028)
+  const { data: profile } = await supabase
+    .from('users')
+    .select('tier')
+    .eq('id', user.id)
+    .single();
+  if (!profile || !meetsMinTier(profile.tier, REQUIRED_TIER.RECOMMENDATION)) {
+    return apiFail('TIER_INSUFFICIENT', 'Profile completion required to submit recommendations', 403);
+  }
 
   const parsed = await parseBody(request, recSubmitSchema);
   if (!parsed.ok) return parsed.response;
