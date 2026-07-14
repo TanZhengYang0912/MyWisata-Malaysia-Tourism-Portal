@@ -57,10 +57,27 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('vendor_recommendations')
-    .select('id, vendor_name, status, state, categories(name), created_at')
+    .select('id, vendor_name, status, state, recommender_id, categories(name), created_at')
     .eq('recommender_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk(data ?? []);
+  const rows = data ?? [];
+  const authorIds = [...new Set(rows.map((row) => row.recommender_id))];
+  const { data: authors, error: authorError } = authorIds.length > 0
+    ? await supabase
+      .from('public_users')
+      .select('id,full_name,display_name,avatar_url,city,country,is_kyc_verified')
+      .in('id', authorIds)
+    : { data: [], error: null };
+  if (authorError) return apiFail('DB_ERROR', authorError.message, 500);
+  const authorById = new Map((authors ?? []).map((author) => [author.id, {
+    id: author.id,
+    name: author.display_name?.trim() || author.full_name?.trim() || 'MyWisata member',
+    avatarUrl: author.avatar_url ?? null,
+    city: author.city ?? null,
+    country: author.country ?? null,
+    isKycVerified: Boolean(author.is_kyc_verified),
+  }]));
+  return apiOk(rows.map((row) => ({ ...row, author: authorById.get(row.recommender_id) ?? null })));
 }

@@ -1,6 +1,6 @@
 // Owner: Member 1 (Platform/Identity/Chat)
 import { supabase } from "@/backend/supabase";
-import type { AdminKycSubmission, ChatMessage, ChatThread, Role, SupportTicket, User } from "@/backend/core/types";
+import type { AdminKycSubmission, ChatMessage, ChatThread, PublicUser, Role, SupportTicket, User } from "@/backend/core/types";
 import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
 
 type UserRow = {
@@ -14,6 +14,40 @@ type UserRow = {
 };
 
 const USER_SELECT = "id,email,full_name,city,phone,tier,user_roles(vendor_id,outlet_id,roles(name))";
+
+// Explicit allow-list for public identity data. Never replace this with a
+// users.* query: the public_users view is the column-level KYC boundary.
+const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,is_kyc_verified,created_at";
+
+type PublicUserRow = {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  country: string | null;
+  is_kyc_verified: boolean;
+  created_at: string;
+};
+
+function mapPublicUser(row: PublicUserRow): PublicUser {
+  return {
+    id: row.id,
+    name: row.display_name?.trim() || row.full_name?.trim() || "MyWisata member",
+    avatarUrl: row.avatar_url ?? undefined,
+    city: row.city ?? undefined,
+    country: row.country ?? undefined,
+    isKycVerified: Boolean(row.is_kyc_verified),
+  };
+}
+
+/** Fetches only active, public-safe identity fields for contributor cards. */
+export async function getPublicUsers(ids: string[]): Promise<PublicUser[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("public_users").select(PUBLIC_USER_SELECT).in("id", ids);
+  if (error) throw error;
+  return (data as unknown as PublicUserRow[]).map(mapPublicUser);
+}
 
 function mapUser(row: UserRow): User {
   const ur = row.user_roles[0];

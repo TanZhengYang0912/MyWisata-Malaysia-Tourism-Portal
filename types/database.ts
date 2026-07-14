@@ -51,6 +51,10 @@ export interface Database {
       payout_destinations: { Row: PayoutDestinationRow; Insert: Partial<PayoutDestinationRow>; Update: Partial<PayoutDestinationRow> };
       wallet_transactions: { Row: WalletTransactionRow; Insert: Partial<WalletTransactionRow>; Update: Partial<WalletTransactionRow> };
     };
+    /** Column-isolated records for user information rendered to other users. */
+    Views: {
+      public_users: { Row: PublicUserRow };
+    };
   };
 }
 
@@ -528,6 +532,23 @@ export interface KycSubmissionRow {
   legacy_single_document: boolean;
   evidence_retention_started_at: string | null;
   reviewed_at: string | null;
+  created_at: string;
+}
+
+/**
+ * Public user DTO. This is intentionally separate from UserRow: callers that
+ * render another person's profile must use the public_users view and cannot
+ * accidentally select KYC state, tiers, contact details, or evidence fields.
+ */
+export interface PublicUserRow {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  country: string;
+  is_kyc_verified: boolean;
+  has_completed_profile: boolean;
   created_at: string;
 }
 

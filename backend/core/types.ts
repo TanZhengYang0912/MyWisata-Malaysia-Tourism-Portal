@@ -186,6 +186,16 @@ export interface CustomerKycSubmission {
   reviewReasonDetail: string | null;
 }
 
+/** Safe identity fields for displaying another user on a public surface. */
+export interface PublicUser {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  city?: string;
+  country?: string;
+  isKycVerified: boolean;
+}
+
 export interface AdminKycSubmission {
   id: string;
   userId: string;
@@ -259,6 +269,8 @@ export interface VendorRecommendation {
   status: "pending" | "approved" | "rejected";
   qualityScore: number;
   duplicate: boolean;
+  /** Present when the public author is still active and visible. */
+  author?: PublicUser;
 }
 
 export interface WithdrawalRequest {

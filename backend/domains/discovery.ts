@@ -1,6 +1,7 @@
 // Owner: Member 3 (Discovery/Recommendation/Growth)
 import { supabase } from "@/backend/supabase";
 import type { VendorRecommendation } from "@/backend/core/types";
+import { getPublicUsers } from "@/backend/domains/identity";
 
 type RecRow = {
   id: string;
@@ -13,7 +14,7 @@ type RecRow = {
 
 const REC_SELECT = "id,recommender_id,vendor_name,status,state,categories(name)";
 
-function mapRecommendation(row: RecRow): VendorRecommendation {
+function mapRecommendation(row: RecRow, authors: Map<string, VendorRecommendation["author"]> = new Map()): VendorRecommendation {
   return {
     id: row.id,
     submittedBy: row.recommender_id,
@@ -23,19 +24,26 @@ function mapRecommendation(row: RecRow): VendorRecommendation {
     status: row.status as VendorRecommendation["status"],
     qualityScore: 0,
     duplicate: false,
+    author: authors.get(row.recommender_id),
   };
 }
 
 export async function getVendorRecommendations(): Promise<VendorRecommendation[]> {
   const { data, error } = await supabase.from("vendor_recommendations").select(REC_SELECT);
   if (error) throw error;
-  return (data as unknown as RecRow[]).map(mapRecommendation);
+  const rows = data as unknown as RecRow[];
+  const authors = await getPublicUsers([...new Set(rows.map((row) => row.recommender_id))]);
+  const authorMap = new Map(authors.map((author) => [author.id, author]));
+  return rows.map((row) => mapRecommendation(row, authorMap));
 }
 
 export async function getMyRecommendations(userId: string): Promise<VendorRecommendation[]> {
   const { data, error } = await supabase.from("vendor_recommendations").select(REC_SELECT).eq("recommender_id", userId);
   if (error) throw error;
-  return (data as unknown as RecRow[]).map(mapRecommendation);
+  const rows = data as unknown as RecRow[];
+  const authors = await getPublicUsers([...new Set(rows.map((row) => row.recommender_id))]);
+  const authorMap = new Map(authors.map((author) => [author.id, author]));
+  return rows.map((row) => mapRecommendation(row, authorMap));
 }
 
 export async function submitRecommendation(userId: string, name: string, categoryId: string, state: string): Promise<VendorRecommendation> {
@@ -45,7 +53,8 @@ export async function submitRecommendation(userId: string, name: string, categor
     .select(REC_SELECT)
     .single();
   if (error) throw error;
-  return mapRecommendation(data as unknown as RecRow);
+  const authors = await getPublicUsers([userId]);
+  return mapRecommendation(data as unknown as RecRow, new Map(authors.map((author) => [author.id, author])));
 }
 
 export async function reviewRecommendation(id: string, status: "approved" | "rejected"): Promise<void> {
