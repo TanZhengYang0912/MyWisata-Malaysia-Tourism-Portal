@@ -6,41 +6,50 @@ export type ModerationResult =
   | { error: 'api_unavailable' };
 
 export async function moderateBio(text: string): Promise<ModerationResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GOOGLE_AI_KEY;
   if (!apiKey) {
-    // Fail-closed: no API key = treat as unavailable = block submission
     return { error: 'api_unavailable' };
   }
 
   let res: Response;
   try {
-    res = await fetch('https://api.openai.com/v1/moderations', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a content moderator for a Malaysia tourism platform. Analyze the bio text below and determine if it violates community guidelines (hate speech, explicit content, spam, harassment, or illegal activity). Respond with valid JSON only, no markdown. Format: {"flagged": boolean, "categories": string[]}\n\nBio: ${JSON.stringify(text)}`,
+            }],
+          }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
+        signal: AbortSignal.timeout(8000),
       },
-      body: JSON.stringify({ input: text }),
-      signal: AbortSignal.timeout(5000),
-    });
+    );
   } catch {
     return { error: 'api_unavailable' };
   }
 
-  if (!res.ok) return { error: 'api_unavailable' };
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    console.error('[moderation] Gemini error', res.status, JSON.stringify(errBody));
+    return { error: 'api_unavailable' };
+  }
 
-  const data = await res.json() as {
-    results: Array<{ flagged: boolean; categories: Record<string, boolean> }>;
-  };
-
-  const result = data.results?.[0];
-  if (!result) return { error: 'api_unavailable' };
-
-  if (!result.flagged) return { flagged: false };
-
-  const triggered = Object.entries(result.categories)
-    .filter(([, v]) => v)
-    .map(([k]) => k);
-
-  return { flagged: true, categories: triggered };
+  try {
+    const data = await res.json() as {
+      candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+    };
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const parsed = JSON.parse(raw) as { flagged: boolean; categories?: string[] };
+    if (parsed.flagged) {
+      return { flagged: true, categories: parsed.categories ?? ['policy_violation'] };
+    }
+    return { flagged: false };
+  } catch {
+    return { error: 'api_unavailable' };
+  }
 }
