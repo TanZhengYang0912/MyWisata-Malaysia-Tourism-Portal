@@ -50,6 +50,7 @@ export interface Outlet {
   lat: number;
   lng: number;
   hours: string;
+  phone?: string;
   verified: boolean;
   open: boolean;
   rating: number;
@@ -105,6 +106,7 @@ export interface Activity {
   lowStockThreshold?: number;
   aiTag?: string; // static label for now; AI scoring deferred
   hot?: boolean;
+  tags?: string[];
 }
 
 export interface ComputedActivity extends Activity {

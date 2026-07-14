@@ -21,7 +21,7 @@ const METHODS = [
 export default function CheckoutPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { items, totals } = useCart();
+  const { selectedItems, selectedKeys, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [method, setMethod] = useState("stripe_card");
@@ -38,15 +38,15 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
-    if (!sessionId || !currentUser || items.length === 0 || paying) return;
+    if (!sessionId || !currentUser || selectedItems.length === 0 || paying) return;
     setPaying(true);
-    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card").then((order) => router.push(`/customer/orders/${order.id}`)).catch(() => { setFailed(true); setPaying(false); });
-  }, [currentUser, items.length, paying, router, voucherCode]);
+    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]).then((order) => router.push(`/customer/orders/${order.id}`)).catch(() => { setFailed(true); setPaying(false); });
+  }, [currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
 
-  if (items.length === 0) {
-    return <EmptyState title="Nothing to check out" description="Your cart is empty." />;
+  if (selectedItems.length === 0) {
+    return <EmptyState title="Nothing to check out" description="Select at least one item in your cart to continue." />;
   }
 
   function handlePay(shouldSucceed: boolean) {
@@ -60,7 +60,7 @@ export default function CheckoutPage() {
         return;
       }
       try {
-        const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card");
+        const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card", [...selectedKeys]);
         router.push(`/customer/orders/${order.id}`);
       } catch (err) {
         console.error("Order creation failed:", err);

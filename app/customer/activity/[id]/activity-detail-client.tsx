@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, Bus, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Star, Users } from "lucide-react";
+import { Bike, Bus, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Phone, Star, Tag, Users } from "lucide-react";
 import { getOrCreateThread } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -21,6 +21,25 @@ const TRAVEL_MODES = [
   { id: "TRANSIT", urlParam: "transit", label: "Transit", icon: Bus },
 ] as const;
 type TravelModeId = (typeof TRAVEL_MODES)[number]["id"];
+
+type DetailChip = { label: string; value: string; icon: typeof Clock; href?: string };
+
+// Food & Dining gets real, category-relevant chips; every other category keeps
+// the original generic set until they get their own pass.
+function getDetailChips(activity: ComputedActivity): DetailChip[] {
+  if (activity.category !== "Food & Dining") {
+    return [
+      { label: "Duration", value: activity.duration, icon: Clock },
+      { label: "Group Size", value: "2–12 pax", icon: Users },
+      { label: "Language", value: "EN / BM", icon: Globe },
+    ];
+  }
+  const chips: DetailChip[] = [];
+  if (activity.outlet.hours) chips.push({ label: "Hours", value: activity.outlet.hours, icon: Clock });
+  if (activity.tags && activity.tags.length > 0) chips.push({ label: "Tags", value: activity.tags.join(" · "), icon: Tag });
+  if (activity.outlet.phone) chips.push({ label: "Contact", value: activity.outlet.phone, icon: Phone, href: `tel:${activity.outlet.phone}` });
+  return chips;
+}
 
 export function ActivityDetailClient({
   initialActivity,
@@ -45,8 +64,17 @@ export function ActivityDetailClient({
   const [mapsReady, setMapsReady] = useState(false);
   const [eta, setEta] = useState<{ durationText: string; distanceText: string } | null>(null);
   const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "denied" | "error">("idle");
+  const [view, setView] = useState<"details" | "map">("details");
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
+  const selectedSlot = slots.find((s) => s.id === slotId);
+  const seatsLeft = selectedSlot ? selectedSlot.capacity - selectedSlot.booked : undefined;
+
+  // A slot switch can leave qty above the new slot's remaining seats — clamp down.
+  useEffect(() => {
+    if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotId]);
 
   // Retries the ETA calc once the Maps script finishes loading, covering the
   // race where the user picks a travel mode before google.maps is ready.
@@ -167,147 +195,181 @@ export function ActivityDetailClient({
         </div>
       </div>
 
-      {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
-
-      <p className="text-sm leading-relaxed mb-6 text-foreground/80">{activity.description}</p>
-
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Duration", value: activity.duration, icon: <Clock size={15} /> },
-          { label: "Group Size", value: "2–12 pax", icon: <Users size={15} /> },
-          { label: "Language", value: "EN / BM", icon: <Globe size={15} /> },
-        ].map((d) => (
-          <div key={d.label} className="rounded-xl p-3 text-center bg-muted">
-            <div className="flex justify-center mb-1 text-teal">{d.icon}</div>
-            <p className="text-[10px] uppercase tracking-wide mb-0.5 text-muted-foreground">{d.label}</p>
-            <p className="text-sm font-bold text-foreground">{d.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Booking selection */}
-      <div className="rounded-xl p-4 mb-6 border border-border">
-        <p className="text-xs font-bold uppercase tracking-wider mb-3 text-primary">
-          {activity.requiresBooking ? "Select Date & Package" : "Choose Options"}
-        </p>
-
-        {activity.variants.length > 1 && (
-          <div className="mb-3">
-            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Package</label>
-            <div className="flex gap-2 flex-wrap">
-              {activity.variants.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => setVariantId(v.id)}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold border"
-                  style={{
-                    borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
-                    backgroundColor: variantId === v.id ? "var(--primary)" : "transparent",
-                    color: variantId === v.id ? "white" : "var(--foreground)",
-                  }}
-                >
-                  {v.label} {v.priceDelta !== 0 && `(${v.priceDelta > 0 ? "+" : ""}RM ${v.priceDelta})`}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activity.requiresBooking && (
-          <div className="mb-3">
-            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Time Slot</label>
-            {slots.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No slots available yet.</p>
-            ) : (
-              <div className="flex gap-2 flex-wrap">
-                {slots.map((s) => {
-                  const full = s.booked >= s.capacity;
-                  return (
-                    <button
-                      key={s.id}
-                      disabled={full}
-                      onClick={() => setSlotId(s.id)}
-                      className="px-3 py-2 rounded-lg text-xs font-semibold border disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{
-                        borderColor: slotId === s.id ? "var(--primary)" : "var(--border)",
-                        backgroundColor: slotId === s.id ? "var(--primary)" : "transparent",
-                        color: slotId === s.id ? "white" : "var(--foreground)",
-                      }}
-                    >
-                      {new Date(s.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                      {full ? " · Full" : ` · ${s.capacity - s.booked} left`}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
-            <span className="w-6 text-center text-sm font-semibold text-foreground">{qty}</span>
-            <button onClick={() => setQty((q) => q + 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">+</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span className="text-xs font-semibold text-muted-foreground mr-1">Directions:</span>
-        {TRAVEL_MODES.map((m) => (
+      <div className="flex items-center gap-1 p-1 rounded-full border border-border w-fit mb-6">
+        {(["details", "map"] as const).map((v) => (
           <button
-            key={m.id}
-            onClick={() => handleTravelModeChange(m.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
-            style={{
-              borderColor: travelMode === m.id ? "var(--primary)" : "var(--border)",
-              backgroundColor: travelMode === m.id ? "var(--primary)" : "transparent",
-              color: travelMode === m.id ? "white" : "var(--foreground)",
-            }}
+            key={v}
+            onClick={() => setView(v)}
+            className="px-4 py-1.5 rounded-full text-xs font-semibold capitalize"
+            style={{ backgroundColor: view === v ? "var(--primary)" : "transparent", color: view === v ? "white" : "var(--foreground)" }}
           >
-            <m.icon size={13} /> {m.label}
+            {v}
           </button>
         ))}
-        <span className="text-xs text-muted-foreground ml-1">
-          {etaStatus === "loading" && "Calculating…"}
-          {etaStatus === "denied" && "Enable location for ETA"}
-          {etaStatus === "error" && "ETA unavailable"}
-          {etaStatus === "idle" && eta && `${eta.durationText} · ${eta.distanceText}`}
-        </span>
       </div>
 
-      <div className="flex gap-3 mb-8 flex-wrap">
-        <Button
-          onClick={handleAddToCart}
-          disabled={adding || (activity.requiresBooking && !slotId)}
-          className="flex-1 min-w-[140px] h-12 rounded-full text-base"
-        >
-          {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
-        </Button>
-        <Button variant="outline" size="icon" className="w-12 h-12 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
-          <MessageCircle size={18} />
-        </Button>
-        <Button variant="outline" size="icon" className="w-12 h-12 rounded-full border-2" onClick={handleDirections} title="Get directions">
-          <Navigation size={18} />
-        </Button>
-        <ShareButton productId={activity.id} productName={activity.name} />
-      </div>
-      {activity.requiresBooking && !slotId && (
-        <p className="text-xs text-destructive -mt-6 mb-6">Select a time slot to continue.</p>
+      {view === "details" && (
+        <>
+          {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
+
+          <p className="text-sm leading-relaxed mb-6 text-foreground/80">{activity.description}</p>
+
+          {getDetailChips(activity).length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {getDetailChips(activity).map((d) => {
+                const content = (
+                  <>
+                    <div className="flex justify-center mb-1 text-teal"><d.icon size={15} /></div>
+                    <p className="text-[10px] uppercase tracking-wide mb-0.5 text-muted-foreground">{d.label}</p>
+                    <p className="text-sm font-bold text-foreground truncate">{d.value}</p>
+                  </>
+                );
+                return d.href ? (
+                  <a key={d.label} href={d.href} className="rounded-xl p-3 text-center bg-muted block">{content}</a>
+                ) : (
+                  <div key={d.label} className="rounded-xl p-3 text-center bg-muted">{content}</div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Booking selection */}
+          <div className="rounded-xl p-4 mb-6 border border-border">
+            <p className="text-xs font-bold uppercase tracking-wider mb-3 text-primary">
+              {activity.requiresBooking ? "Select Date & Package" : "Choose Options"}
+            </p>
+
+            {activity.variants.length > 1 && (
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Package</label>
+                <div className="flex gap-2 flex-wrap">
+                  {activity.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setVariantId(v.id)}
+                      className="px-3 py-2 rounded-lg text-xs font-semibold border"
+                      style={{
+                        borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
+                        backgroundColor: variantId === v.id ? "var(--primary)" : "transparent",
+                        color: variantId === v.id ? "white" : "var(--foreground)",
+                      }}
+                    >
+                      {v.label} {v.priceDelta !== 0 && `(${v.priceDelta > 0 ? "+" : ""}RM ${v.priceDelta})`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activity.requiresBooking && (
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Time Slot</label>
+                {slots.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No slots available yet.</p>
+                ) : (
+                  <div className="flex gap-2 flex-wrap">
+                    {slots.map((s) => {
+                      const full = s.booked >= s.capacity;
+                      return (
+                        <button
+                          key={s.id}
+                          disabled={full}
+                          onClick={() => setSlotId(s.id)}
+                          className="px-3 py-2 rounded-lg text-xs font-semibold border disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            borderColor: slotId === s.id ? "var(--primary)" : "var(--border)",
+                            backgroundColor: slotId === s.id ? "var(--primary)" : "transparent",
+                            color: slotId === s.id ? "white" : "var(--foreground)",
+                          }}
+                        >
+                          {new Date(s.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          {full ? " · Full" : ` · ${s.capacity - s.booked} left`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
+                <span className="w-6 text-center text-sm font-semibold text-foreground">{qty}</span>
+                <button
+                  onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                  disabled={seatsLeft !== undefined && qty >= seatsLeft}
+                  className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+              {seatsLeft !== undefined && <span className="text-xs text-muted-foreground">{seatsLeft} seats left</span>}
+            </div>
+          </div>
+
+          <div className="flex gap-3 mb-8 flex-wrap">
+            <Button
+              onClick={handleAddToCart}
+              disabled={adding || (activity.requiresBooking && !slotId)}
+              className="flex-1 min-w-[140px] h-12 rounded-full text-base"
+            >
+              {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
+            </Button>
+            <Button variant="outline" size="icon" className="w-12 h-12 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
+              <MessageCircle size={18} />
+            </Button>
+            <ShareButton productId={activity.id} productName={activity.name} />
+          </div>
+          {activity.requiresBooking && !slotId && (
+            <p className="text-xs text-destructive -mt-6 mb-6">Select a time slot to continue.</p>
+          )}
+        </>
       )}
 
-      <div>
-        <p className="text-sm font-bold text-foreground mb-2">Location</p>
-        <MapView
-          pins={[{ id: activity.outlet.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.outlet.name, sublabel: activity.outlet.address }]}
-          center={[activity.outlet.lat, activity.outlet.lng]}
-          zoom={14}
-          height={260}
-          onApiLoaded={() => setMapsReady(true)}
-        />
-      </div>
+      {view === "map" && (
+        <>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="text-xs font-semibold text-muted-foreground mr-1">Directions:</span>
+            {TRAVEL_MODES.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => handleTravelModeChange(m.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                style={{
+                  borderColor: travelMode === m.id ? "var(--primary)" : "var(--border)",
+                  backgroundColor: travelMode === m.id ? "var(--primary)" : "transparent",
+                  color: travelMode === m.id ? "white" : "var(--foreground)",
+                }}
+              >
+                <m.icon size={13} /> {m.label}
+              </button>
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">
+              {etaStatus === "loading" && "Calculating…"}
+              {etaStatus === "denied" && "Enable location for ETA"}
+              {etaStatus === "error" && "ETA unavailable"}
+              {etaStatus === "idle" && eta && `${eta.durationText} · ${eta.distanceText}`}
+            </span>
+          </div>
+
+          <Button variant="outline" onClick={handleDirections} className="mb-4 rounded-full">
+            <Navigation size={16} className="mr-1.5" /> Get Directions
+          </Button>
+
+          <div>
+            <p className="text-sm font-bold text-foreground mb-2">Location</p>
+            <MapView
+              pins={[{ id: activity.outlet.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.outlet.name, sublabel: activity.outlet.address }]}
+              center={[activity.outlet.lat, activity.outlet.lng]}
+              zoom={14}
+              height={420}
+              onApiLoaded={() => setMapsReady(true)}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

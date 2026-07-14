@@ -6,6 +6,10 @@ import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
 import type { Booking, CartItem, Order, OrderItem, WithdrawalRequest } from "@/backend/core/types";
 
+function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId">): string {
+  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}`;
+}
+
 // ─── Supabase cart ──────────────────────────────────────────────────────────
 type CartItemRow = {
   id: string;
@@ -80,6 +84,16 @@ export async function removeFromCart(userId: string, index: number): Promise<Car
 export async function clearCart(userId: string): Promise<void> {
   const cart = await getOrCreateCart(userId);
   const { error } = await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+  if (error) throw error;
+}
+
+/** Removes only the cart rows matching the given item keys, leaving the rest. */
+export async function clearCartItems(userId: string, keys: string[]): Promise<void> {
+  const rows = await getCartRows(userId);
+  const keySet = new Set(keys);
+  const idsToDelete = rows.filter((row) => keySet.has(cartItemKey(mapCartItem(row)))).map((row) => row.id);
+  if (idsToDelete.length === 0) return;
+  const { error } = await supabase.from("cart_items").delete().in("id", idsToDelete);
   if (error) throw error;
 }
 
@@ -203,10 +217,12 @@ export async function getBookingsForUser(userId: string): Promise<Booking[]> {
   return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
 }
 
-/** Checkout: creates a PAID order from the current cart, snapshots items,
- * generates bookings for requiresBooking activities, and clears the cart. */
-export async function createOrder(userId: string, voucherCode?: string, paymentMethod: PaymentMethod = "mock_card"): Promise<Order> {
-  const cart = await getCart(userId);
+/** Checkout: creates a PAID order from the current cart (or, if `selectedKeys` is
+ * given, only the matching subset), snapshots items, generates bookings for
+ * requiresBooking activities, and clears just those cart rows. */
+export async function createOrder(userId: string, voucherCode?: string, paymentMethod: PaymentMethod = "mock_card", selectedKeys?: string[]): Promise<Order> {
+  const fullCart = await getCart(userId);
+  const cart = selectedKeys ? fullCart.filter((item) => selectedKeys.includes(cartItemKey(item))) : fullCart;
   const activities = await getActivities();
   const voucher = voucherCode ? await getVoucherByCode(voucherCode) : undefined;
   const totals = cartTotals(cart, activities, voucher);
@@ -287,7 +303,8 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
     if (redemptionError || redeemed !== true) throw new Error("This voucher is no longer available.");
   }
 
-  await clearCart(userId);
+  if (selectedKeys) await clearCartItems(userId, selectedKeys);
+  else await clearCart(userId);
   emit("order.paid", { orderId: orderRow.id, userId, total: totals.total });
 
   return {

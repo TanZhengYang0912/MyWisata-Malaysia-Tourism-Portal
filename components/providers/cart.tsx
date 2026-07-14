@@ -8,9 +8,17 @@ import { useAuth } from "@/components/providers/auth";
 import { supabase } from "@/backend/supabase";
 import type { Activity, CartItem, Voucher } from "@/backend/core/types";
 
+export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId">): string {
+  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}`;
+}
+
 interface CartContextValue {
   items: CartItem[];
   count: number;
+  selectedKeys: Set<string>;
+  selectedItems: CartItem[];
+  toggleSelected: (key: string) => void;
+  setAllSelected: (selected: boolean) => void;
   addItem: (item: CartItem) => Promise<void>;
   updateQty: (index: number, qty: number) => Promise<void>;
   removeItem: (index: number) => Promise<void>;
@@ -24,6 +32,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -34,6 +43,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);
+
+  useEffect(() => {
+    const validKeys = new Set(items.map(cartItemKey));
+    setSelectedKeys((prev) => {
+      const next = new Set([...prev].filter((k) => validKeys.has(k)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [items]);
+
+  const toggleSelected = useCallback((key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const setAllSelected = useCallback((selected: boolean) => {
+    setSelectedKeys(selected ? new Set(items.map(cartItemKey)) : new Set());
+  }, [items]);
 
   useEffect(() => {
     const channel = supabase
@@ -66,15 +96,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }, [currentUser]);
 
+  const selectedItems = items.filter((item) => selectedKeys.has(cartItemKey(item)));
+
   const totals = useCallback(
-    (voucher?: Voucher) => cartTotals(items, activities, voucher),
-    [items, activities],
+    (voucher?: Voucher) => cartTotals(selectedItems, activities, voucher),
+    [selectedItems, activities],
   );
 
-  const count = mounted ? items.reduce((sum, i) => sum + i.qty, 0) : 0;
+  const count = mounted ? items.length : 0;
 
   return (
-    <CartContext.Provider value={{ items, count, addItem, updateQty, removeItem, clear, totals }}>
+    <CartContext.Provider
+      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, addItem, updateQty, removeItem, clear, totals }}
+    >
       {children}
     </CartContext.Provider>
   );
