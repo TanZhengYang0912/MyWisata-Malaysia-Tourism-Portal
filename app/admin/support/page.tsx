@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface AdminTicket {
   id: string;
@@ -78,6 +79,7 @@ const STATUS_LABEL: Record<string, string> = {
 function AdminSupportContent() {
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -179,13 +181,17 @@ function AdminSupportContent() {
     if (updatingId) return;
     setUpdatingId(id);
     try {
-      await fetch(`/api/admin/tickets/${id}`, {
+      const response = await fetch(`/api/admin/tickets/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not update ticket status."); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, status: status as AdminTicket["status"] } : t)) ?? null);
       if (detail?.id === id) setDetail((d) => (d ? { ...d, status: status as TicketDetail["status"] } : d));
+      showFeedback("success", `Ticket marked ${status.replace("_", " ")}.`);
+    } catch {
+      showFeedback("error", "Could not update ticket status. Please try again.");
     } finally {
       setUpdatingId(null);
     }
@@ -197,12 +203,16 @@ function AdminSupportContent() {
     if (updatingId) return;
     setUpdatingId(id);
     try {
-      await fetch(`/api/admin/tickets/${id}`, {
+      const response = await fetch(`/api/admin/tickets/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category }),
       });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not update ticket category."); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, category, classificationMethod: "manual" } : t)) ?? null);
+      showFeedback("success", "Ticket category updated.");
+    } catch {
+      showFeedback("error", "Could not update ticket category. Please try again.");
     } finally {
       setUpdatingId(null);
     }
@@ -218,11 +228,13 @@ function AdminSupportContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
-      if (res.ok) {
-        setReply("");
-        await loadDetail(openTicketId);
-        await loadTickets();
-      }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not send reply."); return; }
+      setReply("");
+      showFeedback("success", "Support reply sent.");
+      await loadDetail(openTicketId);
+      await loadTickets();
+    } catch {
+      showFeedback("error", "Could not send reply. Please try again.");
     } finally {
       setSending(false);
     }

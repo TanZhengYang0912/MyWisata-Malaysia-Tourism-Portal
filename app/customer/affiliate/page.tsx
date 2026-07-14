@@ -12,6 +12,7 @@ import { isKycApproved } from "@/lib/affiliate/verification";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 import type { AffiliateCommission, AffiliateDailyClicks, AffiliateFunnel, AffiliateProductStat } from "@/lib/affiliate/stats";
 import type { TierInfo } from "@/lib/affiliate/tier";
 
@@ -36,6 +37,7 @@ const PLATFORM_LABEL: Record<string, string> = {
 
 export default function AffiliateDashboardPage() {
   const { currentUser, loading: authLoading } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<StatsResponse | null | undefined>(undefined); // undefined = loading
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -85,7 +87,12 @@ export default function AffiliateDashboardPage() {
     if (generating) return;
     setGenerating(true);
     try {
-      await fetch("/api/affiliate/link", { method: "POST" });
+      const response = await fetch("/api/affiliate/link", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) { showFeedback("error", payload.error?.message ?? "Could not create affiliate link."); return; }
+      showFeedback("success", "Affiliate link is ready to share.");
+    } catch {
+      showFeedback("error", "Could not create affiliate link. Please try again.");
     } finally {
       setGenerating(false);
       loadStats();

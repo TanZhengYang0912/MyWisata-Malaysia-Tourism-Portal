@@ -7,6 +7,7 @@ import {
   ShieldCheck, Upload, Loader2, ChevronRight, CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 
 const STEPS = [
@@ -46,6 +47,7 @@ function initialStep(tier: string): number {
 
 export default function ProfilePage() {
   const { currentUser, refreshUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const router = useRouter();
 
   const tier = currentUser?.verificationTier ?? "email_verified";
@@ -105,6 +107,7 @@ export default function ProfilePage() {
         throw new Error((b as any)?.error?.message ?? "Failed to send OTP");
       }
       setPhonePhase("verify");
+      showFeedback("success", "Verification code sent.");
     } catch (err) {
       setPhoneError(err instanceof Error ? err.message : "Failed to send OTP");
     } finally {
@@ -128,6 +131,7 @@ export default function ProfilePage() {
       }
       await refreshUser();
       setStep(1);
+      showFeedback("success", "Phone number verified.");
     } catch (err) {
       setPhoneError(err instanceof Error ? err.message : "Invalid OTP");
     } finally {
@@ -153,6 +157,7 @@ export default function ProfilePage() {
       }
       await refreshUser();
       setStep(2);
+      showFeedback("success", "Identity details saved.");
     } catch (err) {
       setIdentityError(err instanceof Error ? err.message : "Failed to save identity");
     } finally {
@@ -202,6 +207,7 @@ export default function ProfilePage() {
       }
       await refreshUser();
       setStep(3);
+      showFeedback("success", "Profile photo updated.");
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -225,6 +231,7 @@ export default function ProfilePage() {
         throw new Error((b as any)?.error?.message ?? "Failed to save bio");
       }
       setStep(4);
+      showFeedback("success", "Bio saved.");
     } catch (err) {
       setBioError(err instanceof Error ? err.message : "Failed to save bio");
     } finally {
@@ -249,6 +256,7 @@ export default function ProfilePage() {
       }
       await refreshUser();
       setStep(-1);
+      showFeedback("success", "Travel preferences saved.");
     } catch (err) {
       setSurveyError(err instanceof Error ? err.message : "Failed to submit survey");
     } finally {

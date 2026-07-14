@@ -8,6 +8,7 @@ import { outletCreateSchema, type OutletCreate } from '@/lib/validation/vendor-s
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import AddressAutocomplete, { type AddressSelection } from '@/components/vendor/address-autocomplete';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Props {
   vendorId: string;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function OutletForm({ vendorId, initialData, onSuccess, onClose }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<OutletCreate>({
@@ -52,11 +54,14 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
       const result = await res.json();
       if (!res.ok) {
         setServerError(result.error?.message ?? 'Failed to save outlet');
+        showFeedback('error', result.error?.message ?? 'Failed to save outlet');
         return;
       }
+      showFeedback('success', initialData?.id ? 'Outlet updated successfully.' : 'Outlet created successfully.');
       onSuccess?.();
     } catch {
       setServerError('Network error. Please try again.');
+      showFeedback('error', 'Outlet could not be saved. Please try again.');
     }
   }
 

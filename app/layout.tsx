@@ -3,6 +3,7 @@ import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth";
 import { CartProvider } from "@/components/providers/cart";
+import { ActionFeedbackProvider } from "@/components/providers/action-feedback";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"] });
@@ -21,9 +22,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${fraunces.variable} ${plusJakartaSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          <CartProvider>{children}</CartProvider>
-        </AuthProvider>
+        <ActionFeedbackProvider>
+          <AuthProvider>
+            <CartProvider>{children}</CartProvider>
+          </AuthProvider>
+        </ActionFeedbackProvider>
       </body>
     </html>
   );

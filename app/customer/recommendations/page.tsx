@@ -8,9 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { VendorRecommendation } from "@/backend/core/types";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 export default function RecommendationsPage() {
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -84,8 +86,11 @@ export default function RecommendationsPage() {
       setRecs((prev) => [newRec, ...(prev ?? [])]);
       setShowForm(false);
       setForm({ name: "", description: "", category: "", state: "Kuala Lumpur" });
+      showFeedback("success", "Vendor recommendation submitted for review.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit.");
+      const message = err instanceof Error ? err.message : "Failed to submit.";
+      setError(message);
+      showFeedback("error", message);
     } finally {
       setSubmitting(false);
     }

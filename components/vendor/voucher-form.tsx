@@ -8,6 +8,7 @@ import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Props {
   vendorId: string;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
@@ -41,8 +43,11 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Could not generate a unique code.');
       setValue('code', payload.data.code, { shouldDirty: true, shouldValidate: true });
+      showFeedback('success', 'Unique voucher code generated.');
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'Could not generate a unique code.');
+      const message = error instanceof Error ? error.message : 'Could not generate a unique code.';
+      setServerError(message);
+      showFeedback('error', message);
     } finally {
       setGeneratingCode(false);
     }
@@ -65,11 +70,14 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
       const result = await res.json();
       if (!res.ok) {
         setServerError(result.error?.message ?? 'Failed to save voucher');
+        showFeedback('error', result.error?.message ?? 'Failed to save voucher');
         return;
       }
+      showFeedback('success', 'Voucher created and submitted for review.');
       onSuccess?.();
     } catch {
       setServerError('Network error. Please try again.');
+      showFeedback('error', 'Voucher could not be saved. Please try again.');
     }
   }
 

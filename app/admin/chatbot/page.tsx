@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Bot, MessageSquareText, Plus, RefreshCw, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface ChatbotStats {
   totalQuestions: number;
@@ -40,6 +41,7 @@ interface KbFormState {
 const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "", isActive: true };
 
 export default function AdminChatbotPage() {
+  const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
   const [reindexing, setReindexing] = useState(false);
@@ -142,21 +144,23 @@ export default function AdminChatbotPage() {
         return;
       }
       setEditingId(null);
+      showFeedback("success", editingId === "new" ? "Knowledge document created." : "Knowledge document updated.");
       await loadDocs();
     } catch {
       setFormError("Failed to save.");
+      showFeedback("error", "Knowledge document could not be saved. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
   async function toggleActive(doc: KbDoc) {
-    await fetch(`/api/admin/chatbot/kb/${doc.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !doc.isActive }),
-    });
-    await loadDocs();
+    try {
+      const response = await fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !doc.isActive }) });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not update document status."); return; }
+      showFeedback("success", doc.isActive ? "Knowledge document deactivated." : "Knowledge document activated.");
+      await loadDocs();
+    } catch { showFeedback("error", "Could not update document status. Please try again."); }
   }
 
   const sortedDocs = useMemo(() => {

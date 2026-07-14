@@ -10,6 +10,8 @@ import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Booking, Outlet } from "@/backend/core/types";
+import { activityHref } from "@/lib/customer/activity-navigation";
+import { getBookingViewCopy, getBookingViewStats, type BookingViewScope } from "@/lib/customer/booking-view";
 
 type BookingScope = "upcoming" | "past" | "all";
 
@@ -22,13 +24,13 @@ function dateLabel(value?: string) { return value ? new Date(value).toLocaleDate
 function statusLabel(status: Booking["status"]) { return status === "checked_in" ? "Checked in" : status === "no_show" ? "No-show" : status.charAt(0).toUpperCase() + status.slice(1); }
 function statusClass(status: Booking["status"]) { return status === "cancelled" || status === "no_show" ? "bg-red-50 text-red-700" : status === "checked_in" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"; }
 
-export default function CustomerCalendarPage() {
+export default function CustomerCalendarPage({ initialScope = "upcoming" }: { initialScope?: BookingScope } = {}) {
   const { currentUser } = useAuth();
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [monthStart, setMonthStart] = useState<Date | null>(null);
   const [now, setNow] = useState<number | null>(null);
-  const [scope, setScope] = useState<BookingScope>("upcoming");
+  const [scope, setScope] = useState<BookingScope>(initialScope);
   const [outletId, setOutletId] = useState("all");
   const [activityId, setActivityId] = useState("all");
   const [query, setQuery] = useState("");
@@ -95,10 +97,13 @@ export default function CustomerCalendarPage() {
   }, [monthStart]);
 
   const stats = useMemo(() => {
-    const currentTime = now ?? 0;
-    return { total: filteredBookings.length, upcoming: filteredBookings.filter((booking) => booking.slotStartsAt && new Date(booking.slotStartsAt).getTime() >= currentTime && booking.status !== "cancelled").length, month: monthStart ? filteredBookings.filter((booking) => booking.slotStartsAt && new Date(booking.slotStartsAt).getMonth() === monthStart.getMonth() && new Date(booking.slotStartsAt).getFullYear() === monthStart.getFullYear()).length : 0 };
-  }, [filteredBookings, monthStart, now]);
+    if (!monthStart) return [];
+    const viewScope: BookingViewScope = scope;
+    return getBookingViewStats(filteredBookings, viewScope, now ?? 0, monthStart);
+  }, [filteredBookings, monthStart, now, scope]);
 
+  const viewScope: BookingViewScope = scope;
+  const viewCopy = getBookingViewCopy(viewScope);
   const hasFilters = Boolean(scope !== "upcoming" || outletId !== "all" || activityId !== "all" || query || from || to);
   function clearFilters() { setScope("upcoming"); setOutletId("all"); setActivityId("all"); setQuery(""); setFrom(""); setTo(""); }
   function goToToday() { setMonthStart(startOfMonth(new Date())); }
@@ -108,9 +113,9 @@ export default function CustomerCalendarPage() {
   return (
     <div className="min-h-full bg-[#f7faf7]">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-        <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700"><CalendarDays size={14} /> Your itinerary</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[#17372e] sm:text-4xl">Booking calendar</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">See the moments you have planned, from the next massage to your next island day.</p></div><div className="flex items-center gap-2"><Button variant="outline" onClick={goToToday} className="rounded-full border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50">Today</Button><Link href="/customer/explore"><Button className="rounded-full bg-emerald-700 hover:bg-emerald-800">Find an experience</Button></Link></div></header>
+        <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700"><CalendarDays size={14} /> {viewCopy.eyebrow}</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[#17372e] sm:text-4xl">{viewCopy.title}</h1><p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{viewCopy.description}</p></div><div className="flex flex-wrap items-center gap-2"><Link href={activityHref("itinerary", scope === "upcoming")}><Button variant="outline" className="rounded-full border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50">{viewCopy.historyAction}</Button></Link><Button variant="outline" onClick={goToToday} className="rounded-full border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50">Today</Button><Link href="/customer/explore"><Button className="rounded-full bg-emerald-700 hover:bg-emerald-800">Find an experience</Button></Link></div></header>
 
-        <section className="mt-7 grid gap-3 sm:grid-cols-3">{[{ label: "Shown bookings", value: stats.total }, { label: "Upcoming", value: stats.upcoming }, { label: "This month", value: stats.month }].map((item) => <div key={item.label} className="rounded-2xl border border-emerald-100 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,93,74,0.05)]"><p className="text-xs font-semibold text-slate-500">{item.label}</p><p className="mt-2 font-[family-name:var(--font-mono)] text-2xl font-bold text-[#17372e]">{item.value}</p></div>)}</section>
+        <section className="mt-7 grid gap-3 sm:grid-cols-3">{stats.map((item) => <div key={item.label} className="rounded-2xl border border-emerald-100 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,93,74,0.05)]"><p className="text-xs font-semibold text-slate-500">{item.label}</p><p className="mt-2 font-[family-name:var(--font-mono)] text-2xl font-bold text-[#17372e]">{item.value}</p></div>)}</section>
 
         <section className="mt-7 rounded-2xl border border-emerald-100 bg-white p-4 shadow-[0_8px_24px_rgba(15,93,74,0.05)] sm:p-5"><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search activity, outlet or order ID" className="h-11 w-full rounded-xl border border-slate-200 bg-[#fbfdfb] pl-10 pr-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /></label><span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400"><Filter size={15} /> Filter</span></div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5"><select value={scope} onChange={(event) => setScope(event.target.value as BookingScope)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"><option value="upcoming">Upcoming</option><option value="past">Past</option><option value="all">All bookings</option></select><select value={outletId} onChange={(event) => setOutletId(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"><option value="all">All outlets</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><select value={activityId} onChange={(event) => setActivityId(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500"><option value="all">All activities</option>{activityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label="Bookings from date" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" /><input type="date" value={to} onChange={(event) => setTo(event.target.value)} aria-label="Bookings to date" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-emerald-500" /></div>{hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"><X size={13} /> Clear filters</button>}</section>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { UserRound, UserRoundPlus, UserRoundX } from 'lucide-react';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Manager { id: string; fullName: string; email: string }
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function OutletManagerPanel({ vendorId, outletId, manager, onChanged }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [eligibleManagers, setEligibleManagers] = useState<Manager[]>([]);
   const [selectedUserId, setSelectedUserId] = useState(manager?.id || '');
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, onChan
     const payload = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(payload.error?.message || 'Could not assign manager.'); return; }
-    setMessage('Manager assigned.'); onChanged();
+    setMessage('Manager assigned.'); showFeedback('success', 'Outlet manager assigned.'); onChanged();
   }
 
   async function remove() {
@@ -44,7 +46,7 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, onChan
     const payload = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(payload.error?.message || 'Could not remove manager.'); return; }
-    setSelectedUserId(''); setMessage('Manager removed.'); onChanged();
+    setSelectedUserId(''); setMessage('Manager removed.'); showFeedback('success', 'Outlet manager removed.'); onChanged();
   }
 
   return (

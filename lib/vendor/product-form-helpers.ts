@@ -1,4 +1,25 @@
+import type { ProductCreate } from '@/lib/validation/vendor-schemas';
+
 export const PRODUCT_TAG_LIMIT = 20;
+
+export function buildProductFormDefaults(initialData?: ProductCreate & { id?: string }) {
+  if (!initialData) {
+    return {
+      requiresBooking: false,
+      productType: 'product' as const,
+      tags: '',
+      submissionMode: 'review' as const,
+      lowStockThreshold: 5,
+    };
+  }
+
+  const { id: _id, outletId: _outletId, ...editableFields } = initialData;
+  return {
+    ...editableFields,
+    tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '',
+    submissionMode: 'review' as const,
+  };
+}
 
 export function normalizeProductTags(value: unknown): string[] {
   const values = Array.isArray(value) ? value : String(value ?? '').split(',');

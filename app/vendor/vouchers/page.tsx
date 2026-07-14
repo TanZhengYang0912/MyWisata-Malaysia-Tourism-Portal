@@ -7,6 +7,7 @@ import VoucherForm from '@/components/vendor/voucher-form';
 import { StatusBadge } from '@/components/ui/badge';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
 interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
@@ -19,6 +20,7 @@ function dateLabel(value: string | null) { return value ? new Date(value).toLoca
 
 export default function VendorVouchersPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
   const [vouchers, setVouchers] = useState<VoucherData[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<VoucherData | null>(null);
@@ -78,9 +80,12 @@ export default function VendorVouchersPage() {
 
   async function toggleActive(voucher: VoucherData) {
     if (!vendorId) return;
-    const response = await fetch(`/api/vendors/${vendorId}/vouchers/${voucher.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !voucher.is_active }) });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not update voucher'); return; }
-    setSelectedVoucher(null); loadVouchers(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/vouchers/${voucher.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !voucher.is_active }) });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not update voucher'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', voucher.is_active ? 'Voucher deactivated.' : 'Voucher activated.');
+      setSelectedVoucher(null); loadVouchers(pagination.page);
+    } catch { setError('Could not update voucher.'); showFeedback('error', 'Could not update voucher. Please try again.'); }
   }
 
   async function copyCode(code: string) { await navigator.clipboard?.writeText(code); }

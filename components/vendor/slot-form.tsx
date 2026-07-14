@@ -8,6 +8,7 @@ import { slotCreateSchema, type SlotCreate } from '@/lib/validation/vendor-schem
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Props {
   vendorId: string;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
@@ -58,11 +60,14 @@ export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
       const result = await res.json();
       if (!res.ok) {
         setServerError(result.error?.message ?? 'Failed to save slot');
+        showFeedback('error', result.error?.message ?? 'Failed to save slot');
         return;
       }
+      showFeedback('success', 'Booking slot created successfully.');
       onSuccess?.();
     } catch {
       setServerError('Network error. Please try again.');
+      showFeedback('error', 'Booking slot could not be saved. Please try again.');
     }
   }
 

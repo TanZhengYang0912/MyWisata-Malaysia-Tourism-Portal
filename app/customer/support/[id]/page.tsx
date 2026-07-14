@@ -11,6 +11,7 @@ import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface TicketDetail {
   id: string;
@@ -37,6 +38,7 @@ const LOCKED_STATUSES = new Set(["resolved", "closed"]);
 export default function CustomerTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
@@ -74,10 +76,12 @@ export default function CustomerTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
-      if (res.ok) {
-        setReply("");
-        await loadTicket();
-      }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not send reply."); return; }
+      setReply("");
+      showFeedback("success", "Reply sent.");
+      await loadTicket();
+    } catch {
+      showFeedback("error", "Could not send reply. Please try again.");
     } finally {
       setSending(false);
     }
@@ -88,7 +92,11 @@ export default function CustomerTicketDetailPage() {
     setReopening(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/reopen`, { method: "POST" });
-      if (res.ok) await loadTicket();
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not reopen ticket."); return; }
+      showFeedback("success", "Ticket reopened.");
+      await loadTicket();
+    } catch {
+      showFeedback("error", "Could not reopen ticket. Please try again.");
     } finally {
       setReopening(false);
     }

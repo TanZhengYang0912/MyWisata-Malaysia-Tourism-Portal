@@ -12,12 +12,14 @@ import BatchActionBar from '@/components/vendor/batch-action-bar';
 import OutletManagerPanel from '@/components/vendor/outlet-manager-panel';
 import OutletPageBuilder from '@/components/vendor/outlet-page-builder';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface OutletData { id: string; display_id?: string; name: string; slug: string; city: string | null; state: string | null; postcode?: string | null; country?: string | null; lat: number | null; lng: number | null; phone: string | null; email: string | null; status: string; review_status?: string; address: string | null; coverUrl?: string | null; productsCount: number; manager?: { id: string; fullName: string; email: string } | null; }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 
 export default function VendorOutletsPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [outlets, setOutlets] = useState<OutletData[]>([]);
   const [states, setStates] = useState<string[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
@@ -50,8 +52,12 @@ export default function VendorOutletsPage() {
 
   async function closeOutlet(outletId: string) {
     if (!vendorId || !confirm('Close this outlet? It will be hidden from customers.')) return;
-    await fetch(`/api/vendors/${vendorId}/outlets/${outletId}`, { method: 'DELETE' });
-    setSelectedOutlet(null); loadOutlets(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/outlets/${outletId}`, { method: 'DELETE' });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not close outlet'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', 'Outlet closed successfully.');
+      setSelectedOutlet(null); loadOutlets(pagination.page);
+    } catch { setError('Could not close outlet.'); showFeedback('error', 'Could not close outlet. Please try again.'); }
   }
 
   function clearFilters() { setFilters({ q: '', state: '', status: '' }); }

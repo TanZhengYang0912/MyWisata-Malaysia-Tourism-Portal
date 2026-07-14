@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gift, Globe, Inbox, Map, MessageCircle, Search, ShoppingCart, User as UserIcon, Calendar } from "lucide-react";
+import { Gift, Globe, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
@@ -15,8 +15,7 @@ const NAV = [
   { href: "/customer/map", label: "Map", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
   { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
-  { href: "/customer/orders", label: "Orders", icon: UserIcon },
-  { href: "/customer/calendar", label: "Calendar", icon: Calendar },
+  { href: "/customer/activity?tab=itinerary", label: "My Activity", icon: ReceiptText },
   { href: "/customer/affiliate", label: "Earn & Share", icon: Gift },
   { href: "/customer/support", label: "Support", icon: Inbox },
 ];

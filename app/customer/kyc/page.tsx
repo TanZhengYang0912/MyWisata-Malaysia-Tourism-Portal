@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -45,6 +46,7 @@ const TIER_STEPS = [
 
 export default function KycPage() {
   const { currentUser, refreshUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const supabase = useMemo(() => createClient(), []);
 
   const [submitting,        setSubmitting]        = useState(false);
@@ -132,8 +134,11 @@ export default function KycPage() {
       });
       setDocFile(null);
       setForm({ icNumber: "", docType: "national_id" });
+      showFeedback("success", "KYC documents submitted for review.");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Submission failed.");
+      const message = err instanceof Error ? err.message : "Submission failed.";
+      setSubmitError(message);
+      showFeedback("error", message);
     } finally {
       setSubmitting(false);
     }

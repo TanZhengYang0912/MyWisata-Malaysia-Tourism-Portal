@@ -230,10 +230,10 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     name: outletShortNames[outletId] || outletNames[outletId] || 'Unknown outlet', fullName: outletNames[outletId] || 'Unknown outlet', revenue: Math.round(revenue * 100) / 100, color: ['#0f766e', '#0e7490', '#b45309', '#be123c', '#7c3aed'][index % 5],
   }));
 
-  const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null }>();
+  const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName: string }>();
   for (const item of currentItems) {
     const key = item.product_id || item.product_name;
-    const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productById[key]?.cover_url || null };
+    const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productById[key]?.cover_url || null, outletName: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet' };
     product.quantity += number(item.quantity);
     if (isRevenueItem(item)) product.revenue += number(item.line_total);
     productMap.set(key, product);
@@ -252,7 +252,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     ratingMap.set(key, rating);
   }
   const topRated = [...ratingMap.entries()].sort(([, a], [, b]) => (b.total / b.count) - (a.total / a.count) || b.count - a.count).slice(0, 5).map(([productId, rating]) => ({
-    name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count,
+    name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count, outletName: outletShortNames[productById[productId]?.outlet_id || ''] || 'Unknown outlet',
   }));
 
   const recentOrderMap = new Map<string, RecentOrderDraft>();

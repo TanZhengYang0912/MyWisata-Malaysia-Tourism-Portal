@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface VariantData {
   id: string;
@@ -23,42 +24,38 @@ interface Props {
 }
 
 export default function VariantManager({ vendorId, productId, variants, onUpdate, requiresBooking }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPriceOffset, setNewPriceOffset] = useState('');
 
   async function handleAdd() {
     if (!newName) return;
-    await fetch(`/api/vendors/${vendorId}/products/${productId}/variants`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newName,
-        priceOffset: Number(newPriceOffset) || 0,
-        isDefault: variants.length === 0,
-      }),
-    });
-    setNewName('');
-    setNewPriceOffset('');
-    setAdding(false);
-    onUpdate();
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, priceOffset: Number(newPriceOffset) || 0, isDefault: variants.length === 0 }),
+      });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not add variant.'); return; }
+      setNewName(''); setNewPriceOffset(''); setAdding(false); showFeedback('success', 'Variant added successfully.'); onUpdate();
+    } catch { showFeedback('error', 'Could not add variant. Please try again.'); }
   }
 
   async function handleSetDefault(variantId: string) {
-    await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isDefault: true }),
-    });
-    onUpdate();
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDefault: true }) });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not set default variant.'); return; }
+      showFeedback('success', 'Default variant updated.'); onUpdate();
+    } catch { showFeedback('error', 'Could not set default variant. Please try again.'); }
   }
 
   async function handleDelete(variantId: string) {
     if (!confirm('Archive this variant?')) return;
-    await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, {
-      method: 'DELETE',
-    });
-    onUpdate();
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'DELETE' });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not archive variant.'); return; }
+      showFeedback('success', 'Variant archived.'); onUpdate();
+    } catch { showFeedback('error', 'Could not archive variant. Please try again.'); }
   }
 
   async function handleInventoryUpdate(variantId: string, currentQty: number) {
@@ -67,12 +64,11 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
     const qty = parseInt(newQty, 10);
     if (isNaN(qty) || qty < 0) return alert('Invalid quantity');
 
-    await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quantity: qty }),
-    });
-    onUpdate();
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: qty }) });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not update inventory.'); return; }
+      showFeedback('success', 'Inventory quantity updated.'); onUpdate();
+    } catch { showFeedback('error', 'Could not update inventory. Please try again.'); }
   }
 
   return (

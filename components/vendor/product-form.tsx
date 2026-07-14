@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { Check, ImagePlus, Sparkles, Trash2 } from 'lucide-react';
-import { normalizeProductTags, validateProductReviewReadiness } from '@/lib/vendor/product-form-helpers';
+import { buildProductFormDefaults, normalizeProductTags, validateProductReviewReadiness } from '@/lib/vendor/product-form-helpers';
 import ProductMediaUploader from '@/components/vendor/product-media-uploader';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Props {
   vendorId: string;
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function ProductForm({ vendorId, outletIds, initialData, onSuccess, onClose }: Props) {
+  const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string; city?: string | null; state?: string | null }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -37,9 +39,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   const { register, handleSubmit, getValues, setValue, watch, formState: { errors, isSubmitting } } = useForm<any>({
     resolver: zodResolver(formSchema) as any,
     shouldFocusError: true,
-    defaultValues: initialData
-      ? { ...initialData, tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '', submissionMode: 'review' }
-      : { requiresBooking: false, productType: 'product', tags: '', submissionMode: 'review', lowStockThreshold: 5 },
+    defaultValues: buildProductFormDefaults(initialData),
   });
   const productType = watch('productType');
   const tags = normalizeProductTags(watch('tags'));
@@ -54,9 +54,6 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     ]).then(([outletResult, categoryResult]) => {
       setOutlets(outletResult.data ?? []);
       setCategories(categoryResult.data ?? []);
-      if (initialData?.outletId) {
-        setValue('outletId', initialData.outletId, { shouldDirty: false, shouldTouch: false });
-      }
       if (initialData?.categoryId) {
         setValue('categoryId', initialData.categoryId, { shouldDirty: false, shouldTouch: false });
       }
@@ -105,7 +102,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     setServerError(firstError?.message || 'Please check the highlighted fields before saving.');
   }
 
-  async function onSubmit(data: any, intent: 'draft' | 'review' = data.submissionMode === 'draft' ? 'draft' : submitIntent) {
+  async function onSubmit(data: any, intent: 'draft' | 'review') {
     setServerError(null);
     const normalizedTags = normalizeProductTags(data.tags);
     const normalizedData = {
@@ -159,17 +156,26 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         const detail = result?.error?.details?.fieldErrors;
         const fieldMessage = detail && Object.values(detail).flat().find(Boolean);
         setServerError(String(fieldMessage || result?.error?.message || 'Failed to save product'));
+        showFeedback('error', String(fieldMessage || result?.error?.message || 'Failed to save product'));
         return;
       }
+      showFeedback('success', initialData?.id ? 'Product updated successfully.' : intent === 'draft' ? 'Product saved as draft.' : 'Product submitted for review.');
       onSuccess?.();
     } catch (error) {
       console.error('Product save failed', error);
       setServerError('Network error. Please try again.');
+      showFeedback('error', 'Product could not be saved. Please try again.');
     }
   }
 
+  function submitForm(intent: 'draft' | 'review') {
+    setSubmitIntent(intent);
+    setValue('submissionMode', intent, { shouldDirty: true, shouldValidate: true });
+    void handleSubmit((data) => onSubmit(data, intent), onInvalid)();
+  }
+
   return (
-    <form onSubmit={handleSubmit((data) => onSubmit(data, data.submissionMode === 'draft' ? 'draft' : submitIntent), onInvalid)} className="space-y-4">
+    <form onSubmit={(event) => { event.preventDefault(); submitForm('review'); }} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{initialData?.id ? 'Edit Product' : 'Add Product'}</h2>
         {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
@@ -295,11 +301,20 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Outlet *</label>
-            <select {...register('outletId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Select outlet...</option>
-              {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            {errors.outletId && <p className="text-red-500 text-xs mt-1">{(errors.outletId as any)?.message}</p>}
+            {initialData?.id ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                {outlets.find((outlet) => outlet.id === initialData.outletId)?.name || 'Loading outlet…'}
+                <p className="mt-1 text-xs text-gray-400">Outlet cannot be changed while editing.</p>
+              </div>
+            ) : (
+              <>
+                <select {...register('outletId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">Select outlet...</option>
+                  {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                {errors.outletId && <p className="text-red-500 text-xs mt-1">{(errors.outletId as any)?.message}</p>}
+              </>
+            )}
           </div>
           <div className="flex items-center pt-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
@@ -366,10 +381,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
         )}
-        <Button type="submit" variant="outline" disabled={isSubmitting} onClick={() => { setSubmitIntent('draft'); setValue('submissionMode', 'draft'); }}>
+        <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => submitForm('draft')}>
           {isSubmitting && submitIntent === 'draft' ? 'Saving draft...' : 'Save Draft'}
         </Button>
-        <Button type="submit" disabled={isSubmitting} onClick={() => { setSubmitIntent('review'); setValue('submissionMode', 'review'); }}>
+        <Button type="button" disabled={isSubmitting} onClick={() => submitForm('review')}>
           {isSubmitting && submitIntent === 'review' ? 'Submitting...' : <><Check size={15} /> Submit for Review</>}
         </Button>
       </div>

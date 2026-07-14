@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import type { Order, Outlet } from "@/backend/core/types";
+import { activityHref } from "@/lib/customer/activity-navigation";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -100,18 +101,18 @@ export default function OrdersPage() {
   function clearFilters() { setQuery(""); setStatus("all"); setType("all"); setOutletId("all"); setFrom(""); setTo(""); }
   const hasFilters = Boolean(query || status !== "all" || type !== "all" || outletId !== "all" || from || to);
 
-  if (orders === null) return <div className="mx-auto max-w-5xl px-4 py-16 text-sm text-muted-foreground">Loading your orders…</div>;
+  if (orders === null) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground">Loading your orders…</div>;
 
   return (
     <div className="min-h-full bg-[#f7faf7]">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700"><ReceiptText size={14} /> Trip ledger</p>
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-[#17372e] sm:text-4xl">Orders, all in one place.</h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Receipts for every booking, meal and Malaysian experience you have collected.</p>
           </div>
-          <Link href="/customer/explore"><Button className="rounded-full bg-emerald-700 px-5 hover:bg-emerald-800">Explore again</Button></Link>
+          <div className="flex flex-wrap items-center gap-2"><Link href={activityHref("itinerary")}><Button variant="outline" className="rounded-full border-emerald-200 text-emerald-800 hover:bg-emerald-50">View itinerary</Button></Link><Link href="/customer/explore"><Button className="rounded-full bg-emerald-700 px-5 hover:bg-emerald-800">Explore again</Button></Link></div>
         </header>
 
         <section className="mt-7 grid gap-3 sm:grid-cols-3">

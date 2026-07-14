@@ -11,6 +11,7 @@ import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { createClient } from '@/lib/supabase/client';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 type Tab = 'reservations' | 'availability';
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -53,6 +54,7 @@ function groupedBookings(bookings: Booking[]) {
 
 export default function VendorBookingsPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
   const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<Tab>('reservations');
@@ -127,15 +129,21 @@ export default function VendorBookingsPage() {
 
   async function checkIn(bookingId: string) {
     if (!vendorId) return;
-    const response = await fetch(`/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, { method: 'POST' });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not check in booking'); return; }
-    setSelectedBooking(null); loadData(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, { method: 'POST' });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not check in booking'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', 'Booking checked in successfully.');
+      setSelectedBooking(null); loadData(pagination.page);
+    } catch { setError('Could not check in booking.'); showFeedback('error', 'Could not check in booking. Please try again.'); }
   }
   async function cancelSlot(slotId: string) {
     if (!vendorId || !confirm('Cancel this slot?')) return;
-    const response = await fetch(`/api/vendors/${vendorId}/slots/${slotId}`, { method: 'DELETE' });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not cancel slot'); return; }
-    loadData(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/slots/${slotId}`, { method: 'DELETE' });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not cancel slot'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', 'Booking slot cancelled.');
+      loadData(pagination.page);
+    } catch { setError('Could not cancel slot.'); showFeedback('error', 'Could not cancel slot. Please try again.'); }
   }
   async function saveSchedule() {
     if (!vendorId || !selectedScheduleOutlet) return;

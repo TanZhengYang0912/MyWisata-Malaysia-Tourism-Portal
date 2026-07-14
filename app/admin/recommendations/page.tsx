@@ -8,9 +8,11 @@ import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { User, VendorRecommendation } from "@/backend/core/types";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
   const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -41,8 +43,11 @@ export default function AdminRecommendationsPage() {
       }
       const status = approve ? "approved" : "rejected";
       setRecs((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
+      showFeedback("success", `Recommendation ${approve ? "approved" : "rejected"}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Review failed.');
+      const message = err instanceof Error ? err.message : 'Review failed.';
+      setError(message);
+      showFeedback("error", message);
     } finally {
       setReviewing(null);
     }

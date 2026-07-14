@@ -201,13 +201,14 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
 
 // ─── Vouchers ───────────────────────────────────────────────────────────────
 function mapVoucher(row: {
-  id: string; code: string; voucher_type: string; discount_value: number; min_spend: number | null;
+  id: string; code: string; name?: string | null; voucher_type: string; discount_value: number; min_spend: number | null;
   max_uses: number | null; uses_count: number; valid_until: string | null;
   product_id?: string | null; buy_quantity?: number | null; free_quantity?: number | null;
 }): Voucher {
   return {
     id: row.id,
     code: row.code,
+    name: row.name ?? undefined,
     type: row.voucher_type as Voucher["type"],
     value: Number(row.discount_value),
     minSpend: Number(row.min_spend ?? 0),

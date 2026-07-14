@@ -14,6 +14,8 @@ import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
+import { useActionFeedback } from '@/components/providers/action-feedback';
+import { getProductDetailsLayoutClasses } from '@/lib/vendor/product-details-layout';
 
 interface ProductData {
   id: string;
@@ -52,6 +54,7 @@ function imageKind(value: string): 'food' | 'experience' | 'product' { return va
 
 export default function VendorProductsPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const supabase = useMemo(() => createClient(), []);
   const [products, setProducts] = useState<ProductData[]>([]);
   const [outlets, setOutlets] = useState<{ id: string; name: string; city?: string | null; state?: string | null }[]>([]);
@@ -71,6 +74,7 @@ export default function VendorProductsPage() {
   const vendorId = user?.activeVendorId;
   const isOwner = user?.roles.includes('vendor_owner') ?? false;
   const canManageOutlet = isOwner || (user?.roles.includes('outlet_manager') ?? false);
+  const detailsLayout = getProductDetailsLayoutClasses();
   const scopedOutlet = outlets.find((outlet) => outlet.id === user?.activeOutletIds?.[0]) || outlets[0];
   const tableGridClass = isOwner
     ? 'md:grid-cols-[32px_minmax(280px,2fr)_minmax(160px,1fr)_120px_110px_112px]'
@@ -109,16 +113,22 @@ export default function VendorProductsPage() {
 
   async function handleDelete(productId: string) {
     if (!vendorId || !confirm('Archive this listing? It will no longer be visible to customers.')) return;
-    const response = await fetch(`/api/vendors/${vendorId}/products/${productId}`, { method: 'DELETE' });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not archive listing'); return; }
-    setSelectedProduct(null); loadProducts(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}`, { method: 'DELETE' });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not archive listing'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', 'Product archived successfully.');
+      setSelectedProduct(null); loadProducts(pagination.page);
+    } catch { setError('Could not archive listing.'); showFeedback('error', 'Could not archive listing. Please try again.'); }
   }
 
   async function handleRestore(productId: string) {
     if (!vendorId) return;
-    const response = await fetch(`/api/vendors/${vendorId}/products/${productId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not restore listing'); return; }
-    setSelectedProduct(null); loadProducts(pagination.page);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/products/${productId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not restore listing'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', 'Product restored successfully.');
+      setSelectedProduct(null); loadProducts(pagination.page);
+    } catch { setError('Could not restore listing.'); showFeedback('error', 'Could not restore listing. Please try again.'); }
   }
 
   async function copyProductId(productId: string) {
@@ -182,8 +192,24 @@ export default function VendorProductsPage() {
 
       {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, coverUrl: editingProduct.cover_url || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
 
-      {selectedProduct && <div className="fixed inset-0 z-40 bg-gray-950/20" onClick={() => setSelectedProduct(null)}><aside onClick={(event) => event.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Listing details</p><h2 className="mt-1 text-xl font-bold text-gray-950">{selectedProduct.name}</h2></div><button type="button" onClick={() => setSelectedProduct(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X size={18} /></button></div><div className="mt-5"><CompactThumbnail src={selectedProduct.cover_url} alt={selectedProduct.name} kind={imageKind(selectedProduct.product_type)} size="md" /></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Product ID</p><div className="mt-1 flex items-start justify-between gap-2"><p className="break-all font-mono text-xs font-semibold text-gray-900">{selectedProduct.display_id || selectedProduct.id}</p><button type="button" onClick={() => copyProductId(selectedProduct.display_id || selectedProduct.id)} title="Copy product ID" aria-label="Copy product ID" className="shrink-0 rounded-lg p-2 text-gray-500 hover:bg-white hover:text-emerald-700">{copiedProductId === (selectedProduct.display_id || selectedProduct.id) ? <Check size={15} className="text-emerald-700" /> : <Copy size={15} />}</button></div>{copiedProductId === (selectedProduct.display_id || selectedProduct.id) && <p className="mt-1 text-[11px] font-medium text-emerald-700">Copied</p>}</div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Type</p><p className="mt-1 font-semibold text-gray-900">{typeLabel(selectedProduct.product_type)}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Base price</p><p className="mt-1 font-semibold text-gray-900">{toRM(Number(selectedProduct.base_price))}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Outlet</p><p className="mt-1 font-semibold text-gray-900">{outletShortName(selectedProduct.outlet?.name || user?.activeOutletName)}</p><p className="mt-1 text-xs text-gray-500">{outletLocation(selectedProduct.outlet?.city, selectedProduct.outlet?.state)} · {outletIdLabel(selectedProduct.outlet?.id || selectedProduct.outlet_id || user?.activeOutletIds?.[0])}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Status</p><div className="mt-1"><StatusBadge status={selectedProduct.status} /></div></div></div><p className="mt-5 text-sm leading-6 text-gray-600">{selectedProduct.description || 'No description added yet.'}</p>{selectedProduct.variants?.length ? <div className="mt-6"><p className="mb-2 text-sm font-semibold text-gray-900">Variants</p><div className="space-y-2">{selectedProduct.variants.map((variant: any) => <div key={variant.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-sm"><span>{variant.name}</span><span className="text-gray-500">{Number(variant.price_offset) ? `${Number(variant.price_offset) > 0 ? '+' : ''}RM ${Number(variant.price_offset).toFixed(2)}` : 'Base price'}</span></div>)}</div></div> : null}{canManageOutlet && vendorId && <VariantManager vendorId={vendorId} productId={selectedProduct.id} variants={(selectedProduct.variants || []) as any} requiresBooking={selectedProduct.requires_booking} onUpdate={() => { setSelectedProduct(null); loadProducts(pagination.page); }} />}<div className="mt-7 flex gap-2">{canManageOutlet && <button type="button" onClick={() => { setEditingProduct(selectedProduct); setSelectedProduct(null); setShowForm(true); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white"><Pencil size={15} /> Edit listing</button>}<button type="button" onClick={() => setSelectedProduct(null)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600">Close</button></div></aside></div>}
-      {selectedProduct && canManageOutlet && vendorId && <div className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl bg-white p-4 shadow-2xl md:left-auto md:max-w-xl"><PriceRuleManager vendorId={vendorId} productId={selectedProduct.id} productOptions={products.filter((product) => product.id !== selectedProduct.id && product.outlet_id === selectedProduct.outlet_id).map((product) => ({ id: product.id, name: product.name, base_price: Number(product.base_price) }))} /></div>}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-40 bg-gray-950/20" onClick={() => setSelectedProduct(null)}>
+          <aside onClick={(event) => event.stopPropagation()} className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl ${detailsLayout.drawer}`}>
+            <div className={`p-6 ${detailsLayout.content}`}>
+              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Listing details</p><h2 className="mt-1 text-xl font-bold text-gray-950">{selectedProduct.name}</h2></div><button type="button" onClick={() => setSelectedProduct(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X size={18} /></button></div>
+              <div className="mt-5"><CompactThumbnail src={selectedProduct.cover_url} alt={selectedProduct.name} kind={imageKind(selectedProduct.product_type)} size="md" /></div>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Product ID</p><div className="mt-1 flex items-start justify-between gap-2"><p className="break-all font-mono text-xs font-semibold text-gray-900">{selectedProduct.display_id || selectedProduct.id}</p><button type="button" onClick={() => copyProductId(selectedProduct.display_id || selectedProduct.id)} title="Copy product ID" aria-label="Copy product ID" className="shrink-0 rounded-lg p-2 text-gray-500 hover:bg-white hover:text-emerald-700">{copiedProductId === (selectedProduct.display_id || selectedProduct.id) ? <Check size={15} className="text-emerald-700" /> : <Copy size={15} />}</button></div>{copiedProductId === (selectedProduct.display_id || selectedProduct.id) && <p className="mt-1 text-[11px] font-medium text-emerald-700">Copied</p>}</div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Type</p><p className="mt-1 font-semibold text-gray-900">{typeLabel(selectedProduct.product_type)}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Base price</p><p className="mt-1 font-semibold text-gray-900">{toRM(Number(selectedProduct.base_price))}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Outlet</p><p className="mt-1 font-semibold text-gray-900">{outletShortName(selectedProduct.outlet?.name || user?.activeOutletName)}</p><p className="mt-1 text-xs text-gray-500">{outletLocation(selectedProduct.outlet?.city, selectedProduct.outlet?.state)} · {outletIdLabel(selectedProduct.outlet?.id || selectedProduct.outlet_id || user?.activeOutletIds?.[0])}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Status</p><div className="mt-1"><StatusBadge status={selectedProduct.status} /></div></div></div>
+              <p className="mt-5 text-sm leading-6 text-gray-600">{selectedProduct.description || 'No description added yet.'}</p>
+              {selectedProduct.variants?.length ? <div className="mt-6"><p className="mb-2 text-sm font-semibold text-gray-900">Variants</p><div className="space-y-2">{selectedProduct.variants.map((variant: any) => <div key={variant.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-sm"><span>{variant.name}</span><span className="text-gray-500">{Number(variant.price_offset) ? `${Number(variant.price_offset) > 0 ? '+' : ''}RM ${Number(variant.price_offset).toFixed(2)}` : 'Base price'}</span></div>)}</div></div> : null}
+              {canManageOutlet && vendorId && <VariantManager vendorId={vendorId} productId={selectedProduct.id} variants={(selectedProduct.variants || []) as any} requiresBooking={selectedProduct.requires_booking} onUpdate={() => { setSelectedProduct(null); loadProducts(pagination.page); }} />}
+              {canManageOutlet && vendorId && <div className={detailsLayout.pricing}><PriceRuleManager vendorId={vendorId} productId={selectedProduct.id} productOptions={products.filter((product) => product.id !== selectedProduct.id && product.outlet_id === selectedProduct.outlet_id).map((product) => ({ id: product.id, name: product.name, base_price: Number(product.base_price) }))} /></div>}
+            </div>
+            <div className={`${detailsLayout.actions} p-4`}>
+              <div className="flex gap-2">{canManageOutlet && <button type="button" onClick={() => { setEditingProduct(selectedProduct); setSelectedProduct(null); setShowForm(true); }} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white"><Pencil size={15} /> Edit listing</button>}<button type="button" onClick={() => setSelectedProduct(null)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600">Close</button></div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

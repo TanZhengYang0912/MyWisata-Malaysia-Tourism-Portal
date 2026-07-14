@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 import { FileUp, LoaderCircle, RefreshCw } from 'lucide-react';
 
 interface UploadedMedia {
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, onUploaded, onError }: Props) {
+  const { showFeedback } = useActionFeedback();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -36,8 +38,11 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Upload failed.');
       onUploaded(payload.data);
+      showFeedback('success', kind === 'image' ? 'Product image uploaded.' : 'Digital asset uploaded.');
     } catch (error) {
-      onError?.(error instanceof Error ? error.message : 'Upload failed.');
+      const message = error instanceof Error ? error.message : 'Upload failed.';
+      onError?.(message);
+      showFeedback('error', message);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';

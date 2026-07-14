@@ -156,6 +156,17 @@ export async function getMessages(threadId: string): Promise<ChatMessage[]> {
   }));
 }
 
+export async function getReadChatMessageIds(userId: string, messageIds: string[]): Promise<Set<string>> {
+  if (messageIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("chat_message_reads")
+    .select("message_id")
+    .eq("user_id", userId)
+    .in("message_id", messageIds);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.message_id as string));
+}
+
 export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string): Promise<ChatMessage> {
   const { data, error } = await supabase
     .from("chat_messages")

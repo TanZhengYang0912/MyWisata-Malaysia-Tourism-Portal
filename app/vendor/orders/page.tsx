@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface OrderItemData { id: string; order_id: string; product_name: string; variant_name: string | null; slot_starts_at: string | null; quantity: number; line_total: number; fulfil_status: string; created_at: string; outlets?: { id?: string; name?: string; city?: string; state?: string }; products?: { cover_url?: string | null } | Array<{ cover_url?: string | null }>; }
 interface VendorOrderData { id: string; display_id?: string; status: string; paid_at?: string | null; completed_at?: string | null; created_at: string; users?: { full_name?: string; email?: string } | Array<{ full_name?: string; email?: string }>; vendor_total: number; vendor_items: OrderItemData[]; outlets_summary: string; vendor_fulfil_status: string; product_summary: string; }
@@ -18,6 +19,7 @@ function dateLabel(value?: string | null) { return value ? new Date(value).toLoc
 
 export default function VendorOrdersPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
   const [items, setItems] = useState<VendorOrderData[]>([]);
   const [selectedItem, setSelectedItem] = useState<VendorOrderData | null>(null);
@@ -48,23 +50,29 @@ export default function VendorOrdersPage() {
   async function updateFulfilOrder(order: VendorOrderData, status: 'ready' | 'fulfilled') {
     if (!vendorId) return;
     const itemIds = order.vendor_items.map(i => i.id);
-    const response = await fetch('/api/vendors/' + vendorId + '/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'orders', action: status, ids: itemIds, selectAllFiltered: false, filters: {} }) });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not update fulfilment'); return; }
-    setSelectedItem(null); loadOrders(pagination.page);
+    try {
+      const response = await fetch('/api/vendors/' + vendorId + '/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'orders', action: status, ids: itemIds, selectAllFiltered: false, filters: {} }) });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not update fulfilment'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', status === 'ready' ? 'Order marked ready.' : 'Order fulfilled successfully.');
+      setSelectedItem(null); loadOrders(pagination.page);
+    } catch { setError('Could not update fulfilment.'); showFeedback('error', 'Could not update fulfilment. Please try again.'); }
   }
 
   async function updateFulfilItem(itemId: string, status: 'ready' | 'fulfilled') {
     if (!vendorId) return;
-    const response = await fetch(`/api/vendors/${vendorId}/orders/${itemId}/fulfil`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-    if (!response.ok) { const payload = await response.json(); setError(payload.error?.message || 'Could not update fulfilment'); return; }
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/orders/${itemId}/fulfil`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not update fulfilment'; setError(message); showFeedback('error', message); return; }
+      showFeedback('success', status === 'ready' ? 'Item marked ready.' : 'Item fulfilled successfully.');
     // If updating a single item, we reload and maybe we should keep the drawer open, but for now we'll reload which might refresh the drawer data.
     // Actually, to refresh drawer we need to fetch the single order, but loadOrders works.
     loadOrders(pagination.page);
     // Optimistically update the selectedItem state so UI doesn't jump
-    setSelectedItem((curr) => {
+      setSelectedItem((curr) => {
       if (!curr) return null;
       return { ...curr, vendor_items: curr.vendor_items.map((i) => i.id === itemId ? { ...i, fulfil_status: status } : i) };
-    });
+      });
+    } catch { setError('Could not update fulfilment.'); showFeedback('error', 'Could not update fulfilment. Please try again.'); }
   }
 
   function clearFilters() { setFilters({ q: '', fulfilStatus: '', orderStatus: '', from: '', to: '' }); }

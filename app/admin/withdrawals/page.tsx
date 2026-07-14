@@ -11,9 +11,11 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { User, WithdrawalRequest } from "@/backend/core/types";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 export default function AdminWithdrawalsPage() {
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [users, setUsers]             = useState<Map<string, User>>(new Map());
   const [loading, setLoading]         = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function AdminWithdrawalsPage() {
       }
 
       if (json.status === "pending_second_approval") {
-        alert(`First approval recorded (${json.approval_count}/2). Waiting for second approver.`);
+        showFeedback("success", `First approval recorded (${json.approval_count}/2). Waiting for second approver.`);
         return;
       }
 
@@ -56,6 +58,9 @@ export default function AdminWithdrawalsPage() {
         after:  { status: "processing" },
       });
       setWithdrawals((prev) => prev.map((x) => x.id === w.id ? { ...x, status: "processing" } : x));
+      showFeedback("success", "Withdrawal approved and processing.");
+    } catch {
+      showFeedback("error", "Approval failed. Please try again.");
     } finally {
       setLoading(null);
     }
@@ -67,7 +72,7 @@ export default function AdminWithdrawalsPage() {
     try {
       const res  = await fetch(`/api/admin/withdrawals/${w.id}/reject`, { method: "POST" });
       const json = await res.json();
-      if (!res.ok) { alert(json.error ?? "Rejection failed"); return; }
+      if (!res.ok) { showFeedback("error", json.error ?? "Rejection failed"); return; }
 
       await recordApproval({
         actorId:      currentUser.id,
@@ -80,6 +85,9 @@ export default function AdminWithdrawalsPage() {
         after:  { status: "rejected" },
       });
       setWithdrawals((prev) => prev.map((x) => x.id === w.id ? { ...x, status: "rejected" } : x));
+      showFeedback("success", "Withdrawal rejected and funds returned.");
+    } catch {
+      showFeedback("error", "Rejection failed. Please try again.");
     } finally {
       setLoading(null);
     }

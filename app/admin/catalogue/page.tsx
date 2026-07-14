@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, ClipboardCheck, Eye, MessageSquare, X } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 type ReviewItem = {
   id: string;
@@ -23,6 +24,7 @@ const labels: Record<ReviewItem['entityType'], string> = {
 };
 
 export default function CatalogueReviewPage() {
+  const { showFeedback } = useActionFeedback();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [filter, setFilter] = useState<'all' | ReviewItem['entityType']>('all');
   const [loading, setLoading] = useState(true);
@@ -48,21 +50,31 @@ export default function CatalogueReviewPage() {
   useEffect(() => { void load(); }, [load]);
 
   async function review(item: ReviewItem, action: 'approve' | 'change_requested' | 'reject') {
-    const note = action === 'approve' ? undefined : window.prompt(action === 'reject' ? 'Reason for rejection:' : 'What needs to be changed?');
+    const note = action === 'approve' ? undefined : window.prompt(action === 'reject' ? 'Reason for rejection (at least 10 characters):' : 'What needs to be changed? (at least 10 characters)');
     if (action !== 'approve' && note === null) return;
+    const trimmedNote = note?.trim();
+    if (action !== 'approve' && (!trimmedNote || trimmedNote.length < 10)) {
+      const message = `${action === 'reject' ? 'Reject' : 'Request changes'} requires a reason of at least 10 characters.`;
+      setError(message);
+      showFeedback('error', message);
+      return;
+    }
     setBusy(`${action}:${item.id}`);
     try {
       const response = await fetch('/api/admin/catalogue/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note }),
+        body: JSON.stringify({ entityType: item.entityType, entityId: item.id, action, note: trimmedNote }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Review action failed');
+      showFeedback('success', `${labels[item.entityType]} ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'returned for changes'}.`);
       setActive(null);
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Review action failed');
+      const message = reason instanceof Error ? reason.message : 'Review action failed';
+      setError(message);
+      showFeedback('error', message);
     } finally {
       setBusy(null);
     }

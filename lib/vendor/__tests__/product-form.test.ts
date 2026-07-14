@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildProductFormDefaults,
   normalizeProductTags,
   validateProductReviewReadiness,
 } from '../product-form-helpers';
+
+describe('buildProductFormDefaults', () => {
+  it('keeps edit-only metadata outside the strict form values', () => {
+    const defaults = buildProductFormDefaults({
+      id: 'product-1',
+      outletId: 'outlet-1',
+      name: 'Rainforest Canopy Trek',
+      productType: 'experience',
+      requiresBooking: true,
+      basePrice: 128,
+      tags: ['nature'],
+      submissionMode: 'review',
+    });
+
+    expect(defaults).not.toHaveProperty('id');
+    expect(defaults).not.toHaveProperty('outletId');
+    expect(defaults.tags).toBe('nature');
+    expect(defaults.submissionMode).toBe('review');
+  });
+});
 
 describe('normalizeProductTags', () => {
   it('converts comma-separated form input into trimmed unique tags', () => {

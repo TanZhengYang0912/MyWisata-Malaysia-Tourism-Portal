@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vendorRegisterSchema, type VendorRegister } from '@/lib/validation/vendor-schemas';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function RegisterVendorForm({ onClose }: Props) {
+  const { showFeedback } = useActionFeedback();
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -35,13 +37,16 @@ export default function RegisterVendorForm({ onClose }: Props) {
 
       if (!res.ok) {
         setServerError(result.error?.message ?? 'Failed to register');
+        showFeedback('error', result.error?.message ?? 'Failed to register');
         return;
       }
 
+      showFeedback('success', 'Vendor application submitted for admin review.');
       router.refresh();
       onClose?.();
     } catch {
       setServerError('Network error — please try again');
+      showFeedback('error', 'Vendor registration failed. Please try again.');
     }
   }
 

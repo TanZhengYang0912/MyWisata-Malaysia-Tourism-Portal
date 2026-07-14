@@ -212,9 +212,17 @@ export const vendorBatchSchema = z.object({
 export const contentReviewSchema = z.object({
   entityType: z.enum(['outlet', 'product', 'voucher']),
   entityId: uuid,
-  action: z.enum(['approve', 'reject']),
+  action: z.enum(['approve', 'change_requested', 'reject']),
   note: z.string().trim().max(500).optional(),
-}).strict();
+}).strict().superRefine((data, context) => {
+  if (data.action !== 'approve' && (!data.note || data.note.length < 10)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['note'],
+      message: `${data.action === 'reject' ? 'Reject' : 'Request changes'} requires a reason of at least 10 characters`,
+    });
+  }
+});
 
 // ── Export inferred types ──────────────────────────────────
 

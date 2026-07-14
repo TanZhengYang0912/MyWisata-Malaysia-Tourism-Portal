@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
-  AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent, Utensils,
+  AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent,
 } from 'lucide-react';
 import { getVendorDashboardData, formatGrowth, formatRM, type DashboardFilter } from '@/lib/vendor-dashboard';
 import SalesChart from '@/components/vendor/sales-chart';
@@ -11,7 +11,9 @@ import OutletPieChart from '@/components/vendor/outlet-pie-chart';
 import DashboardFilterControl from '@/components/vendor/dashboard-filter';
 import DashboardRealtime from '@/components/vendor/dashboard-realtime';
 import RecentTransactions from '@/components/vendor/recent-transactions';
+import PerformanceRankingCard from '@/components/vendor/performance-ranking-card';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
+import { dashboardFilterLabel } from '@/lib/vendor/performance-ranking';
 
 interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string }> }
 
@@ -83,15 +85,8 @@ export default async function VendorDashboard({ searchParams }: Props) {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top selling products</h2><p className="mt-1 text-sm text-gray-500">Based on paid order quantity</p></div><Utensils className="text-emerald-700" size={20} /></div>
-          <div className="divide-y divide-gray-100">{data.topSelling.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-emerald-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind={item.name.toLowerCase().includes('food') ? 'food' : 'product'} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.quantity} units sold</p></div><div className="text-right"><p className="text-sm font-bold text-gray-900">{formatRM(item.revenue)}</p><p className="mt-1 text-[11px] text-gray-400">Revenue</p></div></div>)}{!data.topSelling.length && <div className="px-4 py-10 text-center text-gray-400">No paid products in this period.</div>}</div>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 p-6"><div><h2 className="font-semibold text-lg text-gray-900">Top rated experiences</h2><p className="mt-1 text-sm text-gray-500">Visible activity and experience reviews</p></div><Landmark className="text-amber-600" size={20} /></div>
-          <div className="divide-y divide-gray-100">{data.topRated.map((item) => <div key={item.name} className="flex items-center gap-3 px-5 py-3 transition hover:bg-amber-50/30"><CompactThumbnail src={item.coverUrl} alt={item.name} kind="experience" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{item.name}</p><p className="mt-1 text-xs text-gray-500">{item.reviews} traveller reviews</p></div><div className="text-right"><p className="text-sm font-bold text-amber-600">★ {item.rating.toFixed(1)}</p><p className="mt-1 text-[11px] text-gray-400">Rating</p></div></div>)}{!data.topRated.length && <div className="px-4 py-10 text-center text-gray-400">No experience reviews yet.</div>}</div>
-        </div>
+        <PerformanceRankingCard kind="selling" periodLabel={dashboardFilterLabel(data.filter)} items={data.topSelling} href="/vendor/products" />
+        <PerformanceRankingCard kind="rated" periodLabel={dashboardFilterLabel(data.filter)} items={data.topRated} href="/vendor/analytics" />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">

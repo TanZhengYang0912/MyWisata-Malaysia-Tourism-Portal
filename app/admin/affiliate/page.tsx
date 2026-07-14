@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface AdminTier {
   id: string;
@@ -88,6 +89,7 @@ function formatRatePercent(rate: number): string {
 }
 
 export default function AdminAffiliatePage() {
+  const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<AdminAffiliateStats | null | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -148,9 +150,11 @@ export default function AdminAffiliatePage() {
         setTierError(body.error?.message ?? "Failed to save tier.");
         return;
       }
+      showFeedback("success", "Affiliate tier saved.");
       await loadStats();
     } catch {
       setTierError("Failed to save tier.");
+      showFeedback("error", "Failed to save affiliate tier.");
     } finally {
       setSavingTierId(null);
     }
@@ -178,12 +182,16 @@ export default function AdminAffiliatePage() {
     if (reactivatingLinkId) return;
     setReactivatingLinkId(linkId);
     try {
-      await fetch(`/api/admin/affiliate/links/${linkId}`, {
+      const response = await fetch(`/api/admin/affiliate/links/${linkId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reactivate" }),
       });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not reactivate affiliate link."); return; }
+      showFeedback("success", "Affiliate link reactivated.");
       await loadFraudFlags();
+    } catch {
+      showFeedback("error", "Could not reactivate affiliate link. Please try again.");
     } finally {
       setReactivatingLinkId(null);
     }
@@ -222,12 +230,16 @@ export default function AdminAffiliatePage() {
     if (reviewingFlagId) return;
     setReviewingFlagId(id);
     try {
-      await fetch(`/api/admin/affiliate/fraud-flags/${id}`, {
+      const response = await fetch(`/api/admin/affiliate/fraud-flags/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not review fraud flag."); return; }
+      showFeedback("success", action === "confirm" ? "Fraud flag confirmed." : "Fraud flag dismissed.");
       await Promise.all([loadFraudFlags(), loadStats()]);
+    } catch {
+      showFeedback("error", "Could not review fraud flag. Please try again.");
     } finally {
       setReviewingFlagId(null);
     }

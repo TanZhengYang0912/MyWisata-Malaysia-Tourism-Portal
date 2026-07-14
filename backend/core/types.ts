@@ -128,6 +128,7 @@ export interface CartItem {
 export interface Voucher {
   id: string;
   code: string;
+  name?: string;
   type: "percent" | "fixed" | "bogo";
   value: number;
   minSpend: number;

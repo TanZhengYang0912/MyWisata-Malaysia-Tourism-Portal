@@ -7,6 +7,7 @@ import { getUsers, getKycSubmissions, getKycDocumentSignedUrl } from "@/backend/
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { KycSubmission, User } from "@/backend/core/types";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 const DOC_LABEL: Record<string, string> = {
   national_id:     "MyKad",
@@ -22,6 +23,7 @@ type PendingAction = {
 
 export default function AdminKycPage() {
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [users,         setUsers]         = useState<User[]>([]);
   const [submissions,   setSubmissions]   = useState<Map<string, KycSubmission>>(new Map());
   const [reviewing,     setReviewing]     = useState<string | null>(null);
@@ -63,9 +65,12 @@ export default function AdminKycPage() {
       if (action === "approve") {
         setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, verificationTier: "kyc_verified" } : u));
       }
+      showFeedback("success", action === "approve" ? "KYC submission approved." : action === "reject" ? "KYC submission rejected." : "Information request sent.");
       setPendingAction(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Review failed.");
+      const message = err instanceof Error ? err.message : "Review failed.";
+      setError(message);
+      showFeedback("error", message);
     } finally {
       setReviewing(null);
     }

@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Send, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/use-auth';
+import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface Thread { id: string; status: string; last_message_at: string | null; customer?: { full_name?: string; email?: string }; outlets?: { id?: string; name?: string; city?: string; state?: string }; chat_messages?: Message[] }
 interface Message { id: string; sender_id: string; body: string; created_at: string }
 
 export default function VendorInboxPage() {
   const { user } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -29,9 +31,13 @@ export default function VendorInboxPage() {
 
   async function sendMessage() {
     if (!draft.trim() || !active || !user?.activeVendorId) return;
-    await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: active, body: draft }) });
-    setDraft('');
-    loadThreads();
+    try {
+      const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: active, body: draft }) });
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not send reply.'); return; }
+      setDraft('');
+      showFeedback('success', 'Reply sent.');
+      loadThreads();
+    } catch { showFeedback('error', 'Could not send reply. Please try again.'); }
   }
 
   return (

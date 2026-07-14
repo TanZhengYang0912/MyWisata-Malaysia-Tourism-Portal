@@ -18,7 +18,7 @@ interface CartContextValue {
   selectedKeys: Set<string>;
   selectedItems: CartItem[];
   toggleSelected: (key: string) => void;
-  setAllSelected: (selected: boolean) => void;
+  setAllSelected: (selected: boolean, keys?: string[]) => void;
   addItem: (item: CartItem) => Promise<void>;
   updateQty: (index: number, qty: number) => Promise<void>;
   removeItem: (index: number) => Promise<void>;
@@ -61,8 +61,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setAllSelected = useCallback((selected: boolean) => {
-    setSelectedKeys(selected ? new Set(items.map(cartItemKey)) : new Set());
+  const setAllSelected = useCallback((selected: boolean, keys?: string[]) => {
+    setSelectedKeys(selected ? new Set(keys ?? items.map(cartItemKey)) : new Set());
   }, [items]);
 
   useEffect(() => {
