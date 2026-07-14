@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { validateKycTestResetTarget } from './lib/kyc-test-db-target.mjs';
 
 for (const filename of ['.env.local', '.env']) {
   const file = path.resolve(process.cwd(), filename);
@@ -22,14 +23,11 @@ const testSupabaseUrl = process.env.KYC_TEST_SUPABASE_URL;
 if (!connectionString || !testSupabaseUrl) {
   throw new Error('KYC_TEST_DATABASE_URL and KYC_TEST_SUPABASE_URL are required; generic database variables are refused.');
 }
-const projectRef = new URL(testSupabaseUrl).hostname.split('.')[0];
-const databaseUrl = new URL(connectionString);
-if (!`${databaseUrl.hostname}/${databaseUrl.username}`.includes(projectRef)) {
-  throw new Error('KYC_TEST_DATABASE_URL must target the project named by KYC_TEST_SUPABASE_URL.');
-}
-if (process.env.KYC_TEST_DB_RESET_CONFIRM !== projectRef) {
-  throw new Error(`Refusing destructive replay: set KYC_TEST_DB_RESET_CONFIRM=${projectRef} explicitly for this KYC test project.`);
-}
+validateKycTestResetTarget({
+  apiUrl: testSupabaseUrl,
+  connectionString,
+  confirmation: process.env.KYC_TEST_DB_RESET_CONFIRM,
+});
 
 const migrations = fs.readdirSync(path.resolve('supabase/migrations'))
   .filter((filename) => filename.endsWith('.sql'))

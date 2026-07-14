@@ -15,7 +15,7 @@ $env:KYC_TEST_DB_RESET_CONFIRM = '<KYC test project ref>'
 npm run test:kyc-db:replay
 ```
 
-The command refuses to connect unless the confirmation exactly matches the project ref in both test URLs.
+The command refuses before connecting unless it can strictly parse the same valid project ref from the API URL and a recognised direct or pooler database URI, and the confirmation exactly matches that ref. Similar-looking or substring refs are rejected.
 
 Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User%20greeting/)
 (palette, fonts, screen layouts). The full screen/flow spec is in

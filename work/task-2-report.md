@@ -145,3 +145,18 @@ full clean replay passed and the focused KYC integration suite passed 8/8.
 `npm run lint` was also run after this change. It exits non-zero on 167
 pre-existing repository-wide errors in unrelated generated/UI and vendor files;
 the replay runner, README, migration, and integration suite introduce none.
+
+## Exact replay-target validation follow-up
+
+The confirmation gate now uses strict parsers rather than substring matching:
+the API URL must be exactly `<20-char-ref>.supabase.co`; the database URI must
+be either `db.<20-char-ref>.supabase.co` or a recognised Supabase pooler URL
+whose username is exactly `postgres.<20-char-ref>`. The parsed API and database
+refs, and `KYC_TEST_DB_RESET_CONFIRM`, must be identical before `pg.Client` is
+created. This rejects empty, mismatched, and substring-only references.
+
+`node --test scripts/lib/kyc-test-db-target.test.mjs` passed 2/2 valid/rejection
+cases. The missing-confirmation refusal was re-demonstrated safely, then the
+explicitly confirmed clean replay and focused KYC integration suite passed.
+The earlier lint result remains accurate: this follow-up did not rerun it
+because it changes only the isolated runner/parser and documentation.
