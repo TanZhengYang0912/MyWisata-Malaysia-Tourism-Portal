@@ -252,12 +252,61 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     expect(((await service!.rpc('purge_expired_kyc_evidence')).data as Array<{ submission_id: string }>)
       .filter((item) => item.submission_id === submissionId)).toEqual([]);
     for (const item of claimed) {
+      expect((await service!.storage.from('kyc-documents').remove([item.storage_path])).error).toBeNull();
       expect((await service!.rpc('confirm_purged_kyc_evidence', { p_submission_id: item.submission_id, p_side: item.side })).error).toBeNull();
     }
     expect((await service!.from('kyc_submissions').select('id').eq('id', submissionId).maybeSingle()).data?.id).toBe(submissionId);
+    expect((await service!.storage.from('kyc-documents').download(paths.front)).error).not.toBeNull();
+    expect((await service!.storage.from('kyc-documents').download(paths.back)).error).not.toBeNull();
     const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.evidence_purged').eq('entity_id', submissionId);
     expect(audits).toHaveLength(2);
     expect(JSON.stringify(audits)).not.toContain(paths.front);
     expect(JSON.stringify(audits)).not.toContain(paths.back);
+  });
+
+  it('retains approved evidence until account closure or a sufficiently old replacement', async () => {
+    const { id, client } = await createEmailVerifiedClient();
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
+    const submissionId = await beginServerSubmission(id, '2'.repeat(64));
+    const paths = evidencePaths(id, submissionId);
+    await uploadEvidence(paths);
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error).toBeNull();
+    const oldReview = new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString();
+    await service!.from('kyc_submissions').update({ status: 'approved', reviewed_at: oldReview }).eq('id', submissionId);
+    await service!.from('users').update({ status: 'active', closed_at: null }).eq('id', id);
+
+    const activeResult = await service!.rpc('purge_expired_kyc_evidence');
+    expect((activeResult.data as Array<{ submission_id: string }>).some((item) => item.submission_id === submissionId)).toBe(false);
+
+    const replacementId = await beginServerSubmission(id, '3'.repeat(64));
+    const replacementPaths = evidencePaths(id, replacementId);
+    await uploadEvidence(replacementPaths);
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: replacementId, p_front_path: replacementPaths.front, p_back_path: replacementPaths.back,
+    })).error).toBeNull();
+    const replacementReview = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000 - 1_000).toISOString();
+    await service!.from('kyc_submissions').update({ status: 'approved', reviewed_at: replacementReview }).eq('id', replacementId);
+    const replacementResult = await service!.rpc('purge_expired_kyc_evidence');
+    const replacementClaimed = (replacementResult.data as Array<{ submission_id: string; side: 'front' | 'back'; storage_path: string }>)
+      .filter((item) => item.submission_id === submissionId);
+    expect(replacementClaimed).toHaveLength(2);
+    for (const item of replacementClaimed) {
+      expect((await service!.storage.from('kyc-documents').remove([item.storage_path])).error).toBeNull();
+      expect((await service!.rpc('confirm_purged_kyc_evidence', { p_submission_id: item.submission_id, p_side: item.side })).error).toBeNull();
+    }
+
+    await service!.from('users').update({ status: 'deleted', closed_at: oldReview }).eq('id', id);
+    const closedResult = await service!.rpc('purge_expired_kyc_evidence');
+    const claimed = (closedResult.data as Array<{ submission_id: string; side: 'front' | 'back'; storage_path: string }>)
+      .filter((item) => item.submission_id === replacementId);
+    expect(claimed).toHaveLength(2);
+    for (const item of claimed) {
+      expect((await service!.storage.from('kyc-documents').remove([item.storage_path])).error).toBeNull();
+      expect((await service!.rpc('confirm_purged_kyc_evidence', { p_submission_id: item.submission_id, p_side: item.side })).error).toBeNull();
+    }
+    expect((await service!.from('kyc_submissions').select('id').eq('id', submissionId).maybeSingle()).data?.id).toBe(submissionId);
+    expect((await service!.from('kyc_submissions').select('id').eq('id', replacementId).maybeSingle()).data?.id).toBe(replacementId);
   });
 });
