@@ -3,7 +3,8 @@ const PROJECT_REF = /^[a-z0-9]{20}$/;
 export function parseKycTestProjectRef(apiUrl) {
   const url = new URL(apiUrl);
   const match = url.hostname.match(/^([a-z0-9]{20})\.supabase\.co$/);
-  if (!match || !PROJECT_REF.test(match[1])) {
+  const canonicalOrigin = match ? `https://${match[1]}.supabase.co` : '';
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.pathname !== '/' || url.search || url.hash || !match || !PROJECT_REF.test(match[1]) || (apiUrl !== canonicalOrigin && apiUrl !== `${canonicalOrigin}/`)) {
     throw new Error('KYC_TEST_SUPABASE_URL must be a Supabase project API URL with a valid project ref.');
   }
   return match[1];

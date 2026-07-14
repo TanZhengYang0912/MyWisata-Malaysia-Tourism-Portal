@@ -28,3 +28,19 @@ test('rejects empty, mismatched, and substring project references', () => {
     apiUrl, connectionString: `postgresql://postgres:secret@db.${ref}.supabase.co/postgres`, confirmation: '',
   }), /Refusing destructive replay/);
 });
+
+test('rejects non-canonical KYC API URLs before database target validation', () => {
+  const database = `postgresql://postgres:secret@db.${ref}.supabase.co/postgres`;
+  for (const malformed of [
+    `http://${ref}.supabase.co`,
+    `https://user:password@${ref}.supabase.co`,
+    `https://${ref}.supabase.co:443`,
+    `https://${ref}.supabase.co/rest/v1`,
+    `https://${ref}.supabase.co?x=1`,
+    `https://${ref}.supabase.co#fragment`,
+  ]) {
+    assert.throws(() => validateKycTestResetTarget({
+      apiUrl: malformed, connectionString: database, confirmation: ref,
+    }), /valid project ref/);
+  }
+});
