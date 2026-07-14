@@ -38,3 +38,25 @@ export function buildKycEvidencePaths(
     back: `${prefix}/back.${extensionForMime(backMimeType)}`,
   };
 }
+
+type RpcResult = { data: boolean | null; error: unknown | null };
+type RemoveResult = { error: unknown | null };
+
+export async function abandonAndRemoveKycEvidence({
+  submissionId,
+  paths,
+  authenticated,
+  service,
+}: {
+  submissionId: string;
+  paths: { front: string; back: string };
+  authenticated: { rpc: (name: 'abandon_kyc_submission', args: { p_submission_id: string }) => PromiseLike<RpcResult> };
+  service: { storage: { from: (bucket: 'kyc-documents') => { remove: (paths: string[]) => Promise<RemoveResult> } } };
+}): Promise<{ ok: true } | { ok: false; reason: 'draft_not_abandoned' | 'object_removal_failed' }> {
+  const abandoned = await authenticated.rpc('abandon_kyc_submission', { p_submission_id: submissionId });
+  if (abandoned.error || abandoned.data !== true) return { ok: false, reason: 'draft_not_abandoned' };
+
+  const removed = await service.storage.from('kyc-documents').remove([paths.front, paths.back]);
+  if (removed.error) return { ok: false, reason: 'object_removal_failed' };
+  return { ok: true };
+}

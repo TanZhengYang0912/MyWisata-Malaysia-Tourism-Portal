@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
-import { buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
@@ -62,29 +62,33 @@ export async function POST(request: Request) {
   if (beginError || typeof submissionId !== 'string') return safeSubmissionFailure(beginError);
 
   const paths = buildKycEvidencePaths(user.id, submissionId, crypto.randomUUID(), frontFile.type, backFile.type);
-  const uploadedPaths: string[] = [];
   const cleanup = async () => {
-    if (uploadedPaths.length) await service.storage.from('kyc-documents').remove(uploadedPaths);
-    await authenticated.rpc('abandon_kyc_submission', { p_submission_id: submissionId });
+    // `abandon_kyc_submission` is the state reconciliation step: it returns
+    // true only when this caller's draft was deleted. Never remove evidence
+    // after a finalize timeout/error unless that proof is positive.
+    const result = await abandonAndRemoveKycEvidence({ submissionId, paths, authenticated, service });
+    if (!result.ok) {
+      console.error('KYC draft cleanup failed', { submissionId, reason: result.reason });
+      return false;
+    }
+    return true;
   };
 
   const frontUpload = await service.storage.from('kyc-documents').upload(paths.front, front.buffer, {
     contentType: frontFile.type, upsert: false,
   });
   if (frontUpload.error) {
-    await cleanup();
+    if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
     return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
   }
-  uploadedPaths.push(paths.front);
 
   const backUpload = await service.storage.from('kyc-documents').upload(paths.back, back.buffer, {
     contentType: backFile.type, upsert: false,
   });
   if (backUpload.error) {
-    await cleanup();
+    if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
     return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
   }
-  uploadedPaths.push(paths.back);
 
   const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
     p_submission_id: submissionId,
@@ -92,7 +96,7 @@ export async function POST(request: Request) {
     p_back_path: paths.back,
   });
   if (finalizeError) {
-    await cleanup();
+    if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
     return safeSubmissionFailure(finalizeError);
   }
 

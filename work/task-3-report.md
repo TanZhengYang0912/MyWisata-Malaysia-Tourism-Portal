@@ -29,3 +29,10 @@ To be completed by the implementer.
 - Targeted ESLint for changed server routes/helpers/types/tests — passed. Including the pre-existing customer KYC page reports four existing `react-hooks/set-state-in-effect`/`no-explicit-any` findings unrelated to this two-file change.
 - `npm test` — repository harness currently exits non-zero because Vitest also discovers `scripts/lib/kyc-test-db-target.test.mjs`, which is a Node `node:test` file and has no Vitest suite. Its own three Node tests pass first; all Vitest suites report 47 passed and 8 intentionally skipped integration tests.
 - `npx tsc --noEmit` — blocked by pre-existing unrelated Google Maps dependency/global declarations, duplicate `contentReviewSchema`, and duplicate Vitest config keys; no Task 3-specific TypeScript error was emitted.
+
+## Review follow-up
+
+- Upload cleanup now calls `abandon_kyc_submission` before any object removal and deletes the deterministic front/back pair only when the RPC positively confirms the caller draft was abandoned. A false/error result (including a finalize race that already moved the row to pending) preserves the objects, logs only submission ID/reason, and returns a safe cleanup-resolution failure. Upload failures use the same deterministic pair, covering a Storage timeout where a write may have committed despite an error response.
+- The admin document route authenticates before examining dynamic UUID/side parameters. A new route test verifies an unauthenticated malformed request is 401.
+- Integration coverage now proves an authenticated applicant cannot download an evidence path. Browser DELETE is explicitly checked as an RLS no-op by confirming the service client can still download the object.
+- Follow-up verification: targeted ESLint passed; admin route test passed (1/1); KYC integration passed (8/8); KYC unit tests passed (10/10).

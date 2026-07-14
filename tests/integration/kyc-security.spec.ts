@@ -145,6 +145,7 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     expect(error).toBeTruthy();
     expect(data).toBeNull();
     const storage = client.storage.from('kyc-documents');
+    expect((await storage.download(paths.front)).error).toBeTruthy();
     expect((await storage.upload(`${id}/browser-insert.jpg`, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { contentType: 'image/jpeg' })).error).toBeTruthy();
     expect((await storage.update(paths.front, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { contentType: 'image/jpeg' })).error).toBeTruthy();
     // Storage DELETE is an RLS-filtered no-op (the API may still return 200),

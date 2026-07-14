@@ -9,14 +9,14 @@ interface Props {
 }
 
 export async function GET(_request: Request, { params }: Props) {
+  const authenticated = await createClient();
+  const { data: { user } } = await authenticated.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
   const { submissionId, side } = await params;
   if (!UUID.test(submissionId) || (side !== 'front' && side !== 'back')) {
     return apiFail('NOT_FOUND', 'Document not found', 404);
   }
-
-  const authenticated = await createClient();
-  const { data: { user } } = await authenticated.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
   const { data: storagePath, error } = await service.rpc('get_kyc_document_view', {

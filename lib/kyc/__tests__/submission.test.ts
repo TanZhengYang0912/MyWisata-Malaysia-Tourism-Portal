@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildKycEvidencePaths, validateKycUploadFile } from '../submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '../submission';
 
 describe('KYC server submission helpers', () => {
   it('binds both sides to one UUID token without exposing a client-selected path', () => {
@@ -23,5 +23,31 @@ describe('KYC server submission helpers', () => {
     });
 
     expect(result).toEqual({ ok: false, code: 'INVALID_FILE_CONTENT' });
+  });
+
+  it('removes both deterministic paths only after the caller draft was abandoned', async () => {
+    const removed: string[][] = [];
+    const result = await abandonAndRemoveKycEvidence({
+      submissionId: '1649a141-9c22-487d-97ae-d10c2b9f9007',
+      paths: { front: 'front-path', back: 'back-path' },
+      authenticated: { rpc: async () => ({ data: true, error: null }) },
+      service: { storage: { from: () => ({ remove: async (paths: string[]) => { removed.push(paths); return { error: null }; } }) } },
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(removed).toEqual([['front-path', 'back-path']]);
+  });
+
+  it('preserves evidence when the draft was not safely abandoned', async () => {
+    let removed = false;
+    const result = await abandonAndRemoveKycEvidence({
+      submissionId: '1649a141-9c22-487d-97ae-d10c2b9f9007',
+      paths: { front: 'front-path', back: 'back-path' },
+      authenticated: { rpc: async () => ({ data: false, error: null }) },
+      service: { storage: { from: () => ({ remove: async () => { removed = true; return { error: null }; } }) } },
+    });
+
+    expect(result).toEqual({ ok: false, reason: 'draft_not_abandoned' });
+    expect(removed).toBe(false);
   });
 });
