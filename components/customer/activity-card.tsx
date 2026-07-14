@@ -3,11 +3,23 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle, Clock, Heart, MapPin, Star } from "lucide-react";
+import { useWishlist } from "@/components/providers/wishlist";
 import { AiTag } from "./ai-tag";
 import type { ComputedActivity } from "@/backend/core/types";
 
 export function ActivityCard({ activity }: { activity: ComputedActivity }) {
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { savedIds, toggleSaved } = useWishlist();
+  const saved = savedIds.has(activity.id);
+
+  async function handleSave(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (saving) return;
+    setSaving(true);
+    await toggleSaved(activity.id);
+    setSaving(false);
+  }
 
   return (
     <Link
@@ -30,13 +42,14 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
           </div>
         )}
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            setSaved((v) => !v);
-          }}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center bg-white/90"
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          aria-label={saved ? `Remove ${activity.name} from saved experiences` : `Save ${activity.name}`}
+          title={saved ? "Remove from saved experiences" : "Save to wishlist"}
+          className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full transition ${saved ? "bg-amber-100" : "bg-white/90"} disabled:cursor-wait disabled:opacity-70`}
         >
-          <Heart size={14} fill={saved ? "#C7363D" : "none"} stroke={saved ? "#C7363D" : "#555"} />
+          <Heart size={15} fill={saved ? "#010066" : "none"} stroke={saved ? "#010066" : "#334155"} />
         </button>
         {activity.outlet.verified && (
           <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white bg-primary">

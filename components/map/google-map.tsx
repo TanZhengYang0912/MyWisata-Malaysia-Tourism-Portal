@@ -56,7 +56,29 @@ function Markers({
   // a Map ID only if custom marker art is required later.
   useEffect(() => {
     if (!map || !cluster) return;
-    clustererRef.current = new MarkerClusterer({ map });
+    clustererRef.current = new MarkerClusterer({
+      map,
+      renderer: {
+        render: (cluster) => new google.maps.Marker({
+          position: cluster.position,
+          label: {
+            text: String(cluster.count),
+            color: "#ffffff",
+            fontSize: "12px",
+            fontWeight: "700",
+          },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: "#010066",
+            fillOpacity: 0.96,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+            scale: Math.min(24, 13 + Math.log10(cluster.count + 1) * 5),
+          },
+          zIndex: Number(google.maps.Marker.MAX_ZINDEX) + cluster.count,
+        }),
+      },
+    });
     return () => {
       clustererRef.current?.clearMarkers();
       clustererRef.current = null;
@@ -88,6 +110,14 @@ function Markers({
           position={{ lat: pin.lat, lng: pin.lng }}
           title={pin.label}
           ref={getRefCallback(pin.id)}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: selectedId === pin.id ? "#FACC15" : "#010066",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+            scale: selectedId === pin.id ? 10 : 7,
+          }}
           onClick={() => onSelect(pin.id)}
         />
       ))}
@@ -119,7 +149,7 @@ export function GoogleMap({
   pins: MapPin[];
   center: [number, number];
   zoom?: number;
-  height?: number;
+  height?: number | string;
   cluster?: boolean;
   radiusCenter?: [number, number];
   radiusKm?: number;

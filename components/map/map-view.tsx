@@ -19,7 +19,7 @@ export function MapView(props: {
   pins: MapPin[];
   center: [number, number];
   zoom?: number;
-  height?: number;
+  height?: number | string;
   cluster?: boolean;
   radiusCenter?: [number, number];
   radiusKm?: number;

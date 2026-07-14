@@ -244,5 +244,6 @@ export const CATEGORIES = [
 ];
 
 export const STATES_MY = [
-  "All Malaysia", "Kuala Lumpur", "Penang", "Melaka", "Kedah", "Sabah", "Pahang",
+  "All Malaysia", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",
+  "Penang", "Sabah", "Sarawak", "Selangor", "Terengganu", "Kuala Lumpur", "Putrajaya", "Labuan",
 ];

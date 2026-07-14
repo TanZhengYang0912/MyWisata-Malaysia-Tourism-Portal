@@ -157,8 +157,8 @@ export function ActivityDetailClient({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <div className="relative rounded-2xl overflow-hidden mb-6" style={{ height: 280 }}>
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">
+      <div className="relative mb-4 h-52 overflow-hidden rounded-2xl sm:h-64 lg:h-72">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={activity.image} alt={activity.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
@@ -169,6 +169,8 @@ export function ActivityDetailClient({
         )}
       </div>
 
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <section className="min-w-0">
       <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
@@ -187,13 +189,9 @@ export function ActivityDetailClient({
             </div>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-3xl font-bold text-primary font-[family-name:var(--font-mono)]">RM {price}</p>
-          <p className="text-xs text-muted-foreground">per person</p>
-        </div>
       </div>
 
-      <div className="flex items-center gap-1 p-1 rounded-full border border-border w-fit mb-6">
+      <div className="mb-4 flex w-fit items-center gap-1 rounded-full border border-border p-1">
         {(["details", "map"] as const).map((v) => (
           <button
             key={v}
@@ -231,98 +229,6 @@ export function ActivityDetailClient({
             </div>
           )}
 
-          {/* Booking selection */}
-          <div className="rounded-xl p-4 mb-6 border border-border">
-            <p className="text-xs font-bold uppercase tracking-wider mb-3 text-primary">
-              {activity.requiresBooking ? "Select Date & Package" : "Choose Options"}
-            </p>
-
-            {activity.variants.length > 1 && (
-              <div className="mb-3">
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Package</label>
-                <div className="flex gap-2 flex-wrap">
-                  {activity.variants.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setVariantId(v.id)}
-                      className="px-3 py-2 rounded-lg text-xs font-semibold border"
-                      style={{
-                        borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
-                        backgroundColor: variantId === v.id ? "var(--primary)" : "transparent",
-                        color: variantId === v.id ? "white" : "var(--foreground)",
-                      }}
-                    >
-                      {v.label} {v.priceDelta !== 0 && `(${v.priceDelta > 0 ? "+" : ""}RM ${v.priceDelta})`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activity.requiresBooking && (
-              <div className="mb-3">
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Time Slot</label>
-                {slots.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No slots available yet.</p>
-                ) : (
-                  <div className="flex gap-2 flex-wrap">
-                    {slots.map((s) => {
-                      const full = s.booked >= s.capacity;
-                      return (
-                        <button
-                          key={s.id}
-                          disabled={full}
-                          onClick={() => setSlotId(s.id)}
-                          className="px-3 py-2 rounded-lg text-xs font-semibold border disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{
-                            borderColor: slotId === s.id ? "var(--primary)" : "var(--border)",
-                            backgroundColor: slotId === s.id ? "var(--primary)" : "transparent",
-                            color: slotId === s.id ? "white" : "var(--foreground)",
-                          }}
-                        >
-                          {new Date(s.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                          {full ? " · Full" : ` · ${s.capacity - s.booked} left`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
-                <span className="w-6 text-center text-sm font-semibold text-foreground">{qty}</span>
-                <button
-                  onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
-                  disabled={seatsLeft !== undefined && qty >= seatsLeft}
-                  className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  +
-                </button>
-              </div>
-              {seatsLeft !== undefined && <span className="text-xs text-muted-foreground">{seatsLeft} seats left</span>}
-            </div>
-          </div>
-
-          <div className="flex gap-3 mb-8 flex-wrap">
-            <Button
-              onClick={handleAddToCart}
-              disabled={adding || (activity.requiresBooking && !slotId)}
-              className="flex-1 min-w-[140px] h-12 rounded-full text-base"
-            >
-              {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
-            </Button>
-            <Button variant="outline" size="icon" className="w-12 h-12 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
-              <MessageCircle size={18} />
-            </Button>
-            <ShareButton productId={activity.id} productName={activity.name} />
-          </div>
-          {activity.requiresBooking && !slotId && (
-            <p className="text-xs text-destructive -mt-6 mb-6">Select a time slot to continue.</p>
-          )}
         </>
       )}
 
@@ -368,6 +274,122 @@ export function ActivityDetailClient({
           </div>
         </>
       )}
+
+      </section>
+
+      <aside className="lg:sticky lg:top-24">
+        <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
+          <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Ready to book</p>
+              <h2 className="mt-1 text-lg font-bold text-foreground">{activity.requiresBooking ? "Select your visit" : "Choose your options"}</h2>
+            </div>
+            <div className="text-right">
+              <p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p>
+              <p className="text-[11px] text-muted-foreground">per person</p>
+            </div>
+          </div>
+
+          {activity.variants.length > 1 && (
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold text-muted-foreground">Package</label>
+              <div className="flex flex-wrap gap-2">
+                {activity.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setVariantId(v.id)}
+                    className="rounded-xl border px-3 py-2 text-xs font-semibold transition-colors"
+                    style={{
+                      borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
+                      backgroundColor: variantId === v.id ? "var(--primary)" : "transparent",
+                      color: variantId === v.id ? "white" : "var(--foreground)",
+                    }}
+                  >
+                    {v.label} {v.priceDelta !== 0 && `(${v.priceDelta > 0 ? "+" : ""}RM ${v.priceDelta})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activity.requiresBooking && (
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold text-muted-foreground">Time Slot</label>
+              {slots.length === 0 ? (
+                <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">No slots available yet.</p>
+              ) : (
+                <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto">
+                  {slots.map((s) => {
+                    const full = s.booked >= s.capacity;
+                    return (
+                      <button
+                        key={s.id}
+                        disabled={full}
+                        onClick={() => setSlotId(s.id)}
+                        className="rounded-xl border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                        style={{
+                          borderColor: slotId === s.id ? "var(--primary)" : "var(--border)",
+                          backgroundColor: slotId === s.id ? "var(--primary)" : "transparent",
+                          color: slotId === s.id ? "white" : "var(--foreground)",
+                        }}
+                      >
+                        {new Date(s.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        {full ? " · Full" : ` · ${s.capacity - s.booked} left`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted px-3 py-2.5">
+            <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
+              <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
+              <button
+                onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                disabled={seatsLeft !== undefined && qty >= seatsLeft}
+                className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{seatsLeft} seats left</p>}
+          {activity.requiresBooking && !slotId && <p className="mb-3 text-xs text-destructive">Select a time slot to continue.</p>}
+
+          <Button
+            onClick={handleAddToCart}
+            disabled={adding || (activity.requiresBooking && !slotId)}
+            className="h-12 w-full rounded-full text-base"
+          >
+            {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
+          </Button>
+
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <Button variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
+              <MessageCircle size={17} />
+            </Button>
+            <ShareButton productId={activity.id} productName={activity.name} />
+          </div>
+        </div>
+      </aside>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-6xl items-center gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-xs text-muted-foreground">{qty} person{qty > 1 ? "s" : ""}</p>
+            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {price * qty}</p>
+          </div>
+          <Button onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
+            {added ? "Added ✓" : activity.requiresBooking ? "Add Booking" : "Add to Cart"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

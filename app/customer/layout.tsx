@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gift, Globe, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText, ShieldCheck, Star, UserRound, WalletCards } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
+import { WishlistProvider } from "@/components/providers/wishlist";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -14,17 +15,26 @@ const NAV = [
   { href: "/customer/explore", label: "Explore", icon: Search },
   { href: "/customer/map", label: "Map", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
-  { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
   { href: "/customer/activity?tab=itinerary", label: "My Activity", icon: ReceiptText },
-  { href: "/customer/affiliate", label: "Earn & Share", icon: Gift },
-  { href: "/customer/support", label: "Support", icon: Inbox },
+];
+
+const ACCOUNT_NAV = [
+  { href: "/customer/profile", label: "Profile", description: "Your personal details", icon: UserRound },
+  { href: "/customer/wishlist", label: "Saved Experiences", description: "Your travel shortlist", icon: Heart },
+  { href: "/customer/kyc", label: "KYC Verification", description: "Verify your identity", icon: ShieldCheck },
+  { href: "/customer/wallet", label: "My Wallet", description: "Balance and payouts", icon: WalletCards },
+  { href: "/customer/recommendations", label: "Recommend a Vendor", description: "Share local discoveries", icon: Star },
+  { href: "/customer/affiliate", label: "Earn & Share", description: "Manage affiliate activity", icon: Gift },
+  { href: "/customer/support", label: "Support", description: "Get help with your trip", icon: Inbox },
 ];
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"]);
   const { count } = useCart();
   const pathname = usePathname();
-  // CLAUDE-FIXES-2.md item 1: a dot on the Support nav item when there's an
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
   // unread admin reply anywhere in my tickets. Polled — no realtime chat
   // infra exists elsewhere in this repo to piggyback on.
   const [unreadTickets, setUnreadTickets] = useState(0);
@@ -54,6 +64,27 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       clearInterval(interval);
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountMenuOpen]);
 
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
@@ -104,12 +135,65 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 </span>
               )}
             </Link>
-            <Link href="/login" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white bg-primary">
+          </div>
+
+          <div ref={accountMenuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Open My Account menu"
+              className="flex items-center gap-2 rounded-full border border-border bg-white/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
                 {currentUser.avatarInitial}
+              </span>
+              <span className="hidden text-xs font-semibold text-foreground lg:inline">My Account</span>
+              <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {accountMenuOpen && (
+              <div role="menu" aria-label="My Account" className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
+                <div className="border-b border-border px-3 pb-3 pt-2">
+                  <p className="text-sm font-bold text-foreground">My Account</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Manage your profile and member tools</p>
+                </div>
+                <div className="pt-2">
+                  {ACCOUNT_NAV.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+                        <item.icon size={16} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          {item.label}
+                          {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-destructive" />}
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-2 border-t border-border pt-2">
+                  <Link
+                    href="/login"
+                    role="menuitem"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                  >
+                    <ArrowRightLeft size={16} />
+                    Switch account
+                  </Link>
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground">Switch account</span>
-            </Link>
+            )}
           </div>
         </div>
 
@@ -131,7 +215,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         </div>
       </nav>
 
-      <main className="flex-1">{children}</main>
+      <main className="flex-1"><WishlistProvider>{children}</WishlistProvider></main>
       <ChatbotWidget />
     </div>
   );

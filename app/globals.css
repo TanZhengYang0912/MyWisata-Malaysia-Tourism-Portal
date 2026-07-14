@@ -114,3 +114,29 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes malaysia-route-pulse {
+  0% {
+    opacity: 0.2;
+    transform: translateX(-130%);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(520%);
+  }
+}
+
+.malaysia-route-pulse {
+  animation: malaysia-route-pulse 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .malaysia-route-pulse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
