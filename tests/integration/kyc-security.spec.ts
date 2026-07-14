@@ -179,7 +179,9 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     expect(path).toBe(paths.front);
     const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.document_viewed').eq('entity_id', submissionId);
     expect(audits).toHaveLength(1);
-    expect(JSON.stringify(audits![0].after_data)).not.toContain(paths.front);
+    expect(audits![0].after_data).toEqual({ submission_id: submissionId, side: 'front' });
+    expect(Object.keys(audits![0].after_data as Record<string, unknown>).sort()).toEqual(['side', 'submission_id']);
+    expect(JSON.stringify(audits![0].after_data)).not.toMatch(/path|hash|url/i);
   });
 
   it('enforces structured review reason restrictions and prevents self-dealing at the RPC boundary', async () => {
@@ -227,42 +229,65 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     })).error?.message).toContain('self_dealing');
   });
 
-  it('claims each expired evidence side once using terminal-event retention and preserves submission metadata', async () => {
+  it('claims each expired evidence side once using rejected and superseded retention and preserves submission metadata', async () => {
     const { id, client } = await createEmailVerifiedClient();
     await service!.from('users').update({ tier: 'profile_complete' }).eq('id', id);
-    const submissionId = await beginServerSubmission(id, '1'.repeat(64));
-    const paths = evidencePaths(id, submissionId);
-    await uploadEvidence(paths);
-    expect((await client.rpc('finalize_kyc_submission', {
-      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
-    })).error).toBeNull();
-    await service!.from('kyc_submissions').update({
-      status: 'rejected', evidence_retention_started_at: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString(),
-    }).eq('id', submissionId);
+    const oldRetentionStart = new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString();
+    const fixtures = (['rejected', 'superseded'] as const).map((status, index) => ({
+      status,
+      hash: String(index + 1).repeat(64),
+    }));
+    const submissions = [] as Array<{ id: string; paths: ReturnType<typeof evidencePaths>; status: (typeof fixtures)[number]['status'] }>;
+
+    for (const fixture of fixtures) {
+      const submissionId = await beginServerSubmission(id, fixture.hash);
+      const paths = evidencePaths(id, submissionId);
+      await uploadEvidence(paths);
+      expect((await client.rpc('finalize_kyc_submission', {
+        p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+      })).error).toBeNull();
+      const { error } = await service!.from('kyc_submissions').update({
+        status: fixture.status, evidence_retention_started_at: oldRetentionStart,
+      }).eq('id', submissionId);
+      expect(error).toBeNull();
+      submissions.push({ id: submissionId, paths, status: fixture.status });
+    }
 
     expect((await client.rpc('purge_expired_kyc_evidence')).error?.message).toContain('permission denied');
     const { data: worklist, error } = await service!.rpc('purge_expired_kyc_evidence');
     expect(error).toBeNull();
     const claimed = (worklist as Array<{ submission_id: string; side: string; storage_path: string }>)
-      .filter((item) => item.submission_id === submissionId);
-    expect(claimed).toEqual([
+      .filter((item) => submissions.some((submission) => submission.id === item.submission_id));
+    expect(claimed).toHaveLength(4);
+    expect(claimed).toEqual(expect.arrayContaining(submissions.flatMap(({ id: submissionId, paths }) => [
       { submission_id: submissionId, side: 'back', storage_path: paths.back },
       { submission_id: submissionId, side: 'front', storage_path: paths.front },
-    ]);
+    ])));
     expect(((await service!.rpc('purge_expired_kyc_evidence')).data as Array<{ submission_id: string }>)
-      .filter((item) => item.submission_id === submissionId)).toEqual([]);
+      .filter((item) => submissions.some((submission) => submission.id === item.submission_id))).toEqual([]);
     for (const item of claimed) {
       expect((await service!.storage.from('kyc-documents').remove([item.storage_path])).error).toBeNull();
       expect((await service!.rpc('confirm_purged_kyc_evidence', { p_submission_id: item.submission_id, p_side: item.side })).error).toBeNull();
     }
-    expect((await service!.from('kyc_submissions').select('id').eq('id', submissionId).maybeSingle()).data?.id).toBe(submissionId);
-    expect((await service!.storage.from('kyc-documents').download(paths.front)).error).not.toBeNull();
-    expect((await service!.storage.from('kyc-documents').download(paths.back)).error).not.toBeNull();
-    const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.evidence_purged').eq('entity_id', submissionId);
-    expect(audits).toHaveLength(2);
-    expect(JSON.stringify(audits)).not.toContain(paths.front);
-    expect(JSON.stringify(audits)).not.toContain(paths.back);
-  });
+    for (const submission of submissions) {
+      const { data: metadata, error: metadataError } = await service!.from('kyc_submissions')
+        .select('id, status').eq('id', submission.id).maybeSingle();
+      expect(metadataError).toBeNull();
+      expect(metadata).toEqual({ id: submission.id, status: submission.status });
+      expect((await service!.storage.from('kyc-documents').download(submission.paths.front)).error).not.toBeNull();
+      expect((await service!.storage.from('kyc-documents').download(submission.paths.back)).error).not.toBeNull();
+    }
+    const { data: audits } = await service!.from('audit_logs').select('after_data').eq('action', 'kyc.evidence_purged')
+      .in('entity_id', submissions.map((submission) => submission.id));
+    expect(audits).toHaveLength(4);
+    for (const audit of audits ?? []) {
+      const payload = audit.after_data as Record<string, unknown>;
+      expect(payload).toEqual({ submission_id: expect.any(String), side: expect.stringMatching(/^(front|back)$/) });
+      expect(Object.keys(payload).sort()).toEqual(['side', 'submission_id']);
+      expect(submissions.map((submission) => submission.id)).toContain(payload.submission_id);
+      expect(JSON.stringify(payload)).not.toMatch(/path|hash|url/i);
+    }
+  }, 30_000);
 
   it('retains approved evidence until account closure or a sufficiently old replacement', async () => {
     const { id, client } = await createEmailVerifiedClient();
