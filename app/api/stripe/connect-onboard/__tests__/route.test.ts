@@ -1,0 +1,169 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  getUser: vi.fn(),
+  single: vi.fn(),
+  update: vi.fn(),
+  updateEq: vi.fn(),
+  accountsCreate: vi.fn(),
+  accountLinksCreate: vi.fn(),
+}));
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: async () => ({
+    auth: { getUser: mocks.getUser },
+    from: () => ({
+      select: () => ({
+        eq: () => ({ single: mocks.single }),
+      }),
+      update: (payload: unknown) => {
+        mocks.update(payload);
+        return { eq: mocks.updateEq };
+      },
+    }),
+  }),
+}));
+
+vi.mock('@/lib/stripe', () => ({
+  stripe: {
+    accounts: { create: mocks.accountsCreate },
+    accountLinks: { create: mocks.accountLinksCreate },
+  },
+}));
+
+const { POST } = await import('../route');
+
+const authUser = {
+  id: '11111111-1111-4111-8111-111111111111',
+  email: 'user@example.com',
+};
+
+function request() {
+  return new Request('http://localhost/api/stripe/connect-onboard', {
+    method: 'POST',
+    headers: { origin: 'http://localhost:3000' },
+  });
+}
+
+describe('POST /api/stripe/connect-onboard', () => {
+  beforeEach(() => {
+    mocks.getUser.mockReset();
+    mocks.single.mockReset();
+    mocks.update.mockReset();
+    mocks.updateEq.mockReset().mockResolvedValue({ error: null });
+    mocks.accountsCreate.mockReset();
+    mocks.accountLinksCreate.mockReset();
+
+    mocks.getUser.mockResolvedValue({ data: { user: authUser } });
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: null,
+        full_name: 'Test User',
+        phone: '+60123456789',
+        email: authUser.email,
+      },
+      error: null,
+    });
+    mocks.accountsCreate.mockResolvedValue({ id: 'acct_real_test123' });
+    mocks.accountLinksCreate.mockResolvedValue({ url: 'https://connect.stripe.test/onboarding' });
+  });
+
+  it('creates a Stripe-liable Standard-equivalent account and never enables payouts locally', async () => {
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: 'https://connect.stripe.test/onboarding' });
+    expect(mocks.accountsCreate).toHaveBeenCalledWith(expect.objectContaining({
+      country: 'MY',
+      controller: {
+        losses: { payments: 'stripe' },
+        fees: { payer: 'account' },
+        requirement_collection: 'stripe',
+        stripe_dashboard: { type: 'full' },
+      },
+    }));
+    expect(mocks.update).toHaveBeenCalledWith({
+      stripe_connect_account_id: 'acct_real_test123',
+      stripe_payouts_enabled: false,
+    });
+    expect(mocks.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ stripe_payouts_enabled: true }),
+    );
+  });
+
+  it('replaces a legacy demo account with a real Stripe account', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: 'acct_demo_1234567890',
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.accountsCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
+      account: 'acct_real_test123',
+    }));
+    expect(mocks.accountLinksCreate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ account: 'acct_demo_1234567890' }),
+    );
+  });
+
+  it('reuses a real account and creates a fresh onboarding link', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: 'acct_existing123',
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.accountsCreate).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
+      account: 'acct_existing123',
+      type: 'account_onboarding',
+    }));
+  });
+
+  it('does not start onboarding before KYC verification', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'profile_complete',
+        stripe_connect_account_id: null,
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(403);
+    expect(mocks.accountsCreate).not.toHaveBeenCalled();
+    expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic 502 when Stripe onboarding fails', async () => {
+    mocks.accountsCreate.mockRejectedValue({ type: 'StripeInvalidRequestError', requestId: 'req_test' });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: 'Unable to start Stripe onboarding' });
+  });
+});
