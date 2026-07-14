@@ -43,7 +43,7 @@ export async function sendOtp(phone: string): Promise<TwilioResult> {
 export async function verifyOtp(phone: string, code: string): Promise<TwilioResult> {
   const { url, auth } = twilioBase();
 
-  const res = await fetch(`${url}/VerificationChecks`, {
+  const res = await fetch(`${url}/VerificationCheck`, {
     method: 'POST',
     headers: { Authorization: auth, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ To: phone, Code: code }),
