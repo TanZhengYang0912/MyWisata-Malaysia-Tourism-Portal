@@ -162,6 +162,18 @@ paste each into the SQL editor, in order) before testing anything below:
 ### Running the full affiliate → commission → chatbot → admin loop
 
 1. `/login` → sign in as **Alice** (`customer1@demo.local`, KYC-approved).
+
+   **If step 2's Share button (or any `POST /api/affiliate/link` call) 403s
+   with `TIER_INSUFFICIENT`, check `users.tier` before anything else.** The
+   affiliate gate reads `users.tier`, not `users.kyc_status` — the
+   tier-ladder migration (`025_tier_ladder.sql`) introduced `tier` as a
+   separate column, and `app/api/affiliate/link/route.ts` was updated to
+   gate on `meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_FULL)`
+   (currently `'kyc_verified'`). Alice's `kyc_status` is `'approved'`, but as
+   of this writing her `tier` had drifted to only `'email_verified'` —
+   un-backfilled data, not an intentional gate. If this demo step 403s,
+   confirm Alice's `tier` is `'kyc_verified'` (ask the tier-ladder owner to
+   backfill it) before assuming the affiliate code is broken.
 2. Open any activity (e.g. Georgetown Heritage Walk) → press **Share**. On
    `localhost`, `navigator.share` is usually unavailable, so this copies an
    `/r/AF-XXXXXX/<slug>` link to your clipboard instead — that's the expected
