@@ -40,6 +40,7 @@ export interface Database {
       user_interactions: { Row: UserInteractionRow; Insert: Partial<UserInteractionRow>; Update: Partial<UserInteractionRow> };
       recommendation_snapshots: { Row: RecommendationSnapshotRow; Insert: Partial<RecommendationSnapshotRow>; Update: Partial<RecommendationSnapshotRow> };
       kyc_submissions: { Row: KycSubmissionRow; Insert: Partial<KycSubmissionRow>; Update: Partial<KycSubmissionRow> };
+      kyc_submission_documents: { Row: KycSubmissionDocumentRow; Insert: Partial<KycSubmissionDocumentRow>; Update: Partial<KycSubmissionDocumentRow> };
       share_events: { Row: ShareEventRow; Insert: Partial<ShareEventRow>; Update: Partial<ShareEventRow> };
       platform_settings: { Row: PlatformSettingRow; Insert: Partial<PlatformSettingRow>; Update: Partial<PlatformSettingRow> };
       affiliate_clicks: { Row: AffiliateClickRow; Insert: Partial<AffiliateClickRow>; Update: Partial<AffiliateClickRow> };
@@ -49,6 +50,10 @@ export interface Database {
       payments: { Row: PaymentRow; Insert: Partial<PaymentRow>; Update: Partial<PaymentRow> };
       payout_destinations: { Row: PayoutDestinationRow; Insert: Partial<PayoutDestinationRow>; Update: Partial<PayoutDestinationRow> };
       wallet_transactions: { Row: WalletTransactionRow; Insert: Partial<WalletTransactionRow>; Update: Partial<WalletTransactionRow> };
+    };
+    /** Column-isolated records for user information rendered to other users. */
+    Views: {
+      public_users: { Row: PublicUserRow };
     };
   };
 }
@@ -515,13 +520,46 @@ export interface AuditLogRow {
 export interface KycSubmissionRow {
   id: string;
   user_id: string;
+  ic_hash: string | null;
+  ic_hash_version: 'legacy_sha256' | 'hmac_sha256_v1';
   document_type: 'national_id' | 'passport' | 'driving_license';
-  document_url: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'pending' | 'info_requested' | 'approved' | 'rejected' | 'superseded';
+  queue_position: number | null;
   reviewer_id: string | null;
   rejection_reason: string | null;
+  review_reason_code: 'document_unreadable' | 'document_incomplete' | 'document_mismatch' | 'document_expired' | 'document_suspected_tampering' | 'other' | null;
+  review_reason_detail: string | null;
+  legacy_single_document: boolean;
+  evidence_retention_started_at: string | null;
   reviewed_at: string | null;
   created_at: string;
+}
+
+/**
+ * Public user DTO. This is intentionally separate from UserRow: callers that
+ * render another person's profile must use the public_users view and cannot
+ * accidentally select KYC state, tiers, contact details, or evidence fields.
+ */
+export interface PublicUserRow {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  country: string;
+  is_kyc_verified: boolean;
+  has_completed_profile: boolean;
+  created_at: string;
+}
+
+export interface KycSubmissionDocumentRow {
+  id: string;
+  submission_id: string;
+  side: 'front' | 'back';
+  storage_path: string;
+  mime_type: 'image/jpeg' | 'image/png' | 'application/pdf';
+  created_at: string;
+  purge_claimed_at: string | null;
 }
 
 export interface OutletManagerRow {

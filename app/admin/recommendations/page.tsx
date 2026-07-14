@@ -3,24 +3,22 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
-import { getUsers } from "@/backend/domains/identity";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { User, VendorRecommendation } from "@/backend/core/types";
+import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
-  const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getVendorRecommendations().then(setRecs);
-    getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
   }, []);
 
   async function review(r: VendorRecommendation, approve: boolean) {
@@ -74,7 +72,6 @@ export default function AdminRecommendationsPage() {
         ) : (
           <div className="divide-y divide-border">
             {pending.map((r) => {
-              const submitter = users.get(r.submittedBy);
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
@@ -82,7 +79,10 @@ export default function AdminRecommendationsPage() {
                       <p className="text-sm font-semibold text-foreground">{r.name}</p>
                       {r.duplicate && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-destructive/15 text-destructive">Duplicate</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">{r.category} · {r.state} · by {submitter?.name}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{r.category} · {r.state} · by {r.author?.name ?? "MyWisata member"}</span>
+                      {r.author && <VerifiedContributorBadge verified={r.author.isKycVerified} />}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="w-16 h-1.5 rounded-full overflow-hidden bg-muted">

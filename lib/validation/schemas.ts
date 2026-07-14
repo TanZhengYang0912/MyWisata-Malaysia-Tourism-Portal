@@ -3,6 +3,8 @@
 // before hitting the DB. Never trust `await request.json()` directly.
 
 import { z } from 'zod';
+import { validateReviewReason } from '@/lib/kyc/review-reasons';
+import { KYC_REVIEW_REASON_CODES } from '@/lib/kyc/types';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -18,12 +20,28 @@ export const kycSubmitSchema = z.object({
 }).strict();
 
 export const kycReviewSchema = z.object({
-  action: z.enum(['approve', 'reject']),
-  reason: z.string().max(500).optional(),
-}).strict().refine(
-  (data) => data.action === 'approve' || (data.reason && data.reason.length >= 10),
-  { message: 'Reject requires a reason of at least 10 characters', path: ['reason'] },
-);
+  userId: uuid,
+  action: z.enum(['approve', 'reject', 'request_info']),
+  reasonCode: z.enum(KYC_REVIEW_REASON_CODES).optional(),
+  reasonDetail: z.string().max(500).optional(),
+}).strict().superRefine((data, ctx) => {
+  if (data.action === 'approve') {
+    if (data.reasonCode !== undefined || data.reasonDetail !== undefined) {
+      ctx.addIssue({ code: 'custom', message: 'Approved submissions cannot include a review reason', path: ['reasonCode'] });
+    }
+    return;
+  }
+
+  if (!data.reasonCode) {
+    ctx.addIssue({ code: 'custom', message: 'A review reason code is required', path: ['reasonCode'] });
+    return;
+  }
+
+  const validation = validateReviewReason(data.action, data.reasonCode, data.reasonDetail ?? null);
+  if (!validation.ok) {
+    ctx.addIssue({ code: 'custom', message: validation.error, path: [validation.error === 'reason_detail_too_short' ? 'reasonDetail' : 'reasonCode'] });
+  }
+});
 
 // ── Vendor Recommendation ──────────────────────────────────
 

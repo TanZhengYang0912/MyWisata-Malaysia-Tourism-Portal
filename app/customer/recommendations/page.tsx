@@ -7,8 +7,25 @@ import { STATES_MY } from "@/backend/domains/catalogue";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+
+type RecommendationResponse = {
+  id: string;
+  vendor_name: string;
+  status: VendorRecommendation["status"];
+  state: string | null;
+  categories: { name: string } | null;
+  author: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    city: string | null;
+    country: string | null;
+    isKycVerified: boolean;
+  } | null;
+};
 
 export default function RecommendationsPage() {
   const { currentUser } = useAuth();
@@ -33,7 +50,7 @@ export default function RecommendationsPage() {
       .then((r) => r.json())
       .then((body) => {
         if (body?.data) {
-          setRecs(body.data.map((r: any) => ({
+          setRecs(body.data.map((r: RecommendationResponse) => ({
             id: r.id,
             submittedBy: currentUser.id,
             name: r.vendor_name,
@@ -42,6 +59,14 @@ export default function RecommendationsPage() {
             status: r.status,
             qualityScore: 0,
             duplicate: false,
+            author: r.author ? {
+              id: r.author.id,
+              name: r.author.name,
+              avatarUrl: r.author.avatarUrl ?? undefined,
+              city: r.author.city ?? undefined,
+              country: r.author.country ?? undefined,
+              isKycVerified: Boolean(r.author.isKycVerified),
+            } : undefined,
           })));
         }
       })
@@ -190,6 +215,7 @@ export default function RecommendationsPage() {
                 <div>
                   <p className="text-sm font-semibold text-foreground">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
+                  {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -225,6 +251,7 @@ export default function RecommendationsPage() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
+                    {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                   </div>
                 </div>
                 <StatusBadge status={r.status} />

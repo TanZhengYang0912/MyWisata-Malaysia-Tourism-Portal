@@ -10,6 +10,7 @@ export async function validateMagicBytes(
 ): Promise<boolean> {
   const sig = SIGNATURES[claimedType];
   if (!sig) return false;
+  if (buffer.byteLength < sig.length) return false;
   const bytes = new Uint8Array(buffer, 0, sig.length);
   return sig.every((b, i) => bytes[i] === b);
 }

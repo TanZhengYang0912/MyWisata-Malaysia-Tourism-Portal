@@ -6,6 +6,24 @@ Backed by a real Supabase project (Postgres + Auth + RLS, see
 `supabase/migrations/`) — only the shopping cart still lives in the browser's
 `localStorage`, since there's no signed-in session to key a server-side cart on.
 
+## Destructive KYC test replay
+
+`npm run test:kyc-db:replay` drops and recreates `public` on a disposable KYC test database. It never accepts generic database variables. Set `KYC_TEST_DATABASE_URL` and `KYC_TEST_SUPABASE_URL`, then explicitly acknowledge the parsed project ref for each invocation:
+
+```powershell
+$env:KYC_TEST_DB_RESET_CONFIRM = '<KYC test project ref>'
+npm run test:kyc-db:replay
+```
+
+The command refuses before connecting unless it can strictly parse the same valid project ref from the API URL and a recognised direct or pooler database URI, and the confirmation exactly matches that ref. Similar-looking or substring refs are rejected.
+
+KYC security tests and retention jobs
+
+- `KYC_IC_HMAC_KEY` is a server-only secret used to fingerprint IC numbers. Configure it in the server environment; never expose its value to the browser, logs, or audit payloads.
+- Set `RUN_KYC_DB_INTEGRATION=1` to enable the disposable-database integration suite. The suite reads only `KYC_TEST_SUPABASE_URL`, `KYC_TEST_SUPABASE_ANON_KEY`, and `KYC_TEST_SUPABASE_SERVICE_ROLE_KEY` for its test project.
+- Destructive replay additionally requires `KYC_TEST_DATABASE_URL` and `KYC_TEST_DB_RESET_CONFIRM`. The confirmation must be the parsed project reference for the KYC test URL; do not put credentials or secrets in source control.
+- Rejected and superseded evidence is retained for 90 days from its terminal transition. Approved evidence is retained until 90 days after account closure or after a later approved replacement; purge removes only private storage objects and their evidence worklist rows, preserving submission metadata. The purge cron returns aggregate counts only.
+
 Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User%20greeting/)
 (palette, fonts, screen layouts). The full screen/flow spec is in
 [`Docs/User greeting/src/imports/figma-prototype-implementation-plan.md`](<Docs/User greeting/src/imports/figma-prototype-implementation-plan.md>).

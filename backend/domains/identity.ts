@@ -1,6 +1,6 @@
 // Owner: Member 1 (Platform/Identity/Chat)
 import { supabase } from "@/backend/supabase";
-import type { ChatMessage, ChatThread, KycSubmission, Role, SupportTicket, User } from "@/backend/core/types";
+import type { AdminKycSubmission, ChatMessage, ChatThread, PublicUser, Role, SupportTicket, User } from "@/backend/core/types";
 import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
 
 type UserRow = {
@@ -14,6 +14,40 @@ type UserRow = {
 };
 
 const USER_SELECT = "id,email,full_name,city,phone,tier,user_roles(vendor_id,outlet_id,roles(name))";
+
+// Explicit allow-list for public identity data. Never replace this with a
+// users.* query: the public_users view is the column-level KYC boundary.
+const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,is_kyc_verified,created_at";
+
+type PublicUserRow = {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  country: string | null;
+  is_kyc_verified: boolean;
+  created_at: string;
+};
+
+function mapPublicUser(row: PublicUserRow): PublicUser {
+  return {
+    id: row.id,
+    name: row.display_name?.trim() || row.full_name?.trim() || "MyWisata member",
+    avatarUrl: row.avatar_url ?? undefined,
+    city: row.city ?? undefined,
+    country: row.country ?? undefined,
+    isKycVerified: Boolean(row.is_kyc_verified),
+  };
+}
+
+/** Fetches only active, public-safe identity fields for contributor cards. */
+export async function getPublicUsers(ids: string[]): Promise<PublicUser[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("public_users").select(PUBLIC_USER_SELECT).in("id", ids);
+  if (error) throw error;
+  return (data as unknown as PublicUserRow[]).map(mapPublicUser);
+}
 
 function mapUser(row: UserRow): User {
   const ur = row.user_roles[0];
@@ -229,10 +263,8 @@ export async function updateProfile(userId: string, data: { fullName: string; ci
 }
 
 // ─── KYC submissions ────────────────────────────────────────────────────────
-const KYC_BUCKET = "kyc-documents";
 export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 export const KYC_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const KYC_SIGNED_URL_TTL = 3600; // 1 hour
 
 export function validateKycFile(file: File | null): string | null {
   if (!file) return "Please upload a document photo";
@@ -241,52 +273,26 @@ export function validateKycFile(file: File | null): string | null {
   return null;
 }
 
-export async function uploadKycDocument(userId: string, file: File): Promise<string> {
-  const ext = (file.name.split(".").pop() ?? "bin").toLowerCase();
-  const path = `${userId}/document.${ext}`;
-  const { error } = await supabase.storage.from(KYC_BUCKET).upload(path, file, {
-    upsert: true,
-    contentType: file.type,
-  });
-  if (error) throw error;
-  return path;
-}
-
-export async function getKycDocumentSignedUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(KYC_BUCKET).createSignedUrl(path, KYC_SIGNED_URL_TTL);
-  if (error) throw error;
-  return data.signedUrl;
-}
-
-export async function upsertKycSubmission(userId: string, data: { icNumber: string; docType: string; documentUrl: string }): Promise<void> {
-  const isDemo = DEMO_USERS.some((u) => u.id === userId);
-  if (isDemo) return;
-  const { error } = await supabase.from("kyc_submissions").upsert(
-    { user_id: userId, ic_number: data.icNumber, document_type: data.docType, document_url: data.documentUrl, status: "pending" },
-    { onConflict: "user_id" }
-  );
-  if (error) throw error;
-}
-
-export async function getKycSubmissions(): Promise<KycSubmission[]> {
-  // Fetch active submissions only (append-only: each submission is a row)
+export async function getKycSubmissions(): Promise<AdminKycSubmission[]> {
+  // Admin metadata deliberately exposes document sides, never raw object paths.
   const { data, error } = await supabase
     .from("kyc_submissions")
-    .select("id,user_id,document_type,document_url,status,queue_position,created_at,reviewed_at,reviewer_id")
+    .select("id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side)")
     .in("status", ["pending", "info_requested"])
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
     userId: r.user_id,
-    icNumber: "",
     docType: r.document_type ?? "",
-    documentUrl: r.document_url ?? "",
-    status: r.status as KycSubmission["status"],
-    queuePosition: r.queue_position ?? undefined,
+    status: r.status as AdminKycSubmission["status"],
+    queuePosition: r.queue_position ?? null,
     submittedAt: r.created_at,
-    reviewedAt: r.reviewed_at ?? undefined,
-    reviewedBy: r.reviewer_id ?? undefined,
+    reviewedAt: r.reviewed_at ?? null,
+    reviewedBy: r.reviewer_id ?? null,
+    reviewReasonCode: r.review_reason_code ?? null,
+    reviewReasonDetail: r.review_reason_detail ?? null,
+    documents: ((r as { kyc_submission_documents?: { side: "front" | "back" }[] }).kyc_submission_documents ?? []).map(({ side }) => ({ side })),
   }));
 }
 

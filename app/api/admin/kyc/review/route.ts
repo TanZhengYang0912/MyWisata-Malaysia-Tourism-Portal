@@ -1,16 +1,5 @@
-import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { auditAndNotify } from '@/lib/audit';
-
-const kycReviewSchema = z.object({
-  userId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
-  action: z.enum(['approve', 'reject', 'request_info']),
-  reason: z.string().max(500).optional(),
-}).strict().refine(
-  (d) => d.action === 'approve' || (!!d.reason && d.reason.length >= 10),
-  { message: 'Non-approve actions require a reason of at least 10 characters', path: ['reason'] },
-);
+import { kycReviewSchema, parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -19,12 +8,14 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, kycReviewSchema);
   if (!parsed.ok) return parsed.response;
-  const { userId, action, reason } = parsed.data;
+  const { userId, action, reasonCode, reasonDetail } = parsed.data;
+  const trimmedReasonDetail = reasonDetail?.trim() || null;
 
   const { error: rpcErr } = await supabase.rpc('admin_review_kyc', {
     p_user_id: userId,
-    p_action:  action,
-    p_reason:  reason ?? null,
+    p_action: action,
+    p_reason_code: action === 'approve' ? null : reasonCode ?? null,
+    p_reason_detail: action === 'approve' ? null : trimmedReasonDetail,
   });
 
   if (rpcErr) {
@@ -38,31 +29,6 @@ export async function POST(request: Request) {
   }
 
   const tierAfter = action === 'approve' ? 'kyc_verified' : 'profile_complete';
-
-  const notifType = action === 'approve' ? 'kyc_approved'
-                  : action === 'reject'   ? 'kyc_rejected'
-                  :                         'kyc_info_requested';
-
-  await auditAndNotify(
-    {
-      action:     `kyc.${action}`,
-      entityType: 'user',
-      entityId:   userId,
-      afterData:  { tier: tierAfter },
-      note:       reason,
-    },
-    [{
-      userId,
-      type:  notifType,
-      title: action === 'approve'       ? 'KYC verification approved!'
-           : action === 'request_info'  ? 'Additional info needed for your KYC'
-           :                              'KYC submission rejected',
-      body: action === 'approve'
-          ? 'You can now withdraw your earnings and access premium features.'
-          : (reason ?? 'Please check your notification for details and re-submit.'),
-      link: '/customer/kyc',
-    }],
-  );
 
   return apiOk({ userId, tier: tierAfter, action });
 }
