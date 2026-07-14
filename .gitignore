@@ -42,3 +42,6 @@ next-env.d.ts
 
 # figma design reference screenshots (kept locally, not versioned)
 scripts/figma-screenshots/
+
+# local Git worktrees
+.worktrees/
