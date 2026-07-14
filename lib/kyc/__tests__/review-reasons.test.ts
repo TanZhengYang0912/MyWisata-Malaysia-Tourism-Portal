@@ -21,6 +21,25 @@ describe('validateReviewReason', () => {
     expect(validateReviewReason('reject', 'document_unreadable', null)).toEqual({ ok: true });
   });
 
+  it.each([
+    'document_unreadable',
+    'document_incomplete',
+    'document_mismatch',
+    'document_expired',
+    'document_suspected_tampering',
+    'other',
+  ] as const)('accepts every catalog reason code for rejection', (reasonCode) => {
+    expect(validateReviewReason('reject', reasonCode, reasonCode === 'other' ? 'A sufficiently detailed explanation.' : null))
+      .toEqual({ ok: true });
+  });
+
+  it('trims detail before enforcing the other reason minimum', () => {
+    expect(validateReviewReason('reject', 'other', '  123456789  ')).toEqual({
+      ok: false,
+      error: 'reason_detail_too_short',
+    });
+  });
+
   it('does not permit an unapproved rejection reason', () => {
     expect(validateReviewReason('reject', 'unapproved' as KycReviewReasonCode, null)).toEqual({
       ok: false,

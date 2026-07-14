@@ -7,6 +7,7 @@ import { getUsers } from "@/backend/domains/identity";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { AdminKycSubmission, User } from "@/backend/core/types";
+import { KYC_REVIEW_REASON_CODES, type KycReviewReasonCode } from "@/lib/kyc/types";
 
 const DOC_LABEL: Record<string, string> = {
   national_id:     "MyKad",
@@ -17,8 +18,18 @@ const DOC_LABEL: Record<string, string> = {
 type PendingAction = {
   userId: string;
   action: "reject" | "request_info";
-  reason: string;
+  reasonCode: KycReviewReasonCode | "";
+  reasonDetail: string;
 } | null;
+
+const REVIEW_REASON_LABELS: Record<KycReviewReasonCode, string> = {
+  document_unreadable: "Document is unreadable",
+  document_incomplete: "Document is incomplete",
+  document_mismatch: "Document details do not match",
+  document_expired: "Document is expired",
+  document_suspected_tampering: "Document is suspected of tampering",
+  other: "Other (add details)",
+};
 
 export default function AdminKycPage() {
   const { currentUser } = useAuth();
@@ -35,10 +46,19 @@ export default function AdminKycPage() {
       .then((body) => setSubmissions(new Map((body.data?.submissions ?? []).map((s: AdminKycSubmission) => [s.userId, s]))));
   }, []);
 
-  async function review(userId: string, action: "approve" | "reject" | "request_info", reason?: string) {
+  async function review(
+    userId: string,
+    action: "approve" | "reject" | "request_info",
+    reasonCode?: KycReviewReasonCode,
+    reasonDetail?: string,
+  ) {
     if (!currentUser || reviewing) return;
-    if ((action === "reject" || action === "request_info") && (!reason || reason.trim().length < 10)) {
-      setError("A reason of at least 10 characters is required.");
+    if (action !== "approve" && !reasonCode) {
+      setError("Select a review reason.");
+      return;
+    }
+    if (reasonCode === "other" && (reasonDetail?.trim().length ?? 0) < 10) {
+      setError("Add at least 10 characters of detail for Other.");
       return;
     }
     setReviewing(userId);
@@ -47,7 +67,12 @@ export default function AdminKycPage() {
       const res = await fetch("/api/admin/kyc/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, action, reason: reason?.trim() }),
+        body: JSON.stringify({
+          userId,
+          action,
+          ...(reasonCode ? { reasonCode } : {}),
+          ...(reasonDetail?.trim() ? { reasonDetail: reasonDetail.trim() } : {}),
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -157,7 +182,7 @@ export default function AdminKycPage() {
                         variant="outline"
                         className="text-xs"
                         disabled={reviewing === u.id}
-                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "request_info" ? null : { userId: u.id, action: "request_info", reason: "" })}
+                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "request_info" ? null : { userId: u.id, action: "request_info", reasonCode: "", reasonDetail: "" })}
                       >
                         <MessageSquare size={12} /> Request Info
                       </Button>
@@ -166,7 +191,7 @@ export default function AdminKycPage() {
                         variant="outline"
                         className="text-xs border-destructive text-destructive hover:bg-destructive/10"
                         disabled={reviewing === u.id}
-                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "reject" ? null : { userId: u.id, action: "reject", reason: "" })}
+                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "reject" ? null : { userId: u.id, action: "reject", reasonCode: "", reasonDetail: "" })}
                       >
                         <XCircle size={12} /> Reject
                       </Button>
@@ -187,19 +212,26 @@ export default function AdminKycPage() {
                       >
                         <p className="text-xs font-semibold text-foreground">
                           {pendingAction.action === "reject" ? "Rejection Reason" : "Information Requested"}
-                          <span className="text-muted-foreground font-normal ml-1">(min 10 characters, shown to user)</span>
                         </p>
-                        <textarea
-                          rows={2}
-                          value={pendingAction.reason}
-                          onChange={(e) => setPendingAction((a) => a ? { ...a, reason: e.target.value } : a)}
-                          placeholder={
-                            pendingAction.action === "reject"
-                              ? "e.g. Document photo is too blurry to read. Please re-submit."
-                              : "e.g. Please re-upload a clear photo of the front of your MyKad."
-                          }
-                          className="w-full px-3 py-2 text-xs rounded-lg border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                        />
+                        <select
+                          value={pendingAction.reasonCode}
+                          onChange={(e) => setPendingAction((a) => a ? { ...a, reasonCode: e.target.value as KycReviewReasonCode | "", reasonDetail: e.target.value === "other" ? a.reasonDetail : "" } : a)}
+                          className="w-full px-3 py-2 text-xs rounded-lg border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                        >
+                          <option value="">Select a reason…</option>
+                          {KYC_REVIEW_REASON_CODES.filter((reasonCode) => pendingAction.action === "reject" || reasonCode !== "document_suspected_tampering").map((reasonCode) => (
+                            <option key={reasonCode} value={reasonCode}>{REVIEW_REASON_LABELS[reasonCode]}</option>
+                          ))}
+                        </select>
+                        {pendingAction.reasonCode === "other" && (
+                          <textarea
+                            rows={2}
+                            value={pendingAction.reasonDetail}
+                            onChange={(e) => setPendingAction((a) => a ? { ...a, reasonDetail: e.target.value } : a)}
+                            placeholder="Explain what additional information is needed (at least 10 characters)."
+                            className="w-full px-3 py-2 text-xs rounded-lg border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                          />
+                        )}
                         <div className="flex gap-2 justify-end">
                           <Button
                             size="sm"
@@ -212,8 +244,8 @@ export default function AdminKycPage() {
                           <Button
                             size="sm"
                             className={`text-xs ${pendingAction.action === "reject" ? "bg-destructive hover:bg-destructive/90 text-white" : ""}`}
-                            disabled={reviewing === u.id || pendingAction.reason.trim().length < 10}
-                            onClick={() => review(u.id, pendingAction.action, pendingAction.reason)}
+                            disabled={reviewing === u.id || !pendingAction.reasonCode || (pendingAction.reasonCode === "other" && pendingAction.reasonDetail.trim().length < 10)}
+                            onClick={() => review(u.id, pendingAction.action, pendingAction.reasonCode || undefined, pendingAction.reasonDetail)}
                           >
                             {reviewing === u.id ? "Processing…" : pendingAction.action === "reject" ? "Confirm Reject" : "Send Request"}
                           </Button>

@@ -168,6 +168,10 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     const browserView = await admin.client.rpc('get_kyc_document_view', { p_submission_id: submissionId, p_side: 'front' });
     expect(browserView.error).toBeTruthy();
     expect(browserView.error?.message).not.toContain(paths.front);
+    const nonAdminView = await service!.rpc('get_kyc_document_view', {
+      p_submission_id: submissionId, p_side: 'front', p_actor_id: applicantId,
+    });
+    expect(nonAdminView.error?.message).toContain('admin_required');
     const { data: path, error } = await service!.rpc('get_kyc_document_view', {
       p_submission_id: submissionId, p_side: 'front', p_actor_id: admin.id,
     });
@@ -178,7 +182,7 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     expect(JSON.stringify(audits![0].after_data)).not.toContain(paths.front);
   });
 
-  it('enforces review reason restrictions at the RPC boundary', async () => {
+  it('enforces structured review reason restrictions and prevents self-dealing at the RPC boundary', async () => {
     const { id: applicantId, client: applicant } = await createEmailVerifiedClient();
     await service!.from('users').update({ tier: 'profile_complete' }).eq('id', applicantId);
     const submissionId = await beginServerSubmission(applicantId, 'f'.repeat(64));
@@ -188,9 +192,27 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
       p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
     const admin = await createAdminClient();
+
     expect((await admin.client.rpc('admin_review_kyc', {
-      p_user_id: applicantId, p_action: 'request_info', p_reason: 'document_suspected_tampering',
+      p_user_id: applicantId, p_action: 'reject', p_reason_code: 'unknown', p_reason_detail: null,
+    })).error?.message).toContain('invalid_reason_code');
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'reject', p_reason_code: 'other', p_reason_detail: '  too short  ',
+    })).error?.message).toContain('reason_detail_too_short');
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'request_info', p_reason_code: 'document_suspected_tampering', p_reason_detail: null,
     })).error?.message).toContain('reason_code_not_allowed');
+
+    await service!.from('users').update({ tier: 'profile_complete' }).eq('id', admin.id);
+    const adminSubmissionId = await beginServerSubmission(admin.id, '0'.repeat(64));
+    const adminPaths = evidencePaths(admin.id, adminSubmissionId);
+    await uploadEvidence(adminPaths);
+    expect((await admin.client.rpc('finalize_kyc_submission', {
+      p_submission_id: adminSubmissionId, p_front_path: adminPaths.front, p_back_path: adminPaths.back,
+    })).error).toBeNull();
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: admin.id, p_action: 'reject', p_reason_code: 'document_unreadable', p_reason_detail: null,
+    })).error?.message).toContain('self_dealing');
   });
 
   it('claims each expired evidence side once using terminal-event retention and preserves submission metadata', async () => {
