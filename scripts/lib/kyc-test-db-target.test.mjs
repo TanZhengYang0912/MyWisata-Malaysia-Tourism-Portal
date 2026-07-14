@@ -35,6 +35,7 @@ test('rejects non-canonical KYC API URLs before database target validation', () 
     `http://${ref}.supabase.co`,
     `https://user:password@${ref}.supabase.co`,
     `https://${ref}.supabase.co:443`,
+    `https://${ref}.supabase.co/`,
     `https://${ref}.supabase.co/rest/v1`,
     `https://${ref}.supabase.co?x=1`,
     `https://${ref}.supabase.co#fragment`,
