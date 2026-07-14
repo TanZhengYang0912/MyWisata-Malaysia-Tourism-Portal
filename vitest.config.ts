@@ -3,14 +3,11 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    exclude: ["node_modules", "tests/e2e/**"],
+    exclude: ["node_modules/**", "tests/e2e/**", "scripts/**/*.test.mjs"],
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
     },
-  },
-  test: {
-    exclude: ['tests/e2e/**', 'node_modules/**'],
   },
 });
