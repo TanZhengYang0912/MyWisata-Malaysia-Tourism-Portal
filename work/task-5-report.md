@@ -14,3 +14,9 @@
 - `npm test -- tests/integration/kyc-security.spec.ts` — 8 skipped because `RUN_KYC_DB_INTEGRATION` is not enabled in this workspace.
 - Targeted ESLint — no errors; one pre-existing unused `shortId` warning in `lib/validation/schemas.ts`.
 - `npx tsc --noEmit` remains blocked by unrelated pre-existing project errors (Google Maps typings/dependencies, duplicate `contentReviewSchema`, duplicate Vitest config key, and a pre-existing `customer-submission.ts` type error).
+
+## Follow-up hardening
+
+- SQL now explicitly rejects a null reason code for non-approval actions, including the legacy three-argument wrapper path.
+- Reason detail is accepted only for `other`; it remains required there after trimming to at least 10 characters. The shared validator and API Zod schema enforce the same contract.
+- The configured database integration run reached the test target, but one new assertion correctly failed because its schema has not replayed this migration. The guarded replay requires `KYC_TEST_DB_RESET_CONFIRM`, which is not configured in this workspace.

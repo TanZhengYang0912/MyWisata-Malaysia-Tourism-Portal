@@ -155,12 +155,12 @@ BEGIN
   IF auth.uid() = p_user_id THEN RAISE EXCEPTION 'self_dealing'; END IF;
   IF p_action NOT IN ('approve', 'reject', 'request_info') THEN RAISE EXCEPTION 'invalid_action'; END IF;
   IF p_action = 'approve' AND (p_reason_code IS NOT NULL OR p_reason_detail IS NOT NULL) THEN RAISE EXCEPTION 'reason_not_allowed'; END IF;
-  IF p_action <> 'approve' AND p_reason_code NOT IN ('document_unreadable', 'document_incomplete', 'document_mismatch', 'document_expired', 'document_suspected_tampering', 'other') THEN
+  IF p_action <> 'approve' AND (p_reason_code IS NULL OR p_reason_code NOT IN ('document_unreadable', 'document_incomplete', 'document_mismatch', 'document_expired', 'document_suspected_tampering', 'other')) THEN
     RAISE EXCEPTION 'invalid_reason_code';
   END IF;
   IF p_action = 'request_info' AND p_reason_code = 'document_suspected_tampering' THEN RAISE EXCEPTION 'reason_code_not_allowed'; END IF;
+  IF p_reason_code <> 'other' AND p_reason_detail IS NOT NULL THEN RAISE EXCEPTION 'reason_detail_not_allowed'; END IF;
   IF p_reason_code = 'other' AND length(btrim(COALESCE(p_reason_detail, ''))) < 10 THEN RAISE EXCEPTION 'reason_detail_too_short'; END IF;
-  IF p_reason_code <> 'other' AND p_reason_detail IS NOT NULL AND btrim(p_reason_detail) = '' THEN p_reason_detail := NULL; END IF;
   SELECT id INTO v_submission_id FROM kyc_submissions WHERE user_id = p_user_id AND status IN ('pending', 'info_requested') ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'kyc_not_active_or_not_found'; END IF;
   v_status := CASE p_action WHEN 'approve' THEN 'approved' WHEN 'reject' THEN 'rejected' ELSE 'info_requested' END;

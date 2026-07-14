@@ -194,8 +194,17 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     const admin = await createAdminClient();
 
     expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'reject', p_reason_code: null, p_reason_detail: null,
+    })).error?.message).toContain('invalid_reason_code');
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'reject', p_reason: null,
+    })).error?.message).toContain('invalid_reason_code');
+    expect((await admin.client.rpc('admin_review_kyc', {
       p_user_id: applicantId, p_action: 'reject', p_reason_code: 'unknown', p_reason_detail: null,
     })).error?.message).toContain('invalid_reason_code');
+    expect((await admin.client.rpc('admin_review_kyc', {
+      p_user_id: applicantId, p_action: 'reject', p_reason_code: 'document_unreadable', p_reason_detail: 'A supplied detail is not allowed.',
+    })).error?.message).toContain('reason_detail_not_allowed');
     expect((await admin.client.rpc('admin_review_kyc', {
       p_user_id: applicantId, p_action: 'reject', p_reason_code: 'other', p_reason_detail: '  too short  ',
     })).error?.message).toContain('reason_detail_too_short');

@@ -21,6 +21,13 @@ describe('validateReviewReason', () => {
     expect(validateReviewReason('reject', 'document_unreadable', null)).toEqual({ ok: true });
   });
 
+  it('does not permit a detail for a standard reason code', () => {
+    expect(validateReviewReason('reject', 'document_unreadable', 'This must not be accepted.')).toEqual({
+      ok: false,
+      error: 'reason_detail_not_allowed',
+    });
+  });
+
   it.each([
     'document_unreadable',
     'document_incomplete',
