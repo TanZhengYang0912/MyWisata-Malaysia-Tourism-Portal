@@ -9,10 +9,21 @@ function isRealStripeAccountId(value: string | null): value is string {
 }
 
 function stripeFailure(error: unknown) {
-  const details = error as { type?: string; requestId?: string };
+  const details = error as {
+    type?: string;
+    code?: string;
+    param?: string;
+    message?: string;
+    requestId?: string;
+    statusCode?: number;
+  };
   console.error('[stripe-connect-onboard] Stripe request failed', {
     type: details?.type ?? 'unknown',
+    code: details?.code ?? null,
+    param: details?.param ?? null,
+    message: details?.message ?? 'unknown',
     requestId: details?.requestId ?? null,
+    statusCode: details?.statusCode ?? null,
   });
   return NextResponse.json({ error: 'Unable to start Stripe onboarding' }, { status: 502 });
 }
