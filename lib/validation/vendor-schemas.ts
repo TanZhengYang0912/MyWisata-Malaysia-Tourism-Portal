@@ -201,13 +201,6 @@ export const fulfilSchema = z.object({
   status: z.enum(['ready', 'fulfilled']),
 }).strict();
 
-export const contentReviewSchema = z.object({
-  entityType: z.enum(['outlet', 'product', 'voucher']),
-  entityId: uuid,
-  action: z.enum(['approve', 'reject']),
-  note: z.string().max(1000).optional(),
-}).strict();
-
 export const vendorBatchSchema = z.object({
   entity: z.enum(['products', 'outlets', 'vouchers', 'orders', 'bookings', 'slots']),
   action: z.enum(['archive', 'restore', 'close', 'activate', 'deactivate', 'ready', 'fulfilled', 'check_in', 'cancel']),

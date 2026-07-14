@@ -53,8 +53,8 @@ export default function LoginPage() {
   async function pick(user: User) {
     setError(null);
     try {
-      await switchUser(user.id, user);
-      router.push(HOME_BY_ROLE[user.role]);
+      const signedInUser = await switchUser(user.id, user);
+      router.push(HOME_BY_ROLE[signedInUser?.role ?? user.role]);
       router.refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to sign in');

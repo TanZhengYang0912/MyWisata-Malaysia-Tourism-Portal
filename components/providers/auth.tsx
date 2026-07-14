@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useRouter } from "next/navigation";
 import { setCurrentUserId } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
+import { pickDemoAssignment } from "@/lib/auth/demo-user-role";
 import type { Role, User } from "@/backend/core/types";
 
 interface AuthContextValue {
@@ -13,7 +14,7 @@ interface AuthContextValue {
   activeVendorId?: string;
   activeOutletIds?: string[];
   loading: boolean;
-  switchUser: (id: string, user?: User) => Promise<void>;
+  switchUser: (id: string, user?: User) => Promise<User | null>;
   refreshUser: () => Promise<void>;
 }
 
@@ -33,10 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
 
     const assignments = row?.user_roles ?? [];
-    const assignment = assignments.find((item: any) => {
-      const role = Array.isArray(item.roles) ? item.roles[0] : item.roles;
-      return role?.name === 'vendor_owner';
-    }) ?? assignments[0];
+    const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
     const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
     const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
     const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
@@ -108,8 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await response.json() as { error?: string };
     if (!response.ok) throw new Error(result.error || 'Unable to sign in');
 
-    await loadSupabaseUser(id);
+    const loadedUser = await loadSupabaseUser(id);
     setLoading(false);
+    return loadedUser;
   }, [loadSupabaseUser]);
 
   const refreshUser = useCallback(async () => {

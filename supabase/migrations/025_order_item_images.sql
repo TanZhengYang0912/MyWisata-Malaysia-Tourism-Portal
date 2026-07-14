@@ -11,3 +11,4 @@ FROM public.products AS p
 WHERE oi.product_id = p.id
   AND oi.image_url IS NULL
   AND p.cover_url IS NOT NULL;
+
