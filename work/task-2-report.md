@@ -127,3 +127,21 @@ two-file service-upload → finalise flow before that endpoint is deployed.
 - `npm test` — passed: 45 tests with 8 database integration tests skipped as
   intended when the run flag is absent.
 - `npm run lint` and `git diff --check` — passed.
+
+## Replay confirmation hardening
+
+The replay runner now refuses to create a database connection unless
+`KYC_TEST_DB_RESET_CONFIRM` exactly equals the project ref parsed from
+`KYC_TEST_SUPABASE_URL` and already matched against `KYC_TEST_DATABASE_URL`.
+This makes the destructive `DROP SCHEMA public` an explicit, non-interactive
+per-invocation action even if the KYC test variables were accidentally pointed
+at a production project. The README documents the acknowledgement command.
+
+Verification: the runner was invoked with all test database inputs but without
+the confirmation; it refused before connecting (`missing-confirmation-refusal-verified`).
+It was then invoked with the confirmation derived from the designated test URL:
+full clean replay passed and the focused KYC integration suite passed 8/8.
+
+`npm run lint` was also run after this change. It exits non-zero on 167
+pre-existing repository-wide errors in unrelated generated/UI and vendor files;
+the replay runner, README, migration, and integration suite introduce none.

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-/** Rebuild the disposable KYC integration database from every SQL migration. */
+/**
+ * Rebuild the disposable KYC integration database from every SQL migration.
+ * Requires KYC_TEST_DB_RESET_CONFIRM to equal the KYC test project ref.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
@@ -23,6 +26,9 @@ const projectRef = new URL(testSupabaseUrl).hostname.split('.')[0];
 const databaseUrl = new URL(connectionString);
 if (!`${databaseUrl.hostname}/${databaseUrl.username}`.includes(projectRef)) {
   throw new Error('KYC_TEST_DATABASE_URL must target the project named by KYC_TEST_SUPABASE_URL.');
+}
+if (process.env.KYC_TEST_DB_RESET_CONFIRM !== projectRef) {
+  throw new Error(`Refusing destructive replay: set KYC_TEST_DB_RESET_CONFIRM=${projectRef} explicitly for this KYC test project.`);
 }
 
 const migrations = fs.readdirSync(path.resolve('supabase/migrations'))

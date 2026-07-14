@@ -6,6 +6,17 @@ Backed by a real Supabase project (Postgres + Auth + RLS, see
 `supabase/migrations/`) — only the shopping cart still lives in the browser's
 `localStorage`, since there's no signed-in session to key a server-side cart on.
 
+## Destructive KYC test replay
+
+`npm run test:kyc-db:replay` drops and recreates `public` on a disposable KYC test database. It never accepts generic database variables. Set `KYC_TEST_DATABASE_URL` and `KYC_TEST_SUPABASE_URL`, then explicitly acknowledge the parsed project ref for each invocation:
+
+```powershell
+$env:KYC_TEST_DB_RESET_CONFIRM = '<KYC test project ref>'
+npm run test:kyc-db:replay
+```
+
+The command refuses to connect unless the confirmation exactly matches the project ref in both test URLs.
+
 Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User%20greeting/)
 (palette, fonts, screen layouts). The full screen/flow spec is in
 [`Docs/User greeting/src/imports/figma-prototype-implementation-plan.md`](<Docs/User greeting/src/imports/figma-prototype-implementation-plan.md>).
