@@ -117,7 +117,12 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
       p_back_path: `${id}/${submissionId}/back.jpg`,
     })).error?.message).toContain('invalid_document_path');
 
-    await uploadEvidence(paths);
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    expect((await service!.storage.from('kyc-documents').upload(paths.front, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
+    expect((await client.rpc('finalize_kyc_submission', {
+      p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
+    })).error?.message).toContain('documents_missing');
+    expect((await service!.storage.from('kyc-documents').upload(paths.back, bytes, { contentType: 'image/jpeg' })).error).toBeNull();
     expect((await client.rpc('finalize_kyc_submission', {
       p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
@@ -139,7 +144,13 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
     const { data, error } = await client.from('kyc_submission_documents').select('storage_path').eq('submission_id', submissionId);
     expect(error).toBeTruthy();
     expect(data).toBeNull();
-    expect((await client.storage.from('kyc-documents').update(paths.front, new Uint8Array([1]), { contentType: 'image/jpeg' })).error).toBeTruthy();
+    const storage = client.storage.from('kyc-documents');
+    expect((await storage.upload(`${id}/browser-insert.jpg`, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { contentType: 'image/jpeg' })).error).toBeTruthy();
+    expect((await storage.update(paths.front, new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { contentType: 'image/jpeg' })).error).toBeTruthy();
+    // Storage DELETE is an RLS-filtered no-op (the API may still return 200),
+    // so prove the authenticated caller cannot actually remove the object.
+    expect((await storage.remove([paths.front])).error).toBeNull();
+    expect((await service!.storage.from('kyc-documents').download(paths.front)).error).toBeNull();
   });
 
   it('keeps raw document paths behind the server-only view boundary and audits safely', async () => {

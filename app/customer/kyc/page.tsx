@@ -52,9 +52,11 @@ export default function KycPage() {
   const [formError,         setFormError]         = useState<string | null>(null);
   const [fileError,         setFileError]         = useState<string | null>(null);
   const [submitError,       setSubmitError]       = useState<string | null>(null);
-  const [docFile,           setDocFile]           = useState<File | null>(null);
+  const [frontFile,         setFrontFile]         = useState<File | null>(null);
+  const [backFile,          setBackFile]          = useState<File | null>(null);
   const [activeSubmission,  setActiveSubmission]  = useState<ActiveSubmission | undefined>(undefined);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const frontFileInputRef = useRef<HTMLInputElement>(null);
+  const backFileInputRef = useRef<HTMLInputElement>(null);
 
   const tier      = currentUser?.verificationTier ?? "email_verified";
   const isVerified       = tier === "kyc_verified";
@@ -94,8 +96,9 @@ export default function KycPage() {
     return () => { active = false; };
   }, [currentUser?.id, supabase]);
 
-  function handleFileChange(file: File | null) {
-    setDocFile(file);
+  function handleFileChange(side: "front" | "back", file: File | null) {
+    if (side === "front") setFrontFile(file);
+    else setBackFile(file);
     setFileError(file ? validateKycFile(file) : null);
   }
 
@@ -108,29 +111,32 @@ export default function KycPage() {
 
     const result = kycSchema.safeParse(form);
     if (!result.success) { setFormError(result.error.issues[0].message); return; }
-    const fileErr = validateKycFile(docFile);
-    if (fileErr) { setFileError(fileErr); return; }
+    const frontError = validateKycFile(frontFile);
+    const backError = validateKycFile(backFile);
+    if (frontError || backError) { setFileError(frontError ?? backError); return; }
 
     setSubmitting(true);
     try {
       const fd = new FormData();
       fd.append("icNumber", result.data.icNumber.toUpperCase());
       fd.append("docType",  result.data.docType);
-      fd.append("file",     docFile!);
+      fd.append("frontFile", frontFile!);
+      fd.append("backFile", backFile!);
       const res = await fetch("/api/kyc/upload", { method: "POST", body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as any)?.error?.message ?? "Submission failed.");
       }
-      const { data: resData } = await res.json() as { data: { submissionId: string; queuePosition: number | null } };
+      const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending" } };
       await refreshUser();
       setActiveSubmission({
         id:            resData.submissionId,
         status:        "pending",
-        queuePosition: resData.queuePosition,
+        queuePosition: null,
         submittedAt:   new Date().toISOString(),
       });
-      setDocFile(null);
+      setFrontFile(null);
+      setBackFile(null);
       setForm({ icNumber: "", docType: "national_id" });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Submission failed.");
@@ -295,39 +301,21 @@ export default function KycPage() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={KYC_ACCEPTED_TYPES.join(",")}
-              className="hidden"
-              onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors"
-              style={{
-                borderColor:     fileError ? "var(--destructive)" : docFile ? "var(--primary)" : "var(--border)",
-                backgroundColor: docFile ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",
-              }}
-            >
-              {docFile ? (
-                <>
-                  <FileCheck2 size={22} className="text-primary" />
-                  <p className="text-sm font-semibold text-primary">{docFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{(docFile.size / 1024 / 1024).toFixed(2)} MB · click to change</p>
-                </>
-              ) : (
-                <>
-                  <Upload size={20} className="text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Click to upload document photo</p>
-                  <p className="text-xs text-muted-foreground">JPG, PNG or PDF · max 5 MB</p>
-                </>
-              )}
-            </button>
-            {fileError && <p className="text-xs text-destructive">{fileError}</p>}
-          </div>
+          {(["front", "back"] as const).map((side) => {
+            const file = side === "front" ? frontFile : backFile;
+            const inputRef = side === "front" ? frontFileInputRef : backFileInputRef;
+            return <div className="space-y-1" key={side}>
+              <input ref={inputRef} type="file" accept={KYC_ACCEPTED_TYPES.join(",")} className="hidden"
+                onChange={(e) => handleFileChange(side, e.target.files?.[0] ?? null)} />
+              <button type="button" onClick={() => inputRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors"
+                style={{ borderColor: fileError ? "var(--destructive)" : file ? "var(--primary)" : "var(--border)", backgroundColor: file ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent" }}>
+                {file ? <><FileCheck2 size={22} className="text-primary" /><p className="text-sm font-semibold text-primary">{file.name}</p><p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB · click to change</p></>
+                  : <><Upload size={20} className="text-muted-foreground" /><p className="text-sm text-muted-foreground">Click to upload {side} of document</p><p className="text-xs text-muted-foreground">JPG, PNG or PDF · max 5 MB</p></>}
+              </button>
+              {fileError && <p className="text-xs text-destructive">{fileError}</p>}
+            </div>;
+          })}
 
           {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
 

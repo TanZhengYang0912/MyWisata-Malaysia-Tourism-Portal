@@ -54,6 +54,7 @@ REVOKE INSERT, UPDATE, DELETE ON TABLE kyc_submissions FROM PUBLIC, anon, authen
 DROP POLICY IF EXISTS kyc_doc_insert_own ON storage.objects;
 DROP POLICY IF EXISTS kyc_doc_update_own ON storage.objects;
 DROP POLICY IF EXISTS kyc_doc_select_own_or_admin ON storage.objects;
+DROP POLICY IF EXISTS kyc_doc_delete_own ON storage.objects;
 
 -- Legacy object URLs are not promoted to the dual-evidence model.  Every old
 -- single-document record is marked legacy; active records require resubmission.
@@ -96,8 +97,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM kyc_submissions WHERE user_id = p_user_id AND status IN ('draft', 'pending')) THEN
     RAISE EXCEPTION 'active_submission_exists';
   END IF;
-  INSERT INTO kyc_submissions (user_id, ic_hash, ic_hash_version, document_type, document_url, status)
-  VALUES (p_user_id, p_ic_hash, p_ic_hash_version, p_doc_type, NULL, 'draft') RETURNING id INTO v_id;
+  INSERT INTO kyc_submissions (user_id, ic_hash, ic_hash_version, document_type, status)
+  VALUES (p_user_id, p_ic_hash, p_ic_hash_version, p_doc_type, 'draft') RETURNING id INTO v_id;
   RETURN v_id;
 END;
 $$;
