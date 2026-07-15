@@ -12,12 +12,12 @@
   --secondary: #eef2ff;
   --secondary-foreground: #010066;
   --muted: #f1f5f9;
-  --muted-foreground: #5e7268;
+  --muted-foreground: #64748b;
   --accent: #ffcc00;
   --accent-foreground: #010066;
   --destructive: #cc0001;
   --destructive-foreground: #ffffff;
-  --border: rgba(15, 93, 74, 0.12);
+  --border: rgba(1, 0, 102, 0.12);
   --input: transparent;
   --input-background: #f1f5f9;
   --ring: #010066;

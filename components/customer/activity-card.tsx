@@ -34,7 +34,7 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
             src={activity.image}
             alt={activity.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            style={{ backgroundColor: "#C8D8D0" }}
+            style={{ backgroundColor: "#EEF2FF" }}
           />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.5) 0%, transparent 55%)" }} />
           {activity.hot && <div className="absolute left-3 top-3 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">🔥 Trending</div>}
