@@ -1,6 +1,13 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildPromotionSpotlight } from "@/lib/customer/promotion-spotlight";
 import type { ComputedActivity } from "@/backend/core/types";
+
+const spotlightSource = readFileSync(
+  resolve(process.cwd(), "components/customer/promotion-spotlight.tsx"),
+  "utf8",
+);
 
 function activity(overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -52,5 +59,11 @@ describe("buildPromotionSpotlight", () => {
 
   it("returns no cards when there are no activities to promote", () => {
     expect(buildPromotionSpotlight([])).toEqual([]);
+  });
+
+  it("keeps the promotion spotlight on the blue brand palette", () => {
+    expect(spotlightSource).not.toMatch(/#0a6470|#8de0c7|#073b3a/i);
+    expect(spotlightSource).toContain("#1D2A8A");
+    expect(spotlightSource).toContain("#010066");
   });
 });
