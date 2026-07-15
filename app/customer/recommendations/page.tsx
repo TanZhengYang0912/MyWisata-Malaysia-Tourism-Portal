@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
 
 type RecommendationResponse = {
   id: string;
@@ -38,6 +39,7 @@ export default function RecommendationsPage() {
     description: "",
     category: "",
     state: "Kuala Lumpur",
+    vendorAddress: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +93,7 @@ export default function RecommendationsPage() {
           description: form.description.trim(),
           categoryId:  form.category || undefined,
           state:       form.state,
+          vendorAddress: form.vendorAddress.trim() || undefined,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -110,7 +113,7 @@ export default function RecommendationsPage() {
       };
       setRecs((prev) => [newRec, ...(prev ?? [])]);
       setShowForm(false);
-      setForm({ name: "", description: "", category: "", state: "Kuala Lumpur" });
+      setForm({ name: "", description: "", category: "", state: "Kuala Lumpur", vendorAddress: "" });
       showFeedback("success", "Vendor recommendation submitted for review.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to submit.";
@@ -136,7 +139,7 @@ export default function RecommendationsPage() {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground mb-8">
-        Know a great local experience that deserves to be on MyWisata? Nominate them here — earn commission if they join.
+        Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation.
       </p>
 
       {showForm && (
@@ -192,6 +195,16 @@ export default function RecommendationsPage() {
             </div>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendor Address (optional)</label>
+            <input
+              value={form.vendorAddress}
+              onChange={(e) => setForm((f) => ({ ...f, vendorAddress: e.target.value }))}
+              placeholder="e.g. 12 Jalan Alor, Kuala Lumpur"
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+
           {error && <p className="text-xs text-red-500">{error}</p>}
 
           <div className="flex gap-2">
@@ -215,6 +228,7 @@ export default function RecommendationsPage() {
                 <div>
                   <p className="text-sm font-semibold text-foreground">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{getRecommendationStatus(r.status).description}</p>
                   {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                 </div>
                 <StatusBadge status={r.status} />
@@ -243,7 +257,7 @@ export default function RecommendationsPage() {
             {reviewed.map((r) => (
               <div key={r.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  {r.status === "approved" ? (
+                  {r.status === "approved" || r.status === "converted" ? (
                     <CheckCircle2 size={16} className="text-primary shrink-0" />
                   ) : (
                     <XCircle size={16} className="text-destructive shrink-0" />
@@ -251,6 +265,7 @@ export default function RecommendationsPage() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{getRecommendationStatus(r.status).description}</p>
                     {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                   </div>
                 </div>

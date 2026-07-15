@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText, ShieldCheck, Star, UserRound, WalletCards } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText, ShieldCheck, Star, Store, UserRound, WalletCards } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
@@ -24,6 +24,7 @@ const ACCOUNT_NAV = [
   { href: "/customer/wishlist", label: "Saved Experiences", description: "Your travel shortlist", icon: Heart },
   { href: "/customer/kyc", label: "KYC Verification", description: "Verify your identity", icon: ShieldCheck },
   { href: "/customer/wallet", label: "My Wallet", description: "Balance and payouts", icon: WalletCards },
+  { href: "/customer/profile/register-vendor", label: "Become a Vendor", description: "Apply to list your business", icon: Store },
   { href: "/customer/recommendations", label: "Recommend a Vendor", description: "Share local discoveries", icon: Star },
   { href: "/customer/affiliate", label: "Earn & Share", description: "Manage affiliate activity", icon: Gift },
   { href: "/customer/support", label: "Support", description: "Get help with your trip", icon: Inbox },

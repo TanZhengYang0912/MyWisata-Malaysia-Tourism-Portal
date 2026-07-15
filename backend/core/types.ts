@@ -42,6 +42,7 @@ export interface VendorSummary {
 export interface Outlet {
   id: string;
   vendorId: string;
+  vendorName?: string;
   name: string;
   category: string;
   state: string;
@@ -112,6 +113,16 @@ export interface Activity {
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
+}
+
+export interface ProductReview {
+  id: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  createdAt: string;
+  authorName: string;
+  verifiedPurchase: boolean;
 }
 
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────
@@ -273,7 +284,7 @@ export interface VendorRecommendation {
   name: string;
   category: string;
   state: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "converted";
   qualityScore: number;
   duplicate: boolean;
   /** Present when the public author is still active and visible. */
