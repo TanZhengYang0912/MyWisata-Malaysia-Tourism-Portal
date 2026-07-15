@@ -11,7 +11,7 @@
 
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getBookingSlots, getComputedActivity } from "@/backend/domains/catalogue";
+import { getBookingSlots, getComputedActivity, getProductReviews } from "@/backend/domains/catalogue";
 import { ActivityDetailClient } from "./activity-detail-client";
 
 interface Props {
@@ -46,7 +46,12 @@ export default async function ActivityDetailPage({ params }: Props) {
   const { id } = await params;
   const db = await createClient();
   const activity = await getComputedActivity(id, undefined, db);
-  const slots = activity?.requiresBooking ? await getBookingSlots(activity.id, db) : [];
+  const [slots, reviews] = activity
+    ? await Promise.all([
+        activity.requiresBooking ? getBookingSlots(activity.id, db) : Promise.resolve([]),
+        getProductReviews(activity.id, db),
+      ])
+    : [[], []];
 
-  return <ActivityDetailClient initialActivity={activity} initialSlots={slots} />;
+  return <ActivityDetailClient initialActivity={activity} initialSlots={slots} initialReviews={reviews} />;
 }

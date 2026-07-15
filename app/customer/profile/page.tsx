@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Phone, User, Camera, MessageSquare, ClipboardList,
-  ShieldCheck, Upload, Loader2, ChevronRight, CheckCircle2,
+  ShieldCheck, Store, Upload, Loader2, ChevronRight, CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -277,6 +278,13 @@ export default function ProfilePage() {
         <p className="text-sm text-muted-foreground mb-6">
           Your profile is set up. Submit your identity documents to unlock wallet withdrawals and full affiliate earnings.
         </p>
+        <Link href="/customer/profile/register-vendor" className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
+          <span className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
+            <span><span className="block text-sm font-bold text-foreground">Become a vendor</span><span className="mt-0.5 block text-xs text-muted-foreground">Apply to list your own Malaysian experience</span></span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-primary" />
+        </Link>
         <Button onClick={() => router.push("/customer/kyc")} className="gap-1.5">
           Proceed to KYC Verification <ChevronRight size={15} />
         </Button>
@@ -296,6 +304,13 @@ export default function ProfilePage() {
       <p className="text-sm text-muted-foreground mb-6">
         Finish all steps to unlock recommendation submissions and affiliate links.
       </p>
+      <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
+        <span className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
+          <span><span className="block text-sm font-bold text-foreground">Have a business to share?</span><span className="mt-0.5 block text-xs text-muted-foreground">Start a vendor application after your profile setup</span></span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-primary" />
+      </Link>
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">

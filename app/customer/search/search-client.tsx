@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Search as SearchIcon } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATEGORIES, STATES_MY, searchActivities, type SearchFilters } from "@/backend/domains/catalogue";
-import type { ComputedActivity } from "@/backend/core/types";
+import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
 
 const PRICE_OPTIONS = [
   { label: "Any price", value: undefined },
@@ -35,13 +35,16 @@ function getPageItems(currentPage: number, totalPages: number): PageItem[] {
 export function SearchClient({
   initialQuery,
   initialResults,
+  initialVendors,
 }: {
   initialQuery: string;
   initialResults: ComputedActivity[];
+  initialVendors: VendorSummary[];
 }) {
   const [q, setQ] = useState(initialQuery);
   const [category, setCategory] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
+  const [vendorId, setVendorId] = useState<string | null>(null);
   const [priceMax, setPriceMax] = useState<number | undefined>(undefined);
   const [openOnly, setOpenOnly] = useState(false);
   const [sort, setSort] = useState<SearchFilters["sort"]>("recommended");
@@ -56,11 +59,11 @@ export function SearchClient({
       isFirstRender.current = false;
       return;
     }
-    searchActivities({ q, category, state, priceMax, openOnly, sort }).then((nextResults) => {
+    searchActivities({ q, category, state, vendorId, priceMax, openOnly, sort }).then((nextResults) => {
       setResults(nextResults);
       setCurrentPage(1);
     });
-  }, [q, category, state, priceMax, openOnly, sort]);
+  }, [q, category, state, vendorId, priceMax, openOnly, sort]);
 
   const totalPages = Math.max(1, Math.ceil((results?.length ?? 0) / RESULTS_PER_PAGE));
   const pageStart = (currentPage - 1) * RESULTS_PER_PAGE;
@@ -101,6 +104,17 @@ export function SearchClient({
           <option value="">All states</option>
           {STATES_MY.filter((s) => s !== "All Malaysia").map((s) => (
             <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
+        <select
+          value={vendorId ?? ""}
+          onChange={(e) => setVendorId(e.target.value || null)}
+          className="text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground bg-input-background outline-none"
+        >
+          <option value="">All vendors</option>
+          {initialVendors.map((vendor) => (
+            <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
           ))}
         </select>
 

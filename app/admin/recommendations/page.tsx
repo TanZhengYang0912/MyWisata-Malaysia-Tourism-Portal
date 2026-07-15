@@ -123,7 +123,8 @@ export default function AdminRecommendationsPage() {
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-1">Recommendation Moderation</h1>
-      <p className="text-xs text-muted-foreground mb-6">Community-submitted vendors and hidden gems.</p>
+      <p className="text-xs text-muted-foreground mb-2">Community-submitted vendors and hidden gems.</p>
+      <p className="mb-6 max-w-2xl text-xs text-muted-foreground">Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.</p>
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
@@ -146,7 +147,7 @@ export default function AdminRecommendationsPage() {
                       {r.duplicate && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-destructive/15 text-destructive">Duplicate</span>}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{r.category} · {r.state} · by {r.author?.name ?? "MyWisata member"}</span>
+                      <span>Customer recommendation · {r.category} · {r.state} · by {r.author?.name ?? "MyWisata member"}</span>
                       {r.author && <VerifiedContributorBadge verified={r.author.isKycVerified} />}
                     </div>
                   </div>

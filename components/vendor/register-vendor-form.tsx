@@ -53,7 +53,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <h2 className="text-lg font-semibold">Register as Vendor</h2>
-      <p className="text-sm text-gray-500">Your application will be reviewed by an admin.</p>
+      <p className="text-sm text-gray-500">Submit the basic business profile first. After approval, you can add the outlet, products, photos and time slots from the vendor dashboard.</p>
 
       {serverError && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
@@ -111,6 +111,17 @@ export default function RegisterVendorForm({ onClose }: Props) {
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
         />
         {errors.logoUrl && <p className="text-red-500 text-xs mt-1">{errors.logoUrl.message}</p>}
+      </div>
+
+      {/* Cover URL */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+        <input
+          {...register('coverUrl')}
+          placeholder="https://..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
+        />
+        {errors.coverUrl && <p className="text-red-500 text-xs mt-1">{errors.coverUrl.message}</p>}
       </div>
 
       {/* Actions */}

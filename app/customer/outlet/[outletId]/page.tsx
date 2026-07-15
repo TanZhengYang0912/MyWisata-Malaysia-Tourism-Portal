@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 type Block = { id: string; type: string; title?: string; body?: string; image?: string; imageUrl?: string; cta?: string };
 type GalleryItem = { url: string; alt?: string };
 

@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:kyc-db:replay": "node scripts/replay-kyc-security-db.mjs",
     "seed:remote-demo": "REMOTE_DEMO_SEED=1 node scripts/seed-remote-demo.mjs",
-    "verify:remote-demo": "node scripts/verify-remote-demo.mjs"
+    "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
+    "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
+    "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",

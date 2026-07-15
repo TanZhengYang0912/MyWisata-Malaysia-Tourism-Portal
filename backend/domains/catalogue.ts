@@ -2,11 +2,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, VendorSummary, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
+import { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
+import type { ReviewMetric } from "@/backend/domains/review-metrics";
+import { toProductReview } from "@/backend/domains/review-presenter";
+import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
+
+export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
-export async function getVendors(): Promise<VendorSummary[]> {
-  const { data, error } = await supabase.from("vendors").select("id,name,status,outlets(id,name,city,state)");
+export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
+  const { data, error } = await db.from("vendors").select("id,name,status,outlets(id,name,city,state)");
   if (error) throw error;
   return (data ?? []).map((v) => ({ id: v.id, name: v.name, status: v.status, outlets: v.outlets ?? [] }));
 }
@@ -38,16 +44,17 @@ type OutletRow = {
   operating_hours: OperatingHours | null;
   phone: string | null;
   status: string;
-  vendors: { status: string } | null;
+  vendors: { name: string | null; status: string } | null;
   products: { categories: { name: string } | null }[] | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,vendors(status),products(categories(name))";
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,vendors(name,status),products(categories(name))";
 
 function mapOutlet(row: OutletRow): Outlet {
   return {
     id: row.id,
     vendorId: row.vendor_id,
+    vendorName: row.vendors?.name ?? undefined,
     name: row.name,
     category: row.products?.[0]?.categories?.name ?? "",
     state: row.state ?? "",
@@ -95,7 +102,7 @@ type ProductRow = {
 
 const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,categories(name),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 
-function mapActivity(row: ProductRow): Activity {
+function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
   return {
     id: row.id,
     outletId: row.outlet_id,
@@ -104,8 +111,8 @@ function mapActivity(row: ProductRow): Activity {
     description: row.description ?? "",
     image: row.cover_url ?? "",
     price: Number(row.base_price),
-    rating: 0,
-    reviews: 0,
+    rating: reviewMetrics.rating,
+    reviews: reviewMetrics.reviews,
     duration: "",
     requiresBooking: row.requires_booking,
     tags: row.tags ?? undefined,
@@ -119,13 +126,73 @@ function mapActivity(row: ProductRow): Activity {
 export async function getActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
   const { data, error } = await db.from("products").select(ACTIVITY_SELECT).eq("status", "active").eq("review_status", "approved");
   if (error) throw error;
-  return (data as unknown as ProductRow[]).map(mapActivity);
+  const rows = data as unknown as ProductRow[];
+  if (rows.length === 0) return [];
+
+  const { data: reviewRows, error: reviewError } = await db
+    .from("reviews")
+    .select("product_id,rating")
+    .eq("is_visible", true)
+    .in("product_id", rows.map((row) => row.id));
+  if (reviewError) throw reviewError;
+
+  const reviewMetrics = aggregateReviewMetrics(reviewRows ?? []);
+  return rows.map((row) => mapActivity(row, reviewMetrics.get(row.id)));
 }
 
 export async function getBookingSlots(activityId: string, db: SupabaseClient = supabase): Promise<BookingSlot[]> {
   const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
   return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
+}
+
+export async function getProductReviews(productId: string, db: SupabaseClient = supabase): Promise<ProductReview[]> {
+  return (await getProductReviewsPage(productId, { page: 1, pageSize: 3 }, db)).items;
+}
+
+export interface ProductReviewPage {
+  items: ProductReview[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export async function getProductReviewsPage(
+  productId: string,
+  options: { page?: number; pageSize?: number } = {},
+  db: SupabaseClient = supabase,
+): Promise<ProductReviewPage> {
+  const requestedPageSize = Math.floor(Number(options.pageSize ?? 5));
+  const pageSize = Math.min(10, Math.max(1, Number.isFinite(requestedPageSize) ? requestedPageSize : 5));
+  const { count, error: countError } = await db
+    .from("reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .eq("is_visible", true);
+  if (countError) throw countError;
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Math.floor(Number(options.page ?? 1));
+  const page = Math.min(totalPages, Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1));
+  const offset = (page - 1) * pageSize;
+  const { data, error } = await db
+    .from("reviews")
+    .select("id,rating,title,body,created_at,users(full_name)")
+    .eq("product_id", productId)
+    .eq("is_visible", true)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + pageSize - 1);
+  if (error) throw error;
+
+  return {
+    items: (data ?? []).map((row) => toProductReview(row as unknown as Parameters<typeof toProductReview>[0])),
+    page,
+    pageSize,
+    total,
+    totalPages,
+  };
 }
 
 function toComputed(activity: Activity, outlet: Outlet | undefined, from?: { lat: number; lng: number }): ComputedActivity | null {
@@ -150,6 +217,7 @@ export interface SearchFilters {
   q?: string;
   category?: string | null;
   state?: string | null;
+  vendorId?: string | null;
   priceMax?: number;
   openOnly?: boolean;
   near?: { lat: number; lng: number };
@@ -175,6 +243,7 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
   if (filters.state && filters.state !== "All Malaysia") {
     results = results.filter((a) => a.outlet.state === filters.state);
   }
+  results = filterActivitiesByVendor(results, filters.vendorId);
   if (filters.priceMax !== undefined) {
     results = results.filter((a) => a.price <= filters.priceMax!);
   }
