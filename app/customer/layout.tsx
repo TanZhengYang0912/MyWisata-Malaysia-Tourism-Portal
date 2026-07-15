@@ -8,6 +8,7 @@ import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { WishlistProvider } from "@/components/providers/wishlist";
+import { supabase } from "@/backend/supabase";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -65,6 +66,32 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     };
   }, [currentUser]);
 
+  const [unreadChats, setUnreadChats] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/chat/unread-count");
+        const body = (await res.json()) as { data: { count: number } | null };
+        if (!cancelled && res.ok && body.data) setUnreadChats(body.data.count);
+      } catch {
+        // best-effort — a failed refresh just leaves the last-known count showing
+      }
+    }
+    void load();
+    const channel = supabase
+      .channel(`nav-chat-unread-${currentUser.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, () => void load())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reads" }, () => void load())
+      .subscribe();
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     if (!accountMenuOpen) return;
 
@@ -111,6 +138,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
               >
                 {item.label}
                 {item.href === "/customer/support" && unreadTickets > 0 && (
+                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-destructive" />
+                )}
+                {item.href === "/customer/chat" && unreadChats > 0 && (
                   <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-destructive" />
                 )}
               </Link>
@@ -210,13 +240,16 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
               {item.href === "/customer/support" && unreadTickets > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
               )}
+              {item.href === "/customer/chat" && unreadChats > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+              )}
             </Link>
           ))}
         </div>
       </nav>
 
-      <main className="flex-1"><WishlistProvider>{children}</WishlistProvider></main>
-      <ChatbotWidget />
+      <main className="flex-1 min-h-0"><WishlistProvider>{children}</WishlistProvider></main>
+      {!pathname.startsWith("/customer/chat") && <ChatbotWidget />}
     </div>
   );
 }
