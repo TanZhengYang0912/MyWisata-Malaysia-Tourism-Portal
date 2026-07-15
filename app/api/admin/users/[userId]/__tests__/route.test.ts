@@ -106,4 +106,17 @@ describe("POST /api/admin/users/[userId]", () => {
     expect(response.status).toBe(503);
     expect(body.error.message).toContain("20260716000080_account_moderation_rpc.sql");
   });
+
+  it("includes a sanitized unknown database reason for admin debugging", async () => {
+    mocks.serviceRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'column "closed_at" does not exist' },
+    });
+
+    const response = await POST(request({ action: "suspend", reason: "A sufficiently long reason" }), { params: Promise.resolve({ userId: targetId }) });
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error.message).toContain('Database response: column "closed_at" does not exist');
+  });
 });

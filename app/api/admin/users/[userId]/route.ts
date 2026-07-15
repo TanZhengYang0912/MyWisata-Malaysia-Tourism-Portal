@@ -18,7 +18,9 @@ function mapRpcError(message: string) {
   if (message.includes("admin_manage_user") && (message.includes("schema cache") || message.includes("permission denied"))) {
     return apiFail("ACCOUNT_ACTIONS_NOT_CONFIGURED", "Account actions are not configured. Apply supabase/migrations/20260716000080_account_moderation_rpc.sql, then reload the Supabase schema.", 503);
   }
-  return apiFail("USER_MANAGEMENT_FAILED", "Unable to update this user", 500);
+  const diagnostic = message.replace(/\s+/g, " ").trim().slice(0, 240);
+  console.error("[user-management] account mutation failed", diagnostic);
+  return apiFail("USER_MANAGEMENT_FAILED", `Unable to update this user. Database response: ${diagnostic}`, 500);
 }
 
 async function requireSuperAdmin() {
