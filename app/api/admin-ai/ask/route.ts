@@ -13,6 +13,8 @@ import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { adminAiAskSchema } from '@/lib/validation/admin-ai-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { answerAdminQuestion } from '@/lib/admin-ai/orchestrate';
+import { cleanUserContent } from '@/lib/moderation/clean';
+import { logModerationFlag } from '@/lib/moderation/flags';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, adminAiAskSchema);
@@ -48,22 +50,44 @@ export async function POST(request: Request) {
     session = created;
   }
 
+  // CLAUDE-MODERATION.md Part 3: same single entry point as the customer
+  // chatbot — admins shouldn't be typing slurs into an AI either. Applied
+  // before storage AND before the LLM call, same as the customer route.
+  const cleaned = cleanUserContent(question);
+  const userId = user.id;
+
+  async function logUserMessage(): Promise<string | null> {
+    const { data, error } = await service
+      .from('chatbot_messages')
+      .insert({ session_id: session!.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII })
+      .select('id')
+      .single();
+    if (error) return null;
+    if (cleaned.hadSlur) {
+      await logModerationFlag(service, {
+        sourceType: 'chatbot_message',
+        sourceId: data.id,
+        userId,
+        originalExcerpt: cleaned.original,
+      });
+    }
+    return data.id;
+  }
+
   let result: Awaited<ReturnType<typeof answerAdminQuestion>>;
   try {
-    result = await answerAdminQuestion(service, question);
+    result = await answerAdminQuestion(service, cleaned.display);
   } catch (error) {
     console.error('[admin-ai] ask failed', error instanceof Error ? error.message : error);
     // Log the user's message even on failure — the admin still typed it —
     // then report the assistant as unavailable, per CLAUDE-ADMIN-AI.md's
     // "no keyword fallback for this bot" instruction.
-    await service.from('chatbot_messages').insert({ session_id: session.id, role: 'user', body: question, pii_detected: false });
+    await logUserMessage();
     return apiFail('ASSISTANT_UNAVAILABLE', 'The AI assistant is unavailable right now — try again shortly.', 503);
   }
 
-  const { error: userMsgErr } = await service
-    .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'user', body: question, pii_detected: result.piiDetected });
-  if (userMsgErr) return apiFail('DB_ERROR', userMsgErr.message, 500);
+  const userMsgId = await logUserMessage();
+  if (!userMsgId) return apiFail('DB_ERROR', 'Failed to log message', 500);
 
   const { error: botMsgErr } = await service
     .from('chatbot_messages')
