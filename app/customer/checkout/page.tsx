@@ -11,6 +11,17 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Voucher } from "@/backend/core/types";
 
+// P4 — Member 4 (CLAUDE-CHECKOUT-WIRE.md, CASE B2): fire-and-forget, never
+// blocks or fails checkout. commerce.ts::createOrder() is untouched — this
+// hits a separate server route that reads the mw_ref cookie itself.
+function attributeCheckout(orderId: string) {
+  fetch("/api/checkout/attribute", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderId }),
+  }).catch(() => {});
+}
+
 const METHODS = [
   { id: "stripe_card", label: "Card via Stripe Test Mode", icon: CreditCard },
   { id: "ewallet", label: "Touch 'n Go / GrabPay", icon: Smartphone },
@@ -40,7 +51,7 @@ export default function CheckoutPage() {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !currentUser || selectedItems.length === 0 || paying) return;
     setPaying(true);
-    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]).then((order) => router.push(`/customer/orders/${order.id}`)).catch(() => { setFailed(true); setPaying(false); });
+    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]).then((order) => { attributeCheckout(order.id); router.push(`/customer/orders/${order.id}`); }).catch(() => { setFailed(true); setPaying(false); });
   }, [currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
@@ -61,6 +72,7 @@ export default function CheckoutPage() {
       }
       try {
         const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card", [...selectedKeys]);
+        attributeCheckout(order.id);
         router.push(`/customer/orders/${order.id}`);
       } catch (err) {
         console.error("Order creation failed:", err);
