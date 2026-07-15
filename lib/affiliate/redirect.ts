@@ -24,6 +24,18 @@ const MW_REF_COOKIE = 'mw_ref';
 const VISITOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const SECONDS_PER_DAY = 86400;
 
+// CLAUDE-FUNNEL-AI.md: matches share_events.platform's real vocabulary, not
+// a per-social-network list — see lib/affiliate/funnel.ts's header comment
+// for why. Anything else in ?src= is dropped (source stays null) rather than
+// stored as-is, so the funnel's per-platform grouping can't be polluted by
+// arbitrary query-string junk.
+const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link']);
+
+function parseKnownSource(searchParams: URLSearchParams): string | null {
+  const src = searchParams.get('src');
+  return src && KNOWN_SHARE_SOURCES.has(src) ? src : null;
+}
+
 function cookieOptions(maxAgeSeconds: number) {
   return {
     httpOnly: true,
@@ -167,6 +179,7 @@ export async function handleAffiliateRedirect(
     const { data: { user } } = await authClient.auth.getUser();
 
     const visitorId = request.cookies.get(MW_VISITOR_COOKIE)?.value ?? crypto.randomUUID();
+    const source = parseKnownSource(request.nextUrl.searchParams);
 
     const { data: click, error: clickErr } = await service
       .from('affiliate_clicks')
@@ -176,6 +189,7 @@ export async function handleAffiliateRedirect(
         target_type: product ? 'product' : null,
         target_id: product?.id ?? null,
         ip_hash: hashVisitorId(visitorId),
+        source,
       })
       .select('id')
       .single();
