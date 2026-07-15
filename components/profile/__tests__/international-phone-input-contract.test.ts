@@ -10,7 +10,9 @@ describe("InternationalPhoneInput", () => {
     );
 
     expect(source).toContain("react-international-phone");
-    expect(source).toContain('defaultCountry="my"');
-    expect(source).toContain('autoComplete: "tel"');
+    expect(source).toContain('defaultCountry: "my"');
+    expect(source).toContain('autoComplete="tel"');
+    expect(source).toContain('placeholder="Search country or dial code"');
+    expect(source).toContain("usePhoneInput");
   });
 });
