@@ -15,6 +15,8 @@
 // available models are not a stable target; if this 404s again later,
 // re-run ListModels (see the reindex route's error message, which surfaces
 // the raw Gemini error) rather than guessing a new name.
+import { redactPII } from './pii';
+
 const EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
 const EMBED_TIMEOUT_MS = 10_000;
 export const EMBEDDING_DIMENSIONS = 768;
@@ -33,6 +35,12 @@ export async function embedText(text: string): Promise<number[]> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
+  // CLAUDE-ADMIN-AI.md Part 1, §7.3: no customer PII passed to external LLM
+  // APIs. This is the hard boundary — every caller's text is redacted here
+  // unconditionally, regardless of whether the caller already redacted
+  // upstream (redacting already-clean text is a safe no-op).
+  const { clean } = redactPII(text);
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
 
@@ -42,7 +50,7 @@ export async function embedText(text: string): Promise<number[]> {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         model: 'models/gemini-embedding-001',
-        content: { parts: [{ text }] },
+        content: { parts: [{ text: clean }] },
         outputDimensionality: EMBEDDING_DIMENSIONS,
       }),
       signal: controller.signal,

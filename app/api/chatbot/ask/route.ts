@@ -42,12 +42,16 @@ export async function POST(request: Request) {
     session = created;
   }
 
+  const result = await answerQuestion(question);
+
+  // CLAUDE-ADMIN-AI.md Part 1: log whether PII was found, never the PII
+  // itself. The stored body is the ORIGINAL message (the user needs to see
+  // what they typed) — only the copy sent to Gemini (inside embed.ts/
+  // generate.ts) is redacted.
   const { error: userMsgErr } = await service
     .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'user', body: question });
+    .insert({ session_id: session.id, role: 'user', body: question, pii_detected: result.piiDetected });
   if (userMsgErr) return apiFail('DB_ERROR', userMsgErr.message, 500);
-
-  const result = await answerQuestion(question);
 
   const { data: botMsg, error: botMsgErr } = await service
     .from('chatbot_messages')

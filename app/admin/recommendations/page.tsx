@@ -1,14 +1,80 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+
+// P4 — Member 4: CLAUDE-ADMIN-AI.md Part 2, Capability 3. Read-only overlay
+// — this component never writes to vendor_recommendations; it only calls a
+// new admin-ai route that reads it. Does not touch review()/getVendorRecommendations() above.
+interface ModerationAssessment {
+  completeness: string;
+  duplicateLikelihood: "low" | "medium" | "high";
+  qualityNotes: string;
+  riskFlag: "low_risk" | "needs_review";
+}
+
+function AiReviewPanel({ recommendationId }: { recommendationId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ModerationAssessment | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runReview() {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin-ai/moderation-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId }),
+      });
+      const body = (await res.json()) as { data: ModerationAssessment | null; error: { message: string } | null };
+      if (!res.ok || !body.data) {
+        setError(body.error?.message ?? "AI review unavailable right now.");
+        return;
+      }
+      setResult(body.data);
+    } catch {
+      setError("AI review unavailable right now.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="w-full">
+      <Button size="sm" variant="outline" onClick={runReview} disabled={loading} className="gap-1.5">
+        <Sparkles size={13} /> {loading ? "Reviewing…" : "AI review"}
+      </Button>
+      {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
+      {result && (
+        <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-xs space-y-1">
+          <p className="font-bold uppercase tracking-wide text-[10px] text-muted-foreground">
+            Advisory only — does not approve or reject
+          </p>
+          <p>
+            <span className="font-semibold">Risk: </span>
+            <span className={result.riskFlag === "needs_review" ? "text-destructive font-semibold" : "text-primary font-semibold"}>
+              {result.riskFlag === "needs_review" ? "Needs review" : "Low risk"}
+            </span>
+          </p>
+          <p><span className="font-semibold">Completeness: </span>{result.completeness}</p>
+          <p><span className="font-semibold">Duplicate likelihood: </span>{result.duplicateLikelihood}</p>
+          <p><span className="font-semibold">Quality notes: </span>{result.qualityNotes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
@@ -100,6 +166,7 @@ export default function AdminRecommendationsPage() {
                     onReject={() => review(r, false)}
                     disabled={reviewing === r.id}
                   />
+                  {currentUser?.role === "super_admin" && <AiReviewPanel recommendationId={r.id} />}
                 </div>
               );
             })}

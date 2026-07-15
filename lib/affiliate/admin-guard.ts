@@ -17,3 +17,16 @@ export async function isSuperAdminOrApprover(supabase: SupabaseClient, userId: s
   });
   return roleNames.includes('super_admin') || roleNames.includes('approver');
 }
+
+// CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the other admin
+// routes above (which also allow approver). The admin AI bot touches
+// aggregate platform data and drafts outbound messages; the spec deliberately
+// scopes it tighter than a routine approval action.
+export async function isSuperAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await supabase.from('user_roles').select('roles(name)').eq('user_id', userId);
+  const roleNames = ((data ?? []) as RoleRow[]).map((row) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return role?.name;
+  });
+  return roleNames.includes('super_admin');
+}
