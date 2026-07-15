@@ -13,4 +13,17 @@ describe("getUserManagementErrorMessage", () => {
     expect(getUserManagementErrorMessage({ error: { code: "UNKNOWN" } }, "Unable to update user")).toBe("Unable to update user");
     expect(getUserManagementErrorMessage(null, "Unable to update user")).toBe("Unable to update user");
   });
+
+  it("adds the invalid field when the API includes validation details", () => {
+    expect(getUserManagementErrorMessage(
+      {
+        error: {
+          code: "VALIDATION_FAILED",
+          message: "Action and a reason of at least 10 characters are required",
+          details: { fieldErrors: { userId: ["Invalid UUID"] } },
+        },
+      },
+      "Unable to update user",
+    )).toBe("Action and a reason of at least 10 characters are required (userId: Invalid UUID)");
+  });
 });
