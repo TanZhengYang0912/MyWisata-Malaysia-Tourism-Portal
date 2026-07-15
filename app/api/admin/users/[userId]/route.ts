@@ -15,6 +15,9 @@ function mapRpcError(message: string) {
   if (message.includes("pending_withdrawal_blocks_delete")) return apiFail("CONFLICT", "Resolve pending or processing withdrawals before closing this account", 409);
   if (message.includes("reason_too_short")) return apiFail("VALIDATION_FAILED", "Reason must be at least 10 characters", 422);
   if (message.includes("user_must_be_")) return apiFail("INVALID_STATE", "This user is not in a state eligible for that action", 409);
+  if (message.includes("admin_manage_user") && (message.includes("schema cache") || message.includes("permission denied"))) {
+    return apiFail("ACCOUNT_ACTIONS_NOT_CONFIGURED", "Account actions are not configured. Apply supabase/migrations/20260716000080_account_moderation_rpc.sql, then reload the Supabase schema.", 503);
+  }
   return apiFail("USER_MANAGEMENT_FAILED", "Unable to update this user", 500);
 }
 

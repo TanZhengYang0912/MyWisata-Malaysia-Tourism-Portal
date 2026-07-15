@@ -93,4 +93,17 @@ describe("POST /api/admin/users/[userId]", () => {
     expect(mocks.moderateAccountText).not.toHaveBeenCalled();
     expect(mocks.serviceRpc).toHaveBeenCalled();
   });
+
+  it("explains when the new account-management RPC has not been deployed", async () => {
+    mocks.serviceRpc.mockResolvedValue({
+      data: null,
+      error: { message: "Could not find the function public.admin_manage_user(p_action, p_actor_id, p_reason, p_user_id) in the schema cache" },
+    });
+
+    const response = await POST(request({ action: "suspend", reason: "A sufficiently long reason" }), { params: Promise.resolve({ userId: targetId }) });
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.message).toContain("20260716000080_account_moderation_rpc.sql");
+  });
 });
