@@ -51,3 +51,11 @@ export const reactivateLinkSchema = z.object({
 }).strict();
 
 export type ReactivateLinkInput = z.infer<typeof reactivateLinkSchema>;
+
+// ── Real-checkout attribution wiring (CLAUDE-CHECKOUT-WIRE.md, CASE B2) ─────
+
+export const attributeCheckoutSchema = z.object({
+  orderId: uuid,
+}).strict();
+
+export type AttributeCheckoutInput = z.infer<typeof attributeCheckoutSchema>;

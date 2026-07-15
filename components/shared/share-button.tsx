@@ -62,6 +62,15 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
     }
   }
 
+  // CLAUDE-FUNNEL-AI.md: tags the link with which share method produced it,
+  // so /r/[code] can record affiliate_clicks.source (migration 035) and the
+  // funnel's per-platform breakdown becomes real going forward. Values match
+  // logShare()'s own vocabulary ('native' | 'copy_link') — see
+  // lib/affiliate/funnel.ts for why this isn't per-social-network.
+  function withSrc(url: string, platform: "native" | "copy_link"): string {
+    return `${url}${url.includes("?") ? "&" : "?"}src=${platform}`;
+  }
+
   async function handleShare() {
     if (status === "working") return; // double-press guard
     setStatus("working");
@@ -69,7 +78,7 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
 
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: productName, url });
+        await navigator.share({ title: productName, url: withSrc(url, "native") });
         setStatus("shared");
         await logShare("native");
         setTimeout(() => setStatus("idle"), 2000);
@@ -84,7 +93,7 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
     }
 
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(withSrc(url, "copy_link"));
       setStatus("copied");
       await logShare("copy_link");
     } catch {

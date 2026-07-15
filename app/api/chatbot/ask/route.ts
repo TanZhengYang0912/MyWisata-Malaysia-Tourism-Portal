@@ -12,6 +12,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { chatbotAskSchema } from '@/lib/validation/chatbot-schemas';
 import { answerQuestion } from '@/lib/chatbot/answer';
+import { cleanUserContent } from '@/lib/moderation/clean';
+import { logModerationFlag } from '@/lib/moderation/flags';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
@@ -42,16 +44,36 @@ export async function POST(request: Request) {
     session = created;
   }
 
-  const result = await answerQuestion(question);
+  // CLAUDE-MODERATION.md Part 3: cleanUserContent() is the one entry point —
+  // profanity masked, PII redacted — applied BEFORE storage and BEFORE the
+  // LLM ever sees the question. Supersedes CLAUDE-ADMIN-AI.md's earlier
+  // "store the original for the user's own view" design: that doc scoped
+  // redaction to the Gemini call only; this one is explicit that PII must
+  // stay out of storage too (Part 1's table: "Keep sensitive data OUT of
+  // storage + off external APIs"). The user's own message now displays
+  // masked, same as everyone else's view of it.
+  const cleaned = cleanUserContent(question);
+  const result = await answerQuestion(cleaned.display);
 
-  // CLAUDE-ADMIN-AI.md Part 1: log whether PII was found, never the PII
-  // itself. The stored body is the ORIGINAL message (the user needs to see
-  // what they typed) — only the copy sent to Gemini (inside embed.ts/
-  // generate.ts) is redacted.
-  const { error: userMsgErr } = await service
+  const { data: userMsg, error: userMsgErr } = await service
     .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'user', body: question, pii_detected: result.piiDetected });
+    .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII })
+    .select('id')
+    .single();
   if (userMsgErr) return apiFail('DB_ERROR', userMsgErr.message, 500);
+
+  // Slurs are a safety issue, not just civility — surfaced to admin even
+  // though the message itself was masked and allowed through. Never blocks
+  // the response (fire-and-forget from the caller's perspective — see
+  // logModerationFlag's own never-throws contract).
+  if (cleaned.hadSlur) {
+    await logModerationFlag(service, {
+      sourceType: 'chatbot_message',
+      sourceId: userMsg.id,
+      userId: user?.id ?? null,
+      originalExcerpt: cleaned.original,
+    });
+  }
 
   const { data: botMsg, error: botMsgErr } = await service
     .from('chatbot_messages')

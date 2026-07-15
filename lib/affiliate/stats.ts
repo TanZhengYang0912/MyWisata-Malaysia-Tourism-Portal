@@ -39,6 +39,7 @@ import { add } from '@/lib/money';
 import { getClearanceDays } from './settings';
 import { getTierForUser, type TierInfo } from './tier';
 import { createServiceClient } from '@/lib/supabase/service';
+import { computeFunnel, type Funnel } from './funnel';
 
 const CHART_DAYS = 30;
 
@@ -70,23 +71,6 @@ export interface AffiliateCommission {
   clearsInDays: number | null;
 }
 
-export interface AffiliateFunnel {
-  shares: number;
-  clicks: number;
-  referrals: number;
-  /**
-   * Share-platform breakdown (e.g. "native share sheet" vs "copy link") —
-   * NOT a "converts best" claim. There is no way to honestly compute that:
-   * affiliate_clicks has no reference back to which share_events row (or
-   * platform) produced it, and the Web Share API never reports back which
-   * app the user actually picked from the OS share sheet. CLAUDE-FIXES.md's
-   * example ("WhatsApp converts best") assumed trackable per-platform
-   * click-through that doesn't exist in this schema — this is the honest
-   * substitute: how shares split by method, not which one "worked."
-   */
-  byPlatform: { platform: string; count: number }[];
-}
-
 export interface AffiliateStats {
   affiliateCode: string | null;
   totals: {
@@ -98,7 +82,14 @@ export interface AffiliateStats {
   byProduct: AffiliateProductStat[];
   clicksByDay: AffiliateDailyClicks[];
   commissions: AffiliateCommission[];
-  funnel: AffiliateFunnel;
+  /**
+   * CLAUDE-FUNNEL-AI.md §12.3: share_events -> affiliate_clicks ->
+   * affiliate_attributions, connected. Per-platform clicks/conversions are
+   * only real once affiliate_clicks.source is populated (migration 035,
+   * written going forward) — see lib/affiliate/funnel.ts for the honest
+   * degrade-gracefully behavior before that.
+   */
+  funnel: Funnel;
   tier: TierInfo;
 }
 
@@ -120,7 +111,7 @@ function emptyStats(tier: TierInfo): AffiliateStats {
     byProduct: [],
     clicksByDay: zeroFilledDays(),
     commissions: [],
-    funnel: { shares: 0, clicks: 0, referrals: 0, byPlatform: [] },
+    funnel: computeFunnel([], [], []),
     tier,
   };
 }
@@ -144,7 +135,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
   if (!link) return emptyStats(tier);
 
   const [{ data: clicksData }, { data: sharesData }, { data: walletData }] = await Promise.all([
-    service.from('affiliate_clicks').select('id, target_type, target_id, created_at').eq('link_id', link.id),
+    service.from('affiliate_clicks').select('id, target_type, target_id, source, created_at').eq('link_id', link.id),
     service.from('share_events').select('content_type, content_id, platform').eq('affiliate_id', link.id),
     service.from('wallets').select('earnings_sen').eq('user_id', userId).maybeSingle(),
   ]);
@@ -259,14 +250,11 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
     })
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
-  const platformCounts = new Map<string, number>();
-  for (const share of shareRows) {
-    const label = share.platform ?? 'unknown';
-    platformCounts.set(label, (platformCounts.get(label) ?? 0) + 1);
-  }
-  const byPlatform = [...platformCounts.entries()]
-    .map(([platform, count]) => ({ platform, count }))
-    .sort((a, b) => b.count - a.count);
+  const funnel = computeFunnel(
+    shareRows.map((s) => ({ platform: s.platform })),
+    clickRows.map((c) => ({ id: c.id, source: c.source })),
+    activeAttributions.map((a) => ({ clickId: a.click_id })),
+  );
 
   return {
     affiliateCode: link.affiliate_code,
@@ -279,7 +267,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
     byProduct,
     clicksByDay,
     commissions,
-    funnel: { shares: shareRows.length, clicks: clickRows.length, referrals: activeAttributions.length, byPlatform },
+    funnel,
     tier,
   };
 }
