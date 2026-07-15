@@ -50,6 +50,7 @@ const COLOURS: Record<string, string> = {
   approved:        'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
   completed:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
   confirmed:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
+  resolved:        'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
   available:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
   paid:            'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400',
   pending:         'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',

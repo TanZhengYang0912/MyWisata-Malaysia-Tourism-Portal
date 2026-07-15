@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ClipboardCheck, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 
 const UNREAD_POLL_MS = 30_000;
@@ -16,6 +16,7 @@ const NAV = [
   { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign },
   { href: "/admin/recommendations", label: "Recommendations", icon: Gem },
   { href: "/admin/support", label: "Support Tickets", icon: Inbox },
+  { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
   { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
   { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
 ];

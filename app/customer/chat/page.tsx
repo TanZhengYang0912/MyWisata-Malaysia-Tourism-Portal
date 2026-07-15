@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCheck, MapPin, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
+import { CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getMessages, getReadChatMessageIds, getThreadsForUser } from "@/backend/domains/identity";
+import { getMessages, getOtherReadMessageIds, getReadChatMessageIds, getThreadsForUser, sendMessage } from "@/backend/domains/identity";
 import { getOutlets } from "@/backend/domains/catalogue";
+import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
@@ -28,6 +29,7 @@ export default function ChatListPage() {
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
   const [messagesByThread, setMessagesByThread] = useState<Map<string, ChatMessage[]>>(new Map());
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
+  const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,13 +43,18 @@ export default function ChatListPage() {
         const [list, allOutlets] = await Promise.all([getThreadsForUser(currentUser.id), getOutlets()]);
         const messages = await Promise.all(list.map((thread) => getMessages(thread.id)));
         const allMessages = messages.flat();
-        const reads = await getReadChatMessageIds(currentUser.id, allMessages.map((message) => message.id));
+        const allMessageIds = allMessages.map((message) => message.id);
+        const [reads, readByOthers] = await Promise.all([
+          getReadChatMessageIds(currentUser.id, allMessageIds),
+          getOtherReadMessageIds(currentUser.id, allMessageIds),
+        ]);
         if (cancelled) return;
 
         setThreads(list);
         setOutlets(new Map(allOutlets.map((outlet) => [outlet.id, outlet])));
         setMessagesByThread(new Map(list.map((thread, index) => [thread.id, messages[index]])));
         setReadMessageIds(reads);
+        setReadByOthersIds(readByOthers);
       } catch {
         if (!cancelled) setLoadError("We couldn't load your conversations. Please refresh and try again.");
       }
@@ -112,11 +119,47 @@ export default function ChatListPage() {
 
   function appendMessage(message: ChatMessage) {
     setMessagesByThread((previous) => {
+      const existing = previous.get(message.threadId) ?? [];
+      if (existing.some((m) => m.id === message.id)) return previous;
       const next = new Map(previous);
-      next.set(message.threadId, [...(next.get(message.threadId) ?? []), message]);
+      next.set(message.threadId, [...existing, message]);
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const channel = supabase
+      .channel(`customer-chat-${currentUser.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        ({ new: row }: { new: { id: string; thread_id: string; sender_id: string; body: string; created_at: string; attachment_url: string | null; reply_to_message_id: string | null } }) => {
+          appendMessage({
+            id: row.id,
+            threadId: row.thread_id,
+            senderId: row.sender_id,
+            senderRole: row.sender_id === currentUser.id ? "customer" : "vendor",
+            text: row.body,
+            sentAt: row.created_at,
+            attachmentUrl: row.attachment_url ?? undefined,
+            replyToId: row.reply_to_message_id ?? undefined,
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_message_reads" },
+        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
+          if (row.user_id === currentUser.id) return;
+          setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
 
   if (!currentUser || threads === null) {
     return <div className="mx-auto max-w-7xl px-4 py-16 text-sm text-muted-foreground sm:px-6">Loading conversations…</div>;
@@ -137,7 +180,7 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-7rem)] max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Your inbox</p>
@@ -151,7 +194,7 @@ export default function ChatListPage() {
         </div>
       </header>
 
-      <div className="grid min-h-[min(720px,calc(100vh-15rem))] flex-1 overflow-hidden rounded-3xl border border-border bg-card shadow-sm md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <div className="grid h-[min(720px,calc(100dvh-15rem))] min-h-0 flex-1 overflow-hidden rounded-3xl border border-border bg-card shadow-sm md:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
         <aside className={`flex min-h-0 flex-col border-border md:border-r ${selectedThread ? "hidden md:flex" : "flex"}`}>
           <div className="border-b border-border p-4 sm:p-5">
             <div className="relative">
@@ -196,7 +239,6 @@ export default function ChatListPage() {
                 const latest = messages[messages.length - 1];
                 const unreadCount = unreadByThread.get(thread.id) ?? 0;
                 const isSelected = thread.id === selectedId;
-                const needsReply = latest?.senderRole === "vendor";
                 const name = outlet?.name ?? "Vendor";
                 return (
                   <Link
@@ -215,23 +257,18 @@ export default function ChatListPage() {
                           <p className={`truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>{name}</p>
                           <span className="shrink-0 text-[11px] text-muted-foreground">{formatChatTimestamp(thread.lastMessageAt)}</span>
                         </div>
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <MapPin size={11} />
-                          <span className="truncate">{outlet?.city || "Malaysia"}</span>
-                        </p>
-                        <p className={`mt-2 truncate text-xs ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                        <p className={`mt-1 truncate text-xs ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>
                           {latest ? truncateChatMessage(latest.text, 58) : "No messages yet"}
                         </p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className={`text-[10px] font-semibold ${needsReply ? "text-amber-700" : "text-muted-foreground"}`}>
-                            {needsReply ? "Needs your reply" : latest ? "Waiting for vendor" : "New conversation"}
-                          </span>
-                          {unreadCount > 0 ? (
-                            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">{unreadCount}</span>
-                          ) : latest?.senderRole === "customer" ? (
-                            <CheckCheck size={13} className="text-primary" aria-label="Your last message" />
-                          ) : null}
-                        </div>
+                        {(unreadCount > 0 || latest?.senderRole === "customer") && (
+                          <div className="mt-2 flex items-center justify-end">
+                            {unreadCount > 0 ? (
+                              <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">{unreadCount}</span>
+                            ) : (
+                              <CheckCheck size={13} className="text-primary" aria-label="Your last message" />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -244,12 +281,19 @@ export default function ChatListPage() {
         <section className={`${selectedThread ? "flex" : "hidden md:flex"} min-h-0 flex-col`}>
           {selectedThread ? (
             <ChatThreadPanel
-              thread={selectedThread}
-              outlet={selectedOutlet}
+              key={selectedThread.id}
+              threadId={selectedThread.id}
               messages={selectedMessages}
-              currentUser={currentUser}
-              showBack
+              currentUserId={currentUser.id}
+              counterpart={{
+                name: selectedOutlet?.name ?? "Vendor conversation",
+                subtitle: `${selectedOutlet?.city || "Malaysia"}${selectedOutlet?.state ? `, ${selectedOutlet.state}` : ""}`,
+                badge: "Vendor",
+              }}
+              onSend={(text, replyToId) => sendMessage(selectedThread.id, currentUser.id, "customer", text, replyToId)}
               onMessageSent={appendMessage}
+              backHref="/customer/chat"
+              readByOthers={readByOthersIds}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">

@@ -142,6 +142,9 @@ export async function getOrCreateThread(customerId: string, outletId: string): P
   if (findErr) throw findErr;
   if (existing) return mapThread(existing);
 
+  // The chat_threads_welcome trigger sends the vendor's welcome message —
+  // it runs SECURITY DEFINER so it isn't blocked by chat_messages'
+  // sender_id = auth.uid() insert policy the way a client-side insert would be.
   const { data: created, error: createErr } = await supabase
     .from("chat_threads")
     .insert({ customer_id: customerId, outlet_id: outletId })
@@ -149,19 +152,6 @@ export async function getOrCreateThread(customerId: string, outletId: string): P
     .single();
   if (createErr) throw createErr;
 
-  // Welcome message is sent "as the vendor" — chat_messages.sender_id is a users.id,
-  // so we use the outlet's vendor owner as the sender (outlets have no login of their own).
-  const { data: outlet } = await supabase.from("outlets").select("vendor_id").eq("id", outletId).single();
-  const { data: vendor } = outlet
-    ? await supabase.from("vendors").select("owner_id").eq("id", outlet.vendor_id).single()
-    : { data: null };
-  if (vendor) {
-    await supabase.from("chat_messages").insert({
-      thread_id: created.id,
-      sender_id: vendor.owner_id,
-      body: "Welcome! Thanks for your interest. Any questions?",
-    });
-  }
   return mapThread(created);
 }
 
@@ -187,6 +177,8 @@ export async function getMessages(threadId: string): Promise<ChatMessage[]> {
     senderRole: m.sender_id === thread.customer_id ? ("customer" as const) : ("vendor" as const),
     text: m.body,
     sentAt: m.created_at,
+    attachmentUrl: m.attachment_url ?? undefined,
+    replyToId: m.reply_to_message_id ?? undefined,
   }));
 }
 
@@ -201,17 +193,29 @@ export async function getReadChatMessageIds(userId: string, messageIds: string[]
   return new Set((data ?? []).map((row) => row.message_id as string));
 }
 
-export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string): Promise<ChatMessage> {
+/** Message ids (from `messageIds`) that someone other than `myUserId` has read — powers the ✓✓ receipt. */
+export async function getOtherReadMessageIds(myUserId: string, messageIds: string[]): Promise<Set<string>> {
+  if (messageIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("chat_message_reads")
+    .select("message_id")
+    .in("message_id", messageIds)
+    .neq("user_id", myUserId);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.message_id as string));
+}
+
+export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string): Promise<ChatMessage> {
   const { data, error } = await supabase
     .from("chat_messages")
-    .insert({ thread_id: threadId, sender_id: senderId, body: text })
+    .insert({ thread_id: threadId, sender_id: senderId, body: text, reply_to_message_id: replyToId ?? null })
     .select("*")
     .single();
   if (error) throw error;
 
   await supabase.from("chat_threads").update({ last_message_at: data.created_at }).eq("id", threadId);
 
-  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at };
+  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at, replyToId: data.reply_to_message_id ?? undefined };
 }
 
 // ─── Support tickets ────────────────────────────────────────────────────────

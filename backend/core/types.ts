@@ -231,6 +231,10 @@ export interface ChatMessage {
   senderRole: "customer" | "vendor";
   text: string;
   sentAt: string;
+  /** Storage path in the chat-attachments bucket, not a URL — sign it before rendering. */
+  attachmentUrl?: string;
+  /** Id of the message this one is quoting, if any. */
+  replyToId?: string;
 }
 
 export interface Notification {
