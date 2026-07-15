@@ -227,7 +227,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const outletMap = new Map<string, number>();
   for (const item of currentItems) if (isRevenueItem(item)) outletMap.set(item.outlet_id, (outletMap.get(item.outlet_id) || 0) + number(item.line_total));
   const salesByOutlet = [...outletMap.entries()].sort(([, a], [, b]) => b - a).map(([outletId, revenue], index) => ({
-    name: outletShortNames[outletId] || outletNames[outletId] || 'Unknown outlet', fullName: outletNames[outletId] || 'Unknown outlet', revenue: Math.round(revenue * 100) / 100, color: ['#0f766e', '#0e7490', '#b45309', '#be123c', '#7c3aed'][index % 5],
+    name: outletShortNames[outletId] || outletNames[outletId] || 'Unknown outlet', fullName: outletNames[outletId] || 'Unknown outlet', revenue: Math.round(revenue * 100) / 100, color: ['#010066', '#1d2a8a', '#b45309', '#be123c', '#7c3aed'][index % 5],
   }));
 
   const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName: string }>();
