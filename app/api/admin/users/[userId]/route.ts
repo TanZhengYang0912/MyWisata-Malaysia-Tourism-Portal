@@ -38,7 +38,7 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { userId } = await params;
-  const { supabase, user, response } = await requireSuperAdmin();
+  const { user, response } = await requireSuperAdmin();
   if (response) return response;
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
