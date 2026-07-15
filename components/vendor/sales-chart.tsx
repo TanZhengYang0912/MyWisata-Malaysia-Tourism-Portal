@@ -62,7 +62,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(value) => metric === 'revenue' ? `RM${value}` : value} />
                 <Tooltip formatter={(value) => [metric === 'revenue' ? `RM ${Number(value).toLocaleString('en-MY', { minimumFractionDigits: 2 })}` : value, metric === 'revenue' ? 'Revenue' : 'Orders']} />
                 <Legend verticalAlign="bottom" height={32} iconType="circle" />
-                <Line type="monotone" dataKey={metric} name={metric === 'revenue' ? 'Revenue (RM)' : 'Orders (Qty)'} stroke={metric === 'revenue' ? '#f59e0b' : '#0f766e'} strokeWidth={3} dot={{ r: 3, fill: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey={metric} name={metric === 'revenue' ? 'Revenue (RM)' : 'Orders (Qty)'} stroke={metric === 'revenue' ? '#f59e0b' : '#010066'} strokeWidth={3} dot={{ r: 3, fill: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (

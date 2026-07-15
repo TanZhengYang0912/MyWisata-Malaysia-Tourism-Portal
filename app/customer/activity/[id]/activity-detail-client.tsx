@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bike, Bus, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Phone, Star, Tag, Users } from "lucide-react";
+import { Bike, Bus, CalendarDays, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Phone, Star, Store, Tag, Users } from "lucide-react";
 import { getOrCreateThread } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -12,7 +13,10 @@ import { MapView } from "@/components/map/map-view";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
-import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
+import { ActivityReviews } from "@/components/customer/activity-reviews";
+import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
+import { formatBookingSlotTime, getBookingDatePreview, groupBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 const TRAVEL_MODES = [
   { id: "DRIVING", urlParam: "driving", label: "Drive", icon: Car },
@@ -44,9 +48,11 @@ function getDetailChips(activity: ComputedActivity): DetailChip[] {
 export function ActivityDetailClient({
   initialActivity,
   initialSlots,
+  initialReviews,
 }: {
   initialActivity: ComputedActivity | null;
   initialSlots: BookingSlot[];
+  initialReviews: ProductReview[];
 }) {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -54,8 +60,11 @@ export function ActivityDetailClient({
 
   const [activity] = useState<ComputedActivity | null>(initialActivity);
   const [slots] = useState<BookingSlot[]>(initialSlots);
+  const [reviews] = useState<ProductReview[]>(initialReviews);
   const [variantId, setVariantId] = useState<string>(initialActivity?.variants[0]?.id ?? "");
   const [slotId, setSlotId] = useState<string>("");
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => groupBookingSlotsByDate(initialSlots)[0]?.key ?? "");
+  const calendarInputRef = useRef<HTMLInputElement>(null);
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -67,6 +76,10 @@ export function ActivityDetailClient({
   const [view, setView] = useState<"details" | "map">("details");
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
+  const slotDateGroups = useMemo(() => groupBookingSlotsByDate(slots), [slots]);
+  const activeDateKey = slotDateGroups.some((group) => group.key === selectedDateKey) ? selectedDateKey : slotDateGroups[0]?.key ?? "";
+  const activeDateGroup = slotDateGroups.find((group) => group.key === activeDateKey);
+  const previewDateGroups = useMemo(() => getBookingDatePreview(slotDateGroups, activeDateKey), [slotDateGroups, activeDateKey]);
   const selectedSlot = slots.find((s) => s.id === slotId);
   const seatsLeft = selectedSlot ? selectedSlot.capacity - selectedSlot.booked : undefined;
 
@@ -158,7 +171,9 @@ export function ActivityDetailClient({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">
-      <div className="relative mb-4 h-52 overflow-hidden rounded-2xl sm:h-64 lg:h-72">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <div className="min-w-0">
+      <div className="relative mb-4 h-44 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={activity.image} alt={activity.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
@@ -169,12 +184,12 @@ export function ActivityDetailClient({
         )}
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
       <section className="min-w-0">
-      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
-          <div className="flex items-center gap-4 flex-wrap text-sm">
+          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary"><Store size={14} /> Provided by {activity.outlet.vendorName ?? "Local vendor"}</p>
+              <div className="flex items-center gap-4 flex-wrap text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <MapPin size={13} /> {activity.outlet.city}, {activity.outlet.state}
             </div>
@@ -229,6 +244,17 @@ export function ActivityDetailClient({
             </div>
           )}
 
+          <ActivityReviews productId={activity.id} rating={activity.rating} totalReviews={activity.reviews} initialReviews={reviews} />
+
+          <section className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Vendor</p>
+              <p className="mt-1 truncate text-sm font-semibold text-foreground">{activity.outlet.vendorName ?? "Local vendor"}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{activity.outlet.name} · {activity.outlet.city}, {activity.outlet.state}</p>
+            </div>
+            <Link href={getOutletShopHref(activity.outlet.id)} className="shrink-0 rounded-full border border-primary/20 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-secondary">Visit shop</Link>
+          </section>
+
         </>
       )}
 
@@ -276,6 +302,7 @@ export function ActivityDetailClient({
       )}
 
       </section>
+      </div>
 
       <aside className="lg:sticky lg:top-24">
         <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
@@ -314,32 +341,98 @@ export function ActivityDetailClient({
 
           {activity.requiresBooking && (
             <div className="mb-4">
-              <label className="mb-2 block text-xs font-semibold text-muted-foreground">Time Slot</label>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className="block text-xs font-semibold text-muted-foreground">Choose a date and time</label>
+                {slotDateGroups.length > 3 && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = calendarInputRef.current;
+                        if (!input) return;
+                        try {
+                          if (typeof input.showPicker === "function") input.showPicker();
+                          else input.click();
+                        } catch {
+                          input.click();
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-secondary"
+                    >
+                      <CalendarDays size={13} /> Calendar
+                    </button>
+                    <input
+                      ref={calendarInputRef}
+                      type="date"
+                      value={activeDateKey}
+                      onChange={(event) => {
+                        const group = slotDateGroups.find((item) => item.key === event.target.value);
+                        if (!group) return;
+                        setSelectedDateKey(group.key);
+                        setSlotId("");
+                      }}
+                      aria-label="Choose another available date"
+                      className="pointer-events-none absolute h-px w-px opacity-0"
+                      tabIndex={-1}
+                    />
+                  </div>
+                )}
+              </div>
               {slots.length === 0 ? (
                 <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">No slots available yet.</p>
               ) : (
-                <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto">
-                  {slots.map((s) => {
-                    const full = s.booked >= s.capacity;
-                    return (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    {previewDateGroups.map((group) => (
                       <button
-                        key={s.id}
-                        disabled={full}
-                        onClick={() => setSlotId(s.id)}
-                        className="rounded-xl border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                        key={group.key}
+                        type="button"
+                        aria-pressed={activeDateKey === group.key}
+                        onClick={() => {
+                          setSelectedDateKey(group.key);
+                          setSlotId("");
+                        }}
+                        className="min-w-0 rounded-xl border px-2 py-2 text-left text-xs font-semibold transition-colors"
                         style={{
-                          borderColor: slotId === s.id ? "var(--primary)" : "var(--border)",
-                          backgroundColor: slotId === s.id ? "var(--primary)" : "transparent",
-                          color: slotId === s.id ? "white" : "var(--foreground)",
+                          borderColor: activeDateKey === group.key ? "var(--primary)" : "var(--border)",
+                          backgroundColor: activeDateKey === group.key ? "var(--primary)" : "transparent",
+                          color: activeDateKey === group.key ? "white" : "var(--foreground)",
                         }}
                       >
-                        {new Date(s.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                        {full ? " · Full" : ` · ${s.capacity - s.booked} left`}
+                        {group.label}
+                        <span className="mt-0.5 block text-[10px] font-medium opacity-75">{group.slots.length} {group.slots.length === 1 ? "time" : "times"}</span>
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+
+                  <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available times</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(activeDateGroup?.slots ?? []).map((s) => {
+                      const full = s.booked >= s.capacity;
+                      const selected = slotId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          disabled={full}
+                          aria-pressed={selected}
+                          onClick={() => setSlotId(s.id)}
+                          className="min-w-0 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed"
+                          style={{
+                            borderColor: selected ? "var(--primary)" : "var(--border)",
+                            backgroundColor: selected ? "var(--primary)" : full ? "var(--muted)" : "transparent",
+                            color: selected ? "white" : full ? "var(--muted-foreground)" : "var(--foreground)",
+                          }}
+                        >
+                          <span className="block truncate text-sm font-semibold">{formatBookingSlotTime(s.startsAt)}</span>
+                          <span className="mt-0.5 block text-[11px] font-medium opacity-75">{full ? "Fully booked" : `${s.capacity - s.booked} left`}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
+              {activity.requiresBooking && !slotId && slots.length > 0 && <p className="mt-2 text-xs text-destructive">Select a time slot to continue.</p>}
             </div>
           )}
 
@@ -359,8 +452,6 @@ export function ActivityDetailClient({
           </div>
 
           {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{seatsLeft} seats left</p>}
-          {activity.requiresBooking && !slotId && <p className="mb-3 text-xs text-destructive">Select a time slot to continue.</p>}
-
           <Button
             onClick={handleAddToCart}
             disabled={adding || (activity.requiresBooking && !slotId)}

@@ -57,7 +57,9 @@ export const outletCreateSchema = z.object({
   operatingHours: z.record(z.string(), z.object({
     open: z.string(),
     close: z.string(),
-  })).optional(),
+    closed: z.boolean().optional(),
+    note: z.string().max(500).optional(),
+  }).strict()).optional(),
 }).strict();
 
 export const outletUpdateSchema = outletCreateSchema.partial();

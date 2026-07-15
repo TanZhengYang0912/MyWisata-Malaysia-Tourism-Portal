@@ -12,6 +12,8 @@
 // this is a short-answer FAQ bot, not a reasoning-heavy task. Google moves
 // these aliases around — if this 404s or 429s again later, re-run the
 // ListModels check (see lib/chatbot/embed.ts's note) rather than guessing.
+import { redactPII } from './pii';
+
 export interface GenerateDoc {
   title: string;
   body: string;
@@ -51,8 +53,13 @@ export async function generateAnswer(question: string, docs: GenerateDoc[]): Pro
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
+  // CLAUDE-ADMIN-AI.md Part 1, §7.3: redact the user's question before it
+  // reaches Gemini. docs/context come from our own KB, not user input — not
+  // redacted, since that's internal platform content, never customer PII.
+  const { clean: cleanQuestion } = redactPII(question);
+
   const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
-  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${question}`;
+  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${cleanQuestion}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);

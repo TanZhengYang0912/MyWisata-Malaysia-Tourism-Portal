@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 
 const UNREAD_POLL_MS = 30_000;
@@ -19,6 +19,9 @@ const NAV = [
   { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
   { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
   { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
+  // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
+  // this NAV (which admin/approver both see). Filtered in render below.
+  { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -79,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV.map((item) => (
+          {NAV.filter((item) => !item.superAdminOnly || currentUser.role === "super_admin").map((item) => (
             <Link
               key={item.href}
               href={item.href}
