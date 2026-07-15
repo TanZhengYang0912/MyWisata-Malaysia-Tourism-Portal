@@ -18,6 +18,9 @@ function mapRpcError(message: string) {
   if (message.includes("admin_manage_user") && (message.includes("schema cache") || message.includes("permission denied"))) {
     return apiFail("ACCOUNT_ACTIONS_NOT_CONFIGURED", "Account actions are not configured. Apply supabase/migrations/20260716000080_account_moderation_rpc.sql, then reload the Supabase schema.", 503);
   }
+  if (message.includes("account_lifecycle_fields_are_server_managed")) {
+    return apiFail("ACCOUNT_LIFECYCLE_NOT_CONFIGURED", "Account lifecycle actions need a database update. Apply supabase/migrations/20260716000090_admin_account_lifecycle_context.sql, then reload the Supabase schema.", 503);
+  }
   const diagnostic = message.replace(/\s+/g, " ").trim().slice(0, 240);
   console.error("[user-management] account mutation failed", diagnostic);
   return apiFail("USER_MANAGEMENT_FAILED", `Unable to update this user. Database response: ${diagnostic}`, 500);

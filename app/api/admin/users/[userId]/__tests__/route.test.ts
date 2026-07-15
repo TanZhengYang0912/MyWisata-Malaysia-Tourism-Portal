@@ -119,4 +119,17 @@ describe("POST /api/admin/users/[userId]", () => {
     expect(response.status).toBe(500);
     expect(body.error.message).toContain('Database response: column "closed_at" does not exist');
   });
+
+  it("explains when the lifecycle-context migration has not been applied", async () => {
+    mocks.serviceRpc.mockResolvedValue({
+      data: null,
+      error: { message: "account_lifecycle_fields_are_server_managed" },
+    });
+
+    const response = await POST(request({ action: "suspend", reason: "A sufficiently long reason" }), { params: Promise.resolve({ userId: targetId }) });
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.message).toContain("20260716000090_admin_account_lifecycle_context.sql");
+  });
 });
