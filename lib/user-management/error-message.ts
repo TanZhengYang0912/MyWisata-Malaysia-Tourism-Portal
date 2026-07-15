@@ -9,9 +9,12 @@ export function getUserManagementErrorMessage(body: unknown, fallback: string): 
   const fieldErrors = error?.details?.fieldErrors;
   if (!fieldErrors) return base;
 
-  const firstError = Object.entries(fieldErrors).find(([, values]) => Array.isArray(values) && values.length > 0);
-  if (!firstError) return base;
-  const [field, values] = firstError;
-  const detail = values[0];
-  return typeof detail === "string" && detail.trim().length > 0 ? `${base} (${field}: ${detail})` : base;
+  for (const [field, values] of Object.entries(fieldErrors)) {
+    if (!Array.isArray(values) || values.length === 0) continue;
+    const detail = values[0];
+    if (typeof detail === "string" && detail.trim().length > 0) {
+      return `${base} (${field}: ${detail})`;
+    }
+  }
+  return base;
 }
