@@ -8,7 +8,7 @@ import { buildPromotionSpotlight } from "@/lib/customer/promotion-spotlight";
 
 const ACCENT_STYLES = {
   yellow: { badge: "bg-[#FFCC00] text-[#010066]", button: "bg-white text-[#010066] hover:bg-[#FFCC00]" },
-  teal: { badge: "bg-[#8DE0C7] text-[#073B3A]", button: "bg-white text-[#073B3A] hover:bg-[#8DE0C7]" },
+  teal: { badge: "bg-[#EEF2FF] text-[#010066]", button: "bg-white text-[#010066] hover:bg-[#FFCC00]" },
   coral: { badge: "bg-[#FFB7A5] text-[#5B1D18]", button: "bg-white text-[#5B1D18] hover:bg-[#FFB7A5]" },
 } as const;
 
@@ -30,7 +30,7 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
     <section aria-labelledby="promotion-spotlight-title" className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
       <div className="relative isolate overflow-hidden rounded-[2rem] bg-[#010066] shadow-[0_18px_50px_rgba(1,0,102,0.18)]">
         <img src={active.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-35" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#010066] via-[#010066]/90 to-[#0a6470]/60" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#010066] via-[#010066]/90 to-[#1D2A8A]/60" />
         <div className="grid min-h-[250px] gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_auto] lg:items-end lg:p-12">
           <div className="max-w-2xl text-white">
             <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#FFCC00]">
