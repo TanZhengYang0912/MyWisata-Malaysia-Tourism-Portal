@@ -11,6 +11,7 @@ import { VerifiedContributorBadge } from "@/components/shared/verified-contribut
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
+import Link from "next/link";
 
 type RecommendationResponse = {
   id: string;
@@ -229,7 +230,7 @@ export default function RecommendationsPage() {
                   <p className="text-sm font-semibold text-foreground">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{getRecommendationStatus(r.status).description}</p>
-                  {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                  {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">View contributor profile</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -266,7 +267,7 @@ export default function RecommendationsPage() {
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{getRecommendationStatus(r.status).description}</p>
-                    {r.author && <div className="mt-1"><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                    {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">View contributor profile</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                   </div>
                 </div>
                 <StatusBadge status={r.status} />

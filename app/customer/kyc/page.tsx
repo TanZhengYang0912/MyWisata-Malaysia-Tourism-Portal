@@ -51,7 +51,7 @@ export default function KycPage() {
   const frontFileInputRef = useRef<HTMLInputElement>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
 
-  const tier      = currentUser?.verificationTier ?? "email_verified";
+  const tier      = currentUser?.verificationTier ?? "email_unverified";
   const isVerified       = tier === "kyc_verified";
   const isProfileComplete = tier === "profile_complete" || tier === "kyc_verified";
   const canSubmit        = tier === "profile_complete";

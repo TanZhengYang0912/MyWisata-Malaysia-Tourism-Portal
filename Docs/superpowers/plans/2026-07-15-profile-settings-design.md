@@ -47,6 +47,7 @@
 - Create: `app/api/account/close/route.ts`
 - Create: `app/api/account/restore/route.ts`
 - Create: `app/account-restore/page.tsx`
+- Create: `app/account-suspended/page.tsx`
 - Modify: `backend/core/types.ts`
 - Modify: `components/providers/auth.tsx`
 - Create: `lib/account/__tests__/lifecycle.test.ts`
@@ -56,7 +57,7 @@
 - `restore_my_account()` is a `SECURITY DEFINER` RPC that only restores a deleted user after the authenticated session is valid; it sets status to active and clears phone/profile/KYC verification timestamps/status so the user must re-verify.
 - `POST /api/account/close` calls close RPC, signs out the current session, and returns success.
 - `POST /api/account/restore` calls restore RPC and returns the next verification tier.
-- `User.status` is `active | suspended | deleted`; AuthProvider routes deleted users to `/account-restore` and leaves suspended users blocked.
+- `User.status` is `active | suspended | deleted`; AuthProvider routes deleted users to `/account-restore` and suspended users to `/account-suspended`.
 
 - [ ] **Step 1: Write lifecycle tests** covering close, restore reset semantics, suspended-user rejection, and idempotent repeated calls.
 - [ ] **Step 2: Run** the targeted tests and verify they fail before migration/route implementation.
@@ -64,8 +65,9 @@
 - [ ] **Step 4: Implement close/restore routes** with session checks and safe error mapping.
 - [ ] **Step 5: Update AuthProvider** to load `status` and redirect only deleted users to the restore page; keep admin and suspended-user behavior unchanged.
 - [ ] **Step 6: Implement restore UI** explaining that Phone, Profile, and KYC verification must be completed again.
-- [ ] **Step 7: Run** targeted tests, `npx tsc --noEmit`, and `npm run build`.
-- [ ] **Step 8: Commit** `feat: add soft-delete account lifecycle`.
+- [ ] **Step 7: Implement the suspended-account page** with no restore action and a Support link.
+- [ ] **Step 8: Run** targeted tests, `npx tsc --noEmit`, and `npm run build`.
+- [ ] **Step 9: Commit** `feat: add soft-delete account lifecycle`.
 
 ### Task 3: Build the sectioned completed Profile page
 
@@ -99,6 +101,7 @@
 - Modify: `backend/core/types.ts`
 - Modify: `backend/domains/identity.ts`
 - Modify: `app/customer/profile/[userId]/page.tsx`
+- Create: `supabase/migrations/20260715000050_public_profile_bio.sql`
 - Modify: `lib/profile/__tests__/profile-summary.test.ts`
 
 **Interfaces:**
@@ -108,7 +111,7 @@
 
 - [ ] **Step 1: Add a failing test** proving `bio` is mapped while a fixture containing email/phone is ignored.
 - [ ] **Step 2: Run** the targeted test and verify failure.
-- [ ] **Step 3: Update** the public select/mapping and page layout.
+- [ ] **Step 3: Update** the public select/mapping, view migration, and page layout.
 - [ ] **Step 4: Run** targeted tests, `npx tsc --noEmit`, and `npm run build`.
 - [ ] **Step 5: Commit** `feat: show safe bio on public contributor profiles`.
 

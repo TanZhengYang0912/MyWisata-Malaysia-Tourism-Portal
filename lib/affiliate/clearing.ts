@@ -103,6 +103,18 @@ export async function clearMaturedCommissions(
         continue;
       }
 
+      // Limited profile-complete links can attribute commissions, but money
+      // stays pending until the owner completes approved KYC.
+      const { data: owner } = await service
+        .from('users')
+        .select('tier, kyc_status')
+        .eq('id', link.user_id)
+        .maybeSingle();
+      if (owner?.tier !== 'kyc_verified' || owner?.kyc_status !== 'approved') {
+        result.skipped++;
+        continue;
+      }
+
       const { data: order } = await service
         .from('orders')
         .select('status')

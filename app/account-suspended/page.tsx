@@ -19,7 +19,7 @@ export default function AccountSuspendedPage() {
       const response = await fetch("/api/account-suspended/appeal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: "Account suspension appeal", body: body.trim() }),
+        body: JSON.stringify({ body: body.trim() }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error?.message ?? "Unable to submit appeal");

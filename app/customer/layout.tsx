@@ -114,6 +114,13 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     };
   }, [accountMenuOpen]);
 
+  async function switchAccount() {
+    setAccountMenuOpen(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) return;
+    window.location.assign("/login");
+  }
+
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
   }
@@ -213,15 +220,15 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                   ))}
                 </div>
                 <div className="mt-2 border-t border-border pt-2">
-                  <Link
-                    href="/login"
+                  <button
+                    type="button"
                     role="menuitem"
-                    onClick={() => setAccountMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                    onClick={() => void switchAccount()}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
                   >
                     <ArrowRightLeft size={16} />
                     Switch account
-                  </Link>
+                  </button>
                 </div>
               </div>
             )}

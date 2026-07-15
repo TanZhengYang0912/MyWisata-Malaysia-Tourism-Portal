@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { enqueueWithdrawalEmail } from '@/lib/email/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,24 @@ export async function POST(
     if (msg.includes('not_found_or_wrong_status')) return NextResponse.json({ error: 'Withdrawal not found or not in pending status' }, { status: 409 });
     console.error('[admin-reject] admin_reject_withdrawal:', error);
     return NextResponse.json({ error: 'Rejection failed' }, { status: 500 });
+  }
+
+  const { data: withdrawal } = await db
+    .from('withdrawal_requests')
+    .select('user_id, amount')
+    .eq('id', withdrawalId)
+    .single();
+  if (withdrawal) {
+    try {
+      await enqueueWithdrawalEmail({
+        withdrawalId,
+        userId: withdrawal.user_id,
+        eventType: 'withdrawal_rejected',
+        amountRm: Number(withdrawal.amount),
+      });
+    } catch (emailError) {
+      console.error('[admin-reject] withdrawal email enqueue failed:', emailError);
+    }
   }
 
   return NextResponse.json({ status: 'rejected' });

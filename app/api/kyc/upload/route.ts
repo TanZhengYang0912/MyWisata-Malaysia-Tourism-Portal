@@ -45,8 +45,8 @@ export async function POST(request: Request) {
   }
 
   const [front, back] = await Promise.all([validateKycUploadFile(frontFile), validateKycUploadFile(backFile)]);
-  if (!front.ok) return apiFail(front.code, 'Front document is not a valid JPEG, PNG, or PDF under 5 MB', 422);
-  if (!back.ok) return apiFail(back.code, 'Back document is not a valid JPEG, PNG, or PDF under 5 MB', 422);
+  if (!front.ok) return apiFail(front.code, 'Front document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
+  if (!back.ok) return apiFail(back.code, 'Back document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
 
   let fingerprint: { algorithm: 'hmac_sha256_v1'; value: string };
   try { fingerprint = await hashICWithHmac(icNumber.trim()); }

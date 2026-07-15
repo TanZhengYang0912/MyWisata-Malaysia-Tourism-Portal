@@ -2,6 +2,7 @@
 import { supabase } from "@/backend/supabase";
 import type { AdminKycSubmission, ChatMessage, ChatThread, PublicUser, Role, SupportTicket, User } from "@/backend/core/types";
 import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
+import { mapPublicProfile, type PublicProfileRow } from "@/lib/profile/public-profile";
 
 type UserRow = {
   id: string;
@@ -17,36 +18,14 @@ const USER_SELECT = "id,email,full_name,city,phone,tier,user_roles(vendor_id,out
 
 // Explicit allow-list for public identity data. Never replace this with a
 // users.* query: the public_users view is the column-level KYC boundary.
-const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,is_kyc_verified,created_at";
-
-type PublicUserRow = {
-  id: string;
-  full_name: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-  city: string | null;
-  country: string | null;
-  is_kyc_verified: boolean;
-  created_at: string;
-};
-
-function mapPublicUser(row: PublicUserRow): PublicUser {
-  return {
-    id: row.id,
-    name: row.display_name?.trim() || row.full_name?.trim() || "MyWisata member",
-    avatarUrl: row.avatar_url ?? undefined,
-    city: row.city ?? undefined,
-    country: row.country ?? undefined,
-    isKycVerified: Boolean(row.is_kyc_verified),
-  };
-}
+const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,bio,is_kyc_verified,created_at";
 
 /** Fetches only active, public-safe identity fields for contributor cards. */
 export async function getPublicUsers(ids: string[]): Promise<PublicUser[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase.from("public_users").select(PUBLIC_USER_SELECT).in("id", ids);
   if (error) throw error;
-  return (data as unknown as PublicUserRow[]).map(mapPublicUser);
+  return (data as unknown as PublicProfileRow[]).map(mapPublicProfile);
 }
 
 function mapUser(row: UserRow): User {
@@ -60,7 +39,7 @@ function mapUser(row: UserRow): User {
     avatarInitial: name[0]?.toUpperCase() ?? "?",
     city: row.city ?? undefined,
     phone: row.phone ?? undefined,
-    verificationTier: (row.tier ?? "email_verified") as User["verificationTier"],
+    verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],
     vendorId: ur?.vendor_id ?? undefined,
     outletId: ur?.outlet_id ?? undefined,
   };
@@ -267,12 +246,12 @@ export async function updateProfile(userId: string, data: { fullName: string; ci
 }
 
 // ─── KYC submissions ────────────────────────────────────────────────────────
-export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const KYC_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export function validateKycFile(file: File | null): string | null {
   if (!file) return "Please upload a document photo";
-  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "File must be JPG, PNG, or PDF";
+  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "Each front and back document must be a JPG, PNG, or WebP photo";
   if (file.size > KYC_MAX_FILE_SIZE) return `File must be under 5 MB (current: ${(file.size / 1024 / 1024).toFixed(1)} MB)`;
   return null;
 }

@@ -1,11 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Search as SearchIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Search as SearchIcon } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATEGORIES, STATES_MY, searchActivities, type SearchFilters } from "@/backend/domains/catalogue";
 import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
+
+type PlaceSuggestion = { display_name: string; short: string };
+
+async function fetchPlaceSuggestions(query: string): Promise<PlaceSuggestion[]> {
+  if (query.trim().length < 2) return [];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=my&format=json&limit=6&addressdetails=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) return [];
+    const data = await res.json() as Array<{ display_name: string; address?: { city?: string; town?: string; village?: string; state?: string } }>;
+    return data.map((item) => {
+      const addr = item.address ?? {};
+      const locality = addr.city ?? addr.town ?? addr.village ?? '';
+      const state = addr.state ?? '';
+      const short = [locality, state].filter(Boolean).join(', ') || item.display_name.split(',').slice(0, 2).join(',').trim();
+      return { display_name: item.display_name, short };
+    });
+  } catch {
+    return [];
+  }
+}
 
 const PRICE_OPTIONS = [
   { label: "Any price", value: undefined },
@@ -50,6 +71,10 @@ export function SearchClient({
   const [sort, setSort] = useState<SearchFilters["sort"]>("recommended");
   const [currentPage, setCurrentPage] = useState(1);
   const [results, setResults] = useState<ComputedActivity[] | null>(initialResults);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Skip the very first run: the initial ?q= results are already
   // server-rendered via initialResults. Only refetch once a filter changes.
@@ -65,6 +90,27 @@ export function SearchClient({
     });
   }, [q, category, state, vendorId, priceMax, openOnly, sort]);
 
+  // Debounced place autocomplete
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.trim().length < 2) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(() => {
+      fetchPlaceSuggestions(q).then(setSuggestions);
+    }, 350);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [q]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil((results?.length ?? 0) / RESULTS_PER_PAGE));
   const pageStart = (currentPage - 1) * RESULTS_PER_PAGE;
   const visibleResults = (results ?? []).slice(pageStart, pageStart + RESULTS_PER_PAGE);
@@ -74,14 +120,32 @@ export function SearchClient({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-foreground mb-4 font-[family-name:var(--font-display)]">Search Experiences</h1>
 
-      <div className="flex items-center gap-2 p-2 rounded-xl border border-border bg-card mb-4 max-w-xl">
-        <SearchIcon size={16} className="text-muted-foreground ml-2" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search experiences, places or vendors…"
-          className="flex-1 text-sm bg-transparent outline-none text-foreground"
-        />
+      <div className="relative mb-4 max-w-xl" ref={suggestionsRef}>
+        <div className="flex items-center gap-2 p-2 rounded-xl border border-border bg-card">
+          <SearchIcon size={16} className="text-muted-foreground ml-2 shrink-0" />
+          <input
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setShowSuggestions(true); }}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            placeholder="Search experiences, places or vendors…"
+            className="flex-1 text-sm bg-transparent outline-none text-foreground"
+          />
+        </div>
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); setQ(s.short); setShowSuggestions(false); }}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors"
+              >
+                <MapPin size={13} className="text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground truncate">{s.short}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">

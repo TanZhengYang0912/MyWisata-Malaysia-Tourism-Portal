@@ -44,6 +44,7 @@ import { getTierForUser } from './tier';
 import { logFraudFlag } from './fraud';
 
 const MW_REF_COOKIE = 'mw_ref';
+const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
 
 /** Best-effort cookie read — returns null (not throws) outside a request-scoped context. */
 async function tryReadClickIdCookie(): Promise<string | null> {
@@ -141,6 +142,27 @@ export async function onOrderPaid(orderId: string): Promise<void> {
     // the tier's rate) changes later. See lib/affiliate/tier.ts.
     const { rate } = await getTierForUser(service, linkOwnerId);
     const commission = applyPercent(Number(order.total_amount), rate * 100);
+
+    const { data: owner } = await service
+      .from('users')
+      .select('tier, kyc_status')
+      .eq('id', linkOwnerId)
+      .maybeSingle();
+    if (owner?.kyc_status === 'rejected') return;
+    const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
+    if (!fullAffiliate) {
+      const startOfMonth = new Date();
+      startOfMonth.setUTCDate(1);
+      startOfMonth.setUTCHours(0, 0, 0, 0);
+      const { data: monthlyRows } = await service
+        .from('affiliate_attributions')
+        .select('commission_amount')
+        .eq('status', 'pending')
+        .gte('created_at', startOfMonth.toISOString())
+        .in('click_id', (await service.from('affiliate_clicks').select('id').eq('link_id', click.link_id)).data?.map((row) => row.id) ?? []);
+      const monthlyTotal = (monthlyRows ?? []).reduce((sum, row) => sum + Number(row.commission_amount), 0);
+      if (monthlyTotal >= LIMITED_MONTHLY_COMMISSION_CAP_RM || monthlyTotal + commission > LIMITED_MONTHLY_COMMISSION_CAP_RM) return;
+    }
 
     const { data: attribution, error: attrErr } = await service
       .from('affiliate_attributions')

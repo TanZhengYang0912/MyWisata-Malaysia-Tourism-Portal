@@ -9,6 +9,11 @@ export async function POST(request: Request) {
   const { data: { user }, error } = await db.auth.getUser();
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: profile } = await db.from('users').select('phone_verified_at').eq('id', user.id).maybeSingle();
+  if (!profile?.phone_verified_at) {
+    return NextResponse.json({ error: 'Phone verification is required before checkout.' }, { status: 403 });
+  }
+
   let body: { amount_rm?: unknown; voucher_code?: unknown } = {};
   try { body = await request.json(); } catch { /* use empty body */ }
   const amount = Number(body.amount_rm);
@@ -26,7 +31,11 @@ export async function POST(request: Request) {
       },
       quantity: 1,
     }],
-    metadata: { user_id: user.id, voucher_code: String(body.voucher_code ?? '') },
+    metadata: {
+      user_id: user.id,
+      voucher_code: String(body.voucher_code ?? ''),
+      payment_kind: 'order',
+    },
     success_url: `${origin}/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/customer/checkout`,
   });

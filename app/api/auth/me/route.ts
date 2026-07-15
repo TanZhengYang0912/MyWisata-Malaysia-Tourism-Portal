@@ -70,7 +70,7 @@ export async function GET() {
       fullName: profileRow?.full_name || null,
       avatarUrl: profileRow?.avatar_url || null,
       kycStatus: profileRow?.kyc_status || 'unverified',
-      tier: profileRow?.tier || 'email_verified',
+      tier: profileRow?.tier || 'email_unverified',
       emailVerified: Boolean(profileRow?.email_verified_at),
       phoneVerified: Boolean(profileRow?.phone_verified_at),
       profileComplete: Boolean(profileRow?.profile_completed_at),

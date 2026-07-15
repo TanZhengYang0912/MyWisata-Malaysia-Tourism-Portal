@@ -9,8 +9,16 @@ export async function GET() {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const { data: roles, error: roleError } = await service.from('user_roles').select('role').eq('user_id', user.id);
-  if (roleError || !roles?.some(({ role }) => ['admin', 'approver', 'super_admin'].includes(role))) {
+  const { data: roleRows, error: roleError } = await service
+    .from('user_roles')
+    .select('roles(name)')
+    .eq('user_id', user.id);
+  type RoleRow = { roles: { name: string } | { name: string }[] | null };
+  const roleNames = ((roleRows ?? []) as RoleRow[]).map((r) => {
+    const role = Array.isArray(r.roles) ? r.roles[0] : r.roles;
+    return role?.name ?? '';
+  });
+  if (roleError || !roleNames.some((n) => ['admin', 'approver', 'super_admin'].includes(n))) {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
 
