@@ -16,6 +16,14 @@ describe('customer chat view helpers', () => {
     expect(countUnreadMessages(messages, new Set(['vendor-read']))).toBe(1);
   });
 
+  it('counts only unread messages sent by the customer when viewed as a vendor', () => {
+    const messages = [
+      { id: 'customer-unread', senderRole: 'customer' as const },
+      { id: 'customer-read', senderRole: 'customer' as const },
+    ];
+    expect(countUnreadMessages(messages, new Set(['customer-read']), 'vendor')).toBe(1);
+  });
+
   it('formats recent timestamps for a compact conversation list', () => {
     const now = new Date('2026-07-14T12:00:00.000Z').getTime();
     expect(formatChatTimestamp('2026-07-14T11:45:00.000Z', now)).toBe('15m');

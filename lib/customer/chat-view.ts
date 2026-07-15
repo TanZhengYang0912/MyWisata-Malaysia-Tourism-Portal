@@ -9,8 +9,13 @@ export function truncateChatMessage(text: string, maxLength = 72): string {
   return `${normalized.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`;
 }
 
-export function countUnreadMessages(messages: ChatPreviewMessage[], readMessageIds: Set<string>): number {
-  return messages.filter((message) => message.senderRole === 'vendor' && !readMessageIds.has(message.id)).length;
+export function countUnreadMessages(
+  messages: ChatPreviewMessage[],
+  readMessageIds: Set<string>,
+  viewerRole: 'customer' | 'vendor' = 'customer',
+): number {
+  const counterpartRole = viewerRole === 'customer' ? 'vendor' : 'customer';
+  return messages.filter((message) => message.senderRole === counterpartRole && !readMessageIds.has(message.id)).length;
 }
 
 export function formatChatTimestamp(value: string, now = Date.now()): string {
