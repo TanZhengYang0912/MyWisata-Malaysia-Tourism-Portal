@@ -55,10 +55,10 @@ export async function POST(request: Request, { params }: Props) {
   const context = moderationContext[parsed.data.action as keyof typeof moderationContext];
   if (context) {
     const moderation = await moderateAccountText(parsed.data.reason, context);
-    if (moderation.error === "api_unavailable") {
+    if ("error" in moderation && moderation.error === "api_unavailable") {
       return apiFail("MODERATION_UNAVAILABLE", "Content review is temporarily unavailable; please try again", 503);
     }
-    if (moderation.flagged) {
+    if ("flagged" in moderation && moderation.flagged) {
       return apiFail("CONTENT_REJECTED", "This reason contains disallowed content", 422);
     }
   }

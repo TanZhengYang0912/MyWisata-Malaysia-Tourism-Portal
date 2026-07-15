@@ -18,10 +18,10 @@ export async function POST(request: Request) {
   const body = parsed.data.body;
 
   const moderation = await moderateAccountText(body, "suspension_appeal");
-  if (moderation.error === "api_unavailable") {
+  if ("error" in moderation && moderation.error === "api_unavailable") {
     return apiFail("MODERATION_UNAVAILABLE", "Content review is temporarily unavailable; please try again", 503);
   }
-  if (moderation.flagged) {
+  if ("flagged" in moderation && moderation.flagged) {
     return apiFail("CONTENT_REJECTED", "This appeal contains disallowed content", 422);
   }
 
