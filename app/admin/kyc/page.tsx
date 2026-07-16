@@ -172,6 +172,18 @@ export default function AdminKycPage() {
                       </button>
                     ))}
 
+                    {sub?.ocr && (
+                      <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
+                        <p className="font-semibold text-foreground">OCR check: {sub.ocr.status}</p>
+                        {sub.ocr.holderName && <p className="mt-1">Extracted name: {sub.ocr.holderName}</p>}
+                        {sub.ocr.documentNumberLast4 && <p>Document ending: {sub.ocr.documentNumberLast4}</p>}
+                        {sub.ocr.expiryDate && <p>Expiry date: {sub.ocr.expiryDate}</p>}
+                        {sub.ocr.mismatchFields.length > 0 && <p className="mt-1 text-destructive">Mismatch: {sub.ocr.mismatchFields.join(', ').replaceAll('_', ' ')}</p>}
+                        {sub.ocr.status === 'unavailable' && <p className="mt-1">AI reading was unavailable; complete a manual document review.</p>}
+                        {sub.ocr.status === 'unreadable' && <p className="mt-1">The document could not be read reliably; inspect both images manually.</p>}
+                      </div>
+                    )}
+
                     {/* Action buttons */}
                     <div className="flex gap-1.5 shrink-0">
                       <Button

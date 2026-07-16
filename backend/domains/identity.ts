@@ -248,12 +248,12 @@ export async function updateProfile(userId: string, data: { fullName: string; ci
 }
 
 // ─── KYC submissions ────────────────────────────────────────────────────────
-export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const KYC_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export function validateKycFile(file: File | null): string | null {
   if (!file) return "Please upload a document photo";
-  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "Each document must be a JPG, PNG, WebP, or PDF file";
+  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "Each document must be a JPG, PNG, or WebP photo";
   if (file.size > KYC_MAX_FILE_SIZE) return `File must be under 5 MB (current: ${(file.size / 1024 / 1024).toFixed(1)} MB)`;
   return null;
 }
@@ -278,6 +278,7 @@ export async function getKycSubmissions(): Promise<AdminKycSubmission[]> {
     reviewReasonCode: r.review_reason_code ?? null,
     reviewReasonDetail: r.review_reason_detail ?? null,
     documents: ((r as { kyc_submission_documents?: { side: "front" | "back" }[] }).kyc_submission_documents ?? []).map(({ side }) => ({ side })),
+    ocr: null,
   }));
 }
 

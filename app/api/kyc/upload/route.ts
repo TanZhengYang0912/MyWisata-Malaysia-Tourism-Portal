@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
+import { runKycOcr } from '@/lib/kyc/ocr';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
@@ -29,6 +30,10 @@ export async function POST(request: Request) {
   let formData: FormData;
   try { formData = await request.formData(); }
   catch { return apiFail('INVALID_FORM', 'Could not parse form data', 400); }
+
+  if (formData.get('ocrConsent') !== 'true') {
+    return apiFail('OCR_CONSENT_REQUIRED', 'Consent is required for AI-assisted document reading', 422);
+  }
 
   const icNumber = formData.get('icNumber');
   const docType = formData.get('docType');
@@ -58,6 +63,7 @@ export async function POST(request: Request) {
     p_ic_hash: fingerprint.value,
     p_ic_hash_version: fingerprint.algorithm,
     p_doc_type: docType,
+    p_ocr_consent: true,
   });
   if (beginError || typeof submissionId !== 'string') return safeSubmissionFailure(beginError);
 
@@ -89,6 +95,26 @@ export async function POST(request: Request) {
     if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
     return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
   }
+
+  const ocrResult = await runKycOcr({
+    documentType: docType as 'national_id' | 'passport' | 'driving_license',
+    enteredDocumentNumber: icNumber.trim(),
+    front: { mimeType: frontFile.type, bytes: new Uint8Array(front.buffer) },
+    back: { mimeType: backFile.type, bytes: new Uint8Array(back.buffer) },
+    hmacKey: process.env.KYC_IC_HMAC_KEY ?? '',
+  });
+  const { error: ocrError } = await service.rpc('record_kyc_ocr_result', {
+    p_submission_id: submissionId,
+    p_status: ocrResult.status,
+    p_holder_name: ocrResult.holderName,
+    p_document_number_hmac: ocrResult.documentNumberHmac,
+    p_document_number_last4: ocrResult.documentNumberLast4,
+    p_expiry_date: ocrResult.expiryDate,
+    p_confidence: ocrResult.confidence,
+    p_mismatch_fields: ocrResult.mismatchFields,
+    p_provider_model: ocrResult.providerModel,
+  });
+  if (ocrError) console.error('KYC OCR result persistence failed', { submissionId, error: ocrError.message });
 
   const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
     p_submission_id: submissionId,

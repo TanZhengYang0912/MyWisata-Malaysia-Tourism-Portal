@@ -256,6 +256,15 @@ export interface AdminKycSubmission {
   reviewReasonCode: string | null;
   reviewReasonDetail: string | null;
   documents: { side: "front" | "back" }[];
+  ocr: {
+    status: "matched" | "mismatch" | "unreadable" | "unavailable";
+    holderName: string | null;
+    documentNumberLast4: string | null;
+    expiryDate: string | null;
+    confidence: number | null;
+    mismatchFields: string[];
+    processedAt: string;
+  } | null;
 }
 
 /** @deprecated Use CustomerKycSubmission or AdminKycSubmission at the relevant boundary. */
