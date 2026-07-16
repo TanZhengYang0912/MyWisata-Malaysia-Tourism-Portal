@@ -10,6 +10,7 @@ import { safeKycReasonCopy } from "@/lib/kyc/customer-submission";
 import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 type SectionId = "personal" | "contact" | "preferences";
 
@@ -23,6 +24,7 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
 
 export function ProfileSections() {
   const { currentUser, refreshUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
@@ -112,6 +114,7 @@ export function ProfileSections() {
       const response = await fetch("/api/profile/survey", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ interests, travelStyle, budgetRange, mobilityNeeds, preferredDistance }) });
       if (!response.ok) throw new Error("Unable to save preferences");
       await loadProfile(); await refreshUser(); setEditing(null);
+      showFeedback("success", "Preferences saved successfully.");
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to save preferences"); }
     finally { setBusy(false); }
   }
