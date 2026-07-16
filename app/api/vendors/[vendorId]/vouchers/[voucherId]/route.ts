@@ -21,6 +21,7 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.discountValue !== undefined) updateData.discount_value = body.discountValue;
   if (body.minSpend !== undefined) updateData.min_spend = body.minSpend;
   if (body.maxUses !== undefined) updateData.max_uses = body.maxUses;
+  if (body.perCustomerLimit !== undefined) updateData.per_customer_limit = body.perCustomerLimit;
   if (body.validFrom !== undefined) updateData.valid_from = body.validFrom;
   if (body.validUntil !== undefined) updateData.valid_until = body.validUntil;
   if (body.voucherType !== undefined) updateData.voucher_type = body.voucherType;
@@ -29,7 +30,7 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.freeQuantity !== undefined) updateData.free_quantity = body.freeQuantity;
   if (body.isActive !== undefined) updateData.is_active = body.isActive;
 
-  const contentChanged = ['name', 'voucherType', 'discountValue', 'minSpend', 'maxUses', 'validFrom', 'validUntil', 'productId', 'buyQuantity', 'freeQuantity'].some((key) => body[key as keyof typeof body] !== undefined);
+  const contentChanged = ['name', 'voucherType', 'discountValue', 'minSpend', 'maxUses', 'perCustomerLimit', 'validFrom', 'validUntil', 'productId', 'buyQuantity', 'freeQuantity'].some((key) => body[key as keyof typeof body] !== undefined);
   if (contentChanged) {
     updateData.review_status = 'pending_review';
     updateData.review_note = null;

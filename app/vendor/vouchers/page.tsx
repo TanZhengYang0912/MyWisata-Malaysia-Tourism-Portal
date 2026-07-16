@@ -10,7 +10,7 @@ import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
-interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
+interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; views: number; entries: number; applies: number; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
 interface OutletOption { id: string; name: string }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 const statuses = ['all', 'active', 'scheduled', 'inactive', 'expired'];
@@ -94,8 +94,13 @@ export default function VendorVouchersPage() {
     const csv = await file.text();
     const response = await fetch(`/api/vendors/${vendorId}/vouchers/bulk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }) });
     const payload = await response.json();
-    if (!response.ok) { setBulkMessage(payload.error?.message || 'CSV upload failed'); return; }
-    setBulkMessage(`${payload.data?.inserted || 0} vouchers uploaded for admin review.`); loadVouchers(1);
+    if (!response.ok) {
+      const failed = payload.error?.details?.failed as { row: number; errors: string[] }[] | undefined;
+      setBulkMessage(`${payload.error?.message || 'CSV upload failed'}${failed?.length ? ` Failed rows: ${failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ')}` : ''}`);
+      return;
+    }
+    const failed = payload.data?.failed as { row: number; errors: string[] }[] | undefined;
+    setBulkMessage(`${payload.data?.inserted || 0} vouchers uploaded for admin review.${failed?.length ? ` Failed rows: ${failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ')}` : ''}`); loadVouchers(1);
   }
   function toggleSelected(voucherId: string) { setAllFilteredSelected(false); setSelectedIds((current) => current.includes(voucherId) ? current.filter((id) => id !== voucherId) : [...current, voucherId]); }
   async function applyBatch(action: string) {
@@ -111,7 +116,7 @@ export default function VendorVouchersPage() {
   return (
     <div className="space-y-5">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700"><Percent size={15} /> Campaign control</div><h1 className="text-2xl font-bold tracking-tight text-gray-950">Vouchers</h1><p className="mt-1 text-sm text-gray-500">Keep discounts visible, current and easy to switch off.</p></div><div className="flex gap-2"><label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"><input type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCsv(file); event.currentTarget.value = ''; }} /> Upload CSV</label><button type="button" onClick={() => setShowForm(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700"><CirclePlus size={17} /> Create voucher</button></div></header>
-      {bulkMessage && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{bulkMessage} <span className="ml-1 text-xs">CSV columns: code, name, voucherType, discountValue, minSpend, maxUses, validFrom, validUntil.</span></div>}
+      {bulkMessage && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{bulkMessage} <span className="ml-1 text-xs">CSV columns: code, name, voucherType, discountValue, minSpend, maxUses, perCustomerLimit, validFrom, validUntil, outletId, productId.</span></div>}
 
       <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Active</p><p className="mt-1 text-2xl font-bold text-primary">{stats.active || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Scheduled</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.scheduled || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Expired</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.expired || 0}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">Inactive</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.inactive || 0}</p></div></div>
 
