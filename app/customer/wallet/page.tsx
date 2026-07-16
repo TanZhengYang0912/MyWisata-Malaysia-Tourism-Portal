@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/components/providers/auth";
 import {
   getMyWithdrawals, getWalletBuckets,
-  requestWithdrawal, getConnectStatus,
+  getConnectStatus,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -93,9 +93,21 @@ function WalletContent() {
     if (amount < 50)            { setWithdrawError("Minimum withdrawal is RM 50.00."); return; }
     setWithdrawing(true);
     try {
-      const w = await requestWithdrawal(currentUser.id, amount);
-      setWithdrawals((prev) => [w, ...(prev ?? [])]);
-      setBuckets((b) => b ? { ...b, earnings: b.earnings - amount } : b);
+      const response = await fetch('/api/wallet/withdrawals', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ amountRm: withdrawAmount }),
+      });
+      const body = await response.json() as { error?: { message?: string } | string };
+      if (!response.ok) {
+        throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? 'Failed to submit withdrawal');
+      }
+      const [nextWithdrawals, nextBuckets] = await Promise.all([
+        getMyWithdrawals(currentUser.id),
+        getWalletBuckets(currentUser.id),
+      ]);
+      setWithdrawals(nextWithdrawals);
+      setBuckets(nextBuckets);
       setShowWithdraw(false);
       setWithdrawAmount("");
     } catch (err) {

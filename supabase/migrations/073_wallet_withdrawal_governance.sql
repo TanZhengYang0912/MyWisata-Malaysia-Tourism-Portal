@@ -532,3 +532,106 @@ $$;
 
 REVOKE ALL ON FUNCTION public.process_wallet_refund(UUID, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.process_wallet_refund(UUID, TEXT) TO authenticated;
+
+-- Customer withdrawal submission has no caller-supplied user id, destination or
+-- balance. The user record and Wallet row are locked before the single active
+-- request and earnings reserve are created.
+CREATE OR REPLACE FUNCTION public.submit_wallet_withdrawal(
+  p_amount_sen BIGINT
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_user RECORD;
+  v_wallet wallets%ROWTYPE;
+  v_min_amount_sen BIGINT;
+  v_dual_threshold_sen BIGINT;
+  v_request_id UUID;
+  v_dual BOOLEAN;
+BEGIN
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_amount_sen IS NULL OR p_amount_sen <= 0 THEN RAISE EXCEPTION 'amount_must_be_positive'; END IF;
+
+  SELECT tier, kyc_status, stripe_connect_account_id, stripe_payouts_enabled
+    INTO v_user
+    FROM public.users
+   WHERE id = v_user_id
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'user_not_found'; END IF;
+  IF v_user.tier <> 'kyc_verified' OR v_user.kyc_status <> 'approved' THEN
+    RAISE EXCEPTION 'kyc_required';
+  END IF;
+  IF v_user.stripe_connect_account_id IS NULL OR NOT COALESCE(v_user.stripe_payouts_enabled, false) THEN
+    RAISE EXCEPTION 'payout_account_required';
+  END IF;
+
+  SELECT COALESCE(value::BIGINT, 5000)
+    INTO v_min_amount_sen
+    FROM public.platform_settings WHERE key = 'withdrawal.min_amount_sen';
+  IF p_amount_sen < COALESCE(v_min_amount_sen, 5000) THEN
+    RAISE EXCEPTION 'below_min_withdrawal';
+  END IF;
+  SELECT COALESCE(value::BIGINT, 50000)
+    INTO v_dual_threshold_sen
+    FROM public.platform_settings WHERE key = 'withdrawal.dual_approval_threshold_sen';
+  v_dual := p_amount_sen >= COALESCE(v_dual_threshold_sen, 50000);
+
+  SELECT * INTO v_wallet FROM public.wallets WHERE user_id = v_user_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'wallet_not_found'; END IF;
+  IF v_wallet.earnings_sen < p_amount_sen THEN RAISE EXCEPTION 'insufficient_earnings'; END IF;
+
+  BEGIN
+    INSERT INTO public.withdrawal_requests
+      (user_id, wallet_id, amount, destination_label, status, requires_dual_approval)
+    VALUES
+      (v_user_id, v_wallet.id, p_amount_sen::NUMERIC / 100, 'Stripe bank on file', 'pending', v_dual)
+    RETURNING id INTO v_request_id;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'active_withdrawal_exists';
+  END;
+
+  UPDATE public.wallets
+     SET earnings_sen = earnings_sen - p_amount_sen,
+         reserved_earnings_sen = reserved_earnings_sen + p_amount_sen,
+         updated_at = NOW()
+   WHERE id = v_wallet.id;
+  INSERT INTO public.wallet_transactions
+    (user_id, wallet_id, type, amount_sen, bucket, direction, withdrawal_id, note)
+  VALUES
+    (v_user_id, v_wallet.id, 'withdrawal_reserve', p_amount_sen, 'earnings', 'debit',
+     v_request_id, 'Withdrawal reserved — pending review');
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, before_data, after_data, note)
+  VALUES (
+    v_user_id, 'withdrawal.submitted', 'withdrawal', v_request_id,
+    jsonb_build_object('earnings_sen', v_wallet.earnings_sen, 'reserved_earnings_sen', v_wallet.reserved_earnings_sen),
+    jsonb_build_object('earnings_sen', v_wallet.earnings_sen - p_amount_sen, 'reserved_earnings_sen', v_wallet.reserved_earnings_sen + p_amount_sen),
+    'Customer submitted withdrawal request'
+  );
+  INSERT INTO public.notifications(user_id, type, title, body, link)
+  VALUES (
+    v_user_id, 'withdrawal_submitted', 'Withdrawal request submitted',
+    'Your withdrawal is pending review. You will receive an update when its status changes.',
+    '/customer/wallet'
+  );
+  RETURN jsonb_build_object('request_id', v_request_id, 'requires_dual_approval', v_dual, 'status', 'pending');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.submit_wallet_withdrawal(BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_wallet_withdrawal(BIGINT) TO authenticated;
+
+-- Preserve the old RPC signature for existing Vendor UI, but make it delegate
+-- to the secured user-derived procedure rather than retaining a second path.
+CREATE OR REPLACE FUNCTION public.debit_withdrawal(
+  p_user_id UUID,
+  p_amount_rm NUMERIC
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF p_user_id IS DISTINCT FROM auth.uid() THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  RETURN public.submit_wallet_withdrawal(public.round_sen(p_amount_rm));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.debit_withdrawal(UUID, NUMERIC) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.debit_withdrawal(UUID, NUMERIC) TO authenticated;
