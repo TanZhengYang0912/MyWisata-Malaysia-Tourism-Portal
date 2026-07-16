@@ -10,7 +10,10 @@ export type AccountModerationContext =
   | 'soft_delete_reason'
   | 'unsuspend_reason'
   | 'suspension_appeal'
-  | 'wallet_adjustment_reason';
+  | 'wallet_adjustment_reason'
+  | 'withdrawal_reject_reason'
+  | 'withdrawal_hold_reason'
+  | 'withdrawal_fraud_override_reason';
 
 function contextDescription(context: AccountModerationContext): string {
   switch (context) {
@@ -19,6 +22,9 @@ function contextDescription(context: AccountModerationContext): string {
     case 'unsuspend_reason': return 'an administrator unsuspension reason';
     case 'suspension_appeal': return 'a user account-suspension appeal';
     case 'wallet_adjustment_reason': return 'a Super Admin wallet adjustment reason';
+    case 'withdrawal_reject_reason': return 'a Wallet Approver withdrawal rejection reason';
+    case 'withdrawal_hold_reason': return 'a Wallet Approver withdrawal hold reason';
+    case 'withdrawal_fraud_override_reason': return 'a Super Admin withdrawal fraud override reason';
   }
 }
 

@@ -629,9 +629,68 @@ CREATE OR REPLACE FUNCTION public.debit_withdrawal(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF p_user_id IS DISTINCT FROM auth.uid() THEN RAISE EXCEPTION 'unauthorized'; END IF;
+  IF p_amount_rm IS NULL OR p_amount_rm <= 0 OR p_amount_rm <> TRUNC(p_amount_rm, 2) THEN
+    RAISE EXCEPTION 'invalid_withdrawal_amount';
+  END IF;
   RETURN public.submit_wallet_withdrawal(public.round_sen(p_amount_rm));
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.debit_withdrawal(UUID, NUMERIC) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.debit_withdrawal(UUID, NUMERIC) TO authenticated;
+
+-- Rejection releases the exact reserved earnings once, records the reviewer
+-- rationale and exposes only that customer-visible rationale to the customer.
+CREATE OR REPLACE FUNCTION public.reject_wallet_withdrawal(
+  p_id UUID,
+  p_reason TEXT,
+  p_ip INET DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+  v_request withdrawal_requests%ROWTYPE;
+  v_wallet wallets%ROWTYPE;
+  v_amount_sen BIGINT;
+BEGIN
+  IF v_actor IS NULL OR NOT public.is_approver(v_actor) THEN RAISE EXCEPTION 'approver_required'; END IF;
+  IF char_length(BTRIM(COALESCE(p_reason, ''))) < 10 THEN RAISE EXCEPTION 'withdrawal_reason_too_short'; END IF;
+  SELECT * INTO v_request FROM public.withdrawal_requests WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'withdrawal_not_found'; END IF;
+  IF v_request.user_id = v_actor THEN RAISE EXCEPTION 'self_dealing'; END IF;
+  IF v_request.status NOT IN ('pending', 'pending_second_approval', 'approved', 'hold', 'overdue') THEN
+    RAISE EXCEPTION 'withdrawal_not_rejectable';
+  END IF;
+  v_amount_sen := ROUND(v_request.amount * 100)::BIGINT;
+  SELECT * INTO v_wallet FROM public.wallets WHERE id = v_request.wallet_id FOR UPDATE;
+  IF NOT FOUND OR v_wallet.reserved_earnings_sen < v_amount_sen THEN RAISE EXCEPTION 'withdrawal_reserve_missing'; END IF;
+
+  INSERT INTO public.withdrawal_approvals(request_id, approver_id, action, note)
+  VALUES (p_id, v_actor, 'reject', p_reason);
+  UPDATE public.wallets
+     SET earnings_sen = earnings_sen + v_amount_sen,
+         reserved_earnings_sen = reserved_earnings_sen - v_amount_sen,
+         updated_at = NOW()
+   WHERE id = v_wallet.id;
+  INSERT INTO public.wallet_transactions
+    (user_id, wallet_id, type, amount_sen, bucket, direction, withdrawal_id, note)
+  VALUES
+    (v_request.user_id, v_wallet.id, 'withdrawal_cancel', v_amount_sen, 'earnings', 'credit', p_id, p_reason);
+  UPDATE public.withdrawal_requests
+     SET status = 'rejected', customer_reason = p_reason, customer_visible_at = NOW(), updated_at = NOW()
+   WHERE id = p_id;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, before_data, after_data, ip_address, note)
+  VALUES (
+    v_actor, 'withdrawal.rejected', 'withdrawal', p_id,
+    jsonb_build_object('status', v_request.status, 'reserved_earnings_sen', v_wallet.reserved_earnings_sen),
+    jsonb_build_object('status', 'rejected', 'reserved_earnings_sen', v_wallet.reserved_earnings_sen - v_amount_sen),
+    p_ip, p_reason
+  );
+  INSERT INTO public.notifications(user_id, type, title, body, link)
+  VALUES (v_request.user_id, 'withdrawal_rejected', 'Withdrawal request rejected', p_reason, '/customer/wallet');
+  RETURN jsonb_build_object('user_id', v_request.user_id, 'amount_rm', v_request.amount, 'status', 'rejected');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.reject_wallet_withdrawal(UUID, TEXT, INET) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.reject_wallet_withdrawal(UUID, TEXT, INET) TO authenticated;
