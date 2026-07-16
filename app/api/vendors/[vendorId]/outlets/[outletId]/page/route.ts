@@ -1,50 +1,122 @@
-import { z } from 'zod';
-import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
-import { authorizeOutlet } from '@/lib/vendor-authorization';
+import { z } from "zod";
+import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { authorizeOutlet } from "@/lib/vendor-authorization";
+import {
+  selectDraftDocument,
+  selectPublicDocument,
+} from "@/lib/vendor/outlet-page-persistence";
+import { validateOutletPageDocument } from "@/lib/vendor/outlet-page-schema";
 
-interface Props { params: Promise<{ vendorId: string; outletId: string }> }
+interface Props {
+  params: Promise<{ vendorId: string; outletId: string }>;
+}
 
-const pageSchema = z.object({
-  heroUrl: z.string().url().max(2000).optional().or(z.literal('')),
-  brandColour: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  fontFamily: z.string().trim().min(2).max(120).optional(),
-  featuredIds: z.array(z.string().uuid()).max(12).optional(),
-  seoTitle: z.string().trim().max(255).optional(),
-  seoDescription: z.string().trim().max(500).optional(),
-  blocks: z.array(z.record(z.string(), z.unknown())).max(30).optional(),
-  gallery: z.array(z.union([
-    z.string().url().max(2000).transform((url) => ({ url })),
-    z.object({ url: z.string().url().max(2000), alt: z.string().max(255).optional() }).strict(),
-  ])).max(50).optional(),
-}).strict();
+const saveSchema = z
+  .object({
+    document: z.record(z.string(), z.unknown()),
+    expectedDraftVersion: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
+function pageResponse(row: Record<string, unknown> | null) {
+  const source = row || {};
+  const legacyBlocks = Array.isArray(source.blocks)
+    ? source.blocks.length > 0
+    : Boolean(source.blocks);
+  return {
+    draft: selectDraftDocument(source),
+    published: selectPublicDocument(source),
+    draftVersion: Number(source.draft_version || 0),
+    publishedVersion: Number(source.published_version || 0),
+    publishedAt:
+      typeof source.published_at === "string" ? source.published_at : null,
+    isPublished: Boolean(
+      source.published_document ||
+      source.published_at ||
+      source.hero_url ||
+      legacyBlocks,
+    ),
+  };
+}
 
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
   const access = await authorizeOutlet(vendorId, outletId);
   if (!access.ok) return access.response;
-  const { data, error } = await access.access.serviceDb.from('outlet_pages').select('*').eq('outlet_id', outletId).maybeSingle();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk(data || { outlet_id: outletId, blocks: [], gallery: [] });
+  const { data, error } = await access.access.serviceDb
+    .from("outlet_pages")
+    .select("*")
+    .eq("outlet_id", outletId)
+    .maybeSingle();
+  if (error) return apiFail("DB_ERROR", error.message, 500);
+  return apiOk(pageResponse(data as Record<string, unknown> | null));
 }
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
   const access = await authorizeOutlet(vendorId, outletId);
   if (!access.ok) return access.response;
-  const parsed = await parseBody(request, pageSchema);
+  const parsed = await parseBody(request, saveSchema);
   if (!parsed.ok) return parsed.response;
-  const body = parsed.data;
-  const updateData: Record<string, unknown> = { outlet_id: outletId };
-  if (body.heroUrl !== undefined) updateData.hero_url = body.heroUrl || null;
-  if (body.brandColour !== undefined) updateData.brand_colour = body.brandColour;
-  if (body.fontFamily !== undefined) updateData.font_family = body.fontFamily;
-  if (body.featuredIds !== undefined) updateData.featured_ids = body.featuredIds;
-  if (body.seoTitle !== undefined) updateData.seo_title = body.seoTitle || null;
-  if (body.seoDescription !== undefined) updateData.seo_description = body.seoDescription || null;
-  if (body.blocks !== undefined) updateData.blocks = body.blocks;
-  if (body.gallery !== undefined) updateData.gallery = body.gallery.map((item) => ({ url: item.url, alt: 'alt' in item ? item.alt || '' : '' }));
+  const validation = validateOutletPageDocument(parsed.data.document);
+  if (!validation.success)
+    return apiFail(
+      "VALIDATION_FAILED",
+      "Outlet page document is invalid",
+      422,
+      validation.error.flatten(),
+    );
 
-  const { data, error } = await access.access.serviceDb.from('outlet_pages').upsert(updateData, { onConflict: 'outlet_id' }).select().single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk(data);
+  const { data: existing, error: existingError } = await access.access.serviceDb
+    .from("outlet_pages")
+    .select("draft_version")
+    .eq("outlet_id", outletId)
+    .maybeSingle();
+  if (existingError) return apiFail("DB_ERROR", existingError.message, 500);
+  const currentVersion = Number(existing?.draft_version || 0);
+  if (
+    parsed.data.expectedDraftVersion !== undefined &&
+    parsed.data.expectedDraftVersion !== currentVersion
+  ) {
+    return apiFail(
+      "STALE_DRAFT",
+      "This outlet page changed elsewhere. Reload before saving.",
+      409,
+      { currentVersion },
+    );
+  }
+
+  const productIds = new Set<string>(validation.data.featuredIds);
+  for (const block of validation.data.blocks)
+    for (const id of block.productIds || []) productIds.add(id);
+  if (productIds.size) {
+    const { data: products, error: productError } =
+      await access.access.serviceDb
+        .from("products")
+        .select("id")
+        .eq("outlet_id", outletId)
+        .in("id", [...productIds]);
+    if (productError) return apiFail("DB_ERROR", productError.message, 500);
+    if ((products || []).length !== productIds.size)
+      return apiFail(
+        "INVALID_PRODUCT_SCOPE",
+        "Every selected product must belong to this outlet",
+        422,
+      );
+  }
+
+  const { data, error } = await access.access.serviceDb
+    .from("outlet_pages")
+    .upsert(
+      {
+        outlet_id: outletId,
+        draft_document: validation.data,
+        draft_version: currentVersion + 1,
+      },
+      { onConflict: "outlet_id" },
+    )
+    .select("*")
+    .single();
+  if (error) return apiFail("DB_ERROR", error.message, 500);
+  return apiOk(pageResponse(data as Record<string, unknown>));
 }

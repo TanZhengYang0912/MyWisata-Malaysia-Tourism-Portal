@@ -1,0 +1,126 @@
+import Link from 'next/link';
+import type { GalleryItem, HeroBlock, OutletPageBlock } from '@/lib/vendor/outlet-page-schema';
+import type { OutletRendererOutlet, OutletRendererProduct } from '@/components/outlet/outlet-block-types';
+
+export interface BlockRenderModel {
+  id: string;
+  type: string;
+  label: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  cta?: string;
+  buttonLink?: string;
+}
+
+const labels: Record<string, string> = {
+  intro: 'Outlet introduction',
+  text: 'Text',
+  image: 'Image',
+  image_text: 'Image and text',
+  product_grid: 'Product grid',
+  gallery: 'Gallery',
+  hours: 'Opening hours',
+  contact: 'Map and contact',
+  voucher_banner: 'Voucher',
+  cta: 'Booking call-to-action',
+  review_highlight: 'Guest review',
+  social_proof: 'Social proof',
+  hero: 'Hero banner',
+};
+
+type RenderableBlock = {
+  id: string;
+  type: string;
+  title?: string;
+  body?: string;
+  image?: string;
+  imageUrl?: string;
+  cta?: string;
+  buttonLink?: string;
+};
+
+export function getBlockRenderModel(block: RenderableBlock): BlockRenderModel {
+  return {
+    id: block.id,
+    type: block.type,
+    label: labels[block.type] || block.type,
+    title: block.title || 'Discover this outlet',
+    body: block.body || '',
+    imageUrl: block.imageUrl || block.image || undefined,
+    cta: block.cta,
+    buttonLink: block.buttonLink,
+  };
+}
+
+function formatHours(hours: unknown) {
+  if (!hours || typeof hours !== 'object') return 'Check the outlet schedule before booking.';
+  const entries = Object.entries(hours as Record<string, unknown>).filter(([, value]) => value && typeof value === 'object');
+  if (!entries.length) return 'Check the outlet schedule before booking.';
+  return entries.map(([day, value]) => {
+    const schedule = value as { open?: string; close?: string; closed?: boolean };
+    return `${day.slice(0, 3).toUpperCase()}: ${schedule.closed ? 'Closed' : `${schedule.open || '—'}–${schedule.close || '—'}`}`;
+  }).join(' · ');
+}
+
+function outletAddress(outlet: OutletRendererOutlet) {
+  return outlet.address || [outlet.city, outlet.state].filter(Boolean).join(', ') || 'Malaysia';
+}
+
+interface Props {
+  block: OutletPageBlock | { id: string; type: 'hero'; title: string; body: string; imageUrl?: string; cta?: string; buttonLink?: string };
+  outlet: OutletRendererOutlet;
+  products?: OutletRendererProduct[];
+  gallery?: GalleryItem[];
+  featuredIds?: string[];
+  mode?: 'editor' | 'public';
+  selected?: boolean;
+  onSelect?: (blockId: string) => void;
+}
+
+interface HeroProps {
+  hero: HeroBlock;
+  outlet: OutletRendererOutlet;
+  brandColour?: string;
+  mode?: 'editor' | 'public';
+  selected?: boolean;
+  onSelect?: (blockId: string) => void;
+}
+
+export function OutletHeroRenderer({ hero, brandColour = '#00004D', mode = 'public', selected = false, onSelect }: HeroProps) {
+  const heroStyle = hero.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(0,0,77,.82), rgba(0,0,77,.2)), url(${hero.imageUrl})`, backgroundSize: 'cover', backgroundPosition: hero.imagePosition || 'center' } : undefined;
+  const section = <section className={`relative overflow-hidden ${selected ? 'ring-4 ring-amber-300' : ''}`} style={{ backgroundColor: brandColour, ...heroStyle }}>
+    <div className="relative mx-auto max-w-5xl px-6 py-24 text-white" style={{ textAlign: hero.textAlign || 'left' }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">Verified MyWisata outlet</p>
+      <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{hero.title}</h1>
+      {hero.body && <p className="mt-4 max-w-2xl text-sm opacity-90">{hero.body}</p>}
+    </div>
+  </section>;
+  if (mode !== 'editor') return section;
+  return <div role="button" tabIndex={0} aria-label="Edit Hero banner" onClick={() => onSelect?.(hero.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect?.(hero.id); }}>{section}</div>;
+}
+
+export function OutletBlockRenderer({ block, outlet, products = [], gallery = [], featuredIds = [], mode = 'public', selected = false, onSelect }: Props) {
+  const model = getBlockRenderModel(block);
+  const blockStyle = 'style' in block ? block.style : undefined;
+  const productIds = block.type === 'product_grid' && block.productIds?.length ? block.productIds : featuredIds;
+  const visibleProducts = products.filter((product) => !productIds.length || productIds.includes(product.id));
+  const wrapperClass = `rounded-2xl border bg-white p-6 shadow-sm ${selected ? 'border-amber-500 ring-2 ring-amber-200' : 'border-primary/10'}`;
+  const content = (
+    <>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{model.label}</p>
+      <h2 className="mt-2 text-xl font-bold">{model.title}</h2>
+      {model.body && <p className="mt-2 text-sm leading-6 text-slate-600">{model.body}</p>}
+      {model.imageUrl && block.type !== 'hero' && <img src={model.imageUrl} alt={model.title} className="mt-4 h-40 w-full rounded-xl object-cover" />}
+      {block.type === 'gallery' && gallery.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{gallery.map((item) => <img key={item.url} src={item.url} alt={item.alt || `${outlet.name} gallery`} className="aspect-[4/3] w-full rounded-xl object-cover" />)}</div>}
+      {block.type === 'product_grid' && <div id="featured-products" className="mt-4 grid gap-3 sm:grid-cols-2">{visibleProducts.map((product) => <Link key={product.id} href={`/customer/activity/${product.id}`} className="overflow-hidden rounded-xl border border-primary/10 bg-secondary/40 transition hover:-translate-y-0.5"><div className="h-28 bg-secondary">{product.cover_url && <img src={product.cover_url} alt={product.name} className="h-full w-full object-cover" />}</div><div className="p-3"><p className="truncate text-sm font-bold">{product.name}</p><p className="mt-1 text-xs font-semibold text-primary">RM {Number(product.base_price).toFixed(2)}</p></div></Link>)}</div>}
+      {block.type === 'hours' && <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-slate-700">{formatHours(outlet.operating_hours)}</p>}
+      {block.type === 'contact' && <div className="mt-4 rounded-xl bg-secondary px-4 py-3 text-sm text-slate-700"><p>{outletAddress(outlet)}</p><a className="mt-2 inline-block font-semibold text-primary hover:underline" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer">Open directions</a></div>}
+      {(block.type === 'cta' || block.type === 'voucher_banner') && <Link className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90" href={model.buttonLink || '#featured-products'}>{model.cta || 'Explore this outlet'}</Link>}
+      {block.type === 'review_highlight' && <p className="mt-4 rounded-xl bg-secondary px-4 py-3 text-sm text-slate-700">Verified guests recommend this outlet.</p>}
+      {block.type === 'social_proof' && <p className="mt-4 font-semibold text-amber-600">★ Trusted by travellers across Malaysia</p>}
+    </>
+  );
+  if (mode === 'editor') return <div role="button" tabIndex={0} className={`${wrapperClass} block w-full text-left`} onClick={() => onSelect?.(model.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onSelect?.(model.id); }} style={blockStyle?.backgroundColor ? { backgroundColor: blockStyle.backgroundColor } : undefined}>{content}</div>;
+  return <section className={wrapperClass} style={blockStyle?.backgroundColor ? { backgroundColor: blockStyle.backgroundColor } : undefined}>{content}</section>;
+}
