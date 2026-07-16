@@ -29,9 +29,12 @@ role and includes account-owned UI such as cart and wallet state.
 
 Guest Mode must not expose a working action that creates a booking, order,
 recommendation, affiliate link, or withdrawal. Where a public details view
-offers a call to action, it will direct the visitor to `/login` with a return
-path. The existing server-side authorization and tier checks remain the
-security boundary; Guest Mode merely makes the intended UI clear.
+offers a call to action, it will direct the visitor to `/login` with the
+equivalent protected customer listing as a safe return path. After successful
+email-password sign-in, the login page honours only safe local return paths;
+external URLs fall back to the normal role home. The existing server-side
+authorization and tier checks remain the security boundary; Guest Mode merely
+makes the intended UI clear.
 
 ## Scope and compatibility
 

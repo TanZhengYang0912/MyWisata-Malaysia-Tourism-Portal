@@ -23,7 +23,7 @@
 
 | File | Responsibility |
 |---|---|
-| `lib/auth/guest-mode.ts` | Guest routes and safe sign-in return links. |
+| `lib/auth/guest-mode.ts` | Guest routes, safe sign-in return links, and post-login destination parsing. |
 | `lib/auth/__tests__/guest-mode.test.ts` | Unit contracts for Guest Mode navigation. |
 | `app/login/page.tsx` | Guest Mode quick entry that clears the browser session. |
 | `app/guest/layout.tsx` | Guest Mode header with a Sign in link. |
@@ -39,13 +39,13 @@
 - Create: `lib/auth/guest-mode.ts`
 - Test: `lib/auth/__tests__/guest-mode.test.ts`
 
-**Interfaces produced:** `GUEST_EXPLORE_PATH: "/guest/explore"`, `guestLoginHref(returnPath: string): string`, `guestVendorHref(vendorId: string): string`.
+**Interfaces produced:** `GUEST_EXPLORE_PATH: "/guest/explore"`, `guestLoginHref(returnPath: string): string`, `guestVendorHref(vendorId: string): string`, and `postLoginPath(next: string | null): string | null`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { GUEST_EXPLORE_PATH, guestLoginHref, guestVendorHref } from "@/lib/auth/guest-mode";
+import { GUEST_EXPLORE_PATH, guestLoginHref, guestVendorHref, postLoginPath } from "@/lib/auth/guest-mode";
 
 describe("Guest Mode navigation", () => {
   it("uses a dedicated public explore route", () => {
@@ -56,6 +56,10 @@ describe("Guest Mode navigation", () => {
   });
   it("rejects an external return path", () => {
     expect(guestLoginHref("https://untrusted.example")).toBe("/login?next=%2Fguest%2Fexplore");
+  });
+  it("uses only a safe local return path after sign-in", () => {
+    expect(postLoginPath("/customer/activity/product-1")).toBe("/customer/activity/product-1");
+    expect(postLoginPath("//untrusted.example")).toBeNull();
   });
   it("keeps vendor links in the guest route group", () => {
     expect(guestVendorHref("vendor/a")).toBe("/guest/vendor/vendor%2Fa");
@@ -82,6 +86,10 @@ export function guestLoginHref(returnPath: string): string {
 export function guestVendorHref(vendorId: string): string {
   return `/guest/vendor/${encodeURIComponent(vendorId)}`;
 }
+
+export function postLoginPath(next: string | null): string | null {
+  return next?.startsWith("/") && !next.startsWith("//") ? next : null;
+}
 ```
 
 - [ ] **Step 4: Run GREEN**
@@ -100,7 +108,7 @@ Run: `git add lib/auth/guest-mode.ts lib/auth/__tests__/guest-mode.test.ts && gi
 - Modify: `app/login/page.tsx`
 - Create: `tests/e2e/guest-mode.spec.ts`
 
-**Consumes:** `GUEST_EXPLORE_PATH` and the existing browser `supabase` client.
+**Consumes:** `GUEST_EXPLORE_PATH`, `postLoginPath`, and the existing browser `supabase` client.
 
 **Produces:** A `Guest Mode` button that calls `signOut({ scope: "local" })` before routing.
 
@@ -118,7 +126,7 @@ const listing = page.getByRole("link", { name: /view listing/i }).first();
 await expect(listing).toBeVisible();
 await listing.click();
 await page.getByRole("link", { name: /sign in to (book|purchase)/i }).click();
-await expect(page).toHaveURL(/\/login\?next=%2Fguest%2Factivity%2F/);
+await expect(page).toHaveURL(/\/login\?next=%2Fcustomer%2Factivity%2F/);
 });
 ```
 
@@ -130,7 +138,7 @@ Expected: FAIL because the button and Guest Mode routes are absent.
 
 - [ ] **Step 3: Add the handler and card**
 
-Import `GUEST_EXPLORE_PATH`. In `LoginPage`, add:
+Import `GUEST_EXPLORE_PATH` and `postLoginPath`. In `LoginPage`, add:
 
 ```tsx
 async function enterGuestMode() {
@@ -148,6 +156,8 @@ async function enterGuestMode() {
 ```
 
 Immediately before `Seeded demo accounts`, render a full-width button labelled `Guest Mode`, description `Browse vendors and listings without signing in`, and a `Guest` badge. Its `onClick` is `enterGuestMode` and `disabled` is `busy`.
+
+In the successful email-password sign-in branch, replace `router.push("/")` with `router.push(postLoginPath(new URLSearchParams(window.location.search).get("next")) ?? "/")` so only safe local return paths are honoured.
 
 - [ ] **Step 4: Verify TypeScript**
 
@@ -198,7 +208,7 @@ Use `getComputedActivity(id, undefined, db)` and `notFound()` for a missing list
 
 ```tsx
 const label = activity.requiresBooking ? "Sign in to book" : "Sign in to purchase";
-<Link href={guestLoginHref(`/guest/activity/${activity.id}`)}>{label}</Link>
+<Link href={guestLoginHref(`/customer/activity/${activity.id}`)}>{label}</Link>
 ```
 
 Do not add a slot selector, cart mutation, checkout request, wishlist mutation, or protected API call.

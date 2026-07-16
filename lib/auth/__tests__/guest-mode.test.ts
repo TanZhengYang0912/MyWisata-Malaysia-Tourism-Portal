@@ -28,5 +28,6 @@ describe("Guest Mode navigation", () => {
   it("uses only a safe local return path after sign-in", () => {
     expect(postLoginPath("/customer/activity/product-1")).toBe("/customer/activity/product-1");
     expect(postLoginPath("//untrusted.example")).toBeNull();
+    expect(postLoginPath("/\\untrusted.example")).toBeNull();
   });
 });

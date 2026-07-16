@@ -6,6 +6,7 @@ import { Globe } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
+import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,18 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (signInError) { setError(EMAIL_SIGN_IN_ERROR); return; }
-    router.push("/"); router.refresh();
+    router.push(postLoginPath(new URLSearchParams(window.location.search).get("next")) ?? "/"); router.refresh();
+  }
+
+  async function enterGuestMode() {
+    resetFeedback(); setBusy(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const { error: signOutError } = session
+      ? await supabase.auth.signOut({ scope: "local" })
+      : { error: null };
+    setBusy(false);
+    if (signOutError) { setError("Unable to start Guest Mode. Please try again."); return; }
+    router.replace(GUEST_EXPLORE_PATH); router.refresh();
   }
 
   async function signUp(event: FormEvent<HTMLFormElement>) {
@@ -168,6 +180,7 @@ export default function LoginPage() {
             </>
           )}
 
+          <button type="button" onClick={enterGuestMode} disabled={busy} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-70"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-white">G</div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">Guest Mode</p><p className="text-xs text-muted-foreground">Browse vendors and listings without signing in</p></div><Badge variant="secondary" className="shrink-0">Guest</Badge></button>
           <div className="mt-5 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seeded demo accounts</p><span className="text-[11px] text-muted-foreground">Quick entry</span></div>
           <div className="mt-2 space-y-2">{users.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{ROLE_LABEL[user.role]}</Badge></button>)}</div>
         </CardContent></Card>
