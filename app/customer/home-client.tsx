@@ -38,7 +38,7 @@ function getPageItems(currentPage: number, totalPages: number): PageItem[] {
   return items;
 }
 
-export function ExploreClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+export function HomeClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [state, setState] = useState("All Malaysia");

@@ -31,16 +31,76 @@ function Recenter({ center, zoom }: { center: [number, number]; zoom: number }) 
   return null;
 }
 
+// Draws the trip route geometry (from the ORS proxy) as a Polyline. The
+// @vis.gl/react-google-maps version here has no <Polyline> component, so this
+// is done imperatively via useMap().
+function RouteLine({ path, color, dashed }: { path: [number, number][]; color: string; dashed?: boolean }) {
+  const map = useMap();
+  const lineRef = useRef<google.maps.Polyline | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const line = new google.maps.Polyline({
+      map,
+      path: path.map(([lat, lng]) => ({ lat, lng })),
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: dashed ? 0 : 0.9,
+      strokeWeight: 5,
+      ...(dashed
+        ? {
+            icons: [
+              {
+                icon: { path: "M 0,-1 0,1", strokeOpacity: 0.9, strokeWeight: 4, scale: 3 },
+                offset: "0",
+                repeat: "16px",
+              },
+            ],
+          }
+        : {}),
+    });
+    lineRef.current = line;
+    return () => {
+      line.setMap(null);
+      lineRef.current = null;
+    };
+  }, [map, path, color, dashed]);
+
+  return null;
+}
+
+function YouAreHereMarker({ position }: { position: [number, number] }) {
+  return (
+    <Marker
+      position={{ lat: position[0], lng: position[1] }}
+      title="You are here"
+      zIndex={Number(google.maps.Marker.MAX_ZINDEX) + 1}
+      icon={{
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: "#2563EB",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 3,
+        scale: 8,
+      }}
+    />
+  );
+}
+
 function Markers({
   pins,
   cluster,
   selectedId,
   onSelect,
+  onAddStop,
+  stopIds,
 }: {
   pins: MapPin[];
   cluster?: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  onAddStop?: (pin: MapPin) => void;
+  stopIds?: string[];
 }) {
   const map = useMap();
   // Plain refs, not state: markers are read imperatively (by the clusterer and
@@ -125,11 +185,31 @@ function Markers({
         <InfoWindow anchor={markersRef.current[selectedPin.id]} onCloseClick={() => onSelect(null)}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedPin.label}</div>
           {selectedPin.sublabel && <div style={{ fontSize: 11, color: "#666" }}>{selectedPin.sublabel}</div>}
-          {selectedPin.href && (
-            <a href={selectedPin.href} style={{ fontSize: 11, fontWeight: 600, color: "var(--travel-blue)" }}>
-              View details →
-            </a>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            {selectedPin.href && (
+              <a href={selectedPin.href} style={{ fontSize: 11, fontWeight: 600, color: "var(--travel-blue)" }}>
+                View details →
+              </a>
+            )}
+            {onAddStop && (
+              <button
+                type="button"
+                onClick={() => onAddStop(selectedPin)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: stopIds?.includes(selectedPin.id) ? "#16A34A" : "#010066",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "5px 9px",
+                  cursor: "pointer",
+                }}
+              >
+                {stopIds?.includes(selectedPin.id) ? "✓ In trip" : "+ Add to trip"}
+              </button>
+            )}
+          </div>
         </InfoWindow>
       )}
     </>
@@ -145,6 +225,12 @@ export function GoogleMap({
   radiusCenter,
   radiusKm,
   onApiLoaded,
+  userLocation,
+  onAddStop,
+  stopIds,
+  routePath,
+  routeColor = "#2563EB",
+  routeDashed,
 }: {
   pins: MapPin[];
   center: [number, number];
@@ -154,6 +240,12 @@ export function GoogleMap({
   radiusCenter?: [number, number];
   radiusKm?: number;
   onApiLoaded?: () => void;
+  userLocation?: [number, number];
+  onAddStop?: (pin: MapPin) => void;
+  stopIds?: string[];
+  routePath?: [number, number][];
+  routeColor?: string;
+  routeDashed?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -179,7 +271,9 @@ export function GoogleMap({
       >
         <ApiLoadedNotifier onApiLoaded={onApiLoaded} />
         <Recenter center={center} zoom={zoom} />
-        <Markers pins={pins} cluster={cluster} selectedId={selectedId} onSelect={setSelectedId} />
+        <Markers pins={pins} cluster={cluster} selectedId={selectedId} onSelect={setSelectedId} onAddStop={onAddStop} stopIds={stopIds} />
+        {routePath && routePath.length > 1 && <RouteLine path={routePath} color={routeColor} dashed={routeDashed} />}
+        {userLocation && <YouAreHereMarker position={userLocation} />}
         {radiusCenter && radiusKm && (
           <Circle
             center={{ lat: radiusCenter[0], lng: radiusCenter[1] }}

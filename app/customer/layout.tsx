@@ -8,6 +8,7 @@ import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { WishlistProvider } from "@/components/providers/wishlist";
+import { TripProvider, useTrip } from "@/components/providers/trip";
 import { supabase } from "@/backend/supabase";
 
 const UNREAD_POLL_MS = 30_000;
@@ -31,8 +32,17 @@ const ACCOUNT_NAV = [
 ];
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <TripProvider>
+      <CustomerLayoutInner>{children}</CustomerLayoutInner>
+    </TripProvider>
+  );
+}
+
+function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"]);
   const { count } = useCart();
+  const { stops: tripStops } = useTrip();
   const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -129,7 +139,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
-          <Link href="/customer/explore" className="flex items-center gap-2 shrink-0">
+          <Link href="/customer" className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
               <Globe size={16} className="text-white" />
             </div>
@@ -150,6 +160,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 )}
                 {item.href === "/customer/chat" && unreadChats > 0 && (
                   <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-destructive" />
+                )}
+                {item.href === "/customer/map" && tripStops.length > 0 && (
+                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripStops.length}</span>
                 )}
               </Link>
             ))}
@@ -250,6 +263,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
               )}
               {item.href === "/customer/chat" && unreadChats > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+              )}
+              {item.href === "/customer/map" && tripStops.length > 0 && (
+                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripStops.length}</span>
               )}
             </Link>
           ))}

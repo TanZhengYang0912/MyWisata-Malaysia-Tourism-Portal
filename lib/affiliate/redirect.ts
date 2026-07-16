@@ -224,7 +224,7 @@ export async function handleAffiliateRedirect(
 
     const destination = product
       ? new URL(`/customer/activity/${product.id}`, origin)
-      : new URL('/customer/explore', origin);
+      : new URL('/customer', origin);
 
     const response = NextResponse.redirect(destination, 302);
 

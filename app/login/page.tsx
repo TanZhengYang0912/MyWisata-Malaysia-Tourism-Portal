@@ -15,7 +15,7 @@ type DemoUser = User & { vendorName?: string; outletName?: string };
 type AuthMode = "signin" | "signup" | "verify" | "forgot";
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/customer/explore", vendor_owner: "/vendor/dashboard", outlet_manager: "/vendor/dashboard",
+  customer: "/customer", vendor_owner: "/vendor/dashboard", outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard", approver: "/admin/dashboard", super_admin: "/admin/dashboard",
 };
 const ROLE_LABEL: Record<Role, string> = {

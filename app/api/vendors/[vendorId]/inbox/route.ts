@@ -1,6 +1,7 @@
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { maskChatBody } from '@/lib/chat/moderation';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -34,7 +35,8 @@ export async function POST(request: Request, { params }: Props) {
   const { data: outlet } = await access.service.from('outlets').select('id').eq('id', thread.outlet_id).eq('vendor_id', vendorId).in('id', access.outletIds).maybeSingle();
   if (!outlet) return apiFail('FORBIDDEN', 'Conversation is outside this vendor', 403);
 
-  const { data: message, error } = await access.service.from('chat_messages').insert({ thread_id: thread.id, sender_id: access.user.id, body: body.body.trim(), reply_to_message_id: body.replyToId ?? null }).select().single();
+  const { clean } = maskChatBody(body.body.trim());
+  const { data: message, error } = await access.service.from('chat_messages').insert({ thread_id: thread.id, sender_id: access.user.id, body: clean, reply_to_message_id: body.replyToId ?? null }).select().single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
   await access.service.from('chat_threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id);
   return apiOk(message, { status: 201 });

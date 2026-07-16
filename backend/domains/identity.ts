@@ -2,6 +2,7 @@
 import { supabase } from "@/backend/supabase";
 import type { AdminKycSubmission, ChatMessage, ChatThread, PublicUser, Role, SupportTicket, User } from "@/backend/core/types";
 import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
+import { maskChatBody } from "@/lib/chat/moderation";
 import { mapPublicProfile, type PublicProfileRow } from "@/lib/profile/public-profile";
 
 type UserRow = {
@@ -185,9 +186,10 @@ export async function getOtherReadMessageIds(myUserId: string, messageIds: strin
 }
 
 export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string): Promise<ChatMessage> {
+  const { clean } = maskChatBody(text);
   const { data, error } = await supabase
     .from("chat_messages")
-    .insert({ thread_id: threadId, sender_id: senderId, body: text, reply_to_message_id: replyToId ?? null })
+    .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null })
     .select("*")
     .single();
   if (error) throw error;
@@ -246,12 +248,12 @@ export async function updateProfile(userId: string, data: { fullName: string; ci
 }
 
 // ─── KYC submissions ────────────────────────────────────────────────────────
-export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export const KYC_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 export const KYC_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export function validateKycFile(file: File | null): string | null {
   if (!file) return "Please upload a document photo";
-  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "Each front and back document must be a JPG, PNG, or WebP photo";
+  if (!KYC_ACCEPTED_TYPES.includes(file.type)) return "Each document must be a JPG, PNG, WebP, or PDF file";
   if (file.size > KYC_MAX_FILE_SIZE) return `File must be under 5 MB (current: ${(file.size / 1024 / 1024).toFixed(1)} MB)`;
   return null;
 }

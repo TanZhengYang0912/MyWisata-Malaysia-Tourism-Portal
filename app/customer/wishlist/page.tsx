@@ -37,13 +37,13 @@ export default async function WishlistPage() {
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground sm:text-3xl">Saved Experiences</h1>
           <p className="mt-1 text-sm text-muted-foreground">Keep the places you want to remember for your next Malaysia trip.</p>
         </div>
-        <Link href="/customer/explore" className="hidden rounded-xl border border-border px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-secondary sm:inline-flex">
+        <Link href="/customer" className="hidden rounded-xl border border-border px-4 py-2.5 text-xs font-bold text-primary transition hover:bg-secondary sm:inline-flex">
           Explore more
         </Link>
       </div>
 
       {activities.length === 0 ? (
-        <EmptyState title="No saved experiences yet" description="Tap the heart on any experience to build your travel shortlist." action={<Link href="/customer/explore" className="inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Explore Malaysia</Link>} />
+        <EmptyState title="No saved experiences yet" description="Tap the heart on any experience to build your travel shortlist." action={<Link href="/customer" className="inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Explore Malaysia</Link>} />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
           {activities.map((activity) => <ActivityCard key={activity.id} activity={activity} />)}
