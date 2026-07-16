@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!PHONE_READY_TIERS.has(profile.tier)) return apiFail('PHONE_VERIFICATION_REQUIRED', 'Phone verification is required before using recommendations', 403);
   if (surveyError) return apiFail('PREFERENCES_UNAVAILABLE', 'Unable to read preferences', 500);
 
-  const cityOrigin = cityCentre(profile.city);
+  const cityOrigin = await cityCentre(profile.city);
   const origin = browserOrigin ?? cityOrigin ?? undefined;
   const activities = await searchActivities({ category: null, sort: 'recommended', near: origin }, db);
   const personalized = PERSONALIZED_TIERS.has(profile.tier) && Boolean(survey);

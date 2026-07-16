@@ -63,13 +63,15 @@ export async function POST(request: Request) {
   try {
     const reward = await attributeRecommendationReward(service, orderId);
     if (reward.kind === 'created') {
-      const amountRm = reward.amountSen / 100;
-      const [notification, email] = await Promise.allSettled([
-        service.from('notifications').insert({ user_id: reward.recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${amountRm.toFixed(2)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
-        enqueueUserTransactionEmail({ userId: reward.recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${orderId}`, reference: 'Recommendation reward', amountRm }),
-      ]);
-      if (notification.status === 'rejected') console.error('[checkout/attribute] recommendation notification failed', notification.reason);
-      if (email.status === 'rejected') console.error('[checkout/attribute] recommendation email failed', email.reason);
+      const deliveries = reward.rewards.flatMap(({ commissionId, recommenderId, amountSen }) => {
+        const amountRm = amountSen / 100;
+        return [
+          service.from('notifications').insert({ user_id: recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${amountRm.toFixed(2)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
+          enqueueUserTransactionEmail({ userId: recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${commissionId}`, reference: 'Recommendation reward', amountRm }),
+        ];
+      });
+      const results = await Promise.allSettled(deliveries);
+      for (const result of results) if (result.status === 'rejected') console.error('[checkout/attribute] recommendation reward notification failed', result.reason);
     }
   } catch (error) {
     // The checkout is already paid; reward attribution failures must not

@@ -47,8 +47,12 @@ BEGIN
     JOIN public.users u ON u.id = rc.recommender_id
     LEFT JOIN public.orders o ON o.id = rc.order_id
     WHERE rc.status = 'pending'
-      AND rc.hold_until IS NOT NULL
-      AND rc.hold_until <= now()
+      -- Cancelled/refunded orders reverse immediately. Successful orders
+      -- remain pending until their configured seven-day hold has matured.
+      AND (
+        LOWER(COALESCE(o.status, '')) IN ('cancelled', 'refunded')
+        OR (rc.hold_until IS NOT NULL AND rc.hold_until <= now())
+      )
     ORDER BY rc.hold_until, rc.id
     FOR UPDATE OF rc SKIP LOCKED
   LOOP

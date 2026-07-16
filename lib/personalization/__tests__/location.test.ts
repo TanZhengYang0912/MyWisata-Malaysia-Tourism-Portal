@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { parseRecommendationCoordinates } from '@/lib/personalization/location';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cityCentre, parseRecommendationCoordinates } from '@/lib/personalization/location';
 
 describe('parseRecommendationCoordinates', () => {
   it('accepts valid browser coordinates', () => {
@@ -11,4 +11,12 @@ describe('parseRecommendationCoordinates', () => {
     expect(parseRecommendationCoordinates({ latitude: 3 })).toBeNull();
     expect(parseRecommendationCoordinates(null)).toBeNull();
   });
+
+  it('geocodes a profile city that is outside the small built-in fallback list', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([{ lat: '6.1248', lon: '100.3678' }]), { status: 200 })));
+
+    await expect(cityCentre('Alor Setar')).resolves.toEqual({ lat: 6.1248, lng: 100.3678 });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
 });

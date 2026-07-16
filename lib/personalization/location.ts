@@ -22,7 +22,23 @@ export function parseRecommendationCoordinates(value: unknown): Coordinates | nu
 }
 
 /** Profile city is never stored as device location; this is a coarse fallback only. */
-export function cityCentre(city: string | null | undefined): Coordinates | null {
+export async function cityCentre(city: string | null | undefined): Promise<Coordinates | null> {
   if (!city) return null;
-  return MALAYSIA_CITY_CENTRES[city.trim().toLowerCase()] ?? null;
+  const normalized = city.trim().toLowerCase();
+  const known = MALAYSIA_CITY_CENTRES[normalized];
+  if (known) return known;
+  try {
+    const query = new URLSearchParams({ q: `${city}, Malaysia`, format: 'json', countrycodes: 'my', limit: '1' });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${query.toString()}`, {
+      headers: { 'User-Agent': 'MyWisata/1.0 (tourism-portal)' },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return null;
+    const [hit] = await response.json() as Array<{ lat?: string; lon?: string }>;
+    const lat = Number(hit?.lat);
+    const lng = Number(hit?.lon);
+    return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  } catch {
+    return null;
+  }
 }
