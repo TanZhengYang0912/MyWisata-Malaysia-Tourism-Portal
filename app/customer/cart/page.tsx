@@ -211,7 +211,7 @@ export default function CartPage() {
         title="Your cart is empty"
         description="Browse experiences and add a booking or product to get started."
         action={
-          <Link href="/customer/explore">
+          <Link href="/customer">
             <Button>Explore Experiences</Button>
           </Link>
         }

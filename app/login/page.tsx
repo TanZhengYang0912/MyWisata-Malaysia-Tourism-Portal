@@ -13,7 +13,7 @@ import type { Role, User } from "@/backend/core/types";
 type DemoUser = User & { vendorName?: string; outletName?: string };
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/customer/explore",
+  customer: "/customer",
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",

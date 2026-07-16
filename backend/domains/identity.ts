@@ -2,6 +2,7 @@
 import { supabase } from "@/backend/supabase";
 import type { AdminKycSubmission, ChatMessage, ChatThread, PublicUser, Role, SupportTicket, User } from "@/backend/core/types";
 import { getCurrentUserId, setCurrentUserId, setCurrentUser, getStoredCurrentUser } from "@/backend/domains/current-user";
+import { maskChatBody } from "@/lib/chat/moderation";
 
 type UserRow = {
   id: string;
@@ -206,9 +207,10 @@ export async function getOtherReadMessageIds(myUserId: string, messageIds: strin
 }
 
 export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string): Promise<ChatMessage> {
+  const { clean } = maskChatBody(text);
   const { data, error } = await supabase
     .from("chat_messages")
-    .insert({ thread_id: threadId, sender_id: senderId, body: text, reply_to_message_id: replyToId ?? null })
+    .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null })
     .select("*")
     .single();
   if (error) throw error;

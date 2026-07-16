@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { searchActivities } from "@/backend/domains/catalogue";
-import { ExploreClient } from "./explore-client";
+import { StoryMap } from "@/components/demo-map/story-map";
 
 export default async function ExplorePage() {
   const db = await createClient();
   const activities = await searchActivities({ state: "All Malaysia", category: null }, db);
-  return <ExploreClient initialActivities={activities} />;
+  return <StoryMap initialActivities={activities} />;
 }

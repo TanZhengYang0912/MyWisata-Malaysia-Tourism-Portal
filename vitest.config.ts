@@ -9,6 +9,7 @@ export default defineConfig({
       "worktrees/**",
       "tests/e2e/**",
       "scripts/**/*.test.mjs",
+      "docs/**",
     ],
   },
   resolve: {

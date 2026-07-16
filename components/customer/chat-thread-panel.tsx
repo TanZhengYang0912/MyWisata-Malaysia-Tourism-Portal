@@ -420,6 +420,9 @@ export function ChatThreadPanel({
               <Send size={16} />
             </button>
           </form>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-muted-foreground">
+            Phone numbers, contact details and links are hidden to keep you safe on MyWisata.
+          </p>
         </div>
       )}
     </div>

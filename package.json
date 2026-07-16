@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:kyc-db:replay": "node scripts/replay-kyc-security-db.mjs",
     "seed:remote-demo": "REMOTE_DEMO_SEED=1 node scripts/seed-remote-demo.mjs",
+    "seed:chat-volume": "CHAT_VOLUME_SEED=1 node scripts/seed-chat-volume.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs"
   },
   "dependencies": {

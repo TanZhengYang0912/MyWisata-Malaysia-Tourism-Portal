@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { buildChatAttachmentPath, validateChatAttachment } from '@/lib/chat/attachment';
+import { maskChatBody } from '@/lib/chat/moderation';
 
 interface Props {
   params: Promise<{ threadId: string }>;
@@ -37,7 +38,8 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail(validated.code, 'File must be a JPEG, PNG, WEBP, or PDF under 10 MB', 422);
   }
 
-  const caption = (formData.get('caption') as string | null)?.trim() ?? '';
+  const rawCaption = (formData.get('caption') as string | null)?.trim() ?? '';
+  const caption = maskChatBody(rawCaption).clean;
   const replyToId = (formData.get('replyToId') as string | null) || null;
 
   const path = buildChatAttachmentPath(threadId, crypto.randomUUID(), file.type);
