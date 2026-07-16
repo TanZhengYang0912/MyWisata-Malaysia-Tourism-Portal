@@ -37,4 +37,14 @@ describe('wallet withdrawal governance migration contract', () => {
     expect(sql).toContain("'wallet-spend:' || v_session.id::text || ':topup'");
     expect(sql).toContain("'wallet-spend:' || v_session.id::text || ':earnings'");
   });
+
+  it('keeps manual adjustments and Wallet refunds inside audited database procedures', async () => {
+    const sql = await readFile(migrationPath, 'utf8');
+
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.apply_wallet_adjustment');
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.process_wallet_refund');
+    expect(sql).toContain("RAISE EXCEPTION 'wallet_refund_must_be_full'");
+    expect(sql).toContain("'wallet-refund:' || v_refund.id::text || ':topup'");
+    expect(sql).toContain("'wallet-refund:' || v_refund.id::text || ':earnings'");
+  });
 });

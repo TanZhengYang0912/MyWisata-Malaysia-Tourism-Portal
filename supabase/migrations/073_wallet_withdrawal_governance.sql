@@ -345,3 +345,190 @@ $$;
 
 REVOKE ALL ON FUNCTION public.finalize_checkout(UUID, TEXT, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.finalize_checkout(UUID, TEXT, TEXT, TEXT) TO authenticated, service_role;
+
+-- Super Admin adjustments are the only manual Wallet mutation. They retain a
+-- ledger entry, a separate rationale record, audit history and a customer
+-- notification in the same transaction.
+CREATE OR REPLACE FUNCTION public.apply_wallet_adjustment(
+  p_user_id UUID,
+  p_bucket TEXT,
+  p_direction TEXT,
+  p_amount_sen BIGINT,
+  p_reason TEXT
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+  v_wallet wallets%ROWTYPE;
+  v_transaction_id UUID;
+  v_before JSONB;
+  v_after JSONB;
+  v_type TEXT;
+BEGIN
+  IF v_actor IS NULL OR NOT public.is_super_admin(v_actor) THEN
+    RAISE EXCEPTION 'super_admin_required';
+  END IF;
+  IF p_bucket NOT IN ('topup', 'earnings') OR p_direction NOT IN ('credit', 'debit') THEN
+    RAISE EXCEPTION 'invalid_wallet_adjustment';
+  END IF;
+  IF p_amount_sen IS NULL OR p_amount_sen <= 0 THEN
+    RAISE EXCEPTION 'invalid_wallet_adjustment_amount';
+  END IF;
+  IF char_length(BTRIM(COALESCE(p_reason, ''))) < 10 THEN
+    RAISE EXCEPTION 'wallet_adjustment_reason_too_short';
+  END IF;
+
+  SELECT * INTO v_wallet FROM public.wallets WHERE user_id = p_user_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'wallet_not_found'; END IF;
+  v_before := jsonb_build_object('topup_sen', v_wallet.topup_sen, 'earnings_sen', v_wallet.earnings_sen);
+
+  IF p_bucket = 'topup' THEN
+    IF p_direction = 'debit' AND v_wallet.topup_sen < p_amount_sen THEN
+      RAISE EXCEPTION 'insufficient_wallet_balance';
+    END IF;
+    UPDATE public.wallets
+       SET topup_sen = topup_sen + CASE WHEN p_direction = 'credit' THEN p_amount_sen ELSE -p_amount_sen END,
+           updated_at = NOW()
+     WHERE id = v_wallet.id;
+  ELSE
+    IF p_direction = 'debit' AND v_wallet.earnings_sen < p_amount_sen THEN
+      RAISE EXCEPTION 'insufficient_wallet_balance';
+    END IF;
+    UPDATE public.wallets
+       SET earnings_sen = earnings_sen + CASE WHEN p_direction = 'credit' THEN p_amount_sen ELSE -p_amount_sen END,
+           updated_at = NOW()
+     WHERE id = v_wallet.id;
+  END IF;
+
+  v_type := CASE WHEN p_direction = 'credit' THEN 'adjustment_credit' ELSE 'adjustment_debit' END;
+  INSERT INTO public.wallet_transactions
+    (user_id, wallet_id, type, amount_sen, bucket, direction, note)
+  VALUES
+    (p_user_id, v_wallet.id, v_type, p_amount_sen, p_bucket, p_direction, p_reason)
+  RETURNING id INTO v_transaction_id;
+
+  INSERT INTO public.wallet_adjustments(user_id, wallet_transaction_id, actor_id, reason)
+  VALUES (p_user_id, v_transaction_id, v_actor, p_reason);
+
+  SELECT jsonb_build_object('topup_sen', topup_sen, 'earnings_sen', earnings_sen)
+    INTO v_after FROM public.wallets WHERE id = v_wallet.id;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, before_data, after_data, note)
+  VALUES (v_actor, 'wallet.adjusted', 'wallet_transaction', v_transaction_id, v_before, v_after, p_reason);
+  INSERT INTO public.notifications(user_id, type, title, body, link)
+  VALUES (
+    p_user_id,
+    'wallet_adjustment',
+    'Wallet balance adjusted',
+    'An administrator made a Wallet adjustment. Open your Wallet for the updated balance.',
+    '/customer/wallet'
+  );
+
+  RETURN jsonb_build_object(
+    'transaction_id', v_transaction_id,
+    'topup_sen', v_after ->> 'topup_sen',
+    'earnings_sen', v_after ->> 'earnings_sen'
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_wallet_adjustment(UUID, TEXT, TEXT, BIGINT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.apply_wallet_adjustment(UUID, TEXT, TEXT, BIGINT, TEXT) TO authenticated;
+
+-- Wallet orders are refunded in full to the same buckets that funded them.
+-- This procedure refuses legacy/no-ledger rows rather than guessing a bucket.
+CREATE OR REPLACE FUNCTION public.process_wallet_refund(
+  p_refund_id UUID,
+  p_note TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+  v_refund refunds%ROWTYPE;
+  v_payment payments%ROWTYPE;
+  v_order orders%ROWTYPE;
+  v_wallet wallets%ROWTYPE;
+  v_topup_sen BIGINT := 0;
+  v_earnings_sen BIGINT := 0;
+  v_total_sen BIGINT;
+BEGIN
+  IF v_actor IS NULL OR NOT public.is_super_admin(v_actor) THEN
+    RAISE EXCEPTION 'super_admin_required';
+  END IF;
+
+  SELECT * INTO v_refund FROM public.refunds WHERE id = p_refund_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'refund_not_found'; END IF;
+  IF v_refund.status = 'processed' THEN
+    RETURN jsonb_build_object('refund_id', v_refund.id, 'status', 'processed');
+  END IF;
+  IF v_refund.status <> 'pending' THEN RAISE EXCEPTION 'refund_not_pending'; END IF;
+
+  SELECT * INTO v_payment FROM public.payments WHERE id = v_refund.payment_id FOR UPDATE;
+  SELECT * INTO v_order FROM public.orders WHERE id = v_refund.order_id FOR UPDATE;
+  IF v_payment.method <> 'wallet' OR v_payment.status <> 'succeeded' THEN
+    RAISE EXCEPTION 'wallet_refund_requires_successful_wallet_payment';
+  END IF;
+  IF ROUND(v_refund.amount * 100)::BIGINT <> ROUND(v_order.total_amount * 100)::BIGINT THEN
+    RAISE EXCEPTION 'wallet_refund_must_be_full';
+  END IF;
+  v_total_sen := ROUND(v_refund.amount * 100)::BIGINT;
+
+  SELECT
+    COALESCE(SUM(amount_sen) FILTER (WHERE bucket = 'topup'), 0),
+    COALESCE(SUM(amount_sen) FILTER (WHERE bucket = 'earnings'), 0)
+  INTO v_topup_sen, v_earnings_sen
+  FROM public.wallet_transactions
+  WHERE order_id = v_refund.order_id AND type = 'spend' AND direction = 'debit';
+  IF v_topup_sen + v_earnings_sen <> v_total_sen THEN
+    RAISE EXCEPTION 'wallet_payment_ledger_missing';
+  END IF;
+
+  SELECT * INTO v_wallet FROM public.wallets WHERE user_id = v_order.user_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'wallet_not_found'; END IF;
+  UPDATE public.wallets
+     SET topup_sen = topup_sen + v_topup_sen,
+         earnings_sen = earnings_sen + v_earnings_sen,
+         updated_at = NOW()
+   WHERE id = v_wallet.id;
+  IF v_topup_sen > 0 THEN
+    INSERT INTO public.wallet_transactions
+      (user_id, wallet_id, order_id, idempotency_key, type, amount_sen, bucket, direction, note)
+    VALUES
+      (v_order.user_id, v_wallet.id, v_order.id,
+       'wallet-refund:' || v_refund.id::text || ':topup',
+       'refund', v_topup_sen, 'topup', 'credit', COALESCE(p_note, 'Full Wallet order refund'));
+  END IF;
+  IF v_earnings_sen > 0 THEN
+    INSERT INTO public.wallet_transactions
+      (user_id, wallet_id, order_id, idempotency_key, type, amount_sen, bucket, direction, note)
+    VALUES
+      (v_order.user_id, v_wallet.id, v_order.id,
+       'wallet-refund:' || v_refund.id::text || ':earnings',
+       'refund', v_earnings_sen, 'earnings', 'credit', COALESCE(p_note, 'Full Wallet order refund'));
+  END IF;
+  UPDATE public.refunds
+     SET status = 'processed', processed_by = v_actor, processed_at = NOW(),
+         reason = COALESCE(p_note, reason)
+   WHERE id = v_refund.id;
+  UPDATE public.payments SET status = 'refunded', updated_at = NOW() WHERE id = v_payment.id;
+  UPDATE public.orders SET status = 'refunded', updated_at = NOW() WHERE id = v_order.id;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, before_data, after_data, note)
+  VALUES (
+    v_actor, 'wallet.refunded', 'refund', v_refund.id,
+    jsonb_build_object('status', 'pending', 'amount_sen', v_total_sen),
+    jsonb_build_object('status', 'processed', 'topup_sen', v_topup_sen, 'earnings_sen', v_earnings_sen),
+    p_note
+  );
+  INSERT INTO public.notifications(user_id, type, title, body, link)
+  VALUES (
+    v_order.user_id,
+    'wallet_refund',
+    'Wallet refund processed',
+    'Your full refund has been returned to the Wallet balance buckets used for the original payment.',
+    '/customer/wallet'
+  );
+  RETURN jsonb_build_object('refund_id', v_refund.id, 'status', 'processed');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.process_wallet_refund(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.process_wallet_refund(UUID, TEXT) TO authenticated;

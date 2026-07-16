@@ -9,7 +9,8 @@ export type AccountModerationContext =
   | 'suspend_reason'
   | 'soft_delete_reason'
   | 'unsuspend_reason'
-  | 'suspension_appeal';
+  | 'suspension_appeal'
+  | 'wallet_adjustment_reason';
 
 function contextDescription(context: AccountModerationContext): string {
   switch (context) {
@@ -17,6 +18,7 @@ function contextDescription(context: AccountModerationContext): string {
     case 'soft_delete_reason': return 'an administrator account-closure reason';
     case 'unsuspend_reason': return 'an administrator unsuspension reason';
     case 'suspension_appeal': return 'a user account-suspension appeal';
+    case 'wallet_adjustment_reason': return 'a Super Admin wallet adjustment reason';
   }
 }
 
