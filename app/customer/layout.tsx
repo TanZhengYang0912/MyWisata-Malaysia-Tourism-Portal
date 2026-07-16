@@ -189,8 +189,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <div ref={accountMenuRef} className="relative shrink-0">
-            <Link href="/customer/profile#preferences" className="mr-3 hidden text-sm font-medium text-muted-foreground transition hover:text-primary lg:inline">Preferences</Link>
+          <Link href="/customer/profile#preferences" className="mr-3 hidden h-full items-center text-sm font-medium text-muted-foreground transition hover:text-primary lg:inline-flex">Preferences</Link>
+
+          <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
             <button
               type="button"
               onClick={() => setAccountMenuOpen((open) => !open)}
