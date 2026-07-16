@@ -19,4 +19,23 @@ describe('outlet builder history', () => {
     expect(history.state).toEqual(next);
     expect(history.undo()).toEqual(initial);
   });
+
+  it('coalesces consecutive edits from the same field into one undo step', () => {
+    const history = createHistory('');
+    history.commit('A', 'hero-title');
+    history.commit('AB', 'hero-title');
+    history.endCoalescedCommit();
+
+    expect(history.undo()).toBe('');
+  });
+
+  it('starts a new undo step after a coalesced edit group ends', () => {
+    const history = createHistory('');
+    history.commit('A', 'hero-title');
+    history.commit('AB', 'hero-title');
+    history.endCoalescedCommit();
+    history.commit('ABC', 'hero-title');
+
+    expect(history.undo()).toBe('AB');
+  });
 });

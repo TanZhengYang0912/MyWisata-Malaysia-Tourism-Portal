@@ -6,6 +6,7 @@ import type {
   OutletPageBlockType,
 } from "@/lib/vendor/outlet-page-schema";
 import ProductMediaUploader from "@/components/vendor/product-media-uploader";
+import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
 
 interface ProductOption {
   id: string;
@@ -28,9 +29,51 @@ interface Props {
   } | null;
   gallery: GalleryItem[];
   products: ProductOption[];
+  mediaUrls: string[];
   onUpdateBlock: (updates: Partial<OutletPageBlock>) => void;
   onUpdateHero: (updates: Record<string, unknown>) => void;
   onUpdateGallery: (gallery: GalleryItem[]) => void;
+}
+
+function MediaLibrary({
+  urls,
+  onUse,
+}: {
+  urls: string[];
+  onUse: (url: string) => void;
+}) {
+  if (!urls.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-primary/10 bg-secondary/40 p-3">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
+        Outlet media
+      </p>
+      <p className="mt-1 text-[10px] text-gray-500">
+        Reuse an image already uploaded to this page.
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {urls.map((url) => (
+          <button
+            key={url}
+            type="button"
+            onClick={() => onUse(url)}
+            className="group overflow-hidden rounded-lg border border-white bg-white text-left shadow-sm hover:border-primary"
+            title="Use this image"
+          >
+            <img
+              src={url}
+              alt=""
+              className="aspect-square w-full object-cover transition group-hover:scale-105"
+            />
+            <span className="block truncate px-1 py-1 text-[9px] font-semibold text-primary">
+              Use image
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function fieldLabel(label: string, children: React.ReactNode) {
@@ -48,15 +91,19 @@ export default function OutletBuilderInspector({
   hero,
   gallery,
   products,
+  mediaUrls,
   onUpdateBlock,
   onUpdateHero,
   onUpdateGallery,
 }: Props) {
+  const panelClassName =
+    "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
+
   if (hero)
     return (
-      <aside className="border-t border-primary/10 bg-white p-5 lg:border-l lg:border-t-0">
+      <aside className={panelClassName} aria-label="Edit selected section">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-          Edit Hero banner
+          Editing · Hero banner
         </p>
         <div className="mt-4 space-y-3">
           {fieldLabel(
@@ -67,6 +114,10 @@ export default function OutletBuilderInspector({
               className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
             />,
           )}
+          <MediaLibrary
+            urls={mediaUrls}
+            onUse={(url) => onUpdateHero({ imageUrl: url })}
+          />
           {fieldLabel(
             "Supporting copy",
             <textarea
@@ -153,7 +204,7 @@ export default function OutletBuilderInspector({
 
   if (!block)
     return (
-      <aside className="border-t border-primary/10 bg-white p-5 lg:border-l lg:border-t-0">
+      <aside className={panelClassName} aria-label="Edit selected section">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
           Edit element
         </p>
@@ -165,14 +216,32 @@ export default function OutletBuilderInspector({
 
   const update = (key: keyof OutletPageBlock, value: string) =>
     onUpdateBlock({ [key]: value || undefined });
+  const isPhoto = block.type === "image" || block.type === "image_text";
+  const isPhotoStory = block.type === "image_text";
 
   return (
-    <aside className="border-t border-primary/10 bg-white p-5 lg:border-l lg:border-t-0">
+    <aside className={panelClassName} aria-label="Edit selected section">
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-        Edit {block.type.replace("_", " ")}
+        Editing · {getBuilderBlockLabel(block.type)}
       </p>
       <div className="mt-4 space-y-3">
-        {fieldLabel(
+        {isPhoto && fieldLabel(
+          "Photo layout",
+          <select
+            aria-label="Photo layout"
+            value={block.type}
+            onChange={(event) =>
+              onUpdateBlock({
+                type: event.target.value as OutletPageBlock["type"],
+              })
+            }
+            className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-sm"
+          >
+            <option value="image">Image only</option>
+            <option value="image_text">Image + story</option>
+          </select>,
+        )}
+        {(!isPhoto || isPhotoStory) && fieldLabel(
           "Title",
           <input
             value={block.title || ""}
@@ -180,7 +249,7 @@ export default function OutletBuilderInspector({
             className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
           />,
         )}
-        {fieldLabel(
+        {(!isPhoto || isPhotoStory) && fieldLabel(
           "Supporting copy",
           <textarea
             value={block.body || ""}
@@ -189,7 +258,7 @@ export default function OutletBuilderInspector({
             className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
           />,
         )}
-        {["image", "image_text"].includes(block.type) && (
+        {isPhoto && (
           <>
             <div>
               <p className="text-xs font-semibold text-gray-600">Image</p>
@@ -217,6 +286,10 @@ export default function OutletBuilderInspector({
                 className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
               />,
             )}
+            <MediaLibrary
+              urls={mediaUrls}
+              onUse={(url) => onUpdateBlock({ imageUrl: url, image: url })}
+            />
           </>
         )}
         {["cta", "voucher_banner"].includes(block.type) &&

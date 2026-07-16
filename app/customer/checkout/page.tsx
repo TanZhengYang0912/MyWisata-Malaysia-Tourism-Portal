@@ -5,15 +5,13 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CreditCard, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
-import { createOrder } from "@/backend/domains/commerce";
 import { getVoucherByCode } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import type { Voucher } from "@/backend/core/types";
 
-// P4 — Member 4 (CLAUDE-CHECKOUT-WIRE.md, CASE B2): fire-and-forget, never
-// blocks or fails checkout. commerce.ts::createOrder() is untouched — this
-// hits a separate server route that reads the mw_ref cookie itself.
+// Affiliate attribution remains fire-and-forget and never blocks checkout.
 function attributeCheckout(orderId: string) {
   fetch("/api/checkout/attribute", {
     method: "POST",
@@ -37,7 +35,7 @@ export default function CheckoutPage() {
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [method, setMethod] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     setVoucherCode(new URLSearchParams(window.location.search).get("voucher"));
@@ -51,15 +49,19 @@ export default function CheckoutPage() {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !currentUser || selectedItems.length === 0 || paying) return;
     setPaying(true);
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((body: { user?: { phoneVerified?: boolean } } | null) => {
-        if (body?.user && !body.user.phoneVerified) { router.push("/customer/profile"); throw new Error("phone_verification_required"); }
-        return createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]);
+    fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
+      .then((body: { data?: { order_id?: string } }) => {
+        const orderId = body.data?.order_id;
+        if (!orderId) throw new Error("stripe_order_missing");
+        attributeCheckout(orderId);
+        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId }), keepalive: true });
+        router.push(`/customer/orders/${orderId}`);
       })
-      .then((order) => { attributeCheckout(order.id); fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: order.id }), keepalive: true }); return order; })
-      .then((order) => router.push(`/customer/orders/${order.id}`))
-      .catch(() => { setFailed(true); setPaying(false); });
+      .catch(() => {
+        setCheckoutError("Stripe payment confirmation could not be completed. Please check your order status or try again.");
+        setPaying(false);
+      });
   }, [currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
@@ -68,41 +70,48 @@ export default function CheckoutPage() {
     return <EmptyState title="Nothing to check out" description="Select at least one item in your cart to continue." />;
   }
 
-  function handlePay(shouldSucceed: boolean) {
+  async function handlePay(shouldSucceed: boolean) {
     if (paying) return; // double-submit guard
     setPaying(true);
-    setFailed(false);
-    setTimeout(async () => {
-      if (!shouldSucceed) {
-        setFailed(true);
-        setPaying(false);
+    setCheckoutError(null);
+    try {
+      const idempotencyKey = crypto.randomUUID();
+      const prepareResponse = await fetch("/api/checkout/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({ selectedKeys: [...selectedKeys], voucherCode, paymentMethod: method, idempotencyKey }),
+      });
+      const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string }; error?: CheckoutErrorPayload };
+      if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
+        throw new Error(getCheckoutErrorMessage(prepared.error));
+      }
+      if (method === "stripe_card") {
+        if (!prepared.data.stripeUrl) throw new Error("stripe_url_missing");
+        window.location.href = prepared.data.stripeUrl;
         return;
       }
-      try {
-        const gateResponse = await fetch("/api/auth/me", { cache: "no-store" });
-        const gateBody = gateResponse.ok ? await gateResponse.json() as { user?: { phoneVerified?: boolean } } : null;
-        if (gateBody?.user && !gateBody.user.phoneVerified) {
-          setPaying(false);
-          router.push("/customer/profile");
-          return;
-        }
-        const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card", [...selectedKeys]);
-        attributeCheckout(order.id);
-        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: order.id }), keepalive: true });
-        router.push(`/customer/orders/${order.id}`);
-      } catch (err) {
-        console.error("Order creation failed:", err);
-        setFailed(true);
-        setPaying(false);
-      }
-    }, 600);
+      const finalizeResponse = await fetch("/api/checkout/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkoutSessionId: prepared.data.checkout_session_id, outcome: shouldSucceed ? "succeeded" : "failed" }),
+      });
+      const finalized = await finalizeResponse.json() as { data?: { order_id?: string }; error?: CheckoutErrorPayload };
+      if (!finalizeResponse.ok || !finalized.data?.order_id) throw new Error(getCheckoutErrorMessage(finalized.error));
+      if (!shouldSucceed) throw new Error("payment_failed");
+      attributeCheckout(finalized.data.order_id);
+      fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: finalized.data.order_id }), keepalive: true });
+      router.push(`/customer/orders/${finalized.data.order_id}`);
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : getCheckoutErrorMessage(err as CheckoutErrorPayload));
+      setPaying(false);
+    }
   }
 
   return (
     <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-foreground mb-2 font-[family-name:var(--font-display)]">Checkout</h1>
       <p className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
-        <ShieldCheck size={13} /> Demo / Mock payment — no real money moves.
+        <ShieldCheck size={13} /> Stripe uses the existing test-mode integration. Other methods remain demo flows until their provider is connected.
       </p>
 
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
@@ -137,9 +146,19 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      {failed && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 text-destructive text-sm mb-4">
-          <AlertCircle size={15} /> Payment failed (demo). Please try again.
+      {checkoutError && (
+        <div className="mb-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={15} className="mt-0.5 shrink-0" />
+            <span>{checkoutError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/customer/cart")}
+            className="mt-2 pl-6 text-xs font-semibold underline underline-offset-2"
+          >
+            Return to cart
+          </button>
         </div>
       )}
 
@@ -147,8 +166,8 @@ export default function CheckoutPage() {
         <Button className="flex-1 h-12 rounded-full" disabled={paying} onClick={() => handlePay(true)}>
           {paying ? "Processing…" : "Pay (Success)"}
         </Button>
-        <Button variant="outline" className="flex-1 h-12 rounded-full" disabled={paying} onClick={() => handlePay(false)}>
-          Pay (Fail — demo)
+        <Button variant="outline" className="flex-1 h-12 rounded-full" disabled={paying || method === "stripe_card"} onClick={() => handlePay(false)}>
+          Simulate failure
         </Button>
       </div>
     </div>

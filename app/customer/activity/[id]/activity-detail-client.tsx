@@ -420,13 +420,14 @@ export function ActivityDetailClient({
                   <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available times</p>
                   <div className="grid grid-cols-2 gap-2">
                     {(activeDateGroup?.slots ?? []).map((s) => {
-                      const full = s.booked >= s.capacity;
+                      const unavailable = s.status ? s.status !== "available" : s.booked >= s.capacity;
+                      const full = unavailable || s.booked >= s.capacity;
                       const selected = slotId === s.id;
                       return (
                         <button
                           key={s.id}
                           type="button"
-                          disabled={full}
+                          disabled={unavailable}
                           aria-pressed={selected}
                           onClick={() => setSlotId(s.id)}
                           className="min-w-0 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed"

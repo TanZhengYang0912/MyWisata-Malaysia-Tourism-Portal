@@ -2,6 +2,7 @@
 // Uses auditAndNotify() (Gate 5) for every state change
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { auditAndNotify } from '@/lib/audit';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorApproveSchema } from '@/lib/validation/vendor-schemas';
@@ -40,8 +41,26 @@ export async function POST(request: Request, { params }: Props) {
     .single();
 
   if (fetchErr || !vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-  if (vendor.status !== 'pending') {
+  if (vendor.status !== 'pending' && action !== 'request_information') {
     return apiFail('INVALID_STATE', `Vendor is already ${vendor.status}`, 400);
+  }
+
+  if (action === 'request_information') {
+    const service = createServiceClient();
+    const { error: profileError } = await service.from('vendor_onboarding_profiles').upsert({
+      vendor_id: vendorId,
+      status: 'needs_information',
+      review_note: reason ?? null,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'vendor_id' });
+    if (profileError) return apiFail('DB_ERROR', profileError.message, 500);
+    await auditAndNotify({
+      action: 'vendor.information_requested', entityType: 'vendor', entityId: vendorId,
+      beforeData: { onboarding_status: 'submitted' }, afterData: { onboarding_status: 'needs_information' }, note: reason,
+    }, [{ userId: vendor.owner_id, type: 'vendor_information_requested', title: `More information is needed for "${vendor.name}"`, body: reason ?? 'Please update your vendor application.', link: '/vendor/dashboard' }]);
+    return apiOk({ id: vendorId, status: vendor.status, onboardingStatus: 'needs_information' });
   }
 
   if (action === 'approve') {

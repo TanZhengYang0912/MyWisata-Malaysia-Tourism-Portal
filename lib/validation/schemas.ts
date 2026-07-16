@@ -81,6 +81,20 @@ export const withdrawalApproveSchema = z.object({
 
 export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).or(z.string().min(16).max(128));
 
+export const checkoutPrepareSchema = z.object({
+  selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
+  voucherCode: z.string().trim().max(50).nullable().optional(),
+  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'mock_card']),
+  idempotencyKey: idempotencyHeaderSchema,
+}).strict();
+
+export const checkoutFinalizeSchema = z.object({
+  checkoutSessionId: uuid,
+  outcome: z.enum(['succeeded', 'failed', 'cancelled', 'expired']),
+  providerPaymentId: z.string().max(255).optional(),
+  providerEventId: z.string().max(255).optional(),
+}).strict();
+
 // ── Response envelope ──────────────────────────────────────
 
 export function apiOk<T>(data: T, init?: { status?: number }) {

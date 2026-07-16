@@ -120,3 +120,30 @@ export async function PATCH(request: Request, { params }: Props) {
   if (error) return apiFail("DB_ERROR", error.message, 500);
   return apiOk(pageResponse(data as Record<string, unknown>));
 }
+
+export async function DELETE(_request: Request, { params }: Props) {
+  const { vendorId, outletId } = await params;
+  const access = await authorizeOutlet(vendorId, outletId);
+  if (!access.ok) return access.response;
+
+  const { data: existing, error: existingError } = await access.access.serviceDb
+    .from("outlet_pages")
+    .select("*")
+    .eq("outlet_id", outletId)
+    .maybeSingle();
+  if (existingError) return apiFail("DB_ERROR", existingError.message, 500);
+  if (!existing) return apiOk(pageResponse(null));
+
+  const resetDocument = selectPublicDocument(existing as Record<string, unknown>);
+  const { data, error } = await access.access.serviceDb
+    .from("outlet_pages")
+    .update({
+      draft_document: resetDocument,
+      draft_version: Number(existing.draft_version || 0) + 1,
+    })
+    .eq("outlet_id", outletId)
+    .select("*")
+    .single();
+  if (error) return apiFail("DB_ERROR", error.message, 500);
+  return apiOk(pageResponse(data as Record<string, unknown>));
+}

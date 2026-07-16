@@ -1,16 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ExternalLink,
   Monitor,
+  Smartphone,
+  Tablet,
+  Undo2,
   Redo2,
   Save,
-  Smartphone,
-  Undo2,
+  ExternalLink,
   X,
+  Eye,
+  Globe2,
+  RotateCcw,
 } from "lucide-react";
+import {
+  duplicateOutletPageBlock,
+  getBuilderConfirmationCopy,
+  getBuilderPreviewLabel,
+  getBuilderViewportConfig,
+  type BuilderConfirmationAction,
+  type BuilderViewport,
+  type BuilderPreviewMode,
+} from "@/components/vendor/outlet-builder-ui";
+import {
+  getOutletBuilderDraftStorageKey,
+  OUTLET_BUILDER_AUTOSAVE_DELAY_MS,
+  parseOutletBuilderLocalDraft,
+  serializeOutletBuilderLocalDraft,
+  getOutletBuilderMediaUrls,
+} from "@/components/vendor/outlet-builder-editing";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import {
   createDefaultOutletPageDocument,
@@ -26,6 +46,7 @@ import {
 import OutletBuilderCanvas from "@/components/vendor/outlet-builder-canvas";
 import OutletBuilderInspector from "@/components/vendor/outlet-builder-inspector";
 import OutletBuilderPalette from "@/components/vendor/outlet-builder-palette";
+import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 
 interface Props {
   vendorId: string;
@@ -52,8 +73,10 @@ export default function OutletPageBuilder({
   );
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>("hero");
-  const [view, setView] = useState<"desktop" | "mobile">("desktop");
+  const [view, setView] = useState<BuilderViewport>("desktop");
   const [draftVersion, setDraftVersion] = useState(0);
+  const [publishedDocument, setPublishedDocument] =
+    useState<OutletPageDocument | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,6 +84,24 @@ export default function OutletPageBuilder({
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [historyState, setHistoryState] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
+  const [previewMode, setPreviewMode] = useState<BuilderPreviewMode | null>(
+    null,
+  );
+  const [confirmationAction, setConfirmationAction] =
+    useState<BuilderConfirmationAction | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const draftStorageKey = getOutletBuilderDraftStorageKey(vendorId, outletId);
+
+  function syncHistoryState() {
+    setHistoryState({
+      canUndo: Boolean(historyRef.current?.canUndo),
+      canRedo: Boolean(historyRef.current?.canRedo),
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -82,12 +123,29 @@ export default function OutletPageBuilder({
     ])
       .then(([page, productPayload]) => {
         if (!active) return;
-        const loaded =
+        const serverDraft =
           page?.draft || createDefaultOutletPageDocument(outletName);
+        const serverDraftVersion = Number(page?.draftVersion || 0);
+        const localDraft = parseOutletBuilderLocalDraft(
+          window.localStorage.getItem(draftStorageKey),
+        );
+        const canRecover =
+          localDraft?.pending === true &&
+          localDraft.draftVersion === serverDraftVersion;
+        const loaded = canRecover ? localDraft.document : serverDraft;
         setDocument(loaded);
         historyRef.current = createHistory(loaded);
-        setDraftVersion(Number(page?.draftVersion || 0));
+        syncHistoryState();
+        setDraftVersion(serverDraftVersion);
+        setPublishedDocument(page?.isPublished ? page.published : null);
         setPublishedAt(page?.publishedAt || null);
+        setDirty(canRecover);
+        setMessage(
+          canRecover ? "Recovered unsaved changes from this browser." : "",
+        );
+        if (localDraft?.pending && !canRecover) {
+          window.localStorage.removeItem(draftStorageKey);
+        }
         setProducts(
           (productPayload.data?.items || []).map((product: Product) => ({
             ...product,
@@ -110,11 +168,33 @@ export default function OutletPageBuilder({
     return () => {
       active = false;
     };
-  }, [outletId, outletName, vendorId]);
+  }, [draftStorageKey, outletId, outletName, vendorId]);
 
-  function commit(next: OutletPageDocument) {
+  useEffect(() => {
+    if (loading || !dirty) return;
+    const timeout = window.setTimeout(() => {
+      window.localStorage.setItem(
+        draftStorageKey,
+        serializeOutletBuilderLocalDraft(document, draftVersion),
+      );
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [document, draftStorageKey, draftVersion, dirty, loading]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  function commit(next: OutletPageDocument, coalesceKey?: string) {
     if (!historyRef.current) historyRef.current = createHistory(next);
-    else historyRef.current.commit(next);
+    else historyRef.current.commit(next, coalesceKey);
+    syncHistoryState();
     setDocument(next);
     setDirty(true);
     setMessage("");
@@ -123,8 +203,9 @@ export default function OutletPageBuilder({
 
   function updateDocument(
     updater: (current: OutletPageDocument) => OutletPageDocument,
+    coalesceKey?: string,
   ) {
-    commit(updater(document));
+    commit(updater(document), coalesceKey);
   }
 
   function addBlock(type: OutletPageBlockType, index = document.blocks.length) {
@@ -163,21 +244,56 @@ export default function OutletPageBuilder({
     if (selectedBlockId === blockId) setSelectedBlockId(document.hero.id);
   }
 
-  function updateBlock(updates: Partial<OutletPageBlock>) {
-    if (!selectedBlockId || selectedBlockId === document.hero.id) return;
+  function duplicateBlock(blockId: string) {
+    const sourceIndex = document.blocks.findIndex((block) => block.id === blockId);
+    const source = document.blocks[sourceIndex];
+    if (!source || sourceIndex < 0) return;
+    const nextBlock = duplicateOutletPageBlock(source);
+    updateDocument((current) => ({
+      ...current,
+      blocks: [
+        ...current.blocks.slice(0, sourceIndex + 1),
+        nextBlock,
+        ...current.blocks.slice(sourceIndex + 1),
+      ],
+    }));
+    setSelectedBlockId(nextBlock.id);
+  }
+
+  function updateBlockById(
+    blockId: string,
+    updates: Partial<OutletPageBlock>,
+    coalesceKey?: string,
+  ) {
     updateDocument((current) => ({
       ...current,
       blocks: current.blocks.map((block) =>
-        block.id === selectedBlockId ? { ...block, ...updates } : block,
+        block.id === blockId ? { ...block, ...updates } : block,
       ),
-    }));
+    }), coalesceKey);
   }
 
-  function updateHero(updates: Record<string, unknown>) {
+  function updateBlock(updates: Partial<OutletPageBlock>) {
+    if (!selectedBlockId || selectedBlockId === document.hero.id) return;
+    updateBlockById(
+      selectedBlockId,
+      updates,
+      `inline:${selectedBlockId}:${Object.keys(updates).sort().join(",")}`,
+    );
+  }
+
+  function updateHero(
+    updates: Record<string, unknown>,
+    coalesceKey?: string,
+  ) {
     updateDocument((current) => ({
       ...current,
       hero: { ...current.hero, ...updates },
-    }));
+    }), coalesceKey);
+  }
+
+  function endInlineEdit() {
+    historyRef.current?.endCoalescedCommit?.();
   }
 
   function updateGallery(gallery: OutletPageDocument["gallery"]) {
@@ -187,16 +303,18 @@ export default function OutletPageBuilder({
   function undo() {
     if (!historyRef.current?.canUndo) return;
     setDocument(historyRef.current.undo());
+    syncHistoryState();
     setDirty(true);
   }
 
   function redo() {
     if (!historyRef.current?.canRedo) return;
     setDocument(historyRef.current.redo());
+    syncHistoryState();
     setDirty(true);
   }
 
-  async function saveDraft(): Promise<boolean> {
+  const saveDraft = useCallback(async (mode: "manual" | "auto" = "manual"): Promise<number | null> => {
     setSaving(true);
     setError("");
     setMessage("");
@@ -216,45 +334,81 @@ export default function OutletPageBuilder({
       if (!response.ok)
         throw new Error(payload.error?.message || "Could not save draft");
       const saved = payload.data?.draft || document;
+      const savedVersion = Number(
+        payload.data?.draftVersion || draftVersion + 1,
+      );
       setDocument(saved);
-      setDraftVersion(Number(payload.data?.draftVersion || draftVersion + 1));
+      setDraftVersion(savedVersion);
       setPublishedAt(payload.data?.publishedAt || publishedAt);
       setDirty(false);
-      setMessage("Draft saved. Publish when you are ready.");
-      historyRef.current = createHistory(saved);
-      return true;
+      if (mode === "auto") {
+        window.localStorage.setItem(
+          draftStorageKey,
+          serializeOutletBuilderLocalDraft(
+            saved,
+            savedVersion,
+            Date.now(),
+            false,
+          ),
+        );
+      } else {
+        window.localStorage.removeItem(draftStorageKey);
+      }
+      setMessage(
+        mode === "auto"
+          ? "Draft autosaved."
+          : "Draft saved. Publish when you are ready.",
+      );
+      return savedVersion;
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not save draft",
       );
-      return false;
+      return null;
     } finally {
       setSaving(false);
     }
-  }
+  }, [document, draftStorageKey, draftVersion, outletId, publishedAt, vendorId]);
+
+  useEffect(() => {
+    if (loading || !dirty || saving || publishing) return;
+    const timeout = window.setTimeout(() => {
+      if (!saving) void saveDraft("auto");
+    }, OUTLET_BUILDER_AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [document, dirty, loading, publishing, saveDraft, saving]);
 
   async function publish() {
     setPublishing(true);
     setError("");
     setMessage("");
     try {
-      if (dirty && !(await saveDraft())) return;
+      // Always persist the current canvas before publishing. This prevents a
+      // recent edit from being skipped when the 8-second autosave already
+      // changed dirty=false or when the autosave is between state updates.
+      const savedVersion = await saveDraft();
+      if (savedVersion === null) return;
+      const expectedDraftVersion = savedVersion;
       const response = await fetch(
         `/api/vendors/${vendorId}/outlets/${outletId}/page/publish`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expectedDraftVersion: draftVersion }),
+          body: JSON.stringify({ expectedDraftVersion }),
         },
       );
       const payload = await response.json();
       if (!response.ok)
         throw new Error(payload.error?.message || "Could not publish page");
+      setPublishedDocument(payload.data?.published || document);
       setDocument(payload.data?.draft || document);
       setDraftVersion(Number(payload.data?.draftVersion || draftVersion));
       setPublishedAt(payload.data?.publishedAt || new Date().toISOString());
       setDirty(false);
-      setMessage("Published. Open the public shop to verify the live page.");
+      window.localStorage.removeItem(draftStorageKey);
+      setMessage(
+        `Published version ${payload.data?.publishedVersion || "latest"}. Customer shop now uses this version.`,
+      );
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "Could not publish page",
@@ -262,6 +416,52 @@ export default function OutletPageBuilder({
     } finally {
       setPublishing(false);
     }
+  }
+
+  async function discardDraft() {
+    setDiscarding(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/vendors/${vendorId}/outlets/${outletId}/page`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error?.message || "Could not discard draft");
+      const resetDocument =
+        payload.data?.draft ||
+        publishedDocument ||
+        createDefaultOutletPageDocument(outletName);
+      historyRef.current = createHistory(resetDocument);
+      syncHistoryState();
+      setDocument(resetDocument);
+      setDraftVersion(Number(payload.data?.draftVersion || draftVersion + 1));
+      setPublishedDocument(payload.data?.published || publishedDocument);
+      setPublishedAt(payload.data?.publishedAt || publishedAt);
+      setDirty(false);
+      setSelectedBlockId(resetDocument.hero.id);
+      window.localStorage.removeItem(draftStorageKey);
+      setMessage("Draft changes discarded. The published version is restored.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not discard draft",
+      );
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
+  function requestConfirmation(action: BuilderConfirmationAction) {
+    setConfirmationAction(action);
+  }
+
+  async function confirmRequestedAction() {
+    const action = confirmationAction;
+    setConfirmationAction(null);
+    if (action === "publish") await publish();
+    if (action === "discard") await discardDraft();
   }
 
   const selectedBlock =
@@ -275,10 +475,22 @@ export default function OutletPageBuilder({
       </div>
     );
 
+  const viewportConfig = getBuilderViewportConfig(view);
+
+  function closeBuilder() {
+    if (
+      dirty &&
+      !window.confirm("You have unsaved changes. Close Outlet Studio anyway?")
+    ) {
+      return;
+    }
+    onClose();
+  }
+
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-primary/45 p-4 sm:p-8">
-      <div className="mx-auto max-w-[1500px] overflow-hidden rounded-[28px] bg-[#f8fafc] shadow-2xl">
-        <header className="flex flex-col gap-4 border-b border-primary/10 bg-primary px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
+    <div className="fixed inset-0 z-[60] bg-primary/45 p-0 sm:p-4 lg:p-8">
+      <div className="mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-[#f8fafc] shadow-2xl sm:rounded-[28px]">
+        <header className="flex shrink-0 flex-col gap-4 border-b border-primary/10 bg-primary px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
               Outlet studio
@@ -294,7 +506,7 @@ export default function OutletPageBuilder({
             <button
               type="button"
               onClick={undo}
-              disabled={!historyRef.current?.canUndo}
+              disabled={!historyState.canUndo}
               className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10 disabled:opacity-40"
               aria-label="Undo"
             >
@@ -303,7 +515,7 @@ export default function OutletPageBuilder({
             <button
               type="button"
               onClick={redo}
-              disabled={!historyRef.current?.canRedo}
+              disabled={!historyState.canRedo}
               className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10 disabled:opacity-40"
               aria-label="Redo"
             >
@@ -318,7 +530,31 @@ export default function OutletPageBuilder({
             </Link>
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => setPreviewMode("draft")}
+              disabled={saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              <Eye size={14} /> Draft preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("published")}
+              disabled={!publishedDocument || saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              <Globe2 size={14} /> Published
+            </button>
+            <button
+              type="button"
+              onClick={() => requestConfirmation("discard")}
+              disabled={!dirty || saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200/30 px-3 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-40"
+            >
+              <RotateCcw size={14} /> {discarding ? "Discarding…" : "Discard draft"}
+            </button>
+            <button
+              type="button"
+              onClick={closeBuilder}
               className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10"
               aria-label="Close page builder"
             >
@@ -334,16 +570,94 @@ export default function OutletPageBuilder({
             </button>
             <button
               type="button"
-              onClick={() => void publish()}
-              disabled={saving || publishing}
+              onClick={() => requestConfirmation("publish")}
+              disabled={saving || publishing || discarding}
               className="rounded-xl bg-[#FFCC00] px-4 py-2.5 text-sm font-bold text-primary disabled:opacity-50"
             >
               {publishing ? "Publishing…" : "Publish"}
             </button>
           </div>
         </header>
-        <div className="grid lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-          <div className="border-b border-primary/10 lg:border-b-0 lg:border-r">
+        {confirmationAction && (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-primary/45 p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="outlet-builder-confirm-title"
+              className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+            >
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                Outlet Studio
+              </p>
+              <h3
+                id="outlet-builder-confirm-title"
+                className="mt-2 text-xl font-bold text-slate-900"
+              >
+                {getBuilderConfirmationCopy(confirmationAction).title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {getBuilderConfirmationCopy(confirmationAction).body}
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmationAction(null)}
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmRequestedAction()}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-bold text-white ${confirmationAction === "publish" ? "bg-primary" : "bg-red-600"}`}
+                >
+                  {getBuilderConfirmationCopy(confirmationAction).confirm}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {previewMode && (
+          <div className="fixed inset-0 z-[80] bg-primary/60 p-3 sm:p-8">
+            <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-primary/10 bg-primary px-5 py-4 text-white sm:px-7">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                    {getBuilderPreviewLabel(previewMode)}
+                  </p>
+                  <p className="mt-1 text-sm text-indigo-100/80">
+                    {previewMode === "draft"
+                      ? "This is what the current draft looks like."
+                      : "This is the version customers currently see."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode(null)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold hover:bg-white/10"
+                >
+                  Close preview <X size={15} />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc]">
+                {previewMode === "published" && !publishedDocument ? (
+                  <div className="p-8 text-center text-sm text-gray-500">
+                    Publish this outlet page first to preview the live version.
+                  </div>
+                ) : (
+                  <OutletPageRenderer
+                    document={previewMode === "draft" ? document : publishedDocument!}
+                    outlet={{ id: outletId, name: outletName }}
+                    products={products}
+                    mode="public"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_minmax(0,42vh)] lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:grid-rows-1">
+          <div className="min-h-0 overflow-y-auto border-b border-primary/10 lg:border-b-0 lg:border-r">
             <OutletBuilderPalette
               onAddBlock={(type) => addBlock(type)}
               onBeginDrag={() => undefined}
@@ -420,8 +734,8 @@ export default function OutletPageBuilder({
               </div>
             </div>
           </div>
-          <main className="min-h-[780px]">
-            <div className="flex items-center justify-between border-b border-primary/10 bg-white px-5 py-3">
+          <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+            <div className="flex shrink-0 flex-col gap-3 border-b border-primary/10 bg-white px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
                   Live preview
@@ -434,36 +748,67 @@ export default function OutletPageBuilder({
                       : "Draft preview"}
                 </p>
               </div>
-              <div className="flex rounded-xl bg-secondary p-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold text-gray-400">
+                  {viewportConfig.label}
+                </span>
+                <div className="flex rounded-xl bg-secondary p-1">
                 <button
                   type="button"
                   onClick={() => setView("desktop")}
-                  className={`rounded-lg p-2 ${view === "desktop" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "desktop" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
                   aria-label="Desktop preview"
                 >
-                  <Monitor size={16} />
+                  <Monitor size={15} /> <span className="hidden xl:inline">Desktop</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("tablet")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "tablet" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  aria-label="Tablet preview"
+                >
+                  <Tablet size={15} /> <span className="hidden xl:inline">Tablet</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setView("mobile")}
-                  className={`rounded-lg p-2 ${view === "mobile" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "mobile" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
                   aria-label="Mobile preview"
                 >
-                  <Smartphone size={16} />
+                  <Smartphone size={15} /> <span className="hidden xl:inline">Mobile</span>
                 </button>
+                </div>
               </div>
             </div>
-            <OutletBuilderCanvas
-              document={document}
-              outlet={{ id: outletId, name: outletName }}
-              products={products}
-              view={view}
-              selectedBlockId={selectedBlockId}
-              onSelect={setSelectedBlockId}
-              onInsert={addBlock}
-              onMove={moveBlock}
-              onDelete={deleteBlock}
-            />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <OutletBuilderCanvas
+                vendorId={vendorId}
+                document={document}
+                outlet={{ id: outletId, name: outletName }}
+                products={products}
+                view={view}
+                selectedBlockId={selectedBlockId}
+                onSelect={setSelectedBlockId}
+                onInsert={addBlock}
+                onMove={moveBlock}
+                onDelete={deleteBlock}
+                onDuplicate={duplicateBlock}
+                onEditHero={(updates) =>
+                  updateHero(
+                    updates,
+                    `inline:hero:${Object.keys(updates).sort().join(",")}`,
+                  )
+                }
+                onEditBlock={(blockId, updates) =>
+                  updateBlockById(
+                    blockId,
+                    updates,
+                    `inline:${blockId}:${Object.keys(updates).sort().join(",")}`,
+                  )
+                }
+                onEndInlineEdit={endInlineEdit}
+              />
+            </div>
           </main>
           <OutletBuilderInspector
             vendorId={vendorId}
@@ -471,6 +816,7 @@ export default function OutletPageBuilder({
             hero={selectedBlockId === document.hero.id ? document.hero : null}
             gallery={document.gallery}
             products={products}
+            mediaUrls={getOutletBuilderMediaUrls(document)}
             onUpdateBlock={updateBlock}
             onUpdateHero={updateHero}
             onUpdateGallery={updateGallery}

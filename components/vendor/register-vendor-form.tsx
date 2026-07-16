@@ -102,6 +102,19 @@ export default function RegisterVendorForm({ onClose }: Props) {
         </select>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label className="block text-sm font-medium text-gray-700 mb-1">Legal Business Name</label><input {...register('legalBusinessName')} placeholder="Registered business name" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.legalBusinessName && <p className="text-red-500 text-xs mt-1">{errors.legalBusinessName.message}</p>}</div>
+        <div><label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label><input {...register('registrationNumber')} placeholder="Optional for sole proprietors" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.registrationNumber && <p className="text-red-500 text-xs mt-1">{errors.registrationNumber.message}</p>}</div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label><input {...register('contactName')} placeholder="Owner or authorised person" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+        <div><label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label><input {...register('contactPhone')} placeholder="+60..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+      </div>
+
+      <div><label className="block text-sm font-medium text-gray-700 mb-1">Business Email</label><input {...register('contactEmail')} type="email" placeholder="business@example.com" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.contactEmail && <p className="text-red-500 text-xs mt-1">{errors.contactEmail.message}</p>}</div>
+      <div><label className="block text-sm font-medium text-gray-700 mb-1">Business Address</label><textarea {...register('businessAddress')} rows={2} placeholder="Registered business address" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" /></div>
+
       {/* Logo URL */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
