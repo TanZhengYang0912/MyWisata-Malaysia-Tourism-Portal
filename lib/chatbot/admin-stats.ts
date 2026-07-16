@@ -10,6 +10,7 @@ const TOP_UNANSWERED_LIMIT = 10;
 export interface UnansweredQuestion {
   question: string;
   count: number;
+  lastAskedAt: string;
 }
 
 export interface ChatbotAdminStats {
@@ -36,7 +37,7 @@ export async function getChatbotAdminStats(service: SupabaseClient): Promise<Cha
   // user question immediately before it — messages are always inserted
   // user-then-bot per turn (app/api/chatbot/ask/route.ts), so this is a
   // reliable pairing without needing a dedicated "in reply to" column.
-  const unansweredByNormalized = new Map<string, { example: string; count: number }>();
+  const unansweredByNormalized = new Map<string, { example: string; count: number; lastAskedAt: string }>();
   let lastUserQuestion: string | null = null;
   let lastSessionId: string | null = null;
 
@@ -49,8 +50,9 @@ export async function getChatbotAdminStats(service: SupabaseClient): Promise<Cha
       lastUserQuestion = m.body;
     } else if (m.role === 'bot' && !m.kb_matched && lastUserQuestion) {
       const key = normalize(lastUserQuestion);
-      const entry = unansweredByNormalized.get(key) ?? { example: lastUserQuestion, count: 0 };
+      const entry = unansweredByNormalized.get(key) ?? { example: lastUserQuestion, count: 0, lastAskedAt: m.created_at };
       entry.count += 1;
+      entry.lastAskedAt = m.created_at; // messages are ascending-ordered, so the latest match always wins
       unansweredByNormalized.set(key, entry);
       lastUserQuestion = null; // consumed — don't double-count if two bot rows somehow follow
     }
@@ -59,7 +61,7 @@ export async function getChatbotAdminStats(service: SupabaseClient): Promise<Cha
   const topUnanswered = [...unansweredByNormalized.values()]
     .sort((a, b) => b.count - a.count)
     .slice(0, TOP_UNANSWERED_LIMIT)
-    .map((e) => ({ question: e.example, count: e.count }));
+    .map((e) => ({ question: e.example, count: e.count, lastAskedAt: e.lastAskedAt }));
 
   return { totalQuestions, answeredCount, answerRate, topUnanswered };
 }
