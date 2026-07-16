@@ -12,6 +12,7 @@ import { isKycApproved } from "@/lib/affiliate/verification";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
+import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -216,6 +217,8 @@ export default function AffiliateDashboardPage() {
           </div>
         )}
       </div>
+
+      <AffiliateRankCard />
 
       <div className="rounded-xl border border-border p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">

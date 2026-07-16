@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { add } from '@/lib/money';
 import { getActiveTiers, resolveTier, type CommissionTier } from './tier';
 import { computeFunnel, type Funnel } from './funnel';
+import { rankByCommission } from './leaderboard';
 
 const TOP_EARNERS_LIMIT = 10;
 
@@ -74,42 +75,40 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
   const activeAttributions = attributions.filter((a) => a.status !== 'reversed');
   const totalCommission = activeAttributions.reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
 
-  // ── Referrals per link ───────────────────────────────────────
-  const referralsByLink = new Map<string, { count: number; commission: number }>();
+  // ── Referral counts per link (commission comes from rankByCommission below) ──
   // Tiers are keyed off lifetime CONFIRMED referrals only (see tier.ts) —
-  // separate count, since referralsByLink above intentionally includes
+  // separate from the plain referral count, which intentionally includes
   // pending ones too (for the "Referrals" totals card).
+  const referralCountByLink = new Map<string, number>();
   const confirmedCountByLink = new Map<string, number>();
   for (const attribution of activeAttributions) {
     const click = clickById.get(attribution.click_id);
     if (!click) continue;
-    const entry = referralsByLink.get(click.link_id) ?? { count: 0, commission: 0 };
-    entry.count += 1;
-    entry.commission = add(entry.commission, Number(attribution.commission_amount));
-    referralsByLink.set(click.link_id, entry);
-
+    referralCountByLink.set(click.link_id, (referralCountByLink.get(click.link_id) ?? 0) + 1);
     if (attribution.status === 'confirmed') {
       confirmedCountByLink.set(click.link_id, (confirmedCountByLink.get(click.link_id) ?? 0) + 1);
     }
   }
 
-  // ── Top earners ──────────────────────────────────────────────
-  const topEarners: TopEarner[] = links
-    .map((link) => {
-      const referral = referralsByLink.get(link.id);
-      const tier = resolveTier(tiers, confirmedCountByLink.get(link.id) ?? 0);
+  // ── Top earners — lib/affiliate/leaderboard.ts's rankByCommission(), the
+  // exact same algorithm the user-facing "your rank" card uses (all-time
+  // here, monthly there — see that file for why the window differs but the
+  // algorithm never should). ──
+  const ranked = rankByCommission(links, attributions, new Map(clicks.map((c) => [c.id, c.link_id])));
+  const topEarners: TopEarner[] = ranked
+    .filter((e) => e.commission > 0)
+    .slice(0, TOP_EARNERS_LIMIT)
+    .map((entry) => {
+      const tier = resolveTier(tiers, confirmedCountByLink.get(entry.linkId) ?? 0);
       return {
-        userId: link.user_id,
-        userName: userDisplayName(usersById.get(link.user_id)),
-        affiliateCode: link.affiliate_code,
-        referrals: referral?.count ?? 0,
-        commission: referral?.commission ?? 0,
+        userId: entry.userId,
+        userName: userDisplayName(usersById.get(entry.userId)),
+        affiliateCode: entry.affiliateCode,
+        referrals: referralCountByLink.get(entry.linkId) ?? 0,
+        commission: entry.commission,
         tierName: tier.tierName,
       };
-    })
-    .filter((e) => e.commission > 0)
-    .sort((a, b) => b.commission - a.commission)
-    .slice(0, TOP_EARNERS_LIMIT);
+    });
 
   // ── Attribution detail rows (product names resolved below) ────
   const productIds = [
