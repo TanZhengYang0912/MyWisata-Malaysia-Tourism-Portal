@@ -23,6 +23,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
+import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -58,6 +59,10 @@ export async function POST(request: Request) {
   }
 
   await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
+  const reward = await attributeRecommendationReward(service, orderId);
+  if (reward.kind === 'created') {
+    await service.from('notifications').insert({ user_id: reward.recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${(reward.amountSen / 100).toFixed(2)} will be available after the hold period and KYC approval.`, link: '/customer/wallet' });
+  }
 
   return apiOk({ attributed: true });
 }
