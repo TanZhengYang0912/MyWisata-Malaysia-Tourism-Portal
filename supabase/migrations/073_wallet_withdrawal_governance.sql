@@ -694,3 +694,42 @@ $$;
 
 REVOKE ALL ON FUNCTION public.reject_wallet_withdrawal(UUID, TEXT, INET) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.reject_wallet_withdrawal(UUID, TEXT, INET) TO authenticated;
+
+-- A hold preserves the reserve and stops payout processing while the Customer
+-- supplies more information through Support. No balance is released here.
+CREATE OR REPLACE FUNCTION public.hold_wallet_withdrawal(
+  p_id UUID,
+  p_reason TEXT,
+  p_ip INET DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+  v_request withdrawal_requests%ROWTYPE;
+BEGIN
+  IF v_actor IS NULL OR NOT public.is_approver(v_actor) THEN RAISE EXCEPTION 'approver_required'; END IF;
+  IF char_length(BTRIM(COALESCE(p_reason, ''))) < 10 THEN RAISE EXCEPTION 'withdrawal_reason_too_short'; END IF;
+  SELECT * INTO v_request FROM public.withdrawal_requests WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'withdrawal_not_found'; END IF;
+  IF v_request.user_id = v_actor THEN RAISE EXCEPTION 'self_dealing'; END IF;
+  IF v_request.status NOT IN ('pending', 'pending_second_approval', 'approved', 'overdue') THEN
+    RAISE EXCEPTION 'withdrawal_not_holdable';
+  END IF;
+  INSERT INTO public.withdrawal_approvals(request_id, approver_id, action, note)
+  VALUES (p_id, v_actor, 'hold', p_reason);
+  UPDATE public.withdrawal_requests
+     SET status = 'hold', customer_reason = p_reason, customer_visible_at = NOW(), updated_at = NOW()
+   WHERE id = p_id;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, before_data, after_data, ip_address, note)
+  VALUES (
+    v_actor, 'withdrawal.held', 'withdrawal', p_id,
+    jsonb_build_object('status', v_request.status), jsonb_build_object('status', 'hold'), p_ip, p_reason
+  );
+  INSERT INTO public.notifications(user_id, type, title, body, link)
+  VALUES (v_request.user_id, 'withdrawal_hold', 'Withdrawal needs additional review', p_reason, '/customer/wallet');
+  RETURN jsonb_build_object('user_id', v_request.user_id, 'amount_rm', v_request.amount, 'status', 'hold');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.hold_wallet_withdrawal(UUID, TEXT, INET) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.hold_wallet_withdrawal(UUID, TEXT, INET) TO authenticated;
