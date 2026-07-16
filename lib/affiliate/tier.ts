@@ -24,8 +24,9 @@ export interface TierInfo {
 // Only used if commission_rules has no active affiliate tier rows at all
 // (e.g. migration 014 hasn't run yet) — never used to override real rates.
 // id is a sentinel, not a real row — the admin tier editor should never
-// try to PATCH this one.
-const FALLBACK_TIER: CommissionTier = { id: '', tierName: 'bronze', rate: 0.03, minReferrals: 0 };
+// try to PATCH this one. Name matches the CLAUDE-QUICKWINS.md Item 2
+// rename (migration 038) — label only, this fallback's rate is unaffected.
+const FALLBACK_TIER: CommissionTier = { id: '', tierName: 'standard', rate: 0.03, minReferrals: 0 };
 
 /** All active affiliate tiers, ascending by threshold. */
 export async function getActiveTiers(service: SupabaseClient): Promise<CommissionTier[]> {

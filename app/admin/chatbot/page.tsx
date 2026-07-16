@@ -4,8 +4,8 @@
 // "Also on /admin/chatbot: total questions, answer rate, top unanswered
 // questions, a KB editor (add/edit/deactivate a doc -> auto re-embed on save)."
 
-import { useEffect, useMemo, useState } from "react";
-import { Bot, MessageSquareText, Plus, RefreshCw, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -14,7 +14,7 @@ interface ChatbotStats {
   totalQuestions: number;
   answeredCount: number;
   answerRate: number;
-  topUnanswered: { question: string; count: number }[];
+  topUnanswered: { question: string; count: number; lastAskedAt: string }[];
 }
 
 interface KbDoc {
@@ -50,6 +50,7 @@ export default function AdminChatbotPage() {
   const [form, setForm] = useState<KbFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const kbFormRef = useRef<HTMLDivElement>(null);
 
   async function loadStats() {
     try {
@@ -108,6 +109,24 @@ export default function AdminChatbotPage() {
     setFormError(null);
     setEditingId("new");
   }
+
+  // CLAUDE-QUICKWINS.md Item 3: closes the loop — admin sees a gap in "top
+  // unanswered", one click opens a KB doc pre-filled with that exact
+  // question, admin fills in the answer, bot improves. Only the title is
+  // pre-filled (the question itself) — the body/keywords are the admin's
+  // answer to write, not something to guess for them.
+  function addToKb(question: string) {
+    setForm({ ...EMPTY_FORM, title: question });
+    setFormError(null);
+    setEditingId("new");
+  }
+
+  // Deferred to an effect rather than called inline in addToKb()/startNew():
+  // the form <div> only mounts once editingId becomes truthy, so the ref
+  // isn't populated until after that re-render commits.
+  useEffect(() => {
+    if (editingId) kbFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editingId]);
 
   function startEdit(doc: KbDoc) {
     setForm({
@@ -212,16 +231,21 @@ export default function AdminChatbotPage() {
         {stats.topUnanswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing unanswered yet — the KB is covering everything asked so far.</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {stats.topUnanswered.map((q, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-foreground flex items-center gap-1.5 min-w-0">
-                  <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
-                  <span className="truncate">{q.question}</span>
-                </span>
-                <span className="text-muted-foreground shrink-0">
-                  ×{q.count}
-                </span>
+              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
+                <div className="min-w-0">
+                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+                    <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
+                    <span className="truncate">{q.question}</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                    ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" className="shrink-0" onClick={() => addToKb(q.question)}>
+                  <Sparkles size={12} /> Add to KB
+                </Button>
               </div>
             ))}
           </div>
@@ -236,7 +260,7 @@ export default function AdminChatbotPage() {
       </div>
 
       {editingId && (
-        <div className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div ref={kbFormRef} className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? "New KB document" : "Edit KB document"}</p>
           <input
             value={form.title}
