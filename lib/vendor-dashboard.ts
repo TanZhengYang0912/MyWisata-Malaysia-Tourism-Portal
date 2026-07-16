@@ -245,7 +245,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     const key = review.product_id;
     if (!key) continue;
     const product = productById[key];
-    if (!product || (!product.requires_booking && !['activity', 'experience'].includes(product.product_type ?? ''))) continue;
+    if (!product || (!product.requires_booking && !['activity', 'experience', 'service'].includes(product.product_type ?? ''))) continue;
     const rating = ratingMap.get(key) || { total: 0, count: 0 };
     rating.total += number(review.rating);
     rating.count += 1;

@@ -147,6 +147,10 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Max Uses</label>
             <Input {...register('maxUses', { valueAsNumber: true })} type="number" placeholder="Unlimited" />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Per Customer Limit</label>
+            <Input {...register('perCustomerLimit', { setValueAs: (value) => value === '' ? null : Number(value) })} type="number" min="1" placeholder="Unlimited" />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

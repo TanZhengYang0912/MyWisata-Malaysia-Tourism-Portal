@@ -50,7 +50,16 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
   }
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2 rounded-xl border border-dashed border-transparent p-1 transition hover:border-primary/20"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files?.[0];
+        if (file && !uploading) void upload(file);
+      }}
+      aria-label="Drop a file to upload"
+    >
       <div className="flex items-center gap-3">
         {value ? (
           kind === 'image'
@@ -70,6 +79,7 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
             {value ? 'Replace file' : 'Upload file'}
           </button>
           <p className="mt-1 text-[11px] text-gray-500">{kind === 'digital' ? 'PDF or ZIP · max 10 MB' : 'JPG, PNG or WebP · max 10 MB'}</p>
+          <p className="mt-1 text-[10px] font-semibold text-primary/60">Or drag a file here</p>
         </div>
       </div>
     </div>

@@ -1,120 +1,834 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, GripVertical, ImagePlus, Monitor, Plus, Save, Smartphone, Trash2, X } from 'lucide-react';
-import { getOutletShopHref } from '@/lib/customer/shop-navigation';
-import { syncHeroBlockImage, type EditableOutletPageBlock } from '@/lib/vendor/outlet-page-builder';
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Monitor,
+  Smartphone,
+  Tablet,
+  Undo2,
+  Redo2,
+  Save,
+  ExternalLink,
+  X,
+  Eye,
+  Globe2,
+  RotateCcw,
+} from "lucide-react";
+import {
+  duplicateOutletPageBlock,
+  getBuilderConfirmationCopy,
+  getBuilderPreviewLabel,
+  getBuilderViewportConfig,
+  type BuilderConfirmationAction,
+  type BuilderViewport,
+  type BuilderPreviewMode,
+} from "@/components/vendor/outlet-builder-ui";
+import {
+  getOutletBuilderDraftStorageKey,
+  OUTLET_BUILDER_AUTOSAVE_DELAY_MS,
+  parseOutletBuilderLocalDraft,
+  serializeOutletBuilderLocalDraft,
+  getOutletBuilderMediaUrls,
+} from "@/components/vendor/outlet-builder-editing";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import {
+  createDefaultOutletPageDocument,
+  createOutletPageBlock,
+  type OutletPageBlock,
+  type OutletPageBlockType,
+  type OutletPageDocument,
+} from "@/lib/vendor/outlet-page-schema";
+import {
+  createHistory,
+  type History,
+} from "@/components/vendor/outlet-builder-history";
+import OutletBuilderCanvas from "@/components/vendor/outlet-builder-canvas";
+import OutletBuilderInspector from "@/components/vendor/outlet-builder-inspector";
+import OutletBuilderPalette from "@/components/vendor/outlet-builder-palette";
+import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 
-type Block = EditableOutletPageBlock;
-type GalleryItem = { url: string; alt?: string };
-
-const BLOCKS = [
-  { type: 'hero', label: 'Hero banner', hint: 'Lead with a place, story or signature experience.' },
-  { type: 'intro', label: 'Outlet introduction', hint: 'A short welcome from this location.' },
-  { type: 'product_grid', label: 'Product grid', hint: 'Show your featured products or activities.' },
-  { type: 'gallery', label: 'Gallery', hint: 'Let travellers see the place before they arrive.' },
-  { type: 'hours', label: 'Opening hours', hint: 'Display this outlet schedule.' },
-  { type: 'contact', label: 'Map and contact', hint: 'Make the outlet easy to find.' },
-  { type: 'cta', label: 'Booking call-to-action', hint: 'Move a curious traveller toward booking.' },
-];
-
-interface Props { vendorId: string; outletId: string; outletName: string; onClose: () => void }
-
-function newBlock(type: string): Block {
-  return { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, type, title: BLOCKS.find((item) => item.type === type)?.label || 'New section', body: '' };
+interface Props {
+  vendorId: string;
+  outletId: string;
+  outletName: string;
+  onClose: () => void;
+}
+interface Product {
+  id: string;
+  name: string;
+  base_price: number;
+  cover_url?: string | null;
 }
 
-export default function OutletPageBuilder({ vendorId, outletId, outletName, onClose }: Props) {
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [gallery, setGallery] = useState<GalleryItem[]>([]);
-  const [heroUrl, setHeroUrl] = useState('');
-  const [brandColour, setBrandColour] = useState('#00004D');
-  const [fontFamily, setFontFamily] = useState('Plus Jakarta Sans');
-  const [seoTitle, setSeoTitle] = useState('');
-  const [seoDescription, setSeoDescription] = useState('');
-  const [featuredIds, setFeaturedIds] = useState<string[]>([]);
-  const [products, setProducts] = useState<{ id: string; name: string; base_price: number }[]>([]);
-  const [view, setView] = useState<'desktop' | 'mobile'>('desktop');
+export default function OutletPageBuilder({
+  vendorId,
+  outletId,
+  outletName,
+  onClose,
+}: Props) {
+  const historyRef = useRef<History<OutletPageDocument> | null>(null);
+  const [document, setDocument] = useState<OutletPageDocument>(() =>
+    createDefaultOutletPageDocument(outletName),
+  );
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>("hero");
+  const [view, setView] = useState<BuilderViewport>("desktop");
+  const [draftVersion, setDraftVersion] = useState(0);
+  const [publishedDocument, setPublishedDocument] =
+    useState<OutletPageDocument | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [historyState, setHistoryState] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
+  const [previewMode, setPreviewMode] = useState<BuilderPreviewMode | null>(
+    null,
+  );
+  const [confirmationAction, setConfirmationAction] =
+    useState<BuilderConfirmationAction | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const draftStorageKey = getOutletBuilderDraftStorageKey(vendorId, outletId);
 
-  useEffect(() => {
-    fetch(`/api/vendors/${vendorId}/outlets/${outletId}/page`, { cache: 'no-store' })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error?.message || 'Could not load outlet page');
-        const page = payload.data || {};
-        setBlocks(syncHeroBlockImage(Array.isArray(page.blocks) ? page.blocks : [], page.hero_url || ''));
-        setGallery(Array.isArray(page.gallery) ? page.gallery.map((item: string | GalleryItem) => typeof item === 'string' ? { url: item } : item).filter((item: GalleryItem) => Boolean(item?.url)) : []);
-        setHeroUrl(page.hero_url || '');
-        setBrandColour(page.brand_colour || '#00004D');
-        setFontFamily(page.font_family || 'Plus Jakarta Sans');
-        setSeoTitle(page.seo_title || '');
-        setSeoDescription(page.seo_description || '');
-        setFeaturedIds(Array.isArray(page.featured_ids) ? page.featured_ids : []);
-      })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load outlet page'))
-      .finally(() => setLoading(false));
-    fetch(`/api/vendors/${vendorId}/products?outlet_id=${outletId}&page=1&pageSize=24`, { cache: 'no-store' })
-      .then((response) => response.json())
-      .then((payload) => setProducts((payload.data?.items || []).map((product: { id: string; name: string; base_price: number }) => ({ id: product.id, name: product.name, base_price: Number(product.base_price) }))))
-      .catch(() => undefined);
-  }, [vendorId, outletId]);
-
-  const previewWidth = view === 'mobile' ? 'max-w-[390px]' : 'max-w-full';
-  const previewBlocks = useMemo(() => blocks.length ? blocks : [newBlock('hero'), newBlock('product_grid'), newBlock('contact')], [blocks]);
-
-  function updateBlock(id: string, updates: Partial<Block>) {
-    setBlocks((current) => current.map((block) => block.id === id ? { ...block, ...updates } : block));
-  }
-
-  function moveBlock(id: string, targetId: string) {
-    if (id === targetId) return;
-    setBlocks((current) => {
-      const sourceIndex = current.findIndex((block) => block.id === id);
-      const targetIndex = current.findIndex((block) => block.id === targetId);
-      if (sourceIndex < 0 || targetIndex < 0) return current;
-      const next = [...current];
-      const [moved] = next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, moved);
-      return next;
+  function syncHistoryState() {
+    setHistoryState({
+      canUndo: Boolean(historyRef.current?.canUndo),
+      canRedo: Boolean(historyRef.current?.canRedo),
     });
   }
 
-  async function save() {
-    setSaving(true); setError(''); setMessage('');
-    try {
-      const savedBlocks = syncHeroBlockImage(blocks, heroUrl);
-      const response = await fetch(`/api/vendors/${vendorId}/outlets/${outletId}/page`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ heroUrl, brandColour, fontFamily, seoTitle, seoDescription, featuredIds, blocks: savedBlocks, gallery }),
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      fetch(`/api/vendors/${vendorId}/outlets/${outletId}/page`, {
+        cache: "no-store",
+      }).then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok)
+          throw new Error(
+            payload.error?.message || "Could not load outlet page",
+          );
+        return payload.data;
+      }),
+      fetch(
+        `/api/vendors/${vendorId}/products?outlet_id=${outletId}&page=1&pageSize=24`,
+        { cache: "no-store" },
+      ).then((response) => response.json()),
+    ])
+      .then(([page, productPayload]) => {
+        if (!active) return;
+        const serverDraft =
+          page?.draft || createDefaultOutletPageDocument(outletName);
+        const serverDraftVersion = Number(page?.draftVersion || 0);
+        const localDraft = parseOutletBuilderLocalDraft(
+          window.localStorage.getItem(draftStorageKey),
+        );
+        const canRecover =
+          localDraft?.pending === true &&
+          localDraft.draftVersion === serverDraftVersion;
+        const loaded = canRecover ? localDraft.document : serverDraft;
+        setDocument(loaded);
+        historyRef.current = createHistory(loaded);
+        syncHistoryState();
+        setDraftVersion(serverDraftVersion);
+        setPublishedDocument(page?.isPublished ? page.published : null);
+        setPublishedAt(page?.publishedAt || null);
+        setDirty(canRecover);
+        setMessage(
+          canRecover ? "Recovered unsaved changes from this browser." : "",
+        );
+        if (localDraft?.pending && !canRecover) {
+          window.localStorage.removeItem(draftStorageKey);
+        }
+        setProducts(
+          (productPayload.data?.items || []).map((product: Product) => ({
+            ...product,
+            base_price: Number(product.base_price),
+          })),
+        );
+        setSelectedBlockId(loaded.hero.id);
+      })
+      .catch((reason) => {
+        if (active)
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Could not load outlet page",
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Could not save outlet page');
-      setBlocks(savedBlocks);
-      setMessage('Shop page saved. Open the public shop to verify it.');
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not save outlet page'); }
-    finally { setSaving(false); }
+    return () => {
+      active = false;
+    };
+  }, [draftStorageKey, outletId, outletName, vendorId]);
+
+  useEffect(() => {
+    if (loading || !dirty) return;
+    const timeout = window.setTimeout(() => {
+      window.localStorage.setItem(
+        draftStorageKey,
+        serializeOutletBuilderLocalDraft(document, draftVersion),
+      );
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [document, draftStorageKey, draftVersion, dirty, loading]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  function commit(next: OutletPageDocument, coalesceKey?: string) {
+    if (!historyRef.current) historyRef.current = createHistory(next);
+    else historyRef.current.commit(next, coalesceKey);
+    syncHistoryState();
+    setDocument(next);
+    setDirty(true);
+    setMessage("");
+    setError("");
   }
 
-  if (loading) return <div className="rounded-2xl bg-white p-8 text-sm text-gray-500">Loading shop page…</div>;
+  function updateDocument(
+    updater: (current: OutletPageDocument) => OutletPageDocument,
+    coalesceKey?: string,
+  ) {
+    commit(updater(document), coalesceKey);
+  }
+
+  function addBlock(type: OutletPageBlockType, index = document.blocks.length) {
+    const block = createOutletPageBlock(type);
+    updateDocument((current) => ({
+      ...current,
+      blocks: [
+        ...current.blocks.slice(0, index),
+        block,
+        ...current.blocks.slice(index),
+      ],
+    }));
+    setSelectedBlockId(block.id);
+  }
+
+  function moveBlock(blockId: string, targetIndex: number) {
+    updateDocument((current) => {
+      const sourceIndex = current.blocks.findIndex(
+        (block) => block.id === blockId,
+      );
+      if (sourceIndex < 0) return current;
+      const next = [...current.blocks];
+      const [moved] = next.splice(sourceIndex, 1);
+      const adjustedIndex =
+        sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      next.splice(Math.max(0, Math.min(adjustedIndex, next.length)), 0, moved);
+      return { ...current, blocks: next };
+    });
+  }
+
+  function deleteBlock(blockId: string) {
+    updateDocument((current) => ({
+      ...current,
+      blocks: current.blocks.filter((block) => block.id !== blockId),
+    }));
+    if (selectedBlockId === blockId) setSelectedBlockId(document.hero.id);
+  }
+
+  function duplicateBlock(blockId: string) {
+    const sourceIndex = document.blocks.findIndex((block) => block.id === blockId);
+    const source = document.blocks[sourceIndex];
+    if (!source || sourceIndex < 0) return;
+    const nextBlock = duplicateOutletPageBlock(source);
+    updateDocument((current) => ({
+      ...current,
+      blocks: [
+        ...current.blocks.slice(0, sourceIndex + 1),
+        nextBlock,
+        ...current.blocks.slice(sourceIndex + 1),
+      ],
+    }));
+    setSelectedBlockId(nextBlock.id);
+  }
+
+  function updateBlockById(
+    blockId: string,
+    updates: Partial<OutletPageBlock>,
+    coalesceKey?: string,
+  ) {
+    updateDocument((current) => ({
+      ...current,
+      blocks: current.blocks.map((block) =>
+        block.id === blockId ? { ...block, ...updates } : block,
+      ),
+    }), coalesceKey);
+  }
+
+  function updateBlock(updates: Partial<OutletPageBlock>) {
+    if (!selectedBlockId || selectedBlockId === document.hero.id) return;
+    updateBlockById(
+      selectedBlockId,
+      updates,
+      `inline:${selectedBlockId}:${Object.keys(updates).sort().join(",")}`,
+    );
+  }
+
+  function updateHero(
+    updates: Record<string, unknown>,
+    coalesceKey?: string,
+  ) {
+    updateDocument((current) => ({
+      ...current,
+      hero: { ...current.hero, ...updates },
+    }), coalesceKey);
+  }
+
+  function endInlineEdit() {
+    historyRef.current?.endCoalescedCommit?.();
+  }
+
+  function updateGallery(gallery: OutletPageDocument["gallery"]) {
+    updateDocument((current) => ({ ...current, gallery }));
+  }
+
+  function undo() {
+    if (!historyRef.current?.canUndo) return;
+    setDocument(historyRef.current.undo());
+    syncHistoryState();
+    setDirty(true);
+  }
+
+  function redo() {
+    if (!historyRef.current?.canRedo) return;
+    setDocument(historyRef.current.redo());
+    syncHistoryState();
+    setDirty(true);
+  }
+
+  const saveDraft = useCallback(async (mode: "manual" | "auto" = "manual"): Promise<number | null> => {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/vendors/${vendorId}/outlets/${outletId}/page`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            document,
+            expectedDraftVersion: draftVersion,
+          }),
+        },
+      );
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error?.message || "Could not save draft");
+      const saved = payload.data?.draft || document;
+      const savedVersion = Number(
+        payload.data?.draftVersion || draftVersion + 1,
+      );
+      setDocument(saved);
+      setDraftVersion(savedVersion);
+      setPublishedAt(payload.data?.publishedAt || publishedAt);
+      setDirty(false);
+      if (mode === "auto") {
+        window.localStorage.setItem(
+          draftStorageKey,
+          serializeOutletBuilderLocalDraft(
+            saved,
+            savedVersion,
+            Date.now(),
+            false,
+          ),
+        );
+      } else {
+        window.localStorage.removeItem(draftStorageKey);
+      }
+      setMessage(
+        mode === "auto"
+          ? "Draft autosaved."
+          : "Draft saved. Publish when you are ready.",
+      );
+      return savedVersion;
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not save draft",
+      );
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }, [document, draftStorageKey, draftVersion, outletId, publishedAt, vendorId]);
+
+  useEffect(() => {
+    if (loading || !dirty || saving || publishing) return;
+    const timeout = window.setTimeout(() => {
+      if (!saving) void saveDraft("auto");
+    }, OUTLET_BUILDER_AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [document, dirty, loading, publishing, saveDraft, saving]);
+
+  async function publish() {
+    setPublishing(true);
+    setError("");
+    setMessage("");
+    try {
+      // Always persist the current canvas before publishing. This prevents a
+      // recent edit from being skipped when the 8-second autosave already
+      // changed dirty=false or when the autosave is between state updates.
+      const savedVersion = await saveDraft();
+      if (savedVersion === null) return;
+      const expectedDraftVersion = savedVersion;
+      const response = await fetch(
+        `/api/vendors/${vendorId}/outlets/${outletId}/page/publish`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedDraftVersion }),
+        },
+      );
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error?.message || "Could not publish page");
+      setPublishedDocument(payload.data?.published || document);
+      setDocument(payload.data?.draft || document);
+      setDraftVersion(Number(payload.data?.draftVersion || draftVersion));
+      setPublishedAt(payload.data?.publishedAt || new Date().toISOString());
+      setDirty(false);
+      window.localStorage.removeItem(draftStorageKey);
+      setMessage(
+        `Published version ${payload.data?.publishedVersion || "latest"}. Customer shop now uses this version.`,
+      );
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not publish page",
+      );
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function discardDraft() {
+    setDiscarding(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/api/vendors/${vendorId}/outlets/${outletId}/page`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error?.message || "Could not discard draft");
+      const resetDocument =
+        payload.data?.draft ||
+        publishedDocument ||
+        createDefaultOutletPageDocument(outletName);
+      historyRef.current = createHistory(resetDocument);
+      syncHistoryState();
+      setDocument(resetDocument);
+      setDraftVersion(Number(payload.data?.draftVersion || draftVersion + 1));
+      setPublishedDocument(payload.data?.published || publishedDocument);
+      setPublishedAt(payload.data?.publishedAt || publishedAt);
+      setDirty(false);
+      setSelectedBlockId(resetDocument.hero.id);
+      window.localStorage.removeItem(draftStorageKey);
+      setMessage("Draft changes discarded. The published version is restored.");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not discard draft",
+      );
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
+  function requestConfirmation(action: BuilderConfirmationAction) {
+    setConfirmationAction(action);
+  }
+
+  async function confirmRequestedAction() {
+    const action = confirmationAction;
+    setConfirmationAction(null);
+    if (action === "publish") await publish();
+    if (action === "discard") await discardDraft();
+  }
+
+  const selectedBlock =
+    selectedBlockId && selectedBlockId !== document.hero.id
+      ? document.blocks.find((block) => block.id === selectedBlockId)
+      : null;
+  if (loading)
+    return (
+      <div className="rounded-2xl bg-white p-8 text-sm text-gray-500">
+        Loading Outlet Studio…
+      </div>
+    );
+
+  const viewportConfig = getBuilderViewportConfig(view);
+
+  function closeBuilder() {
+    if (
+      dirty &&
+      !window.confirm("You have unsaved changes. Close Outlet Studio anyway?")
+    ) {
+      return;
+    }
+    onClose();
+  }
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-primary/45 p-4 sm:p-8">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[28px] bg-[#f8fafc] shadow-2xl">
-        <header className="flex flex-col gap-4 border-b border-primary/10 bg-primary px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
-          <div><p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Outlet studio</p><h2 className="mt-1 text-2xl font-bold tracking-tight">{outletName}</h2><p className="mt-1 text-sm text-indigo-100/75">Arrange the story travellers see when they find this outlet.</p></div>
-          <div className="flex items-center gap-2"><Link href={getOutletShopHref(outletId)} target="_blank" className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10">Open public shop <ExternalLink size={14} /></Link><button type="button" onClick={onClose} className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10" aria-label="Close page builder"><X size={18} /></button><button type="button" onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#FFCC00] px-4 py-2.5 text-sm font-bold text-primary disabled:opacity-50"><Save size={16} /> {saving ? 'Saving…' : 'Save page'}</button></div>
+    <div className="fixed inset-0 z-[60] bg-primary/45 p-0 sm:p-4 lg:p-8">
+      <div className="mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-[#f8fafc] shadow-2xl sm:rounded-[28px]">
+        <header className="flex shrink-0 flex-col gap-4 border-b border-primary/10 bg-primary px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+              Outlet studio
+            </p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">
+              {outletName}
+            </h2>
+            <p className="mt-1 text-sm text-indigo-100/75">
+              Build the shop page travellers see.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!historyState.canUndo}
+              className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10 disabled:opacity-40"
+              aria-label="Undo"
+            >
+              <Undo2 size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!historyState.canRedo}
+              className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10 disabled:opacity-40"
+              aria-label="Redo"
+            >
+              <Redo2 size={17} />
+            </button>
+            <Link
+              href={getOutletShopHref(outletId)}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10"
+            >
+              View public shop <ExternalLink size={14} />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("draft")}
+              disabled={saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              <Eye size={14} /> Draft preview
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode("published")}
+              disabled={!publishedDocument || saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              <Globe2 size={14} /> Published
+            </button>
+            <button
+              type="button"
+              onClick={() => requestConfirmation("discard")}
+              disabled={!dirty || saving || publishing || discarding}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200/30 px-3 py-2.5 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-40"
+            >
+              <RotateCcw size={14} /> {discarding ? "Discarding…" : "Discard draft"}
+            </button>
+            <button
+              type="button"
+              onClick={closeBuilder}
+              className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10"
+              aria-label="Close page builder"
+            >
+              <X size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveDraft()}
+              disabled={saving || publishing || !dirty}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              <Save size={16} /> {saving ? "Saving…" : "Save draft"}
+            </button>
+            <button
+              type="button"
+              onClick={() => requestConfirmation("publish")}
+              disabled={saving || publishing || discarding}
+              className="rounded-xl bg-[#FFCC00] px-4 py-2.5 text-sm font-bold text-primary disabled:opacity-50"
+            >
+              {publishing ? "Publishing…" : "Publish"}
+            </button>
+          </div>
         </header>
-        <div className="grid lg:grid-cols-[280px_minmax(0,1fr)_330px]">
-          <aside className="border-b border-primary/10 bg-white p-5 lg:border-b-0 lg:border-r"><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Page settings</p><div className="mt-4 space-y-3"><label className="block text-xs font-semibold text-gray-600">Hero image URL<input value={heroUrl} onChange={(event) => setHeroUrl(event.target.value)} placeholder="https://…" className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-primary" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-xs font-semibold text-gray-600">Brand colour<div className="mt-1 flex h-10 items-center gap-2 rounded-xl border border-gray-200 px-2"><input type="color" value={brandColour} onChange={(event) => setBrandColour(event.target.value)} className="h-7 w-8 cursor-pointer rounded border-0 bg-transparent p-0" /><span className="font-mono text-xs text-gray-500">{brandColour}</span></div></label><label className="block text-xs font-semibold text-gray-600">Font<select value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"><option>Plus Jakarta Sans</option><option>Fraunces</option><option>IBM Plex Mono</option><option>Georgia</option></select></label></div><label className="block text-xs font-semibold text-gray-600">SEO title<input value={seoTitle} onChange={(event) => setSeoTitle(event.target.value)} placeholder={`${outletName} · Malaysia Tourism`} className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-primary" /></label><label className="block text-xs font-semibold text-gray-600">SEO description<textarea value={seoDescription} onChange={(event) => setSeoDescription(event.target.value)} rows={3} placeholder="A short description for search results…" className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary" /></label><div><p className="text-xs font-semibold text-gray-600">Featured products</p><div className="mt-1 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-2">{products.length === 0 ? <p className="px-1 py-2 text-[11px] text-gray-400">No products found for this outlet.</p> : products.map((product) => <label key={product.id} className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-xs text-gray-700 hover:bg-secondary"><input type="checkbox" checked={featuredIds.includes(product.id)} onChange={() => setFeaturedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : current.length < 12 ? [...current, product.id] : current)} /> <span className="min-w-0 flex-1 truncate">{product.name}</span><span className="font-mono text-[10px] text-gray-400">RM {product.base_price.toFixed(2)}</span></label>)}</div><p className="mt-1 text-[10px] text-gray-400">Choose up to 12 items for the product grid.</p></div></div></aside>
-          <main className="min-h-[680px] p-5 sm:p-7"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Live preview</p><p className="mt-1 text-sm text-gray-500">The page uses the same ordered blocks on desktop and mobile.</p></div><div className="flex rounded-xl bg-white p-1 shadow-sm"><button type="button" onClick={() => setView('desktop')} className={`rounded-lg p-2 ${view === 'desktop' ? 'bg-secondary text-primary' : 'text-gray-400'}`} aria-label="Desktop preview"><Monitor size={16} /></button><button type="button" onClick={() => setView('mobile')} className={`rounded-lg p-2 ${view === 'mobile' ? 'bg-secondary text-primary' : 'text-gray-400'}`} aria-label="Mobile preview"><Smartphone size={16} /></button></div></div><div className={`mx-auto overflow-hidden rounded-[22px] border border-primary/10 bg-white shadow-sm transition-all ${previewWidth}`} style={{ fontFamily }}><div className="h-28 bg-gradient-to-br from-[#00004D] via-[#11115A] to-[#FFCC00] p-5 text-white" style={heroUrl ? { backgroundImage: `linear-gradient(90deg, rgba(0,0,77,.82), rgba(0,0,77,.2)), url(${heroUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">{outletName}</p><p className="mt-7 text-xl font-bold">A local day, made memorable.</p></div><div className="space-y-3 p-4">{previewBlocks.map((block) => <div key={block.id} className="rounded-2xl border border-gray-100 bg-[#fafbff] p-4"><p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: brandColour }}>{BLOCKS.find((item) => item.type === block.type)?.label || block.type}</p><p className="mt-1 font-semibold text-gray-900">{block.title || 'Untitled section'}</p>{block.body && <p className="mt-1 text-xs leading-5 text-gray-500">{block.body}</p>}{block.type === 'gallery' && <div className="mt-3 grid grid-cols-3 gap-1.5">{(gallery.length ? gallery : [{ url: '' }, { url: '' }, { url: '' }]).slice(0, 3).map((item, index) => <div key={index} className="h-14 rounded-lg bg-secondary/70" style={item.url ? { backgroundImage: `url(${item.url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />)}</div>}</div>)}</div></div></main>
-          <aside className="border-t border-primary/10 bg-white p-5 lg:border-l lg:border-t-0"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Page structure</p><p className="mt-1 text-xs text-gray-500">Drag to reorder sections.</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-primary">{blocks.length} blocks</span></div><div className="mt-4 space-y-2">{blocks.map((block) => <div key={block.id} draggable onDragStart={() => setDraggingId(block.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggingId) moveBlock(draggingId, block.id); setDraggingId(null); }} className={`rounded-2xl border p-3 transition ${draggingId === block.id ? 'border-amber-400 bg-amber-50' : 'border-gray-100 bg-gray-50/70'}`}><div className="flex items-start gap-2"><GripVertical className="mt-1 shrink-0 cursor-grab text-gray-400" size={16} /><div className="min-w-0 flex-1"><p className="text-xs font-bold text-gray-900">{BLOCKS.find((item) => item.type === block.type)?.label || block.type}</p><input value={block.title || ''} onChange={(event) => updateBlock(block.id, { title: event.target.value })} className="mt-2 h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs" placeholder="Section title" /><textarea value={block.body || ''} onChange={(event) => updateBlock(block.id, { body: event.target.value })} rows={2} className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs" placeholder="Short supporting copy" />{block.type === 'hero' ? <p className="mt-2 rounded-lg bg-secondary px-2 py-1.5 text-[10px] text-primary">Hero image is managed in Page settings above.</p> : block.type !== 'gallery' && <input value={block.image || ''} onChange={(event) => updateBlock(block.id, { image: event.target.value })} className="mt-2 h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs" placeholder="Section image URL" />}</div><button type="button" onClick={() => setBlocks((current) => current.filter((item) => item.id !== block.id))} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600" aria-label="Remove block"><Trash2 size={14} /></button></div></div>)}{!blocks.length && <p className="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-center text-xs text-gray-400">Add a section to start shaping this page.</p>}</div><div className="mt-5 border-t border-gray-100 pt-4"><p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-gray-500">Add section</p><div className="grid gap-2">{BLOCKS.map((block) => <button type="button" key={block.type} onClick={() => setBlocks((current) => [...current, newBlock(block.type)])} className="flex items-center gap-2 rounded-xl border border-gray-100 px-3 py-2.5 text-left text-xs font-semibold text-gray-700 hover:border-primary/20 hover:bg-secondary"><Plus size={14} className="text-primary" />{block.label}</button>)}</div></div><div className="mt-5 border-t border-gray-100 pt-4"><div className="flex items-center gap-2"><ImagePlus size={15} className="text-amber-700" /><p className="text-xs font-bold uppercase tracking-[0.16em] text-gray-500">Gallery URLs</p></div><textarea value={gallery.map((item) => item.url).join('\n')} onChange={(event) => setGallery(event.target.value.split('\n').map((url) => url.trim()).filter(Boolean).map((url) => ({ url })))} rows={4} placeholder="One image URL per line" className="mt-2 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs" /></div>{message && <p className="mt-4 text-xs font-semibold text-primary">{message}</p>}{error && <p className="mt-4 text-xs font-semibold text-red-600">{error}</p>}</aside>
+        {confirmationAction && (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-primary/45 p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="outlet-builder-confirm-title"
+              className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+            >
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                Outlet Studio
+              </p>
+              <h3
+                id="outlet-builder-confirm-title"
+                className="mt-2 text-xl font-bold text-slate-900"
+              >
+                {getBuilderConfirmationCopy(confirmationAction).title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {getBuilderConfirmationCopy(confirmationAction).body}
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmationAction(null)}
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmRequestedAction()}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-bold text-white ${confirmationAction === "publish" ? "bg-primary" : "bg-red-600"}`}
+                >
+                  {getBuilderConfirmationCopy(confirmationAction).confirm}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {previewMode && (
+          <div className="fixed inset-0 z-[80] bg-primary/60 p-3 sm:p-8">
+            <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-primary/10 bg-primary px-5 py-4 text-white sm:px-7">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                    {getBuilderPreviewLabel(previewMode)}
+                  </p>
+                  <p className="mt-1 text-sm text-indigo-100/80">
+                    {previewMode === "draft"
+                      ? "This is what the current draft looks like."
+                      : "This is the version customers currently see."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewMode(null)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold hover:bg-white/10"
+                >
+                  Close preview <X size={15} />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc]">
+                {previewMode === "published" && !publishedDocument ? (
+                  <div className="p-8 text-center text-sm text-gray-500">
+                    Publish this outlet page first to preview the live version.
+                  </div>
+                ) : (
+                  <OutletPageRenderer
+                    document={previewMode === "draft" ? document : publishedDocument!}
+                    outlet={{ id: outletId, name: outletName }}
+                    products={products}
+                    mode="public"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_minmax(0,42vh)] lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:grid-rows-1">
+          <div className="min-h-0 overflow-y-auto border-b border-primary/10 lg:border-b-0 lg:border-r">
+            <OutletBuilderPalette
+              onAddBlock={(type) => addBlock(type)}
+              onBeginDrag={() => undefined}
+            />
+            <div className="border-t border-primary/10 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                Page settings
+              </p>
+              <div className="mt-3 space-y-3">
+                <label className="block text-xs font-semibold text-gray-600">
+                  Brand colour
+                  <div className="mt-1 flex h-9 items-center gap-2 rounded-xl border border-gray-200 px-2">
+                    <input
+                      type="color"
+                      value={document.brandColour}
+                      onChange={(event) =>
+                        updateDocument((current) => ({
+                          ...current,
+                          brandColour: event.target.value,
+                        }))
+                      }
+                      className="h-6 w-8"
+                    />
+                    <span className="font-mono text-[10px] text-gray-500">
+                      {document.brandColour}
+                    </span>
+                  </div>
+                </label>
+                <label className="block text-xs font-semibold text-gray-600">
+                  Font
+                  <select
+                    value={document.fontFamily}
+                    onChange={(event) =>
+                      updateDocument((current) => ({
+                        ...current,
+                        fontFamily: event.target.value,
+                      }))
+                    }
+                    className="mt-1 h-9 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
+                  >
+                    <option>Plus Jakarta Sans</option>
+                    <option>Fraunces</option>
+                    <option>IBM Plex Mono</option>
+                    <option>Georgia</option>
+                  </select>
+                </label>
+                <label className="block text-xs font-semibold text-gray-600">
+                  SEO title
+                  <input
+                    value={document.seoTitle}
+                    onChange={(event) =>
+                      updateDocument((current) => ({
+                        ...current,
+                        seoTitle: event.target.value,
+                      }))
+                    }
+                    className="mt-1 h-9 w-full rounded-xl border border-gray-200 px-2 text-xs"
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-gray-600">
+                  SEO description
+                  <textarea
+                    value={document.seoDescription}
+                    onChange={(event) =>
+                      updateDocument((current) => ({
+                        ...current,
+                        seoDescription: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-2 py-1.5 text-xs"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+            <div className="flex shrink-0 flex-col gap-3 border-b border-primary/10 bg-white px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+                  Live preview
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {dirty
+                    ? "Unsaved changes"
+                    : publishedAt
+                      ? `Last published ${new Date(publishedAt).toLocaleString()}`
+                      : "Draft preview"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold text-gray-400">
+                  {viewportConfig.label}
+                </span>
+                <div className="flex rounded-xl bg-secondary p-1">
+                <button
+                  type="button"
+                  onClick={() => setView("desktop")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "desktop" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  aria-label="Desktop preview"
+                >
+                  <Monitor size={15} /> <span className="hidden xl:inline">Desktop</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("tablet")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "tablet" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  aria-label="Tablet preview"
+                >
+                  <Tablet size={15} /> <span className="hidden xl:inline">Tablet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("mobile")}
+                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "mobile" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                  aria-label="Mobile preview"
+                >
+                  <Smartphone size={15} /> <span className="hidden xl:inline">Mobile</span>
+                </button>
+                </div>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <OutletBuilderCanvas
+                vendorId={vendorId}
+                document={document}
+                outlet={{ id: outletId, name: outletName }}
+                products={products}
+                view={view}
+                selectedBlockId={selectedBlockId}
+                onSelect={setSelectedBlockId}
+                onInsert={addBlock}
+                onMove={moveBlock}
+                onDelete={deleteBlock}
+                onDuplicate={duplicateBlock}
+                onEditHero={(updates) =>
+                  updateHero(
+                    updates,
+                    `inline:hero:${Object.keys(updates).sort().join(",")}`,
+                  )
+                }
+                onEditBlock={(blockId, updates) =>
+                  updateBlockById(
+                    blockId,
+                    updates,
+                    `inline:${blockId}:${Object.keys(updates).sort().join(",")}`,
+                  )
+                }
+                onEndInlineEdit={endInlineEdit}
+              />
+            </div>
+          </main>
+          <OutletBuilderInspector
+            vendorId={vendorId}
+            block={selectedBlock}
+            hero={selectedBlockId === document.hero.id ? document.hero : null}
+            gallery={document.gallery}
+            products={products}
+            mediaUrls={getOutletBuilderMediaUrls(document)}
+            onUpdateBlock={updateBlock}
+            onUpdateHero={updateHero}
+            onUpdateGallery={updateGallery}
+          />
         </div>
+        {(message || error) && (
+          <div
+            className={`border-t px-5 py-3 text-sm font-semibold ${error ? "border-red-100 bg-red-50 text-red-700" : "border-emerald-100 bg-emerald-50 text-emerald-700"}`}
+          >
+            {error || message}
+          </div>
+        )}
       </div>
     </div>
   );
