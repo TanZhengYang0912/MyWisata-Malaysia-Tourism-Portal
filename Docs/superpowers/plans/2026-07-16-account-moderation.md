@@ -60,7 +60,7 @@ git commit -m "feat: add fail-closed account text moderation"
 
 **Files:**
 - Modify: `app/api/admin/users/[userId]/route.ts`
-- Create: `supabase/migrations/20260716000080_account_moderation_rpc.sql`
+- Create: `supabase/migrations/054_account_moderation_rpc.sql`
 - Create: `app/api/admin/users/[userId]/__tests__/route.test.ts`
 
 **Interfaces:**
@@ -94,7 +94,7 @@ Expected: PASS. Then run `rg -n "admin_manage_user|GRANT EXECUTE|REVOKE ALL" sup
 - [ ] **Step 6: Commit the admin boundary change**
 
 ```powershell
-git add app/api/admin/users/[userId]/route.ts app/api/admin/users/[userId]/__tests__/route.test.ts supabase/migrations/20260716000080_account_moderation_rpc.sql
+git add app/api/admin/users/[userId]/route.ts app/api/admin/users/[userId]/__tests__/route.test.ts supabase/migrations/054_account_moderation_rpc.sql
 git commit -m "feat: moderate admin account-management reasons"
 ```
 
@@ -144,7 +144,7 @@ git commit -m "feat: moderate account suspension appeals"
 
 **Files:**
 - Verify: all files changed in Tasks 1–3
-- Verify: `supabase/migrations/20260716000080_account_moderation_rpc.sql`
+- Verify: `supabase/migrations/054_account_moderation_rpc.sql`
 
 - [ ] **Step 1: Run the complete automated checks**
 
