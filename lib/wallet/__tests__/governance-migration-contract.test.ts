@@ -26,4 +26,15 @@ describe('wallet withdrawal governance migration contract', () => {
     expect(sql).toContain('wt_bucket_type_consistent');
     expect(sql).toContain('reserved_earnings_sen >= 0');
   });
+
+  it('settles Wallet checkout under a Wallet row lock before it commits the order', async () => {
+    const sql = await readFile(migrationPath, 'utf8');
+
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.finalize_checkout');
+    expect(sql).toContain("IF v_session.payment_method = 'wallet' THEN");
+    expect(sql).toContain('WHERE user_id = v_session.user_id');
+    expect(sql).toContain("RAISE EXCEPTION 'wallet_insufficient'");
+    expect(sql).toContain("'wallet-spend:' || v_session.id::text || ':topup'");
+    expect(sql).toContain("'wallet-spend:' || v_session.id::text || ':earnings'");
+  });
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, checkoutFinalizeSchema } from '@/lib/validation/schemas';
+import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,12 @@ export async function POST(request: Request) {
     p_provider_payment_id: parsed.data.providerPaymentId ?? null,
     p_provider_event_id: parsed.data.providerEventId ?? null,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 409 });
+  if (error) {
+    const code = getCheckoutErrorCode(error.message);
+    return NextResponse.json(
+      { data: null, error: { code, message: getCheckoutErrorMessage(error.message) } },
+      { status: 409 },
+    );
+  }
   return NextResponse.json({ data, error: null });
 }

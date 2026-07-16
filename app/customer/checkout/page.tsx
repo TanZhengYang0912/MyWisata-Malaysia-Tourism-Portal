@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CreditCard, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -27,6 +27,11 @@ const METHODS = [
   { id: "wallet", label: "MyWisata Wallet Balance", icon: Wallet },
 ];
 
+type WalletSummary = {
+  topupSen: number;
+  earningsSen: number;
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -36,6 +41,8 @@ export default function CheckoutPage() {
   const [method, setMethod] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+  const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
 
   useEffect(() => {
     setVoucherCode(new URLSearchParams(window.location.search).get("voucher"));
@@ -44,6 +51,23 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (voucherCode) getVoucherByCode(voucherCode).then(setVoucher);
   }, [voucherCode]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    fetch("/api/wallet/summary")
+      .then(async (response) => response.ok ? response.json() : Promise.reject(new Error("wallet_summary_failed")))
+      .then((body: { data?: WalletSummary }) => {
+        if (!cancelled) setWalletSummary(body.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setWalletSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setWalletSummaryLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
@@ -65,6 +89,9 @@ export default function CheckoutPage() {
   }, [currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
+  const totalSen = Math.round(total * 100);
+  const walletSpendableSen = (walletSummary?.topupSen ?? 0) + (walletSummary?.earningsSen ?? 0);
+  const walletInsufficient = walletSummaryLoaded && walletSpendableSen < totalSen;
 
   if (selectedItems.length === 0) {
     return <EmptyState title="Nothing to check out" description="Select at least one item in your cart to continue." />;
@@ -136,15 +163,28 @@ export default function CheckoutPage() {
         {METHODS.map((m) => (
           <button
             key={m.id}
+            type="button"
+            disabled={m.id === "wallet" && walletInsufficient}
             onClick={() => setMethod(m.id)}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border text-left"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border text-left disabled:cursor-not-allowed disabled:opacity-50"
             style={{ borderColor: method === m.id ? "var(--primary)" : "var(--border)", backgroundColor: method === m.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent" }}
           >
             <m.icon size={16} className="text-teal shrink-0" />
-            <span className="text-sm font-medium text-foreground">{m.label}</span>
+            <span className="text-sm font-medium text-foreground flex-1">{m.label}</span>
+            {m.id === "wallet" && walletSummaryLoaded && (
+              <span className="text-xs text-muted-foreground font-[family-name:var(--font-mono)]">
+                RM {(walletSpendableSen / 100).toFixed(2)}
+              </span>
+            )}
           </button>
         ))}
       </div>
+
+      {walletInsufficient && (
+        <p className="-mt-3 mb-6 text-xs text-muted-foreground">
+          Wallet payment is unavailable for this order because your spendable balance is too low. Pending rewards and withdrawal reserves cannot be used for checkout.
+        </p>
+      )}
 
       {checkoutError && (
         <div className="mb-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
@@ -159,6 +199,12 @@ export default function CheckoutPage() {
           >
             Return to cart
           </button>
+          {checkoutError.includes("Wallet balance is no longer sufficient") && (
+            <div className="mt-3 flex gap-2 pl-6">
+              <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>Top Up</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { setMethod("stripe_card"); setCheckoutError(null); }}>Pay by card</Button>
+            </div>
+          )}
         </div>
       )}
 
