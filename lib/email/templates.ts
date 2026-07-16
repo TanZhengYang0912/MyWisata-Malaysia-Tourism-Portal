@@ -5,7 +5,10 @@ export type TransactionEmailType =
   | 'withdrawal_approved'
   | 'withdrawal_paid'
   | 'withdrawal_failed'
-  | 'withdrawal_rejected';
+  | 'withdrawal_rejected'
+  | 'recommendation_reward_pending'
+  | 'recommendation_reward_available'
+  | 'recommendation_reward_reversed';
 
 export type AccountEmailType =
   | 'account_suspended'
@@ -42,6 +45,9 @@ const SUBJECTS: Record<TransactionEmailType, string> = {
   withdrawal_paid: 'Withdrawal paid',
   withdrawal_failed: 'Withdrawal failed',
   withdrawal_rejected: 'Withdrawal rejected',
+  recommendation_reward_pending: 'Your recommendation earned a pending reward',
+  recommendation_reward_available: 'Your recommendation reward is now available',
+  recommendation_reward_reversed: 'Your pending recommendation reward was reversed',
 };
 
 function escapeHtml(value: string): string {
