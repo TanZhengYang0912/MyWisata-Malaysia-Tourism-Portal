@@ -17,8 +17,10 @@ export interface User {
   role: Role;
   avatarInitial: string;
   city?: string;
+  country?: string;
   phone?: string;
-  verificationTier: "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
+  status?: "active" | "suspended" | "deleted";
+  verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -85,6 +87,7 @@ export interface BookingSlot {
   startsAt: string; // ISO datetime
   capacity: number;
   booked: number;
+  status?: "available" | "full" | "expired" | string;
   priceOverride?: number;
 }
 
@@ -145,6 +148,7 @@ export interface Voucher {
   minSpend: number;
   usageCap: number;
   usageCount: number;
+  perCustomerLimit?: number;
   expiresAt: string; // ISO date
   productId?: string;
   buyQuantity?: number;
@@ -207,7 +211,39 @@ export interface PublicUser {
   avatarUrl?: string;
   city?: string;
   country?: string;
+  bio?: string;
   isKycVerified: boolean;
+}
+
+export interface ProfileSummary {
+  id: string;
+  email: string;
+  fullName: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  phone: string | null;
+  maskedPhone: string | null;
+  city: string | null;
+  country: string | null;
+  status: "active" | "suspended" | "deleted";
+  tier: User["verificationTier"];
+  kycStatus: "unverified" | "pending" | "approved" | "rejected";
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  profileComplete: boolean;
+  survey: {
+    interests: string[];
+    travelStyle: string | null;
+    budgetRange: string | null;
+    mobilityNeeds: string | null;
+  } | null;
+  latestKycReview: {
+    status: string;
+    reasonCode: string | null;
+    reasonDetail: string | null;
+    reviewedAt: string | null;
+  } | null;
 }
 
 export interface AdminKycSubmission {

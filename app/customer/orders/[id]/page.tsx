@@ -14,6 +14,8 @@ export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
+  const [requestingRefund, setRequestingRefund] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -22,6 +24,17 @@ export default function OrderDetailPage() {
       if (o) setBookings(await getBookingsForOrder(o.id));
     })();
   }, [params.id]);
+
+  async function requestRefund() {
+    if (!order || requestingRefund) return;
+    const reason = window.prompt("Why would you like to request a refund?");
+    if (!reason || reason.trim().length < 5) return;
+    setRequestingRefund(true);
+    const response = await fetch(`/api/orders/${order.id}/refund`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) });
+    const payload = await response.json().catch(() => ({}));
+    setRefundMessage(response.ok ? "Refund request submitted for admin review." : payload.error?.message ?? "Unable to submit refund request.");
+    setRequestingRefund(false);
+  }
 
   if (order === undefined) {
     return <div className="max-w-lg mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
@@ -98,9 +111,11 @@ export default function OrderDetailPage() {
       )}
 
       <div className="flex gap-3 print:hidden">
+        {(order.status === "PAID" || order.status === "COMPLETED") && <Button type="button" variant="outline" className="flex-1" disabled={requestingRefund} onClick={() => void requestRefund()}>{requestingRefund ? "Submitting…" : "Request refund"}</Button>}
         <Button type="button" variant="outline" className="flex-1" onClick={() => window.print()}>Print receipt</Button>
         <Link href="/customer/activity?tab=orders" className="flex-1"><Button variant="outline" className="w-full">Back to Order History</Button></Link>
       </div>
+      {refundMessage && <p className="mt-3 text-center text-xs font-semibold text-primary">{refundMessage}</p>}
     </div>
   );
 }

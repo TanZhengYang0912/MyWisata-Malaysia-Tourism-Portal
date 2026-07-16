@@ -34,6 +34,7 @@ import { retrieve } from './retrieve';
 import { generateAnswer } from './generate';
 import { answerQuestion as matchKeyword, type KbDoc } from './match';
 import { classifyIntent } from './intent';
+import { redactPII } from './pii';
 
 export const FALLBACK_ANSWER = "Sorry, I don't know that one. Would you like our team to help?";
 const GREETING_REPLY =
@@ -53,9 +54,17 @@ export interface AnswerResult {
   canEscalate: boolean;
   usedKb: UsedKbRef[];
   mode: 'llm' | 'keyword' | 'intent';
+  /** Whether redactPII() found anything in the raw question — independent
+   *  of mode, since this describes what the user typed, not how it was
+   *  answered. CLAUDE-ADMIN-AI.md Part 1: logged on the message row. */
+  piiDetected: boolean;
 }
 
-async function answerWithKeywordFallback(service: ReturnType<typeof createServiceClient>, question: string): Promise<AnswerResult> {
+async function answerWithKeywordFallback(
+  service: ReturnType<typeof createServiceClient>,
+  question: string,
+  piiDetected: boolean,
+): Promise<AnswerResult> {
   const { data: kbRows } = await service
     .from('chatbot_kb_documents')
     .select('id, title, body, keywords, category')
@@ -71,11 +80,18 @@ async function answerWithKeywordFallback(service: ReturnType<typeof createServic
 
   const match = matchKeyword(question, docs);
   return match
-    ? { answer: match.body, kbMatched: true, canEscalate: false, usedKb: [{ id: match.id, similarity: null }], mode: 'keyword' }
-    : { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword' };
+    ? { answer: match.body, kbMatched: true, canEscalate: false, usedKb: [{ id: match.id, similarity: null }], mode: 'keyword', piiDetected }
+    : { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected };
 }
 
 export async function answerQuestion(question: string): Promise<AnswerResult> {
+  // Computed once from the raw question, independent of which mode ends up
+  // answering it — a keyword-mode or intent-gated reply can still follow a
+  // message that contained PII. The actual redaction enforcement lives in
+  // embed.ts/generate.ts themselves (defence in depth); this call is purely
+  // for the pii_detected signal the route logs on the message row.
+  const piiDetected = redactPII(question).found;
+
   // Never escalate, never retrieve, never call the LLM for these — see the
   // file header and lib/chatbot/intent.ts. kbMatched: true because the bot
   // DID successfully handle the message; marking it false would (a) offer
@@ -83,13 +99,13 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
   // (b) pollute the admin's "top unanswered questions" list with greetings.
   const intent = classifyIntent(question);
   if (intent === 'greeting') {
-    return { answer: GREETING_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent' };
+    return { answer: GREETING_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
   }
   if (intent === 'chitchat') {
-    return { answer: CHITCHAT_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent' };
+    return { answer: CHITCHAT_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
   }
   if (intent === 'unclear') {
-    return { answer: UNCLEAR_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent' };
+    return { answer: UNCLEAR_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
   }
 
   const service = createServiceClient();
@@ -100,7 +116,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
       if (retrieved.length === 0) {
         // Threshold check happens BEFORE the LLM call — the model never
         // sees an off-topic question at all. See lib/chatbot/retrieve.ts.
-        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm' };
+        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected };
       }
 
       const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
@@ -110,15 +126,15 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
         // NO_ANSWER — still record which docs were retrieved/considered,
         // useful admin-side provenance even though the model couldn't
         // ground an answer in them.
-        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb, mode: 'llm' };
+        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb, mode: 'llm', piiDetected };
       }
 
-      return { answer: llmAnswer, kbMatched: true, canEscalate: false, usedKb, mode: 'llm' };
+      return { answer: llmAnswer, kbMatched: true, canEscalate: false, usedKb, mode: 'llm', piiDetected };
     } catch (error) {
       console.error('[chatbot] LLM pipeline failed, falling back to keyword matcher', error instanceof Error ? error.message : error);
       // fall through to keyword fallback below
     }
   }
 
-  return answerWithKeywordFallback(service, question);
+  return answerWithKeywordFallback(service, question, piiDetected);
 }

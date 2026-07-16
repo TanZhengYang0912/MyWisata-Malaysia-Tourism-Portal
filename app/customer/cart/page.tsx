@@ -91,6 +91,7 @@ export default function CartPage() {
       const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
       const seatsLeft = slot ? slot.capacity - slot.booked : undefined;
       const available = (stockLimit === undefined || (stockLimit > 0 && item.qty <= stockLimit))
+        && (!slot || !slot.status || slot.status === "available")
         && (seatsLeft === undefined || (seatsLeft > 0 && item.qty <= seatsLeft));
       return available ? [cartItemKey(item)] : [];
     }),
@@ -111,6 +112,7 @@ export default function CartPage() {
         const activity = activities.find((candidate) => candidate.id === item.activityId);
         return {
           productId: item.activityId,
+          outletId: activity?.outletId,
           quantity: item.qty,
           unitPrice: activity ? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId)) : 0,
         };
@@ -211,7 +213,7 @@ export default function CartPage() {
         title="Your cart is empty"
         description="Browse experiences and add a booking or product to get started."
         action={
-          <Link href="/customer/explore">
+          <Link href="/customer">
             <Button>Explore Experiences</Button>
           </Link>
         }
@@ -255,6 +257,7 @@ export default function CartPage() {
           const seatsLeft = slot ? slot.capacity - slot.booked : undefined;
           const slotLoaded = !item.slotId || Boolean(slot);
           const available = slotLoaded
+            && (!slot || !slot.status || slot.status === "available")
             && (stockLimit === undefined || (stockLimit > 0 && item.qty <= stockLimit))
             && (seatsLeft === undefined || (seatsLeft > 0 && item.qty <= seatsLeft));
           return (
@@ -280,7 +283,9 @@ export default function CartPage() {
                   <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                     <CalendarClock size={11} />
                     {new Date(slot.startsAt).toLocaleString("en-MY", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                    {seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
+                    {slot.status && slot.status !== "available"
+                      ? ` · ${slot.status === "expired" ? "Slot expired" : "Unavailable"}`
+                      : seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
                   </p>
                 )}
                 <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">RM {price.toFixed(2)} × {item.qty}</p>

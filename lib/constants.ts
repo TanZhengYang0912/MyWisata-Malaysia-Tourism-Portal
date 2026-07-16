@@ -6,6 +6,7 @@ export const KYC_STATUS  = ['unverified', 'pending', 'approved', 'rejected'] as 
 // ── Verification tier ladder (ADR-025) ────────────────────────────────────────
 // Order is authoritative — use meetsMinTier() for comparisons, never string equality.
 export const TIER_ORDER = [
+  'email_unverified',
   'email_verified',
   'phone_verified',
   'profile_complete',
@@ -45,7 +46,7 @@ export const ROLE_NAMES = [
 ] as const;
 
 export const PRODUCT_TYPES = [
-  'product', 'activity', 'experience', 'food', 'digital',
+  'product', 'activity', 'experience', 'food', 'digital', 'service',
 ] as const;
 
 export const PAYMENT_METHODS = ['mock_card', 'stripe_card', 'ewallet', 'bank_transfer', 'wallet'] as const;

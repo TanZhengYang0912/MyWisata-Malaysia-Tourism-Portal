@@ -33,14 +33,18 @@ export async function POST(req: Request) {
 
   const { data: userRow, error: userErr } = await db
     .from('users')
-    .select('email, full_name, stripe_customer_id, tier')
+    .select('email, full_name, stripe_customer_id, tier, phone_verified_at')
     .eq('id', authUser.id)
     .single();
   if (userErr || !userRow) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  const tier = (userRow as { tier?: string | null }).tier ?? 'email_verified';
+  const rowWithVerification = userRow as { tier?: string | null; phone_verified_at?: string | null };
+  if (!rowWithVerification.phone_verified_at) {
+    return NextResponse.json({ error: 'Phone verification is required before wallet top-up.' }, { status: 403 });
+  }
+  const tier = rowWithVerification.tier ?? 'email_unverified';
   const limitSen = TOPUP_LIMIT_SEN[tier] ?? 10_000;
   if (Number.isFinite(limitSen) && amountSen > limitSen) {
     return NextResponse.json(
@@ -77,7 +81,7 @@ export async function POST(req: Request) {
       },
       quantity: 1,
     }],
-    metadata: { user_id: authUser.id },
+    metadata: { user_id: authUser.id, payment_kind: 'topup' },
     success_url: `${origin}/customer/wallet?topup=success`,
     cancel_url:  `${origin}/customer/wallet`,
   });

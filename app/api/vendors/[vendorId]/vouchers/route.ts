@@ -84,6 +84,7 @@ export async function POST(request: Request, { params }: Props) {
     discount_value: body.discountValue ?? 0,
     min_spend: body.minSpend,
     max_uses: body.maxUses ?? null,
+    per_customer_limit: body.perCustomerLimit ?? null,
     valid_from: body.validFrom ?? null,
     valid_until: body.validUntil ?? null,
     product_id: body.productId ?? null,

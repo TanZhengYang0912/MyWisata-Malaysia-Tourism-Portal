@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { avatarConfirmSchema } from '@/lib/validation/profile-schemas';
+import { validateAvatarBytes } from '@/lib/profile/avatar-validation';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -16,14 +17,15 @@ export async function POST(request: Request) {
     return apiFail('FORBIDDEN', 'Path does not belong to your account', 403);
   }
 
-  // Confirm object exists in storage before writing to profile
-  const { data: obj, error: objErr } = await supabase.storage
-    .from('avatars')
-    .list(user.id, { search: path.split('/').pop() });
-
-  if (objErr || !obj?.length) {
+  // Read the uploaded bytes server-side. Filename and Content-Type are not
+  // security boundaries: a text file can claim to be an image in the browser.
+  const { data: file, error: downloadError } = await supabase.storage.from('avatars').download(path);
+  if (downloadError || !file) {
     return apiFail('NOT_FOUND', 'Upload not found — complete the upload before confirming', 404);
   }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const validation = validateAvatarBytes(bytes);
+  if (!validation.ok) return apiFail('INVALID_IMAGE', validation.message, 422);
 
   // Get public URL
   const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);

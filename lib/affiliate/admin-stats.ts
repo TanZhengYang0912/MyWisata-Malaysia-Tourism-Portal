@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { add } from '@/lib/money';
 import { getActiveTiers, resolveTier, type CommissionTier } from './tier';
+import { computeFunnel, type Funnel } from './funnel';
 
 const TOP_EARNERS_LIMIT = 10;
 
@@ -16,6 +17,7 @@ export interface AffiliateAdminTotals {
 export interface TopEarner {
   userId: string;
   userName: string;
+  affiliateCode: string;
   referrals: number;
   commission: number;
   tierName: string;
@@ -38,6 +40,8 @@ export interface AffiliateAdminStats {
   tiers: CommissionTier[];
   topEarners: TopEarner[];
   attributions: AffiliateAttributionRow[];
+  /** CLAUDE-FUNNEL-AI.md §12.3 — platform-wide, all users. Same honesty rules as the per-user funnel. */
+  funnel: Funnel;
 }
 
 function userDisplayName(row: { full_name: string | null; email: string } | undefined): string {
@@ -45,16 +49,18 @@ function userDisplayName(row: { full_name: string | null; email: string } | unde
 }
 
 export async function getAffiliateAdminStats(service: SupabaseClient): Promise<AffiliateAdminStats> {
-  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, tiers] = await Promise.all([
+  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, { data: sharesData }, tiers] = await Promise.all([
     service.from('affiliate_links').select('id, user_id, affiliate_code, is_active'),
-    service.from('affiliate_clicks').select('id, link_id, target_type, target_id, ip_hash, created_at'),
+    service.from('affiliate_clicks').select('id, link_id, target_type, target_id, ip_hash, source, created_at'),
     service.from('affiliate_attributions').select('id, click_id, order_id, commission_amount, status, created_at'),
+    service.from('share_events').select('platform'),
     getActiveTiers(service),
   ]);
 
   const links = linksData ?? [];
   const clicks = clicksData ?? [];
   const attributions = attributionsData ?? [];
+  const shares = sharesData ?? [];
 
   const userIds = [...new Set(links.map((l) => l.user_id))];
   const { data: usersData } = userIds.length
@@ -95,6 +101,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
       return {
         userId: link.user_id,
         userName: userDisplayName(usersById.get(link.user_id)),
+        affiliateCode: link.affiliate_code,
         referrals: referral?.count ?? 0,
         commission: referral?.commission ?? 0,
         tierName: tier.tierName,
@@ -138,6 +145,12 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
   });
   attributionRows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+  const funnel = computeFunnel(
+    shares.map((s) => ({ platform: s.platform })),
+    clicks.map((c) => ({ id: c.id, source: c.source })),
+    activeAttributions.map((a) => ({ clickId: a.click_id })),
+  );
+
   return {
     totals: {
       totalAffiliates: links.length,
@@ -148,5 +161,6 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
     tiers,
     topEarners,
     attributions: attributionRows,
+    funnel,
   };
 }

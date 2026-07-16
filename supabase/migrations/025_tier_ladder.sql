@@ -16,21 +16,48 @@
 --    that set kyc_status to tier-vocabulary values. The live database may still
 --    have a stale CHECK that accepts those tier values but rejects 'approved',
 --    so drop it before normalising the data.
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_kyc_status_check;
+--
+--    Use pg_constraint to drop ALL check constraints on kyc_status regardless
+--    of name — earlier migrations may have created constraints with auto-generated
+--    or differently-named entries that a single IF EXISTS drop would miss.
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT conname FROM pg_constraint
+     WHERE conrelid = 'users'::regclass
+       AND contype  = 'c'
+       AND pg_get_constraintdef(oid) LIKE '%kyc_status%'
+  LOOP
+    EXECUTE 'ALTER TABLE users DROP CONSTRAINT ' || quote_ident(r.conname);
+  END LOOP;
+END $$;
+
+-- Migrations run outside an auth session (auth.uid() = NULL), so is_admin()
+-- returns false and the protect_verification_fields trigger would block any
+-- UPDATE on tier/kyc_status.  Set the bypass flag for this transaction only.
+SET LOCAL "app.allow_verification_write" TO 'on';
 
 UPDATE users
    SET kyc_status = 'approved'
  WHERE kyc_status IN ('kyc_verified', 'kyc_submitted', 'profile_complete', 'phone_verified', 'email_verified');
 
 UPDATE users
-   SET kyc_status = 'rejected'
+   SET kyc_status = 'unverified'
  WHERE kyc_status NOT IN ('unverified', 'pending', 'approved', 'rejected');
 
 -- Re-establish users_kyc_status_check with the authoritative set of values so
 -- subsequent statements in this migration cannot hit a stale constraint definition.
-ALTER TABLE users
-  ADD CONSTRAINT users_kyc_status_check
-    CHECK (kyc_status IN ('unverified', 'pending', 'approved', 'rejected'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'users'::regclass AND conname = 'users_kyc_status_check'
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_kyc_status_check
+      CHECK (kyc_status IN ('unverified', 'pending', 'approved', 'rejected'));
+  END IF;
+END $$;
 
 
 -- ── 1. tier column ────────────────────────────────────────────────────────────

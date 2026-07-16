@@ -248,6 +248,18 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
     .single();
   if (orderErr) throw orderErr;
 
+  // Compatibility path for the legacy demo helper. The customer checkout UI
+  // uses prepare_checkout/finalize_checkout now, but every order created here
+  // must still have an auditable payment row.
+  const { error: paymentErr } = await supabase.from("payments").insert({
+    order_id: orderRow.id,
+    method: paymentMethod,
+    amount: totals.total,
+    status: "succeeded",
+    processed_at: new Date().toISOString(),
+  });
+  if (paymentErr) throw paymentErr;
+
   const cartProductIds = cart.map((item) => item.activityId);
   const itemRows = cart.map((c) => {
     const activity = activities.find((a) => a.id === c.activityId)!;
@@ -390,6 +402,13 @@ export async function requestWithdrawal(userId: string, amount: number): Promise
     .eq("id", requestId)
     .single();
   if (error) throw error;
+  if (typeof window !== "undefined") {
+    void fetch("/api/withdrawals/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ withdrawal_id: requestId }),
+    }).catch((emailError) => console.error("[withdrawal-email] notification request failed:", emailError));
+  }
   return mapWithdrawal(data as unknown as WithdrawalRow);
 }
 
@@ -427,7 +446,7 @@ export async function getConnectStatus(userId: string): Promise<{
   return {
     accountId:      row?.stripe_connect_account_id ?? null,
     payoutsEnabled: row?.stripe_payouts_enabled    ?? false,
-    tier:           row?.tier                      ?? "email_verified",
+    tier:           row?.tier                      ?? "email_unverified",
   };
 }
 

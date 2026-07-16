@@ -8,12 +8,12 @@ describe('KYC server submission helpers', () => {
       '1649a141-9c22-487d-97ae-d10c2b9f9007',
       '6bf054f5-61b2-4f5c-9180-4597555c5dc9',
       'image/jpeg',
-      'application/pdf',
+      'image/png',
     );
 
     expect(paths).toEqual({
       front: '2e2a8372-1c5f-4ba5-a645-f0a319c57b98/1649a141-9c22-487d-97ae-d10c2b9f9007/6bf054f5-61b2-4f5c-9180-4597555c5dc9/front.jpg',
-      back: '2e2a8372-1c5f-4ba5-a645-f0a319c57b98/1649a141-9c22-487d-97ae-d10c2b9f9007/6bf054f5-61b2-4f5c-9180-4597555c5dc9/back.pdf',
+      back: '2e2a8372-1c5f-4ba5-a645-f0a319c57b98/1649a141-9c22-487d-97ae-d10c2b9f9007/6bf054f5-61b2-4f5c-9180-4597555c5dc9/back.png',
     });
   });
 

@@ -5,10 +5,11 @@ import { z } from 'zod';
 
 const uuid = z.string().uuid();
 
-// ── Share tracking (Step 3) ─────────────────────────────────
+// ── Share tracking (Step 3, generalised per CLAUDE-SHARE-SURFACES.md) ────
 
 export const shareEventSchema = z.object({
-  productId: uuid,
+  shareType: z.enum(['product', 'vendor', 'outlet', 'recommendation']),
+  contentId: uuid,
   platform: z.enum(['native', 'copy_link']),
 }).strict();
 
@@ -51,3 +52,11 @@ export const reactivateLinkSchema = z.object({
 }).strict();
 
 export type ReactivateLinkInput = z.infer<typeof reactivateLinkSchema>;
+
+// ── Real-checkout attribution wiring (CLAUDE-CHECKOUT-WIRE.md, CASE B2) ─────
+
+export const attributeCheckoutSchema = z.object({
+  orderId: uuid,
+}).strict();
+
+export type AttributeCheckoutInput = z.infer<typeof attributeCheckoutSchema>;

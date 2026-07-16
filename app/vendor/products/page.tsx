@@ -46,7 +46,7 @@ interface ProductData {
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 
 const TYPE_OPTIONS = [
-  { value: 'food', label: 'Food & dining' }, { value: 'activity', label: 'Activities' }, { value: 'experience', label: 'Experiences' }, { value: 'product', label: 'Products' }, { value: 'digital', label: 'Digital products' },
+  { value: 'food', label: 'Food & dining' }, { value: 'activity', label: 'Activities' }, { value: 'experience', label: 'Experiences' }, { value: 'product', label: 'Products' }, { value: 'digital', label: 'Digital products' }, { value: 'service', label: 'Services' },
 ];
 
 function typeLabel(value: string) { return TYPE_OPTIONS.find((option) => option.value === value)?.label || value; }

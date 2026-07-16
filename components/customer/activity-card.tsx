@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CheckCircle, Clock, Heart, MapPin, Star, Store } from "lucide-react";
 import { useWishlist } from "@/components/providers/wishlist";
 import { AiTag } from "./ai-tag";
+import { ShareButton } from "@/components/shared/share-button";
 import type { ComputedActivity } from "@/backend/core/types";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
@@ -51,6 +52,9 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
         >
           <Heart size={15} fill={saved ? "#010066" : "none"} stroke={saved ? "#010066" : "#334155"} />
         </button>
+        <div className="absolute right-3 top-12">
+          <ShareButton compact shareType="product" contentId={activity.id} title={activity.name} />
+        </div>
       </div>
       <div className="space-y-2 p-4">
         <Link href={`/customer/activity/${activity.id}`} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">

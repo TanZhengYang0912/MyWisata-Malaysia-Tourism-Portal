@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, shareEventSchema);
   if (!parsed.ok) return parsed.response;
-  const { productId, platform } = parsed.data;
+  const { shareType, contentId, platform } = parsed.data;
 
   const { data: link } = await supabase
     .from('affiliate_links')
@@ -27,8 +27,8 @@ export async function POST(request: Request) {
     .from('share_events')
     .insert({
       user_id: user.id,
-      content_type: 'product',
-      content_id: productId,
+      content_type: shareType,
+      content_id: contentId,
       platform,
       affiliate_id: link?.id ?? null,
     })

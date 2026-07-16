@@ -8,7 +8,9 @@
 
 
 -- ── public_users view ─────────────────────────────────────────────────────────
-CREATE OR REPLACE VIEW public_users AS
+-- DROP first: CREATE OR REPLACE cannot remove columns from an existing view.
+DROP VIEW IF EXISTS public_users;
+CREATE VIEW public_users AS
 SELECT
   id,
   full_name,

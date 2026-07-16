@@ -3,10 +3,13 @@
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
+import { AlertTriangle, RefreshCw, Share2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
+import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import type { Funnel } from "@/lib/affiliate/funnel";
 
 interface AdminTier {
   id: string;
@@ -35,6 +38,7 @@ interface AdminAffiliateStats {
     status: string;
     createdAt: string;
   }[];
+  funnel: Funnel;
 }
 
 interface FraudFlag {
@@ -75,6 +79,7 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
   click_velocity: "Click velocity spike",
   visitor_clustering: "Clicks clustered on one visitor",
   zero_conversion: "Many clicks, zero referrals",
+  click_cap_reached: "Limited-tier monthly click cap reached",
 };
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -398,6 +403,16 @@ export default function AdminAffiliatePage() {
             <p className="text-xl font-bold text-foreground">{card.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+            <Share2 size={13} /> Platform-wide funnel
+          </p>
+          <AffiliateFunnelSection funnel={stats.funnel} conversionLabel="Conversions" />
+        </div>
+        <AffiliateInsightCard scope="admin" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

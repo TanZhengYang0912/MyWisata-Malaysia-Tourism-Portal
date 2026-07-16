@@ -3,28 +3,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bike, Bus, CalendarDays, Car, CheckCircle, Clock, Footprints, Globe, MapPin, MessageCircle, Navigation, Phone, Star, Store, Tag, Users } from "lucide-react";
+import { CalendarDays, Check, CheckCircle, Clock, Globe, MapPin, MessageCircle, Navigation, Phone, Plus, Star, Store, Tag, Users } from "lucide-react";
 import { getOrCreateThread } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
+import { useTrip } from "@/components/providers/trip";
 import { unitPrice } from "@/backend/core/helpers";
 import { AiTag } from "@/components/customer/ai-tag";
 import { MapView } from "@/components/map/map-view";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
+import { TRAVEL_MODES, type TravelModeId } from "@/lib/travel-modes";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
 import { formatBookingSlotTime, getBookingDatePreview, groupBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
-
-const TRAVEL_MODES = [
-  { id: "DRIVING", urlParam: "driving", label: "Drive", icon: Car },
-  { id: "WALKING", urlParam: "walking", label: "Walk", icon: Footprints },
-  { id: "BICYCLING", urlParam: "bicycling", label: "Cycle", icon: Bike },
-  { id: "TRANSIT", urlParam: "transit", label: "Transit", icon: Bus },
-] as const;
-type TravelModeId = (typeof TRAVEL_MODES)[number]["id"];
 
 type DetailChip = { label: string; value: string; icon: typeof Clock; href?: string };
 
@@ -57,6 +51,7 @@ export function ActivityDetailClient({
   const router = useRouter();
   const { currentUser } = useAuth();
   const { addItem } = useCart();
+  const trip = useTrip();
 
   const [activity] = useState<ComputedActivity | null>(initialActivity);
   const [slots] = useState<BookingSlot[]>(initialSlots);
@@ -161,6 +156,12 @@ export function ActivityDetailClient({
     });
     if (userLoc) params.set("origin", `${userLoc.lat},${userLoc.lng}`);
     window.open(`https://www.google.com/maps/dir/?${params.toString()}`, "_blank");
+  }
+
+  function handleAddToTrip() {
+    if (!activity) return;
+    if (trip.has(activity.id)) trip.remove(activity.id);
+    else trip.add({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: activity.outlet.city });
   }
 
   async function handleChat() {
@@ -284,9 +285,20 @@ export function ActivityDetailClient({
             </span>
           </div>
 
-          <Button variant="default" onClick={handleDirections} className="mb-4 rounded-full bg-primary text-white hover:bg-primary/90">
-            <Navigation size={16} className="mr-1.5" /> Get Directions
-          </Button>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button variant="default" onClick={handleDirections} className="rounded-full bg-primary text-white hover:bg-primary/90">
+              <Navigation size={16} className="mr-1.5" /> Get Directions
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleAddToTrip}
+              className="rounded-full border-2"
+              style={trip.has(activity.id) ? { borderColor: "var(--nature-green, #16A34A)", color: "var(--nature-green, #16A34A)" } : undefined}
+            >
+              {trip.has(activity.id) ? <Check size={16} className="mr-1.5" /> : <Plus size={16} className="mr-1.5" />}
+              {trip.has(activity.id) ? "In trip" : "Add to trip"}
+            </Button>
+          </div>
 
           <div>
             <p className="text-sm font-bold text-foreground mb-2">Location</p>
@@ -408,13 +420,14 @@ export function ActivityDetailClient({
                   <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available times</p>
                   <div className="grid grid-cols-2 gap-2">
                     {(activeDateGroup?.slots ?? []).map((s) => {
-                      const full = s.booked >= s.capacity;
+                      const unavailable = s.status ? s.status !== "available" : s.booked >= s.capacity;
+                      const full = unavailable || s.booked >= s.capacity;
                       const selected = slotId === s.id;
                       return (
                         <button
                           key={s.id}
                           type="button"
-                          disabled={full}
+                          disabled={unavailable}
                           aria-pressed={selected}
                           onClick={() => setSlotId(s.id)}
                           className="min-w-0 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed"
@@ -464,7 +477,7 @@ export function ActivityDetailClient({
             <Button variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
               <MessageCircle size={17} />
             </Button>
-            <ShareButton productId={activity.id} productName={activity.name} />
+            <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
           </div>
         </div>
       </aside>

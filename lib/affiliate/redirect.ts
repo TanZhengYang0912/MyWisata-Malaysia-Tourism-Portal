@@ -17,12 +17,119 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { hashVisitorId } from './click';
-import { getAttributionCookieDays } from './settings';
+import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
+import { logFraudFlag, hasRecentOpenFlag } from './fraud';
 
 const MW_VISITOR_COOKIE = 'mw_visitor';
 const MW_REF_COOKIE = 'mw_ref';
+// Rolling window, not a calendar month: a calendar-month reset would let a
+// capped affiliate get the full cap again on day 1 of the next month right
+// after maxing out on day 30 (up to 2x the intended allowance in ~48h).
+// Only the cap VALUE is a platform_settings knob (getMonthlyClickCap) — the
+// window length isn't, to avoid a second setting nothing has asked for yet.
+const CLICK_CAP_WINDOW_DAYS = 30;
 const VISITOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const SECONDS_PER_DAY = 86400;
+
+// CLAUDE-FUNNEL-AI.md: matches share_events.platform's real vocabulary, not
+// a per-social-network list — see lib/affiliate/funnel.ts's header comment
+// for why. Anything else in ?src= is dropped (source stays null) rather than
+// stored as-is, so the funnel's per-platform grouping can't be polluted by
+// arbitrary query-string junk.
+const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link']);
+
+function parseKnownSource(searchParams: URLSearchParams): string | null {
+  const src = searchParams.get('src');
+  return src && KNOWN_SHARE_SOURCES.has(src) ? src : null;
+}
+
+// CLAUDE-SHARE-SURFACES.md Surface 4: `?type=` tells the redirect what the
+// slug/id path segment actually identifies. Absent or unrecognized ->
+// 'product', so every link shared before this change (which never had a
+// type param) keeps resolving exactly as it did. 'vendor' and 'outlet' both
+// map to the outlets table — there's no separate vendor entity being
+// shared; components/shared/share-button.tsx's `vendor` shareType already
+// points at the outlet page too, since that IS the public storefront.
+type ShareTargetType = 'product' | 'outlet' | 'recommendation';
+
+function parseShareTargetType(searchParams: URLSearchParams): ShareTargetType {
+  const raw = searchParams.get('type');
+  if (raw === 'vendor' || raw === 'outlet') return 'outlet';
+  if (raw === 'recommendation') return 'recommendation';
+  return 'product';
+}
+
+interface ResolvedTarget {
+  targetId: string;
+  destinationPath: string;
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string | null;
+}
+
+/**
+ * Resolves the slug/id path segment against the right table for its type.
+ * Returns null when nothing matches (unknown/inactive product, unknown
+ * outlet, or no segment given at all) — callers fall back to /customer/explore,
+ * same as the original product-only behaviour.
+ *
+ * Not yet implemented: 'recommendation' resolves to the list page only (no
+ * per-post detail route exists on vendor_recommendations yet — Member 3's
+ * page is list-only), and doesn't look up vendor_recommendations for a rich
+ * OG preview. That table is explicitly read-only/another member's per
+ * CLAUDE-SHARE-SURFACES.md Surface 2, which is on hold pending coordination
+ * — resolving it here would be building ahead of that coordination for no
+ * current caller (share-button.tsx doesn't mount on recommendation posts
+ * yet), so it's deliberately left minimal rather than half-guessed.
+ */
+async function resolveTarget(
+  service: ReturnType<typeof createServiceClient>,
+  targetType: ShareTargetType,
+  slugOrId: string | undefined,
+): Promise<ResolvedTarget | null> {
+  if (!slugOrId) return null;
+
+  if (targetType === 'product') {
+    const { data } = await service
+      .from('products')
+      .select('id, name, description, cover_url')
+      .eq('slug', slugOrId)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      targetId: data.id,
+      destinationPath: `/customer/activity/${data.id}`,
+      ogTitle: data.name,
+      ogDescription: data.description ?? SITE_PREVIEW_DESCRIPTION,
+      ogImage: data.cover_url,
+    };
+  }
+
+  if (targetType === 'outlet') {
+    const [{ data: outlet }, { data: page }] = await Promise.all([
+      service.from('outlets').select('id, name, address, city, state').eq('id', slugOrId).maybeSingle(),
+      service.from('outlet_pages').select('hero_url, seo_description').eq('outlet_id', slugOrId).maybeSingle(),
+    ]);
+    if (!outlet) return null;
+    return {
+      targetId: outlet.id,
+      destinationPath: `/customer/outlet/${outlet.id}`,
+      ogTitle: outlet.name,
+      ogDescription: page?.seo_description || `Explore products and experiences at ${outlet.name}.`,
+      ogImage: page?.hero_url ?? null,
+    };
+  }
+
+  // recommendation: see the function doc comment above.
+  return {
+    targetId: slugOrId,
+    destinationPath: '/customer/recommendations',
+    ogTitle: SITE_PREVIEW_TITLE,
+    ogDescription: SITE_PREVIEW_DESCRIPTION,
+    ogImage: null,
+  };
+}
 
 function cookieOptions(maxAgeSeconds: number) {
   return {
@@ -120,7 +227,7 @@ export async function handleAffiliateRedirect(
 
     const { data: link } = await service
       .from('affiliate_links')
-      .select('id')
+      .select('id,user_id')
       .eq('affiliate_code', code)
       .eq('is_active', true)
       .maybeSingle();
@@ -135,29 +242,24 @@ export async function handleAffiliateRedirect(
       return NextResponse.redirect(new URL('/', origin), 302);
     }
 
-    let product: { id: string; name: string; description: string | null; cover_url: string | null } | null = null;
-    if (slug) {
-      const { data } = await service
-        .from('products')
-        .select('id, name, description, cover_url')
-        .eq('slug', slug)
-        .eq('status', 'active')
-        .maybeSingle();
-      product = data ?? null;
-    }
+    const targetType = parseShareTargetType(request.nextUrl.searchParams);
+    const target = await resolveTarget(service, targetType, slug);
 
     // Link-unfurling bots never reach the click-logging/cookie-setting code
     // below at all — they get a self-contained OG preview page served
     // directly at this URL instead. Crawlers generally don't execute JS and
     // often don't follow redirects the way a browser does, so relying on
-    // them landing on the real activity page's own OG tags after a 302
+    // them landing on the real destination page's own OG tags after a 302
     // isn't reliable; this guarantees a correct preview either way, and
-    // guarantees zero click/cookie pollution from bot traffic.
+    // guarantees zero click/cookie pollution from bot traffic. Applies to
+    // every target type, not just products — an unfurled vendor/outlet link
+    // would otherwise inflate that outlet's click count the same way
+    // products did before this check existed.
     if (crawler) {
       return renderOgPreview({
-        title: product?.name ?? SITE_PREVIEW_TITLE,
-        description: product?.description ?? SITE_PREVIEW_DESCRIPTION,
-        image: product?.cover_url ?? null,
+        title: target?.ogTitle ?? SITE_PREVIEW_TITLE,
+        description: target?.ogDescription ?? SITE_PREVIEW_DESCRIPTION,
+        image: target?.ogImage ?? null,
         url: request.url,
       });
     }
@@ -167,26 +269,88 @@ export async function handleAffiliateRedirect(
     const { data: { user } } = await authClient.auth.getUser();
 
     const visitorId = request.cookies.get(MW_VISITOR_COOKIE)?.value ?? crypto.randomUUID();
+    const source = parseKnownSource(request.nextUrl.searchParams);
 
-    const { data: click, error: clickErr } = await service
-      .from('affiliate_clicks')
-      .insert({
-        link_id: link.id,
-        clicker_id: user?.id ?? null,
-        target_type: product ? 'product' : null,
-        target_id: product?.id ?? null,
-        ip_hash: hashVisitorId(visitorId),
-      })
-      .select('id')
-      .single();
+    // Limited-tier affiliates (anything short of full KYC-verified) get a
+    // deliberately small trial click allowance, §8.3. Full affiliates are
+    // never capped. `fullAffiliate` matches app/api/affiliate/link/route.ts's
+    // own `full` computation exactly — the same two fields (tier, kyc_status)
+    // decide "is this a full affiliate" in both places. The redirect always
+    // still sends the visitor to the right page either way — capping only
+    // ever withholds the click row and attribution cookie, never the
+    // redirect itself.
+    const { data: owner } = await service
+      .from('users')
+      .select('tier, kyc_status')
+      .eq('id', link.user_id)
+      .maybeSingle();
+    const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
+    // A rejected KYC resubmission can't generate a NEW link (see that route's
+    // 403), but an existing link created before rejection still works here —
+    // treat it as permanently capped rather than falling through to the
+    // window count, which would otherwise let it earn normally.
+    let limitedCapReached = owner?.kyc_status === 'rejected';
+    let clicksThisWindow = 0;
+    const monthlyClickCap = await getMonthlyClickCap(service);
+    if (!fullAffiliate && !limitedCapReached) {
+      const windowStart = new Date(Date.now() - CLICK_CAP_WINDOW_DAYS * 86_400_000).toISOString();
+      const { count } = await service
+        .from('affiliate_clicks')
+        .select('id', { count: 'exact', head: true })
+        .eq('link_id', link.id)
+        .gte('created_at', windowStart);
+      clicksThisWindow = count ?? 0;
+      limitedCapReached = clicksThisWindow >= monthlyClickCap;
+    }
+
+    const { data: click, error: clickErr } = limitedCapReached
+      ? { data: null, error: null }
+      : await service
+        .from('affiliate_clicks')
+        .insert({
+          link_id: link.id,
+          clicker_id: user?.id ?? null,
+          target_type: target ? targetType : null,
+          target_id: target?.targetId ?? null,
+          ip_hash: hashVisitorId(visitorId),
+          source,
+        })
+        .select('id')
+        .single();
 
     if (clickErr) {
       console.error('[affiliate] click insert failed', clickErr.message);
     }
 
-    const destination = product
-      ? new URL(`/customer/activity/${product.id}`, origin)
-      : new URL('/customer/explore', origin);
+    // Observability: a silent cap is an unprovable one. Deduped the same way
+    // the sweep-detected fraud types already are (lib/affiliate/fraud.ts) —
+    // one open flag per link per 24h while capped, not one per excess click
+    // (every click after the cap sees the same frozen clicksThisWindow count,
+    // so without this dedupe every one of them would log a fresh flag).
+    if (limitedCapReached && !(await hasRecentOpenFlag(service, link.id, 'click_cap_reached'))) {
+      await logFraudFlag(service, {
+        linkId: link.id,
+        userId: link.user_id,
+        flagType: 'click_cap_reached',
+        severity: 'low', // expected behaviour for a limited-tier affiliate, not itself evidence of abuse
+        detail: {
+          clicksThisWindow,
+          cap: monthlyClickCap,
+          windowDays: CLICK_CAP_WINDOW_DAYS,
+          ownerKycRejected: owner?.kyc_status === 'rejected',
+        },
+      });
+    }
+
+    // Attribution still works the same regardless of target: the cookie is
+    // set below whether or not `target` resolved — a share that lands the
+    // visitor on the homepage because the target 404'd still pays out on
+    // whatever they book later (last-click attribution, not "this exact
+    // page must convert"). Fallback is '/customer' (not '/customer/explore')
+    // per the UI restructure that moved the customer home page there.
+    const destination = target
+      ? new URL(target.destinationPath, origin)
+      : new URL('/customer', origin);
 
     const response = NextResponse.redirect(destination, 302);
 

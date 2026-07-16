@@ -10,10 +10,13 @@ import { Copy, Gift, Link2, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { isKycApproved } from "@/lib/affiliate/verification";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
+import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
+import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import type { AffiliateCommission, AffiliateDailyClicks, AffiliateFunnel, AffiliateProductStat } from "@/lib/affiliate/stats";
+import type { AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } from "@/lib/affiliate/stats";
+import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 
 interface StatsResponse {
@@ -23,17 +26,11 @@ interface StatsResponse {
   byProduct: AffiliateProductStat[];
   clicksByDay: AffiliateDailyClicks[];
   commissions: AffiliateCommission[];
-  funnel: AffiliateFunnel;
+  funnel: Funnel;
   tier: TierInfo;
 }
 
 type SortKey = "shares" | "clicks" | "referrals" | "earnings";
-
-const PLATFORM_LABEL: Record<string, string> = {
-  native: "share sheet",
-  copy_link: "copied link",
-  unknown: "unknown",
-};
 
 export default function AffiliateDashboardPage() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -242,25 +239,16 @@ export default function AffiliateDashboardPage() {
         )}
       </div>
 
-      {stats.funnel.shares > 0 && (
-        <div className="rounded-xl border border-border p-4 mb-6">
-          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
-            <Share2 size={13} /> Funnel
-          </p>
-          <p className="text-sm text-foreground">
-            <span className="font-bold">{stats.funnel.shares}</span> share{stats.funnel.shares === 1 ? "" : "s"} →{" "}
-            <span className="font-bold">{stats.funnel.clicks}</span> click{stats.funnel.clicks === 1 ? "" : "s"} →{" "}
-            <span className="font-bold">{stats.funnel.referrals}</span> order{stats.funnel.referrals === 1 ? "" : "s"}
-          </p>
-          {stats.funnel.byPlatform.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.funnel.byPlatform
-                .map((p) => `${p.count} via ${PLATFORM_LABEL[p.platform] ?? p.platform}`)
-                .join(" · ")}
-            </p>
-          )}
-        </div>
-      )}
+      <div className="rounded-xl border border-border p-4 mb-6">
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+          <Share2 size={13} /> Funnel
+        </p>
+        <AffiliateFunnelSection funnel={stats.funnel} conversionLabel="Bookings" />
+      </div>
+
+      <div className="mb-6">
+        <AffiliateInsightCard scope="user" />
+      </div>
 
       <div className="rounded-xl border border-border overflow-hidden">
         <table className="w-full text-sm">

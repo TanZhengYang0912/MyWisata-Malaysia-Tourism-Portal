@@ -24,6 +24,12 @@ export function MapView(props: {
   radiusCenter?: [number, number];
   radiusKm?: number;
   onApiLoaded?: () => void;
+  userLocation?: [number, number];
+  onAddStop?: (pin: MapPin) => void;
+  stopIds?: string[];
+  routePath?: [number, number][];
+  routeColor?: string;
+  routeDashed?: boolean;
 }) {
   return <GoogleMap {...props} />;
 }
