@@ -6,8 +6,9 @@ export async function attributeRecommendationReward(service: SupabaseClient, ord
   const { data: items } = await service.from('order_items').select('vendor_id').eq('order_id', orderId);
   const vendorIds = [...new Set((items ?? []).map((item) => item.vendor_id))];
   for (const vendorId of vendorIds) {
-    const { data: conversion } = await service.from('recommendation_conversions').select('id,recommendation_id,first_sale_awarded_at,vendor_recommendations(recommender_id)').eq('converted_vendor_id', vendorId).maybeSingle();
+    const { data: conversion } = await service.from('recommendation_conversions').select('id,recommendation_id,first_sale_awarded_at,attribution_ends_at,vendor_recommendations(recommender_id)').eq('converted_vendor_id', vendorId).maybeSingle();
     if (!conversion) continue;
+    if (conversion.attribution_ends_at && new Date(conversion.attribution_ends_at).getTime() < Date.now()) continue;
     const recommenderId = (conversion.vendor_recommendations as { recommender_id?: string } | null)?.recommender_id;
     if (!recommenderId) continue;
     const firstSale = !conversion.first_sale_awarded_at;

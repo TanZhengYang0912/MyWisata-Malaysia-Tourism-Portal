@@ -24,6 +24,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
 import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
+import { enqueueUserTransactionEmail } from '@/lib/email/events';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -59,9 +60,21 @@ export async function POST(request: Request) {
   }
 
   await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
-  const reward = await attributeRecommendationReward(service, orderId);
-  if (reward.kind === 'created') {
-    await service.from('notifications').insert({ user_id: reward.recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${(reward.amountSen / 100).toFixed(2)} will be available after the hold period and KYC approval.`, link: '/customer/wallet' });
+  try {
+    const reward = await attributeRecommendationReward(service, orderId);
+    if (reward.kind === 'created') {
+      const amountRm = reward.amountSen / 100;
+      const [notification, email] = await Promise.allSettled([
+        service.from('notifications').insert({ user_id: reward.recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${amountRm.toFixed(2)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
+        enqueueUserTransactionEmail({ userId: reward.recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${orderId}`, reference: 'Recommendation reward', amountRm }),
+      ]);
+      if (notification.status === 'rejected') console.error('[checkout/attribute] recommendation notification failed', notification.reason);
+      if (email.status === 'rejected') console.error('[checkout/attribute] recommendation email failed', email.reason);
+    }
+  } catch (error) {
+    // The checkout is already paid; reward attribution failures must not
+    // misrepresent that payment as failed. The order can be reconciled safely.
+    console.error('[checkout/attribute] recommendation reward attribution failed', error);
   }
 
   return apiOk({ attributed: true });

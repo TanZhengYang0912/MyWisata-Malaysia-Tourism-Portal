@@ -25,7 +25,7 @@ function WalletContent() {
   const onboardComplete  = searchParams.get("onboarding") === "complete";
   const onboardRefresh   = searchParams.get("onboarding") === "refresh";
 
-  const [buckets, setBuckets]         = useState<{ topup: number; earnings: number } | null>(null);
+  const [buckets, setBuckets]         = useState<{ topup: number; earnings: number; pendingEarnings: number } | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("loading");
 
@@ -173,7 +173,7 @@ function WalletContent() {
           {buckets === null ? "—" : `RM ${totalBalance.toFixed(2)}`}
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Top-up balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
@@ -181,10 +181,17 @@ function WalletContent() {
             </p>
           </div>
           <div className="rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">Earnings (withdrawable)</p>
+            <p className="text-xs opacity-60">Available earnings</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.earnings.toFixed(2)}`}
             </p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-4 py-2">
+            <p className="text-xs opacity-60">Pending rewards</p>
+            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
+              {buckets === null ? "—" : `RM ${buckets.pendingEarnings.toFixed(2)}`}
+            </p>
+            <p className="mt-1 text-[10px] leading-snug opacity-60">Available after the 7-day hold and KYC approval.</p>
           </div>
         </div>
 
