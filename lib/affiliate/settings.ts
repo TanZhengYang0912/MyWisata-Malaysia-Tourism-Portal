@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const DEFAULT_COOKIE_DAYS = 30;
 const DEFAULT_CLEARANCE_DAYS = 7;
+const DEFAULT_MONTHLY_CLICK_CAP = 50;
 
 const DEFAULT_FRAUD_THRESHOLDS: FraudThresholds = {
   clickVelocityMax: 20,
@@ -40,6 +41,22 @@ export async function getClearanceDays(service: SupabaseClient): Promise<number>
     .maybeSingle();
   const parsed = data ? parseInt(data.value, 10) : NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CLEARANCE_DAYS;
+}
+
+/**
+ * Reads platform_settings['affiliate.monthly_click_cap'], defaulting to 50
+ * if missing/invalid — the limited (non-full-KYC) affiliate tier's trial
+ * click allowance, §8.3. See lib/affiliate/redirect.ts for how this is
+ * enforced (a rolling 30-day window, not a calendar month).
+ */
+export async function getMonthlyClickCap(service: SupabaseClient): Promise<number> {
+  const { data } = await service
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'affiliate.monthly_click_cap')
+    .maybeSingle();
+  const parsed = data ? parseInt(data.value, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MONTHLY_CLICK_CAP;
 }
 
 export interface FraudThresholds {

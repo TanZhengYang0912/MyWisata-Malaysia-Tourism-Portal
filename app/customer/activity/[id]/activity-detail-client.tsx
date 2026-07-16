@@ -476,7 +476,7 @@ export function ActivityDetailClient({
             <Button variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
               <MessageCircle size={17} />
             </Button>
-            <ShareButton productId={activity.id} productName={activity.name} />
+            <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
           </div>
         </div>
       </aside>

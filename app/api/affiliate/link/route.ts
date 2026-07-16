@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { affiliateUrl, getAffiliateLink, getOrCreateAffiliateLink } from '@/lib/affiliate/links';
 import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
+import { getMonthlyClickCap } from '@/lib/affiliate/settings';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -21,11 +22,15 @@ export async function GET(request: Request) {
 
   const origin = new URL(request.url).origin;
   const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
+  // Reads the same platform_settings value lib/affiliate/redirect.ts enforces
+  // (getMonthlyClickCap) — was hardcoded 50 here while the redirect enforced
+  // a different hardcoded 50, two numbers that could only agree by accident.
+  const clicksPerMonth = full ? null : await getMonthlyClickCap(supabase);
   return apiOk({
     affiliateCode: link.affiliateCode,
     affiliateUrl: affiliateUrl(origin, link.affiliateCode),
     mode: full ? 'full' : 'limited',
-    limits: full ? null : { clicksPerMonth: 50, commissionRmPerMonth: 100 },
+    limits: full ? null : { clicksPerMonth, commissionRmPerMonth: 100 },
   });
 }
 
@@ -57,12 +62,13 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
   const { link, created } = result;
   const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
+  const clicksPerMonth = full ? null : await getMonthlyClickCap(supabase);
   return apiOk(
     {
       affiliateCode: link.affiliateCode,
       affiliateUrl: affiliateUrl(origin, link.affiliateCode),
       mode: full ? 'full' : 'limited',
-      limits: full ? null : { clicksPerMonth: 50, commissionRmPerMonth: 100 },
+      limits: full ? null : { clicksPerMonth, commissionRmPerMonth: 100 },
     },
     { status: created ? 201 : 200 },
   );

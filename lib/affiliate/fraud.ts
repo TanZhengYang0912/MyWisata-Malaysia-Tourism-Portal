@@ -48,7 +48,12 @@ export type FraudFlagType =
   | 'expired_attribution'
   | 'click_velocity'
   | 'zero_conversion'
-  | 'visitor_clustering';
+  | 'visitor_clustering'
+  // Limited-tier affiliate hit their §8.3 monthly click cap — not itself
+  // evidence of abuse (a legitimate limited affiliate is expected to reach
+  // it eventually), just observability so a silent cap isn't an unprovable
+  // one. See lib/affiliate/redirect.ts.
+  | 'click_cap_reached';
 
 export type FraudSeverity = 'low' | 'medium' | 'high';
 export type FraudFlagStatus = 'open' | 'reviewed' | 'dismissed';
@@ -129,8 +134,13 @@ async function maybeAutoDisableForSelfReferral(service: SupabaseClient, linkId: 
   }
 }
 
-/** True if an OPEN flag of this type already exists for this link within the last 24h. */
-async function hasRecentOpenFlag(service: SupabaseClient, linkId: string, flagType: FraudFlagType): Promise<boolean> {
+/**
+ * True if an OPEN flag of this type already exists for this link within the
+ * last 24h. Exported for lib/affiliate/redirect.ts's click-cap flag, which
+ * needs the exact same "one flag per link per 24h while the condition
+ * persists" dedupe as the sweep-detected types below use internally.
+ */
+export async function hasRecentOpenFlag(service: SupabaseClient, linkId: string, flagType: FraudFlagType): Promise<boolean> {
   const cutoff = new Date(Date.now() - SWEEP_FLAG_DEDUPE_HOURS * 3_600_000).toISOString();
   const { data } = await service
     .from('affiliate_fraud_flags')

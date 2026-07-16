@@ -1,23 +1,67 @@
 "use client";
 
-// P4 — Member 4: Share button. See CLAUDE.md Step 3.
+// P4 — Member 4: Share button. See CLAUDE.md Step 3, generalised per
+// CLAUDE-SHARE-SURFACES.md §12.1 to cover every shareable content type, not
+// just products. Same component, same sharing behaviour (native share sheet
+// + copy fallback, affiliate-code embedding, ?src= platform tagging,
+// share_events logging) — only what it points at changed.
 
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { isKycApproved } from "@/lib/affiliate/verification";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 
+export type ShareType = "product" | "vendor" | "outlet" | "recommendation";
+
 interface ShareButtonProps {
-  productId: string;
-  productName: string;
+  shareType: ShareType;
+  contentId: string;
+  /** Used as the native share sheet's title. */
+  title: string;
+  /**
+   * The path segment for both the direct page URL and the affiliate
+   * redirect. Product shares can omit it — the component resolves the
+   * product's own slug (unchanged behaviour: Activity/ComputedActivity
+   * doesn't carry it — see resolveSlug below). Every other shareType has no
+   * shared "slug" table to look one up from generically, so callers must
+   * pass it themselves (outlets currently key by id, not a slug — see
+   * DIRECT_PATH).
+   */
+  slug?: string;
+  /**
+   * CLAUDE-SHARE-SURFACES.md Surface 3: listing cards need "an icon, not a
+   * big button" so a dense grid doesn't clutter up. Same sharing logic,
+   * different chrome — a small icon-only button (sized to match the
+   * existing wishlist heart icon) with feedback via the app's existing
+   * toast provider instead of inline status text, since a grid card has no
+   * room to reserve for it without causing layout shift.
+   */
+  compact?: boolean;
 }
+
+// CLAUDE-SHARE-SURFACES.md Surface 4 (not yet built — see lib/affiliate/redirect.ts):
+// the redirect still only resolves product slugs today. A vendor/outlet/
+// recommendation share already logs correctly and still sets the
+// attribution cookie, but until the redirect learns the `type` param it
+// falls back to /customer/explore instead of landing on the right page.
+const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
+  product: (id) => `/customer/activity/${id}`,
+  // No separate vendor page exists — outlets ARE the public storefront.
+  vendor: (id) => `/customer/outlet/${id}`,
+  outlet: (id) => `/customer/outlet/${id}`,
+  // No per-post detail route exists yet (Member 3's recommendations page is
+  // list-only) — points at the list until one exists.
+  recommendation: () => `/customer/recommendations`,
+};
 
 type ShareStatus = "idle" | "working" | "shared" | "copied" | "error";
 
-export function ShareButton({ productId, productName }: ShareButtonProps) {
+export function ShareButton({ shareType, contentId, title, slug, compact = false }: ShareButtonProps) {
   const { currentUser } = useAuth();
+  const { showFeedback } = useActionFeedback();
   const [status, setStatus] = useState<ShareStatus>("idle");
   const isVerified = isKycApproved(currentUser);
 
@@ -26,16 +70,26 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
       await fetch("/api/shares", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId, platform }),
+        body: JSON.stringify({ shareType, contentId, platform }),
       });
     } catch {
       // best-effort — a logging failure must never undo the share the user already completed
     }
   }
 
+  async function resolveSlug(): Promise<string | null> {
+    if (slug) return slug;
+    if (shareType !== "product") return null;
+    // Preserved from the original component: products has a public-read RLS
+    // policy, so the plain browser client can read it directly.
+    const supabase = createClient();
+    const { data: product } = await supabase.from("products").select("slug").eq("id", contentId).maybeSingle();
+    return product?.slug ?? null;
+  }
+
   async function buildShareUrl(): Promise<string> {
     const origin = window.location.origin;
-    const plainUrl = `${origin}/customer/activity/${productId}`;
+    const plainUrl = `${origin}${DIRECT_PATH[shareType](contentId)}`;
     if (!isVerified) return plainUrl;
 
     try {
@@ -43,20 +97,12 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
       const body = (await res.json()) as { data: { affiliateCode: string } | null };
       if (!res.ok || !body.data) return plainUrl;
 
-      // Activity/ComputedActivity (backend/core/types.ts) doesn't carry the
-      // product's slug, and backend/domains/catalogue.ts is off-limits (see
-      // CLAUDE.md Section 2) — so resolve it directly here. `products` has a
-      // public-read RLS policy, so the plain browser client can read it.
-      const supabase = createClient();
-      const { data: product } = await supabase
-        .from("products")
-        .select("slug")
-        .eq("id", productId)
-        .maybeSingle();
-
-      return product?.slug
-        ? `${origin}/r/${body.data.affiliateCode}/${product.slug}`
-        : `${origin}/r/${body.data.affiliateCode}`;
+      const resolvedSlug = await resolveSlug();
+      const pathSegment = resolvedSlug ?? contentId; // outlets/recommendations key by id, not a slug
+      // Product stays exactly `/r/{code}/{slug}` — every product link already
+      // shared before this change must keep resolving the same way.
+      const typeParam = shareType === "product" ? "" : `?type=${shareType}`;
+      return `${origin}/r/${body.data.affiliateCode}/${pathSegment}${typeParam}`;
     } catch {
       return plainUrl;
     }
@@ -71,15 +117,21 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
     return `${url}${url.includes("?") ? "&" : "?"}src=${platform}`;
   }
 
-  async function handleShare() {
+  async function handleShare(event?: React.MouseEvent<HTMLButtonElement>) {
+    // Compact instances sit as a sibling over a card's own <Link> (same
+    // pattern as the wishlist heart icon on ActivityCard) — stop the click
+    // reaching it. Harmless no-op for the standalone (non-card) usage.
+    event?.preventDefault();
+    event?.stopPropagation();
     if (status === "working") return; // double-press guard
     setStatus("working");
     const url = await buildShareUrl();
 
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: productName, url: withSrc(url, "native") });
+        await navigator.share({ title, url: withSrc(url, "native") });
         setStatus("shared");
+        if (compact) showFeedback("success", "Shared");
         await logShare("native");
         setTimeout(() => setStatus("idle"), 2000);
         return;
@@ -95,11 +147,28 @@ export function ShareButton({ productId, productName }: ShareButtonProps) {
     try {
       await navigator.clipboard.writeText(withSrc(url, "copy_link"));
       setStatus("copied");
+      if (compact) showFeedback("success", "Link copied");
       await logShare("copy_link");
     } catch {
       setStatus("error");
+      if (compact) showFeedback("error", "Couldn't copy link");
     }
     setTimeout(() => setStatus("idle"), 2000);
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={handleShare}
+        disabled={status === "working"}
+        aria-label={`Share ${title}`}
+        title="Share"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition disabled:cursor-wait disabled:opacity-70"
+      >
+        <Share2 size={14} stroke="#334155" />
+      </button>
+    );
   }
 
   return (

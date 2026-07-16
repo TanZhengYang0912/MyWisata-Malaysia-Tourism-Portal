@@ -79,6 +79,7 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
   click_velocity: "Click velocity spike",
   visitor_clustering: "Clicks clustered on one visitor",
   zero_conversion: "Many clicks, zero referrals",
+  click_cap_reached: "Limited-tier monthly click cap reached",
 };
 
 const SEVERITY_STYLE: Record<string, string> = {

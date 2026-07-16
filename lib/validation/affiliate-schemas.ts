@@ -5,10 +5,11 @@ import { z } from 'zod';
 
 const uuid = z.string().uuid();
 
-// ── Share tracking (Step 3) ─────────────────────────────────
+// ── Share tracking (Step 3, generalised per CLAUDE-SHARE-SURFACES.md) ────
 
 export const shareEventSchema = z.object({
-  productId: uuid,
+  shareType: z.enum(['product', 'vendor', 'outlet', 'recommendation']),
+  contentId: uuid,
   platform: z.enum(['native', 'copy_link']),
 }).strict();
 
