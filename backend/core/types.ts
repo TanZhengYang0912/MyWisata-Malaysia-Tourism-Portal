@@ -235,6 +235,7 @@ export interface ProfileSummary {
     travelStyle: string | null;
     budgetRange: string | null;
     mobilityNeeds: string | null;
+    preferredDistance: string | null;
   } | null;
   latestKycReview: {
     status: string;

@@ -91,6 +91,7 @@ export default function ProfilePage() {
   const [travelStyle,   setTravelStyle]   = useState("solo");
   const [budgetRange,   setBudgetRange]   = useState("mid_range");
   const [mobilityNeeds, setMobilityNeeds] = useState("none");
+  const [preferredDistance, setPreferredDistance] = useState("no_preference");
   const [surveyError,   setSurveyError]   = useState<string | null>(null);
   const [surveyBusy,    setSurveyBusy]    = useState(false);
 
@@ -257,7 +258,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile/survey", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interests, travelStyle, budgetRange, mobilityNeeds }),
+        body: JSON.stringify({ interests, travelStyle, budgetRange, mobilityNeeds, preferredDistance }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -603,6 +604,13 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preferred Distance</p>
+            <select value={preferredDistance} onChange={(e) => setPreferredDistance(e.target.value)} className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground">
+              <option value="walking">Walking distance (≤ 1 km)</option><option value="nearby">Nearby (≤ 5 km)</option><option value="travel">Willing to travel (≤ 20 km)</option><option value="anywhere">Anywhere in Malaysia</option><option value="no_preference">No preference</option>
+            </select>
           </div>
 
           {surveyError && <p className="text-xs text-destructive">{surveyError}</p>}

@@ -14,6 +14,7 @@ import { supabase } from "@/backend/supabase";
 const UNREAD_POLL_MS = 30_000;
 
 const NAV = [
+  { href: "/customer/for-you", label: "For You", icon: Star },
   { href: "/customer/explore", label: "Explore", icon: Search },
   { href: "/customer/map", label: "Map", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
@@ -189,6 +190,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div ref={accountMenuRef} className="relative shrink-0">
+            <Link href="/customer/profile#preferences" className="mr-3 hidden text-sm font-medium text-muted-foreground transition hover:text-primary lg:inline">Preferences</Link>
             <button
               type="button"
               onClick={() => setAccountMenuOpen((open) => !open)}
