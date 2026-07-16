@@ -11,6 +11,17 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Voucher } from "@/backend/core/types";
 
+// P4 — Member 4 (CLAUDE-CHECKOUT-WIRE.md, CASE B2): fire-and-forget, never
+// blocks or fails checkout. commerce.ts::createOrder() is untouched — this
+// hits a separate server route that reads the mw_ref cookie itself.
+function attributeCheckout(orderId: string) {
+  fetch("/api/checkout/attribute", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderId }),
+  }).catch(() => {});
+}
+
 const METHODS = [
   { id: "stripe_card", label: "Card via Stripe Test Mode", icon: CreditCard },
   { id: "ewallet", label: "Touch 'n Go / GrabPay", icon: Smartphone },
@@ -40,7 +51,15 @@ export default function CheckoutPage() {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !currentUser || selectedItems.length === 0 || paying) return;
     setPaying(true);
-    createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]).then((order) => router.push(`/customer/orders/${order.id}`)).catch(() => { setFailed(true); setPaying(false); });
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body: { user?: { phoneVerified?: boolean } } | null) => {
+        if (body?.user && !body.user.phoneVerified) { router.push("/customer/profile"); throw new Error("phone_verification_required"); }
+        return createOrder(currentUser.id, voucherCode ?? undefined, "stripe_card", [...selectedKeys]);
+      })
+      .then((order) => { attributeCheckout(order.id); fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: order.id }), keepalive: true }); return order; })
+      .then((order) => router.push(`/customer/orders/${order.id}`))
+      .catch(() => { setFailed(true); setPaying(false); });
   }, [currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
 
   const { subtotal, discount, total } = totals(voucher);
@@ -60,7 +79,16 @@ export default function CheckoutPage() {
         return;
       }
       try {
+        const gateResponse = await fetch("/api/auth/me", { cache: "no-store" });
+        const gateBody = gateResponse.ok ? await gateResponse.json() as { user?: { phoneVerified?: boolean } } : null;
+        if (gateBody?.user && !gateBody.user.phoneVerified) {
+          setPaying(false);
+          router.push("/customer/profile");
+          return;
+        }
         const order = await createOrder(currentUser!.id, voucherCode ?? undefined, method as "mock_card" | "ewallet" | "bank_transfer" | "wallet" | "stripe_card", [...selectedKeys]);
+        attributeCheckout(order.id);
+        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: order.id }), keepalive: true });
         router.push(`/customer/orders/${order.id}`);
       } catch (err) {
         console.error("Order creation failed:", err);

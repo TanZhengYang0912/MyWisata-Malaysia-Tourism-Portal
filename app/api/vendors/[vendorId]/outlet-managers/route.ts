@@ -16,11 +16,12 @@ export async function GET(_request: Request, { params }: Props) {
   if (outletError) return apiFail('DB_ERROR', outletError.message, 500);
   const outletIds = (outlets || []).map((outlet: { id: string; name: string; city: string; state: string; [key: string]: unknown }) => outlet.id);
 
-  const [{ data: assignments, error: assignmentError }, { data: role, error: roleError }] = await Promise.all([
+  const [{ data: assignments, error: assignmentError }, { data: role, error: roleError }, { data: pendingInvitations, error: invitationError }] = await Promise.all([
     db.from('outlet_managers').select('outlet_id,user_id,users(id,full_name,email)').in('outlet_id', outletIds.length ? outletIds : ['none']),
     db.from('roles').select('id').eq('name', 'outlet_manager').maybeSingle(),
+    db.from('outlet_manager_invitations').select('outlet_id,invited_email,expires_at').in('outlet_id', outletIds.length ? outletIds : ['none']).eq('status', 'pending').gt('expires_at', new Date().toISOString()),
   ]);
-  if (assignmentError || roleError) return apiFail('DB_ERROR', (assignmentError || roleError)?.message || 'Unknown error', 500);
+  if (assignmentError || roleError || invitationError) return apiFail('DB_ERROR', (assignmentError || roleError || invitationError)?.message || 'Unknown error', 500);
 
   const { data: roleUsers, error: roleUsersError } = role
     ? await db.from('user_roles').select('user_id,users(id,full_name,email)').eq('role_id', role.id)
@@ -35,13 +36,17 @@ export async function GET(_request: Request, { params }: Props) {
     userId: assignment.user_id,
     user: normalizeUser(assignment.users),
   }]));
+  const invitationsByOutlet = new Map((pendingInvitations || []).map((invitation: { outlet_id: string; invited_email: string; expires_at: string }) => [invitation.outlet_id, {
+    email: invitation.invited_email,
+    expiresAt: invitation.expires_at,
+  }]));
   const eligibleManagers = [...new Map((roleUsers || []).map((row: { users: { id: string; full_name: string; email: string } | { id: string; full_name: string; email: string }[] | null }) => {
     const user = normalizeUser(row.users);
     return user ? [user.id, user] : null;
   }).filter(Boolean) as Array<[string, { id: string; fullName: string; email: string }]>).values()];
 
   return apiOk({
-    outlets: (outlets || []).map((outlet: { id: string; name: string; city: string; state: string; [key: string]: unknown }) => ({ ...outlet, manager: assignmentsByOutlet.get(outlet.id) || null })),
+    outlets: (outlets || []).map((outlet: { id: string; name: string; city: string; state: string; [key: string]: unknown }) => ({ ...outlet, manager: assignmentsByOutlet.get(outlet.id) || null, pendingInvitation: invitationsByOutlet.get(outlet.id) || null })),
     eligibleManagers,
   });
 }

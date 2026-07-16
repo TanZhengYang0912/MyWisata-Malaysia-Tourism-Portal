@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   Phone, User, Camera, MessageSquare, ClipboardList,
-  ShieldCheck, Upload, Loader2, ChevronRight, CheckCircle2,
+  Store, Upload, Loader2, ChevronRight, CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
+import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
+import { ProfileSections } from "@/components/profile/profile-sections";
+import { parseInternationalPhone } from "@/lib/phone/international";
 
 const STEPS = [
   { id: "phone",    label: "Phone" },
@@ -48,9 +51,8 @@ function initialStep(tier: string): number {
 export default function ProfilePage() {
   const { currentUser, refreshUser } = useAuth();
   const { showFeedback } = useActionFeedback();
-  const router = useRouter();
 
-  const tier = currentUser?.verificationTier ?? "email_verified";
+  const tier = currentUser?.verificationTier ?? "email_unverified";
   const startStep = tier === "email_verified" ? 0 : 1;
   const [step, setStep] = useState<number>(() => initialStep(tier));
 
@@ -64,6 +66,7 @@ export default function ProfilePage() {
   // ── Identity ───────────────────────────────────────────────────────────────
   const [fullName, setFullName]         = useState(currentUser?.name !== currentUser?.email ? (currentUser?.name ?? "") : "");
   const [city,     setCity]             = useState(currentUser?.city ?? "");
+  const [country,  setCountry]          = useState(currentUser?.country ?? "Malaysia");
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [identityBusy,  setIdentityBusy]  = useState(false);
 
@@ -93,14 +96,16 @@ export default function ProfilePage() {
 
   // ── Phone handlers ─────────────────────────────────────────────────────────
   async function sendOtp() {
-    if (!phone.trim()) { setPhoneError("Enter a phone number"); return; }
+    const parsedPhone = parseInternationalPhone(phone);
+    if (!parsedPhone.ok) { setPhoneError(parsedPhone.message); return; }
+    setPhone(parsedPhone.e164);
     setPhoneError(null);
     setPhoneBusy(true);
     try {
       const res = await fetch("/api/phone/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify({ phone: parsedPhone.e164 }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -117,13 +122,16 @@ export default function ProfilePage() {
 
   async function verifyOtp() {
     if (!otp.trim()) { setPhoneError("Enter the OTP code"); return; }
+    const parsedPhone = parseInternationalPhone(phone);
+    if (!parsedPhone.ok) { setPhoneError(parsedPhone.message); return; }
+    setPhone(parsedPhone.e164);
     setPhoneError(null);
     setPhoneBusy(true);
     try {
       const res = await fetch("/api/phone/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), code: otp.trim() }),
+        body: JSON.stringify({ phone: parsedPhone.e164, code: otp.trim() }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -143,13 +151,14 @@ export default function ProfilePage() {
   async function submitIdentity() {
     if (!fullName.trim() || fullName.trim().length < 2) { setIdentityError("Full name must be at least 2 characters"); return; }
     if (!city.trim()) { setIdentityError("City is required"); return; }
+    if (!country.trim()) { setIdentityError("Country is required"); return; }
     setIdentityError(null);
     setIdentityBusy(true);
     try {
       const res = await fetch("/api/profile/identity", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: "Malaysia" }),
+        body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: country.trim() }),
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
@@ -267,22 +276,7 @@ export default function ProfilePage() {
   // ── Done state ─────────────────────────────────────────────────────────────
   const isDone = step === -1 || tier === "profile_complete" || tier === "kyc_verified";
 
-  if (isDone) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/15 mb-5">
-          <ShieldCheck size={32} className="text-primary" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Profile Complete!</h1>
-        <p className="text-sm text-muted-foreground mb-6">
-          Your profile is set up. Submit your identity documents to unlock wallet withdrawals and full affiliate earnings.
-        </p>
-        <Button onClick={() => router.push("/customer/kyc")} className="gap-1.5">
-          Proceed to KYC Verification <ChevronRight size={15} />
-        </Button>
-      </div>
-    );
-  }
+  if (isDone) return <ProfileSections />;
 
   // ── Progress bar ───────────────────────────────────────────────────────────
   const visibleSteps = STEPS.slice(startStep);
@@ -296,6 +290,13 @@ export default function ProfilePage() {
       <p className="text-sm text-muted-foreground mb-6">
         Finish all steps to unlock recommendation submissions and affiliate links.
       </p>
+      <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
+        <span className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
+          <span><span className="block text-sm font-bold text-foreground">Have a business to share?</span><span className="mt-0.5 block text-xs text-muted-foreground">Start a vendor application after your profile setup</span></span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-primary" />
+      </Link>
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">
@@ -332,13 +333,12 @@ export default function ProfilePage() {
               <p className="text-xs text-muted-foreground">Enter your phone number in international format. We&apos;ll send a 6-digit OTP.</p>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone Number</label>
-                <input
-                  type="tel"
+                <InternationalPhoneInput
+                  id="profile-phone"
                   value={phone}
-                  onChange={(e) => { setPhone(e.target.value); setPhoneError(null); }}
-                  placeholder="+60123456789"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                  style={{ borderColor: phoneError ? "var(--destructive)" : "var(--border)" }}
+                  onChange={(value) => { setPhone(value); setPhoneError(null); }}
+                  disabled={phoneBusy}
+                  error={Boolean(phoneError)}
                 />
                 {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
               </div>
@@ -405,6 +405,16 @@ export default function ProfilePage() {
               value={city}
               onChange={(e) => { setCity(e.target.value); setIdentityError(null); }}
               placeholder="e.g. Kuala Lumpur"
+              className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+              style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Country</label>
+            <input
+              value={country}
+              onChange={(e) => { setCountry(e.target.value); setIdentityError(null); }}
+              placeholder="e.g. Malaysia"
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
             />

@@ -1,9 +1,17 @@
 import { z } from 'zod';
+import { parseInternationalPhone } from '@/lib/phone/international';
 
-// E.164 format: +[country code][number], 8–15 digits total after +
-export const e164Schema = z
-  .string()
-  .regex(/^\+[1-9]\d{7,14}$/, 'Phone must be in E.164 format (e.g. +60123456789)');
+// Accept human-formatted international input but always pass canonical E.164 onward.
+export const e164Schema = z.string().transform((value, context) => {
+  const parsed = parseInternationalPhone(value);
+
+  if (!parsed.ok) {
+    context.addIssue({ code: 'custom', message: parsed.message });
+    return z.NEVER;
+  }
+
+  return parsed.e164;
+});
 
 export const sendOtpSchema = z.object({
   phone: e164Schema,

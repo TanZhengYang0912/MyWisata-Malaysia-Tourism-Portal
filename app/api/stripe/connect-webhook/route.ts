@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import { createServiceClient } from '@/lib/supabase/service';
+import { enqueueWithdrawalEmail } from '@/lib/email/events';
 
 // connect_payout_completed / connect_payout_failed are SECURITY DEFINER;
 // anon role can call them (Stripe signature is the auth gate here).
@@ -48,6 +50,19 @@ export async function POST(req: Request) {
       console.error('[connect-webhook] connect_payout_completed:', error);
       return NextResponse.json({ error: 'Failed to complete withdrawal' }, { status: 500 });
     }
+    try {
+      const service = createServiceClient();
+      const { data: withdrawal } = await service.from('withdrawal_requests')
+        .select('id, user_id, amount').eq('stripe_payout_id', payout.id).maybeSingle();
+      if (withdrawal) await enqueueWithdrawalEmail({
+        withdrawalId: withdrawal.id,
+        userId: withdrawal.user_id,
+        eventType: 'withdrawal_paid',
+        amountRm: Number(withdrawal.amount),
+      });
+    } catch (emailError) {
+      console.error('[connect-webhook] paid email enqueue failed:', emailError);
+    }
   }
 
   if (event.type === 'payout.failed') {
@@ -56,6 +71,19 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[connect-webhook] connect_payout_failed:', error);
       return NextResponse.json({ error: 'Failed to handle payout failure' }, { status: 500 });
+    }
+    try {
+      const service = createServiceClient();
+      const { data: withdrawal } = await service.from('withdrawal_requests')
+        .select('id, user_id, amount').eq('stripe_payout_id', payout.id).maybeSingle();
+      if (withdrawal) await enqueueWithdrawalEmail({
+        withdrawalId: withdrawal.id,
+        userId: withdrawal.user_id,
+        eventType: 'withdrawal_failed',
+        amountRm: Number(withdrawal.amount),
+      });
+    } catch (emailError) {
+      console.error('[connect-webhook] failed email enqueue failed:', emailError);
     }
   }
 

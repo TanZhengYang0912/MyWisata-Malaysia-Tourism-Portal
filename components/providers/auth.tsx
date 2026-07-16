@@ -2,10 +2,11 @@
 
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { setCurrentUserId } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoAssignment } from "@/lib/auth/demo-user-role";
+import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
 import type { Role, User } from "@/backend/core/types";
 
 interface AuthContextValue {
@@ -24,11 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
+  const pathname = usePathname();
+  const router = useRouter();
 
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
     const { data: row, error } = await supabase
       .from("users")
-      .select("id,email,full_name,city,phone,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
+      .select("id,email,full_name,city,country,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
     if (error) throw error;
@@ -46,8 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: (assignmentRole?.name ?? "customer") as Role,
       avatarInitial: name[0]?.toUpperCase() ?? "?",
       city: row.city ?? undefined,
+      country: row.country ?? undefined,
       phone: row.phone ?? undefined,
-      verificationTier: (row.tier ?? "email_verified") as User["verificationTier"],
+      status: (row.status ?? "active") as User["status"],
+      verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],
       vendorId: vendorId ?? undefined,
       outletId: assignment?.outlet_id ?? undefined,
     } : null;
@@ -93,6 +98,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, [loadSupabaseUser, supabase]);
+
+  useEffect(() => {
+    if (loading || !currentUser) return;
+    const gate = accountGate(currentUser.status);
+    const destination = gate === "restore" ? "/account-restore" : gate === "suspended" ? "/account-suspended" : null;
+    const suspendedSupportPath = gate === "suspended" && canSuspendedAccessPath(pathname);
+    if (destination && pathname !== destination && !suspendedSupportPath) router.replace(destination);
+  }, [currentUser?.status, loading, pathname, router]);
 
   const switchUser = useCallback(async (id: string, selectedUser?: User) => {
     const user = selectedUser;

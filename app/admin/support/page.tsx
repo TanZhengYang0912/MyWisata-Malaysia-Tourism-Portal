@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
 
 interface AdminTicket {
   id: string;
@@ -241,6 +242,8 @@ function AdminSupportContent() {
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-4">Support Tickets</h1>
+
+      <ModerationFlagsPanel />
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

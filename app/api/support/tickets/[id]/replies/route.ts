@@ -24,6 +24,8 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { createTicketReplySchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
 import { notifyTicketReply } from '@/lib/support/notify';
+import { cleanUserContent } from '@/lib/moderation/clean';
+import { logModerationFlag } from '@/lib/moderation/flags';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -60,12 +62,26 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('TICKET_LOCKED', 'This ticket is resolved. Reopen it to reply.', 403);
   }
 
+  // CLAUDE-MODERATION.md: masked, never blocked — applies identically to
+  // both sides. A masked staff slur is still logged as a moderation flag
+  // (worth an HR/conduct look), not just a customer one.
+  const cleaned = cleanUserContent(body);
+
   const { data: reply, error: replyErr } = await service
     .from('support_ticket_replies')
-    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body })
+    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display })
     .select('id, sender_id, sender_role, body, created_at')
     .single();
   if (replyErr) return apiFail('DB_ERROR', replyErr.message, 500);
+
+  if (cleaned.hadSlur) {
+    await logModerationFlag(service, {
+      sourceType: 'ticket_reply',
+      sourceId: reply.id,
+      userId: user.id,
+      originalExcerpt: cleaned.original,
+    });
+  }
 
   const statusUpdate: { last_reply_at: string; status?: string; assigned_to?: string } = {
     last_reply_at: new Date().toISOString(),
@@ -76,7 +92,7 @@ export async function POST(request: Request, { params }: Props) {
   }
   await service.from('support_tickets').update(statusUpdate).eq('id', id);
 
-  await notifyTicketReply(service, ticket, senderRole, body);
+  await notifyTicketReply(service, ticket, senderRole, cleaned.display);
 
   return apiOk(
     {

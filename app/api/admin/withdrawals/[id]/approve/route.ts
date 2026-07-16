@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import { enqueueWithdrawalEmail } from '@/lib/email/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,6 +214,17 @@ export async function POST(
     p_transfer_id:   transfer.id,
     p_payout_id:     payout.id,
   });
+
+  try {
+    await enqueueWithdrawalEmail({
+      withdrawalId,
+      userId: stripeUserId,
+      eventType: 'withdrawal_approved',
+      amountRm: amountRM,
+    });
+  } catch (emailError) {
+    console.error('[admin-approve] withdrawal email enqueue failed:', emailError);
+  }
 
   return NextResponse.json({
     status:      'processing',

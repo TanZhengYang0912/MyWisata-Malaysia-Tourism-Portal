@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import { enqueueUserTransactionEmail } from '@/lib/email/events';
+import { getPaymentEmailType } from '@/lib/email/payment';
 
 // credit_topup is SECURITY DEFINER — anon role has execute (Postgres default).
 // Service role key is not required here; Stripe signature check is the auth gate.
@@ -58,6 +60,20 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[stripe-webhook] credit_topup RPC failed:', error);
       return NextResponse.json({ error: 'Failed to credit wallet' }, { status: 500 });
+    }
+
+    const paymentEmail = getPaymentEmailType(session.metadata?.payment_kind);
+    try {
+      await enqueueUserTransactionEmail({
+        userId,
+        eventType: paymentEmail.eventType,
+        eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
+        reference: session.id,
+        amountRm: session.amount_total / 100,
+        occurredAt: new Date(event.created * 1000).toISOString(),
+      });
+    } catch (emailError) {
+      console.error('[stripe-webhook] payment email enqueue failed:', emailError);
     }
   }
 

@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('outlets')
-    .select('id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email))', { count: 'exact' })
+    .select('id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)', { count: 'exact' })
     .in('id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -45,7 +45,8 @@ export async function GET(request: Request, { params }: Props) {
     const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
     const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;
     const manager = Array.isArray(assignment?.users) ? assignment.users[0] : assignment?.users;
-    return { ...outlet, coverUrl: outletPage?.hero_url || null, productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null };
+    const pendingInvite = (Array.isArray(outlet.outlet_manager_invitations) ? outlet.outlet_manager_invitations : []).find((invite: { invited_email: string; status: string; expires_at: string }) => invite.status === 'pending' && new Date(invite.expires_at).getTime() > Date.now());
+    return { ...outlet, coverUrl: outletPage?.hero_url || null, productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
   });
   return apiOk({ items, availableStates: [...new Set((stateRows || []).map((row: any) => row.state))], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }

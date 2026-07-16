@@ -21,8 +21,21 @@ import { getAttributionCookieDays } from './settings';
 
 const MW_VISITOR_COOKIE = 'mw_visitor';
 const MW_REF_COOKIE = 'mw_ref';
+const LIMITED_MONTHLY_CLICK_CAP = 50;
 const VISITOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const SECONDS_PER_DAY = 86400;
+
+// CLAUDE-FUNNEL-AI.md: matches share_events.platform's real vocabulary, not
+// a per-social-network list — see lib/affiliate/funnel.ts's header comment
+// for why. Anything else in ?src= is dropped (source stays null) rather than
+// stored as-is, so the funnel's per-platform grouping can't be polluted by
+// arbitrary query-string junk.
+const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link']);
+
+function parseKnownSource(searchParams: URLSearchParams): string | null {
+  const src = searchParams.get('src');
+  return src && KNOWN_SHARE_SOURCES.has(src) ? src : null;
+}
 
 function cookieOptions(maxAgeSeconds: number) {
   return {
@@ -120,7 +133,7 @@ export async function handleAffiliateRedirect(
 
     const { data: link } = await service
       .from('affiliate_links')
-      .select('id')
+      .select('id,user_id')
       .eq('affiliate_code', code)
       .eq('is_active', true)
       .maybeSingle();
@@ -167,18 +180,43 @@ export async function handleAffiliateRedirect(
     const { data: { user } } = await authClient.auth.getUser();
 
     const visitorId = request.cookies.get(MW_VISITOR_COOKIE)?.value ?? crypto.randomUUID();
+    const source = parseKnownSource(request.nextUrl.searchParams);
 
-    const { data: click, error: clickErr } = await service
-      .from('affiliate_clicks')
-      .insert({
-        link_id: link.id,
-        clicker_id: user?.id ?? null,
-        target_type: product ? 'product' : null,
-        target_id: product?.id ?? null,
-        ip_hash: hashVisitorId(visitorId),
-      })
-      .select('id')
-      .single();
+    // Profile-complete contributors receive a deliberately small trial tier.
+    // The redirect still works when capped, but no click/cookie is recorded.
+    const { data: owner } = await service
+      .from('users')
+      .select('tier, kyc_status')
+      .eq('id', link.user_id)
+      .maybeSingle();
+    const fullAffiliate = owner?.tier === 'kyc_verified' && owner?.kyc_status === 'approved';
+    let limitedCapReached = owner?.kyc_status === 'rejected';
+    if (!fullAffiliate) {
+      const startOfMonth = new Date();
+      startOfMonth.setUTCDate(1);
+      startOfMonth.setUTCHours(0, 0, 0, 0);
+      const { count } = await service
+        .from('affiliate_clicks')
+        .select('id', { count: 'exact', head: true })
+        .eq('link_id', link.id)
+        .gte('created_at', startOfMonth.toISOString());
+      limitedCapReached = (count ?? 0) >= LIMITED_MONTHLY_CLICK_CAP;
+    }
+
+    const { data: click, error: clickErr } = limitedCapReached
+      ? { data: null, error: null }
+      : await service
+        .from('affiliate_clicks')
+        .insert({
+          link_id: link.id,
+          clicker_id: user?.id ?? null,
+          target_type: product ? 'product' : null,
+          target_id: product?.id ?? null,
+          ip_hash: hashVisitorId(visitorId),
+          source,
+        })
+        .select('id')
+        .single();
 
     if (clickErr) {
       console.error('[affiliate] click insert failed', clickErr.message);

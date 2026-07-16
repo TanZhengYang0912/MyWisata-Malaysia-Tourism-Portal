@@ -261,6 +261,76 @@ moving is the correct, complete signal.
   explanation). The money is real the moment it's credited; the dashboard
   label just hasn't caught up to that yet.
 
+## Admin AI + PII Compliance (§7.1 / §7.3)
+
+Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an
+admin-only AI assistant with three capabilities. Lives under `lib/admin-ai/`,
+`lib/chatbot/pii.ts`, and `app/api/admin-ai/*`.
+
+### ⚠️ Migration required before ANY of this works — including the existing customer chatbot
+
+`supabase/migrations/034_admin_ai.sql` adds `chatbot_messages.pii_detected`
+and `chatbot_sessions.channel`. **This is not optional or admin-only**:
+wiring `pii_detected` into the existing `POST /api/chatbot/ask` route (so
+customer chatbot messages log the same signal) means the customer chatbot
+now fails with a `DB_ERROR` on every question until this migration is
+applied. Paste this into the Supabase SQL Editor before testing anything
+below (it's idempotent — safe to run more than once):
+
+```sql
+ALTER TABLE chatbot_messages
+  ADD COLUMN IF NOT EXISTS pii_detected BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE chatbot_sessions
+  ADD COLUMN IF NOT EXISTS channel VARCHAR(10) NOT NULL DEFAULT 'customer'
+    CHECK (channel IN ('customer', 'admin'));
+```
+
+I didn't apply this myself — a live schema change to shared tables needs
+your review, same as every other migration this project. Everything below
+this line is live-verified against the deployed code; the DB write paths
+that need the two new columns are the one thing I could only verify by
+inspecting the resulting error message, not by seeing real data land.
+
+### PII redaction (Part 1)
+
+`lib/chatbot/pii.ts::redactPII()` — Malaysian IC (dashed and 12-digit bare),
+phone, email, credit-card-like digit runs, and passport numbers. This is the
+hard boundary: `lib/chatbot/embed.ts` and `lib/chatbot/generate.ts` both
+redact internally before any Gemini call, regardless of caller — not just at
+one upstream call site. The **original** message is what's stored in
+`chatbot_messages` (the user needs to see what they typed); only the copy
+sent to Google is redacted. `chatbot_messages.pii_detected` logs whether
+anything was found, never the PII itself.
+
+### Admin AI assistant (Part 2) — `/admin/ai-assistant`, gated on `super_admin` only
+
+Stricter than the rest of `/admin` (which also lets `approver` in) —
+`lib/affiliate/admin-guard.ts::isSuperAdmin()`, checked server-side in every
+`/api/admin-ai/*` route, not just hidden from nav.
+
+- **Capability 1 — ask about platform metrics.** The LLM never writes SQL
+  and never sees a raw row. `lib/admin-ai/queries.ts` is a fixed registry of
+  parameterised, aggregate-only queries (supabase-js query builder only, no
+  raw SQL string interpolation anywhere in that file) — the registry itself
+  is the security boundary. Two Gemini calls: one picks a query by name +
+  params (JSON tool-call style), the second phrases the aggregate result in
+  natural language. A question with no matching registered query — including
+  any request for a specific customer's PII — gets a refusal or "here's what
+  I can answer," never an improvised query.
+- **Capability 2 — draft staff messages.** `POST /api/admin-ai/draft`, pure
+  generation, no data access. The admin types the specifics; the bot never
+  fetches them. Draft is editable text — the bot never sends anything.
+- **Capability 3 — moderation assistant.** A read-only "AI review" button on
+  `/admin/recommendations` (`app/admin/recommendations/page.tsx` — another
+  member's screen; this only reads `vendor_recommendations`, never writes to
+  it or its approval flow). Advisory only: completeness, a fuzzy
+  duplicate-name signal, quality notes, and a low-risk/needs-review flag —
+  never auto-approves or auto-rejects.
+
+Dev-only: every outgoing Gemini payload (post-redaction) is logged to the
+server console (`lib/admin-ai/gemini.ts`) so the "no raw PII in the request"
+claim is checkable, not just asserted.
+
 ## Deferred (not in this phase)
 
 AI recommendation/itinerary/smart search, realtime chat, real payment

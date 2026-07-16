@@ -7,6 +7,7 @@ import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutGrid, M
 import { ActivityCard } from "@/components/customer/activity-card";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { MalaysiaDestinationRail } from "@/components/customer/malaysia-destination-rail";
+import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -175,6 +176,8 @@ export function HomeClient({ initialActivities }: { initialActivities: ComputedA
           </button>
         </div>
       </section>
+
+      <PromotionSpotlight activities={activities ?? []} />
 
       {/* Picked for you (honest label: top-rated, no AI scoring yet) */}
       <section className="py-10 bg-primary/[0.03]">

@@ -1,0 +1,63 @@
+// P4 — Member 4: wires affiliate attribution into REAL checkout.
+// CLAUDE-CHECKOUT-WIRE.md — CASE B (client-side createOrder), variant B2.
+//
+// Why B2, not B1: app/customer/checkout/page.tsx is "use client" and imports
+// backend/domains/commerce.ts::createOrder() directly. That module has no
+// "use server" boundary, so it — and everything it imports — is bundled into
+// the browser. lib/affiliate/attribution.ts::onOrderPaid() imports next/headers's
+// cookies(), which is guarded by the `server-only` package and throws a
+// build-time error the moment it's reachable from a client bundle. Inlining
+// the onOrderPaid() call inside createOrder() (CASE B1's literal instructions)
+// would not compile for this codebase. This route is the smallest fix that
+// actually works: ZERO changes to commerce.ts, one new server-side endpoint,
+// one small non-blocking client-side call after order creation.
+//
+// Does not re-derive anything the client claims — takes only orderId as
+// input, confirms it belongs to the caller, then reads mw_ref itself
+// server-side (the real httpOnly cookie, not anything the client could
+// forge) before validating it against affiliate_clicks.
+
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
+import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
+import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
+import { onOrderPaid } from '@/lib/affiliate/attribution';
+
+export async function POST(request: Request) {
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const parsed = await parseBody(request, attributeCheckoutSchema);
+  if (!parsed.ok) return parsed.response;
+  const { orderId } = parsed.data;
+
+  const service = createServiceClient();
+
+  // Ownership check: don't let user A attribute (or probe the existence of) user B's order.
+  const { data: order } = await service.from('orders').select('id,user_id').eq('id', orderId).maybeSingle();
+  if (!order || order.user_id !== user.id) return apiFail('NOT_FOUND', 'Order not found', 404);
+
+  try {
+    const cookieStore = await cookies();
+    const mwRefCookie = cookieStore.get('mw_ref')?.value ?? null;
+    if (mwRefCookie) {
+      // Validate against affiliate_clicks so a stale/forged cookie degrades to
+      // null instead of violating orders.affiliate_click_id's FK.
+      const { data: click } = await service.from('affiliate_clicks').select('id').eq('id', mwRefCookie).maybeSingle();
+      if (click) {
+        await service.from('orders').update({ affiliate_click_id: click.id }).eq('id', orderId);
+      }
+    }
+  } catch (error) {
+    // Attribution must never block checkout — this route already runs after
+    // the order is paid, but still fail soft and let onOrderPaid() run
+    // (it will just find no click id and return early).
+    console.error('[checkout/attribute] cookie/click lookup failed', error instanceof Error ? error.message : error);
+  }
+
+  await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
+
+  return apiOk({ attributed: true });
+}

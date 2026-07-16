@@ -19,6 +19,9 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { supportTicketSchema } from '@/lib/validation/chatbot-schemas';
 import { classifyTicketSmart } from '@/lib/chatbot/classify-ai';
 import { getLatestReplyTimestamps, isUnread } from '@/lib/support/unread';
+import { cleanUserContent } from '@/lib/moderation/clean';
+import { logModerationFlag } from '@/lib/moderation/flags';
+import { createServiceClient } from '@/lib/supabase/service';
 
 export async function GET() {
   const supabase = await createClient();
@@ -69,19 +72,27 @@ export async function POST(request: Request) {
     sessionId = session?.id ?? null;
   }
 
+  // CLAUDE-MODERATION.md: mask, never block — a ticket is often filed by an
+  // upset user, and this is exactly the input that must never be rejected
+  // for content. Classification runs on the cleaned (masked) text too, so a
+  // masked swear word doesn't skew category detection any differently than
+  // the real one would have.
+  const cleanedSubject = cleanUserContent(subject);
+  const cleanedBody = cleanUserContent(body);
+
   // AI classification (Gemini) with the keyword classifier as a safety net —
   // CLAUDE-FIXES-2.md item 6. classifyTicketSmart() never throws: no
   // LLM_API_KEY, an API error/timeout, or a reply outside the six valid
   // categories all fall through to the keyword version automatically.
-  const { category, method } = await classifyTicketSmart(subject, body);
+  const { category, method } = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display);
 
   const { data, error } = await supabase
     .from('support_tickets')
     .insert({
       user_id: user?.id ?? null,
       session_id: sessionId,
-      subject,
-      body,
+      subject: cleanedSubject.display,
+      body: cleanedBody.display,
       category,
       classification_method: method,
       status: 'open',
@@ -90,5 +101,16 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+
+  if (cleanedSubject.hadSlur || cleanedBody.hadSlur) {
+    const service = createServiceClient();
+    await logModerationFlag(service, {
+      sourceType: 'ticket',
+      sourceId: data.id,
+      userId: user?.id ?? null,
+      originalExcerpt: cleanedSubject.hadSlur ? cleanedSubject.original : cleanedBody.original,
+    });
+  }
+
   return apiOk({ id: data.id, category }, { status: 201 });
 }

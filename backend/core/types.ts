@@ -17,8 +17,10 @@ export interface User {
   role: Role;
   avatarInitial: string;
   city?: string;
+  country?: string;
   phone?: string;
-  verificationTier: "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
+  status?: "active" | "suspended" | "deleted";
+  verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -42,6 +44,7 @@ export interface VendorSummary {
 export interface Outlet {
   id: string;
   vendorId: string;
+  vendorName?: string;
   name: string;
   category: string;
   state: string;
@@ -112,6 +115,16 @@ export interface Activity {
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
+}
+
+export interface ProductReview {
+  id: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  createdAt: string;
+  authorName: string;
+  verifiedPurchase: boolean;
 }
 
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────
@@ -196,7 +209,39 @@ export interface PublicUser {
   avatarUrl?: string;
   city?: string;
   country?: string;
+  bio?: string;
   isKycVerified: boolean;
+}
+
+export interface ProfileSummary {
+  id: string;
+  email: string;
+  fullName: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  phone: string | null;
+  maskedPhone: string | null;
+  city: string | null;
+  country: string | null;
+  status: "active" | "suspended" | "deleted";
+  tier: User["verificationTier"];
+  kycStatus: "unverified" | "pending" | "approved" | "rejected";
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  profileComplete: boolean;
+  survey: {
+    interests: string[];
+    travelStyle: string | null;
+    budgetRange: string | null;
+    mobilityNeeds: string | null;
+  } | null;
+  latestKycReview: {
+    status: string;
+    reasonCode: string | null;
+    reasonDetail: string | null;
+    reviewedAt: string | null;
+  } | null;
 }
 
 export interface AdminKycSubmission {
@@ -273,7 +318,7 @@ export interface VendorRecommendation {
   name: string;
   category: string;
   state: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "converted";
   qualityScore: number;
   duplicate: boolean;
   /** Present when the public author is still active and visible. */

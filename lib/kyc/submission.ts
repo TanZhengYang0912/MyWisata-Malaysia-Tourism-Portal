@@ -1,6 +1,6 @@
 import { validateMagicBytes } from './magic-bytes';
 
-const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE = 5 * 1024 * 1024;
 
 type UploadFile = Pick<File, 'type' | 'size' | 'arrayBuffer'>;
@@ -18,10 +18,10 @@ export async function validateKycUploadFile(file: UploadFile): Promise<KycUpload
   return { ok: true, buffer };
 }
 
-function extensionForMime(mimeType: string): 'jpg' | 'png' | 'pdf' {
+function extensionForMime(mimeType: string): 'jpg' | 'png' | 'webp' {
   if (mimeType === 'image/jpeg') return 'jpg';
   if (mimeType === 'image/png') return 'png';
-  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType === 'image/webp') return 'webp';
   throw new Error('Unsupported KYC evidence MIME type');
 }
 

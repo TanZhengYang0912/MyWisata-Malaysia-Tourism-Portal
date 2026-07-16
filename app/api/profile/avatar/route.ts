@@ -8,7 +8,7 @@ export async function PUT(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  // Read optional content-type hint from query string
+  // Read an extension hint only; confirm route validates the actual bytes.
   const url = new URL(request.url);
   const mime = url.searchParams.get('type') ?? 'image/jpeg';
   const allowed = ['image/jpeg', 'image/png', 'image/webp'];

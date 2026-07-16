@@ -35,6 +35,12 @@ export async function POST(request: Request) {
     return apiFail('RATE_LIMITED', 'Too many OTP requests — try again in 1 hour', 429);
   }
 
+  // Choosing a different number invalidates the previous phone verification;
+  // profile/KYC tiers remain intact, but checkout is blocked until this OTP is
+  // verified again.
+  const { error: clearError } = await supabase.rpc('clear_phone_verification', { p_user_id: user.id });
+  if (clearError) return apiFail('DB_ERROR', clearError.message, 500);
+
   // Record the send attempt before calling Twilio (idempotent on Twilio side)
   await supabase.from('phone_verifications').insert({
     user_id: user.id,

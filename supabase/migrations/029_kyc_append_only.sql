@@ -17,12 +17,39 @@ ALTER TABLE kyc_submissions
 
 
 -- ── 2. Expand status CHECK ────────────────────────────────────────────────────
-ALTER TABLE kyc_submissions
-  DROP CONSTRAINT IF EXISTS kyc_submissions_status_check;
+-- Drop ALL check constraints on kyc_submissions.status regardless of name,
+-- then normalise any stale values before re-adding the authoritative constraint.
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT conname FROM pg_constraint
+     WHERE conrelid = 'kyc_submissions'::regclass
+       AND contype  = 'c'
+       AND pg_get_constraintdef(oid) LIKE '%status%'
+  LOOP
+    EXECUTE 'ALTER TABLE kyc_submissions DROP CONSTRAINT ' || quote_ident(r.conname);
+  END LOOP;
+END $$;
 
-ALTER TABLE kyc_submissions
-  ADD CONSTRAINT kyc_submissions_status_check
-    CHECK (status IN ('pending','info_requested','approved','rejected'));
+-- Rows with a status outside the authoritative set are reset to 'pending'
+-- so the new constraint can be added cleanly.
+UPDATE kyc_submissions
+   SET status = 'pending'
+ WHERE status NOT IN ('pending','info_requested','approved','rejected');
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'kyc_submissions'::regclass
+       AND conname  = 'kyc_submissions_status_check'
+  ) THEN
+    ALTER TABLE kyc_submissions
+      ADD CONSTRAINT kyc_submissions_status_check
+        CHECK (status IN ('pending','info_requested','approved','rejected'));
+  END IF;
+END $$;
 
 
 -- ── 3. queue_position column ─────────────────────────────────────────────────
