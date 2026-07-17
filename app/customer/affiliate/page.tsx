@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Copy, Gift, Link2, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { isKycApproved } from "@/lib/affiliate/verification";
+import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -117,7 +117,7 @@ export default function AffiliateDashboardPage() {
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —
   // this is how the feature recruits affiliates in the first place.
-  if (!isKycApproved(currentUser)) {
+  if (!isAffiliateEligible(currentUser)) {
     return (
       <div className="max-w-md mx-auto px-4 sm:px-6 py-20 text-center">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">

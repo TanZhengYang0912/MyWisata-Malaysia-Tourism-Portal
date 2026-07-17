@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Share2, ImageDown } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
-import { isKycApproved } from "@/lib/affiliate/verification";
+import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 
@@ -75,7 +75,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
   const { showFeedback } = useActionFeedback();
   const [status, setStatus] = useState<ShareStatus>("idle");
   const [imageStatus, setImageStatus] = useState<ImageShareStatus>("idle");
-  const isVerified = isKycApproved(currentUser);
+  const isVerified = isAffiliateEligible(currentUser);
   const imageType = SHARE_IMAGE_TYPES[shareType];
 
   async function logShare(platform: SharePlatform) {
