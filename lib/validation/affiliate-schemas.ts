@@ -10,7 +10,9 @@ const uuid = z.string().uuid();
 export const shareEventSchema = z.object({
   shareType: z.enum(['product', 'vendor', 'outlet', 'recommendation']),
   contentId: uuid,
-  platform: z.enum(['native', 'copy_link']),
+  // 'image_share'/'image_download' added for CLAUDE-SHARE-IMAGE.md §12.2.3 —
+  // the branded PNG card flow, distinct from the plain-link 'native'/'copy_link'.
+  platform: z.enum(['native', 'copy_link', 'image_share', 'image_download']),
 }).strict();
 
 export type ShareEventInput = z.infer<typeof shareEventSchema>;

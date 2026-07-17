@@ -185,6 +185,12 @@ try {
     await service.from('preference_survey_responses').delete().eq('user_id', id);
     await service.from('kyc_submissions').delete().eq('user_id', id);
     await service.auth.admin.deleteUser(id).catch(() => {});
+    // public.users.id has NO foreign key to auth.users (001_initial_schema.sql:16
+    // — just a same-value comment) and no delete trigger/cascade either, so
+    // deleting the auth user above does NOT remove this row — confirmed by a
+    // real orphaned-row leak from an earlier run of this exact script. Must
+    // be deleted explicitly, not assumed to cascade.
+    await service.from('users').delete().eq('id', id);
   }
   console.log(`deleted ${createdUserIds.length} throwaway users and their rows`);
 }
