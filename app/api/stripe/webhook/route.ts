@@ -1,20 +1,10 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
 import { enqueueUserTransactionEmail } from '@/lib/email/events';
 import { getPaymentEmailType } from '@/lib/email/payment';
-
-// credit_topup is SECURITY DEFINER — anon role has execute (Postgres default).
-// Service role key is not required here; Stripe signature check is the auth gate.
-function makeDb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  );
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +37,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
     }
 
-    const db = makeDb();
+    const db = createServiceClient();
+
+    if (session.metadata?.payment_kind === 'order' && session.metadata.checkout_session_id) {
+      const { error: finalizeError } = await db.rpc('finalize_checkout', {
+        p_checkout_session_id: session.metadata.checkout_session_id,
+        p_outcome: 'succeeded',
+        p_provider_payment_id: typeof session.payment_intent === 'string' ? session.payment_intent : session.id,
+        p_provider_event_id: event.id,
+      });
+      if (finalizeError) {
+        console.error('[stripe-webhook] order finalize RPC failed:', finalizeError);
+        return NextResponse.json({ error: 'Failed to finalize order' }, { status: 500 });
+      }
+      const paymentEmail = getPaymentEmailType('order');
+      try {
+        await enqueueUserTransactionEmail({
+          userId,
+          eventType: paymentEmail.eventType,
+          eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
+          reference: session.id,
+          amountRm: session.amount_total / 100,
+          occurredAt: new Date(event.created * 1000).toISOString(),
+        });
+      } catch (emailError) {
+        console.error('[stripe-webhook] payment email enqueue failed:', emailError);
+      }
+      return NextResponse.json({ received: true });
+    }
+
     const { error } = await db.rpc('credit_topup', {
       p_user_id:         userId,
       p_amount_sen:      session.amount_total,  // Stripe MYR amount_total is already in sen

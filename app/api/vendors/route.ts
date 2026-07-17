@@ -92,5 +92,16 @@ export async function POST(request: Request) {
   }).select().single();
 
   if (error) return apiFail('DB_ERROR', error.message, 400);
+  const { error: onboardingError } = await supabase.from('vendor_onboarding_profiles').insert({
+    vendor_id: data.id,
+    legal_business_name: body.legalBusinessName || body.name,
+    registration_number: body.registrationNumber || null,
+    contact_name: body.contactName || null,
+    contact_email: body.contactEmail || user.email || null,
+    contact_phone: body.contactPhone || null,
+    business_address: body.businessAddress || null,
+    status: 'submitted',
+  });
+  if (onboardingError) return apiFail('DB_ERROR', onboardingError.message, 500);
   return apiOk(data, { status: 201 });
 }

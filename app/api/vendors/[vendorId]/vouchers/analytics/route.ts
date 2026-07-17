@@ -4,6 +4,7 @@ import { authorizeVendor } from '@/lib/vendor-authorization';
 interface Props { params: Promise<{ vendorId: string }> }
 type RedemptionRow = { voucher_id: string; discount: number | null; created_at: string; orders: { id?: string; total_amount: number | null } | null };
 type VoucherRow = { id: string; code: string; name: string; max_uses: number | null; outlet_id: string | null; outlets: { name: string } | { name: string }[] | null };
+type EventRow = { voucher_id: string; event_type: string };
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
@@ -23,6 +24,11 @@ export async function GET(request: Request, { params }: Props) {
   if (voucherError) return apiFail('DB_ERROR', voucherError.message, 500);
   const voucherRows = (vouchers || []) as VoucherRow[];
   const voucherIds = voucherRows.map((voucher: any) => voucher.id);
+  let eventQuery = db.from('voucher_events').select('voucher_id,event_type').in('voucher_id', voucherIds.length ? voucherIds : ['none']);
+  if (from) eventQuery = eventQuery.gte('created_at', `${from}T00:00:00+08:00`);
+  if (to) eventQuery = eventQuery.lte('created_at', `${to}T23:59:59.999+08:00`);
+  const { data: eventRows, error: eventError } = await eventQuery;
+  if (eventError) return apiFail('DB_ERROR', eventError.message, 500);
   const orderIds = new Set<string>();
   let redemptionQuery = db.from('voucher_redemptions').select('voucher_id,discount,created_at,orders(id,total_amount)').in('voucher_id', voucherIds.length ? voucherIds : ['none']).order('created_at', { ascending: false });
   if (from) redemptionQuery = redemptionQuery.gte('created_at', `${from}T00:00:00+08:00`);
@@ -36,10 +42,17 @@ export async function GET(request: Request, { params }: Props) {
     if (itemError) return apiFail('DB_ERROR', itemError.message, 500);
     allowedOrderIds = new Set((orderItems || []).map((item: any) => item.order_id));
   }
-  const analytics = new Map<string, { voucherId: string; code: string; name: string; outletName: string; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }>();
+  const analytics = new Map<string, { voucherId: string; code: string; name: string; outletName: string; views: number; entries: number; applies: number; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }>();
   for (const voucher of voucherRows) {
     const outlet = Array.isArray(voucher.outlets) ? voucher.outlets[0] : voucher.outlets;
-    analytics.set(voucher.id, { voucherId: voucher.id, code: voucher.code, name: voucher.name, outletName: outlet?.name || 'All outlets', redemptions: 0, redemptionRate: voucher.max_uses ? 0 : null, discount: 0, revenue: 0, revenueImpact: 0 });
+    analytics.set(voucher.id, { voucherId: voucher.id, code: voucher.code, name: voucher.name, outletName: outlet?.name || 'All outlets', views: 0, entries: 0, applies: 0, redemptions: 0, redemptionRate: voucher.max_uses ? 0 : null, discount: 0, revenue: 0, revenueImpact: 0 });
+  }
+  for (const event of (eventRows ?? []) as EventRow[]) {
+    const current = analytics.get(event.voucher_id);
+    if (!current) continue;
+    if (event.event_type === 'viewed') current.views += 1;
+    if (event.event_type === 'entered') current.entries += 1;
+    if (event.event_type === 'apply_success') current.applies += 1;
   }
   for (const row of (data ?? []) as unknown as RedemptionRow[]) {
     if (allowedOrderIds && !allowedOrderIds.has(row.orders?.id || '')) continue;

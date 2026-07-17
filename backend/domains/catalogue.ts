@@ -141,9 +141,9 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
 }
 
 export async function getBookingSlots(activityId: string, db: SupabaseClient = supabase): Promise<BookingSlot[]> {
-  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,price_override").eq("product_id", activityId).order("starts_at");
+  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,status,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
-  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
+  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
 
 export async function getProductReviews(productId: string, db: SupabaseClient = supabase): Promise<ProductReview[]> {
@@ -271,7 +271,7 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
 // ─── Vouchers ───────────────────────────────────────────────────────────────
 function mapVoucher(row: {
   id: string; code: string; name?: string | null; voucher_type: string; discount_value: number; min_spend: number | null;
-  max_uses: number | null; uses_count: number; valid_until: string | null;
+  max_uses: number | null; uses_count: number; per_customer_limit?: number | null; valid_until: string | null;
   product_id?: string | null; buy_quantity?: number | null; free_quantity?: number | null;
 }): Voucher {
   return {
@@ -283,6 +283,7 @@ function mapVoucher(row: {
     minSpend: Number(row.min_spend ?? 0),
     usageCap: row.max_uses ?? Infinity,
     usageCount: row.uses_count,
+    perCustomerLimit: row.per_customer_limit ?? undefined,
     expiresAt: row.valid_until ?? "",
     productId: row.product_id ?? undefined,
     buyQuantity: row.buy_quantity ?? undefined,

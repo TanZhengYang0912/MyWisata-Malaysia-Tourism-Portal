@@ -87,6 +87,7 @@ export interface BookingSlot {
   startsAt: string; // ISO datetime
   capacity: number;
   booked: number;
+  status?: "available" | "full" | "expired" | string;
   priceOverride?: number;
 }
 
@@ -147,6 +148,7 @@ export interface Voucher {
   minSpend: number;
   usageCap: number;
   usageCount: number;
+  perCustomerLimit?: number;
   expiresAt: string; // ISO date
   productId?: string;
   buyQuantity?: number;

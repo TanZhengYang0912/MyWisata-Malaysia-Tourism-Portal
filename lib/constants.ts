@@ -46,7 +46,7 @@ export const ROLE_NAMES = [
 ] as const;
 
 export const PRODUCT_TYPES = [
-  'product', 'activity', 'experience', 'food', 'digital',
+  'product', 'activity', 'experience', 'food', 'digital', 'service',
 ] as const;
 
 export const PAYMENT_METHODS = ['mock_card', 'stripe_card', 'ewallet', 'bank_transfer', 'wallet'] as const;

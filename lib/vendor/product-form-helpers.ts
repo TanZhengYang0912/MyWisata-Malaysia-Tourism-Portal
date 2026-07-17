@@ -53,7 +53,7 @@ export function validateProductReviewReadiness(input: ProductReviewReadinessInpu
     errors.availableStock = 'Add stock before submitting this product for review.';
   }
 
-  if (['activity', 'experience'].includes(input.productType) && (!input.defaultCapacity || input.defaultCapacity <= 0)) {
+  if (['activity', 'experience', 'service'].includes(input.productType) && (!input.defaultCapacity || input.defaultCapacity <= 0)) {
     errors.defaultCapacity = 'Add a booking capacity before submitting this product for review.';
   }
 

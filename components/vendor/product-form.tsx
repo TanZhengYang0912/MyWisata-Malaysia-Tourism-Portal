@@ -226,6 +226,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               <option value="experience">Experience</option>
               <option value="food">Food & Beverage</option>
               <option value="digital">Digital</option>
+              <option value="service">Service</option>
             </select>
           </div>
           <div>
@@ -345,7 +346,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               </div>
             </div>
           )}
-          {['activity', 'experience'].includes(productType) && (
+          {['activity', 'experience', 'service'].includes(productType) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Default booking capacity *</label>
               <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder="e.g. 12" />

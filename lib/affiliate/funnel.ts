@@ -12,9 +12,11 @@
 // populated (migration 035, written going forward from the share URL's
 // ?src= param — see lib/affiliate/redirect.ts). Until at least one click has
 // a source, byPlatform's clicks/conversions are null ("not available yet"),
-// never a fabricated number. `source` values are 'native' | 'copy_link' —
-// share_events.platform's real vocabulary — not per-social-network, because
-// the Web Share API never reports which app the OS share sheet routed to.
+// never a fabricated number. `source` values match share_events.platform's
+// real vocabulary ('native' | 'copy_link' | 'image_share' | 'image_download'
+// — see CLAUDE-SHARE-IMAGE.md §12.2.3 for the latter two) — not
+// per-social-network, because the Web Share API never reports which app the
+// OS share sheet routed to.
 
 export interface FunnelPlatformRow {
   platform: string;

@@ -9,6 +9,7 @@ import { applyPercent } from '@/lib/money';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const parsed = await parseBody(request, voucherValidateSchema);
   if (!parsed.ok) return parsed.response;
@@ -48,6 +49,21 @@ export async function POST(request: Request) {
   if (voucher.max_uses !== null && voucher.uses_count >= voucher.max_uses) {
     return apiOk({ valid: false, reason: 'This voucher has reached its usage limit' });
   }
+  if (voucher.max_uses !== null && Number(voucher.uses_count ?? 0) + Number(voucher.reserved_uses ?? 0) >= voucher.max_uses) {
+    return apiOk({ valid: false, reason: 'This voucher is temporarily reserved at capacity' });
+  }
+  if (voucher.outlet_id && !(items ?? []).some((item) => item.outletId === voucher.outlet_id)) {
+    return apiOk({ valid: false, reason: 'This voucher is not valid for the selected outlet' });
+  }
+  if (voucher.product_id && !(items ?? []).some((item) => item.productId === voucher.product_id)) {
+    return apiOk({ valid: false, reason: 'Add the eligible product to use this voucher' });
+  }
+  if (voucher.per_customer_limit !== null && user) {
+    const { count } = await supabase.from('voucher_redemptions').select('id', { count: 'exact', head: true }).eq('voucher_id', voucher.id).eq('user_id', user.id);
+    if (Number(count ?? 0) >= Number(voucher.per_customer_limit)) {
+      return apiOk({ valid: false, reason: 'You have reached this voucher’s per-customer limit' });
+    }
+  }
 
   // Check minimum spend
   if (cartSubtotal < voucher.min_spend) {
@@ -78,6 +94,9 @@ export async function POST(request: Request) {
     discountAmount = Math.min(voucher.discount_value, cartSubtotal);
   }
 
+  if (user) {
+    await supabase.from('voucher_events').insert({ voucher_id: voucher.id, user_id: user.id, event_type: 'apply_success', metadata: { cartSubtotal } });
+  }
   return apiOk({
     valid: true,
     voucherId: voucher.id,

@@ -21,6 +21,12 @@ export const vendorRegisterSchema = z.object({
   slug: slug.optional(), // auto-generated from name if not provided
   description: z.string().trim().max(2000).optional(),
   businessType: z.string().max(50).optional(),
+  legalBusinessName: z.string().trim().max(255).optional(),
+  registrationNumber: z.string().trim().max(120).optional(),
+  contactName: z.string().trim().max(255).optional(),
+  contactEmail: z.string().email().max(255).optional().or(z.literal('')),
+  contactPhone: z.string().max(50).optional(),
+  businessAddress: z.string().trim().max(500).optional(),
   logoUrl: z.string().url().max(2000).optional().or(z.literal('')),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
 }).strict();
@@ -28,11 +34,11 @@ export const vendorRegisterSchema = z.object({
 export const vendorUpdateSchema = vendorRegisterSchema.partial();
 
 export const vendorApproveSchema = z.object({
-  action: z.enum(['approve', 'reject']),
+  action: z.enum(['approve', 'reject', 'request_information']),
   reason: z.string().max(500).optional(),
 }).strict().refine(
   (data) => data.action === 'approve' || (data.reason && data.reason.length >= 5),
-  { message: 'Reject requires a reason of at least 5 characters', path: ['reason'] },
+  { message: 'Reject or information request requires a reason of at least 5 characters', path: ['reason'] },
 );
 
 export const vendorSuspendSchema = z.object({
@@ -72,7 +78,7 @@ export const productCreateSchema = z.object({
   name: z.string().trim().min(2).max(255),
   slug: slug.optional(),
   description: z.string().trim().max(5000).optional(),
-  productType: z.enum(['product', 'activity', 'experience', 'food', 'digital']),
+  productType: z.enum(['product', 'activity', 'experience', 'food', 'digital', 'service']),
   requiresBooking: z.boolean().default(false),
   basePrice: rmMoney.min(0.01),
   categoryId: uuid.optional(),
@@ -139,6 +145,7 @@ export const voucherCreateSchema = z.object({
   discountValue: rmMoney.min(0.01).optional(),
   minSpend: rmMoney.default(0),
   maxUses: z.number().int().min(1).max(100_000).optional(),
+  perCustomerLimit: z.number().int().min(1).max(100_000).nullable().optional(),
   validFrom: z.string().datetime().optional(),
   validUntil: z.string().datetime().optional(),
   outletId: uuid.optional(), // null = all outlets under this vendor
@@ -162,6 +169,7 @@ export const voucherUpdateSchema = z.object({
   discountValue: rmMoney.min(0.01).optional(),
   minSpend: rmMoney.optional(),
   maxUses: z.number().int().min(1).max(100_000).nullable().optional(),
+  perCustomerLimit: z.number().int().min(1).max(100_000).nullable().optional(),
   validFrom: z.string().datetime().nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
   productId: optionalUuid.nullable().optional(),
@@ -194,6 +202,7 @@ export const voucherValidateSchema = z.object({
   vendorId: uuid.optional(),
   items: z.array(z.object({
     productId: uuid,
+    outletId: uuid.optional(),
     quantity: z.number().int().positive(),
     unitPrice: rmMoney,
   })).max(100).optional(),
