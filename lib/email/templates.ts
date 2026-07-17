@@ -3,6 +3,7 @@ export type TransactionEmailType =
   | 'topup_succeeded'
   | 'withdrawal_submitted'
   | 'withdrawal_approved'
+  | 'withdrawal_hold'
   | 'withdrawal_paid'
   | 'withdrawal_failed'
   | 'withdrawal_rejected'
@@ -42,6 +43,7 @@ const SUBJECTS: Record<TransactionEmailType, string> = {
   topup_succeeded: 'Wallet Top-up successful',
   withdrawal_submitted: 'Withdrawal request received',
   withdrawal_approved: 'Withdrawal approved',
+  withdrawal_hold: 'Withdrawal placed on hold',
   withdrawal_paid: 'Withdrawal paid',
   withdrawal_failed: 'Withdrawal failed',
   withdrawal_rejected: 'Withdrawal rejected',

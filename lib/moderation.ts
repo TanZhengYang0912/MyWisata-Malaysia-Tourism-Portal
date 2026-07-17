@@ -13,6 +13,7 @@ export type AccountModerationContext =
   | 'wallet_adjustment_reason'
   | 'withdrawal_reject_reason'
   | 'withdrawal_hold_reason'
+  | 'withdrawal_approve_note'
   | 'withdrawal_fraud_override_reason';
 
 function contextDescription(context: AccountModerationContext): string {
@@ -24,6 +25,7 @@ function contextDescription(context: AccountModerationContext): string {
     case 'wallet_adjustment_reason': return 'a Super Admin wallet adjustment reason';
     case 'withdrawal_reject_reason': return 'a Wallet Approver withdrawal rejection reason';
     case 'withdrawal_hold_reason': return 'a Wallet Approver withdrawal hold reason';
+    case 'withdrawal_approve_note': return 'a Wallet Approver withdrawal approval note';
     case 'withdrawal_fraud_override_reason': return 'a Super Admin withdrawal fraud override reason';
   }
 }
