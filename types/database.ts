@@ -141,6 +141,8 @@ export interface OutletRow {
   email: string | null;
   operating_hours: Json | null;
   status: 'active' | 'inactive' | 'closed';
+  welcome_message: string | null;
+  welcome_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -465,6 +467,7 @@ export interface ChatThreadRow {
   id: string;
   customer_id: string;
   outlet_id: string;
+  vendor_id: string;
   status: 'open' | 'archived' | 'closed';
   last_message_at: string | null;
   archived_at: string | null;
@@ -477,6 +480,7 @@ export interface ChatMessageRow {
   sender_id: string;
   body: string;
   attachment_url: string | null;
+  context_product_id: string | null;
   created_at: string;
 }
 

@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: Props) {
   if ('error' in access) return access.error;
   const outletIds = access.outletIds;
   if (!outletIds.length) return apiOk([]);
-  const { data, error } = await access.service.from('chat_threads').select('id,customer_id,outlet_id,status,last_message_at,created_at,customer:users!chat_threads_customer_id_fkey(full_name,email),outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id)').in('outlet_id', outletIds).order('last_message_at', { ascending: false });
+  const { data, error } = await access.service.from('chat_threads').select('id,customer_id,outlet_id,status,last_message_at,created_at,customer:users!chat_threads_customer_id_fkey(full_name,email),outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id)').in('outlet_id', outletIds).order('last_message_at', { ascending: false });
   if (error) return apiFail('DB_ERROR', error.message, 500);
   return apiOk((data || []).map((thread: any) => ({ ...thread, outlets: thread.outlets ? { ...thread.outlets, full_name: thread.outlets.name, name: outletShortName(thread.outlets.name) } : thread.outlets })));
 }
@@ -39,5 +39,7 @@ export async function POST(request: Request, { params }: Props) {
   const { data: message, error } = await access.service.from('chat_messages').insert({ thread_id: thread.id, sender_id: access.user.id, body: clean, reply_to_message_id: body.replyToId ?? null }).select().single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
   await access.service.from('chat_threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id);
+  // Reopen an archived thread on new activity; never override a manually 'closed' one.
+  await access.service.from('chat_threads').update({ status: 'open' }).eq('id', thread.id).eq('status', 'archived');
   return apiOk(message, { status: 201 });
 }

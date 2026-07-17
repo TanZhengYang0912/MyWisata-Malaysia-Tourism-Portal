@@ -268,6 +268,7 @@ export interface ChatThread {
   id: string;
   customerId: string;
   outletId: string;
+  vendorId: string;
   lastMessageAt: string;
 }
 
@@ -282,6 +283,8 @@ export interface ChatMessage {
   attachmentUrl?: string;
   /** Id of the message this one is quoting, if any. */
   replyToId?: string;
+  /** Product/activity this message references — set on the "Re: <activity>" context chip. */
+  contextProductId?: string;
 }
 
 export interface Notification {

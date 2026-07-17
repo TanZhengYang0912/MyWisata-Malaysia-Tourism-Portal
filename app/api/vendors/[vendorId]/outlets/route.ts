@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('outlets')
-    .select('id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)', { count: 'exact' })
+    .select('id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,welcome_message,welcome_enabled,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)', { count: 'exact' })
     .in('id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -86,6 +86,8 @@ export async function POST(request: Request, { params }: Props) {
     phone: body.phone ?? null,
     email: body.email || null,
     operating_hours: body.operatingHours ?? null,
+    welcome_message: body.welcomeMessage || null,
+    welcome_enabled: body.welcomeEnabled ?? true,
     status: 'inactive',
     review_status: 'pending_review',
   }).select().single();
