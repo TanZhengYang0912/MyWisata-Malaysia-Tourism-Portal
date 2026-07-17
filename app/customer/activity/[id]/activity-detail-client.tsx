@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Check, CheckCircle, Clock, Globe, MapPin, MessageCircle, Navigation, Phone, Plus, Star, Store, Tag, Users } from "lucide-react";
-import { getOrCreateThread } from "@/backend/domains/identity";
+import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { useTrip } from "@/components/providers/trip";
@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import { TRAVEL_MODES, type TravelModeId } from "@/lib/travel-modes";
+import { ORS_PROFILE, type RouteResult } from "@/lib/routing";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
 import { formatBookingSlotTime, getBookingDatePreview, groupBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
@@ -65,7 +66,6 @@ export function ActivityDetailClient({
   const [added, setAdded] = useState(false);
   const [travelMode, setTravelMode] = useState<TravelModeId>("DRIVING");
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
-  const [mapsReady, setMapsReady] = useState(false);
   const [eta, setEta] = useState<{ durationText: string; distanceText: string } | null>(null);
   const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "denied" | "error">("idle");
   const [view, setView] = useState<"details" | "map">("details");
@@ -83,25 +83,26 @@ export function ActivityDetailClient({
     if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
   }, [slotId]);
 
-  // Retries the ETA calc once the Maps script finishes loading, covering the
-  // race where the user picks a travel mode before google.maps is ready.
-  useEffect(() => {
-    if (mapsReady && userLoc && activity) computeEta(userLoc, travelMode);
-  }, [mapsReady]);
-
   function computeEta(origin: { lat: number; lng: number }, mode: TravelModeId) {
-    if (!mapsReady || !activity) return;
+    if (!activity) return;
+    // No free routing profile for transit — matches the trip planner's
+    // handling, which sends transit users to the Google Maps handoff instead.
+    if (!ORS_PROFILE[mode]) {
+      setEta(null);
+      setEtaStatus("error");
+      return;
+    }
     setEtaStatus("loading");
-    new google.maps.DirectionsService()
-      .route({
-        origin,
-        destination: { lat: activity.outlet.lat, lng: activity.outlet.lng },
-        travelMode: google.maps.TravelMode[mode],
-      })
-      .then((result) => {
-        const leg = result.routes[0]?.legs[0];
-        if (!leg?.duration || !leg.distance) throw new Error("no route");
-        setEta({ durationText: leg.duration.text, distanceText: leg.distance.text });
+    fetch("/api/route", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, points: [[origin.lat, origin.lng], [activity.outlet.lat, activity.outlet.lng]] }),
+    })
+      .then((res) => res.json())
+      .then((body: { data: { routes: RouteResult[] } | null }) => {
+        const route = body.data?.routes[0];
+        if (!route) throw new Error("no route");
+        setEta({ durationText: `${route.durationMin} min`, distanceText: `${route.distanceKm} km` });
         setEtaStatus("idle");
       })
       .catch(() => {
@@ -167,6 +168,7 @@ export function ActivityDetailClient({
   async function handleChat() {
     if (!currentUser) return;
     const thread = await getOrCreateThread(currentUser.id, activity!.outletId);
+    await sendMessage(thread.id, currentUser.id, "customer", `Re: ${activity!.name}`, undefined, activity!.id);
     router.push(`/customer/chat/${thread.id}`);
   }
 
@@ -307,7 +309,6 @@ export function ActivityDetailClient({
               center={[activity.outlet.lat, activity.outlet.lng]}
               zoom={14}
               height={420}
-              onApiLoaded={() => setMapsReady(true)}
             />
           </div>
         </>

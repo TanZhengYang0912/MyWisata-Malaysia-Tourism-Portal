@@ -60,6 +60,8 @@ export const outletCreateSchema = z.object({
     closed: z.boolean().optional(),
     note: z.string().max(500).optional(),
   }).strict()).optional(),
+  welcomeMessage: z.string().trim().max(500).optional().or(z.literal('')),
+  welcomeEnabled: z.boolean().optional(),
 }).strict();
 
 export const outletUpdateSchema = outletCreateSchema.partial();

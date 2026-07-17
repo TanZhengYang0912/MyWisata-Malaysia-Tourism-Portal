@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Expand, GripVertical, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Shrink, Star, X } from "lucide-react";
+import { Expand, GripVertical, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { useTrip } from "@/components/providers/trip";
@@ -50,12 +50,20 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
 
+  // Add-a-stop search + real-time geocoding autocomplete
+  const [addingStop, setAddingStop] = useState(false);
+  const [stopSearchInput, setStopSearchInput] = useState("");
+  const [stopSuggestions, setStopSuggestions] = useState<GeoHit[]>([]);
+  const [stopSearchLoading, setStopSearchLoading] = useState(false);
+
   // Per-mode route options (may be several alternatives for a 2-point drive).
   const [routes, setRoutes] = useState<Partial<Record<TravelModeId, RouteResult[]>>>({});
   const [routesLoading, setRoutesLoading] = useState(false);
   const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
+  const focusTokenRef = useRef(0);
 
   const near = trip.start ? { lat: trip.start.lat, lng: trip.start.lng } : undefined;
 
@@ -131,6 +139,33 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
     };
   }, [startInput, editingStart]);
 
+  // Real-time geocoding as the user types a place to add as a stop.
+  useEffect(() => {
+    if (!addingStop) return;
+    const q = stopSearchInput.trim();
+    if (q.length < 3) {
+      setStopSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setStopSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+        const body = (await res.json()) as { data: { results: GeoHit[] } | null };
+        if (!cancelled) setStopSuggestions(body.data?.results ?? []);
+      } catch {
+        if (!cancelled) setStopSuggestions([]);
+      } finally {
+        if (!cancelled) setStopSearchLoading(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [stopSearchInput, addingStop]);
+
   const activeRoutes = ORS_PROFILE[mode] ? routes[mode] ?? [] : [];
   const activeRoute = activeRoutes[selectedRouteIdx] ?? activeRoutes[0];
 
@@ -175,6 +210,19 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
     if (dragIndex !== null && dragIndex !== target) trip.move(dragIndex, target);
     setDragIndex(null);
   }
+  function chooseStopSuggestion(hit: GeoHit) {
+    trip.add({ id: crypto.randomUUID(), lat: hit.lat, lng: hit.lng, label: hit.label });
+    setAddingStop(false);
+    setStopSearchInput("");
+    setStopSuggestions([]);
+  }
+  function handleUserLocationDrag(lat: number, lng: number) {
+    trip.setStart({ label: "Custom location", lat, lng, source: "custom" });
+  }
+  function focusPin(pin: MapPin) {
+    focusTokenRef.current += 1;
+    setFocusRequest({ pin, token: focusTokenRef.current });
+  }
 
   const visibleActivities = near ? (activities ?? []).filter((a) => (a.distanceKm ?? Infinity) <= radiusKm) : activities ?? [];
   const center: [number, number] = near ? [near.lat, near.lng] : KL_CENTER;
@@ -205,11 +253,13 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
           radiusCenter={near ? [near.lat, near.lng] : undefined}
           radiusKm={near ? radiusKm : undefined}
           userLocation={near ? [near.lat, near.lng] : undefined}
+          onUserLocationDrag={handleUserLocationDrag}
           onAddStop={toggleStop}
           stopIds={trip.stops.map((s) => s.id)}
-          routePath={activeRoute?.geometry}
+          routes={activeRoutes.map((r, i) => ({ path: r.geometry, selected: i === selectedRouteIdx }))}
           routeColor={MODE_STYLE[mode].color}
           routeDashed={MODE_STYLE[mode].dashed}
+          focusRequest={focusRequest}
         />
 
         <div className={`static mt-3 flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:absolute sm:right-4 sm:top-4 sm:mt-0 sm:w-[360px] ${collapsed ? "" : "max-h-[72vh] sm:max-h-[calc(100%-2rem)]"}`}>
@@ -330,6 +380,49 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
                     </li>
                   ))}
                 </ul>
+
+                {/* Add any address as a stop */}
+                <div className="mb-3">
+                  {addingStop ? (
+                    <div className="rounded-xl border border-border bg-muted p-2">
+                      <div className="flex items-center gap-2">
+                        <Search size={13} className="shrink-0 text-muted-foreground" />
+                        <input
+                          autoFocus
+                          type="text"
+                          value={stopSearchInput}
+                          onChange={(e) => setStopSearchInput(e.target.value)}
+                          placeholder="Search a place to add…"
+                          className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] text-foreground outline-none focus:border-primary"
+                        />
+                        <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-black/5" aria-label="Cancel">
+                          <X size={15} />
+                        </button>
+                      </div>
+                      <div className="mt-1.5">
+                        {stopSearchLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
+                        {!stopSearchLoading && stopSearchInput.trim().length >= 3 && stopSuggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
+                        {stopSuggestions.length > 0 && (
+                          <ul className="overflow-hidden rounded-lg border border-border bg-card">
+                            {stopSuggestions.map((s, i) => (
+                              <li key={`${s.lat},${s.lng},${i}`}>
+                                <button onClick={() => chooseStopSuggestion(s)} className="flex w-full items-start gap-2 border-b border-border px-2.5 py-2 text-left last:border-0 hover:bg-muted">
+                                  <LocateFixed size={12} className="mt-0.5 shrink-0 text-primary" />
+                                  <span className="line-clamp-2 text-[12px] text-foreground">{s.label}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2 text-[12px] font-semibold text-muted-foreground hover:border-primary hover:text-primary">
+                      <Plus size={13} /> Add a place
+                    </button>
+                  )}
+                </div>
+
                 {trip.stops.length === 0 && (
                   <p className="mb-3 rounded-xl border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">Tap a pin on the map or a place below to add stops.</p>
                 )}
@@ -383,17 +476,23 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
                     const inTrip = trip.has(a.id);
                     return (
                       <li key={a.id} className="flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={a.image} alt={a.name} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13px] font-bold text-foreground">{a.name}</span>
-                          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                            <Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {a.rating}
-                            {" · "}
-                            {near && a.distanceKm !== undefined ? `${a.distanceKm.toFixed(1)} km` : a.outlet.city}
-                            {" · "}RM {a.price}
+                        <button
+                          type="button"
+                          onClick={() => focusPin({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `RM ${a.price} · ${a.outlet.city}`, href: `/customer/activity/${a.id}` })}
+                          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.image} alt={a.name} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-bold text-foreground">{a.name}</span>
+                            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {a.rating}
+                              {" · "}
+                              {near && a.distanceKm !== undefined ? `${a.distanceKm.toFixed(1)} km` : a.outlet.city}
+                              {" · "}RM {a.price}
+                            </span>
                           </span>
-                        </span>
+                        </button>
                         <button
                           onClick={() => toggleStop({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `RM ${a.price} · ${a.outlet.city}` })}
                           className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-base font-bold"

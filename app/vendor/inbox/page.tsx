@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ChatThreadPanel } from '@/components/customer/chat-thread-panel';
 import { createClient } from '@/lib/supabase/client';
-import { getOtherReadMessageIds, getReadChatMessageIds } from '@/backend/domains/identity';
+import { useChatPresence } from '@/hooks/use-chat-presence';
+import { getOtherDeliveredMessageIds, getOtherReadMessageIds, getReadChatMessageIds } from '@/backend/domains/identity';
 import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from '@/lib/customer/chat-view';
 import type { ChatMessage } from '@/backend/core/types';
 
@@ -19,7 +20,12 @@ interface Thread {
   outlets?: { id?: string; name?: string; city?: string; state?: string };
   chat_messages?: RawMessage[];
 }
-interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null }
+interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null; context_product_id?: string | null }
+
+const STATUS_CHIP_STYLES: Record<string, string> = {
+  archived: 'bg-gray-100 text-gray-500',
+  closed: 'bg-gray-200 text-gray-400',
+};
 
 type InboxFilter = 'all' | 'unread' | 'needs_reply';
 const FILTERS: { value: InboxFilter; label: string }[] = [
@@ -41,6 +47,7 @@ function toChatMessages(thread: Thread): ChatMessage[] {
       sentAt: m.created_at,
       attachmentUrl: m.attachment_url ?? undefined,
       replyToId: m.reply_to_message_id ?? undefined,
+      contextProductId: m.context_product_id ?? undefined,
     }));
 }
 
@@ -53,8 +60,12 @@ export default function VendorInboxPage() {
   const [loading, setLoading] = useState(true);
   const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
+  const [deliveredByOthersIds, setDeliveredByOthersIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InboxFilter>('all');
+
+  const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
+  const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
 
   const loadThreads = useCallback(async () => {
     if (!user?.activeVendorId) return;
@@ -77,6 +88,14 @@ export default function VendorInboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads.length, user?.id]);
 
+  // A message is "delivered" once the vendor's client has it — which is as soon as
+  // the inbox loads it, not only once that specific thread is opened (unlike Read).
+  useEffect(() => {
+    if (!user?.id || threads.length === 0) return;
+    threads.forEach((thread) => { void fetch(`/api/chat/${thread.id}/delivered`, { method: 'POST' }); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threads.length, user?.id]);
+
   useEffect(() => {
     if (!user?.activeVendorId) return;
     const channel = supabase
@@ -91,7 +110,7 @@ export default function VendorInboxPage() {
             return {
               ...thread,
               last_message_at: row.created_at,
-              chat_messages: [...(thread.chat_messages ?? []), { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id }],
+              chat_messages: [...(thread.chat_messages ?? []), { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id }],
             };
           }));
         },
@@ -102,6 +121,14 @@ export default function VendorInboxPage() {
         ({ new: row }: { new: { message_id: string; user_id: string } }) => {
           if (row.user_id === user?.id) return;
           setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_message_deliveries' },
+        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
+          if (row.user_id === user?.id) return;
+          setDeliveredByOthersIds((previous) => new Set(previous).add(row.message_id));
         },
       )
       .subscribe();
@@ -134,6 +161,9 @@ export default function VendorInboxPage() {
     const messageIds = toChatMessages(thread).map((m) => m.id);
     getOtherReadMessageIds(user.id, messageIds).then((ids) => {
       setReadByOthersIds((previous) => new Set([...previous, ...ids]));
+    });
+    getOtherDeliveredMessageIds(user.id, messageIds).then((ids) => {
+      setDeliveredByOthersIds((previous) => new Set([...previous, ...ids]));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, user?.id]);
@@ -244,13 +274,21 @@ export default function VendorInboxPage() {
                     <span className="relative shrink-0 rounded-full bg-secondary p-2 text-primary">
                       <UserRound size={16} />
                       {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary" />}
+                      {onlineCustomerIds.has(thread.customer_id) && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-2">
-                        <span className={`block truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>{name}</span>
+                        <span className={`truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>{name}</span>
                         <span className="shrink-0 text-[11px] text-gray-400">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : 'New'}</span>
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-gray-500">{thread.outlets?.name || 'Malaysia outlet'}</span>
+                      <span className="mt-0.5 flex items-center gap-1.5">
+                        <span className="block truncate text-xs text-gray-500">{thread.outlets?.name || 'Malaysia outlet'}</span>
+                        {thread.status !== 'open' && (
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                            {thread.status}
+                          </span>
+                        )}
+                      </span>
                       <span className={`mt-1 block truncate text-xs ${unreadCount > 0 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>
                         {latest ? truncateChatMessage(latest.body, 58) : 'No messages yet'}
                       </span>
@@ -284,10 +322,12 @@ export default function VendorInboxPage() {
               currentUserId={user?.id ?? ""}
               counterpart={{
                 name: selected.customer?.full_name || 'Traveller',
+                online: onlineCustomerIds.has(selected.customer_id),
               }}
               onSend={(text, replyToId) => sendReply(text, replyToId).catch((error) => { handleSendError(); throw error; })}
               onMessageSent={appendMessage}
               readByOthers={readByOthersIds}
+              deliveredByOthers={deliveredByOthersIds}
             />
           )}
         </div>

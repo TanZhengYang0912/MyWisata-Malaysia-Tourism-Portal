@@ -1,12 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { MapPin } from "./google-map";
+import type { MapPin } from "./maplibre-map";
 
 export type { MapPin };
 
-// @vis.gl/react-google-maps touches `window` at import time — must be client-only, no SSR.
-const GoogleMap = dynamic(() => import("./google-map").then((m) => m.GoogleMap), {
+// maplibre-gl touches `window`/WebGL at import time — must be client-only, no SSR.
+const MaplibreMap = dynamic(() => import("./maplibre-map").then((m) => m.MaplibreMap), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground" style={{ height: 320 }}>
@@ -25,11 +25,13 @@ export function MapView(props: {
   radiusKm?: number;
   onApiLoaded?: () => void;
   userLocation?: [number, number];
+  onUserLocationDrag?: (lat: number, lng: number) => void;
   onAddStop?: (pin: MapPin) => void;
   stopIds?: string[];
-  routePath?: [number, number][];
+  routes?: { path: [number, number][]; selected: boolean }[];
   routeColor?: string;
   routeDashed?: boolean;
+  focusRequest?: { pin: MapPin; token: number } | null;
 }) {
-  return <GoogleMap {...props} />;
+  return <MaplibreMap {...props} />;
 }
