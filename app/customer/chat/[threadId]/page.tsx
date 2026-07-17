@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
-import { getMessages, getOtherReadMessageIds, getThread, sendMessage } from "@/backend/domains/identity";
+import { getMessages, getOtherDeliveredMessageIds, getOtherReadMessageIds, getThread, sendMessage } from "@/backend/domains/identity";
 import { getOutlet } from "@/backend/domains/catalogue";
 import { supabase } from "@/backend/supabase";
+import { useChatPresence } from "@/hooks/use-chat-presence";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
@@ -17,6 +18,9 @@ export default function ChatThreadPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [outlet, setOutlet] = useState<Outlet | undefined>(undefined);
   const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
+  const [deliveredByOthersIds, setDeliveredByOthersIds] = useState<Set<string>>(new Set());
+  const presence = useChatPresence(thread ? `chat-presence-vendor-${thread.vendorId}` : undefined, currentUser?.id, "customer");
+  const vendorOnline = presence.some((p) => p.role === "vendor");
 
   useEffect(() => {
     let cancelled = false;
@@ -27,6 +31,7 @@ export default function ChatThreadPage() {
       setThread(loadedThread ?? null);
       if (loadedThread) setOutlet(await getOutlet(loadedThread.outletId));
       if (loadedThread) setReadByOthersIds(await getOtherReadMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)));
+      if (loadedThread) setDeliveredByOthersIds(await getOtherDeliveredMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)));
     })();
     return () => {
       cancelled = true;
@@ -36,6 +41,7 @@ export default function ChatThreadPage() {
   useEffect(() => {
     if (!currentUser || !thread) return;
     void fetch(`/api/chat/${thread.id}/read`, { method: "POST" });
+    void fetch(`/api/chat/${thread.id}/delivered`, { method: "POST" });
   }, [currentUser, thread]);
 
   useEffect(() => {
@@ -58,17 +64,27 @@ export default function ChatThreadPage() {
               attachmentUrl: row.attachment_url ?? undefined,
             }];
           });
+          if (row.sender_id !== thread.customerId) void fetch(`/api/chat/${thread.id}/delivered`, { method: "POST" });
         },
       )
-      // ponytail: chat_message_reads has no thread_id column to filter on, so this
-      // stream isn't scoped to this thread — stray ids from other threads just sit
-      // unused in the Set. Add a thread_id column to filter server-side if that matters.
+      // ponytail: chat_message_reads/deliveries have no thread_id column to filter
+      // on, so these streams aren't scoped to this thread — stray ids from other
+      // threads just sit unused in the Set. Add a thread_id column to filter
+      // server-side if that matters.
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_message_reads" },
         ({ new: row }: { new: { message_id: string; user_id: string } }) => {
           if (row.user_id === thread.customerId) return;
           setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_message_deliveries" },
+        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
+          if (row.user_id === thread.customerId) return;
+          setDeliveredByOthersIds((previous) => new Set(previous).add(row.message_id));
         },
       )
       .subscribe();
@@ -95,11 +111,13 @@ export default function ChatThreadPage() {
             name: outlet?.name ?? "Vendor conversation",
             subtitle: `${outlet?.city || "Malaysia"}${outlet?.state ? `, ${outlet.state}` : ""}`,
             badge: "Vendor",
+            online: vendorOnline,
           }}
           onSend={(text) => sendMessage(thread.id, currentUser.id, "customer", text)}
           onMessageSent={(message) => setMessages((previous) => [...previous, message])}
           backHref="/customer/chat"
           readByOthers={readByOthersIds}
+          deliveredByOthers={deliveredByOthersIds}
         />
       </div>
     </div>

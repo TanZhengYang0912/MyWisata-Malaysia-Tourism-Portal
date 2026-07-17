@@ -31,8 +31,9 @@ export async function PATCH(request: Request, { params }: Props) {
   const parsed = await parseBody(request, outletUpdateSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
-  if (access.access.isOutletManager && Object.keys(body).some((key) => key !== 'operatingHours')) {
-    return apiFail('FORBIDDEN', 'Outlet managers can update operating hours only', 403);
+  const managerEditableFields = ['operatingHours', 'welcomeMessage', 'welcomeEnabled'];
+  if (access.access.isOutletManager && Object.keys(body).some((key) => !managerEditableFields.includes(key))) {
+    return apiFail('FORBIDDEN', 'Outlet managers can update operating hours and welcome message only', 403);
   }
 
   const updateData: Record<string, unknown> = {};
@@ -47,8 +48,10 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.phone !== undefined) updateData.phone = body.phone;
   if (body.email !== undefined) updateData.email = body.email || null;
   if (body.operatingHours !== undefined) updateData.operating_hours = body.operatingHours;
+  if (body.welcomeMessage !== undefined) updateData.welcome_message = body.welcomeMessage || null;
+  if (body.welcomeEnabled !== undefined) updateData.welcome_enabled = body.welcomeEnabled;
 
-  const contentChanged = Object.keys(body).some((key) => key !== 'operatingHours');
+  const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key));
   if (contentChanged && !access.access.isOutletManager) {
     updateData.review_status = 'pending_review';
     updateData.review_note = null;

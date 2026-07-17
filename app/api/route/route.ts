@@ -46,10 +46,21 @@ function hasTolls(properties: { extras?: { tollways?: { summary?: Array<{ value?
 async function routeViaOrs(mode: TravelModeId, points: [number, number][], key: string): Promise<RouteResult[] | null> {
   const isDriving = mode === "DRIVING";
   // Alternatives require exactly 2 coordinates (ORS can't alt-route through waypoints).
-  const wantsAlternatives = isDriving && points.length === 2;
+  const wantsAlternatives = points.length === 2;
+
+  if (wantsAlternatives) {
+    const routes = await fetchOrsRoutes(mode, points, key, isDriving, true);
+    if (routes) return routes;
+    // ORS's alternative_routes option is only reliably documented for driving-car —
+    // walk/cycle may reject it outright. Retry without it rather than losing the route.
+  }
+  return fetchOrsRoutes(mode, points, key, isDriving, false);
+}
+
+async function fetchOrsRoutes(mode: TravelModeId, points: [number, number][], key: string, isDriving: boolean, withAlternatives: boolean): Promise<RouteResult[] | null> {
   const body: Record<string, unknown> = { coordinates: toOrsCoordinates(points) };
   if (isDriving) body.extra_info = ["tollways"];
-  if (wantsAlternatives) body.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
+  if (withAlternatives) body.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
 
   try {
     const res = await fetch(`https://api.openrouteservice.org/v2/directions/${ORS_PROFILE[mode]}/geojson`, {

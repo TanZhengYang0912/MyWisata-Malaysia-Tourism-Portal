@@ -36,7 +36,7 @@ const SECONDS_PER_DAY = 86400;
 // for why. Anything else in ?src= is dropped (source stays null) rather than
 // stored as-is, so the funnel's per-platform grouping can't be polluted by
 // arbitrary query-string junk.
-const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link']);
+const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link', 'image_share', 'image_download']);
 
 function parseKnownSource(searchParams: URLSearchParams): string | null {
   const src = searchParams.get('src');

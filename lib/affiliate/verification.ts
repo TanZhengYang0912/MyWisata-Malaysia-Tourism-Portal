@@ -1,20 +1,31 @@
 // P4 — Affiliate verification gate. Pure, no framework/DB imports.
 
 import type { User } from "@/backend/core/types";
+import { meetsMinTier, REQUIRED_TIER } from "@/lib/constants";
 
 /**
- * The live database's users.kyc_status uses the richer tier vocabulary
- * declared on User.verificationTier itself ('guest'|'registered'|
- * 'phone_verified'|'profile_complete'|'kyc_submitted'|'kyc_verified'), not
- * the simpler ('unverified'|'pending'|'approved'|'rejected') CHECK
- * constraint checked into supabase/migrations/001_initial_schema.sql — that
- * migration file is stale relative to what's actually deployed (confirmed
- * live: seeded demo accounts return kyc_status values like "kyc_verified"
- * and "profile_complete", which the checked-in CHECK constraint wouldn't
- * even allow Postgres to store). Identity/KYC isn't this module's concern to
- * fix — 'kyc_verified' is simply the top tier of whatever's actually there;
- * treat it as "verified enough to earn."
+ * Both call sites of this function (the /customer/affiliate dashboard gate,
+ * and share-button.tsx's client-side pre-check before calling
+ * POST /api/affiliate/link) exist to answer one question: "can this user
+ * earn via an affiliate link?" — and the real, authoritative answer to that
+ * question lives server-side in POST /api/affiliate/link's own gate:
+ * meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_BASIC), i.e.
+ * profile_complete or higher. This mirrors that exact check so neither call
+ * site can silently disagree with the server that actually enforces it.
+ *
+ * This was previously named isKycApproved() and checked
+ * verificationTier === 'kyc_verified' (REQUIRED_TIER.AFFILIATE_FULL) — a
+ * name and threshold that never matched what the server-side route actually
+ * required. That meant a profile_complete user (able to generate a real
+ * affiliate link and already earning real commission) was blocked from
+ * their own dashboard and had the share button silently skip embedding
+ * their affiliate code, both because of a client-side check stricter than
+ * the API that actually gates the money. Renamed + loosened to close that
+ * gap. NOT the same threshold as withdrawal — REQUIRED_TIER.WITHDRAWAL is
+ * kyc_verified and is checked independently, elsewhere; nothing here
+ * changes that.
  */
-export function isKycApproved(user: Pick<User, "verificationTier"> | null | undefined): boolean {
-  return user?.verificationTier === "kyc_verified";
+export function isAffiliateEligible(user: Pick<User, "verificationTier"> | null | undefined): boolean {
+  if (!user) return false;
+  return meetsMinTier(user.verificationTier, REQUIRED_TIER.AFFILIATE_BASIC);
 }

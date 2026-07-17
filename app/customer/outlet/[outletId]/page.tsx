@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
 import { OutletPageRenderer } from '@/components/outlet/outlet-page-renderer';
 import { ShareButton } from '@/components/shared/share-button';
+import { OutletChatButton } from '@/components/customer/outlet-chat-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export default async function OutletShopPage({ params }: { params: Promise<{ out
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 pt-6">
       <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Verified MyWisata outlet</p><p className="mt-1 text-sm font-semibold text-slate-600">{outlet.name}</p></div>
-      <ShareButton shareType="vendor" contentId={outlet.id} title={outlet.name} />
+      <div className="flex items-center gap-2"><ShareButton shareType="outlet" contentId={outlet.id} title={outlet.name} /><OutletChatButton outletId={outlet.id} /></div>
     </div>
     <OutletPageRenderer document={document} outlet={outlet} products={orderedProducts.map((product) => ({ ...product, base_price: Number(product.base_price) }))} mode="public" />
   </main>;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
 
@@ -19,14 +19,16 @@ interface ChatThreadPanelProps {
   messages: ChatMessage[];
   currentUserId: string;
   /** Who the viewer is talking to — a vendor/outlet for a customer, a traveller for a vendor. */
-  counterpart: { name: string; subtitle?: string; badge?: string };
+  counterpart: { name: string; subtitle?: string; badge?: string; online?: boolean };
   /** Persists the message (RLS insert for customers, service-role API for vendors). */
   onSend?: (text: string, replyToId?: string) => Promise<ChatMessage>;
   onMessageSent?: (message: ChatMessage) => void;
   /** Present only where chat is its own route (customer); vendor's inbox is a single page, no back link. */
   backHref?: string;
-  /** Ids of my messages the counterpart has already read — renders the ✓✓ receipt. */
+  /** Ids of my messages the counterpart has already read — renders the blue ✓✓ receipt. */
   readByOthers?: Set<string>;
+  /** Ids of my messages the counterpart's client has received — renders the grey ✓✓ receipt. */
+  deliveredByOthers?: Set<string>;
   /** Admin moderation view: hides the composer and report action. */
   readOnly?: boolean;
 }
@@ -40,6 +42,7 @@ export function ChatThreadPanel({
   onMessageSent,
   backHref,
   readByOthers,
+  deliveredByOthers,
   readOnly = false,
 }: ChatThreadPanelProps) {
   const [text, setText] = useState("");
@@ -211,7 +214,13 @@ export function ChatThreadPanel({
                 </span>
               )}
             </div>
-            {counterpart.subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{counterpart.subtitle}</p>}
+            {counterpart.online !== undefined ? (
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className={`h-1.5 w-1.5 rounded-full ${counterpart.online ? "bg-emerald-500" : "bg-gray-300"}`} />
+                {counterpart.online ? "Online" : "Offline"}
+                {counterpart.subtitle && ` · ${counterpart.subtitle}`}
+              </p>
+            ) : counterpart.subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{counterpart.subtitle}</p>}
           </div>
           <div className="relative">
             <button
@@ -321,7 +330,14 @@ export function ChatThreadPanel({
                         </a>
                       )
                     )}
-                    {message.text && (
+                    {message.contextProductId ? (
+                      <Link
+                        href={`/customer/activity/${message.contextProductId}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-secondary px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                      >
+                        <Tag size={12} /> {message.text}
+                      </Link>
+                    ) : message.text && (
                       <div
                         className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
                           isMine
@@ -336,6 +352,8 @@ export function ChatThreadPanel({
                       <span>{formatChatTimestamp(message.sentAt)}</span>
                       {isMine && (readByOthers?.has(message.id) ? (
                         <CheckCheck size={13} className="text-primary" aria-label="Read" />
+                      ) : deliveredByOthers?.has(message.id) ? (
+                        <CheckCheck size={13} aria-label="Delivered" />
                       ) : (
                         <Check size={13} aria-label="Sent" />
                       ))}

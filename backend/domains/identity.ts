@@ -89,8 +89,8 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 // ─── Chat ───────────────────────────────────────────────────────────────────
-function mapThread(row: { id: string; customer_id: string; outlet_id: string; last_message_at: string | null; created_at: string }): ChatThread {
-  return { id: row.id, customerId: row.customer_id, outletId: row.outlet_id, lastMessageAt: row.last_message_at ?? row.created_at };
+function mapThread(row: { id: string; customer_id: string; outlet_id: string; vendor_id: string; last_message_at: string | null; created_at: string }): ChatThread {
+  return { id: row.id, customerId: row.customer_id, outletId: row.outlet_id, vendorId: row.vendor_id, lastMessageAt: row.last_message_at ?? row.created_at };
 }
 
 export async function getThread(threadId: string): Promise<ChatThread | undefined> {
@@ -113,26 +113,27 @@ export async function getThreadsForOutlets(outletIds: string[]): Promise<ChatThr
 }
 
 export async function getOrCreateThread(customerId: string, outletId: string): Promise<ChatThread> {
-  const { data: existing, error: findErr } = await supabase
+  // Insert-or-noop on the (customer_id, outlet_id) unique constraint, then
+  // re-select — atomic, so two concurrent calls can't race into duplicate
+  // threads the way a find-then-insert would.
+  // The chat_threads_welcome trigger sends the vendor's welcome message —
+  // it runs SECURITY DEFINER so it isn't blocked by chat_messages'
+  // sender_id = auth.uid() insert policy the way a client-side insert would be.
+  // It only fires on the real insert, not on a no-op conflict.
+  const { error: upsertErr } = await supabase
+    .from("chat_threads")
+    .upsert({ customer_id: customerId, outlet_id: outletId }, { onConflict: "customer_id,outlet_id", ignoreDuplicates: true });
+  if (upsertErr) throw upsertErr;
+
+  const { data, error } = await supabase
     .from("chat_threads")
     .select("*")
     .eq("customer_id", customerId)
     .eq("outlet_id", outletId)
-    .maybeSingle();
-  if (findErr) throw findErr;
-  if (existing) return mapThread(existing);
-
-  // The chat_threads_welcome trigger sends the vendor's welcome message —
-  // it runs SECURITY DEFINER so it isn't blocked by chat_messages'
-  // sender_id = auth.uid() insert policy the way a client-side insert would be.
-  const { data: created, error: createErr } = await supabase
-    .from("chat_threads")
-    .insert({ customer_id: customerId, outlet_id: outletId })
-    .select("*")
     .single();
-  if (createErr) throw createErr;
+  if (error) throw error;
 
-  return mapThread(created);
+  return mapThread(data);
 }
 
 export async function getMessages(threadId: string): Promise<ChatMessage[]> {
@@ -159,6 +160,7 @@ export async function getMessages(threadId: string): Promise<ChatMessage[]> {
     sentAt: m.created_at,
     attachmentUrl: m.attachment_url ?? undefined,
     replyToId: m.reply_to_message_id ?? undefined,
+    contextProductId: m.context_product_id ?? undefined,
   }));
 }
 
@@ -185,18 +187,32 @@ export async function getOtherReadMessageIds(myUserId: string, messageIds: strin
   return new Set((data ?? []).map((row) => row.message_id as string));
 }
 
-export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string): Promise<ChatMessage> {
+/** Message ids (from `messageIds`) that someone other than `myUserId` has received — powers the grey ✓✓ "Delivered" receipt. */
+export async function getOtherDeliveredMessageIds(myUserId: string, messageIds: string[]): Promise<Set<string>> {
+  if (messageIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("chat_message_deliveries")
+    .select("message_id")
+    .in("message_id", messageIds)
+    .neq("user_id", myUserId);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.message_id as string));
+}
+
+export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string, contextProductId?: string): Promise<ChatMessage> {
   const { clean } = maskChatBody(text);
   const { data, error } = await supabase
     .from("chat_messages")
-    .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null })
+    .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null, context_product_id: contextProductId ?? null })
     .select("*")
     .single();
   if (error) throw error;
 
   await supabase.from("chat_threads").update({ last_message_at: data.created_at }).eq("id", threadId);
+  // Reopen an archived thread on new activity; never override a manually 'closed' one.
+  await supabase.from("chat_threads").update({ status: "open" }).eq("id", threadId).eq("status", "archived");
 
-  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at, replyToId: data.reply_to_message_id ?? undefined };
+  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at, replyToId: data.reply_to_message_id ?? undefined, contextProductId: data.context_product_id ?? undefined };
 }
 
 // ─── Support tickets ────────────────────────────────────────────────────────

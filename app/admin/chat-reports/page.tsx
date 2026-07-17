@@ -71,6 +71,46 @@ export default function AdminChatReportsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [blockingReporterId, setBlockingReporterId] = useState<string | null>(null);
 
+  const [archiveDays, setArchiveDays] = useState<number | null>(null);
+  const [archiveDaysInput, setArchiveDaysInput] = useState("");
+  const [savingArchiveDays, setSavingArchiveDays] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/chat-settings")
+      .then((res) => res.json())
+      .then((result) => {
+        if (typeof result?.data?.archiveDays === "number") {
+          setArchiveDays(result.data.archiveDays);
+          setArchiveDaysInput(String(result.data.archiveDays));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function saveArchiveDays() {
+    const days = Number(archiveDaysInput);
+    if (!Number.isFinite(days) || days < 1 || savingArchiveDays) return;
+    setSavingArchiveDays(true);
+    try {
+      const response = await fetch("/api/admin/chat-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archiveDays: days }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        showFeedback("error", payload?.error?.message ?? "Could not save setting.");
+        return;
+      }
+      setArchiveDays(payload.data.archiveDays);
+      showFeedback("success", "Archive threshold updated.");
+    } catch {
+      showFeedback("error", "Could not save setting. Please try again.");
+    } finally {
+      setSavingArchiveDays(false);
+    }
+  }
+
   async function loadReports() {
     try {
       const res = await fetch("/api/admin/chat-reports");
@@ -204,6 +244,24 @@ export default function AdminChatReportsPage() {
   return (
     <div className="p-6 sm:p-8">
       <h1 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2"><Flag size={18} /> Chat Reports</h1>
+
+      {archiveDays !== null && (
+        <div className="mb-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-xs" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <span className="text-muted-foreground">Auto-archive open chats after</span>
+          <input
+            type="number"
+            min={1}
+            max={3650}
+            value={archiveDaysInput}
+            onChange={(e) => setArchiveDaysInput(e.target.value)}
+            className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+          />
+          <span className="text-muted-foreground">days of inactivity</span>
+          <Button size="sm" variant="outline" disabled={savingArchiveDays || Number(archiveDaysInput) === archiveDays} onClick={saveArchiveDays}>
+            {savingArchiveDays ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      )}
 
       <Tabs value={statusTab} onValueChange={(v) => setStatusTab(v as StatusTab)} className="mb-4">
         <TabsList>

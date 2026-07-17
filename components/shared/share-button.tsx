@@ -7,10 +7,10 @@
 // share_events logging) — only what it points at changed.
 
 import { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Share2, ImageDown } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
-import { isKycApproved } from "@/lib/affiliate/verification";
+import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 
@@ -58,14 +58,27 @@ const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
 };
 
 type ShareStatus = "idle" | "working" | "shared" | "copied" | "error";
+type ImageShareStatus = "idle" | "working" | "shared" | "downloaded" | "error";
+type SharePlatform = "native" | "copy_link" | "image_share" | "image_download";
+
+// CLAUDE-SHARE-IMAGE.md §12.2.3: /api/share-image/[type]/[id] only knows
+// product/vendor/outlet (real listing data to render) — there's no image for
+// a recommendation post, so that shareType has no "Share as image" button.
+const SHARE_IMAGE_TYPES: Partial<Record<ShareType, "product" | "vendor" | "outlet">> = {
+  product: "product",
+  vendor: "vendor",
+  outlet: "outlet",
+};
 
 export function ShareButton({ shareType, contentId, title, slug, compact = false }: ShareButtonProps) {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [status, setStatus] = useState<ShareStatus>("idle");
-  const isVerified = isKycApproved(currentUser);
+  const [imageStatus, setImageStatus] = useState<ImageShareStatus>("idle");
+  const isVerified = isAffiliateEligible(currentUser);
+  const imageType = SHARE_IMAGE_TYPES[shareType];
 
-  async function logShare(platform: "native" | "copy_link") {
+  async function logShare(platform: SharePlatform) {
     try {
       await fetch("/api/shares", {
         method: "POST",
@@ -111,9 +124,10 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
   // CLAUDE-FUNNEL-AI.md: tags the link with which share method produced it,
   // so /r/[code] can record affiliate_clicks.source (migration 035) and the
   // funnel's per-platform breakdown becomes real going forward. Values match
-  // logShare()'s own vocabulary ('native' | 'copy_link') — see
-  // lib/affiliate/funnel.ts for why this isn't per-social-network.
-  function withSrc(url: string, platform: "native" | "copy_link"): string {
+  // logShare()'s own vocabulary — see lib/affiliate/funnel.ts for why this
+  // isn't per-social-network. lib/affiliate/redirect.ts's KNOWN_SHARE_SOURCES
+  // allowlist must include every value passed here, or it's silently dropped.
+  function withSrc(url: string, platform: SharePlatform): string {
     return `${url}${url.includes("?") ? "&" : "?"}src=${platform}`;
   }
 
@@ -156,6 +170,70 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
     setTimeout(() => setStatus("idle"), 2000);
   }
 
+  // CLAUDE-SHARE-IMAGE.md §12.2.3: the branded PNG can't carry an affiliate
+  // code (you can't click an image), so the referral link still has to
+  // travel via the Web Share `text` field or the clipboard alongside it —
+  // buildShareUrl() already degrades to the plain URL for unverified users,
+  // same as the plain-link share above.
+  async function handleShareImage(event?: React.MouseEvent<HTMLButtonElement>) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!imageType || imageStatus === "working") return;
+    setImageStatus("working");
+
+    try {
+      const res = await fetch(`/api/share-image/${imageType}/${contentId}`);
+      if (!res.ok) throw new Error(`share-image fetch failed: ${res.status}`);
+      const blob = await res.blob();
+      const fileName = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "mywisata"}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      const url = await buildShareUrl();
+
+      if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title, text: `${title} — ${withSrc(url, "image_share")}` });
+          setImageStatus("shared");
+          showFeedback("success", isVerified ? "Shared — your referral link is in the caption" : "Shared");
+          await logShare("image_share");
+          setTimeout(() => setImageStatus("idle"), 2500);
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") {
+            setImageStatus("idle"); // user cancelled the native share sheet
+            return;
+          }
+          // any other failure falls through to the download fallback
+        }
+      }
+
+      // Desktop / unsupported: download the PNG so the user can post it
+      // manually, and copy the referral link alongside it — mandatory per
+      // spec, not optional, mirroring handleShare()'s copy fallback.
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+
+      try {
+        await navigator.clipboard.writeText(withSrc(url, "image_download"));
+        showFeedback(
+          "success",
+          isVerified ? "Image ready — your referral link is copied, paste it in your caption." : "Image downloaded — link copied"
+        );
+      } catch {
+        showFeedback("success", "Image downloaded");
+      }
+      setImageStatus("downloaded");
+      await logShare("image_download");
+    } catch {
+      setImageStatus("error");
+      showFeedback("error", "Couldn't create the image");
+    }
+    setTimeout(() => setImageStatus("idle"), 2500);
+  }
+
   if (compact) {
     return (
       <button
@@ -173,16 +251,31 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
 
   return (
     <div className="inline-flex flex-col items-center gap-1">
-      <Button
-        variant="outline"
-        size="icon"
-        className="w-12 h-12 rounded-full border-2"
-        onClick={handleShare}
-        disabled={status === "working"}
-        title="Share"
-      >
-        <Share2 size={18} />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="w-12 h-12 rounded-full border-2"
+          onClick={handleShare}
+          disabled={status === "working"}
+          title="Share"
+        >
+          <Share2 size={18} />
+        </Button>
+        {imageType && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-12 h-12 rounded-full border-2"
+            onClick={handleShareImage}
+            disabled={imageStatus === "working"}
+            title="Share as image"
+            aria-label={`Share ${title} as an image`}
+          >
+            <ImageDown size={18} />
+          </Button>
+        )}
+      </div>
       {status === "shared" && <p className="text-xs text-primary">Shared</p>}
       {status === "copied" && <p className="text-xs text-primary">Link copied</p>}
       {status === "error" && <p className="text-xs text-destructive">Couldn&apos;t copy link</p>}

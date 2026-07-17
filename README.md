@@ -163,17 +163,19 @@ paste each into the SQL editor, in order) before testing anything below:
 
 1. `/login` → sign in as **Alice** (`customer1@demo.local`, KYC-approved).
 
-   **If step 2's Share button (or any `POST /api/affiliate/link` call) 403s
-   with `TIER_INSUFFICIENT`, check `users.tier` before anything else.** The
-   affiliate gate reads `users.tier`, not `users.kyc_status` — the
-   tier-ladder migration (`025_tier_ladder.sql`) introduced `tier` as a
-   separate column, and `app/api/affiliate/link/route.ts` was updated to
-   gate on `meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_FULL)`
-   (currently `'kyc_verified'`). Alice's `kyc_status` is `'approved'`, but as
-   of this writing her `tier` had drifted to only `'email_verified'` —
-   un-backfilled data, not an intentional gate. If this demo step 403s,
-   confirm Alice's `tier` is `'kyc_verified'` (ask the tier-ladder owner to
-   backfill it) before assuming the affiliate code is broken.
+   **Update, this session:** the affiliate gate is `meetsMinTier(profile.tier,
+   REQUIRED_TIER.AFFILIATE_BASIC)` — `'profile_complete'`, not
+   `'kyc_verified'` — both in `app/api/affiliate/link/route.ts` (unchanged)
+   and now also in `lib/affiliate/verification.ts`'s shared client-side
+   check, renamed `isAffiliateEligible()` (was `isKycApproved()`, which
+   incorrectly gated on `'kyc_verified'` and blocked the `/customer/affiliate`
+   dashboard and the Share button's affiliate-code embedding for anyone
+   below full KYC, even though the server-side link-creation route never
+   required that). Alice's `tier` had drifted to `'email_verified'` (below
+   even the old threshold); she's been promoted to `'profile_complete'` via
+   `admin_set_tier()` so this demo step works without a 403. If any step
+   here still 403s with `TIER_INSUFFICIENT`, check `users.tier` first — this
+   is un-backfilled seed data drifting, not an intentional gate.
 2. Open any activity (e.g. Georgetown Heritage Walk) → press **Share**. On
    `localhost`, `navigator.share` is usually unavailable, so this copies an
    `/r/AF-XXXXXX/<slug>` link to your clipboard instead — that's the expected

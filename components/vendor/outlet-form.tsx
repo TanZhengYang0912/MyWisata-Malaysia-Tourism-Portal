@@ -23,7 +23,7 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<OutletCreate>({
     resolver: zodResolver(outletCreateSchema),
-    defaultValues: { country: 'Malaysia', ...initialData },
+    defaultValues: { country: 'Malaysia', welcomeEnabled: true, ...initialData },
   });
   const address = watch('address');
 
@@ -133,6 +133,23 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
             <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
             <Input {...register('lng', { valueAsNumber: true })} type="number" step="any" placeholder="101.7118" />
           </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">Chat welcome message</label>
+            <label className="flex items-center gap-2 text-xs text-gray-500">
+              <input type="checkbox" {...register('welcomeEnabled')} className="h-4 w-4" />
+              Auto-send welcome
+            </label>
+          </div>
+          <textarea
+            {...register('welcomeMessage')}
+            rows={3}
+            placeholder="Welcome! Thanks for your interest. Any questions? (leave blank to use the default greeting)"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {errors.welcomeMessage && <p className="text-red-500 text-xs mt-1">{errors.welcomeMessage.message}</p>}
         </div>
       </div>
 
