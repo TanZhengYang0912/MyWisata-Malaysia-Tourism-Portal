@@ -70,17 +70,22 @@ interface ResolvedTarget {
 /**
  * Resolves the slug/id path segment against the right table for its type.
  * Returns null when nothing matches (unknown/inactive product, unknown
- * outlet, or no segment given at all) — callers fall back to /customer/explore,
- * same as the original product-only behaviour.
+ * outlet, no segment given at all, or an unresolvable type) — callers fall
+ * back to the generic site redirect/preview (see the caller's own comment on
+ * why that fallback is '/customer', not '/customer/explore').
  *
- * Not yet implemented: 'recommendation' resolves to the list page only (no
- * per-post detail route exists on vendor_recommendations yet — Member 3's
- * page is list-only), and doesn't look up vendor_recommendations for a rich
- * OG preview. That table is explicitly read-only/another member's per
- * CLAUDE-SHARE-SURFACES.md Surface 2, which is on hold pending coordination
- * — resolving it here would be building ahead of that coordination for no
- * current caller (share-button.tsx doesn't mount on recommendation posts
- * yet), so it's deliberately left minimal rather than half-guessed.
+ * 'recommendation' always returns null today: there is no public per-post
+ * detail route on vendor_recommendations (CLAUDE-SHARE-SURFACES.md Surface 2
+ * is on hold pending coordination with Member 3), and the one existing
+ * customer-facing recommendations page (app/customer/recommendations) is a
+ * private, login-gated list of the CURRENT user's own submissions — not a
+ * page a referred visitor could ever meaningfully land on. An earlier
+ * version of this branch sent visitors there anyway and stored the raw
+ * unverified path segment as targetId; both were wrong (a broken/misleading
+ * destination, and a fabricated id with no backing row). Falling through to
+ * null is honest: same degrade-gracefully behaviour as an unresolved product
+ * or outlet, no fake data written. Revisit once Member 3 ships a real public
+ * route — see the coordination note this was raised with.
  */
 async function resolveTarget(
   service: ReturnType<typeof createServiceClient>,
@@ -121,14 +126,9 @@ async function resolveTarget(
     };
   }
 
-  // recommendation: see the function doc comment above.
-  return {
-    targetId: slugOrId,
-    destinationPath: '/customer/recommendations',
-    ogTitle: SITE_PREVIEW_TITLE,
-    ogDescription: SITE_PREVIEW_DESCRIPTION,
-    ogImage: null,
-  };
+  // recommendation: see the function doc comment above — no public detail
+  // route exists yet, so this always falls through to the generic fallback.
+  return null;
 }
 
 function cookieOptions(maxAgeSeconds: number) {
