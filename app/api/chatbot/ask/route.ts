@@ -93,5 +93,10 @@ export async function POST(request: Request) {
     if (refErr) console.error('[chatbot] failed to log kb refs', refErr.message);
   }
 
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, canEscalate: result.canEscalate });
+  // CLAUDE-CHATBOT-FEEDBACK.md: this endpoint answers; it never escalates on
+  // its own. botAnswered (== kbMatched: the bot produced a real answer, not
+  // the honest fallback) tells the widget which feedback flow to render —
+  // "was this helpful?" vs going straight to the ticket offer. messageId
+  // lets the widget attach feedback/ticket state to this specific reply.
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id });
 }

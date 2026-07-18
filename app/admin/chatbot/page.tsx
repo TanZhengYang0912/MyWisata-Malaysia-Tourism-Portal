@@ -10,11 +10,15 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 
+interface TopQuestion { question: string; count: number; lastAskedAt: string }
+
 interface ChatbotStats {
   totalQuestions: number;
   answeredCount: number;
   answerRate: number;
-  topUnanswered: { question: string; count: number; lastAskedAt: string }[];
+  topUnanswered: TopQuestion[];
+  notHelpfulAnswered: TopQuestion[];
+  escalationRate: number;
 }
 
 interface KbDoc {
@@ -213,7 +217,7 @@ export default function AdminChatbotPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-w-2xl">
         <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Questions asked</p>
           <p className="text-xl font-bold text-foreground">{stats.totalQuestions}</p>
@@ -222,12 +226,18 @@ export default function AdminChatbotPage() {
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Answer rate</p>
           <p className="text-xl font-bold text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
         </div>
+        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Escalation rate</p>
+          <p className="text-xl font-bold text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">of failed answers became a ticket</p>
+        </div>
       </div>
 
       <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> Top unanswered questions
         </p>
+        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">No KB doc covers these at all.</p>
         {stats.topUnanswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing unanswered yet — the KB is covering everything asked so far.</p>
         ) : (
@@ -246,6 +256,32 @@ export default function AdminChatbotPage() {
                 <Button size="sm" variant="outline" className="shrink-0" onClick={() => addToKb(q.question)}>
                   <Sparkles size={12} /> Add to KB
                 </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+          <TrendingUp size={13} /> Answered, but not helpful
+        </p>
+        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">A KB doc matched, but customers said it didn&apos;t help — the doc needs improving, not creating.</p>
+        {stats.notHelpfulAnswered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No thumbs-down yet on an answered question.</p>
+        ) : (
+          <div className="space-y-2">
+            {stats.notHelpfulAnswered.map((q, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
+                <div className="min-w-0">
+                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+                    <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
+                    <span className="truncate">{q.question}</span>
+                  </span>
+                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                    ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
