@@ -40,6 +40,17 @@ interface ShareButtonProps {
    * room to reserve for it without causing layout shift.
    */
   compact?: boolean;
+  /**
+   * Forces plain-link behaviour regardless of the CURRENT USER's own
+   * affiliate eligibility — for shares where the viewer is the content's
+   * owner (e.g. a vendor sharing their own product on their products page).
+   * Without this, a vendor who also happens to carry an eligible
+   * verificationTier would get a real affiliate code embedded in a share of
+   * their OWN listing — a self-referral, not a normal share. Skips
+   * /api/affiliate/link entirely and never calls logShare() — no
+   * share_events row at all, not even a plain-link one.
+   */
+  plainOnly?: boolean;
 }
 
 // CLAUDE-SHARE-SURFACES.md Surface 4 (not yet built — see lib/affiliate/redirect.ts):
@@ -70,15 +81,20 @@ const SHARE_IMAGE_TYPES: Partial<Record<ShareType, "product" | "vendor" | "outle
   outlet: "outlet",
 };
 
-export function ShareButton({ shareType, contentId, title, slug, compact = false }: ShareButtonProps) {
+export function ShareButton({ shareType, contentId, title, slug, compact = false, plainOnly = false }: ShareButtonProps) {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [status, setStatus] = useState<ShareStatus>("idle");
   const [imageStatus, setImageStatus] = useState<ImageShareStatus>("idle");
-  const isVerified = isAffiliateEligible(currentUser);
+  // plainOnly folded in here (not just at the buildShareUrl call site) so
+  // every isVerified-gated bit of copy — the "Verify to earn" hint, the
+  // image-share caption wording — also goes quiet for a forced-plain share,
+  // with one flag instead of two to keep in sync.
+  const isVerified = !plainOnly && isAffiliateEligible(currentUser);
   const imageType = SHARE_IMAGE_TYPES[shareType];
 
   async function logShare(platform: SharePlatform) {
+    if (plainOnly) return; // no share_events row for a forced-plain share — not even a plain-link one
     try {
       await fetch("/api/shares", {
         method: "POST",
