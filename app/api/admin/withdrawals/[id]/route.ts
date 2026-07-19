@@ -12,6 +12,8 @@ export async function GET(
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const { data: isApprover, error: roleError } = await db.rpc('is_approver', { uid: user.id });
+  if (roleError || !isApprover) return apiFail('FORBIDDEN', 'Wallet Approver access required', 403);
 
   // Fetch withdrawal with safe joined fields only. Explicitly excludes KYC document paths,
   // IC/passport numbers, raw bank account details and Stripe secrets.
@@ -23,7 +25,7 @@ export async function GET(
       users!inner(
         full_name, email, kyc_status, tier,
         stripe_connect_account_id,
-        kyc_submissions(status, reviewed_at, document_type)
+        kyc_submissions!kyc_submissions_user_id_fkey(status, reviewed_at, document_type)
       ),
       wallets!inner(
         topup_sen, earnings_sen, pending_earnings_sen,
@@ -50,7 +52,8 @@ export async function GET(
   const w = r.wallets as Record<string, unknown>;
   const kycSubs = (u.kyc_submissions as Record<string, unknown>[] | null) ?? [];
   const latestKyc = kycSubs[0] as Record<string, unknown> | undefined;
-  const risk = r.withdrawal_risk_assessments as Record<string, unknown> | null;
+  const riskRelationValue = r.withdrawal_risk_assessments as Record<string, unknown> | Record<string, unknown>[] | null;
+  const risk = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
   const approvals = (r.withdrawal_approvals as Record<string, unknown>[] | null) ?? [];
 
   // Mask Stripe Connect account ID — show only last 8 chars for receipt reference.
