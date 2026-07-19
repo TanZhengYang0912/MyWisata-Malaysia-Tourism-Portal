@@ -2,14 +2,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  select: vi.fn(),
+  selectEq: vi.fn(),
+  maybeSingle: vi.fn(),
+  update: vi.fn(),
+  updateEq: vi.fn(),
   rpc: vi.fn(),
   enqueueWithdrawalEmail: vi.fn(),
+  retrieveConnectAccountStatus: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc })),
+  createClient: vi.fn(async () => ({
+    auth: { getUser: mocks.getUser },
+    from: () => ({ select: mocks.select, update: mocks.update }),
+    rpc: mocks.rpc,
+  })),
 }));
 vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
+vi.mock('@/lib/stripe/connect-status', () => ({
+  retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
+}));
 
 import { POST } from '../route';
 
@@ -23,6 +36,20 @@ describe('POST /api/wallet/withdrawals', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
+    mocks.select.mockReturnValue({ eq: mocks.selectEq });
+    mocks.selectEq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_test' }, error: null });
+    mocks.update.mockReturnValue({ eq: mocks.updateEq });
+    mocks.updateEq.mockResolvedValue({ error: null });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_test',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: true,
+      payoutsEnabled: true,
+      chargesEnabled: true,
+      requiresDashboardAction: false,
+    });
   });
 
   it('submits only an integer-sen amount to the authenticated withdrawal RPC', async () => {
@@ -41,5 +68,36 @@ describe('POST /api/wallet/withdrawals', () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'KYC_REQUIRED' } });
+  });
+
+  it('reconciles an enabled Stripe account before submitting the withdrawal RPC', async () => {
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_enabled' }, error: null });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_enabled',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: true,
+      payoutsEnabled: true,
+      chargesEnabled: true,
+      requiresDashboardAction: false,
+    });
+    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
+
+    const response = await POST(request({ amountRm: '50.25' }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: true });
+    expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', { p_amount_sen: 5025 });
+  });
+
+  it('fails closed and skips the withdrawal RPC when Stripe status cannot be read', async () => {
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_unavailable' }, error: null });
+    mocks.retrieveConnectAccountStatus.mockRejectedValue(new Error('Stripe unavailable'));
+
+    const response = await POST(request({ amountRm: '50.00' }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'STRIPE_STATUS_UNAVAILABLE' } });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });
