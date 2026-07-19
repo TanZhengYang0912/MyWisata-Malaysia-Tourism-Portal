@@ -92,10 +92,10 @@ export async function POST(req: Request) {
       return accountStatusFailure(error);
     }
 
-    const { error: syncError } = await db
-      .from('users')
-      .update({ stripe_payouts_enabled: status.payoutsEnabled })
-      .eq('id', authUser.id);
+    const { error: syncError } = await db.rpc('update_connect_status', {
+      p_connect_account_id: status.accountId,
+      p_payouts_enabled: status.payoutsEnabled,
+    });
 
     if (syncError) {
       console.error('[stripe-connect-onboard] Failed to sync payout status', {

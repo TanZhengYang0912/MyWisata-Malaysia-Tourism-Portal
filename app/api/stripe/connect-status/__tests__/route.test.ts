@@ -7,12 +7,14 @@ const mocks = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   update: vi.fn(),
   updateEq: vi.fn(),
+  rpc: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
+    rpc: mocks.rpc,
     from: () => ({
       select: mocks.select,
       update: mocks.update,
@@ -36,6 +38,7 @@ describe('GET /api/stripe/connect-status', () => {
     mocks.selectEq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
     mocks.update.mockReturnValue({ eq: mocks.updateEq });
     mocks.updateEq.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
   });
 
   it('syncs an enabled Stripe account to the user row', async () => {
@@ -59,7 +62,10 @@ describe('GET /api/stripe/connect-status', () => {
     await expect(response.json()).resolves.toMatchObject({
       data: { accountId: 'acct_enabled', payoutsEnabled: true, sync: 'stripe' },
     });
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: true });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_enabled',
+      p_payouts_enabled: true,
+    });
   });
 
   it('returns Dashboard action guidance for an incomplete Full Dashboard account', async () => {
@@ -83,7 +89,10 @@ describe('GET /api/stripe/connect-status', () => {
     await expect(response.json()).resolves.toMatchObject({
       data: { requiresDashboardAction: true, payoutsEnabled: false },
     });
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: false });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_incomplete',
+      p_payouts_enabled: false,
+    });
   });
 
   it('fails closed when Stripe status retrieval fails', async () => {
@@ -97,6 +106,6 @@ describe('GET /api/stripe/connect-status', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'STRIPE_STATUS_UNAVAILABLE' } });
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   update: vi.fn(),
   updateEq: vi.fn(),
+  rpc: vi.fn(),
   accountsCreate: vi.fn(),
   accountLinksCreate: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
+    rpc: mocks.rpc,
     from: () => ({
       select: () => ({
         eq: () => ({ single: mocks.single }),
@@ -56,6 +58,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockReset();
     mocks.update.mockReset();
     mocks.updateEq.mockReset().mockResolvedValue({ error: null });
+    mocks.rpc.mockReset().mockResolvedValue({ data: null, error: null });
     mocks.accountsCreate.mockReset();
     mocks.accountLinksCreate.mockReset();
     mocks.retrieveConnectAccountStatus.mockReset().mockResolvedValue({
@@ -150,7 +153,10 @@ describe('POST /api/stripe/connect-onboard', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.accountsCreate).not.toHaveBeenCalled();
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: false });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_existing123',
+      p_payouts_enabled: false,
+    });
     expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
       account: 'acct_existing123',
       type: 'account_onboarding',
@@ -183,7 +189,10 @@ describe('POST /api/stripe/connect-onboard', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: 'verified', accountId: 'acct_enabled' });
     expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: true });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_enabled',
+      p_payouts_enabled: true,
+    });
   });
 
   it('returns Dashboard action guidance for incomplete Full Dashboard accounts', async () => {
@@ -214,7 +223,10 @@ describe('POST /api/stripe/connect-onboard', () => {
       error: { code: 'STRIPE_DASHBOARD_ACTION_REQUIRED' },
     });
     expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: false });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_incomplete',
+      p_payouts_enabled: false,
+    });
   });
 
   it('does not start onboarding before KYC verification', async () => {

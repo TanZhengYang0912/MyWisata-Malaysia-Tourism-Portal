@@ -68,10 +68,10 @@ export async function POST(request: Request) {
     return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
   }
 
-  const { error: syncError } = await db
-    .from('users')
-    .update({ stripe_payouts_enabled: connectStatus.payoutsEnabled })
-    .eq('id', user.id);
+  const { error: syncError } = await db.rpc('update_connect_status', {
+    p_connect_account_id: connectStatus.accountId,
+    p_payouts_enabled: connectStatus.payoutsEnabled,
+  });
 
   if (syncError) {
     console.error('[wallet-withdrawal] payout status sync failed:', syncError.message);

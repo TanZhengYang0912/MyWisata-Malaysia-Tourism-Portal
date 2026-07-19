@@ -62,7 +62,9 @@ describe('POST /api/wallet/withdrawals', () => {
   });
 
   it('maps KYC enforcement to a customer-safe error', async () => {
-    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'kyc_required' } });
+    mocks.rpc
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'kyc_required' } });
 
     const response = await POST(request({ amountRm: '50.00' }));
 
@@ -86,7 +88,10 @@ describe('POST /api/wallet/withdrawals', () => {
     const response = await POST(request({ amountRm: '50.25' }));
 
     expect(response.status).toBe(201);
-    expect(mocks.update).toHaveBeenCalledWith({ stripe_payouts_enabled: true });
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_enabled',
+      p_payouts_enabled: true,
+    });
     expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', { p_amount_sen: 5025 });
   });
 
