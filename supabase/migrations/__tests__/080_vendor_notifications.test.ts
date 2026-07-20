@@ -11,4 +11,11 @@ describe('vendor notification migration', () => {
     expect(sql).toContain('notifications_vendor_scope_idx');
     expect(sql).toContain('notifications_outlet_scope_idx');
   });
+
+  it('replaces the partial event-key index with a conflict-inferable unique index', () => {
+    expect(sql).toContain('DROP INDEX IF EXISTS notifications_event_key_unique');
+    expect(sql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS notifications_event_key_unique');
+    expect(sql).toContain('ON public.notifications(event_key);');
+    expect(sql).not.toContain('WHERE event_key IS NOT NULL');
+  });
 });

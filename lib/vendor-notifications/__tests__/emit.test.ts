@@ -95,7 +95,8 @@ const input = {
 
 describe('emitVendorNotification', () => {
   beforeEach(() => {
-    emailMocks.enqueueVendorEmail.mockClear();
+    emailMocks.enqueueVendorEmail.mockReset();
+    emailMocks.enqueueVendorEmail.mockResolvedValue(undefined);
   });
 
   it('inserts one scoped row and enqueues one email per recipient', async () => {
@@ -114,7 +115,7 @@ describe('emitVendorNotification', () => {
     expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(2);
   });
 
-  it('does not duplicate rows or email outbox events for a repeated event', async () => {
+  it('does not duplicate rows for a repeated event while retrying idempotent email enqueue', async () => {
     const fake = makeFakeDb();
     serviceMocks.db = fake.db;
 
@@ -123,6 +124,20 @@ describe('emitVendorNotification', () => {
 
     expect(fake.rows.notifications).toHaveLength(2);
     expect(second.notificationIds).toEqual([]);
-    expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(2);
+    expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(4);
+  });
+
+  it('retries email after a notification insert succeeded but email enqueue failed', async () => {
+    const fake = makeFakeDb();
+    emailMocks.enqueueVendorEmail
+      .mockRejectedValueOnce(new Error('email unavailable'))
+      .mockResolvedValue(undefined);
+
+    await expect(emitVendorNotification({ ...input, serviceDb: fake.db })).rejects.toThrow('email unavailable');
+    const retry = await emitVendorNotification({ ...input, serviceDb: fake.db });
+
+    expect(fake.rows.notifications).toHaveLength(2);
+    expect(retry.notificationIds).toEqual(['notification-2']);
+    expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(3);
   });
 });

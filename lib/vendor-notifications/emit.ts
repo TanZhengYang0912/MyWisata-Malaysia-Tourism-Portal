@@ -90,14 +90,13 @@ export async function emitVendorNotification(input: VendorNotificationInput): Pr
         category: input.category,
         metadata: sanitizeMetadata(input.metadata),
         event_key: recipientEventKey,
-      }, { onConflict: 'event_key', ignoreDuplicates: true })
+      }, { onConflict: 'event_key', ignoreDuplicates: true } as never)
       .select('id')
       .maybeSingle();
 
     if (error) throw error;
     const id = insertedId(data);
-    if (!id) continue;
-    notificationIds.push(id);
+    if (id) notificationIds.push(id);
 
     if (input.email) {
       const vendorName = typeof input.metadata?.vendorName === 'string'
