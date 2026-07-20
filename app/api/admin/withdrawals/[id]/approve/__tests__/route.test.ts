@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   payoutsCreate:        vi.fn(),
   payoutsRetrieve:      vi.fn(),
   accountsRetrieve:     vi.fn(),
-  moderateAccountText:  vi.fn(),
+  moderateWalletAction:  vi.fn(),
   enqueueWithdrawalEmail: vi.fn(),
 }));
 
@@ -21,6 +21,9 @@ vi.mock('@/lib/supabase/server', () => ({
     from: mocks.from,
   })),
 }));
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => ({ rpc: mocks.rpc })),
+}));
 
 vi.mock('@/lib/stripe', () => ({
   stripe: {
@@ -30,7 +33,7 @@ vi.mock('@/lib/stripe', () => ({
   },
 }));
 
-vi.mock('@/lib/moderation', () => ({ moderateAccountText: mocks.moderateAccountText }));
+vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
 vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
 
 import { POST } from '../route';
@@ -40,7 +43,7 @@ const W_ID  = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const U_ID  = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const U2_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function request(body: Record<string, unknown> = {}) {
+function request(body: Record<string, unknown> = { note: 'Review completed for payout.', reasonCategory: 'review_completed' }) {
   return new Request(`http://localhost/api/admin/withdrawals/${W_ID}/approve`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9' },
@@ -86,12 +89,17 @@ function mockUserRow(connectId: string | null = 'acct_test123') {
 describe('POST /api/admin/withdrawals/:id/approve', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks preserves mock implementations and queued return values;
+    // reset the fluent Supabase mocks so a validation-short-circuit test does
+    // not leak a queued row into the next test.
+    mocks.from.mockReset();
+    mocks.rpc.mockReset();
     mocks.getUser.mockResolvedValue({
       data: { user: { id: U2_ID } },
       error: null,
     });
     mocks.enqueueWithdrawalEmail.mockResolvedValue(undefined);
-    mocks.moderateAccountText.mockResolvedValue({ flagged: false });
+    mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -179,12 +187,12 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
   });
 
   it('returns 422 when approve note is present but under 10 characters', async () => {
-    const res = await POST(request({ note: 'short' }), params());
+    const res = await POST(request({ note: 'short', reasonCategory: 'review_completed' }), params());
     expect(res.status).toBe(422);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it('accepts an empty (omitted) note without validation error', async () => {
+  it('requires a reason and category for approval', async () => {
     mockWithdrawal();
     mocks.rpc.mockResolvedValue({
       data: { status: 'approved', ready: true, approval_count: 1, required_approvals: 1, risk_level: 'low', user_id: U_ID, amount_rm: 100 },
@@ -196,6 +204,37 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     mockUserRow('acct_test123');
 
     const res = await POST(request({}), params());
-    expect(res.status).not.toBe(422);
+    expect(res.status).toBe(422);
+  });
+
+  it('returns a retryable error when processing state cannot be persisted', async () => {
+    // Keep the request inside the idempotency window so the route reaches the
+    // final processing-state RPC instead of correctly rejecting an expired
+    // retry before contacting Stripe.
+    mockWithdrawal({ updated_at: new Date(Date.now() + 60_000).toISOString() });
+    mocks.rpc.mockImplementation((name: string) => {
+      if (name === 'approve_wallet_withdrawal') {
+        return Promise.resolve({
+          data: { status: 'approved', ready: true, approval_count: 1, required_approvals: 1, risk_level: 'low', user_id: U_ID, amount_rm: 100 },
+          error: null,
+        });
+      }
+      if (name === 'record_stripe_transfer') return Promise.resolve({ data: null, error: null });
+      if (name === 'mark_withdrawal_processing') {
+        return Promise.resolve({ data: null, error: { message: 'processing_stripe_id_conflict' } });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
+    mocks.accountsRetrieve.mockResolvedValue({ payouts_enabled: true });
+    mocks.transfersCreate.mockResolvedValue({ id: 'tr_test' });
+    mocks.payoutsCreate.mockResolvedValue({ id: 'po_test' });
+    mockUserRow('acct_test123');
+
+    const res = await POST(request(), params());
+    const body = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(body.error?.code).toBe('PROCESSING_STATE_FAILED');
+    expect(body.error?.details?.retryable).toBe(true);
   });
 });

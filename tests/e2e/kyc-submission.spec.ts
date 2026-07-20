@@ -8,8 +8,8 @@ async function signInAsCustomer(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(CUSTOMER_EMAIL);
   await page.locator('input[type="password"]').fill(CUSTOMER_PASS);
-  await page.getByRole('button', { name: /sign in|log in/i }).click();
-  await page.waitForURL(/\/customer\//);
+  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
+  await page.waitForURL(/\/customer(?:\/|$)/);
 }
 
 test.describe('KYC submission', () => {
@@ -30,6 +30,7 @@ test.describe('KYC submission', () => {
     await page.getByLabel(/front of document/i).setInputFiles({ name: 'front.png', mimeType: 'image/png', buffer: VALID_PNG });
     await expect(submit).toBeDisabled();
     await page.getByLabel(/back of document/i).setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: VALID_PNG });
+    await page.getByRole('checkbox').check();
     await expect(submit).toBeEnabled();
 
     await submit.click();
@@ -53,7 +54,7 @@ test.describe('KYC submission', () => {
     await page.goto('/customer/kyc');
 
     await expect(page.getByText('KYC Submission Rejected')).toBeVisible();
-    await expect(page.getByText('We could not clearly read your document. Please submit clear, well-lit images.')).toBeVisible();
+    await expect(page.getByText('We could not clearly read your document. Please submit clear, well-lit images.', { exact: true })).toBeVisible();
     await expect(page.getByText('Reviewer note: The front image is too blurry to verify.')).toBeVisible();
     await expect(page.getByText(/^Reviewed /)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start New Submission' })).toBeVisible();

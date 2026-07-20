@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
-import { moderateAccountText } from '@/lib/moderation';
+import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
@@ -11,7 +13,8 @@ import { enqueueWithdrawalEmail } from '@/lib/email/events';
 export const dynamic = 'force-dynamic';
 
 const approveSchema = z.object({
-  note: z.string().trim().min(10).max(500).optional().or(z.literal('').transform(() => undefined)),
+  note: z.string().trim().min(10).max(500),
+  reasonCategory: z.string().trim().min(1),
 }).strict();
 
 export async function POST(
@@ -25,18 +28,12 @@ export async function POST(
 
   const parsed = await parseBody(request, approveSchema);
   if (!parsed.ok) return parsed.response;
-  const { note } = parsed.data;
+  const { note, reasonCategory } = parsed.data;
 
-  // Moderate a non-empty note before passing to RPC.
-  if (note) {
-    const moderation = await moderateAccountText(note, 'withdrawal_approve_note');
-    if ('error' in moderation) {
-      return apiFail('MODERATION_UNAVAILABLE', 'Content review is temporarily unavailable; please try again', 503);
-    }
-    if (moderation.flagged) {
-      return apiFail('CONTENT_REJECTED', 'The note contains disallowed content', 422);
-    }
-  }
+  const validated = walletReasonSchema.safeParse({ action: 'approve', reason: note, reasonCategory });
+  if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid approval reason', 422);
+  const moderation = await moderateWalletAction({ actorId: authUser.id, withdrawalId, action: 'approve', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
+  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
   const ip = requestIp(request);
 
@@ -47,6 +44,7 @@ export async function POST(
       p_withdrawal_id: withdrawalId,
       p_note:          note ?? null,
       p_ip:            ip,
+      p_reason_category: validated.data.reasonCategory,
     },
   );
 
@@ -150,7 +148,14 @@ export async function POST(
         { idempotencyKey: `${idemBase}-transfer` },
       );
       // Persist transfer ID before creating payout (crash-safe retry).
-      await db.rpc('record_stripe_transfer', { p_withdrawal_id: withdrawalId, p_transfer_id: transfer.id });
+      const { error: transferRecordError } = await db.rpc('record_stripe_transfer', {
+        p_withdrawal_id: withdrawalId,
+        p_transfer_id: transfer.id,
+      });
+      if (transferRecordError) {
+        console.error('[admin-approve] record_stripe_transfer:', transferRecordError);
+        return apiFail('TRANSFER_STATE_FAILED', 'Stripe Transfer was created but could not be recorded. Retry after checking Stripe.', 502, { retryable: true });
+      }
     }
   } catch (err) {
     console.error('[admin-approve] Stripe transfer error:', err);
@@ -174,11 +179,16 @@ export async function POST(
   }
 
   // ── Mark processing ───────────────────────────────────────────────────────
-  await db.rpc('mark_withdrawal_processing', {
+  const serviceDb = createServiceClient();
+  const { error: processingError } = await serviceDb.rpc('mark_withdrawal_processing', {
     p_withdrawal_id: withdrawalId,
     p_transfer_id:   transfer.id,
     p_payout_id:     payout.id,
   });
+  if (processingError) {
+    console.error('[admin-approve] mark_withdrawal_processing:', processingError);
+    return apiFail('PROCESSING_STATE_FAILED', 'Stripe payout was created but the withdrawal state could not be updated. Do not retry until it is reconciled.', 502, { retryable: true });
+  }
 
   try {
     await enqueueWithdrawalEmail({

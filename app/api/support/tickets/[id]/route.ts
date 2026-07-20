@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data: ticket, error: ticketErr } = await supabase
     .from('support_tickets')
-    .select('id, user_id, session_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
+    .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
     .eq('id', id)
     .maybeSingle();
   if (ticketErr) return apiFail('DB_ERROR', ticketErr.message, 500);
@@ -74,6 +74,7 @@ export async function GET(_request: Request, { params }: Props) {
   return apiOk({
     id: ticket.id,
     userId: ticket.user_id,
+    withdrawalId: ticket.withdrawal_id,
     subject: ticket.subject,
     body: ticket.body,
     category: ticket.category,

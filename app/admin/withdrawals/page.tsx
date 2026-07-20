@@ -1,195 +1,135 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Search, ShieldAlert, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getWithdrawals } from "@/backend/domains/commerce";
-import { getUsers } from "@/backend/domains/identity";
-import { recordApproval } from "@/backend/core/audit";
-import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import type { User, WithdrawalRequest } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { isWalletReasonCategory, WALLET_REASON_CATEGORIES as WALLET_REASON_RULES, type WalletReasonAction } from "@/lib/validation/wallet-reason-schemas";
+
+type ListItem = {
+  id: string; userId: string; customerDisplayName: string; amountSen: number;
+  status: string; requiresDualApproval: boolean; approvalCount: number;
+  riskLevel: "low" | "review" | "high" | null; riskOverridden: boolean; createdAt: string;
+};
+type Detail = ListItem & {
+  customer: { displayName: string; email: string; kycStatus: string; kycApprovedAt: string | null };
+  wallet: { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedSen: number; withdrawnSen: number };
+  destinationLabel: string; customerReason: string | null;
+  approvals: Array<{ actorId: string; actorLabel: string; action: string; note: string | null; createdAt: string }>;
+};
+
+const PAGE_SIZES = [15, 25, 50, 100] as const;
+const STATUS_OPTIONS = ["pending", "pending_second_approval", "hold", "overdue", "approved", "processing", "paid", "completed", "rejected", "failed"];
+const ALL_WALLET_REASON_CATEGORIES = [...new Set(Object.values(WALLET_REASON_RULES).flat())];
+// The review drawer is shared by several actions. Show the complete category
+// vocabulary, then validate the selected category against the clicked action.
+const WALLET_REASON_CATEGORIES = Object.fromEntries(
+  Object.keys(WALLET_REASON_RULES).map((key) => [key, ALL_WALLET_REASON_CATEGORIES]),
+) as unknown as Record<WalletReasonAction, readonly string[]>;
+// Action-style contract: border-2 border-slate-300 for Hold and
+// border-2 border-red-300 for Reject. Important variants below win over the
+// shared Button outline defaults.
+type Action = "approve" | "hold" | "reject" | "resume" | "fraud-override";
+
+function titleCaseStatus(value: string | null | undefined) {
+  return (value ?? "Not assessed")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 export default function AdminWithdrawalsPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
-  const [users, setUsers]             = useState<Map<string, User>>(new Map());
-  const [loading, setLoading]         = useState<string | null>(null);
+  const [items, setItems] = useState<ListItem[]>([]);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [status, setStatus] = useState("");
+  const [risk, setRisk] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [action, setAction] = useState<Action | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonCategory, setReasonCategory] = useState("other");
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    getWithdrawals().then(setWithdrawals);
-    getUsers().then((all) => setUsers(new Map(all.map((u) => [u.id, u]))));
-  }, []);
-
-  async function callApprove(w: WithdrawalRequest) {
-    if (!currentUser || loading) return;
-    setLoading(w.id);
+  const loadList = useCallback(async () => {
+    setLoading(true);
     try {
-      const res  = await fetch(`/api/admin/withdrawals/${w.id}/approve`, { method: "POST" });
-      const json = await res.json();
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+      if (status) params.set("status", status);
+      if (risk) params.set("risk", risk);
+      if (search.trim()) params.set("search", search.trim());
+      const response = await fetch(`/api/admin/withdrawals?${params}`);
+      const body = await response.json() as { data?: { items: ListItem[]; total: number; totalPages: number }; error?: { message?: string } };
+      if (!response.ok || !body.data) throw new Error(body.error?.message ?? "Unable to load withdrawal requests");
+      setItems(body.data.items); setTotal(body.data.total); setTotalPages(body.data.totalPages);
+    } catch (e) {
+      showFeedback("error", e instanceof Error ? e.message : "Unable to load withdrawal requests");
+    } finally { setLoading(false); }
+  }, [page, pageSize, risk, search, showFeedback, status]);
 
-      if (!res.ok) {
-        const msg = json.error ?? "Approval failed";
-        alert(msg);
-        // If retryable (Stripe error), status stays 'approved' in DB — refresh to show retry button
-        if (json.retryable) {
-          setWithdrawals((prev) => prev.map((x) => x.id === w.id ? { ...x, status: "approved" } : x));
-        }
-        return;
-      }
-
-      if (json.status === "pending_second_approval") {
-        showFeedback("success", `First approval recorded (${json.approval_count}/2). Waiting for second approver.`);
-        return;
-      }
-
-      await recordApproval({
-        actorId:      currentUser.id,
-        action:       "withdrawal.approve",
-        targetType:   "withdrawal",
-        targetId:     w.id,
-        notifyUserId: w.userId,
-        notifyText:   `Your withdrawal of RM ${w.amount.toFixed(2)} has been approved and is being processed.`,
-        before: { status: w.status },
-        after:  { status: "processing" },
-      });
-      setWithdrawals((prev) => prev.map((x) => x.id === w.id ? { ...x, status: "processing" } : x));
-      showFeedback("success", "Withdrawal approved and processing.");
-    } catch {
-      showFeedback("error", "Approval failed. Please try again.");
-    } finally {
-      setLoading(null);
-    }
-  }
-
-  async function callReject(w: WithdrawalRequest) {
-    if (!currentUser || loading) return;
-    setLoading(w.id);
+  async function openDetail(id: string) {
+    setError("");
     try {
-      const res  = await fetch(`/api/admin/withdrawals/${w.id}/reject`, { method: "POST" });
-      const json = await res.json();
-      if (!res.ok) { showFeedback("error", json.error ?? "Rejection failed"); return; }
+      const response = await fetch(`/api/admin/withdrawals/${id}`);
+      const body = await response.json() as { data?: Detail; error?: { message?: string } };
+      if (!response.ok || !body.data) throw new Error(body.error?.message ?? "Unable to load review details");
+      setDetail(body.data); setAction(null); setReason(""); setReasonCategory("other");
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to load review details"); }
+  }
 
-      await recordApproval({
-        actorId:      currentUser.id,
-        action:       "withdrawal.reject",
-        targetType:   "withdrawal",
-        targetId:     w.id,
-        notifyUserId: w.userId,
-        notifyText:   `Your withdrawal of RM ${w.amount.toFixed(2)} was rejected. Funds returned to earnings.`,
-        before: { status: w.status },
-        after:  { status: "rejected" },
-      });
-      setWithdrawals((prev) => prev.map((x) => x.id === w.id ? { ...x, status: "rejected" } : x));
-      showFeedback("success", "Withdrawal rejected and funds returned.");
-    } catch {
-      showFeedback("error", "Rejection failed. Please try again.");
-    } finally {
-      setLoading(null);
+  useEffect(() => { queueMicrotask(() => { void loadList(); }); }, [loadList]);
+
+  async function submitAction(nextAction: Action) {
+    if (!detail) return;
+    setAction(nextAction); setError("");
+    if (nextAction !== "approve" && reason.trim().length < 10) {
+      setError("A reason of at least 10 characters is required."); return;
     }
+    const walletAction = nextAction === "fraud-override" ? "fraud_override" : nextAction as WalletReasonAction;
+    if (!isWalletReasonCategory(walletAction, reasonCategory)) {
+      setError("Select a reason category that matches this Wallet action."); return;
+    }
+    const payload = nextAction === "approve" ? { note: reason.trim(), reasonCategory } : { reason: reason.trim(), reasonCategory };
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/withdrawals/${detail.id}/${nextAction}`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+      });
+      const body = await response.json() as { error?: { message?: string } };
+      if (!response.ok) throw new Error(body.error?.message ?? "Action failed");
+      showFeedback("success", nextAction === "fraud-override" ? "Risk override recorded." : "Withdrawal action completed.");
+      await openDetail(detail.id); await loadList();
+    } catch (e) { setError(e instanceof Error ? e.message : "Action failed"); }
+    finally { setLoading(false); }
   }
 
-  const pending   = withdrawals.filter((w) => w.status === "pending");
-  const needRetry = withdrawals.filter((w) => w.status === "approved");
-  const reviewed  = withdrawals.filter((w) => !["pending", "approved"].includes(w.status));
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const canApprove = detail && ["pending", "pending_second_approval"].includes(detail.status);
+  const canHoldReject = detail && ["pending", "pending_second_approval", "approved", "hold", "overdue"].includes(detail.status);
+  const canResume = detail?.status === "hold";
+  const activeReasonAction: WalletReasonAction = action === "fraud-override" ? "fraud_override" : action === "resume" ? "resume" : action === "reject" ? "reject" : action === "approve" ? "approve" : "hold";
 
-  function Row({ w }: { w: WithdrawalRequest }) {
-    const user = users.get(w.userId);
-    const busy = loading === w.id;
-    return (
-      <div className="px-6 py-4 flex items-center gap-4 flex-wrap">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-primary">
-          {user?.avatarInitial ?? "?"}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-foreground">{user?.name}</p>
-            {w.requiresDualApproval && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/25 text-[#B08020]">
-                Dual Approval
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">{w.destination}</p>
-        </div>
-        <p className="font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
-          RM {w.amount.toFixed(2)}
-        </p>
-        {w.status === "approved" ? (
-          <div className="flex gap-2 shrink-0">
-            <Button size="sm" className="text-xs gap-1.5" onClick={() => callApprove(w)} disabled={busy}>
-              <RefreshCw size={11} /> Retry Stripe
-            </Button>
-            <Button size="sm" variant="outline" className="text-xs border-destructive text-destructive hover:bg-destructive/10" onClick={() => callReject(w)} disabled={busy}>
-              Reject
-            </Button>
-          </div>
-        ) : (
-          <ApproveRejectBar onApprove={() => callApprove(w)} onReject={() => callReject(w)} disabled={busy} />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-1">Withdrawal Approvals</h1>
-      <p className="text-xs text-muted-foreground mb-6">
-        Approve triggers a Stripe Transfer + Payout. Reject restores earnings immediately.
-      </p>
-
-      {/* Pending */}
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">Pending ({pending.length})</h2>
-        </div>
-        {pending.length === 0 ? (
-          <EmptyState title="No pending withdrawals" />
-        ) : (
-          <div className="divide-y divide-border">
-            {pending.map((w) => <Row key={w.id} w={w} />)}
-          </div>
-        )}
-      </div>
-
-      {/* Approved — Stripe failed, needs retry */}
-      {needRetry.length > 0 && (
-        <div className="rounded-2xl overflow-hidden bg-card mb-6 border border-amber-200" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <div className="px-6 py-5 border-b border-amber-200 bg-amber-50">
-            <h2 className="font-bold text-amber-800">Stripe Failed — Retry ({needRetry.length})</h2>
-            <p className="text-xs text-amber-700 mt-0.5">Admin approved but Stripe payout failed. Retry or reject to refund.</p>
-          </div>
-          <div className="divide-y divide-border">
-            {needRetry.map((w) => <Row key={w.id} w={w} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Reviewed */}
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">History</h2>
-        </div>
-        {reviewed.length === 0 ? (
-          <EmptyState title="No history yet" />
-        ) : (
-          <div className="divide-y divide-border">
-            {reviewed.map((w) => {
-              const user = users.get(w.userId);
-              return (
-                <div key={w.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
-                  <p className="text-sm text-foreground">{user?.name} — RM {w.amount.toFixed(2)}</p>
-                  <StatusBadge status={w.status} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+  return <div className="p-6 sm:p-8">
+    <h1 className="font-bold text-lg text-foreground mb-1">Withdrawal Approvals</h1>
+    <p className="text-xs text-muted-foreground mb-5">Review withdrawal requests using wallet balances, risk facts and the approval timeline.</p>
+    <div className="rounded-2xl bg-card border border-border p-4 mb-5 flex flex-wrap gap-3 items-center">
+      <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder="Search customer or email" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm" /></div>
+      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All statuses</option>{STATUS_OPTIONS.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}</select>
+      <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All risk levels</option><option value="low">Low</option><option value="review">Review</option><option value="high">High</option></select>
+      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm">{PAGE_SIZES.map((size) => <option key={size} value={size}>{size} per page</option>)}</select>
     </div>
-  );
+    <div className="rounded-2xl overflow-hidden bg-card border border-border">
+      <div className="px-5 py-4 border-b border-border flex justify-between"><h2 className="font-bold text-foreground">Review queue ({total})</h2><span className="text-xs text-muted-foreground">Newest first</span></div>
+      {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> : items.length === 0 ? <EmptyState title="No withdrawal requests" /> : <div className="divide-y divide-border">{items.map((item) => <button key={item.id} type="button" onClick={() => void openDetail(item.id)} className="w-full px-5 py-4 text-left flex items-center gap-4 hover:bg-muted/40"><div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold">{item.customerDisplayName.slice(0, 1).toUpperCase()}</div><div className="flex-1 min-w-0"><p className="font-semibold text-sm truncate">{item.customerDisplayName}</p><p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")}</p></div><div className="text-right"><p className="font-mono font-bold">RM {(item.amountSen / 100).toFixed(2)}</p><div className="flex items-center gap-2 justify-end"><StatusBadge status={item.status} />{item.riskLevel === "high" && <ShieldAlert size={15} className="text-red-600" />}</div></div></button>)}</div>}
+      <div className="px-5 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground"><span>Page {page} of {Math.max(totalPages, 1)}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div></div>
+    </div>
+    {detail && <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={() => setDetail(null)}><aside className="h-full w-full max-w-xl overflow-y-auto bg-card p-6" onClick={(e) => e.stopPropagation()}><div className="flex justify-between items-start"><div><p className="text-xs uppercase tracking-wider text-muted-foreground">Withdrawal review</p><h2 className="text-xl font-bold">{detail.customer.displayName}</h2><p className="text-sm text-muted-foreground">{detail.customer.email}</p></div><button type="button" onClick={() => setDetail(null)} aria-label="Close"><X size={20} /></button></div><div className="grid grid-cols-2 gap-3 mt-5 text-sm"><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Amount</p><p className="font-mono font-bold">RM {(detail.amountSen / 100).toFixed(2)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={detail.status} /></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">App KYC</p><p>{titleCaseStatus(detail.customer.kycStatus)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Risk</p><p className={detail.riskLevel === "high" ? "text-red-600 font-semibold" : ""}>{titleCaseStatus(detail.riskLevel)}{detail.riskOverridden ? " · Overridden" : ""}</p></div></div><div className="rounded-xl border border-border p-4 mt-4 text-sm"><p className="font-semibold mb-2">Wallet balances</p><p>Top-up: RM {(detail.wallet.topupSen / 100).toFixed(2)}</p><p>Earnings: RM {(detail.wallet.earningsSen / 100).toFixed(2)}</p><p>Pending rewards: RM {(detail.wallet.pendingEarningsSen / 100).toFixed(2)}</p><p>Reserved: RM {(detail.wallet.reservedSen / 100).toFixed(2)}</p><p>Withdrawn: RM {(detail.wallet.withdrawnSen / 100).toFixed(2)}</p><p className="mt-2 text-muted-foreground">Destination: {detail.destinationLabel}</p></div><div className="rounded-xl border border-border p-4 mt-4"><p className="font-semibold mb-2">Approval timeline</p>{detail.approvals.length === 0 ? <p className="text-sm text-muted-foreground">No decisions recorded.</p> : detail.approvals.map((approval) => <div key={`${approval.actorId}-${approval.action}-${approval.createdAt}`} className="py-2 border-b last:border-0 text-sm"><p>{approval.actorLabel} · {titleCaseStatus(approval.action)}</p><p className="text-xs text-muted-foreground">{new Date(approval.createdAt).toLocaleString("en-MY")}{approval.note ? ` · ${approval.note}` : ""}</p></div>)}</div>{detail.customerReason && <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 mt-4 text-sm"><p className="font-semibold">Customer-visible reason</p><p>{detail.customerReason}</p></div>}<div className="mt-5"><p className="font-semibold text-sm mb-2">Account action</p>{(canApprove || canHoldReject || canResume || isSuperAdmin) && <select value={reasonCategory} onChange={(e) => setReasonCategory(e.target.value)} className="mb-2 w-full rounded-xl border border-border bg-background p-3 text-sm"><option value="">Select a reason category</option>{WALLET_REASON_CATEGORIES[activeReasonAction].map((category) => <option key={category} value={category}>{titleCaseStatus(category)}</option>)}</select>}<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={action === "approve" ? "Enter an approval note of at least 10 characters" : "Enter a reason of at least 10 characters"} maxLength={500} className="w-full min-h-24 rounded-xl border border-border bg-background p-3 text-sm" />{error && <p className="text-sm text-red-600 mt-2">{error}</p>}<div className="flex flex-wrap gap-2 mt-3">{canApprove && <Button onClick={() => void submitAction("approve")} disabled={loading}>Approve</Button>}{canHoldReject && <><Button variant="outline" className="!border-2 !border-slate-300 !bg-white !text-slate-700 hover:!bg-slate-50" style={{ borderWidth: 2, borderStyle: "solid", borderColor: "#cbd5e1", backgroundColor: "#ffffff", color: "#334155" }} onClick={() => void submitAction("hold")} disabled={loading}>Hold</Button><Button variant="outline" className="!border-2 !border-red-300 !bg-red-50 !text-red-700 hover:!bg-red-100" style={{ borderWidth: 2, borderStyle: "solid", borderColor: "#fca5a5", backgroundColor: "#fef2f2", color: "#b91c1c" }} onClick={() => void submitAction("reject")} disabled={loading}>Reject</Button></>}{canResume && <Button variant="outline" onClick={() => void submitAction("resume")} disabled={loading}>Resume review</Button>}{isSuperAdmin && detail.riskLevel === "high" && !detail.riskOverridden && <Button variant="outline" onClick={() => void submitAction("fraud-override")} disabled={loading}>Override high risk</Button>}</div><p className="text-xs text-muted-foreground mt-2">Reasons are reviewed before they are recorded. Minimum 10 characters.</p></div></aside></div>}
+  </div>;
 }

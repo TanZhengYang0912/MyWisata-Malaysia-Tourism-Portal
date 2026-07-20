@@ -1,12 +1,18 @@
 export type TransactionEmailType =
   | 'checkout_succeeded'
   | 'topup_succeeded'
+  | 'topup_failed'
+  | 'topup_refunded'
   | 'withdrawal_submitted'
   | 'withdrawal_approved'
   | 'withdrawal_hold'
+  | 'withdrawal_resumed'
   | 'withdrawal_paid'
   | 'withdrawal_failed'
   | 'withdrawal_rejected'
+  | 'wallet_adjustment'
+  | 'payout_account_connected'
+  | 'payout_account_disconnected'
   | 'recommendation_reward_pending'
   | 'recommendation_reward_available'
   | 'recommendation_reward_reversed';
@@ -41,12 +47,18 @@ export type RenderedEmail = {
 const SUBJECTS: Record<TransactionEmailType, string> = {
   checkout_succeeded: 'Checkout payment received',
   topup_succeeded: 'Wallet Top-up successful',
+  topup_failed: 'Wallet Top-up failed',
+  topup_refunded: 'Wallet Top-up refunded',
   withdrawal_submitted: 'Withdrawal request received',
   withdrawal_approved: 'Withdrawal approved',
   withdrawal_hold: 'Withdrawal placed on hold',
+  withdrawal_resumed: 'Withdrawal review resumed',
   withdrawal_paid: 'Withdrawal paid',
   withdrawal_failed: 'Withdrawal failed',
   withdrawal_rejected: 'Withdrawal rejected',
+  wallet_adjustment: 'Wallet balance adjusted',
+  payout_account_connected: 'Payout account connected',
+  payout_account_disconnected: 'Payout account disconnected',
   recommendation_reward_pending: 'Your recommendation earned a pending reward',
   recommendation_reward_available: 'Your recommendation reward is now available',
   recommendation_reward_reversed: 'Your pending recommendation reward was reversed',

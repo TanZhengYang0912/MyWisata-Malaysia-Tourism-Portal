@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { moderateAccountText } from '@/lib/moderation';
+import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 const overrideSchema = z.object({
   reason: z.string().trim().min(10).max(500),
+  reasonCategory: z.string().trim().min(1).default('other'),
 }).strict();
 
 export async function POST(
@@ -22,13 +24,10 @@ export async function POST(
   const parsed = await parseBody(request, overrideSchema);
   if (!parsed.ok) return parsed.response;
 
-  const moderation = await moderateAccountText(parsed.data.reason, 'withdrawal_fraud_override_reason');
-  if ('error' in moderation) {
-    return apiFail('MODERATION_UNAVAILABLE', 'Content review is temporarily unavailable; please try again', 503);
-  }
-  if (moderation.flagged) {
-    return apiFail('CONTENT_REJECTED', 'The override reason contains disallowed content', 422);
-  }
+  const validated = walletReasonSchema.safeParse({ action: 'fraud_override', reason: parsed.data.reason, reasonCategory: parsed.data.reasonCategory });
+  if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid override reason', 422);
+  const moderation = await moderateWalletAction({ actorId: user.id, withdrawalId, action: 'fraud_override', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
+  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
   const { data, error } = await db.rpc('override_withdrawal_risk', {
     p_withdrawal_id: withdrawalId,

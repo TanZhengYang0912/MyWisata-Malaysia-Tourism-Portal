@@ -22,6 +22,8 @@ export async function GET(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const { data: isApprover, error: roleError } = await db.rpc('is_approver', { uid: user.id });
+  if (roleError || !isApprover) return apiFail('FORBIDDEN', 'Wallet Approver access required', 403);
 
   const url = new URL(request.url);
   const parsed = listSchema.safeParse(Object.fromEntries(url.searchParams));
@@ -32,21 +34,29 @@ export async function GET(request: Request) {
   const { page, pageSize, status, risk, search } = parsed.data;
   const offset = (page - 1) * pageSize;
 
-  // Build query — server-side only, never loads all rows.
+  // Build query — server-side only, never loads all rows. A risk filter must
+  // use an inner relation so unassessed requests cannot leak into the result.
+  const riskRelation = risk
+    ? 'withdrawal_risk_assessments!inner(risk_level, overridden_at)'
+    : 'withdrawal_risk_assessments(risk_level, overridden_at)';
   let query = db
     .from('withdrawal_requests')
     .select(`
       id, user_id, amount, status, requires_dual_approval, created_at, updated_at,
       users!inner(full_name, email),
       withdrawal_approvals(approver_id, action),
-      withdrawal_risk_assessments(risk_level, overridden_at)
+      ${riskRelation}
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize - 1);
 
   if (status) query = query.eq('status', status);
+  if (risk) query = query.eq('withdrawal_risk_assessments.risk_level', risk);
   if (search) {
-    query = query.or(`users.full_name.ilike.%${search}%,users.email.ilike.%${search}%`);
+    // PostgREST's `or` grammar treats commas and parentheses as operators;
+    // strip them before interpolating the user-supplied search term.
+    const safeSearch = search.replace(/[(),]/g, '');
+    if (safeSearch) query = query.or(`users.full_name.ilike.%${safeSearch}%,users.email.ilike.%${safeSearch}%`);
   }
 
   const { data, count, error } = await query;
@@ -58,7 +68,8 @@ export async function GET(request: Request) {
   const items = ((data ?? []) as Record<string, unknown>[]).map((row) => {
     const approvals = (row.withdrawal_approvals as { approver_id: string; action: string }[] | null) ?? [];
     const approvalCount = approvals.filter((a) => a.action === 'approve').length;
-    const riskRow = row.withdrawal_risk_assessments as { risk_level: string; overridden_at: string | null } | null;
+    const riskRelationValue = row.withdrawal_risk_assessments as { risk_level: string; overridden_at: string | null } | { risk_level: string; overridden_at: string | null }[] | null;
+    const riskRow = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
     const user = row.users as { full_name: string | null; email: string | null } | null;
     return {
       id:                   row.id as string,
@@ -73,7 +84,7 @@ export async function GET(request: Request) {
       createdAt:            row.created_at as string,
       updatedAt:            row.updated_at as string,
     };
-  }).filter((item) => !risk || item.riskLevel === risk);
+  });
 
   const total = count ?? 0;
   const response: WithdrawalListResponse = {

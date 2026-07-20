@@ -95,6 +95,44 @@ export async function POST(req: Request) {
     }
   }
 
+  if (event.type === 'payment_intent.payment_failed') {
+    const intent = event.data.object as Stripe.PaymentIntent;
+    const userId = intent.metadata?.user_id;
+    if (userId && intent.metadata?.payment_kind === 'topup') {
+      try {
+        await enqueueUserTransactionEmail({
+          userId,
+          eventType: 'topup_failed',
+          eventKey: `stripe-topup-failed:${event.id}`,
+          reference: 'Wallet top-up',
+          amountRm: (intent.amount ?? 0) / 100,
+          occurredAt: new Date(event.created * 1000).toISOString(),
+        });
+      } catch (emailError) {
+        console.error('[stripe-webhook] top-up failure email enqueue failed:', emailError);
+      }
+    }
+  }
+
+  if (event.type === 'checkout.session.expired') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const userId = session.metadata?.user_id;
+    if (userId && session.metadata?.payment_kind === 'topup') {
+      try {
+        await enqueueUserTransactionEmail({
+          userId,
+          eventType: 'topup_failed',
+          eventKey: `stripe-topup-expired:${event.id}`,
+          reference: 'Wallet top-up',
+          amountRm: (session.amount_total ?? 0) / 100,
+          occurredAt: new Date(event.created * 1000).toISOString(),
+        });
+      } catch (emailError) {
+        console.error('[stripe-webhook] expired top-up email enqueue failed:', emailError);
+      }
+    }
+  }
+
   // All other event types → acknowledge immediately (no-op)
   return NextResponse.json({ received: true });
 }

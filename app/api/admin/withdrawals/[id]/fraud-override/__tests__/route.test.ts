@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser:             vi.fn(),
   rpc:                 vi.fn(),
-  moderateAccountText: vi.fn(),
+  moderateWalletAction: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase/server', () => ({
   })),
 }));
 
-vi.mock('@/lib/moderation', () => ({ moderateAccountText: mocks.moderateAccountText }));
+vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
 
 // The route does not exist yet — importing it should cause the test to fail
 // (module not found), which is the expected TDD red state.
@@ -46,7 +46,7 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
       data: { user: { id: SUPER_ID } },
       error: null,
     });
-    mocks.moderateAccountText.mockResolvedValue({ flagged: false });
+    mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -84,7 +84,7 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
   });
 
   it('returns 422 when content is flagged by moderation', async () => {
-    mocks.moderateAccountText.mockResolvedValue({ flagged: true });
+    mocks.moderateWalletAction.mockResolvedValue({ ok: false, code: 'CONTENT_REJECTED', message: 'Reason rejected by Wallet policy' });
     const res = await POST(request({ reason: 'Manually reviewed and confirmed legitimate.' }), params());
     expect(res.status).toBe(422);
     const body = await res.json();
@@ -93,7 +93,7 @@ describe('POST /api/admin/withdrawals/:id/fraud-override', () => {
   });
 
   it('returns 503 when moderation service is unavailable', async () => {
-    mocks.moderateAccountText.mockResolvedValue({ error: 'service unavailable' });
+    mocks.moderateWalletAction.mockResolvedValue({ ok: false, code: 'MODERATION_UNAVAILABLE', message: 'Content review unavailable' });
     const res = await POST(request({ reason: 'Manually reviewed and confirmed legitimate.' }), params());
     expect(res.status).toBe(503);
     expect(mocks.rpc).not.toHaveBeenCalled();

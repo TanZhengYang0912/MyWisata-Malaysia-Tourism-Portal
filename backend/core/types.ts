@@ -345,7 +345,7 @@ export interface WithdrawalRequest {
   userId: string;
   amount: number;
   destination: string;
-  status: "pending" | "approved" | "rejected" | "processing" | "completed" | "failed" | "paid";
+  status: "pending" | "pending_second_approval" | "approved" | "rejected" | "processing" | "hold" | "overdue" | "completed" | "failed" | "paid";
   requiresDualApproval: boolean;
   createdAt: string;
 }

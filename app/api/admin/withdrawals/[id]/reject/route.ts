@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
-import { moderateAccountText } from '@/lib/moderation';
+import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
-const rejectSchema = z.object({ reason: z.string().trim().min(10).max(500) }).strict();
+const rejectSchema = z.object({ reasonCategory: z.string().trim().min(1), reason: z.string().trim().min(10).max(500) }).strict();
 
 export const dynamic = 'force-dynamic';
 
@@ -20,14 +21,16 @@ export async function POST(
 
   const parsed = await parseBody(request, rejectSchema);
   if (!parsed.ok) return parsed.response;
-  const moderation = await moderateAccountText(parsed.data.reason, 'withdrawal_reject_reason');
-  if ('error' in moderation) return apiFail('MODERATION_UNAVAILABLE', 'Content review is temporarily unavailable; please try again', 503);
-  if (moderation.flagged) return apiFail('CONTENT_REJECTED', 'The rejection reason contains disallowed content', 422);
+  const validated = walletReasonSchema.safeParse({ action: 'reject', ...parsed.data });
+  if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid rejection reason', 422);
+  const moderation = await moderateWalletAction({ actorId: user.id, withdrawalId: id, action: 'reject', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
+  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
   const { data, error } = await db.rpc('reject_wallet_withdrawal', {
     p_id: id,
     p_reason: parsed.data.reason,
     p_ip: requestIp(request),
+    p_reason_category: validated.data.reasonCategory,
   });
   if (error) {
     const message = error.message ?? 'Unable to reject withdrawal';
