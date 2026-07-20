@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut, ShieldCheck, Building2 } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut, ShieldCheck, Building2, Bell } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/vendor/orders',     label: 'Orders',     icon: ShoppingBag },
   { href: '/vendor/wallet',     label: 'Wallet',     icon: Wallet },
   { href: '/vendor/inbox',      label: 'Inbox',      icon: MessageCircle },
+  { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
   { href: '/vendor/analytics',  label: 'Analytics',  icon: ChartNoAxesCombined },
 ];
 
@@ -28,6 +29,7 @@ const OUTLET_MANAGER_NAV = [
   { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
   { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/vendor/inbox', label: 'Inbox', icon: MessageCircle },
+  { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
 ];
 
 export default function VendorSidebar() {
