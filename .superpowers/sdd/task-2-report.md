@@ -78,3 +78,49 @@ Results: TypeScript completed with no diagnostics; `131` test files passed and
 ## Commit
 
 `5bfe1335f886c0955c1702b6ed1ef2f68073f65c` (`feat: add vendor notification recipient service`)
+
+## Review fixes
+
+The follow-up review identified two production concerns and both were addressed:
+
+- Migration `080_vendor_notifications.sql` now drops the partial index created
+  by migration 079 and creates a full unique `event_key` index. PostgreSQL still
+  permits multiple NULL keys, while Supabase can now infer
+  `ON CONFLICT (event_key)`.
+- `emitVendorNotification` now invokes the idempotent email enqueue for every
+  resolved recipient after a successful insert attempt, including duplicate
+  notification rows. Newly returned notification IDs are still the only IDs
+  added to `notificationIds`. This allows an email retry after a notification
+  insert succeeded but the first email enqueue failed.
+
+### Review-fix RED/GREEN evidence
+
+RED tests were observed before each fix:
+
+- The migration contract test failed because 080 did not drop/recreate the
+  partial `event_key` index.
+- The new email-retry test failed with two enqueue calls instead of the expected
+  three, proving duplicate rows were suppressing a needed retry.
+
+GREEN verification:
+
+```text
+npx vitest run supabase/migrations/__tests__/080_vendor_notifications.test.ts lib/vendor-notifications/__tests__/scope.test.ts lib/vendor-notifications/__tests__/emit.test.ts
+```
+
+Result: `3` files passed; `8` tests passed.
+
+The fix commit is listed below; the report-only commit follows it.
+
+Review-fix commit: `441ccae69202cc049df016a030133dad50a989c6` (`fix: harden vendor notification idempotency`).
+
+Additional verification after the review fixes:
+
+```text
+npx tsc --noEmit --pretty false
+npm test -- --run
+git diff --check
+```
+
+Results: TypeScript completed with no diagnostics; `131` test files passed and
+`1` skipped, with `446` tests passed and `9` skipped. The diff check was clean.
