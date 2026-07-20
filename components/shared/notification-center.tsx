@@ -44,7 +44,9 @@ export function NotificationCenter({ scope = "customer", vendorId = null, catego
     if (response.ok) setItems((current) => current.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item));
   }
   async function markAll() {
-    const response = await fetch("/api/notifications/read-all", { method: "POST" });
+    const markAllParams = new URLSearchParams();
+    if (scope === "vendor") { markAllParams.set("scope", "vendor"); if (vendorId) markAllParams.set("vendorId", vendorId); }
+    const response = await fetch(`/api/notifications/read-all${markAllParams.toString() ? `?${markAllParams}` : ""}`, { method: "POST" });
     if (response.ok) setItems((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() })));
   }
 
