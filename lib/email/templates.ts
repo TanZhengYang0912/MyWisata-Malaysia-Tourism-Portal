@@ -23,6 +23,14 @@ export type AccountEmailType =
   | 'account_deleted'
   | 'account_restored';
 
+export type VendorEmailType =
+  | 'vendor_order_update'
+  | 'vendor_booking_update'
+  | 'vendor_listing_review'
+  | 'vendor_wallet_update'
+  | 'vendor_account_update'
+  | 'vendor_permission_update';
+
 export type TransactionEmailInput = {
   eventType: TransactionEmailType;
   recipientName?: string | null;
@@ -35,6 +43,15 @@ export type AccountEmailInput = {
   eventType: AccountEmailType;
   recipientName?: string | null;
   reason: string;
+  occurredAt: string;
+};
+
+export type VendorEmailInput = {
+  eventType: VendorEmailType;
+  recipientName?: string | null;
+  vendorName: string;
+  reason: string;
+  reference?: string | null;
   occurredAt: string;
 };
 
@@ -72,6 +89,15 @@ function escapeHtml(value: string): string {
     "'": '&#39;',
     '"': '&quot;',
   })[character] ?? character);
+}
+
+// Notification reasons and references may be assembled from provider metadata.
+// Keep provider object IDs and key/value secrets out of email content while
+// preserving a useful, human-readable explanation for the recipient.
+function sanitizeVendorText(value: string): string {
+  return value
+    .replace(/\b(?:sk|rk|pk|pi|ch|cs|re|cus|acct|pm|src|tok|seti|price|prod|sub|in|ca|evt)_[A-Za-z0-9]+\b/gi, '[redacted]')
+    .replace(/\b(?:password|pass|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]');
 }
 
 export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
@@ -156,5 +182,64 @@ export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
   <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
   <p>For questions, please contact support. Never reply with passwords or identity documents.</p>
 </body></html>`;
+  return { subject, html, text };
+}
+
+const VENDOR_SUBJECTS: Record<VendorEmailType, string> = {
+  vendor_order_update: 'Vendor order update',
+  vendor_booking_update: 'Vendor booking update',
+  vendor_listing_review: 'Vendor listing review update',
+  vendor_wallet_update: 'Vendor wallet update',
+  vendor_account_update: 'Vendor account update',
+  vendor_permission_update: 'Vendor permission update',
+};
+
+export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
+  const subject = VENDOR_SUBJECTS[input.eventType];
+  const name = input.recipientName?.trim() || 'there';
+  const vendorName = sanitizeVendorText(input.vendorName.trim());
+  const reason = sanitizeVendorText(input.reason.trim());
+  const reference = input.reference ? sanitizeVendorText(input.reference.trim()) : '';
+  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const safeName = escapeHtml(name);
+  const safeSubject = escapeHtml(subject);
+  const safeVendorName = escapeHtml(vendorName);
+  const safeReason = escapeHtml(reason);
+  const safeReference = escapeHtml(reference);
+  const safeOccurredAt = escapeHtml(occurredAt);
+  const referenceLine = reference ? `Reference: ${reference}` : '';
+  const referenceRow = reference
+    ? `<tr><td><strong>Reference</strong></td><td>${safeReference}</td></tr>`
+    : '';
+
+  const text = [
+    `Hi ${name},`,
+    '',
+    subject,
+    `Vendor: ${vendorName}`,
+    `Reason: ${reason}`,
+    referenceLine,
+    `Time: ${occurredAt}`,
+    '',
+    'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
+  ].filter((line) => line !== '').join('\n');
+
+  const html = `<!doctype html>
+<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
+  <h2>${safeSubject}</h2>
+  <p>Hi ${safeName},</p>
+  <p>There is an important update for <strong>${safeVendorName}</strong>.</p>
+  <p><strong>Reason:</strong> ${safeReason}</p>
+  <table role="presentation" cellpadding="6">
+    ${referenceRow}
+    <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
+  </table>
+  <p>This is an automated message. Never reply with passwords or identity documents.</p>
+</body></html>`;
+
   return { subject, html, text };
 }

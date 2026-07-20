@@ -1,7 +1,8 @@
+import { enqueueVendorEmail as enqueueDurableVendorEmail } from '@/lib/email/events';
+
 /**
- * Email seam for vendor notifications. Task 3 supplies the durable outbox
- * implementation; keeping this adapter local makes recipient emission
- * production-compilable and straightforward to mock in Task 2 tests.
+ * Stable adapter for the vendor notification emitter. The implementation is
+ * delegated to the durable email outbox while retaining Task 2's input shape.
  */
 export type VendorEmailEnqueueInput = {
   userId: string;
@@ -13,6 +14,10 @@ export type VendorEmailEnqueueInput = {
   occurredAt: string;
 };
 
-export async function enqueueVendorEmail(_input: VendorEmailEnqueueInput): Promise<void> {
-  // Intentionally a no-op until lib/email/events.ts is extended in Task 3.
+export async function enqueueVendorEmail(input: VendorEmailEnqueueInput): Promise<void> {
+  await enqueueDurableVendorEmail({
+    ...input,
+    eventType: input.eventType as Parameters<typeof enqueueDurableVendorEmail>[0]['eventType'],
+    recipientName: null,
+  });
 }
