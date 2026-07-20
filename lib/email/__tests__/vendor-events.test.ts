@@ -70,6 +70,32 @@ describe('vendor email events', () => {
     expect(rendered.html).not.toContain('pi_1234567890');
   });
 
+  it('redacts financial, identity, contact, and provider secret values everywhere', () => {
+    const rendered = renderVendorEmail({
+      eventType: 'vendor_account_update',
+      vendorName: 'Vendor bank account: 123456789',
+      reason: 'passport: P123456; IC: 900101-14-5678; MyKad: 900101145678; DOB: 1990-01-01; email: x@y.example; phone: +60123456789; address: 1 Jalan Aman; whsec_super_secret',
+      reference: 'IBAN: MY12TEST1234567890',
+      occurredAt: '2026-07-15T10:00:00.000Z',
+    });
+
+    for (const sensitiveValue of [
+      '123456789',
+      'P123456',
+      '900101-14-5678',
+      '900101145678',
+      '1990-01-01',
+      'x@y.example',
+      '+60123456789',
+      '1 Jalan Aman',
+      'whsec_super_secret',
+      'MY12TEST1234567890',
+    ]) {
+      expect(rendered.html).not.toContain(sensitiveValue);
+      expect(rendered.text).not.toContain(sensitiveValue);
+    }
+  });
+
   it('keeps the same event key across repeated enqueue calls', async () => {
     const input = {
       userId: 'user-1',

@@ -96,8 +96,15 @@ function escapeHtml(value: string): string {
 // preserving a useful, human-readable explanation for the recipient.
 function sanitizeVendorText(value: string): string {
   return value
-    .replace(/\b(?:sk|rk|pk|pi|ch|cs|re|cus|acct|pm|src|tok|seti|price|prod|sub|in|ca|evt)_[A-Za-z0-9]+\b/gi, '[redacted]')
-    .replace(/\b(?:password|pass|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]');
+    // Redact labelled financial, identity, contact, and location values while
+    // retaining the label so the notification remains understandable.
+    .replace(/\b(bank\s+account|account(?:\s+(?:number|no))?|card(?:\s+(?:number|no))?|iban|identity(?:\s+(?:card|number|no))?|passport|my\s*kad|mykad|ic|dob|date\s+of\s+birth|email|e-mail|phone|mobile|address)\s*[:=#-]\s*([^,;\n|]+)/gi, '$1: [redacted]')
+    // Provider object IDs and secrets must never be exposed in email content.
+    .replace(/\b(?:sk|rk|pk|pi|ch|cs|re|cus|acct|pm|src|tok|seti|price|prod|sub|in|ca|evt|whsec)_[A-Za-z0-9_-]+\b/gi, '[redacted]')
+    .replace(/\b(?:password|pass|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
+    // Defence in depth for unlabelled email addresses and Malaysian ICs.
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted]')
+    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[redacted]');
 }
 
 export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
