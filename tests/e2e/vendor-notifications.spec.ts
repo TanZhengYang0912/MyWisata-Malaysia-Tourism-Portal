@@ -18,17 +18,16 @@ type NotificationFixture = {
 };
 
 async function signInAsVendor(page: Page, email: string) {
+  const probe = await page.request.post('/api/auth/demo-signin', { data: { email } });
+  if (probe.status() === 401) {
+    test.skip(true, `Seeded vendor session unavailable for ${email}`);
+  }
+  expect(probe.status(), `Demo sign-in probe failed for ${email}`).toBe(200);
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(DEMO_PASSWORD);
   await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
-  try {
-    await page.waitForURL(/\/vendor\//, { timeout: 15_000 });
-  } catch {
-    // Keep this suite honest on a fresh clone: route-mock tests still need a
-    // real seeded vendor session, so report the missing prerequisite as a skip.
-    test.skip(true, `Seeded vendor session unavailable for ${email}`);
-  }
+  await page.waitForURL(/\/vendor\//, { timeout: 15_000 });
 }
 
 function fixture(index: number, category = 'vendor_orders'): NotificationFixture {
@@ -44,12 +43,18 @@ function fixture(index: number, category = 'vendor_orders'): NotificationFixture
   };
 }
 
-async function mockVendorNotifications(page: Page, options?: { total?: number }) {
+async function mockVendorNotifications(page: Page, options?: { total?: number; manager?: boolean }) {
   const requests: URL[] = [];
   const readIds: string[] = [];
   let readAllCalls = 0;
   const total = options?.total ?? 20;
   const rows = Array.from({ length: total }, (_, index) => fixture(index + 1));
+  // Include sensitive categories in the raw fixture so the manager contract
+  // is exercised explicitly: the server-side scope must remove these before
+  // they reach the manager's notification center.
+  const rawRows = options?.manager
+    ? [...rows, { ...fixture(900, 'vendor_wallet'), title: 'Vendor wallet balance changed' }, { ...fixture(901, 'vendor_account'), title: 'Vendor account review' }]
+    : rows;
 
   await page.route('**/api/notifications?*', async (route) => {
     const url = new URL(route.request().url());
@@ -58,7 +63,8 @@ async function mockVendorNotifications(page: Page, options?: { total?: number })
     const pageSize = Number(url.searchParams.get('pageSize') ?? '15');
     const category = url.searchParams.get('category');
     const read = url.searchParams.get('read');
-    let filtered = rows;
+    let filtered = rawRows;
+    if (options?.manager) filtered = filtered.filter((row) => !['vendor_wallet', 'vendor_account'].includes(row.category));
     if (category) filtered = filtered.filter((row) => row.category === category);
     if (read === 'unread') filtered = filtered.filter((row) => !row.readAt);
     const start = (pageNumber - 1) * pageSize;
@@ -96,11 +102,19 @@ test.describe('Vendor notification journeys', () => {
 
     await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
+    const bell = page.getByRole('button', { name: 'Notifications' });
+    await bell.click();
+    await expect(page.getByText('Mark all as read')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'View all notifications' })).toHaveAttribute('href', '/vendor/notifications');
+    await bell.click();
     await expect(page.getByText('Vendor notification 1')).toBeVisible();
     await expect(page.getByRole('button', { name: /Vendor notification \d+/ })).toHaveCount(15);
 
     await page.getByRole('button', { name: 'Orders', exact: true }).click();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('category') === 'vendor_orders')).toBe(true);
+    await page.getByRole('button', { name: 'Wallet', exact: true }).click();
+    await expect.poll(() => mock.requests.some((url) => url.searchParams.get('category') === 'vendor_wallet')).toBe(true);
+    await page.getByRole('button', { name: 'Orders', exact: true }).click();
 
     await page.getByRole('button', { name: /Vendor notification 1/ }).click();
     await expect.poll(() => mock.readIds).toContain('vendor-notification-1');
@@ -115,12 +129,14 @@ test.describe('Vendor notification journeys', () => {
   });
 
   test('outlet manager sees only the vendor-scoped notification workspace', async ({ page }) => {
-    const mock = await mockVendorNotifications(page, { total: 1 });
+    const mock = await mockVendorNotifications(page, { total: 1, manager: true });
     await signInAsVendor(page, MANAGER_EMAIL);
     await page.goto('/vendor/notifications');
 
     await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible();
     await expect(page.getByText('Vendor notification 1')).toBeVisible();
+    await expect(page.getByText('Vendor wallet balance changed')).toBeHidden();
+    await expect(page.getByText('Vendor account review')).toBeHidden();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('scope') === 'vendor' && url.searchParams.get('vendorId') === VENDOR_ONE)).toBe(true);
 
     // This request is intentionally not mocked: the server must reject a
@@ -129,5 +145,15 @@ test.describe('Vendor notification journeys', () => {
     expect(crossVendor.status()).toBe(403);
     const payload = await crossVendor.json() as { error?: { code?: string } };
     expect(payload.error?.code).toBe('FORBIDDEN');
+  });
+
+  test('high-priority email outbox seam remains protected from browser callers', async ({ page }) => {
+    await signInAsVendor(page, OWNER_EMAIL);
+    const response = await page.request.post('/api/internal/email-outbox/process', {
+      data: { limit: 1 },
+    });
+    // Email processing is a server-side worker seam. A browser session must
+    // never be able to trigger it without the configured worker secret.
+    expect(response.status()).toBe(401);
   });
 });
