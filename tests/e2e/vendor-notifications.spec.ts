@@ -139,6 +139,15 @@ test.describe('Vendor notification journeys', () => {
     await expect(page.getByText('Vendor account review')).toBeHidden();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('scope') === 'vendor' && url.searchParams.get('vendorId') === VENDOR_ONE)).toBe(true);
 
+    // Verify the real server response, independently of the deterministic UI
+    // fixture above. Outlet-manager scope must filter wallet/account rows at
+    // the API boundary rather than relying on the browser to hide them.
+    const scopedResponse = await page.request.get(`/api/notifications?scope=vendor&vendorId=${VENDOR_ONE}&page=1&pageSize=15`);
+    expect(scopedResponse.status()).toBe(200);
+    const scopedPayload = await scopedResponse.json() as { data?: { items?: Array<{ category?: string }> } };
+    const scopedItems = scopedPayload.data?.items ?? [];
+    expect(scopedItems.some((item) => ['vendor_wallet', 'vendor_account'].includes(item.category ?? ''))).toBe(false);
+
     // This request is intentionally not mocked: the server must reject a
     // valid, approved vendor outside the manager's assigned outlet scope.
     const crossVendor = await page.request.get(`/api/notifications?scope=vendor&vendorId=${VENDOR_TWO}&page=1&pageSize=15`);
