@@ -37,6 +37,7 @@ export async function GET(request: Request) {
     query = query.eq('vendor_id', scopedVendor.vendorId);
     if (scopedVendor.isOutletManager) {
       query = query.in('outlet_id', scopedVendor.outletIds);
+      query = query.eq('audience_role', 'outlet_manager');
       query = query.not('category', 'in', '(vendor_wallet,vendor_account)');
     }
   }

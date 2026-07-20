@@ -15,6 +15,7 @@ vi.mock('@/lib/vendor-authorization', () => ({
 }));
 
 import { GET } from '../route';
+import { POST as markAll } from '../read-all/route';
 
 const ownerId = '11111111-1111-4111-8111-111111111111';
 const vendorId = '22222222-2222-4222-8222-222222222222';
@@ -92,7 +93,27 @@ describe('GET /api/notifications vendor scope', () => {
     const response = await GET(request(`?scope=vendor&vendorId=${vendorId}&category=vendor_wallet`));
     expect(response.status).toBe(200);
     expect(query.in).toHaveBeenCalledWith('outlet_id', [outletOne]);
+    expect(query.eq).toHaveBeenCalledWith('audience_role', 'outlet_manager');
     expect(query.not).toHaveBeenCalledWith('category', 'in', '(vendor_wallet,vendor_account)');
+  });
+
+  it('scopes vendor mark-all to the authorized vendor and outlet role', async () => {
+    mocks.authorizeVendor.mockResolvedValue(access('outlet_manager'));
+    const query = {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      then: vi.fn(),
+    };
+    query.then.mockImplementation((resolve: (value: { error: null }) => void) => resolve({ error: null }));
+    mocks.from.mockReturnValue(query);
+    const response = await markAll(request(`?scope=vendor&vendorId=${vendorId}`));
+    expect(response.status).toBe(200);
+    expect(query.eq).toHaveBeenCalledWith('vendor_id', vendorId);
+    expect(query.in).toHaveBeenCalledWith('outlet_id', [outletOne]);
+    expect(query.eq).toHaveBeenCalledWith('audience_role', 'outlet_manager');
   });
 
   it('rejects an unknown category instead of broadening the query', async () => {
