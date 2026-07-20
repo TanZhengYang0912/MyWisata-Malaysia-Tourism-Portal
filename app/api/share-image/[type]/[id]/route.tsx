@@ -15,7 +15,7 @@
 // all — never a fabricated/hardcoded number.
 
 import { ImageResponse } from 'next/og';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
 import { aggregateReviewMetrics } from '@/backend/domains/review-metrics';
 import { toRM } from '@/lib/money';
@@ -49,7 +49,16 @@ async function ratingFromRows(rows: Array<{ rating: number }>): Promise<{ rating
 }
 
 async function loadListing(type: ShareType, id: string): Promise<CardData | null> {
-  const supabase = await createClient();
+  // Service-role, not the cookie-aware client: products_public_read
+  // (013_content_review_workflow.sql) requires status='active' AND
+  // review_status='approved' for a non-owner — same root cause as the
+  // affiliate stats "Unknown activity" bug fixed earlier this session
+  // (lib/affiliate/product-names.ts), just in this separate route. The card
+  // only ever renders public display fields (name/photo/price/rating) for a
+  // listing that already exists, so bypassing the review-status gate here
+  // is the same call as that fix: browse/purchase visibility and "may a
+  // share card show the name" are different questions.
+  const supabase = createServiceClient();
 
   if (type === 'product') {
     const { data: product } = await supabase

@@ -5,6 +5,7 @@ import { add } from '@/lib/money';
 import { getActiveTiers, resolveTier, type CommissionTier } from './tier';
 import { computeFunnel, type Funnel } from './funnel';
 import { rankByCommission } from './leaderboard';
+import { resolveProductNames } from './product-names';
 
 const TOP_EARNERS_LIMIT = 10;
 
@@ -121,10 +122,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
         .filter((id): id is string => Boolean(id)),
     ),
   ];
-  const { data: productsData } = productIds.length
-    ? await service.from('products').select('id, name').in('id', productIds)
-    : { data: [] as { id: string; name: string }[] };
-  const productNames = new Map((productsData ?? []).map((p) => [p.id, p.name]));
+  const productNames = await resolveProductNames(productIds);
 
   const attributionRows: AffiliateAttributionRow[] = attributions.map((a) => {
     const click = clickById.get(a.click_id);
@@ -135,7 +133,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
       userId: link?.user_id ?? '',
       userName: link ? userDisplayName(usersById.get(link.user_id)) : 'Unknown user',
       productId,
-      productName: productId ? (productNames.get(productId) ?? 'Unknown activity') : null,
+      productName: productId ? (productNames.get(productId) ?? 'Deleted listing') : null,
       orderId: a.order_id,
       commissionAmount: Number(a.commission_amount),
       status: a.status,

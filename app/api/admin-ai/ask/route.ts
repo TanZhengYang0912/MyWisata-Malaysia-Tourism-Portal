@@ -74,9 +74,17 @@ export async function POST(request: Request) {
     return data.id;
   }
 
+  // Raw `question`, not `cleaned.display`: answerAdminQuestion() needs the
+  // real text to resolve customer-identifying query params (e.g.
+  // orders_count_for_customer's email) — cleanUserContent() already
+  // replaced any email/IC/phone with a redaction TOKEN above, which is
+  // correct for storage but would make that resolution impossible. Gemini
+  // itself still never sees the raw text: every callGemini() call redacts
+  // independently (lib/chatbot/pii.ts's "single redaction boundary"), so
+  // this doesn't weaken what actually leaves the server.
   let result: Awaited<ReturnType<typeof answerAdminQuestion>>;
   try {
-    result = await answerAdminQuestion(service, cleaned.display);
+    result = await answerAdminQuestion(service, question);
   } catch (error) {
     console.error('[admin-ai] ask failed', error instanceof Error ? error.message : error);
     // Log the user's message even on failure — the admin still typed it —
