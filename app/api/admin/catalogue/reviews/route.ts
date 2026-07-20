@@ -3,6 +3,7 @@ import { contentReviewSchema } from '@/lib/validation/vendor-schemas';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { auditAndNotify } from '@/lib/audit';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 function relation(value: unknown) { return Array.isArray(value) ? value[0] : value; }
 
@@ -60,5 +61,21 @@ export async function POST(request: Request) {
 
   await db.from('content_reviews').insert({ entity_type: entityType, entity_id: entityId, vendor_id: entity.vendor_id, reviewer_id: user.id, action, note: note ?? null });
   await auditAndNotify({ action: `content.${action}`, entityType, entityId, beforeData: { review_status: entity.review_status }, afterData: { review_status: reviewStatus }, note });
+  if (entity.vendor_id) {
+    void emitVendorNotification({
+      eventKey: `listing:review:${entityType}:${entityId}:${action}`,
+      vendorId: entity.vendor_id,
+      audience: 'owner',
+      category: 'vendor_products',
+      type: `vendor_listing_${action}`,
+      title: `Listing ${action === 'approve' ? 'approved' : 'rejected'}`,
+      body: note ? `Your ${entityType} review was ${action}ed: ${note}` : `Your ${entityType} review was ${action}ed.`,
+      link: '/vendor/products',
+      email: true,
+      reference: entityId,
+      metadata: { entityType, status: reviewStatus },
+      serviceDb: db,
+    }).catch((notificationError) => console.error('[vendor-notifications] listing review event failed', notificationError));
+  }
   return apiOk(updated);
 }

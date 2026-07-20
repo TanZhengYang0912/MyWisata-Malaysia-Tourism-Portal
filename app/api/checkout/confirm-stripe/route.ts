@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
+import { emitOrderVendorEvent } from '@/lib/vendor-notifications/order-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,5 +28,17 @@ export async function POST(request: Request) {
     p_provider_event_id: `confirm:${session.id}`,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 409 });
+  const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
+  if (outcome === 'succeeded' && orderId) {
+    void emitOrderVendorEvent({
+      serviceDb: service,
+      orderId,
+      eventKey: `order:paid:${orderId}`,
+      type: 'vendor_order_created',
+      title: 'New order received',
+      body: `Order ${orderId} has been paid and is ready for fulfilment.`,
+      email: true,
+    }).catch((notificationError) => console.error('[vendor-notifications] stripe order event failed', notificationError));
+  }
   return NextResponse.json({ data, error: null });
 }

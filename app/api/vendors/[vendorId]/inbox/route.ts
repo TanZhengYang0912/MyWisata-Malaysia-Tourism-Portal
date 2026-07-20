@@ -2,6 +2,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { maskChatBody } from '@/lib/chat/moderation';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -41,5 +42,20 @@ export async function POST(request: Request, { params }: Props) {
   await access.service.from('chat_threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id);
   // Reopen an archived thread on new activity; never override a manually 'closed' one.
   await access.service.from('chat_threads').update({ status: 'open' }).eq('id', thread.id).eq('status', 'archived');
+  void emitVendorNotification({
+    eventKey: `vendor:message:${message.id}`,
+    vendorId,
+    outletId: thread.outlet_id,
+    audience: 'owner_and_assigned_outlet',
+    category: 'vendor_orders',
+    type: 'vendor_message',
+    title: 'New conversation activity',
+    body: 'A customer conversation has a new message.',
+    link: `/vendor/${vendorId}/inbox?thread=${thread.id}`,
+    email: false,
+    reference: thread.id,
+    metadata: { source: 'inbox' },
+    serviceDb: access.service,
+  }).catch((notificationError) => console.error('[vendor-notifications] message event failed', notificationError));
   return apiOk(message, { status: 201 });
 }

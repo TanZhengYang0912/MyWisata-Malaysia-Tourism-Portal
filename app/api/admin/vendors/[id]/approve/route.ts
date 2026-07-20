@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { auditAndNotify } from '@/lib/audit';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorApproveSchema } from '@/lib/validation/vendor-schemas';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -108,6 +109,20 @@ export async function POST(request: Request, { params }: Props) {
         link: '/vendor/dashboard',
       }],
     );
+    void emitVendorNotification({
+      eventKey: `vendor:approved:${vendorId}`,
+      vendorId,
+      audience: 'owner',
+      category: 'vendor_account',
+      type: 'vendor_approved',
+      title: `Vendor "${vendor.name}" approved`,
+      body: 'Your vendor account is approved and ready to manage.',
+      link: '/vendor/dashboard',
+      email: true,
+      reference: vendorId,
+      metadata: { status: 'approved' },
+      serviceDb: createServiceClient(),
+    }).catch((notificationError) => console.error('[vendor-notifications] approval event failed', notificationError));
 
     return apiOk({ id: vendorId, status: 'approved' });
   } else {
@@ -139,6 +154,20 @@ export async function POST(request: Request, { params }: Props) {
         link: '/vendor/dashboard',
       }],
     );
+    void emitVendorNotification({
+      eventKey: `vendor:rejected:${vendorId}`,
+      vendorId,
+      audience: 'owner',
+      category: 'vendor_account',
+      type: 'vendor_rejected',
+      title: `Vendor "${vendor.name}" rejected`,
+      body: reason ?? 'Your vendor application was rejected.',
+      link: '/vendor/dashboard',
+      email: true,
+      reference: vendorId,
+      metadata: { status: 'rejected' },
+      serviceDb: createServiceClient(),
+    }).catch((notificationError) => console.error('[vendor-notifications] rejection event failed', notificationError));
 
     return apiOk({ id: vendorId, status: 'rejected' });
   }

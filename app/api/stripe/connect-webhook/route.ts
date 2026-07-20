@@ -4,8 +4,19 @@ import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueUserTransactionEmail, enqueueWithdrawalEmail } from '@/lib/email/events';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 export const dynamic = 'force-dynamic';
+
+async function approvedVendorIds(db: ReturnType<typeof createServiceClient>, ownerId: string): Promise<string[]> {
+  try {
+    const { data } = await db.from('vendors').select('id').eq('owner_id', ownerId).eq('status', 'approved');
+    return (data ?? []).map((vendor: { id: string }) => vendor.id);
+  } catch (error) {
+    console.error('[connect-webhook] vendor lookup failed:', error);
+    return [];
+  }
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -56,6 +67,22 @@ export async function POST(req: Request) {
     } catch (emailError) {
       console.error('[connect-webhook] paid email enqueue failed:', emailError);
     }
+    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id)) {
+      void emitVendorNotification({
+        eventKey: `vendor:payout:paid:${payout.id}:${vendorId}`,
+        vendorId,
+        audience: 'owner',
+        category: 'vendor_wallet',
+        type: 'vendor_payout_paid',
+        title: 'Vendor payout completed',
+        body: 'Your approved payout has been sent to your connected account.',
+        link: '/vendor/wallet',
+        email: true,
+        reference: 'Payout completed',
+        metadata: { amount: Number(withdrawal.amount), status: 'paid' },
+        serviceDb: db,
+      }).catch((notificationError) => console.error('[vendor-notifications] payout paid event failed', notificationError));
+    }
   }
 
   if (event.type === 'payout.failed') {
@@ -81,6 +108,22 @@ export async function POST(req: Request) {
       });
     } catch (emailError) {
       console.error('[connect-webhook] failed email enqueue failed:', emailError);
+    }
+    for (const vendorId of await approvedVendorIds(db, withdrawal.user_id)) {
+      void emitVendorNotification({
+        eventKey: `vendor:payout:failed:${payout.id}:${vendorId}`,
+        vendorId,
+        audience: 'owner',
+        category: 'vendor_wallet',
+        type: 'vendor_payout_failed',
+        title: 'Vendor payout failed',
+        body: 'Your payout could not be completed. Please review your connected account.',
+        link: '/vendor/wallet',
+        email: true,
+        reference: 'Payout failed',
+        metadata: { amount: Number(withdrawal.amount), status: 'failed' },
+        serviceDb: db,
+      }).catch((notificationError) => console.error('[vendor-notifications] payout failed event failed', notificationError));
     }
   }
 
@@ -127,6 +170,22 @@ export async function POST(req: Request) {
         });
       } catch (emailError) {
         console.error('[connect-webhook] payout account email enqueue failed:', emailError);
+      }
+      for (const vendorId of await approvedVendorIds(db, userRow.id)) {
+        void emitVendorNotification({
+          eventKey: `vendor:payout-account:${account.id}:${event.id}:${vendorId}`,
+          vendorId,
+          audience: 'owner',
+          category: 'vendor_wallet',
+          type: eventType,
+          title,
+          body: bodyText,
+          link: '/vendor/wallet',
+          email: true,
+          reference: 'Payout account status',
+          metadata: { status: payoutsEnabled ? 'connected' : 'disconnected' },
+          serviceDb: db,
+        }).catch((notificationError) => console.error('[vendor-notifications] payout account event failed', notificationError));
       }
     }
   }

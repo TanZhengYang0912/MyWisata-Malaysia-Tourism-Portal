@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 const schema = z.object({ reason: z.string().trim().min(5).max(500) }).strict();
 interface Props { params: Promise<{ orderId: string }> }
@@ -21,5 +22,25 @@ export async function POST(request: Request, { params }: Props) {
   if (!payment || payment.status !== 'succeeded') return apiFail('INVALID_STATE', 'A successful payment is required', 409);
   const { data, error } = await service.from('refunds').insert({ payment_id: payment.id, order_id: orderId, amount: order.total_amount, reason: parsed.data.reason, status: 'pending' }).select('id,status,amount,reason,created_at').single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
+
+  const { data: items } = await service.from('order_items').select('vendor_id,outlet_id').eq('order_id', orderId);
+  for (const item of (items ?? []) as Array<{ vendor_id: string | null; outlet_id: string | null }>) {
+    if (!item.vendor_id) continue;
+    void emitVendorNotification({
+      eventKey: `order:refund-requested:${orderId}:${data.id}`,
+      vendorId: item.vendor_id,
+      outletId: item.outlet_id,
+      audience: 'owner_and_assigned_outlet',
+      category: 'vendor_orders',
+      type: 'vendor_order_refund_requested',
+      title: 'Refund requested',
+      body: `A customer requested a refund for order ${orderId}.`,
+      link: `/vendor/orders/${orderId}`,
+      email: true,
+      reference: orderId,
+      metadata: { reason: parsed.data.reason },
+      serviceDb: service,
+    }).catch((notificationError) => console.error('[vendor-notifications] refund event failed', notificationError));
+  }
   return apiOk(data, { status: 201 });
 }

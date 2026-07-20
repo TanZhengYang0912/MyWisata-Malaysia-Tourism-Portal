@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, checkoutFinalizeSchema } from '@/lib/validation/schemas';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
+import { createServiceClient } from '@/lib/supabase/service';
+import { emitOrderVendorEvent } from '@/lib/vendor-notifications/order-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,18 @@ export async function POST(request: Request) {
       { data: null, error: { code, message: getCheckoutErrorMessage(error.message) } },
       { status: 409 },
     );
+  }
+  const orderId = data && typeof data === 'object' && 'order_id' in data && typeof data.order_id === 'string' ? data.order_id : null;
+  if (parsed.data.outcome === 'succeeded' && orderId) {
+    void emitOrderVendorEvent({
+      serviceDb: createServiceClient(),
+      orderId,
+      eventKey: `order:paid:${orderId}`,
+      type: 'vendor_order_created',
+      title: 'New order received',
+      body: `Order ${orderId} has been paid and is ready for fulfilment.`,
+      email: true,
+    }).catch((notificationError) => console.error('[vendor-notifications] checkout order event failed', notificationError));
   }
   return NextResponse.json({ data, error: null });
 }

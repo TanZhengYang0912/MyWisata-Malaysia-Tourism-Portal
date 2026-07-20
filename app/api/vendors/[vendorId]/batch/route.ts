@@ -2,6 +2,7 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { vendorBatchSchema, type VendorBatch } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -199,6 +200,28 @@ export async function POST(request: Request, { params }: Props) {
       updatedIds = (data || []).map((item: { id: string }) => item.id);
       const orderItemIds = (data || []).map((item: { order_item_id: string }) => item.order_item_id).filter(Boolean);
       if (input.action === 'check_in' && orderItemIds.length) await db.from('order_items').update({ fulfil_status: 'fulfilled', fulfilled_at: new Date().toISOString() }).in('id', orderItemIds);
+      if (orderItemIds.length) {
+        const { data: orderItems } = await db.from('order_items').select('id,vendor_id,outlet_id').in('id', orderItemIds);
+        for (const item of orderItems ?? []) {
+          if (!item.vendor_id || !item.outlet_id) continue;
+          const isCancellation = input.action === 'cancel';
+          void emitVendorNotification({
+            eventKey: `booking:${isCancellation ? 'cancel' : 'checkin'}:${(data || []).find((row: { order_item_id: string }) => row.order_item_id === item.id)?.id ?? item.id}`,
+            vendorId: item.vendor_id,
+            outletId: item.outlet_id,
+            audience: 'owner_and_assigned_outlet',
+            category: 'vendor_bookings',
+            type: isCancellation ? 'vendor_booking_cancelled' : 'vendor_booking_checkin',
+            title: isCancellation ? 'Booking cancelled' : 'Booking checked in',
+            body: isCancellation ? 'A booking at your outlet was cancelled.' : 'A booking at your outlet was checked in.',
+            link: `/vendor/${vendorId}/bookings`,
+            email: isCancellation,
+            reference: item.id,
+            metadata: { status: isCancellation ? 'cancelled' : 'checked_in' },
+            serviceDb: db,
+          }).catch((notificationError) => console.error('[vendor-notifications] batch booking event failed', notificationError));
+        }
+      }
     }
   } else {
     if (!['cancel', 'restore'].includes(input.action)) return apiFail('INVALID_ACTION', 'Slots support cancel or restore only', 400);

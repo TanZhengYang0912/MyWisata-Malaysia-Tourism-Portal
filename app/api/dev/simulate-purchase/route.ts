@@ -16,6 +16,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { simulatePurchaseSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { VENDOR_EVENT_MATRIX } from '@/lib/vendor-notifications/event-policy';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -93,6 +95,24 @@ export async function POST(request: Request) {
   if (itemErr) return apiFail('DB_ERROR', itemErr.message, 500);
 
   await onOrderPaid(order.id);
+
+  // The order is persisted before the vendor feed is touched. Notification
+  // failure must not make the completed demo purchase look unsuccessful.
+  void emitVendorNotification({
+    eventKey: `order:paid:${order.id}`,
+    vendorId: product.vendor_id,
+    outletId: product.outlet_id,
+    audience: VENDOR_EVENT_MATRIX.newOrder.audience,
+    category: VENDOR_EVENT_MATRIX.newOrder.category,
+    type: 'vendor_order_created',
+    title: 'New order received',
+    body: `A new order for ${product.name} is ready for fulfilment.`,
+    link: `/vendor/orders/${order.id}`,
+    email: VENDOR_EVENT_MATRIX.newOrder.email,
+    reference: order.id,
+    metadata: { amount: Number(amount.toFixed(2)), vendorName: 'Vendor' },
+    serviceDb: service,
+  }).catch((error) => console.error('[vendor-notifications] order event failed', error));
 
   return apiOk({ orderId: order.id }, { status: 201 });
 }

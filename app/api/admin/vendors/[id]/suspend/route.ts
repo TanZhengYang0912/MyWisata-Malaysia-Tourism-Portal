@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { auditAndNotify } from '@/lib/audit';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorSuspendSchema } from '@/lib/validation/vendor-schemas';
+import { createServiceClient } from '@/lib/supabase/service';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -72,6 +74,21 @@ export async function POST(request: Request, { params }: Props) {
       link: '/vendor/dashboard',
     }],
   );
+
+  void emitVendorNotification({
+    eventKey: `vendor:${action}:${vendorId}`,
+    vendorId,
+    audience: 'owner',
+    category: 'vendor_account',
+    type: action === 'suspend' ? 'vendor_suspended' : 'vendor_unsuspended',
+    title: action === 'suspend' ? `Vendor "${vendor.name}" suspended` : `Vendor "${vendor.name}" reactivated`,
+    body: reason ?? (action === 'suspend' ? 'Your vendor account has been suspended.' : 'Your vendor account is active again.'),
+    link: '/vendor/dashboard',
+    email: true,
+    reference: vendorId,
+    metadata: { status: newStatus },
+    serviceDb: createServiceClient(),
+  }).catch((notificationError) => console.error('[vendor-notifications] vendor status event failed', notificationError));
 
   return apiOk({ id: vendorId, status: newStatus });
 }
