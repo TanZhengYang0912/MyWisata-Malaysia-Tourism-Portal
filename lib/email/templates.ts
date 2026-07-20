@@ -104,7 +104,16 @@ function sanitizeVendorText(value: string): string {
     .replace(/\b(?:password|pass|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
     // Defence in depth for unlabelled email addresses and Malaysian ICs.
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted]')
-    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[redacted]');
+    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[redacted]')
+    // Unlabelled phone, IBAN, passport, and payment/account-like values.
+    .replace(/\+\d{1,3}(?:[\s().-]*\d){7,14}/g, '[redacted]')
+    .replace(/\b0\d{1,2}[\s.-]?\d{7,8}\b/g, '[redacted]')
+    .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/gi, '[redacted]')
+    .replace(/\b[A-Z]{1,2}\d{6,9}\b/gi, '[redacted]')
+    .replace(/(?<!\d)(?:\d[\d -]?){12,18}\d(?!\d)/g, (match) => {
+      const digits = match.replace(/\D/g, '');
+      return digits.length >= 13 && digits.length <= 19 ? '[redacted]' : match;
+    });
 }
 
 export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {

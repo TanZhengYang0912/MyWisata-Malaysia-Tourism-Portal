@@ -96,6 +96,30 @@ describe('vendor email events', () => {
     }
   });
 
+  it('redacts unlabeled contact and financial values without hiding order text', () => {
+    const rendered = renderVendorEmail({
+      eventType: 'vendor_order_update',
+      vendorName: 'Kedai Amanah',
+      reason: 'Order order_123 is ready. Call +60123456789 or +1 202 555 0123. IBAN GB82WEST12345698765432. Passport P1234567. Card 4111111111111111. Account 1234567890123.',
+      reference: 'order_123',
+      occurredAt: '2026-07-15T10:00:00.000Z',
+    });
+
+    for (const sensitiveValue of [
+      '+60123456789',
+      '+1 202 555 0123',
+      'GB82WEST12345698765432',
+      'P1234567',
+      '4111111111111111',
+      '1234567890123',
+    ]) {
+      expect(rendered.html).not.toContain(sensitiveValue);
+      expect(rendered.text).not.toContain(sensitiveValue);
+    }
+    expect(rendered.html).toContain('Order order_123 is ready.');
+    expect(rendered.html).toContain('order_123');
+  });
+
   it('keeps the same event key across repeated enqueue calls', async () => {
     const input = {
       userId: 'user-1',
