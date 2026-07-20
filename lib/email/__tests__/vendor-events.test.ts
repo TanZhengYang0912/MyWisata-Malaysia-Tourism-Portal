@@ -120,6 +120,22 @@ describe('vendor email events', () => {
     expect(rendered.html).toContain('order_123');
   });
 
+  it('redacts multi-separator phones, spaced IBANs, and mixed passports', () => {
+    const rendered = renderVendorEmail({
+      eventType: 'vendor_account_update',
+      vendorName: 'Kedai Amanah',
+      reason: 'Call 03-1234-5678. Transfer to GB82 WEST 1234 5698 7654 32. Passport AB-1234567.',
+      reference: 'order_123',
+      occurredAt: '2026-07-15T10:00:00.000Z',
+    });
+
+    for (const sensitiveValue of ['03-1234-5678', 'GB82 WEST 1234 5698 7654 32', 'AB-1234567']) {
+      expect(rendered.html).not.toContain(sensitiveValue);
+      expect(rendered.text).not.toContain(sensitiveValue);
+    }
+    expect(rendered.html).toContain('order_123');
+  });
+
   it('keeps the same event key across repeated enqueue calls', async () => {
     const input = {
       userId: 'user-1',
