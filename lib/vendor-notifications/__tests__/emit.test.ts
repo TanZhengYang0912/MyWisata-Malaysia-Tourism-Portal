@@ -140,4 +140,30 @@ describe('emitVendorNotification', () => {
     expect(retry.notificationIds).toEqual(['notification-2']);
     expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(3);
   });
+
+  it('keeps a revoked manager in the recipient set via an explicit override', async () => {
+    const fake = makeFakeDb();
+    fake.rows.outlet_managers.length = 0;
+    await emitVendorNotification({
+      ...input,
+      recipientOverrides: [{ userId: 'manager-1', role: 'outlet_manager', outletId: 'outlet-1' }],
+      serviceDb: fake.db,
+    });
+    expect(fake.rows.notifications.map((row) => row.user_id)).toEqual(['owner-1', 'manager-1']);
+    expect(emailMocks.enqueueVendorEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it('delivers owner-only account lifecycle events while a vendor is suspended', async () => {
+    const fake = makeFakeDb();
+    fake.rows.vendors[0].status = 'suspended';
+    await emitVendorNotification({
+      ...input,
+      audience: 'owner',
+      category: 'vendor_account',
+      type: 'vendor_suspended',
+      email: true,
+      serviceDb: fake.db,
+    });
+    expect(fake.rows.notifications.map((row) => row.user_id)).toEqual(['owner-1']);
+  });
 });

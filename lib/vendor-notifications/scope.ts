@@ -21,6 +21,9 @@ export async function resolveVendorRecipients(input: {
   vendorId: string;
   outletId?: string | null;
   audience: VendorAudience;
+  /** Account lifecycle notifications may be delivered to the owner while a
+   * vendor is pending/rejected/suspended; never enables manager access. */
+  allowUnapprovedOwner?: boolean;
   serviceDb: SupabaseClient;
 }): Promise<VendorRecipient[]> {
   const { data: vendor, error: vendorError } = await input.serviceDb
@@ -31,7 +34,8 @@ export async function resolveVendorRecipients(input: {
 
   if (vendorError) throw vendorError;
   const vendorRow = vendor as VendorRow | null;
-  if (!vendorRow || vendorRow.status !== 'approved' || !vendorRow.owner_id) return [];
+  const ownerLifecycleAccess = input.allowUnapprovedOwner && input.audience === 'owner';
+  if (!vendorRow || (!ownerLifecycleAccess && vendorRow.status !== 'approved') || !vendorRow.owner_id) return [];
 
   const recipients: VendorRecipient[] = [];
   const seen = new Set<string>();

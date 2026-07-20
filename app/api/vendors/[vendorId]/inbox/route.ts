@@ -46,7 +46,9 @@ export async function POST(request: Request, { params }: Props) {
     eventKey: `vendor:message:${message.id}`,
     vendorId,
     outletId: thread.outlet_id,
-    audience: 'owner_and_assigned_outlet',
+    // Some legacy conversations have no outlet relation; still notify the
+    // vendor owner rather than dropping the event entirely.
+    audience: thread.outlet_id ? 'owner_and_assigned_outlet' : 'owner',
     category: 'vendor_orders',
     type: 'vendor_message',
     title: 'New conversation activity',

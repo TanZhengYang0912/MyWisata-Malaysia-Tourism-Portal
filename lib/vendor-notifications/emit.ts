@@ -27,6 +27,8 @@ export type VendorNotificationInput = {
   email: boolean;
   reference?: string | null;
   metadata?: Record<string, string | number | boolean | null>;
+  /** Used after a manager revoke, when the assignment no longer exists in DB. */
+  recipientOverrides?: VendorRecipient[];
   /** Optional injection seam for tests and callers that already hold a service client. */
   serviceDb?: SupabaseClient;
 };
@@ -66,11 +68,19 @@ export async function emitVendorNotification(input: VendorNotificationInput): Pr
   recipientIds: string[];
 }> {
   const serviceDb = input.serviceDb ?? (createServiceClient() as SupabaseClient);
-  const recipients = await resolveVendorRecipients({
+  const recipientsResolved = await resolveVendorRecipients({
     vendorId: input.vendorId,
     outletId: input.outletId,
     audience: input.audience,
+    allowUnapprovedOwner: input.category === 'vendor_account' && input.audience === 'owner',
     serviceDb,
+  });
+  const seenRecipients = new Set<string>();
+  const recipients = [...recipientsResolved, ...(input.recipientOverrides ?? [])].filter((recipient) => {
+    const key = `${recipient.userId}:${recipient.role}:${recipient.outletId ?? ''}`;
+    if (seenRecipients.has(key)) return false;
+    seenRecipients.add(key);
+    return true;
   });
   const notificationIds: string[] = [];
 

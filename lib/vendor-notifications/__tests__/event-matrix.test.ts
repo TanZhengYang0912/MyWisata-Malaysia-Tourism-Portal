@@ -42,6 +42,16 @@ describe('vendor notification event matrix', () => {
     for (const path of ['app/api/checkout/finalize/route.ts', 'app/api/checkout/confirm-stripe/route.ts', 'app/api/stripe/webhook/route.ts']) {
       expect(read(path), path).toContain('emitOrderVendorEvent');
     }
+    expect(read('lib/vendor-notifications/order-events.ts')).toContain("from('bookings')");
+  });
+
+  it('emits reschedules after the booking RPC and preserves revoke safety', () => {
+    const reschedule = read('app/api/bookings/[bookingId]/reschedule/route.ts');
+    expect(reschedule).toContain('emitVendorNotification');
+    const revoke = read('app/api/vendors/[vendorId]/outlet-managers/[outletId]/route.ts');
+    expect(revoke.indexOf('deleteRoleError')).toBeLessThan(revoke.indexOf('void emitVendorNotification'));
+    expect(revoke).toContain('recipientOverrides');
+    expect(read('app/api/vendors/[vendorId]/batch/route.ts')).toContain('fulfilmentError');
   });
 
   it('keeps ordinary customer messages App-only', () => {

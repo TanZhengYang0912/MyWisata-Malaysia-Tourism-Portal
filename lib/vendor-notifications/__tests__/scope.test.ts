@@ -93,4 +93,20 @@ describe('resolveVendorRecipients', () => {
     expect(await resolveVendorRecipients({ vendorId: 'vendor-1', audience: 'owner', serviceDb: unapproved })).toEqual([]);
     expect(crossVendor).toEqual([]);
   });
+
+  it('allows only the known owner for lifecycle events on an unapproved vendor', async () => {
+    const unapproved = makeFakeDb({ vendors: [{ id: 'vendor-1', owner_id: 'owner-1', status: 'suspended' }] });
+    await expect(resolveVendorRecipients({
+      vendorId: 'vendor-1',
+      audience: 'owner',
+      allowUnapprovedOwner: true,
+      serviceDb: unapproved,
+    })).resolves.toEqual([{ userId: 'owner-1', role: 'vendor_owner', outletId: null }]);
+    await expect(resolveVendorRecipients({
+      vendorId: 'vendor-1',
+      audience: 'owner_and_assigned_outlet',
+      allowUnapprovedOwner: true,
+      serviceDb: unapproved,
+    })).resolves.toEqual([]);
+  });
 });

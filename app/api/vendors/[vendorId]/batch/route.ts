@@ -199,7 +199,10 @@ export async function POST(request: Request, { params }: Props) {
       if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
       updatedIds = (data || []).map((item: { id: string }) => item.id);
       const orderItemIds = (data || []).map((item: { order_item_id: string }) => item.order_item_id).filter(Boolean);
-      if (input.action === 'check_in' && orderItemIds.length) await db.from('order_items').update({ fulfil_status: 'fulfilled', fulfilled_at: new Date().toISOString() }).in('id', orderItemIds);
+      if (input.action === 'check_in' && orderItemIds.length) {
+        const { error: fulfilmentError } = await db.from('order_items').update({ fulfil_status: 'fulfilled', fulfilled_at: new Date().toISOString() }).in('id', orderItemIds);
+        if (fulfilmentError) return apiFail('DB_ERROR', fulfilmentError.message, 500);
+      }
       if (orderItemIds.length) {
         const { data: orderItems } = await db.from('order_items').select('id,vendor_id,outlet_id').in('id', orderItemIds);
         for (const item of orderItems ?? []) {
