@@ -107,15 +107,19 @@ function sanitizeVendorText(value: string): string {
     .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[redacted]')
     // Unlabelled phone, IBAN, passport, and payment/account-like values.
     .replace(/\+\d{1,3}(?:[\s().-]*\d){7,14}/g, '[redacted]')
-    .replace(/\b0(?:[\s.-]?\d){8,10}\b/g, (match) => {
+    .replace(/(?:\(\s*0\d{1,2}\s*\)|\b0\d{1,2})(?:[\s.-]?\d){7,9}/g, (match) => {
       const digits = match.replace(/\D/g, '');
       return digits.length >= 9 && digits.length <= 11 ? '[redacted]' : match;
     })
     .replace(/\b[A-Z]{2}\s*\d{2}(?:[\s-]*[A-Z0-9]){11,30}\b/gi, (match) => {
       const normalized = match.replace(/[\s-]/g, '');
-      return normalized.length >= 15 && normalized.length <= 34 ? '[redacted]' : match;
+      const digitCount = (normalized.match(/\d/g) ?? []).length;
+      return normalized.length >= 15 && normalized.length <= 34 && digitCount >= 6 ? '[redacted]' : match;
     })
-    .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/gi, '[redacted]')
+    .replace(/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/gi, (match) => {
+      const digitCount = (match.match(/\d/g) ?? []).length;
+      return digitCount >= 6 ? '[redacted]' : match;
+    })
     .replace(/\b[A-Z]{1,2}[\s-]?\d{6,9}\b/gi, '[redacted]')
     .replace(/(?<!\d)(?:\d[\d -]?){12,18}\d(?!\d)/g, (match) => {
       const digits = match.replace(/\D/g, '');

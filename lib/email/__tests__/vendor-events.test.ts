@@ -136,6 +136,21 @@ describe('vendor email events', () => {
     expect(rendered.html).toContain('order_123');
   });
 
+  it('handles parenthesized landlines without over-redacting ordinary text', () => {
+    const rendered = renderVendorEmail({
+      eventType: 'vendor_account_update',
+      vendorName: 'Kedai Amanah',
+      reason: 'Call (03) 1234 5678. AB12 hello world this is ordinary order text.',
+      reference: 'order_123',
+      occurredAt: '2026-07-15T10:00:00.000Z',
+    });
+
+    expect(rendered.html).not.toContain('(03) 1234 5678');
+    expect(rendered.text).not.toContain('(03) 1234 5678');
+    expect(rendered.html).toContain('AB12 hello world this is ordinary order text.');
+    expect(rendered.text).toContain('AB12 hello world this is ordinary order text.');
+  });
+
   it('keeps the same event key across repeated enqueue calls', async () => {
     const input = {
       userId: 'user-1',
