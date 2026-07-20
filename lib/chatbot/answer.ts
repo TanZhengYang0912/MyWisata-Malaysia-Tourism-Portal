@@ -36,7 +36,12 @@ import { answerQuestion as matchKeyword, type KbDoc } from './match';
 import { classifyIntent } from './intent';
 import { redactPII } from './pii';
 
-export const FALLBACK_ANSWER = "Sorry, I don't know that one. Would you like our team to help?";
+// CLAUDE-CHATBOT-FEEDBACK.md Flow 2: this line IS the ticket offer's lead-in
+// now — no separate "would you like our team to help?" phrasing needed here
+// since the widget renders the actual yes/no ticket offer as its own box
+// right below this message.
+export const FALLBACK_ANSWER =
+  "I'm an AI assistant and I can only help with things like bookings, vouchers, your wallet, withdrawals, and affiliate questions — I couldn't answer that one.";
 const GREETING_REPLY =
   "Hi! I'm the MyWisata assistant. I can help with bookings, vouchers, your wallet, withdrawals, or affiliate earnings. What do you need?";
 const CHITCHAT_REPLY = "Glad to help! Let me know if there's anything else you need.";

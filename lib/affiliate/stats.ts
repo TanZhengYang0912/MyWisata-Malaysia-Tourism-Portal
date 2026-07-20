@@ -40,6 +40,7 @@ import { getClearanceDays } from './settings';
 import { getTierForUser, type TierInfo } from './tier';
 import { createServiceClient } from '@/lib/supabase/service';
 import { computeFunnel, type Funnel } from './funnel';
+import { resolveProductNames } from './product-names';
 
 const CHART_DAYS = 30;
 
@@ -202,16 +203,13 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
   }
 
   const productIds = [...byProductMap.keys()];
-  const { data: productsData } = productIds.length
-    ? await service.from('products').select('id, name').in('id', productIds)
-    : { data: [] as { id: string; name: string }[] };
-  const productNames = new Map((productsData ?? []).map((p) => [p.id, p.name]));
+  const productNames = await resolveProductNames(productIds);
 
   const byProduct: AffiliateProductStat[] = productIds.map((id) => {
     const entry = byProductMap.get(id)!;
     return {
       productId: id,
-      productName: productNames.get(id) ?? 'Unknown activity',
+      productName: productNames.get(id) ?? 'Deleted listing',
       shares: entry.shares,
       clicks: entry.clicks,
       referrals: entry.referrals,
@@ -238,7 +236,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
       }
       return {
         id: a.id,
-        productName: productId ? (productNames.get(productId) ?? 'Unknown activity') : null,
+        productName: productId ? (productNames.get(productId) ?? 'Deleted listing') : null,
         orderAmount: orderAmounts.get(a.order_id) ?? null,
         rate: Number(a.commission_rate),
         amount: Number(a.commission_amount),
