@@ -14,7 +14,7 @@ export const avatarConfirmSchema = z.object({
 
 // ── Bio ───────────────────────────────────────────────────────────────────────
 export const bioSchema = z.object({
-  bio: z.string().trim().min(10).max(500),
+  bio: z.string().trim().min(30).max(200),
 }).strict();
 
 // ── Preference survey ─────────────────────────────────────────────────────────
