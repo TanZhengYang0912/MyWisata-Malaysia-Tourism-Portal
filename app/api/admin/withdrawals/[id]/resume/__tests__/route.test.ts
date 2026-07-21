@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), moderateWalletAction: vi.fn(), enqueueWithdrawalEmail: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), moderateWalletAction: vi.fn(), enqueueWithdrawalEmail: vi.fn(), notifyWithdrawalApprovers: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc })) }));
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
 vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
+vi.mock('@/lib/wallet/approver-notifications', () => ({ notifyWithdrawalApprovers: mocks.notifyWithdrawalApprovers }));
 
 import { POST } from '../route';
 

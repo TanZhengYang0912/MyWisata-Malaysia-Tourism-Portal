@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   enqueueWithdrawalEmail: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
+  notifyWithdrawalApprovers: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWith
 vi.mock('@/lib/stripe/connect-status', () => ({
   retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
 }));
+vi.mock('@/lib/wallet/approver-notifications', () => ({ notifyWithdrawalApprovers: mocks.notifyWithdrawalApprovers }));
 
 import { POST } from '../route';
 

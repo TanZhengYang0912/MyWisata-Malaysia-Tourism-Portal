@@ -5,6 +5,7 @@ import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
 
 const resumeSchema = z.object({ reasonCategory: z.string().trim().min(1), reason: z.string().trim().min(10).max(500) }).strict();
 export const dynamic = 'force-dynamic';
@@ -37,5 +38,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } catch (emailError) {
     console.error('[withdrawal-resume] email enqueue failed:', emailError);
   }
+  await notifyWithdrawalApprovers({
+    withdrawalId: id,
+    customerUserId: result.user_id,
+    amountRm: Number(result.amount_rm),
+    approvalCycle: result.approval_cycle,
+  });
   return apiOk({ status: 'pending', approval_cycle: result.approval_cycle });
 }

@@ -4,6 +4,7 @@ import { toSen } from '@/lib/wallet/amounts';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
 
 const submitSchema = z.object({
   amountRm: z.string().trim().min(1).max(20),
@@ -142,5 +143,11 @@ export async function POST(request: Request) {
   } catch (emailError) {
     console.error('[wallet-withdrawal] email enqueue failed:', emailError);
   }
+  await notifyWithdrawalApprovers({
+    withdrawalId: result.request_id,
+    customerUserId: user.id,
+    amountRm: amountSen / 100,
+    approvalCycle: 1,
+  });
   return apiOk(result, { status: 201 });
 }
