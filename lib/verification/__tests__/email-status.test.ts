@@ -7,4 +7,10 @@ describe('isEmailVerified', () => {
     expect(isEmailVerified(null, '2026-07-21T00:00:00.000Z')).toBe(true);
     expect(isEmailVerified(null, null)).toBe(false);
   });
+
+  it('trusts a verified Google identity claim without elevating phone or KYC status', () => {
+    expect(isEmailVerified(null, null, [{ provider: 'google', identity_data: { email_verified: true } }])).toBe(true);
+    expect(isEmailVerified(null, null, [{ provider: 'google', identity_data: { email_verified: false } }])).toBe(false);
+    expect(isEmailVerified(null, null, [{ provider: 'email', identity_data: { email_verified: true } }])).toBe(false);
+  });
 });
