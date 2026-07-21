@@ -5,6 +5,7 @@ import { enqueueWithdrawalEmail } from '@/lib/email/events';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
+import { getPayoutDestinationCapabilities } from '@/lib/payouts/destinations';
 
 const submitSchema = z.object({
   amountRm: z.string().trim().min(1).max(20),
@@ -26,6 +27,9 @@ function withdrawalError(message: string) {
   }
   if (message.includes('payout_provider_unsupported')) {
     return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'This payout provider is not enabled yet', 422);
+  }
+  if (message.includes('payout_destination_cooldown')) {
+    return apiFail('PAYOUT_DESTINATION_COOLDOWN', 'This payout destination is temporarily locked after a recent change', 409);
   }
   if (message.includes('below_min_withdrawal')) {
     return apiFail('MINIMUM_NOT_MET', 'The withdrawal amount is below the current minimum', 422);
@@ -69,48 +73,49 @@ export async function POST(request: Request) {
   if (userRow.kyc_status !== 'approved') {
     return apiFail('KYC_REQUIRED', 'KYC approval is required before requesting a withdrawal', 403);
   }
-  if (!accountId) {
-    return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
-  }
-
-  let connectStatus;
-  try {
-    connectStatus = await retrieveConnectAccountStatus(accountId);
-  } catch (error) {
-    const details = error as { message?: string; requestId?: string };
-    console.error('[wallet-withdrawal] Stripe status retrieve failed:', {
-      message: details.message ?? 'unknown',
-      requestId: details.requestId ?? null,
-    });
-    return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
-  }
-
-  const { error: syncError } = await db.rpc('update_connect_status', {
-    p_connect_account_id: connectStatus.accountId,
-    p_payouts_enabled: connectStatus.payoutsEnabled,
-  });
-
-  if (syncError) {
-    console.error('[wallet-withdrawal] payout status sync failed:', syncError.message);
-    return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
-  }
-
-  if (!connectStatus.payoutsEnabled) {
-    return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
-  }
-
   let destinationId = parsed.data.destinationId ?? null;
   if (destinationId) {
     const { data: destination, error: destinationError } = await db
       .from('payout_destinations')
-      .select('id,dest_type,provider,verification_status')
+      .select('id,dest_type,provider,verification_status,cooldown_until')
       .eq('id', destinationId)
       .eq('user_id', user.id)
       .maybeSingle();
     if (destinationError) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'Unable to verify payout destination', 503);
     if (!destination || destination.verification_status !== 'verified') return apiFail('PAYOUT_DESTINATION_REQUIRED', 'Select a verified payout destination before requesting a withdrawal', 403);
-    if (destination.dest_type === 'ewallet' || destination.provider !== 'stripe_connect') return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'This payout provider is not enabled yet', 422);
+    if (destination.cooldown_until && new Date(destination.cooldown_until).getTime() > Date.now()) return apiFail('PAYOUT_DESTINATION_COOLDOWN', 'This payout destination is temporarily locked after a recent change', 409);
+    if (destination.dest_type === 'ewallet' && (!getPayoutDestinationCapabilities().e_wallet.enabled || destination.provider !== 'tng_direct_credit')) {
+      return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'TNG eWallet payouts are not configured yet', 422);
+    }
+    if (destination.dest_type === 'bank' && destination.provider !== 'stripe_connect') return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'This payout provider is not enabled yet', 422);
+
+    if (destination.dest_type === 'bank') {
+      if (!accountId) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
+      let connectStatus;
+      try {
+        connectStatus = await retrieveConnectAccountStatus(accountId);
+      } catch (error) {
+        const details = error as { message?: string; requestId?: string };
+        console.error('[wallet-withdrawal] Stripe status retrieve failed:', { message: details.message ?? 'unknown', requestId: details.requestId ?? null });
+        return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
+      }
+      const { error: syncError } = await db.rpc('update_connect_status', { p_connect_account_id: connectStatus.accountId, p_payouts_enabled: connectStatus.payoutsEnabled });
+      if (syncError) return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
+      if (!connectStatus.payoutsEnabled) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
+    }
   } else {
+    if (!accountId) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
+    let connectStatus;
+    try {
+      connectStatus = await retrieveConnectAccountStatus(accountId);
+    } catch (error) {
+      const details = error as { message?: string; requestId?: string };
+      console.error('[wallet-withdrawal] Stripe status retrieve failed:', { message: details.message ?? 'unknown', requestId: details.requestId ?? null });
+      return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
+    }
+    const { error: syncError } = await db.rpc('update_connect_status', { p_connect_account_id: connectStatus.accountId, p_payouts_enabled: connectStatus.payoutsEnabled });
+    if (syncError) return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
+    if (!connectStatus.payoutsEnabled) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
     const { data: destination, error: destinationError } = await db
       .from('payout_destinations')
       .upsert({

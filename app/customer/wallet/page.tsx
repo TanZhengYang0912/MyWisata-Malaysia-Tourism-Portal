@@ -19,6 +19,10 @@ import { selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/pa
 
 
 type ConnectStatus = "loading" | "kyc_required" | "unlinked" | "onboarding" | "dashboard_action" | "status_error" | "verified";
+type PayoutCapabilities = {
+  bank_account: { enabled: boolean; provider: string };
+  e_wallet: { enabled: boolean; provider: string | null };
+};
 
 function WalletContent() {
   const { currentUser } = useAuth();
@@ -39,6 +43,10 @@ function WalletContent() {
   const [withdrawError, setWithdrawError] = useState("");
   const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState("");
+  const [payoutCapabilities, setPayoutCapabilities] = useState<PayoutCapabilities>({
+    bank_account: { enabled: true, provider: "stripe_connect" },
+    e_wallet: { enabled: false, provider: "tng_direct_credit" },
+  });
 
   // Top-up form
   const [showTopUp, setShowTopUp]     = useState(false);
@@ -102,6 +110,7 @@ function WalletContent() {
     fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
       const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
       setDestinations(nextDestinations);
+      if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
       setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
     }).catch(() => setDestinations([]));
     void refreshConnectStatus();
@@ -134,7 +143,8 @@ function WalletContent() {
   }
 
   function openWithdraw() {
-    if (connectStatus !== "verified") {
+    const selectedDestination = destinations.find((destination) => destination.id === selectedDestinationId);
+    if (connectStatus !== "verified" && selectedDestination?.type !== "e_wallet") {
       setShowConnectModal(true);
     } else {
       setShowWithdraw((v) => !v);
@@ -427,7 +437,11 @@ function WalletContent() {
                 Stripe bank on file
               </div>
             )}
-            <p className="text-xs text-muted-foreground">Only verified bank destinations are enabled. E-wallet payouts are not enabled yet.</p>
+            <p className="text-xs text-muted-foreground">
+              {payoutCapabilities.e_wallet.enabled
+                ? "Only verified destinations can receive withdrawals. TNG eWallet uses a secure provider verification flow."
+                : "Only verified bank destinations are enabled. TNG eWallet payouts are not configured yet."}
+            </p>
           </div>
 
           {parseFloat(withdrawAmount) >= 500 && (

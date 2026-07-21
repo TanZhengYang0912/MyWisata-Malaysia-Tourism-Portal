@@ -10,7 +10,7 @@ describe('payout destination capabilities', () => {
   it('enables Stripe Connect bank and keeps E-wallet disabled without an adapter', () => {
     expect(getPayoutDestinationCapabilities()).toEqual({
       bank_account: { enabled: true, provider: 'stripe_connect' },
-      e_wallet: { enabled: false, provider: null },
+      e_wallet: { enabled: false, provider: 'tng_direct_credit' },
     });
   });
 

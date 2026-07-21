@@ -19,7 +19,10 @@ export type SplitPayment = {
 export function getPayoutDestinationCapabilities() {
   return {
     bank_account: { enabled: true, provider: 'stripe_connect' },
-    e_wallet: { enabled: false, provider: null },
+    e_wallet: {
+      enabled: Boolean(process.env.TNG_DIRECT_CREDIT_MERCHANT_ID && process.env.TNG_DIRECT_CREDIT_API_KEY),
+      provider: 'tng_direct_credit',
+    },
   } as const;
 }
 
