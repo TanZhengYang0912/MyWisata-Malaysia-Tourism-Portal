@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { parseInternationalPhone } from "@/lib/phone/international";
+import { computeProfileCompletion } from "@/lib/verification/eligibility";
 import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
 
 const INTERESTS = ["Adventure", "Culture", "Food", "Shopping", "Wellness", "Nature", "Art", "Sports", "Photography", "Nightlife"];
@@ -39,6 +40,21 @@ function initialStep(tier: string): number {
   if (tier === "email_verified") return 0;
   if (tier === "phone_verified") return 1;
   return -1;
+}
+
+function ProfileCompletionCard({ percentage, missing }: { percentage: number; missing: string[] }) {
+  return (
+    <section aria-label="Profile completion" className="mb-6 rounded-xl border border-border bg-card px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold text-foreground">Profile completion</p>
+        <p className="font-semibold text-primary">{percentage}%</p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
+        <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percentage}%` }} />
+      </div>
+      {missing.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Still needed: {missing.join(", ")}</p>}
+    </section>
+  );
 }
 
 export default function ProfilePage() {
@@ -86,6 +102,29 @@ export default function ProfilePage() {
   const [preferredDistance, setPreferredDistance] = useState("no_preference");
   const [surveyError,   setSurveyError]   = useState<string | null>(null);
   const [surveyBusy,    setSurveyBusy]    = useState(false);
+
+  const profileCompletion = computeProfileCompletion({
+    fullName,
+    avatarUrl: avatarPreview,
+    bio,
+    city,
+    country,
+  });
+
+  useEffect(() => {
+    fetch("/api/profile/me")
+      .then((response) => response.ok ? response.json() : null)
+      .then((body: { data?: { fullName?: string | null; avatarUrl?: string | null; bio?: string | null; city?: string | null; country?: string | null } } | null) => {
+        const profile = body?.data;
+        if (!profile) return;
+        setFullName(profile.fullName ?? "");
+        setCity(profile.city ?? "");
+        setCountry(profile.country ?? "");
+        setBio(profile.bio ?? "");
+        if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
+      })
+      .catch(() => undefined);
+  }, []);
 
   // ── Phone handlers ─────────────────────────────────────────────────────────
   async function sendOtp() {
@@ -275,6 +314,7 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-2xl px-4 pt-8 text-sm font-semibold text-primary" aria-label="Verification wizard complete">
         Step 5 of 5 · Current: Complete · 100% complete
       </div>
+      <div className="mx-auto max-w-2xl px-4 pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
       <ProfileSections />
     </>
   );
@@ -298,6 +338,8 @@ export default function ProfilePage() {
         </span>
         <ChevronRight size={18} className="shrink-0 text-primary" />
       </Link>
+
+      <ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} />
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">
