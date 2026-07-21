@@ -4,6 +4,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
 import { runKycOcr } from '@/lib/kyc/ocr';
+import { requiresManualKycReview } from '@/lib/kyc/ocr-policy';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
@@ -126,5 +127,10 @@ export async function POST(request: Request) {
     return safeSubmissionFailure(finalizeError);
   }
 
-  return apiOk({ submissionId, status: 'pending' }, { status: 201 });
+  return apiOk({
+    submissionId,
+    status: 'pending',
+    ocrStatus: ocrResult.status,
+    manualReviewRequired: requiresManualKycReview(ocrResult.status),
+  }, { status: 201 });
 }

@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { hashICWithHmac, normalizeIC } from './hash';
+import { requiresManualKycReview } from './ocr-policy';
+export { requiresManualKycReview } from './ocr-policy';
 
 export type KycOcrStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
 

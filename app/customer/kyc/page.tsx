@@ -48,6 +48,7 @@ export default function KycPage() {
   const [frontFile,         setFrontFile]         = useState<File | null>(null);
   const [backFile,          setBackFile]          = useState<File | null>(null);
   const [ocrConsent,        setOcrConsent]        = useState(false);
+  const [ocrNotice,         setOcrNotice]         = useState<string | null>(null);
   const [activeSubmission,  setActiveSubmission]  = useState<CustomerKycSubmission | null | undefined>(undefined);
   const frontFileInputRef = useRef<HTMLInputElement>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +113,8 @@ export default function KycPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Submission failed.");
       }
-      const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending" } };
+      const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending"; manualReviewRequired?: boolean } };
+      setOcrNotice(resData.manualReviewRequired ? "AI document reading was unavailable or inconclusive. Your documents were submitted for manual administrator review." : null);
       await refreshUser();
       setActiveSubmission({
         id:            resData.submissionId,
@@ -334,6 +336,7 @@ export default function KycPage() {
           </label>
 
           {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
+          {ocrNotice && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{ocrNotice}</p>}
 
           <Button type="submit" disabled={submitDisabled || !ocrConsent} className="w-full">
             {submitting ? "Submitting…" : activeSubmission?.status === "rejected" || activeSubmission?.status === "info_requested" ? "Start New Submission" : "Submit for Review"}

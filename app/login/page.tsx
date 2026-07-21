@@ -70,6 +70,13 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (signInError) { setError(EMAIL_SIGN_IN_ERROR); return; }
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.user.email_confirmed_at) {
+      setMode("verify");
+      setMessage("Please verify your email before continuing. You can resend the verification code below.");
+      startResendCooldown();
+      return;
+    }
     router.push(postLoginPath(new URLSearchParams(window.location.search).get("next")) ?? "/"); router.refresh();
   }
 
@@ -96,7 +103,7 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (signUpError) { setError(GENERIC_ERROR); return; }
-    if (data.session) { router.push("/customer/explore"); router.refresh(); return; }
+    if (data.session && data.user?.email_confirmed_at) { router.push("/customer/explore"); router.refresh(); return; }
     setMode("verify"); startResendCooldown();
     setMessage("If this address can be registered, a 6-digit verification code has been sent.");
   }
