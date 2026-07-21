@@ -100,7 +100,13 @@ export default function AdminWithdrawalsPage() {
       const response = await fetch(`/api/admin/withdrawals/${id}`);
       const body = await response.json() as { data?: Detail; error?: { message?: string } };
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? "Unable to load review details");
-      setDetail(body.data); setAction(null); setReason(""); setReasonCategory("other");
+      const data = body.data as Detail & { reviewSources?: Detail["reviewSources"]; payoutFailure?: Detail["payoutFailure"] };
+      setDetail({
+        ...data,
+        reviewSources: data.reviewSources ?? { rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: [] },
+        payoutFailure: data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null },
+      });
+      setAction(null); setReason(""); setReasonCategory("other");
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to load review details"); }
   }
 

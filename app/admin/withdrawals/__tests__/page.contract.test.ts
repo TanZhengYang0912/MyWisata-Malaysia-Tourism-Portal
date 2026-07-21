@@ -45,6 +45,7 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('Wallet transaction history');
     expect(pageSource).toContain('Fraud flags');
     expect(pageSource).toContain('detail.reviewSources');
+    expect(pageSource).toContain('rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: []');
   });
 
   it('renders normalized payout failure details for approvers', () => {
