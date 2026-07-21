@@ -100,6 +100,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           amountRm: Number(row.payload?.amountRm ?? 0),
           reference: String(row.payload?.reference ?? row.id),
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
+          reason: row.payload?.reason,
           to: row.to_email,
         });
       }

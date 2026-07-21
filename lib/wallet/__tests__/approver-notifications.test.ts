@@ -35,10 +35,28 @@ describe('notifyWithdrawalApprovers', () => {
   });
 
   it('fans out idempotent in-app and email events to active approvers, excluding submitter', async () => {
-    await notifyWithdrawalApprovers({ withdrawalId: 'withdrawal-1', customerUserId: 'customer-1', amountRm: 75, approvalCycle: 2 });
+    await notifyWithdrawalApprovers({
+      withdrawalId: 'withdrawal-1',
+      customerUserId: 'customer-1',
+      amountRm: 75,
+      approvalCycle: 2,
+      snapshot: {
+        customer: { id: 'customer-1', displayName: 'Customer', email: 'customer@example.test' },
+        requestTime: '2026-07-22T04:00:00.000Z',
+        kycStatus: 'approved',
+        risk: { level: 'review', reasons: ['recent_failed_withdrawal'] },
+        sourceTotals: { rewardSen: 2500, affiliateSen: 5000, otherSen: 0 },
+        destination: { type: 'e_wallet', maskedReference: '+60••••6789' },
+      },
+    });
 
     expect(mocks.upsert).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ user_id: 'approver-1', event_key: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:approver-1' }),
+      expect.objectContaining({
+        user_id: 'approver-1',
+        event_key: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:approver-1',
+        body: expect.stringContaining('Risk: review'),
+        metadata: expect.objectContaining({ risk_level: 'review', customer_display_name: 'Customer' }),
+      }),
       expect.objectContaining({ user_id: 'admin-1', event_key: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:admin-1' }),
     ]), { onConflict: 'event_key', ignoreDuplicates: true });
     expect(mocks.enqueueEmail).toHaveBeenCalledTimes(2);
@@ -46,6 +64,7 @@ describe('notifyWithdrawalApprovers', () => {
       userId: 'approver-1',
       eventKey: 'withdrawal_submitted:withdrawal-1:cycle:2:approver:approver-1',
       eventType: 'withdrawal_submitted',
+      reason: expect.stringContaining('Risk: review'),
     }));
   });
 });

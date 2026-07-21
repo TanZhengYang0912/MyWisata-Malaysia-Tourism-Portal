@@ -38,4 +38,12 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('{titleCaseStatus(detail.customer.kycStatus)}');
     expect(pageSource).toContain('{titleCaseStatus(detail.riskLevel)}');
   });
+
+  it('renders complete read-only source and fraud review sections', () => {
+    expect(pageSource).toContain('Reward sources');
+    expect(pageSource).toContain('Affiliate sources');
+    expect(pageSource).toContain('Wallet transaction history');
+    expect(pageSource).toContain('Fraud flags');
+    expect(pageSource).toContain('detail.reviewSources');
+  });
 });

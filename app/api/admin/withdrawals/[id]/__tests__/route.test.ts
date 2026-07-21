@@ -13,4 +13,9 @@ describe('GET /api/admin/withdrawals/:id relationship contract', () => {
       'kyc_submissions!kyc_submissions_user_id_fkey(status, reviewed_at, document_type)',
     );
   });
+
+  it('loads read-only reward, affiliate, ledger, and fraud review projections', () => {
+    expect(routeSource).toContain("get_withdrawal_review_sources");
+    expect(routeSource).toContain('reviewSources');
+  });
 });

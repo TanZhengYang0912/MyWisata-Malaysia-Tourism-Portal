@@ -21,6 +21,7 @@ export async function GET(
     .from('withdrawal_requests')
     .select(`
       id, user_id, amount, status, requires_dual_approval, destination_label,
+      destination_provider, destination_masked_ref,
       customer_reason, created_at, updated_at,
       users!inner(
         full_name, email, kyc_status, tier,
@@ -47,6 +48,13 @@ export async function GET(
 
   if (error || !row) return apiFail('NOT_FOUND', 'Withdrawal not found', 404);
 
+  const { data: sourceData, error: sourceError } = await db.rpc('get_withdrawal_review_sources', {
+    p_withdrawal_id: withdrawalId,
+    p_limit: 100,
+    p_offset: 0,
+  });
+  if (sourceError || !sourceData) return apiFail('REVIEW_DATA_UNAVAILABLE', 'Unable to load withdrawal review sources', 503);
+
   const r = row as Record<string, unknown>;
   const u = r.users as Record<string, unknown>;
   const w = r.wallets as Record<string, unknown>;
@@ -58,7 +66,9 @@ export async function GET(
 
   // Mask Stripe Connect account ID — show only last 8 chars for receipt reference.
   const rawConnectId = u.stripe_connect_account_id as string | null;
-  const destinationLabel = rawConnectId
+  const destinationLabel = r.destination_masked_ref as string | null
+    ? `${String(r.destination_provider ?? 'payout')} ${String(r.destination_masked_ref)}`
+    : rawConnectId
     ? `Stripe Connect ···${rawConnectId.slice(-8)}`
     : (r.destination_label as string | null) ?? 'Unknown';
 
@@ -98,6 +108,7 @@ export async function GET(
       };
     }),
     riskSnapshot: (risk?.snapshot as Record<string, unknown>) ?? {},
+    reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'],
   };
 
   return apiOk(detail);

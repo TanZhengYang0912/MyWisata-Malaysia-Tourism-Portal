@@ -1,11 +1,13 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
+import { buildWithdrawalNotificationMetadata, buildWithdrawalNotificationReason, type WithdrawalNotificationSnapshot } from './withdrawal-review-projection';
 
-type ApproverNotificationInput = {
+export type ApproverNotificationInput = {
   withdrawalId: string;
   customerUserId: string;
   amountRm: number;
   approvalCycle?: number;
+  snapshot?: WithdrawalNotificationSnapshot;
 };
 
 /** Notify every active Wallet Approver and Super Admin after a new review cycle starts. */
@@ -20,6 +22,12 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
 
     const roleIds = (roles ?? []).map((role) => role.id as number);
     if (!roleIds.length) return;
+    let snapshot = input.snapshot;
+    if (!snapshot) {
+      const { data: snapshotData, error: snapshotError } = await service.rpc('get_withdrawal_notification_snapshot', { p_withdrawal_id: input.withdrawalId });
+      if (snapshotError || !snapshotData) throw snapshotError ?? new Error('withdrawal_notification_snapshot_missing');
+      snapshot = snapshotData as WithdrawalNotificationSnapshot;
+    }
     const { data: assignments, error: assignmentsError } = await service
       .from('user_roles')
       .select('user_id')
@@ -41,16 +49,18 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
     const recipients = (users ?? []).filter((user) => recipientSet.has(user.id) && user.status === 'active');
     if (!recipients.length) return;
     const eventKey = (userId: string) => `withdrawal_submitted:${input.withdrawalId}:cycle:${cycle}:approver:${userId}`;
+    const notificationReason = buildWithdrawalNotificationReason(snapshot);
+    const notificationMetadata = buildWithdrawalNotificationMetadata(snapshot);
 
     const notificationRows = recipients.map((user) => ({
       user_id: user.id,
       type: 'withdrawal_submitted',
       title: 'New withdrawal requires review',
-      body: `A customer submitted a withdrawal of RM ${input.amountRm.toFixed(2)} for review.`,
+      body: `A customer submitted a withdrawal of RM ${input.amountRm.toFixed(2)} for review. ${notificationReason}`,
       link: `/admin/withdrawals/${input.withdrawalId}`,
       event_key: eventKey(user.id),
       category: 'wallet',
-      metadata: { withdrawal_id: input.withdrawalId, approval_cycle: cycle },
+      metadata: { withdrawal_id: input.withdrawalId, approval_cycle: cycle, ...notificationMetadata },
     }));
     const { error: notificationError } = await service
       .from('notifications')
@@ -67,6 +77,7 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
         recipientName: user.full_name ?? null,
         amountRm: input.amountRm,
         reference: input.withdrawalId,
+        reason: notificationReason,
         occurredAt: new Date().toISOString(),
       }));
     await Promise.allSettled(emailJobs);

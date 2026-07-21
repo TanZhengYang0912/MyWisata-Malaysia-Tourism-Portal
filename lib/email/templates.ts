@@ -37,6 +37,7 @@ export type TransactionEmailInput = {
   amountRm: number;
   reference: string;
   occurredAt: string;
+  reason?: string;
 };
 
 export type AccountEmailInput = {
@@ -143,6 +144,10 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
   const safeAmount = escapeHtml(amount);
   const safeReference = escapeHtml(reference);
   const safeOccurredAt = escapeHtml(occurredAt);
+  const reason = input.reason?.trim() || '';
+  const safeReason = escapeHtml(reason);
+  const reasonLine = reason ? `Reason: ${reason}` : '';
+  const reasonRow = reason ? `<tr><td><strong>Review summary</strong></td><td>${safeReason}</td></tr>` : '';
 
   const text = [
     `Hi ${name},`,
@@ -151,6 +156,7 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
     `Amount: ${amount}`,
     `Reference: ${reference}`,
     `Time: ${occurredAt}`,
+    reasonLine,
     '',
     'This is an automated message from FYP App. Please do not reply with passwords or identity documents.',
   ].join('\n');
@@ -164,6 +170,7 @@ export function renderTransactionEmail(input: TransactionEmailInput): RenderedEm
     <tr><td><strong>Amount</strong></td><td>${safeAmount}</td></tr>
     <tr><td><strong>Reference</strong></td><td>${safeReference}</td></tr>
     <tr><td><strong>Time</strong></td><td>${safeOccurredAt} (Malaysia time)</td></tr>
+    ${reasonRow}
   </table>
   <p>This is an automated message. Never reply with passwords or identity documents.</p>
 </body></html>`;
