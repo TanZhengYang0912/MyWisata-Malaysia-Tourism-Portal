@@ -129,3 +129,67 @@ $$;
 
 REVOKE ALL ON FUNCTION public.claim_vendor_recommendation(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.claim_vendor_recommendation(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.convert_claimed_vendor_recommendation(
+  p_vendor_id UUID,
+  p_recommendation_id UUID
+) RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_vendor public.vendors%ROWTYPE;
+  v_rec public.vendor_recommendations%ROWTYPE;
+  v_conversion_id UUID;
+BEGIN
+  IF NOT is_admin(auth.uid()) THEN RAISE EXCEPTION 'admin_required'; END IF;
+
+  SELECT * INTO v_vendor FROM public.vendors WHERE id = p_vendor_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'vendor_not_found'; END IF;
+  IF v_vendor.status <> 'approved' THEN RAISE EXCEPTION 'vendor_not_approved'; END IF;
+
+  SELECT * INTO v_rec FROM public.vendor_recommendations WHERE id = p_recommendation_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'recommendation_not_found'; END IF;
+  IF v_rec.recommender_id = auth.uid() THEN RAISE EXCEPTION 'self_dealing'; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.vendor_recommendation_claims
+     WHERE recommendation_id = p_recommendation_id AND vendor_id = p_vendor_id
+  ) THEN
+    RAISE EXCEPTION 'claim_link_not_found';
+  END IF;
+
+  SELECT id INTO v_conversion_id
+    FROM public.recommendation_conversions
+   WHERE recommendation_id = p_recommendation_id
+   ORDER BY converted_at DESC
+   LIMIT 1;
+  IF v_conversion_id IS NOT NULL THEN RETURN v_conversion_id; END IF;
+
+  IF v_rec.status NOT IN ('claimed','onboarding','vendor_pending_review') THEN
+    RAISE EXCEPTION 'recommendation_not_ready_for_conversion';
+  END IF;
+
+  INSERT INTO public.recommendation_conversions
+    (recommendation_id, converted_vendor_id, attribution_ends_at)
+  VALUES
+    (p_recommendation_id, p_vendor_id,
+     NOW() + COALESCE((SELECT NULLIF(value, '')::INT FROM public.platform_settings WHERE key = 'recommendation.attribution_window_days'), 90) * INTERVAL '1 day')
+  RETURNING id INTO v_conversion_id;
+
+  UPDATE public.vendor_recommendations
+     SET status = 'converted', converted_vendor_id = p_vendor_id, reviewed_at = NOW(), reviewer_id = auth.uid()
+   WHERE id = p_recommendation_id;
+
+  PERFORM public.credit_pending_recommendation(
+    v_rec.recommender_id, 5000, 'bonus', v_conversion_id, NULL, NULL,
+    'Recommendation vendor conversion reward'
+  );
+
+  RETURN v_conversion_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.convert_claimed_vendor_recommendation(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.convert_claimed_vendor_recommendation(UUID, UUID) TO authenticated;

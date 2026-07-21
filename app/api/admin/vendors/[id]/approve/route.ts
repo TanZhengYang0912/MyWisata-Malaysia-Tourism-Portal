@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Props) {
     .single();
 
   if (fetchErr || !vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-  if (vendor.status !== 'pending' && action !== 'request_information') {
+  if (!['pending', 'rejected'].includes(vendor.status) && action !== 'request_information') {
     return apiFail('INVALID_STATE', `Vendor is already ${vendor.status}`, 400);
   }
 
@@ -76,6 +76,16 @@ export async function POST(request: Request, { params }: Props) {
       .eq('id', vendorId);
 
     if (updateErr) return apiFail('DB_ERROR', updateErr.message, 500);
+
+    const { error: onboardingError } = await supabase.from('vendor_onboarding_profiles').upsert({
+      vendor_id: vendorId,
+      status: 'approved',
+      review_note: null,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'vendor_id' });
+    if (onboardingError) return apiFail('DB_ERROR', onboardingError.message, 500);
 
     // Auto-create vendor_owner role for the vendor's owner
     const { data: ownerRole } = await supabase
@@ -136,6 +146,16 @@ export async function POST(request: Request, { params }: Props) {
       .eq('id', vendorId);
 
     if (updateErr) return apiFail('DB_ERROR', updateErr.message, 500);
+
+    const { error: onboardingError } = await supabase.from('vendor_onboarding_profiles').upsert({
+      vendor_id: vendorId,
+      status: 'rejected',
+      review_note: reason ?? null,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'vendor_id' });
+    if (onboardingError) return apiFail('DB_ERROR', onboardingError.message, 500);
 
     await auditAndNotify(
       {
