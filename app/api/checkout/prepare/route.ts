@@ -7,6 +7,7 @@ import { getActivities } from '@/backend/domains/catalogue';
 import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
+import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -28,6 +29,17 @@ export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data: profile, error: profileError } = await db
+    .from('users')
+    .select('phone_verified_at')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) return NextResponse.json({ error: 'Unable to verify phone status' }, { status: 503 });
+  const phoneGate = checkPhoneVerification(profile?.phone_verified_at);
+  if (!phoneGate.allowed) {
+    return NextResponse.json({ error: { code: phoneGate.code, message: phoneGate.message } }, { status: 403 });
+  }
 
   const parsed = await parseBody(request, checkoutPrepareSchema);
   if (!parsed.ok) return parsed.response;

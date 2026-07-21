@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +11,9 @@ export async function POST(request: Request) {
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { data: profile } = await db.from('users').select('phone_verified_at').eq('id', user.id).maybeSingle();
-  if (!profile?.phone_verified_at) {
-    return NextResponse.json({ error: 'Phone verification is required before checkout.' }, { status: 403 });
+  const phoneGate = checkPhoneVerification(profile?.phone_verified_at);
+  if (!phoneGate.allowed) {
+    return NextResponse.json({ error: { code: phoneGate.code, message: phoneGate.message } }, { status: 403 });
   }
 
   let body: { amount_rm?: unknown; voucher_code?: unknown } = {};
