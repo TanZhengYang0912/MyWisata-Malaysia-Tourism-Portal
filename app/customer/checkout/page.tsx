@@ -25,6 +25,7 @@ const METHODS = [
   { id: "ewallet", label: "Touch 'n Go / GrabPay", icon: Smartphone },
   { id: "bank_transfer", label: "Bank transfer (demo)", icon: CreditCard },
   { id: "wallet", label: "MyWisata Wallet Balance", icon: Wallet },
+  { id: "wallet_split", label: "Wallet first + card remainder", icon: Wallet },
 ];
 
 type WalletSummary = {
@@ -112,7 +113,7 @@ export default function CheckoutPage() {
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         throw new Error(getCheckoutErrorMessage(prepared.error));
       }
-      if (method === "stripe_card") {
+      if ((method === "stripe_card" || method === "wallet_split") && prepared.data.stripeUrl) {
         if (!prepared.data.stripeUrl) throw new Error("stripe_url_missing");
         window.location.href = prepared.data.stripeUrl;
         return;
@@ -212,7 +213,7 @@ export default function CheckoutPage() {
         <Button className="flex-1 h-12 rounded-full" disabled={paying} onClick={() => handlePay(true)}>
           {paying ? "Processing…" : "Pay (Success)"}
         </Button>
-        <Button variant="outline" className="flex-1 h-12 rounded-full" disabled={paying || method === "stripe_card"} onClick={() => handlePay(false)}>
+        <Button variant="outline" className="flex-1 h-12 rounded-full" disabled={paying || method === "stripe_card" || method === "wallet_split"} onClick={() => handlePay(false)}>
           Simulate failure
         </Button>
       </div>

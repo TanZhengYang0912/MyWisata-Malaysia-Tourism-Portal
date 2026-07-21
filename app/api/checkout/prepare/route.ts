@@ -45,6 +45,7 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
   const normalized = normalizeCheckoutRequest(body);
+  const walletSplit = normalized.paymentMethod === 'wallet_split';
   const requestHash = buildCheckoutRequestHash(normalized);
 
   const { data: cart, error: cartError } = await db.from('carts').select('id').eq('user_id', user.id).maybeSingle();
@@ -153,7 +154,7 @@ export async function POST(request: Request) {
     p_selected_item_ids: selectedRows.map((row) => row.id),
     p_idempotency_key: body.idempotencyKey,
     p_request_hash: requestHash,
-    p_payment_method: normalized.paymentMethod,
+    p_payment_method: walletSplit ? 'stripe_card' : normalized.paymentMethod,
     p_subtotal: totals.subtotal,
     p_discount: totals.discount,
     p_total: totals.total,
@@ -175,8 +176,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const response = { ...(prepared as Record<string, unknown>), total: totals.total };
-  if (normalized.paymentMethod === 'stripe_card' && prepared?.status !== 'paid') {
+  let response: Record<string, unknown> = { ...(prepared as Record<string, unknown>), total: totals.total };
+  if (walletSplit) {
+    const { data: split, error: splitError } = await db.rpc('reserve_wallet_split_checkout', {
+      p_checkout_session_id: prepared.checkout_session_id,
+    });
+    if (splitError) {
+      await db.rpc('finalize_checkout', {
+        p_checkout_session_id: prepared.checkout_session_id,
+        p_outcome: 'failed',
+        p_provider_payment_id: null,
+        p_provider_event_id: null,
+      });
+      return NextResponse.json({ error: { code: 'WALLET_SPLIT_FAILED', message: splitError.message } }, { status: 409 });
+    }
+    response = { ...response, walletAmountSen: Number(split.wallet_amount_sen), externalAmountSen: Number(split.external_amount_sen) };
+  }
+  const externalAmountSen = walletSplit ? Number(response.externalAmountSen) : Math.round(totals.total * 100);
+  if ((normalized.paymentMethod === 'stripe_card' || walletSplit) && prepared?.status !== 'paid' && externalAmountSen > 0) {
     const origin = request.headers.get('origin') ?? 'http://localhost:3000';
     const checkoutSessionId = String(prepared.checkout_session_id);
     const stripeSession = await stripe.checkout.sessions.create({
@@ -185,7 +202,7 @@ export async function POST(request: Request) {
       line_items: [{
         price_data: {
           currency: 'myr',
-          unit_amount: Math.round(totals.total * 100),
+          unit_amount: externalAmountSen,
           product_data: { name: `MyWisata order ${String(prepared.order_id).slice(0, 8)}` },
         },
         quantity: 1,

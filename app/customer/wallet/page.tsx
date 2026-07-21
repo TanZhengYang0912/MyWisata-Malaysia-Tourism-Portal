@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
+import { selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 
 
 type ConnectStatus = "loading" | "kyc_required" | "unlinked" | "onboarding" | "dashboard_action" | "status_error" | "verified";
@@ -36,6 +37,8 @@ function WalletContent() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing]     = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
+  const [selectedDestinationId, setSelectedDestinationId] = useState("");
 
   // Top-up form
   const [showTopUp, setShowTopUp]     = useState(false);
@@ -96,6 +99,11 @@ function WalletContent() {
       } : null);
     });
     getMyWithdrawals(currentUser.id).then(setWithdrawals);
+    fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
+      const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
+      setDestinations(nextDestinations);
+      setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
+    }).catch(() => setDestinations([]));
     void refreshConnectStatus();
   }, [currentUser, refreshConnectStatus]);
 
@@ -148,7 +156,7 @@ function WalletContent() {
       const response = await fetch('/api/wallet/withdrawals', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ amountRm: withdrawAmount }),
+        body: JSON.stringify({ amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
       });
       const body = await response.json() as { error?: { message?: string } | string };
       if (!response.ok) {
@@ -399,13 +407,27 @@ function WalletContent() {
             />
           </div>
 
-          {/* Task 22: destination is always Stripe bank on file */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Destination</label>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
-              <Building2 size={14} className="shrink-0" />
-              Stripe bank on file
-            </div>
+            {destinations.length > 0 ? (
+              <select
+                value={selectedDestinationId}
+                onChange={(e) => setSelectedDestinationId(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id} disabled={destination.status !== "verified"}>
+                    {destination.displayLabel} {destination.status !== "verified" ? `(${destination.status})` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
+                <Building2 size={14} className="shrink-0" />
+                Stripe bank on file
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Only verified bank destinations are enabled. E-wallet payouts are not enabled yet.</p>
           </div>
 
           {parseFloat(withdrawAmount) >= 500 && (
