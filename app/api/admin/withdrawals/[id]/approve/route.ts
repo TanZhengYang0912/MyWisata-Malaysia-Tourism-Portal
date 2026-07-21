@@ -9,6 +9,7 @@ import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
+import { payoutFeeSen } from '@/lib/payouts/fees';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,6 +181,14 @@ export async function POST(
 
   // ── Mark processing ───────────────────────────────────────────────────────
   const serviceDb = createServiceClient();
+  const { error: feeRecordError } = await serviceDb.rpc('record_withdrawal_payout_fee', {
+    p_withdrawal_id: withdrawalId,
+    p_fee_sen: payoutFeeSen(payout),
+  });
+  if (feeRecordError) {
+    console.error('[admin-approve] record_withdrawal_payout_fee:', feeRecordError);
+    return apiFail('PAYOUT_FEE_STATE_FAILED', 'Payout was created but its fee could not be recorded. Do not retry until it is reconciled.', 502, { retryable: true });
+  }
   const { error: processingError } = await serviceDb.rpc('mark_withdrawal_processing', {
     p_withdrawal_id: withdrawalId,
     p_transfer_id:   transfer.id,
