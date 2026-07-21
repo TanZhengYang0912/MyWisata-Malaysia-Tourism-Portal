@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 const mocks = vi.hoisted(() => ({
   constructEvent: vi.fn(),
@@ -75,5 +76,11 @@ describe('POST /api/stripe/connect-webhook', () => {
       p_payout_id: 'po_test',
       p_status: 'failed',
     });
+  });
+
+  it('records the normalized provider failure after restoring funds', () => {
+    const source = readFileSync(new URL('../route.ts', import.meta.url), 'utf8');
+    expect(source).toContain('normalizeProviderFailure');
+    expect(source).toContain('record_withdrawal_payout_failure');
   });
 });

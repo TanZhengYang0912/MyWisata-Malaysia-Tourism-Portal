@@ -46,4 +46,9 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('Fraud flags');
     expect(pageSource).toContain('detail.reviewSources');
   });
+
+  it('renders normalized payout failure details for approvers', () => {
+    expect(pageSource).toContain('Payout failure');
+    expect(pageSource).toContain('detail.payoutFailure');
+  });
 });

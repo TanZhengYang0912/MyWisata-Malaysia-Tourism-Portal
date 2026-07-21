@@ -5,6 +5,7 @@ import type Stripe from 'stripe';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueUserTransactionEmail, enqueueWithdrawalEmail } from '@/lib/email/events';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { normalizeProviderFailure } from '@/lib/payouts/failures';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,24 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[connect-webhook] complete_withdrawal_payout failed:', error);
       return NextResponse.json({ error: 'Failed to handle payout failure' }, { status: 500 });
+    }
+    const failure = normalizeProviderFailure({
+      provider: 'stripe_connect',
+      code: payout.failure_code,
+      message: payout.failure_message,
+    });
+    const { error: failureRecordError } = await db.rpc('record_withdrawal_payout_failure', {
+      p_withdrawal_id: withdrawal.id,
+      p_provider: 'stripe_connect',
+      p_provider_event_id: payout.id,
+      p_failure_code: failure.code,
+      p_failure_message: failure.message,
+      p_failure_category: failure.category,
+      p_retryable: failure.retryable,
+    });
+    if (failureRecordError) {
+      console.error('[connect-webhook] record_withdrawal_payout_failure:', failureRecordError);
+      return NextResponse.json({ error: 'Failed to record payout failure details' }, { status: 500 });
     }
     try {
       await enqueueWithdrawalEmail({

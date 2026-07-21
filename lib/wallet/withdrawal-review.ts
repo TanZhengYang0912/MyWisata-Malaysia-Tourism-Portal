@@ -46,6 +46,36 @@ export type WithdrawalReviewDetail = {
     createdAt: string;
   }>;
   riskSnapshot: Record<string, unknown>;
+  reviewSources: WithdrawalReviewSources;
+  payoutFailure: {
+    provider: string | null;
+    eventId: string | null;
+    code: string | null;
+    message: string | null;
+    category: string | null;
+    occurredAt: string | null;
+    retryable: boolean | null;
+  };
+};
+
+export type WithdrawalReviewLedgerRow = {
+  id: string;
+  type: string;
+  amountSen: number;
+  direction: string;
+  bucket: string;
+  referenceId: string | null;
+  orderId: string | null;
+  withdrawalId?: string | null;
+  createdAt: string;
+  note: string | null;
+};
+
+export type WithdrawalReviewSources = {
+  rewardSources: WithdrawalReviewLedgerRow[];
+  affiliateSources: WithdrawalReviewLedgerRow[];
+  walletTransactions: WithdrawalReviewLedgerRow[];
+  fraudFlags: unknown[];
 };
 
 export type WithdrawalListItem = {

@@ -22,6 +22,9 @@ export async function GET(
     .select(`
       id, user_id, amount, status, requires_dual_approval, destination_label,
       destination_provider, destination_masked_ref,
+      payout_provider, payout_provider_event_id, payout_failure_code,
+      payout_failure_message, payout_failure_category, payout_failure_at,
+      payout_failure_retryable,
       customer_reason, created_at, updated_at,
       users!inner(
         full_name, email, kyc_status, tier,
@@ -109,6 +112,15 @@ export async function GET(
     }),
     riskSnapshot: (risk?.snapshot as Record<string, unknown>) ?? {},
     reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'],
+    payoutFailure: {
+      provider: r.payout_provider as string | null,
+      eventId: r.payout_provider_event_id as string | null,
+      code: r.payout_failure_code as string | null,
+      message: r.payout_failure_message as string | null,
+      category: r.payout_failure_category as string | null,
+      occurredAt: r.payout_failure_at as string | null,
+      retryable: r.payout_failure_retryable as boolean | null,
+    },
   };
 
   return apiOk(detail);
