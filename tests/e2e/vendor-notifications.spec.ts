@@ -104,10 +104,11 @@ test.describe('Vendor notification journeys', () => {
     await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
     const bell = page.getByRole('button', { name: 'Notifications' });
     await bell.click();
-    await expect(page.getByText('Mark all as read')).toBeVisible();
+    const notificationCenter = page.getByText('Filter', { exact: true }).locator('..');
+    await expect(notificationCenter.getByRole('button', { name: 'Mark all as read', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'View all notifications' })).toHaveAttribute('href', '/vendor/notifications');
     await bell.click();
-    await expect(page.getByText('Vendor notification 1')).toBeVisible();
+    await expect(page.getByText('Vendor notification 1', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Vendor notification \d+/ })).toHaveCount(15);
 
     await page.getByRole('button', { name: 'Orders', exact: true }).click();
@@ -116,13 +117,13 @@ test.describe('Vendor notification journeys', () => {
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('category') === 'vendor_wallet')).toBe(true);
     await page.getByRole('button', { name: 'Orders', exact: true }).click();
 
-    await page.getByRole('button', { name: /Vendor notification 1/ }).click();
+    await page.getByRole('button', { name: /^Vendor notification 1\b/ }).click();
     await expect.poll(() => mock.readIds).toContain('vendor-notification-1');
 
-    await page.getByRole('button', { name: 'Mark all as read' }).click();
+    await notificationCenter.getByRole('button', { name: 'Mark all as read', exact: true }).click();
     await expect.poll(() => mock.readAllCalls).toBe(1);
 
-    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
     await expect(page.getByText('Page 2 of 2')).toBeVisible();
     await expect(page.getByText('Vendor notification 16')).toBeVisible();
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('page') === '2')).toBe(true);
