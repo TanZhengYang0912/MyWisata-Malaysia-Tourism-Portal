@@ -4,9 +4,11 @@
 //
 // Deliberately at the app root, not under /customer — /customer/* is
 // role-guarded and would bounce an anonymous visitor before the cookie is
-// ever set. (The activity page itself still bounces anonymous visitors to
-// login today; that's a separate known issue, not fixed here — the cookie
-// is set before the bounce, so attribution survives the login.)
+// ever set. CLAUDE-PUBLIC-PRODUCT-RETURN.md: an anonymous visitor is now
+// sent to the public /guest/activity/[id] equivalent instead of the
+// login-gated /customer/activity/[id] page — see
+// lib/affiliate/redirect.ts::guestDestinationPath. The cookie is set either
+// way, so attribution survives regardless of which page the visitor lands on.
 
 import type { NextRequest } from 'next/server';
 import { handleAffiliateRedirect } from '@/lib/affiliate/redirect';

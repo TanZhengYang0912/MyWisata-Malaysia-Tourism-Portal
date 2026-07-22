@@ -60,7 +60,8 @@ export default function LoginPage() {
     resetFeedback();
     try {
       const signedInUser = await switchUser(user.id, user);
-      router.push(HOME_BY_ROLE[signedInUser?.role ?? user.role]);
+      const next = postLoginPath(new URLSearchParams(window.location.search).get("next"));
+      router.push(next ?? HOME_BY_ROLE[signedInUser?.role ?? user.role]);
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }

@@ -19,6 +19,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { hashVisitorId } from './click';
 import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
 import { logFraudFlag, hasRecentOpenFlag } from './fraud';
+import { GUEST_EXPLORE_PATH, guestVendorHref } from '@/lib/auth/guest-mode';
 
 const MW_VISITOR_COOKIE = 'mw_visitor';
 const MW_REF_COOKIE = 'mw_ref';
@@ -128,6 +129,22 @@ async function resolveTarget(
 
   // recommendation: see the function doc comment above — no public detail
   // route exists yet, so this always falls through to the generic fallback.
+  return null;
+}
+
+/**
+ * CLAUDE-PUBLIC-PRODUCT-RETURN.md Part 1: an anonymous visitor must land on
+ * a page that actually renders for them, not the login-gated /customer/*
+ * equivalent. /guest/activity/[id] and /guest/vendor/[vendorId] already
+ * exist (built for the pre-existing Guest Mode feature) and are exactly
+ * that — public listing view + a "Sign in to book"/"Sign in to purchase"
+ * CTA that already carries a safe returnTo via guestLoginHref/postLoginPath.
+ * Logged-in visitors still go straight to the /customer/* page as before;
+ * only anonymous ones get redirected here.
+ */
+function guestDestinationPath(targetType: ShareTargetType, targetId: string): string | null {
+  if (targetType === 'product') return `/guest/activity/${targetId}`;
+  if (targetType === 'outlet') return guestVendorHref(targetId);
   return null;
 }
 
@@ -347,10 +364,18 @@ export async function handleAffiliateRedirect(
     // visitor on the homepage because the target 404'd still pays out on
     // whatever they book later (last-click attribution, not "this exact
     // page must convert"). Fallback is '/customer' (not '/customer/explore')
-    // per the UI restructure that moved the customer home page there.
-    const destination = target
-      ? new URL(target.destinationPath, origin)
-      : new URL('/customer', origin);
+    // per the UI restructure that moved the customer home page there — for
+    // an anonymous visitor the equivalent fallback is /guest/explore, same
+    // reasoning as the guestDestinationPath branch below.
+    //
+    // CLAUDE-PUBLIC-PRODUCT-RETURN.md Part 1: an anonymous (no-session)
+    // visitor gets the /guest/* equivalent of the resolved target instead of
+    // the login-gated /customer/* page — that's the fix for the
+    // referral -> login wall -> homepage bug. Logged-in visitors are
+    // unaffected. See guestDestinationPath's doc comment.
+    const destination = user
+      ? new URL(target ? target.destinationPath : '/customer', origin)
+      : new URL((target && guestDestinationPath(targetType, target.targetId)) ?? GUEST_EXPLORE_PATH, origin);
 
     const response = NextResponse.redirect(destination, 302);
 

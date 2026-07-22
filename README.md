@@ -246,12 +246,57 @@ moving is the correct, complete signal.
   server-side (above) is a prerequisite for this, not a separate step. Until
   then, `/dev`'s purchase simulator (a real Route Handler) exercises this
   hook correctly.
-- `/customer/activity/[id]` isn't public — the `/customer/*` role guard
-  bounces anonymous visitors to `/login` before they see the page. The
-  affiliate cookie is set *before* that bounce (in the `/r/[code]` redirect,
-  which sits outside `/customer/*`), so attribution survives the forced
-  login — but a referred visitor still can't preview the activity without
-  signing in first.
+- ~~`/customer/activity/[id]` isn't public — the `/customer/*` role guard
+  bounces anonymous visitors to `/login` before they see the page~~ —
+  **fixed**, per `CLAUDE-PUBLIC-PRODUCT-RETURN.md`. `lib/affiliate/redirect.ts`
+  now sends anonymous visitors to the existing `/guest/activity/[id]` /
+  `/guest/vendor/[vendorId]` pages (built for Guest Mode) instead of the
+  login-gated `/customer/*` equivalents; logged-in visitors are unaffected.
+  Live-verified: incognito click → lands on `/guest/activity`, product
+  visible, no login wall, `mw_ref` cookie set → sign in as a different user →
+  cookie survives → simulate purchase → `affiliate_attributions` row created,
+  correctly attributed to the link owner, not the buyer.
+- ~~Two gaps found while fixing the above, both outside this module's
+  ownership (Auth) — flagging, not fixing~~ — **fixed**, per
+  `CLAUDE-RETURN-URL-PART2.md`, with explicit sign-off to edit these shared
+  files directly. Smallest possible change in each — no authorization logic
+  touched, `postLoginPath()` reused rather than a second validator:
+  - `app/login/page.tsx`'s demo quick-login (`pick()`) now reads `next` via
+    `postLoginPath()` and uses it when present, falling back to the existing
+    `HOME_BY_ROLE[role]` default exactly as before when it isn't — so a
+    demo-account login with no `next` behaves identically to today.
+  - `useRequireRole()` (`components/providers/auth.tsx`) now appends
+    `?next=<current path + search>` when it redirects to `/login`. Only the
+    redirect target changed — the `auth.loading` / `allowed.includes(...)`
+    authorization checks are untouched.
+  - Live-verified end to end (real browser, real DB): incognito referred
+    visitor → `/guest/activity` → "Sign in to purchase" → **quick-login** →
+    lands back on the product page (not the homepage) → commission still
+    attributes to the sharer. Deep-linking straight to `/customer/wallet`
+    while anonymous → `/login?next=%2Fcustomer%2Fwallet` → back on
+    `/customer/wallet` after login. `?next=https://evil.com` still safely
+    rejected through the quick-login path too, not just password login. No
+    regressions: plain `/login` with no `next` still lands admin/customer
+    accounts on their normal role home; hitting `/login` while already
+    authenticated behaves as before; anonymous visitors are still blocked
+    from cart/wallet/admin, and a `customer`-role account is still blocked
+    from `/admin/dashboard`.
+  - ~~Also observed: a live-verified simulate-purchase created a correct
+    `affiliate_attributions` row but produced no `wallet_transactions` row —
+    `credit_earnings()` may be silently failing~~ — **not a bug, checked
+    further and retracting this.** By Phase 2 design (migration 014's
+    comment, `lib/affiliate/clearing.ts`), `onOrderPaid()` only ever inserts
+    a `pending` attribution; `creditAffiliateCommission()` is called
+    exclusively from `clearMaturedCommissions()`, which only runs once a
+    commission clears (7-day window in prod, or immediately via the
+    demo-mode-gated `/api/dev/force-clear`). Live-verified end to end: after
+    calling force-clear on a fresh pending attribution, Alice's
+    `wallets.earnings_sen` increased by exactly the commission amount
+    (1416→1526 sen, +RM 1.10 matching the attribution's `commission_amount`),
+    a correctly-noted `wallet_transactions` row was created, and the
+    attribution flipped `pending`→`confirmed` with `cleared_at` set. The
+    payout path works correctly — it's just gated behind the clearing step,
+    which a bare simulate-purchase doesn't trigger.
 - `identity.ts::getSupportTickets()` maps `category: t.body` (the ticket's
   free-text body) onto its returned `category` field — a leftover from
   before `support_tickets.category` existed. It's now stale; read

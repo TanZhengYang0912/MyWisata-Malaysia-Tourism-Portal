@@ -152,13 +152,14 @@ export function useAuth(): AuthContextValue {
 export function useRequireRole(allowed: Role[]): AuthContextValue {
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (auth.loading) return;
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
-      router.replace("/login");
+      router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
     }
-  }, [auth.loading, auth.currentUser?.role]);
+  }, [auth.loading, auth.currentUser?.role, pathname]);
 
   return auth;
 }
