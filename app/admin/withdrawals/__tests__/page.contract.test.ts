@@ -52,4 +52,34 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('Payout failure');
     expect(pageSource).toContain('detail.payoutFailure');
   });
+
+  it('shows decision-specific reason options only after a decision is selected', () => {
+    expect(pageSource).toContain('Reason for this decision');
+    expect(pageSource).toContain('selectedDecision');
+    expect(pageSource).toContain('DECISION_REASON_COPY');
+    expect(pageSource).toContain('selectedDecision ?');
+    expect(pageSource).not.toContain('Object.keys(WALLET_REASON_RULES).map((key) => [key, ALL_WALLET_REASON_CATEGORIES])');
+  });
+
+  it('uses plain-language decision copy and consequences', () => {
+    expect(pageSource).toContain('Payout details are ready');
+    expect(pageSource).toContain('Additional risk review required');
+    expect(pageSource).toContain('Keep the reserved funds held');
+    expect(pageSource).toContain('Return the reserved amount to available balance');
+  });
+
+  it('warns administrators when review evidence is unavailable', () => {
+    expect(pageSource).toContain('Review data is currently unavailable');
+    expect(pageSource).toContain('Do not approve until the data is available');
+    expect(pageSource).toContain('No reward transactions were found');
+  });
+
+  it('provides note examples and a confirmation summary before submission', () => {
+    expect(pageSource).toContain('Example: KYC, wallet balance and payout destination were reviewed and verified.');
+    expect(pageSource).toContain('Confirm withdrawal decision');
+    expect(pageSource).toContain('detail.customer.displayName');
+    expect(pageSource).toContain('detail.destinationLabel');
+    expect(pageSource).toContain('Confirm decision');
+    expect(pageSource).toContain('Cancel');
+  });
 });
