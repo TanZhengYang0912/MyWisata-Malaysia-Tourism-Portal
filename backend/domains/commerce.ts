@@ -412,15 +412,15 @@ export async function requestWithdrawal(userId: string, amount: number): Promise
   return mapWithdrawal(data as unknown as WithdrawalRow);
 }
 
-export async function getWalletBuckets(userId: string): Promise<{ topup: number; earnings: number }> {
+export async function getWalletBuckets(userId: string): Promise<{ topup: number; earnings: number; pendingEarnings: number }> {
   const { data } = await supabase
     .from("wallets")
-    .select("topup_sen,earnings_sen")
+    .select("topup_sen,earnings_sen,pending_earnings_sen")
     .eq("user_id", userId)
     .maybeSingle();
-  if (!data) return { topup: 0, earnings: 0 };
-  const row = data as { topup_sen: number; earnings_sen: number };
-  return { topup: row.topup_sen / 100, earnings: row.earnings_sen / 100 };
+  if (!data) return { topup: 0, earnings: 0, pendingEarnings: 0 };
+  const row = data as { topup_sen: number; earnings_sen: number; pending_earnings_sen?: number | null };
+  return { topup: row.topup_sen / 100, earnings: row.earnings_sen / 100, pendingEarnings: (row.pending_earnings_sen ?? 0) / 100 };
 }
 
 export async function getWalletBalance(userId: string): Promise<number> {

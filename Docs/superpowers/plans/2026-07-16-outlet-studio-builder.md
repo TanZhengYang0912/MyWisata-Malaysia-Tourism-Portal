@@ -83,7 +83,7 @@ git commit -m "feat: add outlet page document contract"
 ## Task 2: Add draft/published persistence without breaking legacy pages
 
 **Files:**
-- Create: `supabase/migrations/20260716000100_outlet_page_drafts.sql`
+- Create: `supabase/migrations/059_outlet_page_drafts.sql`
 - Modify: `app/api/vendors/[vendorId]/outlets/[outletId]/page/route.ts`
 - Create: `app/api/vendors/[vendorId]/outlets/[outletId]/page/publish/route.ts`
 - Create: `lib/vendor/__tests__/outlet-page-persistence.test.ts`
@@ -137,7 +137,7 @@ Expected: focused tests pass and TypeScript exits 0.
 - [ ] **Step 7: Commit the persistence layer.**
 
 ```bash
-git add supabase/migrations/20260716000100_outlet_page_drafts.sql app/api/vendors/[vendorId]/outlets/[outletId]/page/route.ts app/api/vendors/[vendorId]/outlets/[outletId]/page/publish/route.ts lib/vendor/__tests__/outlet-page-persistence.test.ts
+git add supabase/migrations/059_outlet_page_drafts.sql app/api/vendors/[vendorId]/outlets/[outletId]/page/route.ts app/api/vendors/[vendorId]/outlets/[outletId]/page/publish/route.ts lib/vendor/__tests__/outlet-page-persistence.test.ts
 git commit -m "feat: add outlet page draft and publish persistence"
 ```
 

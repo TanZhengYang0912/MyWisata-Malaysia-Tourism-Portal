@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, travelStyle, budgetRange, mobilityNeeds } = parsed.data;
+  const { interests, travelStyle, budgetRange, mobilityNeeds, preferredDistance } = parsed.data;
 
   const { error } = await supabase.rpc('complete_preference_survey', {
     p_user_id:        user.id,
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     p_travel_style:   travelStyle,
     p_budget_range:   budgetRange,
     p_mobility_needs: mobilityNeeds,
+    p_preferred_distance: preferredDistance,
   });
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
@@ -39,7 +40,7 @@ export async function PUT(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, travelStyle, budgetRange, mobilityNeeds } = parsed.data;
+  const { interests, travelStyle, budgetRange, mobilityNeeds, preferredDistance } = parsed.data;
 
   const { error } = await supabase
     .from('preference_survey_responses')
@@ -48,6 +49,7 @@ export async function PUT(request: Request) {
       travel_style:   travelStyle,
       budget_range:   budgetRange,
       mobility_needs: mobilityNeeds,
+      preferred_distance: preferredDistance,
       updated_at:     new Date().toISOString(),
     })
     .eq('user_id', user.id);
@@ -65,7 +67,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('preference_survey_responses')
-    .select('interests, travel_style, budget_range, mobility_needs, created_at, updated_at')
+    .select('interests, travel_style, budget_range, mobility_needs, preferred_distance, created_at, updated_at')
     .eq('user_id', user.id)
     .single();
 

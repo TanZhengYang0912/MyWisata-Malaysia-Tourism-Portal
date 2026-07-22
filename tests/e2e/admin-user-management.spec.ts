@@ -32,7 +32,7 @@ async function signInViaForm(page: any, email: string, password: string) {
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
   // Wait until we land somewhere other than /login
   await page.waitForURL((url: URL) => !url.pathname.startsWith('/login'), { timeout: 15_000 });
 }
@@ -206,7 +206,7 @@ test.describe('6. User Suspension Appeal', () => {
     await signInViaForm(page, CUSTOMER_EMAIL, CUSTOMER_PASS);
 
     const res = await page.request.post('/api/account-suspended/appeal', {
-      data: { body: 'Please help' },
+      data: { body: 'Help' },
     });
     expect(res.status()).toBe(422);
   });
@@ -292,10 +292,15 @@ test.describe('8. Regular Support Ticket not affected', () => {
     const ticketId: string = body.data?.id;
     expect(ticketId).toBeTruthy();
 
+    const detailResponse = await page.request.get(`/api/support/tickets/${ticketId}`);
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody.data?.subject).toBe('I cannot find my booking confirmation');
+
     // Navigate to the ticket detail page and verify it renders
     await page.goto(`/customer/support/${ticketId}`);
     await expect(
-      page.getByText('I cannot find my booking confirmation'),
+      page.getByRole('heading', { name: 'I cannot find my booking confirmation' }),
     ).toBeVisible({ timeout: 8_000 });
   });
 

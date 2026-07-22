@@ -5,6 +5,7 @@
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { fulfilSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string; orderItemId: string }> }
 
@@ -52,6 +53,22 @@ export async function POST(request: Request, { params }: Props) {
     .eq('id', orderItemId);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+
+  void emitVendorNotification({
+    eventKey: `order:fulfil:${orderItemId}:${newStatus}`,
+    vendorId,
+    outletId: item.outlet_id,
+    audience: 'owner_and_assigned_outlet',
+    category: 'vendor_orders',
+    type: 'vendor_order_updated',
+    title: `Order marked ${newStatus}`,
+    body: `Order ${item.order_id} was marked ${newStatus}.`,
+    link: `/vendor/orders/${item.order_id}`,
+    email: true,
+    reference: item.order_id,
+    metadata: { status: newStatus },
+    serviceDb: supabase,
+  }).catch((notificationError) => console.error('[vendor-notifications] fulfil event failed', notificationError));
 
   // Check if all items in this order are fulfilled — if so, suggest completing
   const { data: allItems } = await supabase

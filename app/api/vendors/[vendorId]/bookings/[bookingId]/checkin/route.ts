@@ -3,6 +3,7 @@
 
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string; bookingId: string }> }
 
@@ -45,6 +46,22 @@ export async function POST(_request: Request, { params }: Props) {
     .from('order_items')
     .update({ fulfil_status: 'fulfilled', fulfilled_at: now })
     .eq('id', booking.order_item_id);
+
+  void emitVendorNotification({
+    eventKey: `booking:checkin:${bookingId}`,
+    vendorId,
+    outletId: slotOutletId,
+    audience: 'owner_and_assigned_outlet',
+    category: 'vendor_bookings',
+    type: 'vendor_booking_checkin',
+    title: 'Booking checked in',
+    body: `Booking ${bookingId} was checked in at your outlet.`,
+    link: `/vendor/bookings/${bookingId}`,
+    email: false,
+    reference: bookingId,
+    metadata: { status: 'checked_in' },
+    serviceDb: supabase,
+  }).catch((notificationError) => console.error('[vendor-notifications] check-in event failed', notificationError));
 
   return apiOk({ id: bookingId, status: 'checked_in', check_in_at: now });
 }

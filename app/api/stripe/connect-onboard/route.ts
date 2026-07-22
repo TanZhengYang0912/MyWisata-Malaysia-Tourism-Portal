@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
+import { apiFail } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,24 @@ function stripeFailure(error: unknown) {
     statusCode: details?.statusCode ?? null,
   });
   return NextResponse.json({ error: 'Unable to start Stripe onboarding' }, { status: 502 });
+}
+
+function accountStatusFailure(error: unknown) {
+  const details = error as {
+    message?: string;
+    requestId?: string;
+    statusCode?: number;
+  };
+  console.error('[stripe-connect-onboard] Stripe account status failed', {
+    message: details?.message ?? 'unknown',
+    requestId: details?.requestId ?? null,
+    statusCode: details?.statusCode ?? null,
+  });
+  return apiFail(
+    'STRIPE_ACCOUNT_UNAVAILABLE',
+    'We could not verify your Stripe payout account. Please try again.',
+    503,
+  );
 }
 
 export async function POST(req: Request) {
@@ -63,6 +83,43 @@ export async function POST(req: Request) {
   let accountId = isRealStripeAccountId(row.stripe_connect_account_id)
     ? row.stripe_connect_account_id
     : null;
+
+  if (accountId) {
+    let status;
+    try {
+      status = await retrieveConnectAccountStatus(accountId);
+    } catch (error) {
+      return accountStatusFailure(error);
+    }
+
+    const { error: syncError } = await db.rpc('update_connect_status', {
+      p_connect_account_id: status.accountId,
+      p_payouts_enabled: status.payoutsEnabled,
+    });
+
+    if (syncError) {
+      console.error('[stripe-connect-onboard] Failed to sync payout status', {
+        code: syncError.code ?? null,
+      });
+      return apiFail(
+        'STRIPE_ACCOUNT_UNAVAILABLE',
+        'We could not verify your Stripe payout account. Please try again.',
+        503,
+      );
+    }
+
+    if (status.payoutsEnabled) {
+      return NextResponse.json({ status: 'verified', accountId });
+    }
+
+    if (status.requiresDashboardAction) {
+      return apiFail(
+        'STRIPE_DASHBOARD_ACTION_REQUIRED',
+        'Complete your payout requirements in Stripe Dashboard.',
+        409,
+      );
+    }
+  }
 
   if (!accountId) {
     try {

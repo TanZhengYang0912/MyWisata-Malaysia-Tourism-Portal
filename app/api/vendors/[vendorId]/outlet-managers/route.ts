@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -80,5 +81,20 @@ export async function POST(request: Request, { params }: Props) {
   if (assignmentError) return apiFail('DB_ERROR', assignmentError.message, 400);
   const { error: roleError } = await db.from('user_roles').upsert({ user_id: userId, role_id: role.id, vendor_id: vendorId, outlet_id: outletId }, { onConflict: 'user_id,role_id,vendor_id,outlet_id' });
   if (roleError) return apiFail('DB_ERROR', roleError.message, 400);
+  void emitVendorNotification({
+    eventKey: `manager:grant:${vendorId}:${outletId}:${userId}`,
+    vendorId,
+    outletId,
+    audience: 'owner_and_assigned_outlet',
+    category: 'vendor_account',
+    type: 'vendor_manager_permission_granted',
+    title: 'Outlet Manager assigned',
+    body: 'An Outlet Manager has been assigned to your outlet.',
+    link: `/vendor/${vendorId}/settings/managers`,
+    email: true,
+    reference: outletId,
+    metadata: { action: 'grant' },
+    serviceDb: db,
+  }).catch((notificationError) => console.error('[vendor-notifications] manager grant event failed', notificationError));
   return apiOk({ outletId, userId });
 }

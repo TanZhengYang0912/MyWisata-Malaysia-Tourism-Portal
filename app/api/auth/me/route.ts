@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { AuthUser } from '@/types';
 import type { RoleName } from '@/lib/constants';
+import { isEmailVerified } from '@/lib/verification/email-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function GET() {
       avatarUrl: profileRow?.avatar_url || null,
       kycStatus: profileRow?.kyc_status || 'unverified',
       tier: profileRow?.tier || 'email_unverified',
-      emailVerified: Boolean(profileRow?.email_verified_at),
+      emailVerified: isEmailVerified(authUser.email_confirmed_at, profileRow?.email_verified_at, authUser.identities),
       phoneVerified: Boolean(profileRow?.phone_verified_at),
       profileComplete: Boolean(profileRow?.profile_completed_at),
       roles,

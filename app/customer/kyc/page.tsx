@@ -47,6 +47,8 @@ export default function KycPage() {
   const [submitError,       setSubmitError]       = useState<string | null>(null);
   const [frontFile,         setFrontFile]         = useState<File | null>(null);
   const [backFile,          setBackFile]          = useState<File | null>(null);
+  const [ocrConsent,        setOcrConsent]        = useState(false);
+  const [ocrNotice,         setOcrNotice]         = useState<string | null>(null);
   const [activeSubmission,  setActiveSubmission]  = useState<CustomerKycSubmission | null | undefined>(undefined);
   const frontFileInputRef = useRef<HTMLInputElement>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +98,7 @@ export default function KycPage() {
     const frontError = validateKycFile(frontFile);
     const backError = validateKycFile(backFile);
     if (frontError || backError) { setFileErrors({ front: frontError, back: backError }); return; }
+    if (!ocrConsent) { setSubmitError('Please consent to AI-assisted document reading before submitting.'); return; }
 
     setSubmitting(true);
     try {
@@ -104,12 +107,14 @@ export default function KycPage() {
       fd.append("docType",  result.data.docType);
       fd.append("frontFile", frontFile!);
       fd.append("backFile", backFile!);
+      fd.append("ocrConsent", "true");
       const res = await fetch("/api/kyc/upload", { method: "POST", body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: { message?: string } })?.error?.message ?? "Submission failed.");
       }
-      const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending" } };
+      const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending"; manualReviewRequired?: boolean } };
+      setOcrNotice(resData.manualReviewRequired ? "AI document reading was unavailable or inconclusive. Your documents were submitted for manual administrator review." : null);
       await refreshUser();
       setActiveSubmission({
         id:            resData.submissionId,
@@ -123,6 +128,7 @@ export default function KycPage() {
       });
       setFrontFile(null);
       setBackFile(null);
+      setOcrConsent(false);
       setForm({ icNumber: "", docType: "national_id" });
       showFeedback("success", "KYC documents submitted for review.");
     } catch (err) {
@@ -318,15 +324,21 @@ export default function KycPage() {
                 className="w-full flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors"
                 style={{ borderColor: fileError ? "var(--destructive)" : file ? "var(--primary)" : "var(--border)", backgroundColor: file ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent" }}>
                 {file ? <><FileCheck2 size={22} className="text-primary" /><p className="text-sm font-semibold text-primary">{file.name}</p><p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB · click to change</p></>
-                  : <><Upload size={20} className="text-muted-foreground" /><p className="text-sm text-muted-foreground">Click to upload {side} of document</p><p className="text-xs text-muted-foreground">JPG, PNG or PDF · max 5 MB</p></>}
+                  : <><Upload size={20} className="text-muted-foreground" /><p className="text-sm text-muted-foreground">Click to upload {side} of document</p><p className="text-xs text-muted-foreground">JPG, PNG or WebP · max 5 MB</p></>}
               </button>
               {fileError && <p className="text-xs text-destructive">{fileError}</p>}
             </div>;
           })}
 
-          {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
+          <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-xs text-muted-foreground">
+            <input type="checkbox" checked={ocrConsent} onChange={(e) => setOcrConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+            <span>I agree that MyWisata may use a third-party AI service to assist with reading my document. A human administrator makes the final KYC decision.</span>
+          </label>
 
-          <Button type="submit" disabled={submitDisabled} className="w-full">
+          {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
+          {ocrNotice && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{ocrNotice}</p>}
+
+          <Button type="submit" disabled={submitDisabled || !ocrConsent} className="w-full">
             {submitting ? "Submitting…" : activeSubmission?.status === "rejected" || activeSubmission?.status === "info_requested" ? "Start New Submission" : "Submit for Review"}
           </Button>
         </form>

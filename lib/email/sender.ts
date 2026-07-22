@@ -1,9 +1,17 @@
 import nodemailer from 'nodemailer';
 import { getEmailConfig } from '@/lib/email/config';
-import { renderAccountEmail, renderTransactionEmail, type AccountEmailInput, type TransactionEmailInput } from '@/lib/email/templates';
+import {
+  renderAccountEmail,
+  renderTransactionEmail,
+  renderVendorEmail,
+  type AccountEmailInput,
+  type TransactionEmailInput,
+  type VendorEmailInput,
+} from '@/lib/email/templates';
 
 export type SendTransactionEmailInput = TransactionEmailInput & { to: string };
 export type SendAccountEmailInput = AccountEmailInput & { to: string };
+export type SendVendorEmailInput = VendorEmailInput & { to: string };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
@@ -47,4 +55,8 @@ export function sendTransactionEmail(input: SendTransactionEmailInput): Promise<
 
 export function sendAccountEmail(input: SendAccountEmailInput): Promise<{ id: string }> {
   return sendRenderedEmail(input.to, renderAccountEmail(input));
+}
+
+export function sendVendorEmail(input: SendVendorEmailInput): Promise<{ id: string }> {
+  return sendRenderedEmail(input.to, renderVendorEmail(input));
 }

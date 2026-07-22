@@ -237,6 +237,7 @@ export interface ProfileSummary {
     travelStyle: string | null;
     budgetRange: string | null;
     mobilityNeeds: string | null;
+    preferredDistance: string | null;
   } | null;
   latestKycReview: {
     status: string;
@@ -258,6 +259,15 @@ export interface AdminKycSubmission {
   reviewReasonCode: string | null;
   reviewReasonDetail: string | null;
   documents: { side: "front" | "back" }[];
+  ocr: {
+    status: "matched" | "mismatch" | "unreadable" | "unavailable";
+    holderName: string | null;
+    documentNumberLast4: string | null;
+    expiryDate: string | null;
+    confidence: number | null;
+    mismatchFields: string[];
+    processedAt: string;
+  } | null;
 }
 
 /** @deprecated Use CustomerKycSubmission or AdminKycSubmission at the relevant boundary. */
@@ -335,7 +345,7 @@ export interface WithdrawalRequest {
   userId: string;
   amount: number;
   destination: string;
-  status: "pending" | "approved" | "rejected" | "processing" | "completed" | "failed" | "paid";
+  status: "pending" | "pending_second_approval" | "approved" | "rejected" | "processing" | "hold" | "overdue" | "completed" | "failed" | "paid";
   requiresDualApproval: boolean;
   createdAt: string;
 }

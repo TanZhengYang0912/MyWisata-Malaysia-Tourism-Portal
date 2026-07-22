@@ -17,7 +17,7 @@ export async function POST(request: Request, { params }: Props) {
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'action is required', 422);
   const service = createServiceClient();
   const { refundId } = await params;
-  const { data: refund } = await service.from('refunds').select('id,order_id,payment_id,amount,status,payments(provider,provider_payment_id)').eq('id', refundId).maybeSingle();
+  const { data: refund } = await service.from('refunds').select('id,order_id,payment_id,amount,status,payments(method,provider,provider_payment_id)').eq('id', refundId).maybeSingle();
   if (!refund) return apiFail('NOT_FOUND', 'Refund request not found', 404);
   if (refund.status !== 'pending') return apiFail('INVALID_STATE', 'Refund is already processed', 409);
   if (parsed.data.action === 'reject') {
@@ -26,6 +26,17 @@ export async function POST(request: Request, { params }: Props) {
     return apiOk({ refundId, status: 'rejected' });
   }
   const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
+  if (payment?.method === 'wallet') {
+    const { data, error } = await db.rpc('process_wallet_refund', {
+      p_refund_id: refundId,
+      p_note: parsed.data.note ?? null,
+    });
+    if (error) {
+      const message = error.message ?? 'Unable to process Wallet refund';
+      return apiFail(message.includes('super_admin_required') ? 'FORBIDDEN' : 'REFUND_FAILED', message, message.includes('super_admin_required') ? 403 : 409);
+    }
+    return apiOk(data);
+  }
   if (payment?.provider === 'stripe') {
     if (!payment.provider_payment_id) return apiFail('INVALID_STATE', 'Stripe payment reference is missing', 409);
     try {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
+import { computeProfileCompletion } from '@/lib/verification/eligibility';
 
 const recSubmitSchema = z.object({
   vendorName:    z.string().trim().min(3).max(255),
@@ -19,11 +20,24 @@ export async function POST(request: Request) {
   // Tier gate: profile_complete required to submit recommendations (ADR-028)
   const { data: profile } = await supabase
     .from('users')
-    .select('tier')
+    .select('tier,full_name,avatar_url,bio,city,country')
     .eq('id', user.id)
     .single();
   if (!profile || !meetsMinTier(profile.tier, REQUIRED_TIER.RECOMMENDATION)) {
     return apiFail('TIER_INSUFFICIENT', 'Profile completion required to submit recommendations', 403);
+  }
+
+  const completion = computeProfileCompletion({
+    fullName: profile.full_name,
+    avatarUrl: profile.avatar_url,
+    bio: profile.bio,
+    city: profile.city,
+    country: profile.country,
+  });
+  if (!completion.complete) {
+    return apiFail('PROFILE_INCOMPLETE', 'Complete your profile before submitting a recommendation', 422, {
+      missing: completion.missing,
+    });
   }
 
   const parsed = await parseBody(request, recSubmitSchema);

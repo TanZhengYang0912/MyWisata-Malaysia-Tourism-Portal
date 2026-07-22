@@ -17,7 +17,7 @@ export async function GET() {
       .maybeSingle(),
     supabase
       .from("preference_survey_responses")
-      .select("interests,travel_style,budget_range,mobility_needs")
+      .select("interests,travel_style,budget_range,mobility_needs,preferred_distance")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase

@@ -73,6 +73,7 @@ export async function POST(req: Request) {
     customer: customerId,
     mode: 'payment',
     payment_method_types: ['card'],
+    payment_intent_data: { metadata: { user_id: authUser.id, payment_kind: 'topup' } },
     line_items: [{
       price_data: {
         currency: 'myr',

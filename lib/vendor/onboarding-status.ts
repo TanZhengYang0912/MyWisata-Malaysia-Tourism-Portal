@@ -1,9 +1,17 @@
-export type VendorOnboardingStatus = "pending" | "approved" | "rejected" | "suspended";
+export type VendorOnboardingStatus = "draft" | "pending" | "pending_review" | "approved" | "rejected" | "suspended";
 
 const STATUS_COPY: Record<VendorOnboardingStatus, { label: string; description: string }> = {
+  draft: {
+    label: "Setup in progress",
+    description: "Your business profile, outlets and listings are private until you submit them for review.",
+  },
   pending: {
+    label: "Draft setup",
+    description: "Your vendor application is pending. You can continue adding private outlets and listings before review.",
+  },
+  pending_review: {
     label: "Pending admin review",
-    description: "Your application is in the admin queue. You can add outlets and listings after approval.",
+    description: "Your vendor setup is under admin review and is not public yet.",
   },
   approved: {
     label: "Approved",

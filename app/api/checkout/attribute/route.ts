@@ -23,6 +23,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
+import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
+import { enqueueUserTransactionEmail } from '@/lib/email/events';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -58,6 +60,24 @@ export async function POST(request: Request) {
   }
 
   await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
+  try {
+    const reward = await attributeRecommendationReward(service, orderId);
+    if (reward.kind === 'created') {
+      const deliveries = reward.rewards.flatMap(({ commissionId, recommenderId, amountSen }) => {
+        const amountRm = amountSen / 100;
+        return [
+          service.from('notifications').insert({ user_id: recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${amountRm.toFixed(2)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
+          enqueueUserTransactionEmail({ userId: recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${commissionId}`, reference: 'Recommendation reward', amountRm }),
+        ];
+      });
+      const results = await Promise.allSettled(deliveries);
+      for (const result of results) if (result.status === 'rejected') console.error('[checkout/attribute] recommendation reward notification failed', result.reason);
+    }
+  } catch (error) {
+    // The checkout is already paid; reward attribution failures must not
+    // misrepresent that payment as failed. The order can be reconciled safely.
+    console.error('[checkout/attribute] recommendation reward attribution failed', error);
+  }
 
   return apiOk({ attributed: true });
 }

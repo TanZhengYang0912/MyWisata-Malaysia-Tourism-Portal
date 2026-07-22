@@ -1,234 +1,214 @@
+import { z } from 'zod';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
 import type Stripe from 'stripe';
+import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
+import { requestIp } from '@/lib/wallet/request-ip';
+import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
+import { payoutFeeSen } from '@/lib/payouts/fees';
 
 export const dynamic = 'force-dynamic';
 
+const approveSchema = z.object({
+  note: z.string().trim().min(10).max(500),
+  reasonCategory: z.string().trim().min(1),
+}).strict();
+
 export async function POST(
-  _req: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: withdrawalId } = await params;
-
   const db = await createClient();
   const { data: { user: authUser } } = await db.auth.getUser();
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!authUser) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  // Fetch current withdrawal — include Stripe IDs and updated_at to detect partial-completion
-  const { data: w, error: fetchErr } = await db
-    .from('withdrawal_requests')
-    .select('status, user_id, amount, stripe_transfer_id, stripe_payout_id, updated_at')
-    .eq('id', withdrawalId)
-    .single();
+  const parsed = await parseBody(request, approveSchema);
+  if (!parsed.ok) return parsed.response;
+  const { note, reasonCategory } = parsed.data;
 
-  if (fetchErr || !w) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
+  const validated = walletReasonSchema.safeParse({ action: 'approve', reason: note, reasonCategory });
+  if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid approval reason', 422);
+  const moderation = await moderateWalletAction({ actorId: authUser.id, withdrawalId, action: 'approve', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
+  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
-  const row = w as {
-    status:             string;
-    user_id:            string;
-    amount:             number;
-    stripe_transfer_id: string | null;
-    stripe_payout_id:   string | null;
-    updated_at:         string;
-  };
+  const ip = requestIp(request);
 
-  let stripeUserId: string;
-  let amountRM: number;
-
-  if (row.status === 'approved') {
-    // Retry path: status already 'approved' from a prior attempt.
-    // stripe_transfer_id / stripe_payout_id may or may not be set
-    // depending on how far the previous attempt got.
-
-    // (d) Stripe idempotency expiry guard: if no transfer was recorded and
-    // more than 24 h have passed since approval, Stripe's idempotency key
-    // (wr-{id}-transfer) has expired. A new create() call would be treated as a
-    // fresh request — double-charge risk if a transfer was created but the DB
-    // save failed. Block and require manual Stripe Dashboard verification.
-    if (!row.stripe_transfer_id) {
-      const msSinceApproval = Date.now() - new Date(row.updated_at).getTime();
-      if (msSinceApproval > 24 * 3_600_000) {
-        return NextResponse.json(
-          {
-            error:   'Stripe idempotency window expired: more than 24 h have passed since approval with no transfer recorded. Verify in the Stripe Dashboard that no transfer exists for this withdrawal before retrying.',
-            code:    'idempotency_window_expired',
-            retryable: false,
-          },
-          { status: 409 },
-        );
-      }
-    }
-
-    stripeUserId = row.user_id;
-    amountRM     = row.amount;
-  } else if (row.status === 'pending') {
-    // First-approval path: record this admin's approval
-    const { data: approvalResult, error: approvalErr } = await db.rpc('record_admin_approval', {
+  // ── Call governed RPC ─────────────────────────────────────────────────────
+  const { data: approvalResult, error: approvalErr } = await db.rpc(
+    'approve_wallet_withdrawal',
+    {
       p_withdrawal_id: withdrawalId,
-    });
+      p_note:          note ?? null,
+      p_ip:            ip,
+      p_reason_category: validated.data.reasonCategory,
+    },
+  );
 
-    if (approvalErr) {
-      const msg = approvalErr.message;
-      if (msg.includes('admin_required'))                  return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-      if (msg.includes('self_dealing'))                    return NextResponse.json({ error: 'You cannot approve your own withdrawal' }, { status: 403 });
-      if (msg.includes('withdrawal_not_found'))            return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
-      if (msg.includes('already_approved_by_this_admin')) return NextResponse.json({ error: 'You have already approved this withdrawal' }, { status: 409 });
-      if (msg.includes('invalid_status'))                  return NextResponse.json({ error: 'Wrong status' }, { status: 409 });
-      console.error('[admin-approve] record_admin_approval:', approvalErr);
-      return NextResponse.json({ error: 'Approval failed' }, { status: 500 });
-    }
-
-    const result = approvalResult as { ready: boolean; user_id: string; amount_rm: number; approval_count: number };
-
-    if (!result.ready) {
-      return NextResponse.json({
-        status:         'pending_second_approval',
-        approval_count: result.approval_count,
-        message:        'First approval recorded — waiting for second approver.',
-      });
-    }
-
-    stripeUserId = result.user_id;
-    amountRM     = result.amount_rm;
-  } else {
-    return NextResponse.json({ error: `Cannot approve withdrawal in status: ${row.status}` }, { status: 409 });
+  if (approvalErr) {
+    const msg = approvalErr.message ?? '';
+    if (msg.includes('approver_required'))           return apiFail('FORBIDDEN', 'Approver or Super Admin access required', 403);
+    if (msg.includes('self_dealing'))                return apiFail('SELF_DEALING', 'You cannot approve your own withdrawal', 403);
+    if (msg.includes('withdrawal_not_found'))        return apiFail('NOT_FOUND', 'Withdrawal not found', 404);
+    if (msg.includes('withdrawal_not_approvable'))   return apiFail('INVALID_STATE', `Cannot approve withdrawal in its current status`, 409);
+    if (msg.includes('already_approved_by_this_actor')) return apiFail('DUPLICATE_APPROVAL', 'You have already approved this withdrawal', 409);
+    if (msg.includes('high_risk_override_required')) return apiFail('HIGH_RISK_OVERRIDE_REQUIRED', 'A Super Admin must record a risk override before this withdrawal can be approved', 409);
+    if (msg.includes('note_length_invalid'))         return apiFail('VALIDATION_FAILED', 'Note must be 10–500 characters', 422);
+    console.error('[admin-approve] approve_wallet_withdrawal:', approvalErr);
+    return apiFail('APPROVAL_FAILED', 'Approval failed', 500);
   }
 
-  // ── Get Connect account ───────────────────────────────────────────────────
+  const result = approvalResult as {
+    request_id: string;
+    status: string;
+    ready: boolean;
+    approval_count: number;
+    required_approvals: number;
+    risk_level: string;
+    user_id: string;
+    amount_rm: number;
+  };
+
+  // First approval on a dual-approval request — no Stripe call yet.
+  if (!result.ready) {
+    return apiOk({
+      status:             result.status,
+      approval_count:     result.approval_count,
+      required_approvals: result.required_approvals,
+      message:            'First approval recorded — waiting for second approver.',
+    });
+  }
+
+  // ── Stripe payout (only when ready=true) ─────────────────────────────────
   const { data: userRow } = await db
     .from('users')
     .select('stripe_connect_account_id')
-    .eq('id', stripeUserId)
+    .eq('id', result.user_id)
     .single();
 
   const connectAccountId = (userRow as { stripe_connect_account_id?: string | null } | null)
     ?.stripe_connect_account_id;
 
   if (!connectAccountId) {
-    return NextResponse.json(
-      { error: 'User has not completed Stripe Connect onboarding. Status stays approved for retry.' },
-      { status: 422 },
-    );
+    return apiFail('PAYOUT_ACCOUNT_MISSING', 'User has not completed Stripe Connect onboarding. Status stays approved for retry.', 422);
   }
 
-  const amountSen = Math.round(amountRM * 100);
+  // Re-fetch withdrawal for existing Stripe IDs (idempotency retry path).
+  const { data: wRow } = await db
+    .from('withdrawal_requests')
+    .select('stripe_transfer_id, stripe_payout_id, updated_at')
+    .eq('id', withdrawalId)
+    .single();
 
-  // Deterministic idempotency key — stable across all retries of this withdrawal.
-  // Stripe deduplicates within 24 h; after that a genuine new transfer would be needed.
-  const idemBase = `wr-${withdrawalId}`;
+  const row = wRow as {
+    stripe_transfer_id: string | null;
+    stripe_payout_id:   string | null;
+    updated_at:         string;
+  } | null;
 
-  // (f) payouts_enabled pre-check — only when we still need to create the payout.
-  // Avoids a confusing Stripe 502 and surfaces a clear 422 with actionable guidance.
-  if (!row.stripe_payout_id) {
+  const amountSen = Math.round(result.amount_rm * 100);
+  const idemBase  = `wr-${withdrawalId}`;
+
+  // Guard: if transfer not recorded and >24 h have elapsed, block (idempotency key expired).
+  if (!row?.stripe_transfer_id) {
+    const msSinceApproval = Date.now() - new Date(row?.updated_at ?? 0).getTime();
+    if (msSinceApproval > 24 * 3_600_000) {
+      return apiFail(
+        'IDEMPOTENCY_WINDOW_EXPIRED',
+        'More than 24 h have passed since approval with no transfer recorded. Verify in the Stripe Dashboard before retrying.',
+        409,
+      );
+    }
+  }
+
+  // Payouts-enabled pre-check (only when payout not yet created).
+  if (!row?.stripe_payout_id) {
     try {
       const account = await stripe.accounts.retrieve(connectAccountId);
       if (!account.payouts_enabled) {
-        return NextResponse.json(
-          {
-            error:     'Stripe Connect payouts are disabled for this user. They must complete Stripe onboarding before funds can be paid out. Status stays approved for retry.',
-            code:      'payouts_disabled',
-            retryable: false,
-          },
-          { status: 422 },
-        );
+        return apiFail('PAYOUTS_DISABLED', 'Stripe Connect payouts are disabled for this user. Status stays approved for retry.', 422);
       }
-    } catch (stripeErr) {
-      console.error('[admin-approve] Stripe account retrieve error:', stripeErr);
-      return NextResponse.json(
-        { error: 'Could not verify Stripe Connect account status', retryable: true },
-        { status: 502 },
-      );
+    } catch (err) {
+      console.error('[admin-approve] Stripe account retrieve error:', err);
+      return NextResponse.json({ data: null, error: { code: 'STRIPE_UNAVAILABLE', message: 'Could not verify Stripe Connect account status', retryable: true } }, { status: 502 });
     }
   }
 
-  // ── Transfer — skip if already created in a previous attempt ─────────────
+  // ── Transfer ─────────────────────────────────────────────────────────────
   let transfer: Stripe.Transfer;
   try {
-    if (row.stripe_transfer_id) {
-      // Retrieve the existing transfer (retry path, transfer already created)
+    if (row?.stripe_transfer_id) {
       transfer = await stripe.transfers.retrieve(row.stripe_transfer_id);
     } else {
       transfer = await stripe.transfers.create(
-        {
-          amount:      amountSen,
-          currency:    'myr',
-          destination: connectAccountId,
-          metadata:    { withdrawal_id: withdrawalId },
-        },
+        { amount: amountSen, currency: 'myr', destination: connectAccountId, metadata: { withdrawal_id: withdrawalId } },
         { idempotencyKey: `${idemBase}-transfer` },
       );
-
-      // Persist transfer ID immediately — BEFORE the Payout call.
-      // If the server crashes here, retry will retrieve this transfer
-      // instead of creating a duplicate.
-      await db.rpc('record_stripe_transfer', {
+      // Persist transfer ID before creating payout (crash-safe retry).
+      const { error: transferRecordError } = await db.rpc('record_stripe_transfer', {
         p_withdrawal_id: withdrawalId,
-        p_transfer_id:   transfer.id,
+        p_transfer_id: transfer.id,
       });
+      if (transferRecordError) {
+        console.error('[admin-approve] record_stripe_transfer:', transferRecordError);
+        return apiFail('TRANSFER_STATE_FAILED', 'Stripe Transfer was created but could not be recorded. Retry after checking Stripe.', 502, { retryable: true });
+      }
     }
-  } catch (stripeErr) {
-    console.error('[admin-approve] Stripe transfer error:', stripeErr);
-    return NextResponse.json(
-      { error: `Stripe transfer error: ${(stripeErr as Error).message}`, retryable: true },
-      { status: 502 },
-    );
+  } catch (err) {
+    console.error('[admin-approve] Stripe transfer error:', err);
+    return NextResponse.json({ data: null, error: { code: 'STRIPE_TRANSFER_FAILED', message: (err as Error).message, retryable: true } }, { status: 502 });
   }
 
-  // ── Payout — skip if already created in a previous attempt ───────────────
+  // ── Payout ───────────────────────────────────────────────────────────────
   let payout: Stripe.Payout;
   try {
-    if (row.stripe_payout_id) {
-      // Retrieve the existing payout (retry path, payout already created)
-      payout = await stripe.payouts.retrieve(
-        row.stripe_payout_id,
-        undefined,
-        { stripeAccount: connectAccountId },
-      );
+    if (row?.stripe_payout_id) {
+      payout = await stripe.payouts.retrieve(row.stripe_payout_id, undefined, { stripeAccount: connectAccountId });
     } else {
       payout = await stripe.payouts.create(
-        {
-          amount:   amountSen,
-          currency: 'myr',
-          metadata: { withdrawal_id: withdrawalId },
-        },
-        {
-          stripeAccount:  connectAccountId,
-          idempotencyKey: `${idemBase}-payout`,
-        },
+        { amount: amountSen, currency: 'myr', metadata: { withdrawal_id: withdrawalId } },
+        { stripeAccount: connectAccountId, idempotencyKey: `${idemBase}-payout` },
       );
     }
-  } catch (stripeErr) {
-    console.error('[admin-approve] Stripe payout error:', stripeErr);
-    // Transfer already recorded — safe to retry from payout step
-    return NextResponse.json(
-      { error: `Stripe payout error: ${(stripeErr as Error).message}`, retryable: true },
-      { status: 502 },
-    );
+  } catch (err) {
+    console.error('[admin-approve] Stripe payout error:', err);
+    return NextResponse.json({ data: null, error: { code: 'STRIPE_PAYOUT_FAILED', message: (err as Error).message, retryable: true } }, { status: 502 });
   }
 
-  // ── Move to processing ────────────────────────────────────────────────────
-  await db.rpc('admin_set_processing', {
+  // ── Mark processing ───────────────────────────────────────────────────────
+  const serviceDb = createServiceClient();
+  const { error: feeRecordError } = await serviceDb.rpc('record_withdrawal_payout_fee', {
+    p_withdrawal_id: withdrawalId,
+    p_fee_sen: payoutFeeSen(payout),
+  });
+  if (feeRecordError) {
+    console.error('[admin-approve] record_withdrawal_payout_fee:', feeRecordError);
+    return apiFail('PAYOUT_FEE_STATE_FAILED', 'Payout was created but its fee could not be recorded. Do not retry until it is reconciled.', 502, { retryable: true });
+  }
+  const { error: processingError } = await serviceDb.rpc('mark_withdrawal_processing', {
     p_withdrawal_id: withdrawalId,
     p_transfer_id:   transfer.id,
     p_payout_id:     payout.id,
   });
+  if (processingError) {
+    console.error('[admin-approve] mark_withdrawal_processing:', processingError);
+    return apiFail('PROCESSING_STATE_FAILED', 'Stripe payout was created but the withdrawal state could not be updated. Do not retry until it is reconciled.', 502, { retryable: true });
+  }
 
   try {
     await enqueueWithdrawalEmail({
       withdrawalId,
-      userId: stripeUserId,
+      userId:    result.user_id,
       eventType: 'withdrawal_approved',
-      amountRm: amountRM,
+      amountRm:  result.amount_rm,
     });
   } catch (emailError) {
     console.error('[admin-approve] withdrawal email enqueue failed:', emailError);
   }
 
-  return NextResponse.json({
-    status:      'processing',
-    transfer_id: transfer.id,
-    payout_id:   payout.id,
-  });
+  return apiOk({ status: 'processing', transfer_id: transfer.id, payout_id: payout.id });
 }
