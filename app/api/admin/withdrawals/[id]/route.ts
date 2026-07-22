@@ -4,6 +4,13 @@ import type { WithdrawalReviewDetail } from '@/lib/wallet/withdrawal-review';
 
 export const dynamic = 'force-dynamic';
 
+const EMPTY_REVIEW_SOURCES: WithdrawalReviewDetail['reviewSources'] = {
+  rewardSources: [],
+  affiliateSources: [],
+  walletTransactions: [],
+  fraudFlags: [],
+};
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -56,7 +63,17 @@ export async function GET(
     p_limit: 100,
     p_offset: 0,
   });
-  if (sourceError || !sourceData) return apiFail('REVIEW_DATA_UNAVAILABLE', 'Unable to load withdrawal review sources', 503);
+  if (sourceError || !sourceData) {
+    // The review-source projection is additive and may not exist yet on a
+    // remote database that has not applied migration 088. It must not block
+    // the approver from opening the withdrawal and using the governed action
+    // endpoints; the UI will show the source sections as empty until the
+    // projection is available.
+    console.warn('[admin/withdrawals] review sources unavailable', {
+      withdrawalId,
+      message: sourceError?.message ?? 'empty_response',
+    });
+  }
 
   const r = row as Record<string, unknown>;
   const u = r.users as Record<string, unknown>;
@@ -111,7 +128,7 @@ export async function GET(
       };
     }),
     riskSnapshot: (risk?.snapshot as Record<string, unknown>) ?? {},
-    reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'],
+    reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'] ?? EMPTY_REVIEW_SOURCES,
     payoutFailure: {
       provider: r.payout_provider as string | null,
       eventId: r.payout_provider_event_id as string | null,
