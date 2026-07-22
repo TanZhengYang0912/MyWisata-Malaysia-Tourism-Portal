@@ -135,6 +135,32 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Wheelchair accessible</label>
+            <select
+              {...register('wheelchairAccessible', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Not specified</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pet-friendly</label>
+            <select
+              {...register('petFriendly', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Not specified</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-gray-400">Only “Yes” shows an accessibility badge and boosts you for travellers who need it. Leave “Not specified” if unsure.</p>
+
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="block text-sm font-medium text-gray-700">Chat welcome message</label>

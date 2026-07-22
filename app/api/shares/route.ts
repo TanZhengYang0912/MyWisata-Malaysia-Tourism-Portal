@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { shareEventSchema } from '@/lib/validation/affiliate-schemas';
+import { recordInteraction, type InteractionEntity } from '@/lib/interactions';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -36,5 +37,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  if ((['vendor', 'outlet', 'product'] as string[]).includes(shareType)) {
+    await recordInteraction(supabase, user.id, 'share', shareType as InteractionEntity, contentId);
+  }
   return apiOk({ id: data.id }, { status: 201 });
 }

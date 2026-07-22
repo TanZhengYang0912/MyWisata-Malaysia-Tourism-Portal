@@ -45,3 +45,7 @@ scripts/figma-screenshots/
 
 # local Git worktrees
 .worktrees/
+
+# local-only docs and agent instructions (not shared with the team)
+/CLAUDE.md
+/docs/

@@ -68,6 +68,9 @@ export const outletCreateSchema = z.object({
   }).strict()).optional(),
   welcomeMessage: z.string().trim().max(500).optional().or(z.literal('')),
   welcomeEnabled: z.boolean().optional(),
+  // §11.1.5 accessibility — null/undefined = not specified (the day-1 default).
+  wheelchairAccessible: z.boolean().nullable().optional(),
+  petFriendly: z.boolean().nullable().optional(),
 }).strict();
 
 export const outletUpdateSchema = outletCreateSchema.partial();

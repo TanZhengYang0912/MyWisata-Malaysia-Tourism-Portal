@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle, Clock, Heart, MapPin, Star, Store } from "lucide-react";
+import { Accessibility, CheckCircle, Clock, Heart, MapPin, Star, Store } from "lucide-react";
 import { useWishlist } from "@/components/providers/wishlist";
 import { AiTag } from "./ai-tag";
 import { ShareButton } from "@/components/shared/share-button";
@@ -40,6 +40,7 @@ export function ActivityCard({ activity }: { activity: ComputedActivity }) {
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.5) 0%, transparent 55%)" }} />
           {activity.hot && <div className="absolute left-3 top-3 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">🔥 Trending</div>}
           {activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} /> Verified</div>}
+          {activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title="Wheelchair accessible"><Accessibility size={9} /> Accessible</div>}
           {!activity.outlet.open && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>Closed</div>}
         </Link>
         <button

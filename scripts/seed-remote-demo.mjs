@@ -66,15 +66,15 @@ const OWNER_ID = DEMO_USERS[2][0];
 const MANAGER_IDS = [DEMO_USERS[3][0], DEMO_USERS[10][0], DEMO_USERS[11][0], DEMO_USERS[12][0]];
 const VENDOR_ID = 'bbbbbbbb-0000-0000-0000-000000000001';
 
+// Phase 1 taxonomy: 4 top-level categories. `type_slugs` (the second level —
+// cuisine/activity-kind/star-class/retail-kind) is set per product below, not
+// on the category row. See lib/customer/category-details.ts for the full
+// per-category type + attribute catalogue.
 const CATEGORIES = [
-  ['11111111-0000-0000-0000-000000000001', 'Food & Dining', 'food', 'utensils'],
-  ['11111111-0000-0000-0000-000000000002', 'Nature & Hiking', 'nature', 'tree-pine'],
-  ['11111111-0000-0000-0000-000000000003', 'Cultural & Heritage', 'cultural', 'landmark'],
-  ['11111111-0000-0000-0000-000000000004', 'Adventure Sports', 'adventure', 'mountain'],
-  ['11111111-0000-0000-0000-000000000005', 'Wellness & Spa', 'wellness', 'heart'],
-  ['11111111-0000-0000-0000-000000000006', 'Shopping', 'shopping', 'shopping-bag'],
-  ['11111111-0000-0000-0000-000000000007', 'Family Friendly', 'family', 'baby'],
+  ['11111111-0000-0000-0000-000000000001', 'Food', 'food', 'utensils'],
+  ['22222222-0000-0000-0000-000000000001', 'Activity', 'activity', 'compass'],
   ['11111111-0000-0000-0000-000000000008', 'Accommodation', 'accommodation', 'hotel'],
+  ['22222222-0000-0000-0000-000000000002', 'Retail', 'retail', 'shopping-bag'],
 ];
 
 const OUTLETS = [
@@ -104,25 +104,41 @@ const PHOTO_URLS = [
   'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=82',
 ];
 
+// [baseName, productType, basePrice, requiresBooking, categoryIndex (into
+// CATEGORIES: 0=food 1=activity 2=accommodation 3=retail), description,
+// typeSlug (the category's second-level type, see category-details.ts),
+// isFamilyFriendly]
 const PRODUCT_SEEDS = [
-  ['Nasi Lemak Pandan', 'food', 18, false, 0],
-  ['Penang Assam Laksa', 'food', 15, false, 0],
-  ['Chicken Rice Ball Set', 'food', 16, false, 0],
-  ['Nyonya Kuih Tasting Box', 'food', 22, false, 0],
-  ['Cendol Gula Melaka', 'food', 9, false, 0],
-  ['Heritage Street Food Trail', 'activity', 68, true, 2],
-  ['George Town Story Walk', 'experience', 55, true, 2],
-  ['Mangrove Kayak Discovery', 'activity', 95, true, 3],
-  ['Sunrise Island Hopping', 'activity', 140, true, 3],
-  ['Rainforest Canopy Trek', 'experience', 120, true, 1],
-  ['Batik Workshop & Tea', 'experience', 78, true, 2],
-  ['Traditional Massage Escape', 'experience', 110, true, 4],
-  ['Family Cultural Quest', 'activity', 48, true, 6],
-  ['Local Artisan Gift Set', 'product', 45, false, 5],
-  ['Malaysia Postcard Collection', 'product', 18, false, 5],
-  ['Malaysia Travel Audio Guide', 'digital', 24, false, 5],
-  ['Sunset Waterfront Picnic', 'experience', 85, true, 6],
+  ['Nasi Lemak Pandan', 'food', 18, false, 0, "Fragrant pandan-infused coconut rice served the traditional way, with sambal, crispy anchovies, roasted peanuts, and a boiled egg. Malaysia's national breakfast, any time of day.", 'malay', false],
+  ['Penang Assam Laksa', 'food', 15, false, 0, "Tangy, tamarind-based fish broth over thick rice noodles, topped with torch ginger flower, mint, and prawn paste — Penang's signature sour-and-spicy laksa.", 'malay', false],
+  ['Chicken Rice Ball Set', 'food', 16, false, 0, "Hainanese-style chicken rice rolled into individual rice balls, a Malacca-born twist on the classic. Comes with tender poached chicken, house chilli sauce, and a bowl of clear soup on the side.", 'chinese', false],
+  ['Nyonya Kuih Tasting Box', 'food', 22, false, 0, "A hand-picked box of Nyonya kuih — layered, steamed, and pan-fried bite-sized sweets rooted in Peranakan tradition. A good way to sample several flavours without committing to one.", 'nyonya', false],
+  ['Cendol Gula Melaka', 'food', 9, false, 0, "Shaved ice, coconut milk, and rich gula melaka syrup poured over chewy green rice-flour jelly — Malaysia's favourite way to beat the heat. A short, sweet stop that's more about the experience than the wait.", 'malay', false],
+  ['Heritage Street Food Trail', 'activity', 68, true, 1, "An evening food crawl through a handful of local stalls and shophouse eateries, sampling dishes shaped by Malaysia's multi-ethnic food heritage. Tastings included — just bring an appetite.", 'cultural', false],
+  ['George Town Story Walk', 'experience', 55, true, 1, "A guided walking tour through heritage streets, clan jetties, and colonial-era shophouses, told through the eyes of a local storyteller. Best enjoyed in comfortable shoes and the cooler late-afternoon light.", 'cultural', false],
+  ['Mangrove Kayak Discovery', 'activity', 95, true, 1, "Paddle through quiet mangrove channels with a certified guide, spotting local wildlife along the way. Easy-paced and beginner-friendly — life jackets and all equipment provided.", 'adventure', false],
+  ['Sunrise Island Hopping', 'activity', 140, true, 1, "A half-day boat trip hopping between nearby islands for swimming, snorkelling, and beach time, departing early to catch the calmest waters and best light. Licensed operator, life jackets provided, suitable for most fitness levels.", 'adventure', false],
+  ['Rainforest Canopy Trek', 'experience', 120, true, 1, "A guided rainforest trek along canopy walkways and forest trails, with a guide who knows the terrain well. Difficulty and distance vary by location — check this listing's details below for the specifics of this trail.", 'nature', false],
+  ['Batik Workshop & Tea', 'experience', 78, true, 1, "Learn the wax-resist art of batik from a local artisan, then unwind with a cup of tea while your fabric dries. A hands-on introduction to a craft tradition passed down through Malay households for generations — no experience needed, and you take your finished piece home.", 'cultural', false],
+  ['Traditional Massage Escape', 'experience', 110, true, 1, "A traditional Malay massage session in a private treatment room, starting with a welcome foot soak and finished with herbal tea. Unisex, appointment-based, 75 minutes of actual unwinding.", 'wellness', false],
+  ['Family Cultural Quest', 'activity', 48, true, 1, "A guided scavenger-hunt-style walk built for families with kids, mixing local history with playful challenges along the way. Stroller-friendly, restrooms close by, and paced for short attention spans.", 'cultural', true],
+  ['Local Artisan Gift Set', 'product', 45, false, 3, "A curated set of handicrafts and batik pieces from local artisans, certified by the Malaysia Handicraft Board. A souvenir with a story behind it, not just a stamped magnet.", 'handicrafts', false],
+  ['Malaysia Postcard Collection', 'product', 18, false, 3, "A set of locally printed postcards featuring Malaysia's landmarks and landscapes — an easy, pack-light souvenir for sending home or keeping as a memento.", 'souvenirs', false],
+  ['Malaysia Travel Audio Guide', 'digital', 24, false, 3, null, 'souvenirs', false],
+  ['Sunset Waterfront Picnic', 'experience', 85, true, 1, "A relaxed picnic set up right on the waterfront, timed for sunset. Mats and shaded seating provided — just show up and enjoy the view.", 'nature', true],
 ];
+
+// Non-food PRODUCT_SEEDS entries (by typeSlug) get rehomed onto these themed
+// vendors instead of Rasa Malaysia Kitchen — mirrors the live
+// rehome_mis_vendored_products migration, so "Provided by" stays consistent
+// between a fresh reseed and the live DB.
+const THEMED_VENDORS = [
+  { id: stableUuid('vendor:explore-outdoors'), slug: 'explore-outdoors-malaysia', name: 'Explore Outdoors Malaysia', description: 'Nature and adventure experiences across Malaysia.', businessType: 'tourism_experience', types: ['nature', 'adventure'] },
+  { id: stableUuid('vendor:warisan-cultural'), slug: 'warisan-cultural-journeys', name: 'Warisan Cultural Journeys', description: 'Heritage walks and cultural workshops across Malaysia.', businessType: 'tourism_experience', types: ['cultural'] },
+  { id: stableUuid('vendor:serenity-wellness'), slug: 'serenity-wellness-retreats', name: 'Serenity Wellness Retreats', description: 'Spa and wellness escapes across Malaysia.', businessType: 'wellness', types: ['wellness'] },
+  { id: stableUuid('vendor:kraftangan-artisan'), slug: 'kraftangan-artisan-market', name: 'Kraftangan Artisan Market', description: 'Local handicrafts and souvenirs across Malaysia.', businessType: 'retail', types: ['handicrafts', 'souvenirs'] },
+];
+const TYPE_TO_THEMED_VENDOR = Object.fromEntries(THEMED_VENDORS.flatMap((v) => v.types.map((t) => [t, v])));
 
 const EXTRA_VENDORS = [
   {
@@ -248,7 +264,8 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
   }
 }
 
-async function seedAdditionalVendors(categoryIds) {
+async function seedAdditionalVendors(categories) {
+  const activityCategoryId = categories.find(([, , slug]) => slug === 'activity')[0];
   const vendors = EXTRA_VENDORS.map((vendor) => ({
     id: vendor.id, owner_id: vendor.ownerId, name: vendor.name, slug: vendor.slug, description: vendor.description, business_type: 'tourism_experience', status: 'approved', logo_url: PHOTO_URLS[2], cover_url: PHOTO_URLS[6], approved_by: DEMO_USERS[0][0], approved_at: new Date().toISOString(),
   }));
@@ -261,7 +278,7 @@ async function seedAdditionalVendors(categoryIds) {
     await upsert('outlets', outletRows);
     await seedRoles(vendor.id, outletRows.map((outlet) => outlet.id), [vendor.ownerId], []);
     const products = outletRows.map((outlet, outletIndex) => ({
-      id: stableUuid(`product:${vendor.slug}:${outlet.slug}`), vendor_id: vendor.id, outlet_id: outlet.id, category_id: categoryIds[(vendorIndex + outletIndex + 2) % categoryIds.length], name: vendorIndex === 0 ? `Batik Story Workshop · ${outlet.city}` : `River & Rainforest Discovery · ${outlet.city}`, slug: `demo-${vendor.slug}-${outlet.slug}`, description: vendorIndex === 0 ? 'A guided batik-making session with a local artist and a take-home textile.' : 'A small-group nature experience with local guides and conservation stories.', product_type: vendorIndex === 0 ? 'experience' : 'activity', requires_booking: true, base_price: vendorIndex === 0 ? 96 : 145, cover_url: PHOTO_URLS[(vendorIndex + outletIndex + 3) % PHOTO_URLS.length], tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), 'demo'], status: 'active', review_status: 'approved',
+      id: stableUuid(`product:${vendor.slug}:${outlet.slug}`), vendor_id: vendor.id, outlet_id: outlet.id, category_id: activityCategoryId, type_slugs: vendorIndex === 0 ? ['cultural'] : ['nature'], name: vendorIndex === 0 ? 'Batik Story Workshop' : 'River & Rainforest Discovery', slug: `demo-${vendor.slug}-${outlet.slug}`, description: vendorIndex === 0 ? 'A guided batik-making session with a local artist and a take-home textile.' : 'A small-group nature experience with local guides and conservation stories.', product_type: vendorIndex === 0 ? 'experience' : 'activity', requires_booking: true, base_price: vendorIndex === 0 ? 96 : 145, cover_url: PHOTO_URLS[(vendorIndex + outletIndex + 3) % PHOTO_URLS.length], tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), 'demo'], status: 'active', review_status: 'approved',
     }));
     await upsert('products', products);
     const variants = products.map((product, index) => ({ id: stableUuid(`variant:${product.id}:adult`), product_id: product.id, name: 'Adult', sku: `EXTRA-${vendorIndex}-${index}-ADULT`, price_offset: 0, is_default: true, is_active: true, sort_order: 0 }));
@@ -417,30 +434,60 @@ async function main() {
     seo_description: 'Discover Malaysian flavours and experiences with Rasa Malaysia Kitchen.',
   })), 'outlet_id');
 
+  await upsert('vendors', THEMED_VENDORS.map((tv) => ({
+    id: tv.id, owner_id: DEMO_USERS[9][0], name: tv.name, slug: tv.slug, description: tv.description,
+    business_type: tv.businessType, status: 'approved', approved_by: DEMO_USERS[0][0], approved_at: new Date().toISOString(),
+  })));
+  // One outlet per themed vendor per city, cloning the same OUTLETS coords as
+  // Rasa's (same order/index) so a themed product lands at the same pin as
+  // its Rasa-outlet counterpart would have.
+  const themedOutletRows = {};
+  for (const tv of THEMED_VENDORS) {
+    const rows = OUTLETS.map(([slug, , city, state, lat, lng]) => ({
+      id: stableUuid(`outlet:${tv.slug}:${slug}`),
+      vendor_id: tv.id,
+      name: `${tv.name} — ${city}`,
+      slug: `${tv.slug}-${slug}`,
+      address: `${city}, Malaysia`,
+      city,
+      state,
+      country: 'Malaysia',
+      lat,
+      lng,
+      phone: '+60 3-5555 0199',
+      operating_hours: { mon: { open: '09:00', close: '18:00' }, tue: { open: '09:00', close: '18:00' }, wed: { open: '09:00', close: '18:00' }, thu: { open: '09:00', close: '18:00' }, fri: { open: '09:00', close: '18:00' }, sat: { open: '09:00', close: '18:00' }, sun: { open: '09:00', close: '18:00' } },
+      status: 'active',
+    }));
+    await upsert('outlets', rows);
+    themedOutletRows[tv.slug] = rows;
+  }
+
   const productRows = [];
   for (let i = 0; i < 100; i += 1) {
     const seed = PRODUCT_SEEDS[i % PRODUCT_SEEDS.length];
-    const outlet = outletRows[i % outletRows.length];
-    const [baseName, productType, basePrice, requiresBooking, categoryIndex] = seed;
-    const suffix = Math.floor(i / PRODUCT_SEEDS.length) + 1;
+    const [baseName, productType, basePrice, requiresBooking, categoryIndex, baseDescription, typeSlug, isFamilyFriendly] = seed;
+    const themedVendor = typeSlug ? TYPE_TO_THEMED_VENDOR[typeSlug] : undefined;
+    const outlet = themedVendor ? themedOutletRows[themedVendor.slug][i % outletRows.length] : outletRows[i % outletRows.length];
     productRows.push({
       id: stableUuid(`product:${i}`),
-      vendor_id: vendorId,
+      vendor_id: themedVendor ? themedVendor.id : vendorId,
       outlet_id: outlet.id,
       category_id: CATEGORIES[categoryIndex][0],
-      name: suffix === 1 ? baseName : `${baseName} · ${outlet.city}`,
+      name: baseName,
       slug: `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
-      description: productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : `A Malaysia tourism favourite at ${outlet.city}, prepared for visitors and local explorers.`,
+      description: productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
       product_type: productType,
       requires_booking: requiresBooking,
       base_price: basePrice + ((i % 5) * 2),
       cover_url: PHOTO_URLS[i % PHOTO_URLS.length],
       tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), productType],
+      type_slugs: typeSlug ? [typeSlug] : [],
+      is_family_friendly: !!isFamilyFriendly,
       status: 'active',
     });
   }
   await upsert('products', productRows);
-  const extraProductRows = await seedAdditionalVendors(CATEGORIES.map((category) => category[0]));
+  const extraProductRows = await seedAdditionalVendors(CATEGORIES);
   const extraCommerce = await seedAdditionalVendorCommerce();
   const allProductRows = [...productRows, ...extraProductRows];
   await upsert('outlet_pages', outletRows.map((outlet, index) => {

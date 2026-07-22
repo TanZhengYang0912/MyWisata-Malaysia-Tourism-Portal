@@ -7,6 +7,7 @@ import { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
+import { INTEREST_OPTIONS } from "@/backend/domains/preferences";
 
 export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
@@ -44,11 +45,13 @@ type OutletRow = {
   operating_hours: OperatingHours | null;
   phone: string | null;
   status: string;
+  wheelchair_accessible: boolean | null;
+  pet_friendly: boolean | null;
   vendors: { name: string | null; status: string } | null;
   products: { categories: { name: string } | null }[] | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,vendors(name,status),products(categories(name))";
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status),products(categories(name))";
 
 function mapOutlet(row: OutletRow): Outlet {
   return {
@@ -68,6 +71,8 @@ function mapOutlet(row: OutletRow): Outlet {
     open: row.status === "active",
     rating: 0,
     reviews: 0,
+    wheelchairAccessible: row.wheelchair_accessible,
+    petFriendly: row.pet_friendly,
   };
 }
 
@@ -95,12 +100,18 @@ type ProductRow = {
   status: string;
   review_status: string;
   tags: string[] | null;
-  categories: { name: string } | null;
+  created_at: string;
+  attributes: Record<string, unknown> | null;
+  is_hidden_gem: boolean;
+  type_slugs: string[] | null;
+  is_family_friendly: boolean;
+  is_couple_friendly: boolean;
+  categories: { name: string; slug: string } | null;
   product_variants: { id: string; name: string; price_offset: number; inventory?: { quantity: number; reserved: number; low_stock_threshold: number }[] }[];
   price_rules: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,categories(name),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
+const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,categories(name,slug),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 
 function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
   return {
@@ -116,6 +127,13 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     duration: "",
     requiresBooking: row.requires_booking,
     tags: row.tags ?? undefined,
+    categorySlug: row.categories?.slug ?? undefined,
+    createdAt: row.created_at,
+    attributes: row.attributes ?? undefined,
+    isHiddenGem: row.is_hidden_gem,
+    typeSlugs: row.type_slugs ?? undefined,
+    isFamilyFriendly: row.is_family_friendly,
+    isCoupleFriendly: row.is_couple_friendly,
     variants: (row.product_variants ?? []).map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
     priceRules: (row.price_rules ?? []).filter((rule) => rule.is_active).map((rule) => ({ id: rule.id, productId: row.id, ruleType: rule.rule_type, label: rule.label ?? undefined, multiplier: rule.multiplier === null ? undefined : Number(rule.multiplier), fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount), validFrom: rule.valid_from ?? undefined, validUntil: rule.valid_until ?? undefined, minQuantity: rule.min_quantity ?? undefined, bundleProductIds: rule.bundle_product_ids ?? undefined, priority: Number(rule.priority ?? 0), isActive: rule.is_active })),
     availableStock: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
@@ -303,15 +321,19 @@ export async function getVoucherByCode(code: string): Promise<Voucher | undefine
   return data ? mapVoucher(data) : undefined;
 }
 
-export const CATEGORIES = [
-  { id: "Food & Dining", label: "Food & Dining", icon: "🍜" },
-  { id: "Island & Beach", label: "Island & Beach", icon: "🏝" },
-  { id: "Heritage & Culture", label: "Heritage & Culture", icon: "🏛" },
-  { id: "Nature & Hiking", label: "Nature & Hiking", icon: "🌿" },
-  { id: "Shopping & Retail", label: "Shopping & Retail", icon: "🛍" },
-  { id: "Wellness & Spa", label: "Wellness & Spa", icon: "🧘" },
-  { id: "Nature & Leisure", label: "Nature & Leisure", icon: "🍵" },
-];
+// Category chips derive from the shared interest vocabulary so they match real
+// `categories.name` values — searchActivities filters on a.category (the name),
+// so the id MUST be the category name or the chip returns nothing.
+const CATEGORY_ICONS: Record<string, string> = {
+  food: "🍜", nature: "🌿", cultural: "🏛", adventure: "🧗",
+  nightlife: "🌙", wellness: "🧘", shopping: "🛍", family: "👨‍👩‍👧",
+};
+
+export const CATEGORIES = INTEREST_OPTIONS.map((o) => ({
+  id: o.label,
+  label: o.label,
+  icon: CATEGORY_ICONS[o.slug] ?? "📍",
+}));
 
 export const STATES_MY = [
   "All Malaysia", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",

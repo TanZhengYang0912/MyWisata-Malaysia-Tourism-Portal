@@ -226,13 +226,49 @@ INSERT INTO vouchers (vendor_id, code, name, voucher_type, discount_value, min_s
   ('bbbbbbbb-0000-0000-0000-000000000003','RIVER15','River Cruise 15%','percent',15,35,30,NOW()+INTERVAL '14 days')
 ON CONFLICT DO NOTHING;
 
--- ── User Preferences ─────────────────────────────────────────
-INSERT INTO user_preferences (user_id, interest_tags, travel_style, budget_range, preferred_radius_km) VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000005',
-   ARRAY['food','cultural','nature'], 'mid_range', '20_80', 20),
-  ('aaaaaaaa-0000-0000-0000-000000000006',
-   ARRAY['adventure','wellness'], 'budget', 'under_20', 10)
+-- ── Preference profiles (§11.1, unified table) ───────────────
+-- interests are category slugs so they join straight to products→categories.
+INSERT INTO preference_survey_responses
+  (user_id, interests, travel_style, budget_range, mobility_needs, group_composition, pet_friendly, preferred_radius_km) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000005', ARRAY['food','cultural','nature'], 'mid_range',         'mid_range', 'none',       ARRAY['couple'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000006', ARRAY['adventure','wellness'],     'budget_backpacker', 'budget',    'none',       ARRAY['solo'],    TRUE,  10),
+  ('aaaaaaaa-0000-0000-0000-000000000007', ARRAY['food','shopping'],          'mid_range',         'mid_range', 'none',       ARRAY['friends'], FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000008', ARRAY['food','nature'],            'luxury',            'luxury',    'none',       ARRAY['couple'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000009', ARRAY['cultural','adventure'],     'mid_range',         'mid_range', 'limited',    ARRAY['family'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000010', ARRAY['cultural','family'],        'family_group',      'mid_range', 'wheelchair', ARRAY['family','senior'], FALSE, 5),
+  ('aaaaaaaa-0000-0000-0000-000000000011', ARRAY['adventure','food'],         'budget_backpacker', 'budget',    'none',       ARRAY['friends'], FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000012', ARRAY['wellness','nature'],        'luxury',            'luxury',    'none',       ARRAY['couple'],  TRUE,  20)
 ON CONFLICT (user_id) DO NOTHING;
+
+-- ── Mock interaction signals (§11.2.2 collaborative + §11.2.7 feedback) ───────
+-- Cohorts that co-engage products so collaborative_recommendations has signal:
+--   food cluster {5,7,8} → products 1,2   heritage/adventure {6,9,11} → 3,4
+--   family/culture {10,12} → 3,5. entity_id = product UUIDs seeded above.
+INSERT INTO user_interactions (user_id, event_type, entity_type, entity_id, dwell_ms) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000005','view','product','dddddddd-0000-0000-0000-000000000001', 42000),
+  ('aaaaaaaa-0000-0000-0000-000000000005','save','product','dddddddd-0000-0000-0000-000000000001', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000005','view','product','dddddddd-0000-0000-0000-000000000003', 30000),
+  ('aaaaaaaa-0000-0000-0000-000000000007','view','product','dddddddd-0000-0000-0000-000000000001', 25000),
+  ('aaaaaaaa-0000-0000-0000-000000000007','book','product','dddddddd-0000-0000-0000-000000000001', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000007','save','product','dddddddd-0000-0000-0000-000000000002', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000007','view','product','dddddddd-0000-0000-0000-000000000002', 18000),
+  ('aaaaaaaa-0000-0000-0000-000000000008','view','product','dddddddd-0000-0000-0000-000000000001', 51000),
+  ('aaaaaaaa-0000-0000-0000-000000000008','save','product','dddddddd-0000-0000-0000-000000000002', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000008','rate','product','dddddddd-0000-0000-0000-000000000002', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000006','view','product','dddddddd-0000-0000-0000-000000000004', 22000),
+  ('aaaaaaaa-0000-0000-0000-000000000006','book','product','dddddddd-0000-0000-0000-000000000004', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000006','view','product','dddddddd-0000-0000-0000-000000000003', 15000),
+  ('aaaaaaaa-0000-0000-0000-000000000009','view','product','dddddddd-0000-0000-0000-000000000003', 33000),
+  ('aaaaaaaa-0000-0000-0000-000000000009','save','product','dddddddd-0000-0000-0000-000000000003', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000009','view','product','dddddddd-0000-0000-0000-000000000004', 27000),
+  ('aaaaaaaa-0000-0000-0000-000000000011','view','product','dddddddd-0000-0000-0000-000000000004', 19000),
+  ('aaaaaaaa-0000-0000-0000-000000000011','save','product','dddddddd-0000-0000-0000-000000000004', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000011','view','product','dddddddd-0000-0000-0000-000000000001', 12000),
+  ('aaaaaaaa-0000-0000-0000-000000000010','view','product','dddddddd-0000-0000-0000-000000000003', 40000),
+  ('aaaaaaaa-0000-0000-0000-000000000010','book','product','dddddddd-0000-0000-0000-000000000005', NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000012','view','product','dddddddd-0000-0000-0000-000000000005', 36000),
+  ('aaaaaaaa-0000-0000-0000-000000000012','save','product','dddddddd-0000-0000-0000-000000000003', NULL)
+ON CONFLICT DO NOTHING;
 
 -- ── Affiliate Links ───────────────────────────────────────────
 INSERT INTO affiliate_links (user_id, affiliate_code) VALUES

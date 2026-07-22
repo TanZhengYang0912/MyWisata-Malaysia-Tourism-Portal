@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { recordInteraction } from "@/lib/interactions";
 
 const wishlistSchema = z.object({
   productId: z.string().uuid(),
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     .upsert({ user_id: user.id, product_id: productId }, { onConflict: "user_id,product_id", ignoreDuplicates: true });
 
   if (error) return apiFail("DB_ERROR", error.message, 500);
+  await recordInteraction(supabase, user.id, "save", "product", productId);
   return apiOk({ productId, saved: true }, { status: 201 });
 }
 

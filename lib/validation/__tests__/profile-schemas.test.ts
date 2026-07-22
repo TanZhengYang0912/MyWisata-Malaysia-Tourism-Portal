@@ -2,16 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { bioSchema, preferenceSurveySchema } from '../profile-schemas';
 
 const validSurvey = {
-  interests: ['food'], travelStyle: 'couple', budgetRange: 'mid_range', mobilityNeeds: 'none', preferredDistance: 'nearby',
+  interests: ['food'], travelStyle: 'mid_range', budgetRange: 'mid_range', mobilityNeeds: 'none', preferredRadiusKm: 5,
 };
 
 describe('preferenceSurveySchema', () => {
-  it('accepts a supported preferred distance', () => {
-    expect(preferenceSurveySchema.parse(validSurvey).preferredDistance).toBe('nearby');
+  it('accepts a supported preferred radius', () => {
+    expect(preferenceSurveySchema.parse(validSurvey).preferredRadiusKm).toBe(5);
   });
 
-  it('rejects an arbitrary preferred distance', () => {
-    expect(() => preferenceSurveySchema.parse({ ...validSurvey, preferredDistance: '3km' })).toThrow();
+  it('rejects a non-numeric or out-of-range preferred radius', () => {
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, preferredRadiusKm: '3km' })).toThrow();
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, preferredRadiusKm: -1 })).toThrow();
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, preferredRadiusKm: 501 })).toThrow();
+  });
+
+  it('rejects an interest outside the shared category vocabulary', () => {
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, interests: ['skydiving'] })).toThrow();
   });
 });
 
