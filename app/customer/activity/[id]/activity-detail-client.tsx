@@ -68,6 +68,8 @@ export function ActivityDetailClient({
     if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
   }, [slotId]);
 
+  const chips = useMemo(() => (activity ? getCategoryChips(activity) : []), [activity]);
+
   if (activity === null) {
     return <EmptyState title="Experience not found" description="This listing may have been removed." />;
   }
@@ -89,8 +91,6 @@ export function ActivityDetailClient({
     await sendMessage(thread.id, currentUser.id, "customer", `Re: ${activity!.name}`, undefined, activity!.id);
     router.push(`/customer/chat/${thread.id}`);
   }
-
-  const chips = useMemo(() => getCategoryChips(activity), [activity]);
 
   return (
     // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so

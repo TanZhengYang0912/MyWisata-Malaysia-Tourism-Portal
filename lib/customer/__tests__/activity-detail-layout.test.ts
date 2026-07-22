@@ -56,4 +56,13 @@ describe("activity detail booking layout", () => {
     expect(detailsCardIndex).toBeGreaterThan(asideIndex);
     expect(chipsIndex).toBeGreaterThan(detailsCardIndex);
   });
+
+  it("evaluates category chips before the empty-activity early return", () => {
+    const chipsHookIndex = source.indexOf("const chips = useMemo");
+    const emptyActivityGuardIndex = source.indexOf("if (activity === null)");
+
+    expect(chipsHookIndex).toBeGreaterThanOrEqual(0);
+    expect(emptyActivityGuardIndex).toBeGreaterThanOrEqual(0);
+    expect(chipsHookIndex).toBeLessThan(emptyActivityGuardIndex);
+  });
 });
