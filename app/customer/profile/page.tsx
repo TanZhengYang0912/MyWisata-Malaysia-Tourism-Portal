@@ -4,13 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Phone, User, Camera, MessageSquare, ClipboardList,
-  Store, Upload, Loader2, ChevronRight, CheckCircle2,
+  Store, Upload, Loader2, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { ProfileSections } from "@/components/profile/profile-sections";
+import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { parseInternationalPhone } from "@/lib/phone/international";
 
 const STEPS = [
@@ -18,28 +19,7 @@ const STEPS = [
   { id: "identity", label: "Identity" },
   { id: "avatar",   label: "Avatar" },
   { id: "bio",      label: "Bio" },
-  { id: "survey",   label: "Survey" },
-] as const;
-
-const INTERESTS = ["Adventure", "Culture", "Food", "Shopping", "Wellness", "Nature", "Art", "Sports", "Photography", "Nightlife"];
-
-const TRAVEL_STYLES = [
-  { value: "solo",   label: "Solo Traveller" },
-  { value: "couple", label: "Couple" },
-  { value: "family", label: "Family" },
-  { value: "group",  label: "Group" },
-] as const;
-
-const BUDGET_RANGES = [
-  { value: "budget",    label: "Budget (< RM 100/day)" },
-  { value: "mid_range", label: "Mid-range (RM 100–500/day)" },
-  { value: "luxury",    label: "Luxury (> RM 500/day)" },
-] as const;
-
-const MOBILITY_NEEDS = [
-  { value: "none",       label: "No restrictions" },
-  { value: "limited",    label: "Some restrictions" },
-  { value: "wheelchair", label: "Wheelchair accessible required" },
+  { id: "preferences", label: "Preferences" },
 ] as const;
 
 function initialStep(tier: string): number {
@@ -85,14 +65,6 @@ export default function ProfilePage() {
   const [bio,      setBio]      = useState("");
   const [bioError, setBioError] = useState<string | null>(null);
   const [bioBusy,  setBioBusy]  = useState(false);
-
-  // ── Survey ─────────────────────────────────────────────────────────────────
-  const [interests,     setInterests]     = useState<string[]>([]);
-  const [travelStyle,   setTravelStyle]   = useState("solo");
-  const [budgetRange,   setBudgetRange]   = useState("mid_range");
-  const [mobilityNeeds, setMobilityNeeds] = useState("none");
-  const [surveyError,   setSurveyError]   = useState<string | null>(null);
-  const [surveyBusy,    setSurveyBusy]    = useState(false);
 
   // ── Phone handlers ─────────────────────────────────────────────────────────
   async function sendOtp() {
@@ -245,31 +217,6 @@ export default function ProfilePage() {
       setBioError(err instanceof Error ? err.message : "Failed to save bio");
     } finally {
       setBioBusy(false);
-    }
-  }
-
-  // ── Survey handler ─────────────────────────────────────────────────────────
-  async function submitSurvey() {
-    if (interests.length === 0) { setSurveyError("Select at least one interest"); return; }
-    setSurveyError(null);
-    setSurveyBusy(true);
-    try {
-      const res = await fetch("/api/profile/survey", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interests, travelStyle, budgetRange, mobilityNeeds }),
-      });
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        throw new Error((b as any)?.error?.message ?? "Failed to submit survey");
-      }
-      await refreshUser();
-      setStep(-1);
-      showFeedback("success", "Travel preferences saved.");
-    } catch (err) {
-      setSurveyError(err instanceof Error ? err.message : "Failed to submit survey");
-    } finally {
-      setSurveyBusy(false);
     }
   }
 
@@ -503,113 +450,18 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ── Step 4: Survey ───────────────────────────────────────────────── */}
+      {/* ── Step 4: Preferences ──────────────────────────────────────────── */}
       {step === 4 && (
         <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
           <div className="flex items-center gap-2">
             <ClipboardList size={18} className="text-primary" />
             <h2 className="font-bold text-foreground">Travel Preferences</h2>
           </div>
-          <p className="text-xs text-muted-foreground">Help us personalise your experience with a quick survey.</p>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Interests (select all that apply)</p>
-            <div className="flex flex-wrap gap-2">
-              {INTERESTS.map((it) => {
-                const key = it.toLowerCase();
-                const sel = interests.includes(key);
-                return (
-                  <button
-                    key={it}
-                    type="button"
-                    onClick={() => setInterests((prev) => sel ? prev.filter((x) => x !== key) : [...prev, key])}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors"
-                    style={{
-                      backgroundColor: sel ? "var(--primary)" : "transparent",
-                      borderColor:     sel ? "var(--primary)" : "var(--border)",
-                      color:           sel ? "white"           : "var(--foreground)",
-                    }}
-                  >
-                    {it}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Travel Style</p>
-            <div className="grid grid-cols-2 gap-2">
-              {TRAVEL_STYLES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTravelStyle(value)}
-                  className="px-3 py-2 text-sm rounded-xl border transition-colors text-left"
-                  style={{
-                    backgroundColor: travelStyle === value ? "color-mix(in srgb, var(--primary) 12%, transparent)" : "transparent",
-                    borderColor:     travelStyle === value ? "var(--primary)" : "var(--border)",
-                    color:           travelStyle === value ? "var(--primary)" : "var(--foreground)",
-                    fontWeight:      travelStyle === value ? 600 : 400,
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Budget Range</p>
-            <div className="space-y-1.5">
-              {BUDGET_RANGES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBudgetRange(value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border transition-colors text-left flex items-center gap-2"
-                  style={{
-                    backgroundColor: budgetRange === value ? "color-mix(in srgb, var(--primary) 12%, transparent)" : "transparent",
-                    borderColor:     budgetRange === value ? "var(--primary)" : "var(--border)",
-                    color:           budgetRange === value ? "var(--primary)" : "var(--foreground)",
-                    fontWeight:      budgetRange === value ? 600 : 400,
-                  }}
-                >
-                  {budgetRange === value && <CheckCircle2 size={13} />}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mobility Needs</p>
-            <div className="space-y-1.5">
-              {MOBILITY_NEEDS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMobilityNeeds(value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border transition-colors text-left flex items-center gap-2"
-                  style={{
-                    backgroundColor: mobilityNeeds === value ? "color-mix(in srgb, var(--primary) 12%, transparent)" : "transparent",
-                    borderColor:     mobilityNeeds === value ? "var(--primary)" : "var(--border)",
-                    color:           mobilityNeeds === value ? "var(--primary)" : "var(--foreground)",
-                    fontWeight:      mobilityNeeds === value ? 600 : 400,
-                  }}
-                >
-                  {mobilityNeeds === value && <CheckCircle2 size={13} />}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {surveyError && <p className="text-xs text-destructive">{surveyError}</p>}
-          <Button onClick={submitSurvey} disabled={surveyBusy || interests.length === 0} className="w-full">
-            {surveyBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-            {surveyBusy ? "Submitting…" : "Complete Profile"}
-          </Button>
+          <p className="text-xs text-muted-foreground">These personalise your recommendation feed. You can change them anytime under Preferences.</p>
+          <PreferencesEditor
+            submitLabel="Complete Profile"
+            onSaved={() => { void refreshUser(); setStep(-1); showFeedback("success", "Travel preferences saved."); }}
+          />
         </div>
       )}
     </div>

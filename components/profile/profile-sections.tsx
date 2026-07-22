@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, ChevronRight, Loader2, ShieldCheck, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
 import type { ProfileSummary } from "@/backend/core/types";
@@ -10,8 +10,11 @@ import { safeKycReasonCopy } from "@/lib/kyc/customer-submission";
 import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
+import { INTEREST_OPTIONS } from "@/backend/domains/preferences";
 
-type SectionId = "personal" | "contact" | "preferences";
+type SectionId = "personal" | "contact";
+
+const interestLabel = (slug: string) => INTEREST_OPTIONS.find((o) => o.slug === slug)?.label ?? slug;
 
 function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return <section className="rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;
@@ -37,10 +40,6 @@ export function ProfileSections() {
   const [phone, setPhone] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
   const [phonePhase, setPhonePhase] = useState<"enter" | "verify">("enter");
-  const [interests, setInterests] = useState<string[]>([]);
-  const [travelStyle, setTravelStyle] = useState("solo");
-  const [budgetRange, setBudgetRange] = useState("mid_range");
-  const [mobilityNeeds, setMobilityNeeds] = useState("none");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -54,7 +53,6 @@ export function ProfileSections() {
       const next = body.data;
       setSummary(next);
       setFullName(next.fullName ?? ""); setCity(next.city ?? ""); setCountry(next.country ?? "Malaysia"); setBio(next.bio ?? ""); setPhone(next.phone ?? "");
-      setInterests(next.survey?.interests ?? []); setTravelStyle(next.survey?.travelStyle ?? "solo"); setBudgetRange(next.survey?.budgetRange ?? "mid_range"); setMobilityNeeds(next.survey?.mobilityNeeds ?? "none");
       setError(null);
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to load profile"); }
     finally { setLoading(false); }
@@ -102,16 +100,6 @@ export function ProfileSections() {
       if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? "Invalid OTP");
       await loadProfile(); await refreshUser(); setEditing(null); setPhonePhase("enter"); setPhoneCode("");
     } catch (err) { setError(err instanceof Error ? err.message : "Invalid OTP"); }
-    finally { setBusy(false); }
-  }
-
-  async function savePreferences() {
-    setBusy(true); setError(null);
-    try {
-      const response = await fetch("/api/profile/survey", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ interests, travelStyle, budgetRange, mobilityNeeds }) });
-      if (!response.ok) throw new Error("Unable to save preferences");
-      await loadProfile(); await refreshUser(); setEditing(null);
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to save preferences"); }
     finally { setBusy(false); }
   }
 
@@ -167,8 +155,12 @@ export function ProfileSections() {
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>View KYC page <ChevronRight size={14} /></Button>}
       </SectionCard>
 
-      <SectionCard title="Preferences" description="Update the survey used to personalise recommendations.">
-        {editing === "preferences" ? <div className="space-y-3"><input value={interests.join(", ")} onChange={(e) => setInterests(e.target.value.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean))} placeholder="Interests, separated by commas" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><select value={travelStyle} onChange={(e) => setTravelStyle(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"><option value="solo">Solo Traveller</option><option value="couple">Couple</option><option value="family">Family</option><option value="group">Group</option></select><select value={budgetRange} onChange={(e) => setBudgetRange(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"><option value="budget">Budget</option><option value="mid_range">Mid-range</option><option value="luxury">Luxury</option></select><select value={mobilityNeeds} onChange={(e) => setMobilityNeeds(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"><option value="none">No restrictions</option><option value="limited">Some restrictions</option><option value="wheelchair">Wheelchair accessible required</option></select><div className="flex gap-2"><Button onClick={savePreferences} disabled={busy}>Save preferences</Button><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button></div></div> : <div className="space-y-2 text-sm"><p className="text-foreground">{summary.survey?.interests.join(", ") || "No interests selected"}</p><p className="text-muted-foreground">{summary.survey?.travelStyle || "Travel style not set"} · {summary.survey?.budgetRange || "Budget not set"} · {summary.survey?.mobilityNeeds || "Mobility needs not set"}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("preferences")}>Edit survey</Button></div>}
+      <SectionCard title="Preferences" description="These personalise your recommendation feed.">
+        <div className="space-y-2 text-sm">
+          <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map(interestLabel).join(", ") : "No interests selected yet"}</p>
+          {summary.survey && <p className="text-muted-foreground">{summary.survey.travelStyle || "Travel style not set"} · {summary.survey.budgetRange || "Budget not set"} · {summary.survey.mobilityNeeds || "Mobility not set"}</p>}
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>Manage preferences <ChevronRight size={14} /></Button>
+        </div>
       </SectionCard>
 
       <section className="rounded-2xl border border-destructive/25 bg-destructive/[0.03] p-5 sm:p-6"><div className="flex items-center gap-2"><Trash2 size={17} className="text-destructive" /><h2 className="font-bold text-foreground">Danger Zone</h2></div><p className="mt-2 text-sm text-muted-foreground">Closing your account signs you out and hides your profile. Orders, wallet history and KYC audit records are retained.</p><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE to confirm" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><Button variant="destructive" onClick={closeAccount} disabled={busy || deleteConfirm !== "DELETE"}>Close account</Button></div></section>

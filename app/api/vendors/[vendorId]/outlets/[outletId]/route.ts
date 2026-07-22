@@ -50,6 +50,8 @@ export async function PATCH(request: Request, { params }: Props) {
   if (body.operatingHours !== undefined) updateData.operating_hours = body.operatingHours;
   if (body.welcomeMessage !== undefined) updateData.welcome_message = body.welcomeMessage || null;
   if (body.welcomeEnabled !== undefined) updateData.welcome_enabled = body.welcomeEnabled;
+  if (body.wheelchairAccessible !== undefined) updateData.wheelchair_accessible = body.wheelchairAccessible;
+  if (body.petFriendly !== undefined) updateData.pet_friendly = body.petFriendly;
 
   const contentChanged = Object.keys(body).some((key) => !managerEditableFields.includes(key));
   if (contentChanged && !access.access.isOutletManager) {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText, ShieldCheck, Star, Store, UserRound, WalletCards } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCircle, Search, ShoppingCart, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
@@ -22,6 +22,7 @@ const NAV = [
 
 const ACCOUNT_NAV = [
   { href: "/customer/profile", label: "Profile", description: "Your personal details", icon: UserRound },
+  { href: "/customer/preferences", label: "Preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
   { href: "/customer/wishlist", label: "Saved Experiences", description: "Your travel shortlist", icon: Heart },
   { href: "/customer/kyc", label: "KYC Verification", description: "Verify your identity", icon: ShieldCheck },
   { href: "/customer/wallet", label: "My Wallet", description: "Balance and payouts", icon: WalletCards },
@@ -43,6 +44,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"]);
   const { count } = useCart();
   const { stops: tripStops } = useTrip();
+  // Exclude the origin "location" stop — the badge counts trip waypoints.
+  const tripCount = tripStops.filter((s) => s.source !== "location").length;
   const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -161,8 +164,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 {item.href === "/customer/chat" && unreadChats > 0 && (
                   <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-destructive" />
                 )}
-                {item.href === "/customer/map" && tripStops.length > 0 && (
-                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripStops.length}</span>
+                {item.href === "/customer/map" && tripCount > 0 && (
+                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
                 )}
               </Link>
             ))}
@@ -264,8 +267,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               {item.href === "/customer/chat" && unreadChats > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
               )}
-              {item.href === "/customer/map" && tripStops.length > 0 && (
-                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripStops.length}</span>
+              {item.href === "/customer/map" && tripCount > 0 && (
+                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
               )}
             </Link>
           ))}

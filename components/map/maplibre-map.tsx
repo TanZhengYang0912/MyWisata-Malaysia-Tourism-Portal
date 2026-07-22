@@ -102,7 +102,7 @@ export function MaplibreMap({
   // Trip-stop pins render as numbered DOM markers below, not the GL dot layer.
   const dotPins = useMemo(() => pins.filter((p) => !stopIds?.includes(p.id)), [pins, stopIds]);
   const stopPins = useMemo(
-    () => (stopIds ?? []).map((id, i) => ({ pin: pins.find((p) => p.id === id), number: i + 2 })).filter((s): s is { pin: MapPin; number: number } => !!s.pin),
+    () => (stopIds ?? []).map((id, i) => ({ pin: pins.find((p) => p.id === id), number: i + 1 })).filter((s): s is { pin: MapPin; number: number } => !!s.pin),
     [pins, stopIds],
   );
   const pinsGeoJSON = useMemo(() => pinsToGeoJSON(dotPins), [dotPins]);
@@ -188,7 +188,7 @@ export function MaplibreMap({
         <Layer
           id={POINT_LAYER_ID}
           type="circle"
-          filter={cluster ? ["!", ["has", "point_count"]] : undefined}
+          filter={["!", ["has", "point_count"]]}
           paint={{
             "circle-color": ["case", ["==", ["get", "id"], selectedId ?? ""], "#FACC15", "#010066"],
             "circle-radius": ["case", ["==", ["get", "id"], selectedId ?? ""], 10, 7],
@@ -240,15 +240,24 @@ export function MaplibreMap({
           <div
             title={onUserLocationDrag ? "Drag to set your location" : "You are here"}
             style={{
-              width: 16,
-              height: 16,
+              width: 22,
+              height: 22,
               borderRadius: "50%",
               background: "#2563EB",
               border: "3px solid #ffffff",
               boxShadow: "0 0 0 1px rgba(0,0,0,0.15)",
               cursor: onUserLocationDrag ? "grab" : undefined,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#ffffff",
+              fontFamily: "sans-serif",
             }}
-          />
+          >
+            1
+          </div>
         </Marker>
       )}
 

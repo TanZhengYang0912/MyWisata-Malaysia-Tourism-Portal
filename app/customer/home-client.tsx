@@ -38,7 +38,7 @@ function getPageItems(currentPage: number, totalPages: number): PageItem[] {
   return items;
 }
 
-export function HomeClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+export function HomeClient({ initialActivities, initialRecommended }: { initialActivities: ComputedActivity[]; initialRecommended: ComputedActivity[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [state, setState] = useState("All Malaysia");
@@ -63,7 +63,10 @@ export function HomeClient({ initialActivities }: { initialActivities: ComputedA
     });
   }, [state, category]);
 
-  const picked = useMemo(() => (activities ?? []).slice(0, 4), [activities]);
+  // "Recommended For You" is the personalised feed — stable, independent of the
+  // filters applied to the grid below. aiTag carries each card's match reason.
+  const picked = initialRecommended;
+  const personalised = picked.some((a) => Boolean(a.aiTag));
   const totalPages = Math.max(1, Math.ceil((activities?.length ?? 0) / EXPERIENCES_PER_PAGE));
   const pageStart = (currentPage - 1) * EXPERIENCES_PER_PAGE;
   const visibleExperiences = useMemo(
@@ -179,24 +182,23 @@ export function HomeClient({ initialActivities }: { initialActivities: ComputedA
 
       <PromotionSpotlight activities={activities ?? []} />
 
-      {/* Picked for you (honest label: top-rated, no AI scoring yet) */}
+      {/* Recommended For You (§11.3) — personalised feed with match-reason tags,
+          or trending fallback for users who haven't set preferences yet. */}
       <section className="py-10 bg-primary/[0.03]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-end justify-between mb-6 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles size={16} className="text-accent" />
-                <span className="text-travel-blue text-xs font-bold uppercase tracking-wider">Top Picks</span>
+                <span className="text-travel-blue text-xs font-bold uppercase tracking-wider">{personalised ? "For You" : "Top Picks"}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Popular Right Now</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">{personalised ? "Recommended For You" : "Popular Right Now"}</h2>
             </div>
-            <Link href="/customer/search" className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
-              View all <ChevronRight size={14} />
+            <Link href={personalised ? "/customer/preferences" : "/customer/search"} className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
+              {personalised ? "Tune preferences" : "View all"} <ChevronRight size={14} />
             </Link>
           </div>
-          {activities === null ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : picked.length === 0 ? (
+          {picked.length === 0 ? (
             <EmptyState title="No experiences match yet" description="Try a different state or category." />
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">

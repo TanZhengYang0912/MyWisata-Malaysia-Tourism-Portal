@@ -3,42 +3,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, CheckCircle, Clock, Globe, MapPin, MessageCircle, Navigation, Phone, Plus, Star, Store, Tag, Users } from "lucide-react";
+import { CalendarDays, CheckCircle, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
-import { useTrip } from "@/components/providers/trip";
 import { unitPrice } from "@/backend/core/helpers";
 import { AiTag } from "@/components/customer/ai-tag";
-import { MapView } from "@/components/map/map-view";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
-import { TRAVEL_MODES, type TravelModeId } from "@/lib/travel-modes";
-import { ORS_PROFILE, type RouteResult } from "@/lib/routing";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
 import { formatBookingSlotTime, getBookingDatePreview, groupBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
-
-type DetailChip = { label: string; value: string; icon: typeof Clock; href?: string };
-
-// Food & Dining gets real, category-relevant chips; every other category keeps
-// the original generic set until they get their own pass.
-function getDetailChips(activity: ComputedActivity): DetailChip[] {
-  if (activity.category !== "Food & Dining") {
-    return [
-      { label: "Duration", value: activity.duration, icon: Clock },
-      { label: "Group Size", value: "2–12 pax", icon: Users },
-      { label: "Language", value: "EN / BM", icon: Globe },
-    ];
-  }
-  const chips: DetailChip[] = [];
-  if (activity.outlet.hours) chips.push({ label: "Hours", value: activity.outlet.hours, icon: Clock });
-  if (activity.tags && activity.tags.length > 0) chips.push({ label: "Tags", value: activity.tags.join(" · "), icon: Tag });
-  if (activity.outlet.phone) chips.push({ label: "Contact", value: activity.outlet.phone, icon: Phone, href: `tel:${activity.outlet.phone}` });
-  return chips;
-}
+import { getCategoryChips } from "@/lib/customer/category-details";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -52,7 +30,6 @@ export function ActivityDetailClient({
   const router = useRouter();
   const { currentUser } = useAuth();
   const { addItem } = useCart();
-  const trip = useTrip();
 
   const [activity] = useState<ComputedActivity | null>(initialActivity);
   const [slots] = useState<BookingSlot[]>(initialSlots);
@@ -64,11 +41,19 @@ export function ActivityDetailClient({
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
-  const [travelMode, setTravelMode] = useState<TravelModeId>("DRIVING");
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
-  const [eta, setEta] = useState<{ durationText: string; distanceText: string } | null>(null);
-  const [etaStatus, setEtaStatus] = useState<"idle" | "loading" | "denied" | "error">("idle");
-  const [view, setView] = useState<"details" | "map">("details");
+
+  // §11.2.7 view signal: beacon dwell time on unmount (best-effort, ignored for guests).
+  useEffect(() => {
+    if (!activity || !currentUser) return;
+    const enteredAt = Date.now();
+    const productId = activity.id;
+    return () => {
+      const dwellMs = Date.now() - enteredAt;
+      const body = JSON.stringify({ event: "view", entityType: "product", entityId: productId, dwellMs });
+      // sendBeacon survives navigation; Blob keeps the JSON content-type.
+      navigator.sendBeacon?.("/api/interactions", new Blob([body], { type: "application/json" }));
+    };
+  }, [activity, currentUser]);
 
   const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
   const slotDateGroups = useMemo(() => groupBookingSlotsByDate(slots), [slots]);
@@ -82,57 +67,6 @@ export function ActivityDetailClient({
   useEffect(() => {
     if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
   }, [slotId]);
-
-  function computeEta(origin: { lat: number; lng: number }, mode: TravelModeId) {
-    if (!activity) return;
-    // No free routing profile for transit — matches the trip planner's
-    // handling, which sends transit users to the Google Maps handoff instead.
-    if (!ORS_PROFILE[mode]) {
-      setEta(null);
-      setEtaStatus("error");
-      return;
-    }
-    setEtaStatus("loading");
-    fetch("/api/route", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, points: [[origin.lat, origin.lng], [activity.outlet.lat, activity.outlet.lng]] }),
-    })
-      .then((res) => res.json())
-      .then((body: { data: { routes: RouteResult[] } | null }) => {
-        const route = body.data?.routes[0];
-        if (!route) throw new Error("no route");
-        setEta({ durationText: `${route.durationMin} min`, distanceText: `${route.distanceKm} km` });
-        setEtaStatus("idle");
-      })
-      .catch(() => {
-        setEta(null);
-        setEtaStatus("error");
-      });
-  }
-
-  function handleTravelModeChange(mode: TravelModeId) {
-    setTravelMode(mode);
-    setEta(null);
-    if (userLoc) {
-      computeEta(userLoc, mode);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setEtaStatus("denied");
-      return;
-    }
-    setEtaStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLoc(loc);
-        computeEta(loc, mode);
-      },
-      () => setEtaStatus("denied"),
-      { timeout: 5000 },
-    );
-  }
 
   if (activity === null) {
     return <EmptyState title="Experience not found" description="This listing may have been removed." />;
@@ -149,22 +83,6 @@ export function ActivityDetailClient({
     }, 400);
   }
 
-  function handleDirections() {
-    const params = new URLSearchParams({
-      api: "1",
-      destination: `${activity!.outlet.lat},${activity!.outlet.lng}`,
-      travelmode: TRAVEL_MODES.find((m) => m.id === travelMode)!.urlParam,
-    });
-    if (userLoc) params.set("origin", `${userLoc.lat},${userLoc.lng}`);
-    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, "_blank");
-  }
-
-  function handleAddToTrip() {
-    if (!activity) return;
-    if (trip.has(activity.id)) trip.remove(activity.id);
-    else trip.add({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: activity.outlet.city });
-  }
-
   async function handleChat() {
     if (!currentUser) return;
     const thread = await getOrCreateThread(currentUser.id, activity!.outletId);
@@ -172,14 +90,23 @@ export function ActivityDetailClient({
     router.push(`/customer/chat/${thread.id}`);
   }
 
+  const chips = useMemo(() => getCategoryChips(activity), [activity]);
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7">
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-      <div className="min-w-0">
-      <div className="relative mb-4 h-44 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
+    // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
+    // only the reviews list scrolls internally; mobile keeps normal page scroll.
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
+      <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+      <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={activity.image} alt={activity.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
+        {activity.isHiddenGem && (
+          <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
+            <Sparkles size={13} /> Hidden Gem
+          </div>
+        )}
         {activity.outlet.verified && (
           <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-primary">
             <CheckCircle size={13} /> Verified Vendor
@@ -187,8 +114,8 @@ export function ActivityDetailClient({
         )}
       </div>
 
-      <section className="min-w-0">
-          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+      <section className="min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <div className="flex items-start justify-between gap-4 mb-4 flex-wrap shrink-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
               <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary"><Store size={14} /> Provided by {activity.outlet.vendorName ?? "Local vendor"}</p>
@@ -209,115 +136,22 @@ export function ActivityDetailClient({
         </div>
       </div>
 
-      <div className="mb-4 flex w-fit items-center gap-1 rounded-full border border-border p-1">
-        {(["details", "map"] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className="px-4 py-1.5 rounded-full text-xs font-semibold capitalize"
-            style={{ backgroundColor: view === v ? "var(--primary)" : "transparent", color: view === v ? "white" : "var(--foreground)" }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {view === "details" && (
-        <>
+      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        <div className="shrink-0">
           {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
 
           <p className="text-sm leading-relaxed mb-6 text-foreground/80">{activity.description}</p>
+        </div>
 
-          {getDetailChips(activity).length > 0 && (
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {getDetailChips(activity).map((d) => {
-                const content = (
-                  <>
-                    <div className="flex justify-center mb-1 text-teal"><d.icon size={15} /></div>
-                    <p className="text-[10px] uppercase tracking-wide mb-0.5 text-muted-foreground">{d.label}</p>
-                    <p className="text-sm font-bold text-foreground truncate">{d.value}</p>
-                  </>
-                );
-                return d.href ? (
-                  <a key={d.label} href={d.href} className="rounded-xl p-3 text-center bg-muted block">{content}</a>
-                ) : (
-                  <div key={d.label} className="rounded-xl p-3 text-center bg-muted">{content}</div>
-                );
-              })}
-            </div>
-          )}
-
+        <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           <ActivityReviews productId={activity.id} rating={activity.rating} totalReviews={activity.reviews} initialReviews={reviews} />
-
-          <section className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Vendor</p>
-              <p className="mt-1 truncate text-sm font-semibold text-foreground">{activity.outlet.vendorName ?? "Local vendor"}</p>
-              <p className="mt-1 truncate text-xs text-muted-foreground">{activity.outlet.name} · {activity.outlet.city}, {activity.outlet.state}</p>
-            </div>
-            <Link href={getOutletShopHref(activity.outlet.id)} className="shrink-0 rounded-full border border-primary/20 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-secondary">Visit shop</Link>
-          </section>
-
-        </>
-      )}
-
-      {view === "map" && (
-        <>
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="text-xs font-semibold text-muted-foreground mr-1">Directions:</span>
-            {TRAVEL_MODES.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleTravelModeChange(m.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
-                style={{
-                  borderColor: travelMode === m.id ? "var(--travel-blue)" : "var(--border)",
-                  backgroundColor: travelMode === m.id ? "var(--travel-blue)" : "transparent",
-                  color: travelMode === m.id ? "white" : "var(--foreground)",
-                }}
-              >
-                <m.icon size={13} /> {m.label}
-              </button>
-            ))}
-            <span className="text-xs text-muted-foreground ml-1">
-              {etaStatus === "loading" && "Calculating…"}
-              {etaStatus === "denied" && "Enable location for ETA"}
-              {etaStatus === "error" && "ETA unavailable"}
-              {etaStatus === "idle" && eta && `${eta.durationText} · ${eta.distanceText}`}
-            </span>
-          </div>
-
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Button variant="default" onClick={handleDirections} className="rounded-full bg-primary text-white hover:bg-primary/90">
-              <Navigation size={16} className="mr-1.5" /> Get Directions
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleAddToTrip}
-              className="rounded-full border-2"
-              style={trip.has(activity.id) ? { borderColor: "var(--nature-green, #16A34A)", color: "var(--nature-green, #16A34A)" } : undefined}
-            >
-              {trip.has(activity.id) ? <Check size={16} className="mr-1.5" /> : <Plus size={16} className="mr-1.5" />}
-              {trip.has(activity.id) ? "In trip" : "Add to trip"}
-            </Button>
-          </div>
-
-          <div>
-            <p className="text-sm font-bold text-foreground mb-2">Location</p>
-            <MapView
-              pins={[{ id: activity.outlet.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.outlet.name, sublabel: activity.outlet.address }]}
-              center={[activity.outlet.lat, activity.outlet.lng]}
-              zoom={14}
-              height={420}
-            />
-          </div>
-        </>
-      )}
+        </div>
+      </div>
 
       </section>
       </div>
 
-      <aside className="lg:sticky lg:top-24">
+      <aside className="lg:h-full lg:overflow-y-auto">
         <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
           <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>
@@ -328,6 +162,16 @@ export function ActivityDetailClient({
               <p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p>
               <p className="text-[11px] text-muted-foreground">per person</p>
             </div>
+          </div>
+
+          <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-4 text-xs">
+            <span className="min-w-0 truncate text-muted-foreground">
+              <Store size={12} className="mr-1 inline align-[-1px]" />
+              {activity.outlet.vendorName ?? "Local vendor"} · {activity.outlet.city}
+            </span>
+            <Link href={getOutletShopHref(activity.outlet.id)} className="shrink-0 font-semibold text-primary hover:underline">
+              Visit shop
+            </Link>
           </div>
 
           {activity.variants.length > 1 && (
@@ -481,6 +325,30 @@ export function ActivityDetailClient({
             <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
           </div>
         </div>
+
+        {chips.length > 0 && (
+          <div className="mt-4 rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
+            <h2 className="mb-4 text-sm font-bold text-foreground">Details</h2>
+            <div className="space-y-3">
+              {chips.map((d) => {
+                const content = (
+                  <>
+                    <d.icon size={15} className="mt-0.5 shrink-0 text-teal" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{d.value}</p>
+                    </div>
+                  </>
+                );
+                return d.href ? (
+                  <a key={d.label} href={d.href} className="flex items-start gap-2.5">{content}</a>
+                ) : (
+                  <div key={d.label} className="flex items-start gap-2.5">{content}</div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </aside>
       </div>
 

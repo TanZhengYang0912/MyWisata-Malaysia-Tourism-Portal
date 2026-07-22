@@ -88,6 +88,8 @@ export async function POST(request: Request, { params }: Props) {
     operating_hours: body.operatingHours ?? null,
     welcome_message: body.welcomeMessage || null,
     welcome_enabled: body.welcomeEnabled ?? true,
+    wheelchair_accessible: body.wheelchairAccessible ?? null,
+    pet_friendly: body.petFriendly ?? null,
     status: 'inactive',
     review_status: 'pending_review',
   }).select().single();

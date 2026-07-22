@@ -58,6 +58,8 @@ export interface Outlet {
   open: boolean;
   rating: number;
   reviews: number;
+  wheelchairAccessible?: boolean | null; // null = vendor hasn't specified
+  petFriendly?: boolean | null;
 }
 
 export interface Variant {
@@ -111,6 +113,13 @@ export interface Activity {
   aiTag?: string; // static label for now; AI scoring deferred
   hot?: boolean;
   tags?: string[];
+  categorySlug?: string; // categories.slug — one of the 4: food/activity/accommodation/retail
+  typeSlugs?: string[];  // products.type_slugs — the second taxonomy level (e.g. "nature", "chinese")
+  createdAt?: string;    // products.created_at — recency signal
+  attributes?: Record<string, unknown>; // category-specific detail fields — see lib/customer/category-details.ts
+  isHiddenGem?: boolean;
+  isFamilyFriendly?: boolean;
+  isCoupleFriendly?: boolean;
 }
 
 export interface ComputedActivity extends Activity {
