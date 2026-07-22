@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('industry payout destination migration contract', () => {
   it('supports verified destinations, cooldowns, snapshots, and failure details', () => {
-    const sql = readFileSync(new URL('../20260722000201_industry_payout_destinations.sql', import.meta.url), 'utf8');
+    const sql = readFileSync(new URL('../087_industry_payout_destinations.sql', import.meta.url), 'utf8');
 
     expect(sql).toContain('cooldown_until');
     expect(sql).toContain('destination_provider');

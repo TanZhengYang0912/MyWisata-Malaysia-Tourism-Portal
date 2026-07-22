@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync(new URL('../20260722000203_payout_report_pending_amounts.sql', import.meta.url), 'utf8');
+const sql = readFileSync(new URL('../089_payout_report_pending_amounts.sql', import.meta.url), 'utf8');
 
 describe('payout report pending amounts migration contract', () => {
   it('returns distinct wallet and withdrawal pending/reserved/available amounts', () => {

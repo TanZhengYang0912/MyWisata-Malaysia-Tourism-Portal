@@ -37,9 +37,9 @@
 | `lib/wallet/approver-notifications.ts` | Approver recipient fan-out and notification snapshot |
 | `app/admin/withdrawals/page.tsx` | Approver queue and review details |
 | `app/api/admin/withdrawals/[id]/route.ts` | Secured review projection |
-| `supabase/migrations/20260722000201_industry_payout_destinations.sql` | Destination lifecycle, snapshot, and failure columns |
-| `supabase/migrations/20260722000202_withdrawal_review_sources.sql` | Read-only review source projections and RLS/RPC contracts |
-| `supabase/migrations/20260722000203_payout_report_pending_amounts.sql` | Correct pending report fields and detail contract |
+| `supabase/migrations/087_industry_payout_destinations.sql` | Destination lifecycle, snapshot, and failure columns |
+| `supabase/migrations/088_withdrawal_review_sources.sql` | Read-only review source projections and RLS/RPC contracts |
+| `supabase/migrations/089_payout_report_pending_amounts.sql` | Correct pending report fields and detail contract |
 | `app/api/admin/reports/payouts/route.ts` | Report API contract |
 | `app/admin/reports/payouts/page.tsx` | Report cards, pending amounts, and detail table |
 | `app/api/stripe/connect-webhook/route.ts` | Stripe failure normalization and persistence |
@@ -90,8 +90,8 @@ export function computeProfileCompletion(input: {
 - Create: `app/api/tng/payout/webhook/route.ts`
 - Create: `lib/payouts/__tests__/tng-direct-credit.test.ts`
 - Modify: `lib/payouts/__tests__/destinations.test.ts`
-- Create: `supabase/migrations/20260722000201_industry_payout_destinations.sql`
-- Create: `supabase/migrations/__tests__/20260722000201_industry_payout_destinations.test.ts`
+- Create: `supabase/migrations/087_industry_payout_destinations.sql`
+- Create: `supabase/migrations/__tests__/087_industry_payout_destinations.test.ts`
 
 **Interfaces:**
 
@@ -125,7 +125,7 @@ export type ProviderFailure = {
 ```
 
 - [ ] **Step 1: Add failing contract tests.** Cover Stripe bank support, TNG capability, no PIN in accepted input types, masked TNG identifiers, missing TNG configuration returning `not_configured`, destination verification states, 24-hour cooldown, and immutable withdrawal destination snapshots.
-- [ ] **Step 2: Run the tests.** Run `npx vitest run lib/payouts/__tests__/destinations.test.ts lib/payouts/__tests__/tng-direct-credit.test.ts supabase/migrations/__tests__/20260722000201_industry_payout_destinations.test.ts`. Expected: the new provider/lifecycle assertions fail.
+- [ ] **Step 2: Run the tests.** Run `npx vitest run lib/payouts/__tests__/destinations.test.ts lib/payouts/__tests__/tng-direct-credit.test.ts supabase/migrations/__tests__/087_industry_payout_destinations.test.ts`. Expected: the new provider/lifecycle assertions fail.
 - [ ] **Step 3: Add the additive migration.** Add destination `cooldown_until`, `verified_at`, `disabled_at`, and safe provider metadata columns; add withdrawal snapshot columns for destination type/provider/masked reference; add payout failure provider/category/code/message/event/timestamp/retryable columns. Add checks preventing TNG PIN-shaped fields or raw credential columns from being introduced. Preserve existing rows and Stripe data.
 - [ ] **Step 4: Implement the provider interface.** Keep Stripe Connect as the existing bank provider. Implement TNG Direct Credit behind an environment/configuration gate. The TNG adapter must use the provider contract supplied during onboarding, send only the provider reference and amount, never accept a PIN parameter, redact provider messages, and return `not_configured` when credentials or endpoint configuration are absent.
 - [ ] **Step 5: Implement destination lifecycle APIs.** `POST` verifies a Bank/TNG destination through the selected provider, stores only provider reference plus masked label, and sets `verified_at`; `PATCH` changes the active destination only after re-verification and sets `cooldown_until = now() + interval '24 hours'`; `GET` returns only safe display fields. Reject withdrawal submission when the destination is not verified or still in cooldown.
@@ -143,8 +143,8 @@ export type ProviderFailure = {
 - Modify: `app/admin/withdrawals/page.tsx`
 - Create: `lib/wallet/withdrawal-review-projection.ts`
 - Create: `lib/wallet/__tests__/withdrawal-review-projection.test.ts`
-- Create: `supabase/migrations/20260722000202_withdrawal_review_sources.sql`
-- Create: `supabase/migrations/__tests__/20260722000202_withdrawal_review_sources.test.ts`
+- Create: `supabase/migrations/088_withdrawal_review_sources.sql`
+- Create: `supabase/migrations/__tests__/088_withdrawal_review_sources.test.ts`
 
 **Interfaces:**
 
@@ -162,7 +162,7 @@ export type WithdrawalReviewSnapshot = {
 ```
 
 - [ ] **Step 1: Add failing payload/projection tests.** Assert Email and In-app metadata contain every required snapshot field, redact KYC/TNG/Stripe secrets, and include a stable request ID. Assert the review projection returns paginated reward sources, affiliate sources, wallet ledger rows, related transactions, and fraud flags.
-- [ ] **Step 2: Run focused tests.** Run `npx vitest run lib/wallet/__tests__/approver-notifications.test.ts lib/wallet/__tests__/withdrawal-review-projection.test.ts supabase/migrations/__tests__/20260722000202_withdrawal_review_sources.test.ts`. Expected: missing fields/projection assertions fail.
+- [ ] **Step 2: Run focused tests.** Run `npx vitest run lib/wallet/__tests__/approver-notifications.test.ts lib/wallet/__tests__/withdrawal-review-projection.test.ts supabase/migrations/__tests__/088_withdrawal_review_sources.test.ts`. Expected: missing fields/projection assertions fail.
 - [ ] **Step 3: Add secured database projection contracts.** Add read-only SECURITY DEFINER functions or views for the review page, enforce Admin/Approver role checks inside the function, return paginated rows, and keep ordinary users restricted to their own withdrawal. Do not add client update/delete policies for ledger, source, or fraud rows.
 - [ ] **Step 4: Build the snapshot at submission time.** Resolve the customer display name, KYC status, risk snapshot, wallet source totals, and destination mask after the secured withdrawal RPC succeeds. Store the notification metadata as an immutable JSON snapshot and use the same snapshot for Email and In-app delivery.
 - [ ] **Step 5: Expand Approver UI.** Add tabs or sections for Risk Summary, Reward Sources, Affiliate Sources, Wallet Ledger, Related Transactions, Fraud Flags, and Payout Destination. Use pagination and masked values; keep actions on the existing Approve/Reject/Hold routes.
@@ -178,7 +178,7 @@ export type WithdrawalReviewSnapshot = {
 - Modify: `app/customer/wallet/withdrawals/[id]/page.tsx`
 - Create: `lib/payouts/failures.ts`
 - Create: `lib/payouts/__tests__/failures.test.ts`
-- Modify: `supabase/migrations/20260722000201_industry_payout_destinations.sql`
+- Modify: `supabase/migrations/087_industry_payout_destinations.sql`
 
 **Interfaces:**
 
@@ -200,7 +200,7 @@ export function normalizeProviderFailure(input: {
 ## Task 5: Correct Monthly Report pending amounts and detail contract
 
 **Files:**
-- Modify: `supabase/migrations/086_payout_report_details.sql` or add the next additive migration `supabase/migrations/20260722000203_payout_report_pending_amounts.sql`
+- Modify: `supabase/migrations/086_payout_report_details.sql` or add the next additive migration `supabase/migrations/089_payout_report_pending_amounts.sql`
 - Modify: `app/api/admin/reports/payouts/route.ts`
 - Modify: `app/api/admin/reports/payouts/__tests__/route.test.ts`
 - Modify: `app/admin/reports/payouts/page.tsx`
@@ -278,4 +278,3 @@ Inline execution will proceed in this order:
 6. Task 7, then full verification.
 
 After each task, stop if a migration contract, provider credential, or test result blocks the next task. Do not mark the plan complete until code tests and the required production evidence are both available.
-
