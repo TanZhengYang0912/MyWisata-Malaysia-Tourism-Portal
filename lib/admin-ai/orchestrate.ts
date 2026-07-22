@@ -34,35 +34,73 @@ never invent your own (e.g. "withdrawals_over_amount" takes {"amountRM": number}
 ${registryDescription()}
 
 Example: "show me withdrawals over 500" -> {"query": "withdrawals_over_amount", "params": {"amountRM": 500}}
+Example: "how many orders has jane@example.com placed" -> {"query": "orders_count_for_customer", "params": {"email": "jane@example.com"}}
+
+A question that names a specific customer (by email, id, or name) is NOT automatically unanswerable —
+route it to a registered query if one exists for it (e.g. orders_count_for_customer). Those queries
+return only a COUNT for that customer, never their personal data, so this is safe. Only answer
+{"query": null} for a named-customer question if it asks for something no registered query returns —
+e.g. their email/phone/IC/address/bank details, their order details, or any other raw personal data.
 
 Respond with ONLY strict JSON, no markdown, no commentary:
 - If one query answers it: {"query": "<name>", "params": {...}}
-- If none of the registered queries can answer it (including any question asking for a specific
-  customer's personal data, name, email, IC, or individual record — none of these queries expose
-  that): {"query": null}`;
+- If none of the registered queries can answer it: {"query": null}`;
 
+// Only ever called with a real, already-computed DATA RESULT — see
+// answerAdminQuestion() below, which short-circuits to FALLBACK_ANSWER
+// before this prompt is ever used when no query matched. That split (fixed
+// string for "no data", LLM only for "phrase this real result") is
+// deliberate: asking the model to freeform "list what you can answer" was
+// exactly what produced the raw registry-dump bug this was built to fix —
+// a static message can't regress that way.
 const PHRASER_SYSTEM_PROMPT = `You are the admin assistant for MyWisata, for platform staff only.
 
-You help with three things:
-1. Answering questions about platform metrics — but ONLY from the DATA RESULT provided to you
-   below. Never guess a number. If there's no DATA RESULT, say you need to run a query and list
-   what you can answer.
-2. Drafting staff messages (vendor emails, notices) from what the admin gives you.
-3. Summarising submissions the admin shows you for moderation review — advisory only, never a
-   verdict.
+You answer questions about platform metrics — but ONLY from the DATA RESULT provided to you below.
+Never guess a number, and never add facts that aren't in DATA RESULT.
 
-You never see raw customer records. You never output anyone's personal details. If asked for a
-specific customer's private data, refuse and explain the platform doesn't expose PII to this
-assistant.
+DATA RESULT is always a safe aggregate (a count, sum, or list of names) — it is structurally
+guaranteed to never contain personal data (emails, phone numbers, IC numbers, addresses, bank
+details), even when the question named a specific customer. So: answer plainly and factually from
+DATA RESULT, including when it's a count "for" a named customer — that count is not PII, do not
+refuse to state it.
 
 Be concise and professional.
 
-What you CAN currently answer (if DATA RESULT is empty, mention these):
-${registryDescription()}`;
+Reply in PLAIN TEXT ONLY — the UI renders your response as-is, with no markdown parser. Never use
+markdown syntax: no "*", no "**", no "-" or "•" bullets, no "#" headings, no backticks. For a
+breakdown of several values, put each on its own line as "Label: value", for example:
+General: 11
+Withdrawal: 1
+Payment: 1
+For a single number, just say it in a plain sentence.`;
+
+// Fix 2 (CLAUDE-ADMIN-AI-EXPAND.md): a fixed string, not an LLM phrasing —
+// names broad categories only, never the raw query registry.
+const NO_MATCH_ANSWER =
+  "Sorry, I couldn't find data for that. Could you rephrase, or ask about vendors, products, KYC, orders, withdrawals, recommendations, tickets, or affiliates?";
 
 function extractJson(text: string): unknown {
   const stripped = text.replace(/```json\s*|```/g, '').trim();
   return JSON.parse(stripped);
+}
+
+const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+
+/**
+ * The picker only ever sees the question AFTER redactPII() has run (every
+ * callGemini() call redacts its userText) — so if the model echoes back an
+ * "email" param, the value it saw and copied can only ever be the [EMAIL]
+ * placeholder token, never the real address. Re-derive the real value here
+ * from the ORIGINAL, unredacted question (already in scope, never sent to
+ * Gemini) rather than trusting the echoed token. Keeps the redaction
+ * boundary fully intact — Gemini still never sees a real email, in either
+ * the picker or phraser call — while letting email-keyed queries actually
+ * resolve to the right customer.
+ */
+function derealizeEmailParam(rawParams: Record<string, unknown>, originalQuestion: string): Record<string, unknown> {
+  if (rawParams.email !== '[EMAIL]') return rawParams;
+  const match = originalQuestion.match(EMAIL_RE);
+  return { ...rawParams, email: match ? match[0] : rawParams.email };
 }
 
 export interface AdminAskResult {
@@ -84,7 +122,8 @@ export async function answerAdminQuestion(service: SupabaseClient, question: str
     if (parsed.success && parsed.data.query) {
       const queryDef = findQuery(parsed.data.query);
       if (queryDef) {
-        const paramsResult = queryDef.paramsSchema.safeParse(parsed.data.params ?? {});
+        const rawParams = derealizeEmailParam(parsed.data.params ?? {}, question);
+        const paramsResult = queryDef.paramsSchema.safeParse(rawParams);
         // An invalid/hallucinated param set is treated as "no query matched" —
         // never guess at what the admin meant, per CLAUDE-ADMIN-AI.md's
         // "Never improvise a query."
@@ -96,11 +135,14 @@ export async function answerAdminQuestion(service: SupabaseClient, question: str
     }
   } catch (error) {
     console.error('[admin-ai] query-picker step failed, proceeding with no data result', error instanceof Error ? error.message : error);
-    // fall through — the phraser call below still runs, DATA RESULT will be "none"
+    // fall through — aggregateResult stays null, handled below same as "no query matched"
   }
 
-  const dataResultText = aggregateResult ? JSON.stringify(aggregateResult) : 'none';
-  const userText = `ADMIN QUESTION: ${question}\n\nDATA RESULT (if any):\n${dataResultText}`;
+  if (!aggregateResult) {
+    return { answer: NO_MATCH_ANSWER, piiDetected, queryUsed: null };
+  }
+
+  const userText = `ADMIN QUESTION: ${question}\n\nDATA RESULT:\n${JSON.stringify(aggregateResult)}`;
   const answer = await callGemini(PHRASER_SYSTEM_PROMPT, userText, { temperature: 0.2, maxOutputTokens: 300 });
 
   return { answer, piiDetected, queryUsed };

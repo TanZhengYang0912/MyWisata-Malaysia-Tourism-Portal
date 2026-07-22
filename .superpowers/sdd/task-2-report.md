@@ -1,0 +1,126 @@
+# Task 2 Report: Vendor Notification Recipient Service
+
+## Scope
+
+Implemented approved-vendor recipient resolution and recipient-specific,
+idempotent notification emission. Email enqueueing is isolated behind
+`lib/vendor-notifications/email.ts`; Task 3 can replace its no-op body with the
+real `enqueueVendorEmail` outbox integration without changing the emitter.
+
+## RED
+
+Added the focused scope and emission tests before the production modules and ran:
+
+```text
+npx vitest run lib/vendor-notifications/__tests__/scope.test.ts lib/vendor-notifications/__tests__/emit.test.ts
+```
+
+The expected failure was observed: both suites failed to import because
+`lib/vendor-notifications/scope.ts` and `lib/vendor-notifications/emit.ts` did
+not exist (`Cannot find package '@/lib/vendor-notifications/...`), with zero
+tests executed.
+
+## GREEN
+
+After implementing the resolver, emitter, and email seam, the focused command
+passed:
+
+```text
+npx vitest run lib/vendor-notifications/__tests__/scope.test.ts lib/vendor-notifications/__tests__/emit.test.ts
+```
+
+Result: `2` files passed; `5` tests passed.
+
+The full verification suite also passed:
+
+```text
+npx tsc --noEmit --pretty false
+npm test -- --run
+git diff --check
+```
+
+Results: TypeScript completed with no diagnostics; `131` test files passed and
+`1` skipped, with `444` tests passed and `9` skipped; diff check was clean.
+
+## Files changed
+
+- `lib/vendor-notifications/scope.ts`
+  - Verifies the vendor exists and is approved.
+  - Rejects missing or cross-vendor outlets.
+  - Resolves the owner and only managers assigned to the event outlet.
+  - Deduplicates by `(userId, role, outletId)`.
+- `lib/vendor-notifications/emit.ts`
+  - Resolves recipients through the service client.
+  - Inserts scoped rows with recipient event keys and `onConflict: 'event_key'` /
+    `ignoreDuplicates: true`.
+  - Returns inserted notification IDs plus all resolved recipient IDs.
+  - Enqueues email only for newly inserted rows when `email` is enabled.
+  - Sanitizes metadata to JSON-safe primitive values.
+- `lib/vendor-notifications/email.ts`
+  - Small mockable Task 3 integration seam; currently a production-safe no-op.
+- `lib/vendor-notifications/__tests__/scope.test.ts`
+  - Deterministic chained Supabase fake and owner/manager isolation coverage.
+- `lib/vendor-notifications/__tests__/emit.test.ts`
+  - Deterministic insert fake, idempotency assertions, and one-email-per-recipient
+    duplicate-event coverage.
+
+## Self-review and concerns
+
+- The real email outbox implementation is intentionally deferred to Task 3. The
+  exact integration point is `enqueueVendorEmail` in
+  `lib/vendor-notifications/email.ts`; replace its body or re-export the Task 3
+  `lib/email/events.ts` implementation.
+- `vendorName` for the future email seam is read from optional metadata and falls
+  back to the vendor ID because Task 2's input contract does not include a
+  vendor name lookup.
+- No UI, API routes, event producers, or remote SQL deployment were changed.
+
+## Commit
+
+`5bfe1335f886c0955c1702b6ed1ef2f68073f65c` (`feat: add vendor notification recipient service`)
+
+## Review fixes
+
+The follow-up review identified two production concerns and both were addressed:
+
+- Migration `080_vendor_notifications.sql` now drops the partial index created
+  by migration 079 and creates a full unique `event_key` index. PostgreSQL still
+  permits multiple NULL keys, while Supabase can now infer
+  `ON CONFLICT (event_key)`.
+- `emitVendorNotification` now invokes the idempotent email enqueue for every
+  resolved recipient after a successful insert attempt, including duplicate
+  notification rows. Newly returned notification IDs are still the only IDs
+  added to `notificationIds`. This allows an email retry after a notification
+  insert succeeded but the first email enqueue failed.
+
+### Review-fix RED/GREEN evidence
+
+RED tests were observed before each fix:
+
+- The migration contract test failed because 080 did not drop/recreate the
+  partial `event_key` index.
+- The new email-retry test failed with two enqueue calls instead of the expected
+  three, proving duplicate rows were suppressing a needed retry.
+
+GREEN verification:
+
+```text
+npx vitest run supabase/migrations/__tests__/080_vendor_notifications.test.ts lib/vendor-notifications/__tests__/scope.test.ts lib/vendor-notifications/__tests__/emit.test.ts
+```
+
+Result: `3` files passed; `8` tests passed.
+
+The fix commit is listed below; the report-only commit follows it.
+
+Review-fix commit: `441ccae69202cc049df016a030133dad50a989c6` (`fix: harden vendor notification idempotency`).
+
+Additional verification after the review fixes:
+
+```text
+npx tsc --noEmit --pretty false
+npm test -- --run
+git diff --check
+```
+
+Results: TypeScript completed with no diagnostics; `131` test files passed and
+`1` skipped, with `446` tests passed and `9` skipped. The diff check was clean.

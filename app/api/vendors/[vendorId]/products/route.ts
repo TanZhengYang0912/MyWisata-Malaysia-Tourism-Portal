@@ -68,7 +68,7 @@ export async function POST(request: Request, { params }: Props) {
     .single();
 
   if (!vendor) return apiFail('NOT_FOUND', 'Vendor not found', 404);
-  if (vendor.status !== 'approved') return apiFail('INVALID_STATE', 'Vendor not approved', 400);
+  if (!['pending', 'rejected', 'approved'].includes(vendor.status)) return apiFail('INVALID_STATE', 'Vendor is not available for draft setup', 400);
 
   const parsed = await parseBody(request, productCreateSchema);
   if (!parsed.ok) return parsed.response;

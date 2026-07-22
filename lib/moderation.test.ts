@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { moderateAccountText } from "./moderation";
+import { moderateAccountText, moderateWalletReason } from "./moderation";
 
 const originalKey = process.env.GOOGLE_AI_KEY;
 const originalModel = process.env.GEMINI_MODEL;
@@ -73,5 +73,50 @@ describe("moderateAccountText", () => {
   ])("fails closed for %s", async (_label, setup) => {
     setup();
     await expect(moderateAccountText("A sufficiently long reason.", "unsuspend_reason")).resolves.toEqual({ error: "api_unavailable" });
+  });
+});
+
+describe("moderateWalletReason", () => {
+  it("requires relevant strict JSON for the selected Wallet category", async () => {
+    process.env.GOOGLE_AI_KEY = "test-key";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":true,"categories":[]}' }] } }] }),
+    );
+
+    await expect(moderateWalletReason(
+      "The payout bank information does not match the verified account.",
+      "reject",
+      "bank_details_mismatch",
+    )).resolves.toEqual({ flagged: false, relevant: true, categories: [] });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.contents[0].parts[0].text).toContain("bank_details_mismatch");
+  });
+
+  it("returns irrelevant and flagged results instead of treating them as clean", async () => {
+    process.env.GOOGLE_AI_KEY = "test-key";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":false,"categories":["unrelated"]}' }] } }] }),
+    );
+    await expect(moderateWalletReason("I do not like this decision.", "hold", "risk_review_required"))
+      .resolves.toEqual({ flagged: false, relevant: false, categories: ["unrelated"] });
+
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":true,"relevant":true,"categories":["harassment"]}' }] } }] }),
+    );
+    await expect(moderateWalletReason("You are an idiot and I will hurt you.", "reject", "other"))
+      .resolves.toEqual({ flagged: true, relevant: true, categories: ["harassment"] });
+  });
+
+  it.each([
+    ["missing key", () => { delete process.env.GOOGLE_AI_KEY; }],
+    ["malformed JSON", () => {
+      process.env.GOOGLE_AI_KEY = "test-key";
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiResponse({ candidates: [{ content: { parts: [{ text: "not json" }] } }] }));
+    }],
+  ])("fails closed for Wallet moderation when %s", async (_label, setup) => {
+    setup();
+    await expect(moderateWalletReason("The payout account needs review.", "hold", "risk_review_required"))
+      .resolves.toEqual({ error: "api_unavailable" });
   });
 });

@@ -1,56 +1,56 @@
-import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
+import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
+import { requestIp } from '@/lib/wallet/request-ip';
+import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+
+const rejectSchema = z.object({ reasonCategory: z.string().trim().min(1), reason: z.string().trim().min(10).max(500) }).strict();
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(
-  req: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: withdrawalId } = await params;
-
+  const { id } = await params;
   const db = await createClient();
-  const { data: { user: authUser } } = await db.auth.getUser();
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { data: { user }, error: authError } = await db.auth.getUser();
+  if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  let note: string | null = null;
-  try {
-    const body = await req.json();
-    note = body.note ?? null;
-  } catch { /* body is optional */ }
+  const parsed = await parseBody(request, rejectSchema);
+  if (!parsed.ok) return parsed.response;
+  const validated = walletReasonSchema.safeParse({ action: 'reject', ...parsed.data });
+  if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid rejection reason', 422);
+  const moderation = await moderateWalletAction({ actorId: user.id, withdrawalId: id, action: 'reject', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
+  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
 
-  const { error } = await db.rpc('admin_reject_withdrawal', {
-    p_withdrawal_id: withdrawalId,
-    p_note:          note,
+  const { data, error } = await db.rpc('reject_wallet_withdrawal', {
+    p_id: id,
+    p_reason: parsed.data.reason,
+    p_ip: requestIp(request),
+    p_reason_category: validated.data.reasonCategory,
   });
-
   if (error) {
-    const msg = error.message;
-    if (msg.includes('admin_required'))            return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    if (msg.includes('self_dealing'))              return NextResponse.json({ error: 'You cannot reject your own withdrawal' }, { status: 403 });
-    if (msg.includes('not_found_or_wrong_status')) return NextResponse.json({ error: 'Withdrawal not found or not in pending status' }, { status: 409 });
-    console.error('[admin-reject] admin_reject_withdrawal:', error);
-    return NextResponse.json({ error: 'Rejection failed' }, { status: 500 });
+    const message = error.message ?? 'Unable to reject withdrawal';
+    const code = message.includes('approver_required') ? 'FORBIDDEN'
+      : message.includes('self_dealing') ? 'SELF_DEALING'
+        : message.includes('withdrawal_not_rejectable') ? 'INVALID_STATE'
+          : 'REJECTION_FAILED';
+    return apiFail(code, message, code === 'FORBIDDEN' || code === 'SELF_DEALING' ? 403 : 409);
   }
 
-  const { data: withdrawal } = await db
-    .from('withdrawal_requests')
-    .select('user_id, amount')
-    .eq('id', withdrawalId)
-    .single();
-  if (withdrawal) {
-    try {
-      await enqueueWithdrawalEmail({
-        withdrawalId,
-        userId: withdrawal.user_id,
-        eventType: 'withdrawal_rejected',
-        amountRm: Number(withdrawal.amount),
-      });
-    } catch (emailError) {
-      console.error('[admin-reject] withdrawal email enqueue failed:', emailError);
-    }
+  const result = data as { user_id: string; amount_rm: number };
+  try {
+    await enqueueWithdrawalEmail({
+      withdrawalId: id,
+      userId: result.user_id,
+      eventType: 'withdrawal_rejected',
+      amountRm: Number(result.amount_rm),
+    });
+  } catch (emailError) {
+    console.error('[withdrawal-reject] email enqueue failed:', emailError);
   }
-
-  return NextResponse.json({ status: 'rejected' });
+  return apiOk({ status: 'rejected' });
 }

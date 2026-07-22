@@ -13,14 +13,8 @@ import { InternationalPhoneInput } from "@/components/profile/international-phon
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { parseInternationalPhone } from "@/lib/phone/international";
-
-const STEPS = [
-  { id: "phone",    label: "Phone" },
-  { id: "identity", label: "Identity" },
-  { id: "avatar",   label: "Avatar" },
-  { id: "bio",      label: "Bio" },
-  { id: "preferences", label: "Preferences" },
-] as const;
+import { computeProfileCompletion } from "@/lib/verification/eligibility";
+import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
 
 function initialStep(tier: string): number {
   if (tier === "email_verified") return 0;
@@ -28,12 +22,26 @@ function initialStep(tier: string): number {
   return -1;
 }
 
+function ProfileCompletionCard({ percentage, missing }: { percentage: number; missing: string[] }) {
+  return (
+    <section aria-label="Profile completion" className="mb-6 rounded-xl border border-border bg-card px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold text-foreground">Profile completion</p>
+        <p className="font-semibold text-primary">{percentage}%</p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
+        <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percentage}%` }} />
+      </div>
+      {missing.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Still needed: {missing.join(", ")}</p>}
+    </section>
+  );
+}
+
 export default function ProfilePage() {
   const { currentUser, refreshUser } = useAuth();
   const { showFeedback } = useActionFeedback();
 
   const tier = currentUser?.verificationTier ?? "email_unverified";
-  const startStep = tier === "email_verified" ? 0 : 1;
   const [step, setStep] = useState<number>(() => initialStep(tier));
 
   // ── Phone ──────────────────────────────────────────────────────────────────
@@ -65,6 +73,29 @@ export default function ProfilePage() {
   const [bio,      setBio]      = useState("");
   const [bioError, setBioError] = useState<string | null>(null);
   const [bioBusy,  setBioBusy]  = useState(false);
+
+  const profileCompletion = computeProfileCompletion({
+    fullName,
+    avatarUrl: avatarPreview,
+    bio,
+    city,
+    country,
+  });
+
+  useEffect(() => {
+    fetch("/api/profile/me")
+      .then((response) => response.ok ? response.json() : null)
+      .then((body: { data?: { fullName?: string | null; avatarUrl?: string | null; bio?: string | null; city?: string | null; country?: string | null } } | null) => {
+        const profile = body?.data;
+        if (!profile) return;
+        setFullName(profile.fullName ?? "");
+        setCity(profile.city ?? "");
+        setCountry(profile.country ?? "");
+        setBio(profile.bio ?? "");
+        if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
+      })
+      .catch(() => undefined);
+  }, []);
 
   // ── Phone handlers ─────────────────────────────────────────────────────────
   async function sendOtp() {
@@ -198,7 +229,7 @@ export default function ProfilePage() {
 
   // ── Bio handler ────────────────────────────────────────────────────────────
   async function submitBio() {
-    if (bio.trim().length < 10) { setBioError("Bio must be at least 10 characters"); return; }
+    if (bio.trim().length < 30) { setBioError("Bio must be between 30 and 200 characters"); return; }
     setBioError(null);
     setBioBusy(true);
     try {
@@ -222,12 +253,21 @@ export default function ProfilePage() {
 
   // ── Done state ─────────────────────────────────────────────────────────────
   const isDone = step === -1 || tier === "profile_complete" || tier === "kyc_verified";
+  const wizardProgress = getWizardProgress(isDone ? -1 : step);
 
-  if (isDone) return <ProfileSections />;
+  if (isDone) return (
+    <>
+      <div className="mx-auto max-w-2xl px-4 pt-8 text-sm font-semibold text-primary" aria-label="Verification wizard complete">
+        Step 5 of 5 · Current: Complete · 100% complete
+      </div>
+      <div className="mx-auto max-w-2xl px-4 pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
+      <ProfileSections />
+    </>
+  );
 
   // ── Progress bar ───────────────────────────────────────────────────────────
-  const visibleSteps = STEPS.slice(startStep);
-  const currentProgress = step - startStep;
+  const visibleSteps = WIZARD_STEPS;
+  const currentProgress = wizardProgress.currentStep - 1;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -244,6 +284,8 @@ export default function ProfilePage() {
         </span>
         <ChevronRight size={18} className="shrink-0 text-primary" />
       </Link>
+
+      <ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} />
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">
@@ -265,6 +307,12 @@ export default function ProfilePage() {
             </div>
           );
         })}
+      </div>
+      <div className="mb-6 rounded-xl bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">
+        <p className="font-semibold text-foreground">Step {wizardProgress.currentStep} of {wizardProgress.totalSteps}</p>
+        <p className="mt-1">Current: {wizardProgress.currentLabel}</p>
+        {wizardProgress.nextLabel && <p className="mt-1">Next: {wizardProgress.nextLabel}</p>}
+        <p className="mt-1 font-semibold text-primary">{wizardProgress.percentage}% complete</p>
       </div>
 
       {/* ── Step 0: Phone Verification ───────────────────────────────────── */}
@@ -426,7 +474,7 @@ export default function ProfilePage() {
             <h2 className="font-bold text-foreground">About You</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            A short bio appears on your public profile and recommendation posts. Min 10, max 500 characters.
+            A short bio appears on your public profile and recommendation posts. Recommended length: 30–200 characters.
           </p>
           <div className="space-y-1">
             <textarea
@@ -434,13 +482,13 @@ export default function ProfilePage() {
               onChange={(e) => { setBio(e.target.value); setBioError(null); }}
               placeholder="e.g. Malaysian travel enthusiast who loves discovering hidden gems and authentic local food…"
               rows={4}
-              maxLength={500}
+              maxLength={200}
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               style={{ borderColor: bioError ? "var(--destructive)" : "var(--border)" }}
             />
             <div className="flex justify-between items-center">
               {bioError ? <p className="text-xs text-destructive">{bioError}</p> : <span />}
-              <p className="text-xs text-muted-foreground">{bio.length}/500</p>
+              <p className="text-xs text-muted-foreground">{bio.length}/200</p>
             </div>
           </div>
           <Button onClick={submitBio} disabled={bioBusy} className="w-full">

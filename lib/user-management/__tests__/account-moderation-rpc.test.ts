@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260716000090_admin_account_lifecycle_context.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/055_admin_account_lifecycle_context.sql");
 
 describe("admin account lifecycle RPC patch", () => {
   it("sets the server-managed lifecycle context before status mutations", () => {

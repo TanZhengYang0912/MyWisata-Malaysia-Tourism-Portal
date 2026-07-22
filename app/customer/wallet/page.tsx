@@ -1,22 +1,28 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Wallet, ArrowDownCircle, ArrowUpCircle, Clock,
   CheckCircle2, XCircle, Building2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import {
-  getMyWithdrawals, getWalletBuckets,
-  requestWithdrawal, getConnectStatus,
+  getMyWithdrawals,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WithdrawalRequest } from "@/backend/core/types";
+import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
+import { selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 
 
-type ConnectStatus = "loading" | "kyc_required" | "unlinked" | "onboarding" | "verified";
+type ConnectStatus = "loading" | "kyc_required" | "unlinked" | "onboarding" | "dashboard_action" | "status_error" | "verified";
+type PayoutCapabilities = {
+  bank_account: { enabled: boolean; provider: string };
+  e_wallet: { enabled: boolean; provider: string | null };
+};
 
 function WalletContent() {
   const { currentUser } = useAuth();
@@ -25,7 +31,7 @@ function WalletContent() {
   const onboardComplete  = searchParams.get("onboarding") === "complete";
   const onboardRefresh   = searchParams.get("onboarding") === "refresh";
 
-  const [buckets, setBuckets]         = useState<{ topup: number; earnings: number } | null>(null);
+  const [buckets, setBuckets]         = useState<{ topup: number; earnings: number; pendingEarnings: number; reservedEarnings: number; withdrawnEarnings: number } | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("loading");
 
@@ -35,6 +41,12 @@ function WalletContent() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing]     = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
+  const [selectedDestinationId, setSelectedDestinationId] = useState("");
+  const [payoutCapabilities, setPayoutCapabilities] = useState<PayoutCapabilities>({
+    bank_account: { enabled: true, provider: "stripe_connect" },
+    e_wallet: { enabled: false, provider: "tng_direct_credit" },
+  });
 
   // Top-up form
   const [showTopUp, setShowTopUp]     = useState(false);
@@ -46,17 +58,63 @@ function WalletContent() {
   const [onboarding, setOnboarding] = useState(false);
   const [onboardError, setOnboardError] = useState("");
 
+  const refreshConnectStatus = useCallback(async () => {
+    if (!currentUser) return;
+    setConnectStatus("loading");
+    setOnboardError("");
+    try {
+      const response = await fetch("/api/stripe/connect-status", { cache: "no-store" });
+      const body = await response.json() as {
+        data?: {
+          accountId: string | null;
+          tier: string;
+          payoutsEnabled: boolean;
+          requiresDashboardAction: boolean;
+        };
+        error?: { message?: string } | string;
+      };
+      if (!response.ok) {
+        const message = typeof body.error === "string"
+          ? body.error
+          : body.error?.message ?? "We could not verify your payout account. Please try again.";
+        setOnboardError(message);
+        setConnectStatus("status_error");
+        return;
+      }
+
+      const data = body.data;
+      if (!data || data.tier !== "kyc_verified") setConnectStatus("kyc_required");
+      else if (!data.accountId) setConnectStatus("unlinked");
+      else if (data.payoutsEnabled) setConnectStatus("verified");
+      else if (data.requiresDashboardAction) setConnectStatus("dashboard_action");
+      else setConnectStatus("onboarding");
+    } catch {
+      setOnboardError("We could not verify your payout account. Please try again.");
+      setConnectStatus("status_error");
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser) return;
-    getWalletBuckets(currentUser.id).then(setBuckets);
-    getMyWithdrawals(currentUser.id).then(setWithdrawals);
-    getConnectStatus(currentUser.id).then(({ accountId, payoutsEnabled, tier }) => {
-      if (tier !== "kyc_verified")    setConnectStatus("kyc_required");
-      else if (!accountId)            setConnectStatus("unlinked");
-      else if (payoutsEnabled)        setConnectStatus("verified");
-      else                            setConnectStatus("onboarding");
+    fetch('/api/wallet/summary').then((response) => response.json()).then((body) => {
+      const summary = body.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
+      setBuckets(summary ? {
+        topup: summary.topupSen / 100,
+        earnings: summary.earningsSen / 100,
+        pendingEarnings: summary.pendingEarningsSen / 100,
+        reservedEarnings: summary.reservedEarningsSen / 100,
+        withdrawnEarnings: summary.withdrawnEarningsSen / 100,
+      } : null);
     });
-  }, [currentUser]);
+    getMyWithdrawals(currentUser.id).then(setWithdrawals);
+    fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
+      const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
+      setDestinations(nextDestinations);
+      if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
+      setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
+    }).catch(() => setDestinations([]));
+    void refreshConnectStatus();
+  }, [currentUser, refreshConnectStatus]);
 
   async function handleConnectOnboard() {
     setOnboarding(true);
@@ -64,7 +122,18 @@ function WalletContent() {
     try {
       const res  = await fetch("/api/stripe/connect-onboard", { method: "POST" });
       const data = await res.json();
-      if (!res.ok) { setOnboardError(data.error ?? "Failed to start onboarding."); return; }
+      if (!res.ok) {
+        const message = typeof data.error === "string"
+          ? data.error
+          : data.error?.message ?? "We could not start Stripe onboarding.";
+        setOnboardError(message);
+        setConnectStatus(data.error?.code === "STRIPE_DASHBOARD_ACTION_REQUIRED" ? "dashboard_action" : "status_error");
+        return;
+      }
+      if (data.status === "verified") {
+        await refreshConnectStatus();
+        return;
+      }
       window.location.href = data.url;
     } catch {
       setOnboardError("Failed to start onboarding.");
@@ -74,7 +143,8 @@ function WalletContent() {
   }
 
   function openWithdraw() {
-    if (connectStatus !== "verified") {
+    const selectedDestination = destinations.find((destination) => destination.id === selectedDestinationId);
+    if (connectStatus !== "verified" && selectedDestination?.type !== "e_wallet") {
       setShowConnectModal(true);
     } else {
       setShowWithdraw((v) => !v);
@@ -93,9 +163,28 @@ function WalletContent() {
     if (amount < 50)            { setWithdrawError("Minimum withdrawal is RM 50.00."); return; }
     setWithdrawing(true);
     try {
-      const w = await requestWithdrawal(currentUser.id, amount);
-      setWithdrawals((prev) => [w, ...(prev ?? [])]);
-      setBuckets((b) => b ? { ...b, earnings: b.earnings - amount } : b);
+      const response = await fetch('/api/wallet/withdrawals', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
+      });
+      const body = await response.json() as { error?: { message?: string } | string };
+      if (!response.ok) {
+        throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? 'Failed to submit withdrawal');
+      }
+      const [nextWithdrawals, nextBuckets] = await Promise.all([
+        getMyWithdrawals(currentUser.id),
+        fetch('/api/wallet/summary').then((response) => response.json()),
+      ]);
+      setWithdrawals(nextWithdrawals);
+      const summary = nextBuckets.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
+      if (summary) setBuckets({
+        topup: summary.topupSen / 100,
+        earnings: summary.earningsSen / 100,
+        pendingEarnings: summary.pendingEarningsSen / 100,
+        reservedEarnings: summary.reservedEarningsSen / 100,
+        withdrawnEarnings: summary.withdrawnEarningsSen / 100,
+      });
       setShowWithdraw(false);
       setWithdrawAmount("");
     } catch (err) {
@@ -129,12 +218,8 @@ function WalletContent() {
   }
 
   const totalBalance      = (buckets?.topup ?? 0) + (buckets?.earnings ?? 0);
-  const pending           = (withdrawals ?? []).filter((w) => w.status === "pending");
-  const processing        = (withdrawals ?? []).filter((w) => w.status === "processing");
-  const history           = (withdrawals ?? []).filter((w) => !["pending", "processing"].includes(w.status));
-  // Task 23: client-side hint — earnings already debited on submit, but show pending total for clarity
-  const pendingTotal      = pending.reduce((s, w) => s + w.amount, 0);
-  const availableEarnings = Math.max(0, (buckets?.earnings ?? 0) - pendingTotal);
+  const displayGroups     = getWithdrawalDisplayGroups(withdrawals ?? [], buckets?.earnings ?? 0);
+  const { pending, history, pendingTotal, availableEarnings } = displayGroups;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -173,7 +258,7 @@ function WalletContent() {
           {buckets === null ? "—" : `RM ${totalBalance.toFixed(2)}`}
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Top-up balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
@@ -181,9 +266,28 @@ function WalletContent() {
             </p>
           </div>
           <div className="rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">Earnings (withdrawable)</p>
+            <p className="text-xs opacity-60">Earnings balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.earnings.toFixed(2)}`}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-4 py-2">
+            <p className="text-xs opacity-60">Pending rewards</p>
+            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
+              {buckets === null ? "—" : `RM ${buckets.pendingEarnings.toFixed(2)}`}
+            </p>
+            <p className="mt-1 text-[10px] leading-snug opacity-60">Available after the 7-day hold and KYC approval.</p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-4 py-2">
+            <p className="text-xs opacity-60">Reserved withdrawals</p>
+            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
+              {buckets === null ? "—" : `RM ${buckets.reservedEarnings.toFixed(2)}`}
+            </p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-4 py-2">
+            <p className="text-xs opacity-60">Withdrawn earnings</p>
+            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
+              {buckets === null ? "—" : `RM ${buckets.withdrawnEarnings.toFixed(2)}`}
             </p>
           </div>
         </div>
@@ -210,10 +314,12 @@ function WalletContent() {
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
               connectStatus === "verified"    ? "bg-primary/15" :
-              connectStatus === "onboarding"  ? "bg-amber-100"  : "bg-muted"
+              connectStatus === "onboarding" || connectStatus === "dashboard_action" ? "bg-amber-100" :
+              connectStatus === "status_error" ? "bg-red-100" : "bg-muted"
             }`}>
               {connectStatus === "verified"   ? <CheckCircle2 size={16} className="text-primary" /> :
-               connectStatus === "onboarding" ? <Clock        size={16} className="text-amber-600" /> :
+               connectStatus === "onboarding" || connectStatus === "dashboard_action" ? <Clock size={16} className="text-amber-600" /> :
+               connectStatus === "status_error" ? <AlertCircle size={16} className="text-red-600" /> :
                                                 <Building2    size={16} className="text-muted-foreground" />}
             </div>
 
@@ -221,12 +327,16 @@ function WalletContent() {
               <p className="text-sm font-semibold text-foreground">
                 {connectStatus === "verified"     ? "Bank account connected"          :
                  connectStatus === "onboarding"   ? "Bank account setup in progress"  :
+                 connectStatus === "dashboard_action" ? "Complete Stripe setup in Dashboard" :
+                 connectStatus === "status_error" ? "Unable to verify payout account" :
                  connectStatus === "kyc_required" ? "KYC verification required"       :
                                                     "No bank account linked"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {connectStatus === "verified"     ? "Withdrawal payouts go to your linked account." :
                  connectStatus === "onboarding"   ? "Complete Stripe setup to enable withdrawals."  :
+                 connectStatus === "dashboard_action" ? "Complete your payout requirements in Stripe Dashboard." :
+                 connectStatus === "status_error" ? (onboardError || "Please retry the status check.") :
                  connectStatus === "kyc_required" ? "Complete KYC to link a payout account."        :
                                                     "Required to receive withdrawal payouts."}
               </p>
@@ -237,6 +347,11 @@ function WalletContent() {
               <Button size="sm" className="shrink-0" onClick={handleConnectOnboard} disabled={onboarding}>
                 {onboarding          ? "Loading…"         :
                  connectStatus === "onboarding" ? "Continue Setup" : "Get Started"}
+              </Button>
+            )}
+            {(connectStatus === "dashboard_action" || connectStatus === "status_error") && (
+              <Button size="sm" variant="outline" className="shrink-0" onClick={() => void refreshConnectStatus()}>
+                Retry status check
               </Button>
             )}
           </div>
@@ -273,7 +388,7 @@ function WalletContent() {
         <form onSubmit={handleWithdraw} className="rounded-2xl border border-border bg-card p-5 mb-6 space-y-4">
           <h2 className="font-bold text-foreground">Request Withdrawal</h2>
 
-          {/* Task 23: available balance hint */}
+          {/* Earnings are already reduced by the submission RPC; reserved is shown separately. */}
           <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>Earnings balance</span>
@@ -281,8 +396,8 @@ function WalletContent() {
             </div>
             {pendingTotal > 0 && (
               <div className="flex justify-between text-amber-600">
-                <span>In-progress requests</span>
-                <span className="font-mono">− RM {pendingTotal.toFixed(2)}</span>
+                <span>Reserved withdrawal requests</span>
+                <span className="font-mono">RM {pendingTotal.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
@@ -302,13 +417,31 @@ function WalletContent() {
             />
           </div>
 
-          {/* Task 22: destination is always Stripe bank on file */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Destination</label>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
-              <Building2 size={14} className="shrink-0" />
-              Stripe bank on file
-            </div>
+            {destinations.length > 0 ? (
+              <select
+                value={selectedDestinationId}
+                onChange={(e) => setSelectedDestinationId(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id} disabled={destination.status !== "verified"}>
+                    {destination.displayLabel} {destination.status !== "verified" ? `(${destination.status})` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
+                <Building2 size={14} className="shrink-0" />
+                Stripe bank on file
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {payoutCapabilities.e_wallet.enabled
+                ? "Only verified destinations can receive withdrawals. TNG eWallet uses a secure provider verification flow."
+                : "Only verified bank destinations are enabled. TNG eWallet payouts are not configured yet."}
+            </p>
           </div>
 
           {parseFloat(withdrawAmount) >= 500 && (
@@ -341,15 +474,24 @@ function WalletContent() {
                 ? "You need to complete KYC verification before setting up a payout account."
                 : connectStatus === "onboarding"
                 ? "Your Stripe bank account setup is not yet complete. Continue setup to enable withdrawals."
+                : connectStatus === "dashboard_action"
+                ? "Complete your payout requirements in Stripe Dashboard, then retry the status check."
+                : connectStatus === "status_error"
+                ? (onboardError || "We could not verify your payout account. Please try again.")
                 : "Link a bank account via Stripe to receive withdrawal payouts."}
             </p>
             {onboardError && <p className="text-xs text-red-500">{onboardError}</p>}
             <div className="flex gap-2">
-              {connectStatus !== "kyc_required" && (
+              {(connectStatus === "unlinked" || connectStatus === "onboarding") && (
                 <Button className="flex-1" onClick={() => { setShowConnectModal(false); handleConnectOnboard(); }} disabled={onboarding}>
                   {onboarding
                     ? "Loading…"
                     : connectStatus === "onboarding" ? "Continue Setup" : "Set Up Bank Account"}
+                </Button>
+              )}
+              {(connectStatus === "dashboard_action" || connectStatus === "status_error") && (
+                <Button className="flex-1" onClick={() => { setShowConnectModal(false); void refreshConnectStatus(); }}>
+                  Retry status check
                 </Button>
               )}
               <Button variant="outline" className="flex-1" onClick={() => setShowConnectModal(false)}>
@@ -361,16 +503,16 @@ function WalletContent() {
       )}
 
       {/* ── In Progress ── */}
-      {(pending.length > 0 || processing.length > 0) && (
+      {pending.length > 0 && (
         <div className="rounded-2xl overflow-hidden border border-border bg-card mb-4">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
             <Clock size={14} className="text-accent" />
             <h2 className="font-bold text-foreground text-sm">
-              In Progress ({pending.length + processing.length})
+              In Progress ({pending.length})
             </h2>
           </div>
           <div className="divide-y divide-border">
-            {[...pending, ...processing].map((w) => (
+            {pending.map((w) => (
               <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{w.destination}</p>
@@ -379,6 +521,7 @@ function WalletContent() {
                 <div className="text-right">
                   <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
+                  <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">View receipt</Link>
                 </div>
               </div>
             ))}
@@ -391,7 +534,7 @@ function WalletContent() {
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-bold text-foreground text-sm">Transaction History</h2>
         </div>
-        {history.length === 0 && pending.length === 0 && processing.length === 0 ? (
+        {history.length === 0 && pending.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-muted-foreground">No transactions yet.</div>
         ) : history.length === 0 ? (
           <div className="px-5 py-6 text-center text-sm text-muted-foreground">No completed transactions yet.</div>
@@ -415,6 +558,7 @@ function WalletContent() {
                 <div className="text-right">
                   <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
+                  <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">View receipt</Link>
                 </div>
               </div>
             ))}

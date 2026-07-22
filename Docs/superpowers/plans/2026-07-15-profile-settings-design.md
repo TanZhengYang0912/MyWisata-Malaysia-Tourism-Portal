@@ -43,7 +43,7 @@
 ### Task 2: Add soft-delete lifecycle RPCs and restore gating
 
 **Files:**
-- Create: `supabase/migrations/20260715000040_profile_account_lifecycle.sql`
+- Create: `supabase/migrations/050_profile_account_lifecycle.sql`
 - Create: `app/api/account/close/route.ts`
 - Create: `app/api/account/restore/route.ts`
 - Create: `app/account-restore/page.tsx`
@@ -101,7 +101,7 @@
 - Modify: `backend/core/types.ts`
 - Modify: `backend/domains/identity.ts`
 - Modify: `app/customer/profile/[userId]/page.tsx`
-- Create: `supabase/migrations/20260715000050_public_profile_bio.sql`
+- Create: `supabase/migrations/051_public_profile_bio.sql`
 - Modify: `lib/profile/__tests__/profile-summary.test.ts`
 
 **Interfaces:**

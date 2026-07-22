@@ -10,10 +10,28 @@ export const chatbotAskSchema = z.object({
 
 export type ChatbotAskInput = z.infer<typeof chatbotAskSchema>;
 
+// ── Customer-controlled feedback (CLAUDE-CHATBOT-FEEDBACK.md) ──────────────
+// One row per bot message, upserted by messageId: the first call (a
+// helpful y/n click, or the automatic "couldn't answer" record) creates the
+// row; a later "open a ticket" call only ever sets openedTicket on the same
+// row. botAnswered is required to create the row, optional to update it.
+
+export const chatbotFeedbackSchema = z.object({
+  sessionKey: z.string().min(1).max(64).optional(),
+  messageId: z.string().uuid(),
+  question: z.string().trim().max(500).optional(),
+  botAnswered: z.boolean().optional(),
+  helpful: z.boolean().nullable().optional(),
+  openedTicket: z.boolean().optional(),
+}).strict();
+
+export type ChatbotFeedbackInput = z.infer<typeof chatbotFeedbackSchema>;
+
 // ── Ticket escalation (Step 8) ──────────────────────────────
 
 export const supportTicketSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
+  withdrawalId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),
 }).strict();

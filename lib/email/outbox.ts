@@ -1,10 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendAccountEmail, sendTransactionEmail } from '@/lib/email/sender';
-import type { AccountEmailInput, AccountEmailType, TransactionEmailInput, TransactionEmailType } from '@/lib/email/templates';
+import { sendAccountEmail, sendTransactionEmail, sendVendorEmail } from '@/lib/email/sender';
+import type {
+  AccountEmailInput,
+  AccountEmailType,
+  TransactionEmailInput,
+  TransactionEmailType,
+  VendorEmailInput,
+  VendorEmailType,
+} from '@/lib/email/templates';
 
-export type EmailEventType = TransactionEmailType | AccountEmailType;
+export type EmailEventType = TransactionEmailType | AccountEmailType | VendorEmailType;
 
-export type EmailOutboxInput = (TransactionEmailInput | AccountEmailInput) & {
+export type EmailOutboxInput = (TransactionEmailInput | AccountEmailInput | VendorEmailInput) & {
   eventKey: string;
   userId?: string | null;
   toEmail: string;
@@ -17,6 +24,7 @@ type OutboxRow = {
   payload: {
     recipientName?: string | null;
     amountRm?: number;
+    vendorName?: string;
     reference?: string;
     reason?: string;
     occurredAt?: string;
@@ -31,6 +39,15 @@ export function makeEmailEventKey(eventType: EmailEventType, reference: string):
 
 export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted: boolean; id?: string }> {
   const db = createServiceClient();
+  const payload: OutboxRow['payload'] = {
+    recipientName: input.recipientName ?? null,
+    occurredAt: input.occurredAt,
+  };
+  if ('amountRm' in input) payload.amountRm = input.amountRm;
+  if ('vendorName' in input) payload.vendorName = input.vendorName;
+  if ('reference' in input) payload.reference = input.reference ?? undefined;
+  if ('reason' in input) payload.reason = input.reason;
+
   const { data, error } = await db
     .from('email_outbox')
     .upsert({
@@ -38,13 +55,7 @@ export async function enqueueEmail(input: EmailOutboxInput): Promise<{ inserted:
       user_id: input.userId ?? null,
       to_email: input.toEmail,
       event_type: input.eventType,
-      payload: {
-        recipientName: input.recipientName ?? null,
-        amountRm: 'amountRm' in input ? input.amountRm : undefined,
-        reference: 'reference' in input ? input.reference : undefined,
-        reason: 'reason' in input ? input.reason : undefined,
-        occurredAt: input.occurredAt,
-      },
+      payload,
       status: 'pending',
       next_attempt_at: new Date().toISOString(),
     }, { onConflict: 'event_key', ignoreDuplicates: true })
@@ -64,7 +75,17 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
   let failed = 0;
   for (const row of (claimed ?? []) as OutboxRow[]) {
     try {
-      if (row.event_type.startsWith('account_')) {
+      if (row.event_type.startsWith('vendor_')) {
+        await sendVendorEmail({
+          eventType: row.event_type as VendorEmailType,
+          recipientName: row.payload?.recipientName ?? null,
+          vendorName: String(row.payload?.vendorName ?? 'Your vendor'),
+          reason: String(row.payload?.reason ?? 'Vendor notification update'),
+          reference: row.payload?.reference ?? null,
+          occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
+          to: row.to_email,
+        });
+      } else if (row.event_type.startsWith('account_')) {
         await sendAccountEmail({
           eventType: row.event_type as AccountEmailType,
           recipientName: row.payload?.recipientName ?? null,
@@ -79,6 +100,7 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
           amountRm: Number(row.payload?.amountRm ?? 0),
           reference: String(row.payload?.reference ?? row.id),
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
+          reason: row.payload?.reason,
           to: row.to_email,
         });
       }

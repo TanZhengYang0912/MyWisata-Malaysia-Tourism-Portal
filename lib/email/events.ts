@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
-import type { AccountEmailType, TransactionEmailType } from '@/lib/email/templates';
+import type { AccountEmailType, TransactionEmailType, VendorEmailInput } from '@/lib/email/templates';
 
 type UserEmailEventInput = {
   userId: string;
@@ -10,6 +10,65 @@ type UserEmailEventInput = {
   amountRm: number;
   occurredAt?: string;
 };
+
+export type VendorEmailEventInput = VendorEmailInput & {
+  userId: string;
+  eventKey: string;
+};
+
+export async function enqueueVendorClaimInviteEmail(input: {
+  recommendationId: string;
+  email: string;
+  vendorName: string;
+  claimUrl: string;
+}): Promise<void> {
+  await enqueueEmail({
+    eventKey: `vendor_claim_invite:${input.recommendationId}`,
+    toEmail: input.email,
+    eventType: 'vendor_account_update',
+    vendorName: input.vendorName,
+    reason: 'Your business has been invited to complete vendor onboarding.',
+    reference: input.claimUrl,
+    occurredAt: new Date().toISOString(),
+  });
+
+  try {
+    await processEmailOutbox(10);
+  } catch (error) {
+    console.error('[email-outbox] vendor claim invite failed:', error);
+  }
+}
+
+export async function enqueueVendorEmail(input: VendorEmailEventInput): Promise<void> {
+  const db = createServiceClient();
+  const { data: user, error } = await db
+    .from('users')
+    .select('email, full_name')
+    .eq('id', input.userId)
+    .single();
+
+  if (error || !user) throw new Error(`Cannot find email recipient for user ${input.userId}`);
+  const toEmail = String((user as { email?: string | null }).email ?? '').trim();
+  if (!toEmail) throw new Error(`User ${input.userId} has no email address`);
+
+  await enqueueEmail({
+    eventKey: input.eventKey,
+    userId: input.userId,
+    toEmail,
+    eventType: input.eventType,
+    recipientName: (user as { full_name?: string | null }).full_name ?? input.recipientName ?? null,
+    vendorName: input.vendorName,
+    reason: input.reason,
+    reference: input.reference ?? null,
+    occurredAt: input.occurredAt,
+  });
+
+  try {
+    await processEmailOutbox(10);
+  } catch (error) {
+    console.error('[email-outbox] vendor notification failed:', error);
+  }
+}
 
 export async function enqueueUserAccountEmail(input: {
   userId: string;

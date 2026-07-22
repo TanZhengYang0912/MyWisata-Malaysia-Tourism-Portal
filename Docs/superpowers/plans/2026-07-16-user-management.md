@@ -67,7 +67,7 @@ Expected: PASS.
 ### Task 2: Add secure Supabase list/detail/mutation RPCs
 
 **Files:**
-- Create: `supabase/migrations/20260716000060_admin_user_management.sql`
+- Create: `supabase/migrations/052_admin_user_management.sql`
 - Test: `lib/user-management/__tests__/rpc-contract.test.ts`
 
 **Interfaces:**
@@ -120,7 +120,7 @@ Run the complete file in the project’s Supabase SQL Editor, then run `NOTIFY p
 - Modify: `lib/email/templates.ts`
 - Modify: `lib/email/outbox.ts`
 - Modify: `lib/email/sender.ts`
-- Create: `supabase/migrations/20260716000070_account_management_email.sql`
+- Create: `supabase/migrations/053_account_management_email.sql`
 - Test: `app/api/admin/users/__tests__/route-contract.test.ts`
 
 **Interfaces:**

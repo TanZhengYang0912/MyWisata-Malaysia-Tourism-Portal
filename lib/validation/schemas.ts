@@ -77,6 +77,26 @@ export const withdrawalApproveSchema = z.object({
   { message: 'Reject requires a note of at least 10 characters', path: ['note'] },
 );
 
+export const walletSettingsPatchSchema = z.object({
+  clearanceDays: z.number().int().min(1).max(30).optional(),
+  minAmountSen: z.number().int().min(100).optional(),
+  dualApprovalThresholdSen: z.number().int().min(0).optional(),
+  escalationHours: z.number().int().min(24).max(168).optional(),
+  holdEscalationHours: z.number().int().min(24).max(720).optional(),
+  reason: z.string().trim().min(10).max(500),
+  reasonCategory: z.string().trim().min(1).default('other'),
+}).strict().refine(
+  (value) => Object.keys(value).some((key) => key !== 'reason'),
+  { message: 'At least one wallet setting must be provided', path: ['reason'] },
+);
+
+export const walletApproverPatchSchema = z.object({
+  userId: uuid,
+  action: z.enum(['grant', 'revoke']),
+  reason: z.string().trim().min(10).max(500),
+  reasonCategory: z.string().trim().min(1).default('other'),
+}).strict();
+
 // ── Idempotency ────────────────────────────────────────────
 
 export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).or(z.string().min(16).max(128));
@@ -84,7 +104,7 @@ export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4
 export const checkoutPrepareSchema = z.object({
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),
-  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'mock_card']),
+  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card']),
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();
 

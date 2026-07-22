@@ -4,7 +4,7 @@
 // missing customer-facing half of the ticket system (admin could already
 // see tickets; customers had no way to see a reply).
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -35,8 +35,14 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function CustomerSupportPage() {
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
+  const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
+  const [subject, setSubject] = useState("Withdrawal information");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
+    setWithdrawalId(new URLSearchParams(window.location.search).get("withdrawal"));
     (async () => {
       try {
         const res = await fetch("/api/support/tickets");
@@ -47,6 +53,23 @@ export default function CustomerSupportPage() {
       }
     })();
   }, []);
+
+  async function submitWithdrawalTicket(event: FormEvent) {
+    event.preventDefault();
+    if (!withdrawalId || body.trim().length < 1) return;
+    setSending(true); setFormError("");
+    try {
+      const response = await fetch("/api/support/tickets", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ withdrawalId, subject, body }),
+      });
+      const result = await response.json() as { data?: { id: string }; error?: { message?: string } };
+      if (!response.ok || !result.data) throw new Error(result.error?.message ?? "Unable to create support ticket");
+      window.location.href = `/customer/support/${result.data.id}`;
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Unable to create support ticket");
+    } finally { setSending(false); }
+  }
 
   if (tickets === undefined) {
     return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
@@ -60,6 +83,15 @@ export default function CustomerSupportPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <h1 className="text-2xl font-bold text-foreground mb-6 font-[family-name:var(--font-display)]">My Tickets</h1>
+
+      {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
+        <p className="font-semibold text-foreground">Provide information for your held withdrawal</p>
+        <p className="text-sm text-muted-foreground">Reference: {withdrawalId}</p>
+        <input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label="Ticket subject" />
+        <textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={2000} placeholder="Explain the requested payout information…" className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label="Ticket message" />
+        {formError && <p className="text-sm text-red-600">{formError}</p>}
+        <button type="submit" disabled={sending || !body.trim()} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? "Sending…" : "Send information"}</button>
+      </form>}
 
       {tickets.length === 0 ? (
         <EmptyState

@@ -17,8 +17,8 @@ test.describe('Recommendation rate limit (PR 019)', () => {
     await page.goto('/login');
     await page.locator('input[type="email"]').fill(CUSTOMER_EMAIL);
     await page.locator('input[type="password"]').fill(CUSTOMER_PASS);
-    await page.getByRole('button', { name: /sign in|log in/i }).click();
-    await page.waitForURL(/\/customer\//);
+    await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL(/\/customer(?:\/|$)/);
 
     // ── 2. Fire 5 submissions via API (same cookie jar = same auth session) ─
     // Using unique names to avoid duplicate detection
@@ -54,15 +54,15 @@ test.describe('Recommendation rate limit (PR 019)', () => {
 
     // ── 4. Navigate to recommendations page and verify UI error ───────────
     await page.goto('/customer/recommendations');
-    await page.getByRole('button', { name: /recommend/i }).click();
+    await page.getByRole('button', { name: 'Recommend', exact: true }).click();
 
     // Fill form
-    await page.getByLabel(/vendor name/i).fill(`PW Test Vendor ${ts}-UI`);
-    await page.getByLabel(/description/i).fill(
+    await page.getByPlaceholder(/Aunty Lim's Nyonya Kitchen/i).fill(`PW Test Vendor ${ts}-UI`);
+    await page.getByPlaceholder(/Describe what makes this vendor special/i).fill(
       'This submission should be blocked by the daily rate limit and show an error in the UI.',
     );
     // State might be a select or input
-    const stateField = page.getByLabel(/state/i).first();
+    const stateField = page.locator('select').last();
     if (await stateField.getAttribute('role') === 'combobox' || await stateField.evaluate(el => el.tagName) === 'SELECT') {
       await stateField.selectOption({ label: 'Selangor' });
     } else {

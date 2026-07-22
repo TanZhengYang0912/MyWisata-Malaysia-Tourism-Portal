@@ -8,7 +8,7 @@
 // it since neither is usable standalone without some UI. Capability 3 (AI
 // review) lives on the recommendations screen itself, not here.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Send, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ interface ChatMessage {
 }
 
 const SESSION_STORAGE_KEY = "mw_admin_ai_session";
+const DRAFT_QUESTION_KEY = "mw_admin_ai_draft_question";
 const DRAFT_TYPES = [
   { value: "onboarding", label: "Vendor onboarding" },
   { value: "rejection", label: "Rejection notice" },
@@ -27,14 +28,49 @@ const DRAFT_TYPES = [
   { value: "custom", label: "Custom" },
 ] as const;
 
+/** Synchronous localStorage read — lazy initializer, not an effect (matches components/shared/chatbot-widget.tsx). */
+function readLocalStorage(key: string): string {
+  return typeof window === "undefined" ? "" : (window.localStorage.getItem(key) ?? "");
+}
+
 function AskPanel() {
   const [sessionKey, setSessionKey] = useState<string | null>(() =>
     typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_STORAGE_KEY),
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  // Fix 4: the unsent question survives navigation — lazy-read on mount,
+  // written to localStorage on every keystroke, cleared once actually sent.
+  const [input, setInputState] = useState<string>(() => readLocalStorage(DRAFT_QUESTION_KEY));
   const [sending, setSending] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  function setInput(value: string) {
+    setInputState(value);
+    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_QUESTION_KEY, value);
+  }
+
+  // Fix 4: restore the conversation — an async DB fetch, so this needs an
+  // effect (unlike the synchronous localStorage reads above). Inline async
+  // IIFE per the repo's react-hooks/set-state-in-effect convention (see
+  // activity-detail-client.tsx). Only runs once, for whatever session was
+  // already in localStorage when this component first mounted.
+  useEffect(() => {
+    if (!sessionKey) return;
+    (async () => {
+      setLoadingHistory(true);
+      try {
+        const res = await fetch(`/api/admin-ai/session?sessionKey=${encodeURIComponent(sessionKey)}`);
+        const body = (await res.json()) as { data: { messages: ChatMessage[] } | null };
+        if (res.ok && body.data) setMessages(body.data.messages);
+      } catch {
+        // best-effort restore — an empty history just means the conversation starts fresh
+      } finally {
+        setLoadingHistory(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function send() {
     const question = input.trim();
@@ -78,7 +114,8 @@ function AskPanel() {
           <h2 className="text-sm font-bold text-foreground">Ask about platform metrics</h2>
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {messages.length === 0 && (
+          {loadingHistory && <p className="text-xs text-muted-foreground">Restoring conversation…</p>}
+          {!loadingHistory && messages.length === 0 && (
             <p className="text-xs text-muted-foreground">
               e.g. &ldquo;How many recommendations are pending this week?&rdquo; or &ldquo;Show me withdrawals over 500&rdquo;.
               Answers only come from registered aggregate queries — never raw customer data.
@@ -111,12 +148,34 @@ function AskPanel() {
   );
 }
 
+const DRAFT_TYPE_KEY = "mw_admin_ai_draft_type";
+const DRAFT_CONTEXT_KEY = "mw_admin_ai_draft_context";
+const DRAFT_OUTPUT_KEY = "mw_admin_ai_draft_output";
+
 function DraftPanel() {
-  const [type, setType] = useState<(typeof DRAFT_TYPES)[number]["value"]>("onboarding");
-  const [context, setContext] = useState("");
-  const [draft, setDraft] = useState("");
+  // Fix 4: all three fields (the type picker, the unsent context, and the
+  // last generated draft) survive navigation — same lazy-read /
+  // write-on-change pattern as AskPanel's question input.
+  const [type, setTypeState] = useState<(typeof DRAFT_TYPES)[number]["value"]>(
+    () => (readLocalStorage(DRAFT_TYPE_KEY) || "onboarding") as (typeof DRAFT_TYPES)[number]["value"],
+  );
+  const [context, setContextState] = useState<string>(() => readLocalStorage(DRAFT_CONTEXT_KEY));
+  const [draft, setDraftState] = useState<string>(() => readLocalStorage(DRAFT_OUTPUT_KEY));
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function setType(value: (typeof DRAFT_TYPES)[number]["value"]) {
+    setTypeState(value);
+    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_TYPE_KEY, value);
+  }
+  function setContext(value: string) {
+    setContextState(value);
+    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_CONTEXT_KEY, value);
+  }
+  function setDraft(value: string) {
+    setDraftState(value);
+    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_OUTPUT_KEY, value);
+  }
 
   async function generate() {
     if (!context.trim() || generating) return;

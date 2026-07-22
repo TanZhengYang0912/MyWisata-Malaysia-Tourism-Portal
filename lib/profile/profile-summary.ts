@@ -23,6 +23,7 @@ export type PreferenceRow = {
   travel_style: string | null;
   budget_range: string | null;
   mobility_needs: string | null;
+  preferred_distance?: string | null;
 };
 
 export type KycReviewRow = {
@@ -82,6 +83,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
       travelStyle: preference.travel_style,
       budgetRange: preference.budget_range,
       mobilityNeeds: preference.mobility_needs,
+      preferredDistance: preference.preferred_distance ?? null,
     } : null,
     latestKycReview: latestReview(reviews),
   };

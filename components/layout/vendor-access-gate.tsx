@@ -11,6 +11,7 @@ const OUTLET_MANAGER_PATHS = [
   '/vendor/bookings',
   '/vendor/orders',
   '/vendor/inbox',
+  '/vendor/notifications',
 ];
 
 export default function VendorAccessGate({ children }: { children: React.ReactNode }) {

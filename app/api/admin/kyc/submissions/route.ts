@@ -24,7 +24,7 @@ export async function GET() {
 
   const { data, error } = await service
     .from('kyc_submissions')
-    .select('id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side)')
+    .select('id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side),kyc_ocr_results(status,holder_name,document_number_last4,expiry_date,confidence,mismatch_fields,processed_at)')
     .in('status', ['pending', 'info_requested'])
     .order('created_at', { ascending: true });
   if (error) return apiFail('SUBMISSION_LOOKUP_FAILED', 'Unable to load KYC submissions', 500);
@@ -34,6 +34,10 @@ export async function GET() {
     queuePosition: row.queue_position ?? null, submittedAt: row.created_at, reviewedAt: row.reviewed_at ?? null,
     reviewedBy: row.reviewer_id ?? null, reviewReasonCode: row.review_reason_code ?? null, reviewReasonDetail: row.review_reason_detail ?? null,
     documents: ((row as { kyc_submission_documents?: { side: 'front' | 'back' }[] }).kyc_submission_documents ?? []).map(({ side }) => ({ side })),
+    ocr: (() => {
+      const ocr = (row as { kyc_ocr_results?: { status: AdminKycSubmission['ocr'] extends infer T ? T extends { status: infer S } ? S : never : never; holder_name: string | null; document_number_last4: string | null; expiry_date: string | null; confidence: number | null; mismatch_fields: string[] | null; processed_at: string }[] }).kyc_ocr_results?.[0];
+      return ocr ? { status: ocr.status as NonNullable<AdminKycSubmission['ocr']>['status'], holderName: ocr.holder_name, documentNumberLast4: ocr.document_number_last4, expiryDate: ocr.expiry_date, confidence: ocr.confidence, mismatchFields: ocr.mismatch_fields ?? [], processedAt: ocr.processed_at } : null;
+    })(),
   }));
   return apiOk({ submissions });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { CheckCircle2, Play, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
@@ -82,6 +82,8 @@ export default function AdminRecommendationsPage() {
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [clearingMessage, setClearingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getVendorRecommendations().then(setRecs);
@@ -117,6 +119,33 @@ export default function AdminRecommendationsPage() {
     }
   }
 
+  async function runRewardClearing() {
+    if (clearing) return;
+    setClearing(true);
+    setClearingMessage(null);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/recommendations/run-clearing', { method: 'POST' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = body?.error?.message ?? 'Unable to clear recommendation rewards.';
+        setError(message);
+        showFeedback('error', message);
+        return;
+      }
+      const result = body?.data ?? {};
+      const message = `Cleared ${result.cleared?.length ?? 0}, reversed ${result.reversed?.length ?? 0}, and kept ${result.skipped ?? 0} pending.`;
+      setClearingMessage(message);
+      showFeedback('success', message);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to clear recommendation rewards.';
+      setError(message);
+      showFeedback('error', message);
+    } finally {
+      setClearing(false);
+    }
+  }
+
   const pending  = recs.filter((r) => r.status === "pending");
   const reviewed = recs.filter((r) => r.status !== "pending");
 
@@ -129,6 +158,22 @@ export default function AdminRecommendationsPage() {
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
+
+      <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label="Recommendation reward clearing">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">Recommendation reward clearing</h2>
+            <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+              Moves seven-day pending rewards to available earnings only after KYC approval. Cancelled or refunded orders are reversed automatically.
+            </p>
+          </div>
+          <Button type="button" onClick={runRewardClearing} disabled={clearing} className="shrink-0 gap-2">
+            {clearing ? <CheckCircle2 size={15} className="animate-pulse" /> : <Play size={15} />}
+            {clearing ? 'Running…' : 'Run reward clearing'}
+          </Button>
+        </div>
+        {clearingMessage && <p className="mt-3 text-xs font-medium text-primary">{clearingMessage}</p>}
+      </section>
 
       <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">

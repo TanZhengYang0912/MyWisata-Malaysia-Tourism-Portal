@@ -7,6 +7,7 @@ import { ArrowRightLeft, ChevronDown, Gift, Globe, Heart, Inbox, Map, MessageCir
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import { WishlistProvider } from "@/components/providers/wishlist";
 import { TripProvider, useTrip } from "@/components/providers/trip";
 import { supabase } from "@/backend/supabase";
@@ -14,6 +15,7 @@ import { supabase } from "@/backend/supabase";
 const UNREAD_POLL_MS = 30_000;
 
 const NAV = [
+  { href: "/customer/for-you", label: "For You", icon: Star },
   { href: "/customer/explore", label: "Explore", icon: Search },
   { href: "/customer/map", label: "Map", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
@@ -171,7 +173,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             ))}
           </div>
 
-          <Link href="/customer/cart" className="relative md:hidden ml-auto">
+          <div className="md:hidden ml-auto"><NotificationBell /></div>
+          <Link href="/customer/cart" className="relative md:hidden">
             <ShoppingCart size={20} className="text-foreground" />
             {count > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center bg-destructive">
@@ -181,6 +184,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="hidden md:flex items-center gap-3 ml-auto shrink-0">
+            <NotificationBell />
             <Link href="/customer/cart" className="relative">
               <ShoppingCart size={18} className="text-foreground" />
               {count > 0 && (
@@ -191,7 +195,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <div ref={accountMenuRef} className="relative shrink-0">
+          <Link href="/customer/profile#preferences" className="mr-3 hidden h-full items-center text-sm font-medium text-muted-foreground transition hover:text-primary lg:inline-flex">Preferences</Link>
+
+          <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
             <button
               type="button"
               onClick={() => setAccountMenuOpen((open) => !open)}

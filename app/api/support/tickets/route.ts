@@ -30,7 +30,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('support_tickets')
-    .select('id, subject, category, status, created_at, last_reply_at, customer_last_read_at')
+    .select('id, subject, category, status, withdrawal_id, created_at, last_reply_at, customer_last_read_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) return apiFail('DB_ERROR', error.message, 500);
@@ -47,6 +47,7 @@ export async function GET() {
       subject: t.subject,
       category: t.category,
       status: t.status,
+      withdrawalId: t.withdrawal_id,
       createdAt: t.created_at,
       lastActivityAt: t.last_reply_at ?? t.created_at,
       unread: isUnread(t.customer_last_read_at, latestAdminReplies.get(t.id)),
@@ -60,7 +61,19 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, subject, body } = parsed.data;
+  const { sessionKey, withdrawalId, subject, body } = parsed.data;
+
+  if (withdrawalId) {
+    if (!user) return apiFail('UNAUTHORIZED', 'Sign in to link a withdrawal to a support ticket', 401);
+    const { data: withdrawal, error: withdrawalError } = await supabase
+      .from('withdrawal_requests')
+      .select('id, user_id, status')
+      .eq('id', withdrawalId)
+      .maybeSingle();
+    if (withdrawalError) return apiFail('DB_ERROR', withdrawalError.message, 500);
+    if (!withdrawal || withdrawal.user_id !== user.id) return apiFail('FORBIDDEN', 'This withdrawal is not yours', 403);
+    if (withdrawal.status !== 'hold') return apiFail('INVALID_STATE', 'Only a held withdrawal can be linked to this support ticket', 409);
+  }
 
   let sessionId: string | null = null;
   if (sessionKey) {
@@ -91,6 +104,7 @@ export async function POST(request: Request) {
     .insert({
       user_id: user?.id ?? null,
       session_id: sessionId,
+      withdrawal_id: withdrawalId ?? null,
       subject: cleanedSubject.display,
       body: cleanedBody.display,
       category,

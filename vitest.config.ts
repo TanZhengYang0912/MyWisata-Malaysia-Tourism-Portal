@@ -10,6 +10,7 @@ export default defineConfig({
       "tests/e2e/**",
       "scripts/**/*.test.mjs",
       "docs/**",
+      "Docs/**",
     ],
   },
   resolve: {

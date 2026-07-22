@@ -5,13 +5,16 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   update: vi.fn(),
   updateEq: vi.fn(),
+  rpc: vi.fn(),
   accountsCreate: vi.fn(),
   accountLinksCreate: vi.fn(),
+  retrieveConnectAccountStatus: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
+    rpc: mocks.rpc,
     from: () => ({
       select: () => ({
         eq: () => ({ single: mocks.single }),
@@ -29,6 +32,10 @@ vi.mock('@/lib/stripe', () => ({
     accounts: { create: mocks.accountsCreate },
     accountLinks: { create: mocks.accountLinksCreate },
   },
+}));
+
+vi.mock('@/lib/stripe/connect-status', () => ({
+  retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
 }));
 
 const { POST } = await import('../route');
@@ -51,8 +58,18 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockReset();
     mocks.update.mockReset();
     mocks.updateEq.mockReset().mockResolvedValue({ error: null });
+    mocks.rpc.mockReset().mockResolvedValue({ data: null, error: null });
     mocks.accountsCreate.mockReset();
     mocks.accountLinksCreate.mockReset();
+    mocks.retrieveConnectAccountStatus.mockReset().mockResolvedValue({
+      accountId: 'acct_existing123',
+      accountType: 'standard',
+      dashboardType: null,
+      detailsSubmitted: false,
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      requiresDashboardAction: false,
+    });
 
     mocks.getUser.mockResolvedValue({ data: { user: authUser } });
     mocks.single.mockResolvedValue({
@@ -136,11 +153,80 @@ describe('POST /api/stripe/connect-onboard', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.accountsCreate).not.toHaveBeenCalled();
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_existing123',
+      p_payouts_enabled: false,
+    });
     expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
       account: 'acct_existing123',
       type: 'account_onboarding',
     }));
+  });
+
+  it('returns verified status and skips Account Links for an enabled account', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: 'acct_enabled',
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_enabled',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: true,
+      payoutsEnabled: true,
+      chargesEnabled: true,
+      requiresDashboardAction: false,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: 'verified', accountId: 'acct_enabled' });
+    expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_enabled',
+      p_payouts_enabled: true,
+    });
+  });
+
+  it('returns Dashboard action guidance for incomplete Full Dashboard accounts', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: 'acct_incomplete',
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_incomplete',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: false,
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      requiresDashboardAction: true,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: { code: 'STRIPE_DASHBOARD_ACTION_REQUIRED' },
+    });
+    expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_incomplete',
+      p_payouts_enabled: false,
+    });
   });
 
   it('does not start onboarding before KYC verification', async () => {

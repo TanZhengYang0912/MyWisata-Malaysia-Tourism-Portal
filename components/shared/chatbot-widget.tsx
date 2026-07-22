@@ -2,27 +2,56 @@
 
 // P4 — Member 4: FAQ chatbot widget. See CLAUDE.md Step 7.
 //
-// The "Get help from our team" button already POSTs to /api/support/tickets
-// (Step 8) — that route doesn't exist yet, so escalation will fail
-// gracefully (shown as "couldn't create a ticket") until Step 8 lands. This
-// is the expected shape once it does, not a stub to rewrite later.
+// CLAUDE-CHATBOT-FEEDBACK.md: escalation is now customer-controlled, not
+// automatic. Every bot reply carries its own small feedback state machine:
+//   answered   -> "Was this helpful?" (Yes collapses to thanks, No -> ticket offer)
+//   unanswered -> straight to the ticket offer (no helpfulness question —
+//                 the bot already said it didn't know)
+//   ticket offer -> Yes creates a ticket via the existing endpoint, No dismisses
+// Nothing here ever calls POST /api/support/tickets except the ticket
+// offer's own "Yes" — there is no automatic escalation path left.
 //
 // CLAUDE-FIXES.md Fix 2: "close the loop" — escalation used to tell the
-// user nothing beyond "a ticket has been created." Now it names the ticket
-// and links to My Tickets, since that page (and the reply mechanism behind
-// it) exists now.
+// user nothing beyond "a ticket has been created." Still true here: the
+// ticket_created stage names the ticket and links to My Tickets.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+type FeedbackStage =
+  | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
+  | "helpful_done" // collapsed after Yes
+  | "awaiting_ticket" // Flow 2 (bot couldn't answer) or Flow 1's "No" — offer a ticket
+  | "ticket_created" // collapsed after the ticket offer's Yes succeeds
+  | "ticket_declined"; // collapsed after the ticket offer's No
+
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
+  /** Bot messages only — ties this reply to its chatbot_feedback row. */
+  messageId?: string;
+  /** Bot messages only — the user's question this reply answers, used as the ticket subject/body if one gets opened. */
+  question?: string;
+  feedbackStage?: FeedbackStage;
+  ticketId?: string;
+  ticketError?: string;
 }
 
 const SESSION_STORAGE_KEY = "mw_chatbot_session";
+
+async function postFeedback(payload: Record<string, unknown>) {
+  try {
+    await fetch("/api/chatbot/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // best-effort — a logging failure must never visibly break the chat flow
+  }
+}
 
 export function ChatbotWidget() {
   const [open, setOpen] = useState(false);
@@ -36,10 +65,7 @@ export function ChatbotWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [canEscalate, setCanEscalate] = useState(false);
-  const [escalating, setEscalating] = useState(false);
-  const [escalateNote, setEscalateNote] = useState<string | null>(null);
-  const [escalatedTicketId, setEscalatedTicketId] = useState<string | null>(null);
+  const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,8 +78,6 @@ export function ChatbotWidget() {
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
     setInput("");
-    setCanEscalate(false);
-    setEscalateNote(null);
 
     try {
       const res = await fetch("/api/chatbot/ask", {
@@ -62,19 +86,35 @@ export function ChatbotWidget() {
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; canEscalate: boolean } | null;
+        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
         setMessages((m) => [...m, { role: "bot", text: "Sorry, something went wrong. Please try again." }]);
         return;
       }
+      const { answer, botAnswered, messageId } = body.data;
+      let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
+        effectiveSessionKey = body.data.sessionKey;
         setSessionKey(body.data.sessionKey);
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
-      setMessages((m) => [...m, { role: "bot", text: body.data!.answer }]);
-      setCanEscalate(body.data.canEscalate);
+
+      setMessages((m) => [
+        ...m,
+        { role: "bot", text: answer, messageId, question, feedbackStage: botAnswered ? "awaiting_helpful" : "awaiting_ticket" },
+      ]);
+
+      // Flow 2: the bot already knows it didn't help — there's no yes/no
+      // helpfulness question to ask, so this is recorded automatically
+      // rather than waiting on a click that will never come. helpful stays
+      // null (not false): null means "never asked", which is what actually
+      // happened here — the couldn't-answer signal is bot_answered=false
+      // on its own, distinct from a real thumbs-down on a real answer.
+      if (!botAnswered) {
+        postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
+      }
     } catch {
       setMessages((m) => [...m, { role: "bot", text: "Sorry, something went wrong. Please try again." }]);
     } finally {
@@ -82,32 +122,41 @@ export function ChatbotWidget() {
     }
   }
 
-  async function escalate() {
-    if (escalating) return;
-    setEscalating(true);
-    setEscalateNote(null);
-    const lastQuestion = [...messages].reverse().find((m) => m.role === "user")?.text ?? "Support request";
+  function submitHelpful(index: number, helpful: boolean) {
+    const msg = messages[index];
+    if (!msg.messageId) return;
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: helpful ? "helpful_done" : "awaiting_ticket" } : m)));
+    postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, question: msg.question, botAnswered: true, helpful });
+  }
+
+  function declineTicket(index: number) {
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_declined" } : m)));
+  }
+
+  async function createTicket(index: number) {
+    const msg = messages[index];
+    if (!msg.messageId || creatingTicketFor) return;
+    setCreatingTicketFor(msg.messageId);
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
+
     try {
+      const subject = msg.question ?? "Support request";
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject: lastQuestion, body: lastQuestion }),
+        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
       });
       const result = (await res.json()) as { data: { id: string; category: string } | null };
       if (res.ok && result.data) {
-        setEscalatedTicketId(result.data.id);
-        const shortId = result.data.id.slice(0, 8).toUpperCase();
-        setEscalateNote(
-          `I've created ticket #${shortId} for you. Our team will reply — you'll get a notification, and you can see it under My Tickets.`,
-        );
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id } : m)));
+        postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, openedTicket: true });
       } else {
-        setEscalateNote("Couldn't create a ticket right now. Please try again later.");
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: "Couldn't create a ticket right now. Please try again." } : m)));
       }
     } catch {
-      setEscalateNote("Couldn't create a ticket right now. Please try again later.");
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: "Couldn't create a ticket right now. Please try again." } : m)));
     } finally {
-      setEscalating(false);
-      setCanEscalate(false);
+      setCreatingTicketFor(null);
     }
   }
 
@@ -137,30 +186,68 @@ export function ChatbotWidget() {
               </p>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
-              >
-                {m.text}
-              </div>
-            ))}
-            {canEscalate && !escalateNote && (
-              <div className="pt-1">
-                <Button size="sm" variant="outline" onClick={escalate} disabled={escalating} className="w-full">
-                  {escalating ? "Creating ticket…" : "Get help from our team"}
-                </Button>
-              </div>
-            )}
-            {escalateNote && (
-              <div className="pt-1 text-center">
-                <p className="text-xs text-muted-foreground">{escalateNote}</p>
-                {escalatedTicketId && (
-                  <Link href={`/customer/support/${escalatedTicketId}`} className="text-xs text-primary underline">
-                    View my tickets
-                  </Link>
+              <div key={i}>
+                <div
+                  className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
+                >
+                  {m.text}
+                </div>
+                {m.role === "bot" && m.feedbackStage && (
+                  <div className="mt-1.5 max-w-[85%]">
+                    {m.feedbackStage === "awaiting_helpful" && (
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+                        <span className="text-xs text-muted-foreground flex-1">Was this helpful?</span>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
+                          Yes
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
+                          No
+                        </Button>
+                      </div>
+                    )}
+                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">Glad I could help.</p>}
+                    {m.feedbackStage === "awaiting_ticket" && (
+                      <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground flex-1">Want to open a support ticket?</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => createTicket(i)}
+                            disabled={creatingTicketFor === m.messageId}
+                          >
+                            {creatingTicketFor === m.messageId ? "Creating…" : "Yes"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs"
+                            onClick={() => declineTicket(i)}
+                            disabled={creatingTicketFor === m.messageId}
+                          >
+                            No
+                          </Button>
+                        </div>
+                        {m.ticketError && <p className="text-[11px] text-destructive mt-1">{m.ticketError}</p>}
+                      </div>
+                    )}
+                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">No problem. Ask me anything else.</p>}
+                    {m.feedbackStage === "ticket_created" && (
+                      <div className="px-1">
+                        <p className="text-xs text-muted-foreground">
+                          Done — ticket #{m.ticketId?.slice(0, 8).toUpperCase()} created. Our team will reply; you&apos;ll see it under My
+                          Tickets.
+                        </p>
+                        <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
+                          View my tickets
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            ))}
           </div>
 
           <div className="flex items-center gap-2 px-3 py-3 border-t border-border">

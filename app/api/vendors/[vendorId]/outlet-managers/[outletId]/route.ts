@@ -1,5 +1,6 @@
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ vendorId: string; outletId: string }> }
 
@@ -20,5 +21,23 @@ export async function DELETE(_request: Request, { params }: Props) {
     const { error: deleteRoleError } = await db.from('user_roles').delete().eq('user_id', assignment.user_id).eq('role_id', role.id).eq('outlet_id', outletId);
     if (deleteRoleError) return apiFail('DB_ERROR', deleteRoleError.message, 500);
   }
+  // Emit only after both mutations succeed. The explicit override preserves
+  // the affected manager as a recipient after the assignment row is gone.
+  void emitVendorNotification({
+    eventKey: `manager:revoke:${vendorId}:${outletId}:${assignment.user_id}`,
+    vendorId,
+    outletId,
+    audience: 'owner_and_assigned_outlet',
+    category: 'vendor_account',
+    type: 'vendor_manager_permission_revoked',
+    title: 'Outlet Manager access removed',
+    body: 'Your Outlet Manager access for this outlet was removed.',
+    link: `/vendor/${vendorId}/settings/managers`,
+    email: true,
+    reference: outletId,
+    metadata: { action: 'revoke' },
+    recipientOverrides: [{ userId: assignment.user_id, role: 'outlet_manager', outletId }],
+    serviceDb: db,
+  }).catch((notificationError) => console.error('[vendor-notifications] manager revoke event failed', notificationError));
   return apiOk({ outletId, userId: assignment.user_id });
 }

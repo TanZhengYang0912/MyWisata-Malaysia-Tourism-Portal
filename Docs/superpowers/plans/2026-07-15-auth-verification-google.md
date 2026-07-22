@@ -23,7 +23,7 @@
 
 ## File structure
 
-- `supabase/migrations/20260715000030_auth_verification_tier.sql` — authoritative email verification state, tier migration, Auth trigger sync, gate helpers, RLS-safe promotion revisions, existing-user backfill.
+- `supabase/migrations/049_auth_verification_tier.sql` — authoritative email verification state, tier migration, Auth trigger sync, gate helpers, RLS-safe promotion revisions, existing-user backfill.
 - `lib/auth/password-policy.ts` — shared UI validation matching the Supabase Auth setting.
 - `lib/auth/safe-next.ts` — only accepts local `next` redirects.
 - `app/auth/callback/route.ts` — exchanges Supabase PKCE code and redirects safely.
@@ -73,7 +73,7 @@ Create a throwaway real Gmail test account through the Supabase Auth UI. Confirm
 ### Task 2: Add the unverified-email database state and trusted Auth sync
 
 **Files:**
-- Create: `supabase/migrations/20260715000030_auth_verification_tier.sql`
+- Create: `supabase/migrations/049_auth_verification_tier.sql`
 - Modify: `lib/constants.ts`
 - Modify: `backend/core/types.ts`
 - Test: `tests/auth-verification-tier.sql` (SQL assertions executed against the configured test project)
@@ -201,7 +201,7 @@ Expected: PASS.
 ### Task 4: Make profile completion and avatar validation authoritative
 
 **Files:**
-- Modify: `supabase/migrations/20260715000030_auth_verification_tier.sql`
+- Modify: `supabase/migrations/049_auth_verification_tier.sql`
 - Modify: `app/api/profile/avatar/route.ts`
 - Modify: `app/api/profile/avatar/confirm/route.ts`
 - Modify: `app/api/profile/identity/route.ts`
@@ -261,7 +261,7 @@ Expected: PASS; TXT masquerading as JPEG is rejected.
 - Modify: `app/api/stripe/create-order-checkout/route.ts`
 - Modify: `app/customer/checkout/page.tsx`
 - Modify: `app/api/phone/verify-otp/route.ts`
-- Modify: `supabase/migrations/20260715000030_auth_verification_tier.sql`
+- Modify: `supabase/migrations/049_auth_verification_tier.sql`
 - Test: `app/api/recommendations/__tests__/tier-gate.test.ts`
 - Test: `app/api/affiliate/link/__tests__/tier-gate.test.ts`
 - Test: `app/api/stripe/__tests__/phone-gate.test.ts`

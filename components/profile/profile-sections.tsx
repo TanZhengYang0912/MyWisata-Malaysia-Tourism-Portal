@@ -16,8 +16,8 @@ type SectionId = "personal" | "contact";
 
 const interestLabel = (slug: string) => INTEREST_OPTIONS.find((o) => o.slug === slug)?.label ?? slug;
 
-function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;
+function SectionCard({ id, title, description, children }: { id?: string; title: string; description: string; children: React.ReactNode }) {
+  return <section id={id} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;
 }
 
 function StatusBadge({ label, good = false }: { label: string; good?: boolean }) {
@@ -155,7 +155,7 @@ export function ProfileSections() {
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>View KYC page <ChevronRight size={14} /></Button>}
       </SectionCard>
 
-      <SectionCard title="Preferences" description="These personalise your recommendation feed.">
+      <SectionCard id="preferences" title="Preferences" description="These personalise your recommendation feed.">
         <div className="space-y-2 text-sm">
           <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map(interestLabel).join(", ") : "No interests selected yet"}</p>
           {summary.survey && <p className="text-muted-foreground">{summary.survey.travelStyle || "Travel style not set"} · {summary.survey.budgetRange || "Budget not set"} · {summary.survey.mobilityNeeds || "Mobility not set"}</p>}

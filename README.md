@@ -55,6 +55,19 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 
 ## Demo accounts
 
+## Production readiness checklist
+
+Before enabling the live verification and payout paths, configure and verify these items in the deployment environments. Secret values must stay in Vercel/Supabase settings and must never be committed to this repository.
+
+- **Vercel Cron:** set `CRON_SECRET` in Production and bind `/api/cron/wallet-maintenance` to the checked-in `vercel.json` schedule. Confirm a real run returns escalation, reward-clearance, and report results in server logs; repeat the run to confirm it is safe to retry.
+- **Supabase Auth:** enable Confirm Email, configure `/auth/callback` in the allowed redirect URLs, and configure the Google OAuth provider. A Google identity with a trusted `email_verified` claim receives only Email Verified status; Phone Verification, Profile Completion, and KYC remain separate requirements.
+- **KYC OCR:** configure `GOOGLE_AI_KEY` and optionally `GEMINI_OCR_MODEL`. If the key is missing or the provider fails, the submission remains pending and the API marks `manualReviewRequired: true`; OCR must never approve KYC by itself.
+- **Stripe payouts:** configure the Stripe Connect account and both webhook secrets, then verify successful, duplicate, and failed webhook deliveries. Failed provider codes/messages are normalized and stored without exposing credentials or raw personal data.
+- **TNG eWallet payouts:** configure the real TNG Direct Credit merchant credentials and the provider adapter only after the official provider contract is available. The application accepts a TNG phone/DuitNow reference, never a TNG PIN, and keeps the feature visibly unavailable until the provider is genuinely configured.
+- **Supabase migrations:** apply the additive industry-readiness migrations `087`, `088`, `089`, and `090` after migration `086`. Verify destination snapshots, review-source RPCs, report amount keys, and payout-failure fields before testing withdrawals.
+
+Recommended smoke sequence: create an email account and verify it, sign in with Google, verify a phone, complete the five profile fields, submit and review KYC, create a verified payout destination, submit a withdrawal, exercise Approve/Reject/Hold/Failed paths, generate the monthly report, and inspect the maintenance run logs.
+
 At `/login`, pick a seeded role — no password (mock auth):
 
 - **Customer** (4 seeded, different verification tiers)
@@ -163,17 +176,19 @@ paste each into the SQL editor, in order) before testing anything below:
 
 1. `/login` → sign in as **Alice** (`customer1@demo.local`, KYC-approved).
 
-   **If step 2's Share button (or any `POST /api/affiliate/link` call) 403s
-   with `TIER_INSUFFICIENT`, check `users.tier` before anything else.** The
-   affiliate gate reads `users.tier`, not `users.kyc_status` — the
-   tier-ladder migration (`025_tier_ladder.sql`) introduced `tier` as a
-   separate column, and `app/api/affiliate/link/route.ts` was updated to
-   gate on `meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_FULL)`
-   (currently `'kyc_verified'`). Alice's `kyc_status` is `'approved'`, but as
-   of this writing her `tier` had drifted to only `'email_verified'` —
-   un-backfilled data, not an intentional gate. If this demo step 403s,
-   confirm Alice's `tier` is `'kyc_verified'` (ask the tier-ladder owner to
-   backfill it) before assuming the affiliate code is broken.
+   **Update, this session:** the affiliate gate is `meetsMinTier(profile.tier,
+   REQUIRED_TIER.AFFILIATE_BASIC)` — `'profile_complete'`, not
+   `'kyc_verified'` — both in `app/api/affiliate/link/route.ts` (unchanged)
+   and now also in `lib/affiliate/verification.ts`'s shared client-side
+   check, renamed `isAffiliateEligible()` (was `isKycApproved()`, which
+   incorrectly gated on `'kyc_verified'` and blocked the `/customer/affiliate`
+   dashboard and the Share button's affiliate-code embedding for anyone
+   below full KYC, even though the server-side link-creation route never
+   required that). Alice's `tier` had drifted to `'email_verified'` (below
+   even the old threshold); she's been promoted to `'profile_complete'` via
+   `admin_set_tier()` so this demo step works without a 403. If any step
+   here still 403s with `TIER_INSUFFICIENT`, check `users.tier` first — this
+   is un-backfilled seed data drifting, not an intentional gate.
 2. Open any activity (e.g. Georgetown Heritage Walk) → press **Share**. On
    `localhost`, `navigator.share` is usually unavailable, so this copies an
    `/r/AF-XXXXXX/<slug>` link to your clipboard instead — that's the expected

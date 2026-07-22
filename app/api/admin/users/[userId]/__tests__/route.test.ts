@@ -104,7 +104,7 @@ describe("POST /api/admin/users/[userId]", () => {
     const body = await response.json();
 
     expect(response.status).toBe(503);
-    expect(body.error.message).toContain("20260716000080_account_moderation_rpc.sql");
+    expect(body.error.message).toContain("054_account_moderation_rpc.sql");
   });
 
   it("includes a sanitized unknown database reason for admin debugging", async () => {
@@ -130,6 +130,6 @@ describe("POST /api/admin/users/[userId]", () => {
     const body = await response.json();
 
     expect(response.status).toBe(503);
-    expect(body.error.message).toContain("20260716000090_admin_account_lifecycle_context.sql");
+    expect(body.error.message).toContain("055_admin_account_lifecycle_context.sql");
   });
 });
