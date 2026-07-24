@@ -6,6 +6,7 @@ import {
   selectPublicDocument,
 } from "@/lib/vendor/outlet-page-persistence";
 import { validateOutletPageDocument } from "@/lib/vendor/outlet-page-schema";
+import { getOutletProductIds } from "@/backend/domains/catalogue";
 
 interface Props {
   params: Promise<{ vendorId: string; outletId: string }>;
@@ -90,14 +91,15 @@ export async function PATCH(request: Request, { params }: Props) {
   for (const block of validation.data.blocks)
     for (const id of block.productIds || []) productIds.add(id);
   if (productIds.size) {
-    const { data: products, error: productError } =
-      await access.access.serviceDb
-        .from("products")
-        .select("id")
-        .eq("outlet_id", outletId)
-        .in("id", [...productIds]);
-    if (productError) return apiFail("DB_ERROR", productError.message, 500);
-    if ((products || []).length !== productIds.size)
+    // "Belongs to this outlet" now means owned directly OR offered here — a
+    // shared product has outlet_id = NULL and lives in outlet_offers.
+    let sellable: Set<string>;
+    try {
+      sellable = await getOutletProductIds(access.access.serviceDb, outletId, [...productIds]);
+    } catch (error) {
+      return apiFail("DB_ERROR", error instanceof Error ? error.message : "Unable to verify products", 500);
+    }
+    if (sellable.size !== productIds.size)
       return apiFail(
         "INVALID_PRODUCT_SCOPE",
         "Every selected product must belong to this outlet",

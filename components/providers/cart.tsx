@@ -3,14 +3,15 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import * as commerce from "@/backend/domains/commerce";
 import { getActivities } from "@/backend/domains/catalogue";
-import { cartTotals } from "@/backend/core/helpers";
+import { cartItemKey, cartTotals } from "@/backend/core/helpers";
 import { useAuth } from "@/components/providers/auth";
 import { supabase } from "@/backend/supabase";
 import type { Activity, CartItem, Voucher } from "@/backend/core/types";
 
-export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId">): string {
-  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}`;
-}
+// Single source of truth lives in backend/core/helpers so the client, the cart
+// domain and the checkout route cannot drift apart. Re-exported here because
+// most callers already import it from this provider.
+export { cartItemKey } from "@/backend/core/helpers";
 
 interface CartContextValue {
   items: CartItem[];
@@ -19,6 +20,7 @@ interface CartContextValue {
   selectedItems: CartItem[];
   toggleSelected: (key: string) => void;
   setAllSelected: (selected: boolean, keys?: string[]) => void;
+  setGroupSelected: (keys: string[], selected: boolean) => void;
   addItem: (item: CartItem) => Promise<void>;
   updateQty: (index: number, qty: number) => Promise<void>;
   removeItem: (index: number) => Promise<void>;
@@ -65,6 +67,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setSelectedKeys(selected ? new Set(keys ?? items.map(cartItemKey)) : new Set());
   }, [items]);
 
+  // Outlet-group selection. Unlike setAllSelected (which replaces the whole
+  // selection), this merges or subtracts only the given keys, so ticking one
+  // outlet never clears another outlet's selection.
+  const setGroupSelected = useCallback((keys: string[], selected: boolean) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      for (const key of keys) {
+        if (selected) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const channel = supabase
       .channel("customer-inventory-refresh")
@@ -107,7 +123,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, addItem, updateQty, removeItem, clear, totals }}
+      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, addItem, updateQty, removeItem, clear, totals }}
     >
       {children}
     </CartContext.Provider>

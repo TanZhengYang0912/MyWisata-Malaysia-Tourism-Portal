@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
+import { getOutletProductIds } from '@/backend/domains/catalogue';
 import { OutletPageRenderer } from '@/components/outlet/outlet-page-renderer';
 import { ShareButton } from '@/components/shared/share-button';
 import { OutletChatButton } from '@/components/customer/outlet-chat-button';
@@ -38,8 +39,14 @@ export default async function OutletShopPage({ params }: { params: Promise<{ out
   if (!outlet) notFound();
 
   const document = selectPublicDocument(page || {});
+  // A featured product may be a shared vendor product (outlet_id = NULL) that
+  // this outlet sells through an offer, so resolve the id set first.
   const { data: products } = document.featuredIds.length
-    ? await createClient().then((db) => db.from('products').select('id,name,base_price,cover_url').eq('outlet_id', outletId).eq('status', 'active').in('id', document.featuredIds))
+    ? await createClient().then(async (db) => {
+        const sellable = await getOutletProductIds(db, outletId, document.featuredIds);
+        if (sellable.size === 0) return { data: [] };
+        return db.from('products').select('id,name,base_price,cover_url').eq('status', 'active').in('id', [...sellable]);
+      })
     : { data: [] };
   const orderedProducts = [...(products || [])].sort((a, b) => document.featuredIds.indexOf(a.id) - document.featuredIds.indexOf(b.id));
   const jsonLd = { '@context': 'https://schema.org', '@type': 'LocalBusiness', name: outlet.name, address: { '@type': 'PostalAddress', streetAddress: outlet.address, addressLocality: outlet.city, addressRegion: outlet.state, addressCountry: 'MY' }, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/outlet/${outlet.id}` };
