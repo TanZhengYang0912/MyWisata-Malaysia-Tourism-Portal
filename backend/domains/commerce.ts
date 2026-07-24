@@ -1,27 +1,25 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
-import { cartTotals, unitPrice } from "@/backend/core/helpers";
+import { cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
 import type { Booking, CartItem, Order, OrderItem, WithdrawalRequest } from "@/backend/core/types";
 
-function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId">): string {
-  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}`;
-}
 
 // ─── Supabase cart ──────────────────────────────────────────────────────────
 type CartItemRow = {
   id: string;
   variant_id: string | null;
   slot_id: string | null;
+  outlet_id: string | null;
   quantity: number;
   unit_price: number;
   product_variants: { product_id: string } | { product_id: string }[] | null;
   booking_slots: { product_id: string } | { product_id: string }[] | null;
 };
 
-const CART_ITEM_SELECT = "id,variant_id,slot_id,quantity,unit_price,product_variants(product_id),booking_slots(product_id)";
+const CART_ITEM_SELECT = "id,variant_id,slot_id,outlet_id,quantity,unit_price,product_variants(product_id),booking_slots(product_id)";
 
 function relation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -45,7 +43,7 @@ async function getCartRows(userId: string): Promise<CartItemRow[]> {
 
 function mapCartItem(row: CartItemRow): CartItem {
   const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
-  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, qty: row.quantity, priceOverride: row.slot_id && row.unit_price > 0 ? Number(row.unit_price) : undefined };
+  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, priceOverride: row.slot_id && row.unit_price > 0 ? Number(row.unit_price) : undefined };
 }
 
 export async function getCart(userId: string): Promise<CartItem[]> {
@@ -55,12 +53,18 @@ export async function getCart(userId: string): Promise<CartItem[]> {
 export async function addToCart(userId: string, item: CartItem): Promise<CartItem[]> {
   const cart = await getOrCreateCart(userId);
   const rows = await getCartRows(userId);
-  const existing = rows.find((row) => row.variant_id === item.variantId && row.slot_id === (item.slotId ?? null));
+  // The outlet is part of the line's identity: the same variant bought from two
+  // outlets must stay two lines (different price and stock).
+  const existing = rows.find((row) =>
+    row.variant_id === item.variantId
+    && row.slot_id === (item.slotId ?? null)
+    && row.outlet_id === (item.outletId ?? null),
+  );
   if (existing) {
     const { error } = await supabase.from("cart_items").update({ quantity: existing.quantity + item.qty }).eq("id", existing.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, quantity: item.qty, unit_price: item.priceOverride ?? 0 });
+    const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, unit_price: item.priceOverride ?? 0 });
     if (error) throw error;
   }
   return getCart(userId);
@@ -288,7 +292,9 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
   for (const item of cart) {
     const activity = activities.find((candidate) => candidate.id === item.activityId);
     if (!activity || activity.requiresBooking) continue;
-    const { data: stockUpdated, error: stockError } = await supabase.rpc("decrement_inventory", { p_variant_id: item.variantId, p_quantity: item.qty });
+    // Inventory is keyed by (variant, outlet) — without the outlet this can
+    // decrement another outlet's stock for the same variant.
+    const { data: stockUpdated, error: stockError } = await supabase.rpc("decrement_inventory", { p_variant_id: item.variantId, p_quantity: item.qty, p_outlet_id: activity.outletId });
     if (stockError || stockUpdated !== true) throw new Error("One or more products are out of stock.");
   }
 

@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorRegisterSchema } from '@/lib/validation/vendor-schemas';
-import { slugify } from '@/lib/utils';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -54,54 +53,33 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
-  // Check if user already has a vendor
-  const { data: existing } = await supabase
-    .from('vendors')
-    .select('id, status')
-    .eq('owner_id', user.id)
-    .in('status', ['pending', 'approved'])
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    return apiFail('DUPLICATE', `You already have a vendor (status: ${existing[0].status})`, 409);
-  }
-
-  // Generate slug if not provided
-  const finalSlug = body.slug || slugify(body.name);
-
-  // Check slug uniqueness
-  const { data: slugCheck } = await supabase
-    .from('vendors')
-    .select('id')
-    .eq('slug', finalSlug)
-    .limit(1);
-
-  if (slugCheck && slugCheck.length > 0) {
-    return apiFail('SLUG_TAKEN', `Slug "${finalSlug}" is already in use`, 409);
-  }
-
-  const { data, error } = await supabase.from('vendors').insert({
-    owner_id: user.id,
-    name: body.name,
-    slug: finalSlug,
-    description: body.description ?? null,
-    business_type: body.businessType ?? null,
-    logo_url: body.logoUrl || null,
-    cover_url: body.coverUrl || null,
-    status: 'pending',
-  }).select().single();
-
-  if (error) return apiFail('DB_ERROR', error.message, 400);
-  const { error: onboardingError } = await supabase.from('vendor_onboarding_profiles').insert({
-    vendor_id: data.id,
-    legal_business_name: body.legalBusinessName || body.name,
-    registration_number: body.registrationNumber || null,
-    contact_name: body.contactName || null,
-    contact_email: body.contactEmail || user.email || null,
-    contact_phone: body.contactPhone || null,
-    business_address: body.businessAddress || null,
-    status: 'submitted',
+  // One RPC, one transaction: vendor + onboarding profile + first outlet are
+  // created together or not at all. It also takes a per-user advisory lock and
+  // re-checks for an existing vendor inside it, so a double-clicked Register
+  // cannot create two vendors. Slug collisions are resolved server-side.
+  const { data: created, error } = await supabase.rpc('register_vendor_with_outlet', {
+    p_name: body.name,
+    p_slug: body.slug ?? null,
+    p_description: body.description ?? null,
+    p_business_type: body.businessType ?? null,
+    p_legal_business_name: body.legalBusinessName ?? null,
+    p_registration_number: body.registrationNumber ?? null,
+    p_contact_name: body.contactName ?? null,
+    p_contact_email: body.contactEmail || user.email || null,
+    p_contact_phone: body.contactPhone ?? null,
+    p_business_address: body.businessAddress ?? null,
+    p_logo_url: body.logoUrl || null,
+    p_cover_url: body.coverUrl || null,
   });
-  if (onboardingError) return apiFail('DB_ERROR', onboardingError.message, 500);
+
+  if (error) {
+    if (error.message.includes('vendor_exists')) return apiFail('DUPLICATE', 'You already have a vendor', 409);
+    if (error.message.includes('unauthorized')) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+    if (error.message.includes('invalid_name')) return apiFail('VALIDATION_ERROR', 'Vendor name must contain letters or numbers', 400);
+    return apiFail('DB_ERROR', error.message, 400);
+  }
+
+  const { vendor_id: vendorId } = created as { vendor_id: string };
+  const { data } = await supabase.from('vendors').select('*').eq('id', vendorId).single();
   return apiOk(data, { status: 201 });
 }

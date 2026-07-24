@@ -47,5 +47,7 @@ scripts/figma-screenshots/
 .worktrees/
 
 # local-only docs and agent instructions (not shared with the team)
+/AGENTS.md
 /CLAUDE.md
 /docs/
+AGENTS.md

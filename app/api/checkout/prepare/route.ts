@@ -14,6 +14,7 @@ type CartRow = {
   id: string;
   variant_id: string | null;
   slot_id: string | null;
+  outlet_id: string | null;
   quantity: number;
   product_variants: Relation<{ id: string; product_id: string; name: string }>;
   booking_slots: Relation<{ id: string; product_id: string; outlet_id: string; starts_at: string; price_override: number | null }>;
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
   const { data: rows, error: rowsError } = await db
     .from('cart_items')
-    .select('id,variant_id,slot_id,quantity,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
+    .select('id,variant_id,slot_id,outlet_id,quantity,product_variants(id,product_id,name),booking_slots(id,product_id,outlet_id,starts_at,price_override)')
     .eq('cart_id', cart.id)
     .order('created_at');
   if (rowsError) return NextResponse.json({ error: rowsError.message }, { status: 500 });
@@ -71,7 +72,9 @@ export async function POST(request: Request) {
     const variant = relation(row.product_variants);
     const slot = relation(row.booking_slots);
     const productId = variant?.product_id ?? slot?.product_id;
-    const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}`;
+    // Must stay byte-identical to cartItemKey() in components/providers/cart.tsx —
+    // the client sends those keys and a mismatch silently selects nothing.
+    const key = `${productId}|${row.variant_id ?? ''}|${row.slot_id ?? ''}|${row.outlet_id ?? ''}`;
     return !body.selectedKeys?.length || body.selectedKeys.includes(key);
   });
   if (!selectedRows.length) return NextResponse.json({ error: 'Select at least one cart item' }, { status: 400 });
