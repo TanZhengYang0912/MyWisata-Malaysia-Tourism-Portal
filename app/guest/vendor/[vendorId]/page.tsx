@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -6,8 +7,15 @@ type GuestVendorPageProps = { params: Promise<{ vendorId: string }> };
 
 export const dynamic = "force-dynamic";
 
-export default async function GuestVendorPage({ params }: GuestVendorPageProps) {
-  const { vendorId } = await params;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+// Shared by generateMetadata() and the page body so the vendor row is only
+// fetched once per request. Vendors have a single status gate (approved),
+// not the two-tier status/review_status split products have, so — unlike
+// lib/affiliate/activity-metadata.ts — the plain cookie-aware client here
+// already matches the page body's own visibility rule exactly; no
+// service-role fallback needed.
+async function getGuestVendor(vendorId: string) {
   const db = await createClient();
   const { data: vendor } = await db
     .from("vendors")
@@ -15,8 +23,34 @@ export default async function GuestVendorPage({ params }: GuestVendorPageProps) 
     .eq("id", vendorId)
     .eq("status", "approved")
     .maybeSingle();
+  return vendor;
+}
+
+export async function generateMetadata({ params }: GuestVendorPageProps): Promise<Metadata> {
+  const { vendorId } = await params;
+  const vendor = await getGuestVendor(vendorId);
+  if (!vendor) return {};
+
+  const description = vendor.description ?? undefined;
+
+  return {
+    title: vendor.name,
+    description,
+    openGraph: {
+      title: vendor.name,
+      description,
+      images: vendor.cover_url ? [{ url: vendor.cover_url }] : undefined,
+      url: `${SITE_URL}/guest/vendor/${vendorId}`,
+    },
+  };
+}
+
+export default async function GuestVendorPage({ params }: GuestVendorPageProps) {
+  const { vendorId } = await params;
+  const vendor = await getGuestVendor(vendorId);
   if (!vendor) notFound();
 
+  const db = await createClient();
   const { data: outlets } = await db
     .from("outlets")
     .select("id,name,city,state,address")

@@ -256,6 +256,40 @@ moving is the correct, complete signal.
   visible, no login wall, `mw_ref` cookie set → sign in as a different user →
   cookie survives → simulate purchase → `affiliate_attributions` row created,
   correctly attributed to the link owner, not the buyer.
+- ~~`/guest/activity/[id]` and `/guest/vendor/[vendorId]` had no Open Graph
+  metadata — the exact pages the above fix now sends anonymous referral
+  recipients to, so shared links unfurled no preview on WhatsApp/FB~~ —
+  **fixed**. Both pages now export `generateMetadata()`; the activity one
+  calls a new shared helper (`lib/affiliate/activity-metadata.ts`, also now
+  used by `/customer/activity/[id]`, so the two tag sets can't drift) that
+  reads the product via the **service-role** client rather than the
+  cookie-aware one, for the same reason as `resolveProductNames()`: an
+  already-referred product can be re-edited back to `review_status =
+  'pending_review'` by its vendor, and an already-circulating link shouldn't
+  suddenly go blank. Live-verified with a crawler UA: `og:title`,
+  `og:description`, absolute `og:image` (resolves 200), and `og:url` (the
+  guest/customer page's own path, not the other one) all present and at
+  parity between `/guest/activity/[id]` and `/customer/activity/[id]` for a
+  real product.
+  - **Known limitation, live-confirmed, not fixed here:** the metadata read
+    itself is correctly RLS-agnostic, but if the page's own body then calls
+    `notFound()` (its pre-existing, untouched logic — e.g. because the
+    product really is `pending_review` and the cookie-aware read in the page
+    body can't see it), Next.js discards the whole page's metadata, including
+    ours, and falls back to the site default. Confirmed live by temporarily
+    flipping a real product to `pending_review` and reverting immediately
+    after. Net effect: a `pending_review` product only gets a real preview via
+    the `/r/[code]/[slug]` redirect's own separate crawler shield
+    (`renderOgPreview()` in `lib/affiliate/redirect.ts`), not via a direct or
+    post-redirect hit on `/guest/activity/[id]` itself. Closing that gap fully
+    would mean loosening the guest page's own visibility check, which is a
+    bigger change than "add metadata" — flagging rather than doing it here.
+  - **Unrelated bug found while verifying, not fixed here:** the demo product
+    `demo-020-chicken-rice-ball-set` has `outlet_id: null` — orphaned seed
+    data. `getComputedActivity()` silently drops it (the `outlets` join comes
+    back empty), so `/guest/activity/[id]` 404s for it and
+    `/customer/activity/[id]` silently renders a null-activity state instead
+    of the real product, for reasons unrelated to anything in this module.
 - ~~`affiliate.cookie_days` "isn't actually configurable live"~~ — **investigated,
   turned out to be a missing seed row, not a code bug, now fixed.**
   `lib/affiliate/settings.ts::getAttributionCookieDays()` was already the

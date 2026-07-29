@@ -1,12 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookingSlots, getComputedActivity, getProductReviews } from "@/backend/domains/catalogue";
 import { guestLoginHref, guestVendorHref } from "@/lib/auth/guest-mode";
+import { buildActivityMetadata } from "@/lib/affiliate/activity-metadata";
 import { createClient } from "@/lib/supabase/server";
 
 type GuestActivityPageProps = { params: Promise<{ id: string }> };
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: GuestActivityPageProps): Promise<Metadata> {
+  const { id } = await params;
+  return buildActivityMetadata(id, `/guest/activity/${id}`);
+}
 
 export default async function GuestActivityPage({ params }: GuestActivityPageProps) {
   const { id } = await params;

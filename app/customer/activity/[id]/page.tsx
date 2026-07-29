@@ -12,6 +12,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getBookingSlots, getComputedActivity, getOutletChoices, getProductReviews } from "@/backend/domains/catalogue";
+import { buildActivityMetadata } from "@/lib/affiliate/activity-metadata";
 import { ActivityDetailClient } from "./activity-detail-client";
 
 interface Props {
@@ -20,26 +21,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: product } = await supabase
-    .from("products")
-    .select("name,description,cover_url")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (!product) return {};
-
-  const description = product.description ?? undefined;
-
-  return {
-    title: product.name,
-    description,
-    openGraph: {
-      title: product.name,
-      description,
-      images: product.cover_url ? [{ url: product.cover_url }] : undefined,
-    },
-  };
+  return buildActivityMetadata(id, `/customer/activity/${id}`);
 }
 
 export default async function ActivityDetailPage({ params }: Props) {
