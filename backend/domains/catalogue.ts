@@ -82,6 +82,56 @@ export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[
   return (data as unknown as OutletRow[]).map(mapOutlet);
 }
 
+/** One buyable choice on the product page: which outlet, at what price. */
+export interface OutletChoice {
+  outletId: string;
+  outletName: string;
+  city: string;
+  price: number;
+  open: boolean;
+}
+
+/**
+ * The outlets a product can actually be bought from, with each outlet's own
+ * price. Returns a single entry for a normal single-outlet product, so the
+ * product page can treat both shapes identically.
+ */
+export async function getOutletChoices(activity: Activity, db: SupabaseClient = supabase): Promise<OutletChoice[]> {
+  if (!activity.offers?.length) return [];
+  const outlets = await getOutlets(db);
+  const byId = new Map(outlets.map((outlet) => [outlet.id, outlet]));
+  return activity.offers
+    .map((offer) => {
+      const outlet = byId.get(offer.outletId);
+      return outlet
+        ? { outletId: outlet.id, outletName: outlet.name, city: outlet.city, price: offer.price, open: outlet.open }
+        : null;
+    })
+    .filter((choice): choice is OutletChoice => choice !== null)
+    .sort((a, b) => a.price - b.price);
+}
+
+/**
+ * Product ids an outlet sells: the ones it owns directly, plus the shared
+ * vendor products it has an offer for. Use this instead of filtering
+ * `products.outlet_id`, which alone misses every multi-outlet product.
+ */
+export async function getOutletProductIds(db: SupabaseClient, outletId: string, candidateIds?: string[]): Promise<Set<string>> {
+  let ownQuery = db.from("products").select("id").eq("outlet_id", outletId);
+  let offerQuery = db.from("outlet_offers").select("product_id").eq("outlet_id", outletId).eq("status", "active");
+  if (candidateIds?.length) {
+    ownQuery = ownQuery.in("id", candidateIds);
+    offerQuery = offerQuery.in("product_id", candidateIds);
+  }
+  const [own, offered] = await Promise.all([ownQuery, offerQuery]);
+  if (own.error) throw own.error;
+  if (offered.error) throw offered.error;
+  return new Set([
+    ...(own.data ?? []).map((row: { id: string }) => row.id),
+    ...(offered.data ?? []).map((row: { product_id: string }) => row.product_id),
+  ]);
+}
+
 export async function getOutlet(id: string): Promise<Outlet | undefined> {
   const { data, error } = await supabase.from("outlets").select(OUTLET_SELECT).eq("id", id).maybeSingle();
   if (error) throw error;
@@ -91,7 +141,8 @@ export async function getOutlet(id: string): Promise<Outlet | undefined> {
 // ─── Products (activities) ─────────────────────────────────────────────────
 type ProductRow = {
   id: string;
-  outlet_id: string;
+  outlet_id: string | null;
+  outlet_offers?: { outlet_id: string; price: number; status: string }[] | null;
   name: string;
   description: string | null;
   cover_url: string | null;
@@ -111,17 +162,29 @@ type ProductRow = {
   price_rules: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,categories(name,slug),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
+const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 
 function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
+  // A shared product carries outlet_id = NULL and lists its outlets in
+  // outlet_offers. Single-outlet products keep using outlet_id/base_price, so
+  // both shapes flow through the same mapper.
+  const offers = (row.outlet_offers ?? [])
+    .filter((offer) => offer.status === "active")
+    .map((offer) => ({ outletId: offer.outlet_id, price: Number(offer.price), status: offer.status }));
+  const cheapest = offers.length
+    ? offers.reduce((min, offer) => (offer.price < min.price ? offer : min))
+    : undefined;
+
   return {
     id: row.id,
-    outletId: row.outlet_id,
+    outletId: row.outlet_id ?? cheapest?.outletId ?? "",
+    offers: offers.length ? offers : undefined,
     name: row.name,
     category: row.categories?.name ?? "",
     description: row.description ?? "",
     image: row.cover_url ?? "",
-    price: Number(row.base_price),
+    // Card shows "from" pricing when the product is sold at several outlets.
+    price: cheapest ? cheapest.price : Number(row.base_price),
     rating: reviewMetrics.rating,
     reviews: reviewMetrics.reviews,
     duration: "",
@@ -213,16 +276,48 @@ export async function getProductReviewsPage(
   };
 }
 
-function toComputed(activity: Activity, outlet: Outlet | undefined, from?: { lat: number; lng: number }): ComputedActivity | null {
-  if (!outlet) return null;
-  return { ...activity, outlet, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
+/**
+ * Collapses a product to the single outlet the card should represent. A product
+ * sold at several outlets appears ONCE — as the nearest outlet when the user's
+ * position is known, else the cheapest — instead of once per outlet.
+ */
+function toComputed(
+  activity: Activity,
+  outletMap: Map<string, Outlet>,
+  from?: { lat: number; lng: number },
+): ComputedActivity | null {
+  const candidates = (activity.offers ?? [])
+    .map((offer) => ({ offer, outlet: outletMap.get(offer.outletId) }))
+    .filter((candidate): candidate is { offer: NonNullable<Activity["offers"]>[number]; outlet: Outlet } => Boolean(candidate.outlet));
+
+  if (candidates.length === 0) {
+    const outlet = outletMap.get(activity.outletId);
+    if (!outlet) return null;
+    return { ...activity, outlet, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
+  }
+
+  const scored = candidates.map((candidate) => ({
+    ...candidate,
+    distanceKm: from ? haversineKm(from, { lat: candidate.outlet.lat, lng: candidate.outlet.lng }) : undefined,
+  }));
+  const best = from
+    ? scored.reduce((a, b) => ((b.distanceKm ?? Infinity) < (a.distanceKm ?? Infinity) ? b : a))
+    : scored.reduce((a, b) => (b.offer.price < a.offer.price ? b : a));
+
+  return {
+    ...activity,
+    outletId: best.outlet.id,
+    price: best.offer.price,
+    outlet: best.outlet,
+    distanceKm: best.distanceKm,
+  };
 }
 
 async function getComputedActivities(from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
   const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
   const outletMap = new Map(outlets.map((o) => [o.id, o]));
   return activities
-    .map((a) => toComputed(a, outletMap.get(a.outletId), from))
+    .map((a) => toComputed(a, outletMap, from))
     .filter((a): a is ComputedActivity => a !== null);
 }
 

@@ -1,6 +1,19 @@
 import { round2 } from "./money";
 import type { Activity, CartItem, OrderStatus, PriceRule, Voucher } from "./types";
 
+/**
+ * Canonical identity of a cart line. Defined once here because the client, the
+ * cart domain and the checkout route all have to produce byte-identical keys —
+ * a mismatch silently selects nothing (checkout) or deletes nothing (cart
+ * clean-up) rather than failing loudly.
+ *
+ * The outlet is part of the identity: the same variant sold at two outlets has
+ * two prices and two stock pools, so it must stay two lines.
+ */
+export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "slotId" | "outletId">): string {
+  return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}|${item.outletId ?? ""}`;
+}
+
 // ─── Contract #4: order state machine ──────────────────────────────────────
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   DRAFT: ["PENDING_PAYMENT"],

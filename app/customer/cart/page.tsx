@@ -45,7 +45,7 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
 }
 
 export default function CartPage() {
-  const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, updateQty, removeItem, totals } = useCart();
+  const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const router = useRouter();
   const [code, setCode] = useState("");
@@ -104,6 +104,43 @@ export default function CartPage() {
   useEffect(() => {
     if (selectAllRef.current) selectAllRef.current.indeterminate = partiallySelected;
   }, [partiallySelected]);
+
+  // Group rows by outlet for a Shopee-style cart. Each row keeps its ORIGINAL
+  // index in `items` — updateQty/removeItem address items by that index, so
+  // re-numbering per group would edit the wrong line.
+  const outletGroups = useMemo(() => {
+    const groups = new Map<string, { outletId: string; rows: { item: (typeof items)[number]; index: number }[] }>();
+    items.forEach((item, index) => {
+      const activity = activities.find((candidate) => candidate.id === item.activityId);
+      if (!activity) return;
+      // Prefer the outlet stored on the line — a product may be sold at several
+      // outlets, so the product's own outlet is only a fallback for old rows.
+      const outletId = item.outletId ?? activity.outletId;
+      const group = groups.get(outletId) ?? { outletId, rows: [] };
+      group.rows.push({ item, index });
+      groups.set(outletId, group);
+    });
+    const selectableSet = new Set(selectableKeys);
+    return [...groups.values()].map((group) => {
+      const groupSelectableKeys = group.rows.map(({ item }) => cartItemKey(item)).filter((key) => selectableSet.has(key));
+      const selectedCount = groupSelectableKeys.filter((key) => selectedKeys.has(key)).length;
+      const groupSubtotal = group.rows.reduce((sum, { item }) => {
+        if (!selectedKeys.has(cartItemKey(item))) return sum;
+        const activity = activities.find((candidate) => candidate.id === item.activityId);
+        if (!activity) return sum;
+        const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));
+        return sum + price * item.qty;
+      }, 0);
+      return {
+        ...group,
+        outlet: outlets.get(group.outletId),
+        groupSelectableKeys,
+        groupSubtotal,
+        allSelected: groupSelectableKeys.length > 0 && selectedCount === groupSelectableKeys.length,
+        partiallySelected: selectedCount > 0 && selectedCount < groupSelectableKeys.length,
+      };
+    });
+  }, [items, activities, outlets, selectableKeys, selectedKeys]);
 
   const voucherValidationItems = useMemo(
     () => items
@@ -242,8 +279,31 @@ export default function CartPage() {
         <span className="text-xs text-muted-foreground">{selectedSelectableCount} selected</span>
       </div>
 
-      <div className="space-y-3 mb-6">
-        {items.map((item, i) => {
+      <div className="space-y-4 mb-6">
+        {outletGroups.map((group) => (
+          <section key={group.outletId} className="overflow-hidden rounded-xl border border-border">
+            <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3">
+              <label className="flex min-w-0 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  ref={(el) => { if (el) el.indeterminate = group.partiallySelected; }}
+                  checked={group.allSelected}
+                  disabled={group.groupSelectableKeys.length === 0}
+                  onChange={(event) => setGroupSelected(group.groupSelectableKeys, event.target.checked)}
+                  aria-label={`Select all items from ${group.outlet?.name ?? "this outlet"}`}
+                  className="h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <span className="truncate text-sm font-semibold text-foreground">{group.outlet?.name ?? "Outlet"}</span>
+              </label>
+              <Link
+                href={`/customer/outlet/${group.outletId}`}
+                className="shrink-0 text-xs font-semibold text-primary hover:underline"
+              >
+                View outlet
+              </Link>
+            </header>
+            <div className="space-y-3 p-3">
+        {group.rows.map(({ item, index }) => {
           const activity = activities.find((a) => a.id === item.activityId);
           if (!activity) return null;
           const key = cartItemKey(item);
@@ -298,23 +358,30 @@ export default function CartPage() {
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">RM {lineTotal.toFixed(2)}</p>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => updateQty(i, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
+                  <button onClick={() => updateQty(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
                   <button
-                    onClick={() => updateQty(i, item.qty + 1)}
+                    onClick={() => updateQty(index, item.qty + 1)}
                     disabled={(stockLimit !== undefined && item.qty >= stockLimit) || (seatsLeft !== undefined && item.qty >= seatsLeft)}
                     className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     +
                   </button>
                 </div>
-                <button onClick={() => removeItem(i)} className="text-destructive" title="Remove">
+                <button onClick={() => removeItem(index)} className="text-destructive" title="Remove">
                   <Trash2 size={16} />
                 </button>
               </div>
             </div>
           );
         })}
+            </div>
+            <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
+              <span className="text-xs text-muted-foreground">Outlet subtotal</span>
+              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">RM {group.groupSubtotal.toFixed(2)}</span>
+            </footer>
+          </section>
+        ))}
       </div>
 
       <div className="mb-6 rounded-xl border border-border p-4">

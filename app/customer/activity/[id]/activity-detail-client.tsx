@@ -14,6 +14,7 @@ import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
+import type { OutletChoice } from "@/backend/domains/catalogue";
 import { formatBookingSlotTime, getBookingDatePreview, groupBookingSlotsByDate } from "@/lib/customer/booking-slot-presenter";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getCategoryChips } from "@/lib/customer/category-details";
@@ -22,10 +23,13 @@ export function ActivityDetailClient({
   initialActivity,
   initialSlots,
   initialReviews,
+  outletChoices = [],
 }: {
   initialActivity: ComputedActivity | null;
   initialSlots: BookingSlot[];
   initialReviews: ProductReview[];
+  /** Empty for a single-outlet product; otherwise every outlet selling it. */
+  outletChoices?: OutletChoice[];
 }) {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -41,6 +45,9 @@ export function ActivityDetailClient({
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  // Which outlet the customer is buying from. Price and stock are per-outlet,
+  // so this is required before the item can go in the cart.
+  const [outletId, setOutletId] = useState<string>(initialActivity?.outletId ?? "");
 
   // §11.2.7 view signal: beacon dwell time on unmount (best-effort, ignored for guests).
   useEffect(() => {
@@ -55,7 +62,13 @@ export function ActivityDetailClient({
     };
   }, [activity, currentUser]);
 
-  const price = useMemo(() => (activity ? unitPrice(activity, variantId) : 0), [activity, variantId]);
+  const selectedChoice = outletChoices.find((choice) => choice.outletId === outletId);
+  // Variant deltas are shared across outlets; only the base price differs.
+  const price = useMemo(() => {
+    if (!activity) return 0;
+    const base = unitPrice(activity, variantId);
+    return selectedChoice ? base - activity.price + selectedChoice.price : base;
+  }, [activity, variantId, selectedChoice]);
   const slotDateGroups = useMemo(() => groupBookingSlotsByDate(slots), [slots]);
   const activeDateKey = slotDateGroups.some((group) => group.key === selectedDateKey) ? selectedDateKey : slotDateGroups[0]?.key ?? "";
   const activeDateGroup = slotDateGroups.find((group) => group.key === activeDateKey);
@@ -77,8 +90,11 @@ export function ActivityDetailClient({
   function handleAddToCart() {
     if (adding) return; // double-submit guard
     if (activity!.requiresBooking && !slotId) return;
+    // Sold at several outlets → the customer must pick one; price and stock
+    // belong to the outlet, not to the shared product.
+    if (outletChoices.length > 0 && !outletId) return;
     setAdding(true);
-    addItem({ activityId: activity!.id, variantId, slotId: slotId || undefined, qty });
+    addItem({ activityId: activity!.id, variantId, slotId: slotId || undefined, outletId: outletId || activity!.outletId, qty });
     setAdded(true);
     setTimeout(() => {
       setAdding(false);
@@ -173,6 +189,41 @@ export function ActivityDetailClient({
               Visit shop
             </Link>
           </div>
+
+          {outletChoices.length > 0 && (
+            <div className="mb-4">
+              <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+                Available at {outletChoices.length} outlet{outletChoices.length > 1 ? "s" : ""} — choose one
+              </label>
+              <div className="flex flex-col gap-2">
+                {outletChoices.map((choice) => {
+                  const selected = choice.outletId === outletId;
+                  return (
+                    <button
+                      key={choice.outletId}
+                      onClick={() => setOutletId(choice.outletId)}
+                      className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
+                      style={{
+                        borderColor: selected ? "var(--primary)" : "var(--border)",
+                        backgroundColor: selected ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",
+                      }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-foreground">{choice.outletName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {choice.city}
+                          {!choice.open && " · Currently closed"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
+                        RM {choice.price.toFixed(2)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {activity.variants.length > 1 && (
             <div className="mb-4">

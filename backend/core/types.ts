@@ -96,7 +96,16 @@ export interface BookingSlot {
 // ─── Contract #2: Catalogue DTO ────────────────────────────────────────────
 export interface Activity {
   id: string;
+  /**
+   * Representative outlet. For a product sold at several outlets this is the
+   * one chosen for the card (nearest, else cheapest) — `offers` holds them all.
+   */
   outletId: string;
+  /**
+   * Every outlet selling this product, each with its own price. Empty for a
+   * single-outlet product, which still uses `outletId` / `price` directly.
+   */
+  offers?: OutletOffer[];
   name: string;
   category: string;
   description: string;
@@ -122,6 +131,13 @@ export interface Activity {
   isCoupleFriendly?: boolean;
 }
 
+/** One outlet's actual listing of a shared vendor product: its own price and state. */
+export interface OutletOffer {
+  outletId: string;
+  price: number;
+  status: string;
+}
+
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
@@ -144,6 +160,12 @@ export interface CartItem {
   activityId: string;
   variantId: string;
   slotId?: string;
+  /**
+   * Which outlet this line is bought from. A product can be sold at several
+   * outlets at different prices, so the outlet is part of the line's identity —
+   * without it, "2 laksa from A" and "2 laksa from B" would merge into one line.
+   */
+  outletId?: string;
   qty: number;
   priceOverride?: number;
 }
