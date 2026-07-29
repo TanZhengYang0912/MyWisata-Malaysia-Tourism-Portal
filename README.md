@@ -256,6 +256,23 @@ moving is the correct, complete signal.
   visible, no login wall, `mw_ref` cookie set → sign in as a different user →
   cookie survives → simulate purchase → `affiliate_attributions` row created,
   correctly attributed to the link owner, not the buyer.
+- ~~`affiliate.cookie_days` "isn't actually configurable live"~~ — **investigated,
+  turned out to be a missing seed row, not a code bug, now fixed.**
+  `lib/affiliate/settings.ts::getAttributionCookieDays()` was already the
+  single source of truth for both call sites (`lib/affiliate/redirect.ts`'s
+  cookie-set and `lib/affiliate/attribution.ts`'s expiry guard call the exact
+  same function — no duplication, no drift risk between them). Live-verified
+  by temporarily seeding a scratch `affiliate.cookie_days=45` row and
+  confirming the redirect's `mw_ref` cookie `Max-Age` changed to exactly
+  `45 * 86400` before reverting — the pipeline works end to end. The only
+  real gap was that `platform_settings['affiliate.cookie_days']` genuinely
+  didn't exist live, so the window was silently running on the code's
+  `DEFAULT_COOKIE_DAYS = 30` fallback rather than an admin-configurable
+  value. `091_affiliate_cookie_days_setting.sql` seeds it with the same
+  value (`30`) the fallback already used — additive, idempotent
+  (`WHERE NOT EXISTS`), matches the pattern `037_affiliate_click_cap.sql`
+  already established for a sibling setting. No behavior change; the window
+  is just one `UPDATE` away from being changed now, instead of a deploy.
 - ~~Two gaps found while fixing the above, both outside this module's
   ownership (Auth) — flagging, not fixing~~ — **fixed**, per
   `CLAUDE-RETURN-URL-PART2.md`, with explicit sign-off to edit these shared
