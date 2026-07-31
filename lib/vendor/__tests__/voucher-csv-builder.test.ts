@@ -12,7 +12,9 @@ describe('voucher CSV builder', () => {
     const csv = buildVoucherCsv([{ ...baseRow, name: 'Welcome, Malaysia' }]);
     expect(csv).toContain('code,name,voucherType,discountValue');
     expect(csv).toContain('"Welcome, Malaysia"');
-    expect(csv).toContain('2026-07-31T16:00:00.000Z');
+    // `datetime-local` values are interpreted in the browser's local timezone.
+    // Derive the expected ISO value so the test is stable on CI's UTC runner.
+    expect(csv).toContain(new Date(baseRow.validFrom).toISOString());
   });
 
   it('validates BOGO product and quantity requirements before upload', () => {
