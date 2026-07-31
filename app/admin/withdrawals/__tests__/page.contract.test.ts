@@ -82,4 +82,20 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('Confirm decision');
     expect(pageSource).toContain('Cancel');
   });
+
+  it('shows decision-ready context in the queue before opening a detail drawer', () => {
+    expect(pageSource).toContain('Pending payout value');
+    expect(pageSource).toContain('Approval progress');
+    expect(pageSource).toContain('Age / SLA');
+    expect(pageSource).toContain('Dual approval');
+    expect(pageSource).toContain('High risk');
+    expect(pageSource).toMatch(/oldest request/i);
+  });
+
+  it('keeps urgency readable without relying on colour alone', () => {
+    expect(pageSource).toContain('Needs action');
+    expect(pageSource).toContain('Overdue');
+    expect(pageSource).toContain('Waiting for second approver');
+    expect(pageSource).toContain('Review priority');
+  });
 });

@@ -1,4 +1,5 @@
 import type { ProfileSummary, User } from "@/backend/core/types";
+import { normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 
 export type ProfileRow = {
   id: string;
@@ -79,7 +80,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     phoneVerified: Boolean(profile.phone_verified_at),
     profileComplete: Boolean(profile.profile_completed_at),
     survey: preference ? {
-      interests: preference.interests ?? [],
+      interests: normalizeCategorySlugs(preference.interests),
       travelStyle: preference.travel_style,
       budgetRange: preference.budget_range,
       mobilityNeeds: preference.mobility_needs,

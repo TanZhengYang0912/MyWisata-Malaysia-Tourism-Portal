@@ -4,6 +4,7 @@
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { getBookingOrderItem } from '@/lib/vendor/booking-scope';
 
 interface Props { params: Promise<{ vendorId: string; bookingId: string }> }
 
@@ -17,7 +18,7 @@ export async function POST(_request: Request, { params }: Props) {
   // Get booking
   const { data: booking } = await supabase
     .from('bookings')
-    .select('*, booking_slots(outlet_id)')
+    .select('*, order_items(vendor_id,outlet_id)')
     .eq('id', bookingId)
     .single();
 
@@ -26,9 +27,11 @@ export async function POST(_request: Request, { params }: Props) {
     return apiFail('INVALID_STATE', `Booking is ${booking.status}, cannot check in`, 400);
   }
 
-  // Verify booking is for one of this vendor's outlets
-  const slotOutletId = (booking.booking_slots as Record<string, unknown>)?.outlet_id as string;
-  if (!outletIds.includes(slotOutletId)) {
+  // Vendor-facing booking ownership comes from the order item. The slot can
+  // be rehomed later, but the order item retains the vendor/outlet that sold
+  // the reservation and is also the scope used by the booking list API.
+  const { vendorId: bookingVendorId, outletId: bookingOutletId } = getBookingOrderItem(booking.order_items);
+  if (bookingVendorId !== vendorId || !bookingOutletId || !outletIds.includes(bookingOutletId)) {
     return apiFail('FORBIDDEN', 'Booking is not at your outlet', 403);
   }
 
@@ -50,7 +53,7 @@ export async function POST(_request: Request, { params }: Props) {
   void emitVendorNotification({
     eventKey: `booking:checkin:${bookingId}`,
     vendorId,
-    outletId: slotOutletId,
+    outletId: bookingOutletId,
     audience: 'owner_and_assigned_outlet',
     category: 'vendor_bookings',
     type: 'vendor_booking_checkin',

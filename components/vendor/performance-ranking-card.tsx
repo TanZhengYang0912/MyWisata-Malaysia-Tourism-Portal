@@ -30,8 +30,8 @@ const accent = {
   rated: {
     icon: Landmark,
     eyebrow: 'TRAVELLER FAVOURITES',
-    title: 'Top rated experiences',
-    subtitle: 'Visible activity and experience reviews',
+    title: 'Top rated listings',
+    subtitle: 'Visible customer reviews',
     iconClass: 'text-amber-600',
     pillClass: 'bg-amber-50 text-amber-800 ring-amber-100',
     heroClass: 'border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white',
@@ -53,7 +53,7 @@ export default function PerformanceRankingCard({ kind, periodLabel, items, href 
   const insight = first
     ? kind === 'selling'
       ? `${first.name} leads with ${(first as SellingItem).quantity} units sold.`
-      : `${first.name} is the highest-rated experience at ${(first as RatedItem).rating.toFixed(1)} / 5.`
+      : `${first.name} is the highest-rated listing at ${(first as RatedItem).rating.toFixed(1)} / 5.`
     : kind === 'selling' ? 'Paid products will appear here.' : 'Published reviews will appear here.';
 
   return (
@@ -80,7 +80,7 @@ export default function PerformanceRankingCard({ kind, periodLabel, items, href 
                 <article key={`${item.name}-${index}`} className={`rounded-xl border px-3 py-3 transition ${isFirst ? style.heroClass : `border-transparent ${style.hoverClass}`}`}>
                   <div className="flex items-center gap-3">
                     <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isFirst ? style.rankClass : 'bg-gray-100 text-gray-500'}`}>{isFirst ? <Crown size={14} /> : `#${index + 1}`}</div>
-                    <CompactThumbnail src={item.coverUrl} alt={item.name} kind={kind === 'selling' ? 'product' : 'experience'} size={isFirst ? 'md' : 'sm'} />
+                    <CompactThumbnail src={item.coverUrl} alt={item.name} kind="product" size={isFirst ? 'md' : 'sm'} />
                     <div className="min-w-0 flex-1">
                       <p className={`truncate font-semibold text-gray-900 ${isFirst ? 'text-sm' : 'text-sm'}`}>{item.name}</p>
                       <p className="mt-1 truncate text-xs text-gray-500">{item.outletName || (kind === 'selling' ? `${(item as SellingItem).quantity} units sold` : `${(item as RatedItem).reviews} traveller reviews`)}</p>
@@ -94,7 +94,7 @@ export default function PerformanceRankingCard({ kind, periodLabel, items, href 
               );
             })}
           </div>
-        ) : <div className="px-4 py-10 text-center text-sm text-gray-400">{kind === 'selling' ? 'No paid products in this period.' : 'No experience reviews yet.'}</div>}
+        ) : <div className="px-4 py-10 text-center text-sm text-gray-400">{kind === 'selling' ? 'No paid products in this period.' : 'No published reviews in this period.'}</div>}
       </div>
 
       <footer className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4">

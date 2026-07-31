@@ -1,6 +1,5 @@
 "use client";
 
-import { NotificationBell } from "@/components/shared/notification-bell";
 import { NotificationCenter } from "@/components/shared/notification-center";
 
 const filters = [
@@ -13,5 +12,14 @@ const filters = [
 ];
 
 export default function NotificationsPage() {
-  return <div className="mx-auto max-w-3xl px-4 py-8"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs uppercase tracking-wider text-muted-foreground">Account</p><h1 className="text-2xl font-bold">Notifications</h1></div><NotificationBell /></div><NotificationCenter scope="customer" categories={filters} pageSize={15} /></div>;
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <div className="mb-6">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Account</p>
+        <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">Notifications</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Updates about your bookings, wallet and account.</p>
+      </div>
+      <NotificationCenter scope="customer" categories={filters} pageSize={15} />
+    </div>
+  );
 }

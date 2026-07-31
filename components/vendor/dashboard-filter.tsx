@@ -8,7 +8,7 @@ import { useState } from 'react';
 export default function DashboardFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const filter = searchParams.get('filter') || '7d';
+  const filter = searchParams.get('filter') || '30d';
   const [from, setFrom] = useState(searchParams.get('from') || '');
   const [to, setTo] = useState(searchParams.get('to') || '');
 

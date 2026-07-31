@@ -344,8 +344,8 @@ export default function AdminVendorsPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8fafc] px-5 py-7 text-[#18242b] sm:px-8 lg:px-10">
-      <div className="mx-auto max-w-[1500px] space-y-6">
+    <div className="min-h-full bg-[#f8fafc] px-4 py-6 text-[#18242b] sm:px-6 sm:py-8 xl:px-8">
+      <div className="w-full space-y-6">
         <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#010066]">
@@ -502,8 +502,8 @@ function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedR
   const owner = ownerOf(vendor);
   const onboarding = Array.isArray(vendor.vendor_onboarding_profiles) ? vendor.vendor_onboarding_profiles[0] : vendor.vendor_onboarding_profiles;
   const actionBusy = busyAction?.endsWith(`:${vendor.id}`);
-  return <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label={`${vendor.name} details`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside className="flex h-full w-full max-w-[480px] flex-col overflow-y-auto bg-white shadow-2xl">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4 backdrop-blur-[2px] sm:p-6" role="dialog" aria-modal="true" aria-label={`${vendor.name} details`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <aside className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
       <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#010066]">Vendor profile</p><h2 className="mt-1 text-xl font-bold tracking-[-0.03em] text-slate-800">{vendor.name}</h2><p className="mt-1 text-xs text-slate-400">/{vendor.slug}</p></div><button type="button" onClick={onClose} aria-label="Close vendor details" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={19} /></button></div>
       <div className="flex-1 space-y-6 px-6 py-6">
         <div className="flex items-center justify-between"><StatusBadge status={vendor.status} /><span className="text-xs text-slate-400">Added {format(new Date(vendor.created_at), 'd MMM yyyy')}</span></div>

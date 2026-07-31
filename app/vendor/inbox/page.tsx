@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useChatPresence } from '@/hooks/use-chat-presence';
 import { getOtherDeliveredMessageIds, getOtherReadMessageIds, getReadChatMessageIds } from '@/backend/domains/identity';
 import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from '@/lib/customer/chat-view';
+import { parseInboxResponse } from '@/lib/vendor/inbox-response';
 import type { ChatMessage } from '@/backend/core/types';
 
 interface Thread {
@@ -58,9 +59,13 @@ export default function VendorInboxPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
   const [deliveredByOthersIds, setDeliveredByOthersIds] = useState<Set<string>>(new Set());
+  const [aiReplyDraft, setAiReplyDraft] = useState<string | null>(null);
+  const [aiReplyBusy, setAiReplyBusy] = useState(false);
+  const [aiReplyError, setAiReplyError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InboxFilter>('all');
 
@@ -69,13 +74,44 @@ export default function VendorInboxPage() {
 
   const loadThreads = useCallback(async () => {
     if (!user?.activeVendorId) return;
-    const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
-    const payload = await response.json();
-    setThreads(payload.data || []);
-    setLoading(false);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
+      const payload = await parseInboxResponse<Thread>(response);
+      setThreads(payload.data);
+      setLoadError(payload.error);
+    } catch {
+      setThreads([]);
+      setLoadError('Could not load conversations. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
+
+  useEffect(() => {
+    setAiReplyDraft(null);
+    setAiReplyError(null);
+  }, [active]);
+
+  async function generateAiReply() {
+    if (!active || !user?.activeVendorId) return;
+    setAiReplyBusy(true); setAiReplyError(null); setAiReplyDraft(null);
+    try {
+      const response = await fetch(`/api/vendors/${user.activeVendorId}/ai/content`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ surface: 'inbox_reply', threadId: active }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error?.message || 'AI writing is unavailable.');
+      setAiReplyDraft(payload.data?.draft || null);
+    } catch (reason) {
+      setAiReplyError(reason instanceof Error ? reason.message : 'AI writing is unavailable.');
+    } finally { setAiReplyBusy(false); }
+  }
 
   useEffect(() => {
     if (!user?.id || threads.length === 0) return;
@@ -259,7 +295,12 @@ export default function VendorInboxPage() {
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading ? (
+            {loadError ? (
+              <div className="px-4 py-10 text-center text-xs text-red-600">
+                <p>{loadError}</p>
+                <button type="button" onClick={() => void loadThreads()} className="mt-3 font-semibold text-primary hover:underline">Try again</button>
+              </div>
+            ) : loading ? (
               <p className="px-4 py-10 text-center text-xs text-gray-400">Loading conversations…</p>
             ) : visibleThreads.length === 0 ? (
               <p className="px-4 py-10 text-center text-xs text-gray-400">{threads.length === 0 ? 'No conversations yet.' : 'No matching conversations.'}</p>
@@ -328,6 +369,7 @@ export default function VendorInboxPage() {
               onMessageSent={appendMessage}
               readByOthers={readByOthersIds}
               deliveredByOthers={deliveredByOthersIds}
+              aiReply={{ draft: aiReplyDraft, busy: aiReplyBusy, error: aiReplyError, onGenerate: () => void generateAiReply(), onDiscard: () => setAiReplyDraft(null) }}
             />
           )}
         </div>

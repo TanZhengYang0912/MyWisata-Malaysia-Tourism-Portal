@@ -9,10 +9,13 @@ import { productCreateSchema, productUpdateSchema, type ProductCreate } from '@/
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { Check, ImagePlus, Sparkles, Trash2 } from 'lucide-react';
+import { Check, ImagePlus, Trash2 } from 'lucide-react';
 import { buildProductFormDefaults, normalizeProductTags, validateProductReviewReadiness } from '@/lib/vendor/product-form-helpers';
 import ProductMediaUploader from '@/components/vendor/product-media-uploader';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import AiWritingAssistant from '@/components/vendor/ai-writing-assistant';
+import type { ListingSuggestion } from '@/lib/ai/listing-suggestions';
+import { canonicalCategorySlug, normalizeCategoryRows, type CanonicalCategoryOption } from '@/lib/customer/discovery-categories';
 
 interface Props {
   vendorId: string;
@@ -26,9 +29,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string; city?: string | null; state?: string | null }[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<CanonicalCategoryOption[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null);
+  const [suggestionDraft, setSuggestionDraft] = useState<ListingSuggestion | null>(null);
   const [submitIntent, setSubmitIntent] = useState<'draft' | 'review'>('review');
   const supabase = createClient();
   const validationSchema = initialData?.id ? productUpdateSchema : productCreateSchema;
@@ -50,10 +54,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     if (outletIds?.length) outletsQuery = outletsQuery.in('id', outletIds);
     Promise.all([
       outletsQuery,
-      supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order'),
+      supabase.from('categories').select('id, name, slug').eq('is_active', true).order('sort_order'),
     ]).then(([outletResult, categoryResult]) => {
       setOutlets(outletResult.data ?? []);
-      setCategories(categoryResult.data ?? []);
+      setCategories(normalizeCategoryRows((categoryResult.data ?? []) as { id: string; name: string; slug: string | null }[]));
       if (initialData?.categoryId) {
         setValue('categoryId', initialData.categoryId, { shouldDirty: false, shouldTouch: false });
       }
@@ -82,19 +86,25 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       if (!response.ok) throw new Error(payload.error?.message || 'AI suggestions are not available yet.');
       const suggestion = payload.data?.suggestion;
       if (!suggestion) throw new Error('AI did not return a usable suggestion.');
-      setValue('name', suggestion.title, { shouldDirty: true });
-      setValue('description', suggestion.description, { shouldDirty: true });
-      setValue('tags', suggestion.tags.join(', '), { shouldDirty: true });
-      const matchedCategory = categories.find((category) => category.name.toLowerCase() === String(suggestion.category).toLowerCase());
-      if (matchedCategory) {
-        setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-      }
-      setSuggestionMessage('Draft suggestion applied. Please review it before saving.');
+      setSuggestionDraft(suggestion);
+      setSuggestionMessage('Draft ready. Review it before applying.');
     } catch (error) {
       setSuggestionMessage(error instanceof Error ? error.message : 'AI suggestions are deferred.');
     } finally {
       setSuggesting(false);
     }
+  }
+
+  function applySuggestion() {
+    if (!suggestionDraft) return;
+    setValue('name', suggestionDraft.title, { shouldDirty: true });
+    setValue('description', suggestionDraft.description, { shouldDirty: true });
+    setValue('tags', suggestionDraft.tags.join(', '), { shouldDirty: true });
+    const suggestedSlug = canonicalCategorySlug(suggestionDraft.category);
+    const matchedCategory = categories.find((category) => category.slug === suggestedSlug || category.name.toLowerCase() === suggestionDraft.category.toLowerCase());
+    if (matchedCategory) setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    setSuggestionDraft(null);
+    setSuggestionMessage('Draft applied. Please review every field before saving.');
   }
 
   function onInvalid(formErrors: FieldErrors) {
@@ -187,18 +197,16 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         </div>
       )}
 
-      <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-violet-950">AI listing assistant</p>
-            <p className="mt-0.5 text-xs text-violet-700">Optional draft help. You remain responsible for checking every detail.</p>
-          </div>
-          <button type="button" onClick={suggestListing} disabled={suggesting} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
-            <Sparkles size={14} /> {suggesting ? 'Drafting…' : 'Suggest'}
-          </button>
-        </div>
-        {suggestionMessage && <p className="mt-2 text-xs text-violet-800">{suggestionMessage}</p>}
-      </div>
+      <AiWritingAssistant
+        label="AI listing assistant"
+        buttonLabel="Suggest listing"
+        busy={suggesting}
+        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500">Tags: {suggestionDraft.tags.join(', ')}</p></div>}
+        onGenerate={() => void suggestListing()}
+        onApply={suggestionDraft ? applySuggestion : undefined}
+        onDiscard={suggestionDraft ? () => setSuggestionDraft(null) : undefined}
+      />
+      {suggestionMessage && <p className="text-xs text-violet-800">{suggestionMessage}</p>}
 
       <div className="space-y-4">
         <div>

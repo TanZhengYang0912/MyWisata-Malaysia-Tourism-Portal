@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, CheckCheck } from "lucide-react";
+import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 
 export type NotificationScope = "customer" | "vendor";
 export type NotificationCategoryOption = { value: string; label: string };
@@ -86,8 +87,8 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     setUnread(0);
   }
   return <div ref={ref} className="relative shrink-0">
-    <button type="button" aria-label="Notifications" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="relative rounded-lg p-1.5 text-foreground hover:bg-secondary">
-      <Bell size={18} />{unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-destructive px-1 text-center text-[9px] font-bold leading-4 text-white">{unread > 99 ? "99+" : unread}</span>}
+    <button type="button" aria-label="Notifications" aria-expanded={open} onClick={() => setOpen((value) => !value)} className={HEADER_ICON_BUTTON_CLASS}>
+      <Bell size={18} />{unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-bold leading-4 text-white">{unread > 99 ? "99+" : unread}</span>}
     </button>
     {open && <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-white shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="font-semibold">Notifications</p><button type="button" onClick={() => void markAll()} className="flex items-center gap-1 text-xs text-primary"><CheckCheck size={14} /> Mark all as read</button></div>

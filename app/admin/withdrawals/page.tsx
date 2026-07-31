@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Search, ShieldAlert, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Search, ShieldAlert, ShieldCheck, TimerReset, UsersRound, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -42,7 +42,10 @@ type Action = "approve" | "hold" | "reject" | "resume" | "fraud-override";
 type PendingConfirmation = { action: Action; reasonCategory: string; reason: string };
 
 const PAGE_SIZES = [15, 25, 50, 100] as const;
-const STATUS_OPTIONS = ["pending", "pending_second_approval", "hold", "overdue", "approved", "processing", "paid", "completed", "rejected", "failed"];
+const STATUS_OPTIONS = [
+  { value: "review", label: "Needs review" },
+  ...["pending", "pending_second_approval", "hold", "overdue", "approved", "processing", "paid", "completed", "rejected", "failed"].map((value) => ({ value, label: value.replaceAll("_", " ") })),
+];
 // Action-style contract: border-2 border-slate-300 for Hold and
 // border-2 border-red-300 for Reject. Inline styles keep these treatments
 // visible over the shared Button outline defaults.
@@ -128,6 +131,25 @@ function toWalletReasonAction(action: Action): WalletReasonAction {
   return action === "fraud-override" ? "fraud_override" : action;
 }
 
+function formatRM(valueSen: number) {
+  return `RM ${(valueSen / 100).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatAge(createdAt: string | null) {
+  if (!createdAt) return "—";
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 3_600_000));
+  if (hours < 1) return "<1h";
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+function getReviewPriority(item: ListItem) {
+  if (item.status === "overdue") return { label: "Overdue", className: "border-red-200 bg-red-50 text-red-700", icon: TimerReset };
+  if (item.requiresDualApproval && item.approvalCount < 2) return { label: "Waiting for second approver", className: "border-amber-200 bg-amber-50 text-amber-800", icon: UsersRound };
+  if (item.riskLevel === "high") return { label: "High risk", className: "border-red-200 bg-red-50 text-red-700", icon: AlertTriangle };
+  return { label: "Needs action", className: "border-border bg-muted text-muted-foreground", icon: Clock3 };
+}
+
 function ReviewLedgerSection({ title, rows, emptyMessage }: { title: string; rows: ReviewLedgerRow[]; emptyMessage: string }) {
   return <section className="rounded-xl border border-border p-4 mt-4 text-sm">
     <p className="font-semibold mb-2">{title}</p>
@@ -149,7 +171,7 @@ export default function AdminWithdrawalsPage() {
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("review");
   const [risk, setRisk] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -271,24 +293,43 @@ export default function AdminWithdrawalsPage() {
     ...(canResume ? ["resume" as const] : []),
     ...(isSuperAdmin && detail?.riskLevel === "high" && !detail.riskOverridden ? ["fraud-override" as const] : []),
   ];
+  const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
+  const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
+  const visibleDualApproval = items.filter((item) => item.requiresDualApproval && item.approvalCount < 2).length;
+  const visibleOverdue = items.filter((item) => item.status === "overdue").length;
+  const oldestRequest = items.reduce<ListItem | null>((oldest, item) => !oldest || new Date(item.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? item : oldest, null);
 
-  return <div className="p-6 sm:p-8">
-    <h1 className="font-bold text-lg text-foreground mb-1">Withdrawal Approvals</h1>
-    <p className="text-xs text-muted-foreground mb-5">Review withdrawal requests using wallet balances, risk facts and the approval timeline.</p>
+  return <div className="min-h-full p-6 sm:p-8 xl:p-10">
+    <div className="mx-auto max-w-[1500px]">
+    <div className="mb-7 flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><ShieldCheck size={14} /> Wallet governance</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground">Withdrawal Approvals</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review payout requests with the amount, risk, approval progress and age visible before opening the evidence drawer.</p></div><div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Review priority</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? "Oldest first" : "Queue clear"}</p></div></div>
+    <div aria-label="Withdrawal review summary" className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-5">
+      {[{ label: "Needs action", value: total, detail: "Requests in this queue" }, { label: "Pending payout value", value: formatRM(visiblePayoutValue), detail: "Visible page total" }, { label: "High risk", value: visibleHighRisk, detail: "Visible page total" }, { label: "Dual approval", value: visibleDualApproval, detail: "Waiting for second approver" }, { label: "Overdue", value: visibleOverdue, detail: oldestRequest ? `Oldest request ${formatAge(oldestRequest.createdAt)}` : "No overdue requests" }].map((metric) => <div key={metric.label} className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_10px_rgba(1,0,102,0.06)]"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{metric.label}</p><p className="mt-2 font-[family-name:var(--font-mono)] text-xl font-bold text-foreground">{metric.value}</p><p className="mt-1 text-[11px] text-muted-foreground">{metric.detail}</p></div>)}
+    </div>
     <div className="rounded-2xl bg-card border border-border p-4 mb-5 flex flex-wrap gap-3 items-center">
       <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder="Search customer or email" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm" /></div>
-      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All statuses</option>{STATUS_OPTIONS.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}</select>
+      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All statuses</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
       <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All risk levels</option><option value="low">Low</option><option value="review">Review</option><option value="high">High</option></select>
       <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm">{PAGE_SIZES.map((size) => <option key={size} value={size}>{size} per page</option>)}</select>
     </div>
-    <div className="rounded-2xl overflow-hidden bg-card border border-border">
-      <div className="px-5 py-4 border-b border-border flex justify-between"><h2 className="font-bold text-foreground">Review queue ({total})</h2><span className="text-xs text-muted-foreground">Newest first</span></div>
-      {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> : items.length === 0 ? <EmptyState title="No withdrawal requests" /> : <div className="divide-y divide-border">{items.map((item) => <button key={item.id} type="button" onClick={() => void openDetail(item.id)} className="w-full px-5 py-4 text-left flex items-center gap-4 hover:bg-muted/40"><div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold">{item.customerDisplayName.slice(0, 1).toUpperCase()}</div><div className="flex-1 min-w-0"><p className="font-semibold text-sm truncate">{item.customerDisplayName}</p><p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")}</p></div><div className="text-right"><p className="font-mono font-bold">RM {(item.amountSen / 100).toFixed(2)}</p><div className="flex items-center gap-2 justify-end"><StatusBadge status={item.status} />{item.riskLevel === "high" && <ShieldAlert size={15} className="text-red-600" />}</div></div></button>)}</div>}
+    <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-bold text-foreground">Review queue ({total})</h2><p className="mt-1 text-xs text-muted-foreground">Open a row when the review priority or evidence needs a closer look.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{oldestRequest ? `Oldest request ${formatAge(oldestRequest.createdAt)}` : "No open requests"}</span></div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[980px]">
+          <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>Customer</span><span>Amount</span><span>Risk / priority</span><span>Approval progress</span><span>Age / SLA</span><span>Status</span><span aria-hidden="true" /></div>
+          {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> : items.length === 0 ? <EmptyState title="No withdrawal requests" /> : <div className="divide-y divide-border">{items.map((item) => { const priority = getReviewPriority(item); const PriorityIcon = priority.icon; return <button key={item.id} type="button" onClick={() => void openDetail(item.id)} aria-label={`${item.customerDisplayName}, ${formatRM(item.amountSen)}, ${priority.label}`} className="group grid w-full grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 px-5 py-4 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{item.customerDisplayName.slice(0, 1).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{item.customerDisplayName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")} · {item.userId.slice(0, 8)}…</p></div></div><div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatRM(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? "RM500+ threshold" : "Standard review"}</p></div><div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{priority.label}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">Risk: {item.riskLevel}</p>}</div><div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? `${Math.min(item.approvalCount, 2)}/2 approvals` : "1/1 approval"}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? "Waiting for second approver" : "Approval path ready"}</p></div><div><p className={`text-sm font-semibold ${item.status === "overdue" ? "text-red-700" : "text-foreground"}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === "overdue" ? "Overdue" : "Within review window"}</p></div><div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === "high" && <ShieldAlert size={15} aria-label="High risk" className="text-red-600" />}</div><ArrowUpRight size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></button>; })}</div>}
+        </div>
+      </div>
       <div className="px-5 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground"><span>Page {page} of {Math.max(totalPages, 1)}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div></div>
     </div>
-    {detail && <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={() => setDetail(null)}><aside className="h-full w-full max-w-xl overflow-y-auto bg-card p-6" onClick={(e) => e.stopPropagation()}>
+    {detail && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={`${detail.customer.displayName} withdrawal review`} onClick={() => setDetail(null)}><aside className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6" onClick={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-start"><div><p className="text-xs uppercase tracking-wider text-muted-foreground">Withdrawal review</p><h2 className="text-xl font-bold">{detail.customer.displayName}</h2><p className="text-sm text-muted-foreground">{detail.customer.email}</p></div><button type="button" onClick={() => setDetail(null)} aria-label="Close"><X size={20} /></button></div>
-      <div className="grid grid-cols-2 gap-3 mt-5 text-sm"><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Amount</p><p className="font-mono font-bold">RM {(detail.amountSen / 100).toFixed(2)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={detail.status} /></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">App KYC</p><p>{titleCaseStatus(detail.customer.kycStatus)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Risk</p><p className={detail.riskLevel === "high" ? "text-red-600 font-semibold" : ""}>{titleCaseStatus(detail.riskLevel)}{detail.riskOverridden ? " · Overridden" : ""}</p></div></div>
+      <div className="grid grid-cols-2 gap-3 mt-5 text-sm"><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Amount</p><p className="font-mono font-bold">{formatRM(detail.amountSen)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Status</p><StatusBadge status={detail.status} /></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">App KYC</p><p>{titleCaseStatus(detail.customer.kycStatus)}</p></div><div className="rounded-xl border border-border p-3"><p className="text-xs text-muted-foreground">Risk</p><p className={detail.riskLevel === "high" ? "text-red-600 font-semibold" : ""}>{titleCaseStatus(detail.riskLevel)}{detail.riskOverridden ? " · Overridden" : ""}</p></div></div>
+      <section className="mt-4 rounded-xl border border-border bg-muted/20 p-4"><div className="flex items-center justify-between"><p className="font-semibold text-sm">Decision readiness</p><span className="text-[11px] font-semibold text-muted-foreground">Review priority: {getReviewPriority(detail).label}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{[
+        { label: "App KYC", value: titleCaseStatus(detail.customer.kycStatus), ready: detail.customer.kycStatus === "approved" },
+        { label: "Wallet evidence", value: hasReviewEvidence ? "Available" : "Unavailable", ready: hasReviewEvidence },
+        { label: "Payout destination", value: detail.destinationLabel || "Not supplied", ready: Boolean(detail.destinationLabel) },
+        { label: "Approval progress", value: detail.requiresDualApproval ? `${Math.min(detail.approvalCount, 2)}/2 approvals` : "Single approval", ready: !detail.requiresDualApproval || detail.approvalCount >= 2 },
+      ].map((check) => <div key={check.label} className="flex items-start gap-2 rounded-lg bg-card px-3 py-2.5"><span className={check.ready ? "text-emerald-600" : "text-amber-600"}>{check.ready ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}</span><div><p className="text-xs font-semibold text-foreground">{check.label}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{check.value}</p></div></div>)}</div></section>
       <div className="rounded-xl border border-border p-4 mt-4 text-sm"><p className="font-semibold mb-2">Wallet balances</p><p>Top-up: RM {(detail.wallet.topupSen / 100).toFixed(2)}</p><p>Earnings: RM {(detail.wallet.earningsSen / 100).toFixed(2)}</p><p>Pending rewards: RM {(detail.wallet.pendingEarningsSen / 100).toFixed(2)}</p><p>Reserved: RM {(detail.wallet.reservedSen / 100).toFixed(2)}</p><p>Withdrawn: RM {(detail.wallet.withdrawnSen / 100).toFixed(2)}</p><p className="mt-2 text-muted-foreground">Destination: {detail.destinationLabel}</p></div>
       {!hasReviewEvidence && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 mt-4 text-sm text-amber-950"><p className="font-semibold">Review data is currently unavailable</p><p>Do not approve until the data is available.</p></div>}
       <ReviewLedgerSection title="Reward sources" rows={detail.reviewSources.rewardSources} emptyMessage="No reward transactions were found." />
@@ -308,5 +349,6 @@ export default function AdminWithdrawalsPage() {
       {pendingConfirmation && <div role="dialog" aria-modal="true" aria-labelledby="confirm-withdrawal-title" className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-sm"><h3 id="confirm-withdrawal-title" className="font-semibold">Confirm withdrawal decision</h3><p className="mt-2">Customer: {detail.customer.displayName}</p><p>Amount: RM {(detail.amountSen / 100).toFixed(2)}</p><p>Destination: {detail.destinationLabel}</p><p>Decision: {DECISION_COPY[pendingConfirmation.action].label}</p><p>Reason: {DECISION_REASON_COPY[toWalletReasonAction(pendingConfirmation.action)][pendingConfirmation.reasonCategory] ?? titleCaseStatus(pendingConfirmation.reasonCategory)}</p><p>Note: {pendingConfirmation.reason}</p><div className="flex flex-wrap gap-2 mt-4"><Button onClick={() => void confirmAction()} disabled={loading}>Confirm decision</Button><Button variant="outline" onClick={() => setPendingConfirmation(null)} disabled={loading}>Cancel</Button></div></div>}
       <p className="text-xs text-muted-foreground mt-3">Every decision is recorded in the audit timeline.</p></div>}
     </aside></div>}
+    </div>
   </div>;
 }

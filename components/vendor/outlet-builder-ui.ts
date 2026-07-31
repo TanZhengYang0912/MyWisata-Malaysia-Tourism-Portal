@@ -8,6 +8,15 @@ export type BuilderViewport = "desktop" | "tablet" | "mobile";
 export type BuilderPreviewMode = "draft" | "published";
 export type BuilderConfirmationAction = "publish" | "discard";
 
+export const OUTLET_BUILDER_CLOSE_TRANSITION_MS = 180;
+
+export interface OutletBuilderOperationState {
+  saving: boolean;
+  publishing: boolean;
+  discarding: boolean;
+  closing: boolean;
+}
+
 export interface BuilderViewportConfig {
   label: string;
   width: number;
@@ -45,6 +54,22 @@ export function getBuilderViewportConfig(
 
 export function getBuilderPreviewLabel(mode: BuilderPreviewMode) {
   return mode === "draft" ? "Draft preview" : "Published version";
+}
+
+export function isOutletBuilderBusy(state: OutletBuilderOperationState) {
+  return (
+    state.saving ||
+    state.publishing ||
+    state.discarding ||
+    state.closing
+  );
+}
+
+export function getPublishedOutletFeedback(
+  outletName: string,
+  publishedVersion: string | number,
+) {
+  return `${outletName} shop page published successfully. Customer shop now uses version ${publishedVersion}.`;
 }
 
 export function getBuilderBlockLabel(type: OutletPageBlockType) {

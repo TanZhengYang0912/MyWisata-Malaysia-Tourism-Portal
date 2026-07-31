@@ -4,6 +4,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { productUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
 type StockVariant = { is_active: boolean; inventory?: { quantity?: number | null; reserved?: number | null }[] };
@@ -22,20 +23,14 @@ export async function GET(_request: Request, { params }: Props) {
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      outlets(name, city),
-      categories(name, slug),
-      product_variants(*, inventory(*)),
-      media_assets(id,url,alt_text,sort_order),
-      booking_slots(*)
-    `)
-    .eq('id', productId)
-    .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds)
-    .single();
+  const { data, error } = await getScopedProduct(supabase, vendorId, productId, access.access.outletIds, `
+    *,
+    outlets(name, city),
+    categories(name, slug),
+    product_variants(*, inventory(*)),
+    media_assets(id,url,alt_text,sort_order),
+    booking_slots(*)
+  `);
 
   if (error || !data) return apiFail('NOT_FOUND', 'Product not found', 404);
   return apiOk(data);
@@ -46,14 +41,14 @@ export async function PATCH(request: Request, { params }: Props) {
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 
-  const { data: existingProduct } = await access.access.serviceDb
-    .from('products')
-    .select('id,outlet_id')
-    .eq('id', productId)
-    .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds)
-    .maybeSingle();
-  if (!existingProduct) return apiFail('NOT_FOUND', 'Product not found', 404);
+  const { data: existingProduct, outlet: productOutlet } = await getScopedProduct<{ id: string; outlet_id: string | null }>(
+    access.access.serviceDb,
+    vendorId,
+    productId,
+    access.access.outletIds,
+    'id,outlet_id',
+  );
+  if (!existingProduct || !productOutlet) return apiFail('NOT_FOUND', 'Product not found in an assigned outlet', 404);
 
   const parsed = await parseBody(request, productUpdateSchema);
   if (!parsed.ok) return parsed.response;
@@ -88,7 +83,6 @@ export async function PATCH(request: Request, { params }: Props) {
     .update(updateData)
     .eq('id', productId)
     .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds)
     .select()
     .single();
 
@@ -129,9 +123,10 @@ export async function PATCH(request: Request, { params }: Props) {
         .from('inventory')
         .upsert({
           variant_id: variant.id,
+          outlet_id: productOutlet.id,
           quantity: body.availableStock ?? 0,
           low_stock_threshold: body.lowStockThreshold ?? 5,
-        }, { onConflict: 'variant_id' });
+        }, { onConflict: 'variant_id,outlet_id' });
       if (inventoryError) return apiFail('DB_ERROR', inventoryError.message, 500);
       await refreshStockStatus(access.access.serviceDb, vendorId, productId);
     }
@@ -145,13 +140,21 @@ export async function DELETE(_request: Request, { params }: Props) {
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 
+  const { data: existingProduct } = await getScopedProduct<{ id: string }>(
+    access.access.serviceDb,
+    vendorId,
+    productId,
+    access.access.outletIds,
+    'id',
+  );
+  if (!existingProduct) return apiFail('NOT_FOUND', 'Product not found', 404);
+
   // Soft delete
   const { error } = await access.access.serviceDb
     .from('products')
     .update({ status: 'archived' })
     .eq('id', productId)
-    .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds);
+    .eq('vendor_id', vendorId);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   return apiOk({ id: productId, status: 'archived' });

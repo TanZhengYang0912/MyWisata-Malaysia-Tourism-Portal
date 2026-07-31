@@ -4,6 +4,7 @@ import { searchActivities } from '@/backend/domains/catalogue';
 import { cityCentre, parseRecommendationCoordinates } from '@/lib/personalization/location';
 import { describeFit } from '@/lib/personalization/explanation';
 import { rankPersonalizedActivities, type TravelPreferences } from '@/lib/personalization/scorer';
+import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 
 const PERSONALIZED_TIERS = new Set(['profile_complete', 'kyc_verified']);
 const PHONE_READY_TIERS = new Set(['phone_verified', 'profile_complete', 'kyc_verified']);
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   const preferences: TravelPreferences = {
-    interests: survey?.interests ?? [],
+    interests: normalizeCategorySlugs(survey?.interests),
     budgetRange: survey?.budget_range ?? 'mid_range',
     mobilityNeeds: survey?.mobility_needs ?? 'none',
     preferredDistance: survey?.preferred_distance ?? 'no_preference',

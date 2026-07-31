@@ -6,6 +6,7 @@ import { ActivityCard } from "@/components/customer/activity-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CATEGORIES, STATES_MY, searchActivities, type SearchFilters } from "@/backend/domains/catalogue";
 import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
+import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -84,7 +85,7 @@ export function SearchClient({
       isFirstRender.current = false;
       return;
     }
-    searchActivities({ q, category, state, vendorId, priceMax, openOnly, sort }).then((nextResults) => {
+    searchActivities({ q, state, vendorId, priceMax, openOnly, sort, ...getDiscoverySearchFilter(category) }).then((nextResults) => {
       setResults(nextResults);
       setCurrentPage(1);
     });

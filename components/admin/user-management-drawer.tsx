@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, ShieldCheck, RotateCcw, Trash2, Ban, Unlock, Eraser } from "lucide-react";
+import { X, ShieldCheck, RotateCcw, Trash2, Ban, Unlock, Eraser, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
+import { getAdminUserInitial, getAdminUserLabel, hasAdminDisplayName } from "@/lib/admin/identity";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 import type { UserManagementAction, UserManagementDetail } from "@/lib/user-management/types";
 import { getUserManagementErrorMessage } from "@/lib/user-management/error-message";
 
@@ -29,6 +32,8 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
   const [action, setAction] = useState<UserManagementAction | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { showFeedback } = useActionFeedback();
 
   useEffect(() => {
     if (!userId) { setDetail(null); return; }
@@ -50,7 +55,6 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
       setError("Reason must be at least 10 characters.");
       return;
     }
-    if (!window.confirm(`${ACTION_LABELS[action]} for ${detail?.email ?? "this user"}?`)) return;
     setBusy(true); setError(null);
     try {
       const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
@@ -59,7 +63,8 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(getUserManagementErrorMessage(body, "Unable to update user"));
-      setAction(null); setReason(""); onChanged();
+      setAction(null); setReason(""); setConfirmOpen(false); onChanged();
+      showFeedback("success", `${ACTION_LABELS[action]} completed.`);
       const refreshed = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`);
       const refreshedBody = await refreshed.json().catch(() => ({}));
       if (refreshed.ok) setDetail(refreshedBody.data as UserManagementDetail);
@@ -68,14 +73,16 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
   }
 
   if (!userId) return null;
-  return <div className="fixed inset-0 z-50 flex justify-end bg-black/25" role="dialog" aria-modal="true" aria-label="User details">
-    <button type="button" aria-label="Close drawer" className="absolute inset-0 cursor-default" onClick={onClose} />
-    <aside className="relative h-full w-full max-w-xl overflow-y-auto bg-card p-6 shadow-2xl">
-      <div className="flex items-start justify-between gap-4 border-b border-border pb-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">User details</p><h2 className="mt-1 text-xl font-bold text-foreground">{detail?.fullName || detail?.email || "Loading…"}</h2></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X size={18} /></Button></div>
+  const label = detail ? getAdminUserLabel(detail) : "Loading user…";
+  const named = detail ? hasAdminDisplayName(detail) : false;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 sm:p-6" role="dialog" aria-modal="true" aria-label="User details">
+    <button type="button" aria-label="Close user details" className="absolute inset-0 cursor-default" onClick={onClose} />
+    <aside className="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">User details</p><h2 className="mt-1 text-xl font-bold text-foreground">{label}</h2><p className="mt-1 text-xs text-muted-foreground">{named ? "Profile name set" : "Display name not set — using email identifier"}</p></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X size={18} /></Button></div>
       {loading && <p className="py-8 text-sm text-muted-foreground">Loading user…</p>}
       {error && <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
       {detail && <div className="mt-5 space-y-5">
-        <div className="flex items-center gap-4"><div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-secondary text-lg font-bold text-primary">{detail.avatarUrl ? <img src={detail.avatarUrl} alt="" className="h-full w-full object-cover" /> : (detail.fullName || detail.email).slice(0, 1).toUpperCase()}</div><div><p className="font-semibold text-foreground">{detail.email}</p><p className="text-xs text-muted-foreground">{detail.role.replaceAll("_", " ")}</p></div><span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusClass(detail.status)}`}>{detail.status}</span></div>
+        <div className="flex items-center gap-4"><div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-lg font-bold text-primary">{detail.avatarUrl ? <img src={detail.avatarUrl} alt="" className="h-full w-full object-cover" /> : getAdminUserInitial(detail)}</div><div className="min-w-0"><p className="truncate font-semibold text-foreground">{detail.email}</p><p className="text-xs capitalize text-muted-foreground">{detail.role.replaceAll("_", " ")}</p><button type="button" onClick={() => { void navigator.clipboard.writeText(detail.id); showFeedback("success", "User ID copied."); }} className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"><Copy size={12} /> Copy user ID</button></div><span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusClass(detail.status)}`}>{detail.status}</span></div>
         <div className="grid gap-3 sm:grid-cols-2">{[
           ["Phone", detail.phone || "Not set"], ["Location", [detail.city, detail.country].filter(Boolean).join(", ") || "Not set"],
           ["Email verification", detail.emailVerified ? "Verified" : "Unverified"], ["Phone verification", detail.phoneVerified ? "Verified" : "Unverified"],
@@ -90,8 +97,9 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
           {detail.status === "suspended" && <Button size="sm" disabled={busy} onClick={() => setAction("unsuspend")}><Unlock size={14} /> Unsuspend</Button>}
           {detail.status === "deleted" && <Button size="sm" disabled={busy} onClick={() => setAction("restore")}><RotateCcw size={14} /> Restore</Button>}
         </div>{detail.pendingWithdrawalCount > 0 && detail.status === "active" && <p className="mt-2 text-xs text-amber-700">Soft delete is disabled while a withdrawal is pending or processing.</p>}</div>
-        {action && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><p className="text-sm font-semibold text-foreground">{ACTION_LABELS[action]}</p><p className="mt-1 text-xs text-muted-foreground">Enter at least 10 characters. This action will be recorded in the audit log.</p><textarea value={reason} onChange={(event) => { setReason(event.target.value); if (error) setError(null); }} rows={3} maxLength={1000} placeholder="Reason for this action" className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />{error && <p role="alert" className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-sm text-destructive">{error}</p>}<div className="mt-2 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => { setAction(null); setReason(""); setError(null); }}>Cancel</Button><Button size="sm" onClick={() => void runAction()} disabled={busy || reason.trim().length < 10}>{busy ? "Saving…" : "Confirm action"}</Button></div></div>}
+        {action && <div className="rounded-xl border border-primary/30 bg-primary/5 p-4"><p className="text-sm font-semibold text-foreground">{ACTION_LABELS[action]}</p><p className="mt-1 text-xs text-muted-foreground">Enter at least 10 characters. This action will be recorded in the audit log.</p><textarea value={reason} onChange={(event) => { setReason(event.target.value); if (error) setError(null); }} rows={3} maxLength={1000} placeholder="Reason for this action" className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />{error && <p role="alert" className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-sm text-destructive">{error}</p>}<div className="mt-2 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => { setAction(null); setReason(""); setError(null); }}>Cancel</Button><Button size="sm" onClick={() => { if (reason.trim().length < 10) { setError("Reason must be at least 10 characters."); return; } setConfirmOpen(true); }} disabled={busy || reason.trim().length < 10}>Review action</Button></div></div>}
       </div>}
     </aside>
+    <AdminConfirmDialog open={confirmOpen && Boolean(action)} title={action ? ACTION_LABELS[action] : "Confirm action"} description={`This will apply the selected account action to ${detail?.email ?? "this user"}. The reason will be recorded in the audit log.`} confirmLabel="Confirm action" confirmVariant={action === "soft_delete" ? "destructive" : "default"} busy={busy} onCancel={() => setConfirmOpen(false)} onConfirm={() => void runAction()} />
   </div>;
 }

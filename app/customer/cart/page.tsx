@@ -170,7 +170,7 @@ export default function CartPage() {
       const response = await fetch("/api/vouchers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucher.code, cartSubtotal: subtotal, items: voucherValidationItems }),
+        body: JSON.stringify({ code: voucher.code, cartSubtotal: subtotal, items: voucherValidationItems, intent: "view" }),
       });
       const payload = await response.json() as { data?: { valid?: boolean; discountAmount?: number } };
       return payload.data?.valid ? { voucher, discountAmount: Number(payload.data.discountAmount ?? 0) } : null;
@@ -227,6 +227,7 @@ export default function CartPage() {
         code: normalizedCode,
         cartSubtotal: subtotal,
         items: voucherValidationItems,
+        intent: "apply",
       }),
     });
     const payload = await response.json();

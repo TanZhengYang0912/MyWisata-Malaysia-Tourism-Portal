@@ -73,12 +73,12 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
   if (!active) return null;
 
   return (
-    <section className="relative overflow-hidden bg-[#07112c] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_24%,rgba(255,204,0,0.18),transparent_28%),linear-gradient(135deg,rgba(1,0,102,0.94),rgba(7,17,44,0.98))]" />
+    <section className="relative overflow-hidden bg-[#101936] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_24%,rgba(255,204,0,0.1),transparent_24%),linear-gradient(135deg,rgba(16,25,54,0.98),rgba(11,18,42,0.98))]" />
       <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/90">
-            <Sparkles size={12} className="text-accent" /> 16 destinations across Malaysia
+            <Sparkles size={12} className="text-accent" /> {MALAYSIA_DESTINATIONS.length} destinations across Malaysia
           </div>
           <p className="text-xs text-white/55">Choose a card — it will take the spotlight, then rejoin the queue.</p>
         </div>
@@ -86,8 +86,8 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
         <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.92fr)_minmax(0,1.65fr)] lg:items-stretch">
           <div className={`relative min-h-[460px] overflow-hidden rounded-[28px] border border-white/15 bg-black/20 shadow-2xl transition-transform duration-700 sm:min-h-[520px] ${transitioningId ? "scale-[1.025]" : "scale-100"}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={active.image} alt={`${active.attraction}, ${active.state}`} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.9))]" />
+            <img src={active.image} alt={`${active.attraction}, ${active.state}`} className="absolute inset-0 h-full w-full object-cover saturate-[1.35] contrast-[1.08] brightness-[1.05] transition-transform duration-700" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.06),rgba(2,6,23,0.84))]" />
             <div className="relative flex h-full flex-col justify-end p-6 sm:p-8">
               <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent"><MapPin size={13} /> {active.region}</p>
               <h1 className="max-w-md font-[family-name:var(--font-display)] text-4xl font-bold leading-[0.98] tracking-tight sm:text-6xl">{active.state}</h1>
@@ -125,8 +125,8 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
                     className={`group relative min-w-[68%] overflow-hidden rounded-2xl border text-left transition-all duration-700 sm:min-w-[28%] lg:min-w-[29%] ${transitioningId === destination.state ? "scale-105 border-accent shadow-[0_0_0_2px_rgba(255,204,0,0.35)]" : "border-white/15 hover:-translate-y-1 hover:border-white/45"}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} loading="lazy" className="h-[285px] w-full object-cover transition duration-700 group-hover:scale-105 sm:h-[350px]" />
-                    <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_28%,rgba(2,6,23,0.92))]" />
+                    <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} loading="lazy" className="h-[285px] w-full object-cover saturate-[1.35] contrast-[1.08] brightness-[1.05] transition duration-700 group-hover:scale-105 sm:h-[350px]" />
+                    <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_34%,rgba(2,6,23,0.82))]" />
                     <span className="absolute inset-x-0 bottom-0 p-4">
                       <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-accent">{destination.state}</span>
                       <span className="mt-1 block text-sm font-bold leading-5 text-white">{destination.attraction}</span>

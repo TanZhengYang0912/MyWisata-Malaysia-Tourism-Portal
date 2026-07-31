@@ -8,6 +8,7 @@ import { useTrip, type TripStop } from "@/components/providers/trip";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, type GeoHit, type RouteResult } from "@/lib/routing";
 import type { ComputedActivity } from "@/backend/core/types";
+import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 const RADIUS_OPTIONS_KM = [2, 5, 10];
@@ -85,7 +86,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
       isFirstRender.current = false;
       return;
     }
-    searchActivities({ category, near, sort: near ? "distance_asc" : "recommended" }).then(setActivities);
+    searchActivities({ ...getDiscoverySearchFilter(category), near, sort: near ? "distance_asc" : "recommended" }).then(setActivities);
   }, [category, origin?.lat, origin?.lng]);
 
   // Route fetch (debounced): all ORS-supported modes → routes[mode] = options.

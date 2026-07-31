@@ -71,7 +71,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('vendor_recommendations')
-    .select('id, vendor_name, status, state, recommender_id, categories(name), created_at')
+    .select('id, vendor_name, status, state, recommender_id, categories(name,slug), created_at')
     .eq('recommender_id', user.id)
     .order('created_at', { ascending: false });
 

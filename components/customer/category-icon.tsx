@@ -1,28 +1,14 @@
-import {
-  Bath,
-  Coffee,
-  Compass,
-  Landmark,
-  Mountain,
-  Palmtree,
-  ShoppingBag,
-  Utensils,
-  type LucideProps,
-} from "lucide-react";
+import { BedDouble, Compass, Gem, ShoppingBag, Utensils, type LucideProps } from "lucide-react";
 
 const CATEGORY_ICONS = {
-  "Food & Dining": Utensils,
-  "Island & Beach": Palmtree,
-  "Heritage & Culture": Landmark,
-  "Nature & Hiking": Mountain,
-  "Shopping & Retail": ShoppingBag,
-  "Wellness & Spa": Bath,
-  "Nature & Leisure": Coffee,
+  food: Utensils,
+  activity: Compass,
+  accommodation: BedDouble,
+  retail: ShoppingBag,
+  hidden_gem: Gem,
 } as const;
 
-type CategoryName = keyof typeof CATEGORY_ICONS;
-
 export function CategoryIcon({ category, ...props }: { category: string } & LucideProps) {
-  const Icon = CATEGORY_ICONS[category as CategoryName] ?? Compass;
+  const Icon = CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] ?? Compass;
   return <Icon aria-hidden="true" {...props} />;
 }

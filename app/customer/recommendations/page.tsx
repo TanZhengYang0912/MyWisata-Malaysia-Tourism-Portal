@@ -5,6 +5,7 @@ import { Star, Plus, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { STATES_MY } from "@/backend/domains/catalogue";
 import { createClient } from "@/lib/supabase/client";
+import { getDiscoveryCategoryLabel, normalizeCategoryRows, type CanonicalCategoryOption } from "@/lib/customer/discovery-categories";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
@@ -18,7 +19,7 @@ type RecommendationResponse = {
   vendor_name: string;
   status: VendorRecommendation["status"];
   state: string | null;
-  categories: { name: string } | null;
+  categories: { name: string; slug: string | null } | null;
   author: {
     id: string;
     name: string;
@@ -34,7 +35,7 @@ export default function RecommendationsPage() {
   const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<CanonicalCategoryOption[]>([]);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -47,7 +48,7 @@ export default function RecommendationsPage() {
 
   const supabase = useMemo(() => createClient(), []);
   useEffect(() => {
-    supabase.from("categories").select("id,name").eq("is_active", true).order("sort_order").then(({ data }) => setCategories(data ?? []));
+    supabase.from("categories").select("id,name,slug").eq("is_active", true).order("sort_order").then(({ data }) => setCategories(normalizeCategoryRows((data ?? []) as { id: string; name: string; slug: string | null }[])));
     if (!currentUser) return;
     fetch('/api/recommendations')
       .then((r) => r.json())
@@ -57,7 +58,7 @@ export default function RecommendationsPage() {
             id: r.id,
             submittedBy: currentUser.id,
             name: r.vendor_name,
-            category: r.categories?.name ?? "",
+            category: r.categories?.slug ? getDiscoveryCategoryLabel(r.categories.slug) : r.categories?.name ?? "",
             state: r.state ?? "",
             status: r.status,
             qualityScore: 0,
@@ -106,7 +107,7 @@ export default function RecommendationsPage() {
         id:           body.data.id,
         submittedBy:  currentUser.id,
         name:         body.data.vendor_name,
-        category:     form.category,
+        category:     categories.find((category) => category.id === form.category)?.name ?? "",
         state:        form.state,
         status:       'pending',
         qualityScore: 0,

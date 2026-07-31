@@ -20,6 +20,9 @@ import {
   getBuilderConfirmationCopy,
   getBuilderPreviewLabel,
   getBuilderViewportConfig,
+  getPublishedOutletFeedback,
+  isOutletBuilderBusy,
+  OUTLET_BUILDER_CLOSE_TRANSITION_MS,
   type BuilderConfirmationAction,
   type BuilderViewport,
   type BuilderPreviewMode,
@@ -39,6 +42,7 @@ import {
   type OutletPageBlockType,
   type OutletPageDocument,
 } from "@/lib/vendor/outlet-page-schema";
+import { sanitizeOutletPageProductSelections } from "@/lib/vendor/product-scope";
 import {
   createHistory,
   type History,
@@ -47,6 +51,7 @@ import OutletBuilderCanvas from "@/components/vendor/outlet-builder-canvas";
 import OutletBuilderInspector from "@/components/vendor/outlet-builder-inspector";
 import OutletBuilderPalette from "@/components/vendor/outlet-builder-palette";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
+import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface Props {
   vendorId: string;
@@ -72,6 +77,9 @@ export default function OutletPageBuilder({
     createDefaultOutletPageDocument(outletName),
   );
   const [products, setProducts] = useState<Product[]>([]);
+  const [heroAiDraft, setHeroAiDraft] = useState<{ title: string; body: string; cta?: string } | null>(null);
+  const [heroAiBusy, setHeroAiBusy] = useState(false);
+  const [heroAiError, setHeroAiError] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>("hero");
   const [view, setView] = useState<BuilderViewport>("desktop");
   const [draftVersion, setDraftVersion] = useState(0);
@@ -94,7 +102,9 @@ export default function OutletPageBuilder({
   const [confirmationAction, setConfirmationAction] =
     useState<BuilderConfirmationAction | null>(null);
   const [discarding, setDiscarding] = useState(false);
+  const [closing, setClosing] = useState(false);
   const draftStorageKey = getOutletBuilderDraftStorageKey(vendorId, outletId);
+  const { showFeedback } = useActionFeedback();
 
   function syncHistoryState() {
     setHistoryState({
@@ -133,26 +143,42 @@ export default function OutletPageBuilder({
           localDraft?.pending === true &&
           localDraft.draftVersion === serverDraftVersion;
         const loaded = canRecover ? localDraft.document : serverDraft;
-        setDocument(loaded);
-        historyRef.current = createHistory(loaded);
+        const loadedProducts = (productPayload.data?.items || []).map((product: Product) => ({
+          ...product,
+          base_price: Number(product.base_price),
+        }));
+        const canSanitizeProductSelections =
+          !productPayload.error && Array.isArray(productPayload.data?.items);
+        const safeDocument = canSanitizeProductSelections
+          ? sanitizeOutletPageProductSelections(
+              loaded,
+              new Set(loadedProducts.map((product: Product) => product.id)),
+            )
+          : loaded;
+        const removedProductSelections =
+          safeDocument.featuredIds.length !== loaded.featuredIds.length ||
+          safeDocument.blocks.some(
+            (block: OutletPageBlock, index: number) => block.productIds?.length !== loaded.blocks[index]?.productIds?.length,
+          );
+        const statusMessages = [
+          canRecover ? "Recovered unsaved changes from this browser." : "",
+          removedProductSelections
+            ? "Unavailable product selections were removed from this draft."
+            : "",
+        ].filter(Boolean);
+        setDocument(safeDocument);
+        historyRef.current = createHistory(safeDocument);
         syncHistoryState();
         setDraftVersion(serverDraftVersion);
         setPublishedDocument(page?.isPublished ? page.published : null);
         setPublishedAt(page?.publishedAt || null);
-        setDirty(canRecover);
-        setMessage(
-          canRecover ? "Recovered unsaved changes from this browser." : "",
-        );
+        setDirty(canRecover || removedProductSelections);
+        setMessage(statusMessages.join(" "));
         if (localDraft?.pending && !canRecover) {
           window.localStorage.removeItem(draftStorageKey);
         }
-        setProducts(
-          (productPayload.data?.items || []).map((product: Product) => ({
-            ...product,
-            base_price: Number(product.base_price),
-          })),
-        );
-        setSelectedBlockId(loaded.hero.id);
+        setProducts(loadedProducts);
+        setSelectedBlockId(safeDocument.hero.id);
       })
       .catch((reason) => {
         if (active)
@@ -300,6 +326,29 @@ export default function OutletPageBuilder({
     updateDocument((current) => ({ ...current, gallery }));
   }
 
+  async function generateHeroAiDraft() {
+    setHeroAiBusy(true); setHeroAiError(null); setHeroAiDraft(null);
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/ai/content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          surface: "outlet_page",
+          outletId,
+          outletName,
+          heroTitle: document.hero.title,
+          heroBody: document.hero.body,
+          productNames: products.map((product) => product.name).slice(0, 24),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error?.message || "AI writing is unavailable.");
+      setHeroAiDraft(payload.data?.draft || null);
+    } catch (reason) {
+      setHeroAiError(reason instanceof Error ? reason.message : "AI writing is unavailable.");
+    } finally { setHeroAiBusy(false); }
+  }
+
   function undo() {
     if (!historyRef.current?.canUndo) return;
     setDocument(historyRef.current.undo());
@@ -406,13 +455,18 @@ export default function OutletPageBuilder({
       setPublishedAt(payload.data?.publishedAt || new Date().toISOString());
       setDirty(false);
       window.localStorage.removeItem(draftStorageKey);
-      setMessage(
-        `Published version ${payload.data?.publishedVersion || "latest"}. Customer shop now uses this version.`,
+      const publishedVersion = payload.data?.publishedVersion || "latest";
+      const publishedMessage = getPublishedOutletFeedback(
+        outletName,
+        publishedVersion,
       );
+      setMessage(publishedMessage);
+      showFeedback("success", publishedMessage, 6000);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Could not publish page",
-      );
+      const publishError =
+        reason instanceof Error ? reason.message : "Could not publish page";
+      setError(publishError);
+      showFeedback("error", publishError);
     } finally {
       setPublishing(false);
     }
@@ -478,18 +532,24 @@ export default function OutletPageBuilder({
   const viewportConfig = getBuilderViewportConfig(view);
 
   function closeBuilder() {
+    if (isOutletBuilderBusy({ saving, publishing, discarding, closing })) return;
     if (
       dirty &&
       !window.confirm("You have unsaved changes. Close Outlet Studio anyway?")
     ) {
       return;
     }
-    onClose();
+    setClosing(true);
+    window.setTimeout(onClose, OUTLET_BUILDER_CLOSE_TRANSITION_MS);
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-primary/45 p-0 sm:p-4 lg:p-8">
-      <div className="mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-[#f8fafc] shadow-2xl sm:rounded-[28px]">
+    <div
+      className={`fixed inset-0 z-[60] bg-primary/45 p-0 transition-opacity duration-200 ease-out motion-reduce:transition-none sm:p-4 lg:p-8 ${closing ? "pointer-events-none opacity-0" : "opacity-100"}`}
+    >
+      <div
+        className={`mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none sm:rounded-[28px] ${closing ? "scale-[0.99]" : "scale-100"}`}
+      >
         <header className="flex shrink-0 flex-col gap-4 border-b border-primary/10 bg-primary px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-7">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
@@ -555,7 +615,8 @@ export default function OutletPageBuilder({
             <button
               type="button"
               onClick={closeBuilder}
-              className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10"
+              disabled={saving || publishing || discarding || closing}
+              className="rounded-xl p-2.5 text-indigo-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Close page builder"
             >
               <X size={18} />
@@ -820,6 +881,12 @@ export default function OutletPageBuilder({
             onUpdateBlock={updateBlock}
             onUpdateHero={updateHero}
             onUpdateGallery={updateGallery}
+            heroAiDraft={heroAiDraft}
+            heroAiBusy={heroAiBusy}
+            heroAiError={heroAiError}
+            onGenerateHeroAi={() => void generateHeroAiDraft()}
+            onApplyHeroAi={() => { if (heroAiDraft) updateHero(heroAiDraft); setHeroAiDraft(null); }}
+            onDiscardHeroAi={() => setHeroAiDraft(null)}
           />
         </div>
         {(message || error) && (

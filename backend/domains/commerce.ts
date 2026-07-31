@@ -4,7 +4,7 @@ import { cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
-import type { Booking, CartItem, Order, OrderItem, WithdrawalRequest } from "@/backend/core/types";
+import type { Booking, CartItem, Order, OrderItem, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
 
 
 // ─── Supabase cart ──────────────────────────────────────────────────────────
@@ -387,6 +387,49 @@ export async function getMyWithdrawals(userId: string): Promise<WithdrawalReques
   const { data, error } = await supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId);
   if (error) throw error;
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
+}
+
+type WalletTransactionRow = {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  order_id: string | null;
+  withdrawal_id: string | null;
+  type: string;
+  amount_sen: number;
+  bucket: string;
+  direction: WalletTransaction["direction"];
+  note: string | null;
+  created_at: string;
+};
+
+const WALLET_TRANSACTION_SELECT = "id,user_id,wallet_id,order_id,withdrawal_id,type,amount_sen,bucket,direction,note,created_at";
+
+function mapWalletTransaction(row: WalletTransactionRow): WalletTransaction {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    walletId: row.wallet_id,
+    orderId: row.order_id,
+    withdrawalId: row.withdrawal_id,
+    type: row.type,
+    amount: Number(row.amount_sen) / 100,
+    bucket: row.bucket,
+    direction: row.direction,
+    note: row.note,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getWalletTransactions(userId: string, limit = 100): Promise<WalletTransaction[]> {
+  const { data, error } = await supabase
+    .from("wallet_transactions")
+    .select(WALLET_TRANSACTION_SELECT)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as unknown as WalletTransactionRow[]).map(mapWalletTransaction);
 }
 
 export async function requestWithdrawal(userId: string, amount: number): Promise<WithdrawalRequest> {

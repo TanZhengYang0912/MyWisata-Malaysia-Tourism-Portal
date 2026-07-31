@@ -13,6 +13,7 @@ import {
   INTEREST_OPTIONS, TRAVEL_STYLES, GROUP_COMPOSITIONS,
   BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
 } from "@/backend/domains/preferences";
+import { getDiscoveryCategoryLabel, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 
 type SurveyResponse = {
   interests: string[] | null;
@@ -26,7 +27,7 @@ type SurveyResponse = {
   learned_affinity: Record<string, number> | null;
 } | null;
 
-const interestLabel = (slug: string) => INTEREST_OPTIONS.find((o) => o.slug === slug)?.label ?? slug;
+const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
 export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }: { onSaved?: () => void; submitLabel?: string }) {
   const [interests, setInterests] = useState<string[]>([]);
@@ -51,7 +52,7 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
         if (!active) return;
         const s = body.data;
         if (s) {
-          setInterests(s.interests ?? []);
+          setInterests(normalizeCategorySlugs(s.interests));
           setTravelStyle(s.travel_style ?? "mid_range");
           setBudgetRange(s.budget_range ?? "mid_range");
           setMobilityNeeds(s.mobility_needs ?? "none");

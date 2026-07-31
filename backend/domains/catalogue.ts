@@ -7,7 +7,12 @@ import { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
-import { INTEREST_OPTIONS } from "@/backend/domains/preferences";
+import {
+  canonicalCategorySlug,
+  DISCOVERY_CATEGORIES,
+  getDiscoveryCategoryLabel,
+  type RealCategorySlug,
+} from "@/lib/customer/discovery-categories";
 
 export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
@@ -48,10 +53,10 @@ type OutletRow = {
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
   vendors: { name: string | null; status: string } | null;
-  products: { categories: { name: string } | null }[] | null;
+  products: { categories: { name: string; slug: string | null } | null }[] | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status),products(categories(name))";
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status),products(categories(name,slug))";
 
 function mapOutlet(row: OutletRow): Outlet {
   return {
@@ -59,7 +64,9 @@ function mapOutlet(row: OutletRow): Outlet {
     vendorId: row.vendor_id,
     vendorName: row.vendors?.name ?? undefined,
     name: row.name,
-    category: row.products?.[0]?.categories?.name ?? "",
+    category: row.products?.[0]?.categories?.slug
+      ? getDiscoveryCategoryLabel(row.products[0].categories.slug)
+      : row.products?.[0]?.categories?.name ?? "",
     state: row.state ?? "",
     city: row.city ?? "",
     address: row.address ?? "",
@@ -180,7 +187,7 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     outletId: row.outlet_id ?? cheapest?.outletId ?? "",
     offers: offers.length ? offers : undefined,
     name: row.name,
-    category: row.categories?.name ?? "",
+    category: canonicalCategorySlug(row.categories?.slug) ? getDiscoveryCategoryLabel(row.categories?.slug) : row.categories?.name ?? "",
     description: row.description ?? "",
     image: row.cover_url ?? "",
     // Card shows "from" pricing when the product is sold at several outlets.
@@ -190,7 +197,7 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     duration: "",
     requiresBooking: row.requires_booking,
     tags: row.tags ?? undefined,
-    categorySlug: row.categories?.slug ?? undefined,
+    categorySlug: canonicalCategorySlug(row.categories?.slug) ?? undefined,
     createdAt: row.created_at,
     attributes: row.attributes ?? undefined,
     isHiddenGem: row.is_hidden_gem,
@@ -328,7 +335,10 @@ export async function getComputedActivity(id: string, from?: { lat: number; lng:
 
 export interface SearchFilters {
   q?: string;
+  /** Canonical real category slug; legacy display-name callers may use category. */
+  categorySlug?: RealCategorySlug | null;
   category?: string | null;
+  hiddenGemOnly?: boolean;
   state?: string | null;
   vendorId?: string | null;
   priceMax?: number;
@@ -350,9 +360,12 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
         a.outlet.state.toLowerCase().includes(q),
     );
   }
+  if (filters.categorySlug) results = results.filter((a) => a.categorySlug === filters.categorySlug);
   if (filters.category) {
-    results = results.filter((a) => a.category === filters.category);
+    const canonical = canonicalCategorySlug(filters.category);
+    results = results.filter((a) => canonical ? a.categorySlug === canonical : a.category === filters.category);
   }
+  if (filters.hiddenGemOnly) results = results.filter((a) => a.isHiddenGem);
   if (filters.state && filters.state !== "All Malaysia") {
     results = results.filter((a) => a.outlet.state === filters.state);
   }
@@ -416,19 +429,9 @@ export async function getVoucherByCode(code: string): Promise<Voucher | undefine
   return data ? mapVoucher(data) : undefined;
 }
 
-// Category chips derive from the shared interest vocabulary so they match real
-// `categories.name` values — searchActivities filters on a.category (the name),
-// so the id MUST be the category name or the chip returns nothing.
-const CATEGORY_ICONS: Record<string, string> = {
-  food: "🍜", nature: "🌿", cultural: "🏛", adventure: "🧗",
-  nightlife: "🌙", wellness: "🧘", shopping: "🛍", family: "👨‍👩‍👧",
-};
-
-export const CATEGORIES = INTEREST_OPTIONS.map((o) => ({
-  id: o.label,
-  label: o.label,
-  icon: CATEGORY_ICONS[o.slug] ?? "📍",
-}));
+// Customer selectors use canonical slugs. Hidden Gem is intentionally included
+// here as a collection entry; searchActivities translates it to hiddenGemOnly.
+export const CATEGORIES = DISCOVERY_CATEGORIES.map(({ slug, label, icon }) => ({ id: slug, label, icon }));
 
 export const STATES_MY = [
   "All Malaysia", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",

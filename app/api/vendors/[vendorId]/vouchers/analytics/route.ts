@@ -1,10 +1,11 @@
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { aggregateVoucherAnalytics } from '@/lib/vendor/voucher-analytics';
 
 interface Props { params: Promise<{ vendorId: string }> }
-type RedemptionRow = { voucher_id: string; discount: number | null; created_at: string; orders: { id?: string; total_amount: number | null } | null };
+type RedemptionRow = { voucher_id: string; user_id: string | null; discount: number | null; created_at: string; orders: { id?: string; total_amount: number | null } | null };
 type VoucherRow = { id: string; code: string; name: string; max_uses: number | null; outlet_id: string | null; outlets: { name: string } | { name: string }[] | null };
-type EventRow = { voucher_id: string; event_type: string };
+type EventRow = { voucher_id: string; user_id: string | null; event_type: string };
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
@@ -24,13 +25,13 @@ export async function GET(request: Request, { params }: Props) {
   if (voucherError) return apiFail('DB_ERROR', voucherError.message, 500);
   const voucherRows = (vouchers || []) as VoucherRow[];
   const voucherIds = voucherRows.map((voucher: any) => voucher.id);
-  let eventQuery = db.from('voucher_events').select('voucher_id,event_type').in('voucher_id', voucherIds.length ? voucherIds : ['none']);
+  let eventQuery = db.from('voucher_events').select('voucher_id,user_id,event_type').in('voucher_id', voucherIds.length ? voucherIds : ['none']);
   if (from) eventQuery = eventQuery.gte('created_at', `${from}T00:00:00+08:00`);
   if (to) eventQuery = eventQuery.lte('created_at', `${to}T23:59:59.999+08:00`);
   const { data: eventRows, error: eventError } = await eventQuery;
   if (eventError) return apiFail('DB_ERROR', eventError.message, 500);
   const orderIds = new Set<string>();
-  let redemptionQuery = db.from('voucher_redemptions').select('voucher_id,discount,created_at,orders(id,total_amount)').in('voucher_id', voucherIds.length ? voucherIds : ['none']).order('created_at', { ascending: false });
+  let redemptionQuery = db.from('voucher_redemptions').select('voucher_id,user_id,discount,created_at,orders(id,total_amount)').in('voucher_id', voucherIds.length ? voucherIds : ['none']).order('created_at', { ascending: false });
   if (from) redemptionQuery = redemptionQuery.gte('created_at', `${from}T00:00:00+08:00`);
   if (to) redemptionQuery = redemptionQuery.lte('created_at', `${to}T23:59:59.999+08:00`);
   const { data, error } = await redemptionQuery;
@@ -42,28 +43,14 @@ export async function GET(request: Request, { params }: Props) {
     if (itemError) return apiFail('DB_ERROR', itemError.message, 500);
     allowedOrderIds = new Set((orderItems || []).map((item: any) => item.order_id));
   }
-  const analytics = new Map<string, { voucherId: string; code: string; name: string; outletName: string; views: number; entries: number; applies: number; redemptions: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }>();
-  for (const voucher of voucherRows) {
-    const outlet = Array.isArray(voucher.outlets) ? voucher.outlets[0] : voucher.outlets;
-    analytics.set(voucher.id, { voucherId: voucher.id, code: voucher.code, name: voucher.name, outletName: outlet?.name || 'All outlets', views: 0, entries: 0, applies: 0, redemptions: 0, redemptionRate: voucher.max_uses ? 0 : null, discount: 0, revenue: 0, revenueImpact: 0 });
-  }
-  for (const event of (eventRows ?? []) as EventRow[]) {
-    const current = analytics.get(event.voucher_id);
-    if (!current) continue;
-    if (event.event_type === 'viewed') current.views += 1;
-    if (event.event_type === 'entered') current.entries += 1;
-    if (event.event_type === 'apply_success') current.applies += 1;
-  }
-  for (const row of (data ?? []) as unknown as RedemptionRow[]) {
-    if (allowedOrderIds && !allowedOrderIds.has(row.orders?.id || '')) continue;
-    const current = analytics.get(row.voucher_id);
-    if (!current) continue;
-    current.redemptions += 1;
-    const voucher = voucherRows.find((item) => item.id === row.voucher_id);
-    current.redemptionRate = voucher?.max_uses ? Number(((current.redemptions / voucher.max_uses) * 100).toFixed(1)) : null;
-    current.discount += Number(row.discount || 0);
-    current.revenue += Number(row.orders?.total_amount || 0);
-    current.revenueImpact = current.revenue - current.discount;
-  }
-  return apiOk(Array.from(analytics.values()).sort((a, b) => b.redemptions - a.redemptions || b.revenue - a.revenue));
+  const filteredRedemptions = ((data ?? []) as unknown as RedemptionRow[]).filter((row) => !allowedOrderIds || allowedOrderIds.has(row.orders?.id || ''));
+  const analytics = aggregateVoucherAnalytics(
+    voucherRows.map((voucher) => {
+      const outlet = Array.isArray(voucher.outlets) ? voucher.outlets[0] : voucher.outlets;
+      return { id: voucher.id, code: voucher.code, name: voucher.name, maxUses: voucher.max_uses, outletName: outlet?.name || 'All outlets' };
+    }),
+    ((eventRows ?? []) as EventRow[]).map((event) => ({ voucherId: event.voucher_id, eventType: event.event_type, userId: event.user_id })),
+    filteredRedemptions.map((row) => ({ voucherId: row.voucher_id, discount: row.discount, revenue: row.orders?.total_amount ?? 0, userId: row.user_id })),
+  );
+  return apiOk(analytics);
 }

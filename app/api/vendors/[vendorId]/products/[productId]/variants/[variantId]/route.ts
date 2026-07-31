@@ -3,18 +3,18 @@
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { variantUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string; variantId: string }> }
 
 async function scopedProduct(serviceDb: any, vendorId: string, productId: string, outletIds: string[]) {
-  const { data } = await serviceDb
-    .from('products')
-    .select('id,outlet_id,requires_booking,review_status')
-    .eq('id', productId)
-    .eq('vendor_id', vendorId)
-    .in('outlet_id', outletIds)
-    .maybeSingle();
-  return data;
+  return getScopedProduct<{ id: string; outlet_id: string | null; requires_booking: boolean; review_status: string | null }>(
+    serviceDb,
+    vendorId,
+    productId,
+    outletIds,
+    'id,outlet_id,requires_booking,review_status',
+  );
 }
 
 async function refreshStockStatus(serviceDb: any, vendorId: string, productId: string) {
@@ -39,8 +39,10 @@ export async function PATCH(request: Request, { params }: Props) {
   if (!access.ok) return access.response;
   const serviceDb = access.access.serviceDb;
 
-  const product = await scopedProduct(serviceDb, vendorId, productId, access.access.outletIds);
-  if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
+  const scoped = await scopedProduct(serviceDb, vendorId, productId, access.access.outletIds);
+  const product = scoped.data;
+  const productOutlet = scoped.outlet;
+  if (!product || !productOutlet) return apiFail('NOT_FOUND', 'Product not found in an assigned outlet', 404);
   const { data: variant } = await serviceDb.from('product_variants').select('id').eq('id', variantId).eq('product_id', productId).maybeSingle();
   if (!variant) return apiFail('NOT_FOUND', 'Variant not found', 404);
 
@@ -64,7 +66,7 @@ export async function PATCH(request: Request, { params }: Props) {
   }
 
   if (body.quantity !== undefined) {
-    const { error } = await serviceDb.from('inventory').upsert({ variant_id: variantId, quantity: body.quantity }, { onConflict: 'variant_id' });
+    const { error } = await serviceDb.from('inventory').upsert({ variant_id: variantId, outlet_id: productOutlet.id, quantity: body.quantity }, { onConflict: 'variant_id,outlet_id' });
     if (error) return apiFail('DB_ERROR', error.message, 500);
     await refreshStockStatus(serviceDb, vendorId, productId);
   }
@@ -79,7 +81,7 @@ export async function DELETE(_request: Request, { params }: Props) {
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const serviceDb = access.access.serviceDb;
-  const product = await scopedProduct(serviceDb, vendorId, productId, access.access.outletIds);
+  const { data: product } = await scopedProduct(serviceDb, vendorId, productId, access.access.outletIds);
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
 
   const { error } = await serviceDb.from('product_variants').update({ is_active: false }).eq('id', variantId).eq('product_id', productId);

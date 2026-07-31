@@ -1,8 +1,8 @@
 export function getProductDetailsLayoutClasses() {
   return {
-    drawer: 'flex flex-col',
-    content: 'min-h-0 flex-1 overflow-y-auto',
-    actions: 'sticky bottom-0 border-t bg-white',
+    page: 'mx-auto max-w-6xl space-y-6',
+    content: 'space-y-6',
+    actions: 'sticky top-4 z-10',
     pricing: 'mt-6',
   } as const;
 }

@@ -10,11 +10,11 @@ export default async function VendorLayout({ children }: { children: React.React
   if (!user) redirect('/login');
 
   return (
-    <div className="vendor-portal min-h-screen bg-background">
+    <div className="vendor-portal min-h-screen overflow-x-hidden bg-background">
       <VendorSidebar />
-      <main className="ml-56">
+      <main className="ml-60 min-w-0 overflow-x-hidden">
         <VendorHeader />
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="w-full px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
           <VendorAccessGate>{children}</VendorAccessGate>
         </div>
       </main>

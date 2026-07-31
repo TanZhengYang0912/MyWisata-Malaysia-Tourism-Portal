@@ -15,4 +15,10 @@ describe("checkout error handling", () => {
   it("does not expose database error text for unknown failures", () => {
     expect(getCheckoutErrorMessage("some_internal_postgres_error")).toBe("We could not start checkout right now. Please try again.");
   });
+
+  it("maps voucher validation failures to actionable customer messages", () => {
+    expect(getCheckoutErrorCode("voucher_minimum_spend")).toBe("VOUCHER_MINIMUM_SPEND");
+    expect(getCheckoutErrorMessage("voucher_minimum_spend")).toContain("minimum spend");
+    expect(getCheckoutErrorMessage("voucher_discount_mismatch")).toContain("discount could not be verified");
+  });
 });

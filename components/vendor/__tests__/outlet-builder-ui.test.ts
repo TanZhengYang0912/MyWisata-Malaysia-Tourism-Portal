@@ -7,6 +7,8 @@ import {
   getBlockMoveTargetIndex,
   getBuilderPreviewLabel,
   getBuilderViewportConfig,
+  getPublishedOutletFeedback,
+  isOutletBuilderBusy,
 } from "@/components/vendor/outlet-builder-ui";
 import {
   BUILDER_PALETTE_GROUPS,
@@ -91,6 +93,17 @@ describe("outlet builder UI rules", () => {
     expect(BUILDER_PALETTE_GROUPS[0].defaultOpen).toBe(true);
     expect(BUILDER_PALETTE_GROUPS.flatMap((group) => group.items).length).toBe(
       BUILDER_PALETTE.length,
+    );
+  });
+
+  it("keeps the builder busy while publishing so close cannot interrupt it", () => {
+    expect(isOutletBuilderBusy({ saving: false, publishing: true, discarding: false, closing: false })).toBe(true);
+    expect(isOutletBuilderBusy({ saving: false, publishing: false, discarding: false, closing: false })).toBe(false);
+  });
+
+  it("creates a clear global message for a published outlet page", () => {
+    expect(getPublishedOutletFeedback("KLCC", "12")).toBe(
+      "KLCC shop page published successfully. Customer shop now uses version 12.",
     );
   });
 });

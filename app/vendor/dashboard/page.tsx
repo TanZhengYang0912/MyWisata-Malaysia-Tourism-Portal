@@ -20,7 +20,7 @@ interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: 
 const FILTERS: DashboardFilter[] = ['today', '7d', '30d', '12m', 'custom'];
 
 function normalizeFilter(value: string | undefined): DashboardFilter {
-  return FILTERS.includes(value as DashboardFilter) ? value as DashboardFilter : '7d';
+  return FILTERS.includes(value as DashboardFilter) ? value as DashboardFilter : '30d';
 }
 
 function statTone(tone: string) {
@@ -77,7 +77,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
         ))}
       </section>
 
-      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">No orders in this period</p><p className="mt-1 text-sm text-primary">Check another date range, or publish a listing so travellers can start booking.</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">Manage listings</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">View orders</Link></div></section>}
+      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">No orders in this period</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? 'Check another date range to view your historical activity.' : 'Check another date range, or publish a listing so travellers can start booking.'}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">Manage listings</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">View orders</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>

@@ -10,11 +10,11 @@ import { safeKycReasonCopy } from "@/lib/kyc/customer-submission";
 import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
-import { INTEREST_OPTIONS } from "@/backend/domains/preferences";
+import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
 
 type SectionId = "personal" | "contact";
 
-const interestLabel = (slug: string) => INTEREST_OPTIONS.find((o) => o.slug === slug)?.label ?? slug;
+const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
 function SectionCard({ id, title, description, children }: { id?: string; title: string; description: string; children: React.ReactNode }) {
   return <section id={id} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;

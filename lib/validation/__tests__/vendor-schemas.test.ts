@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentReviewSchema } from '@/lib/validation/vendor-schemas';
+import { contentReviewSchema, voucherCreateSchema, voucherValidateSchema } from '@/lib/validation/vendor-schemas';
 
 const validId = '11111111-1111-4111-8111-111111111111';
 
@@ -26,5 +26,39 @@ describe('contentReviewSchema', () => {
 
       expect(result.success).toBe(false);
     }
+  });
+});
+
+describe('voucherCreateSchema', () => {
+  const validVoucher = {
+    code: 'TRAVEL10',
+    name: 'Travel discount',
+    voucherType: 'fixed' as const,
+    discountValue: 10,
+    minSpend: 20,
+    validFrom: '2026-07-31T11:33:00.000Z',
+    validUntil: '2026-08-23T11:29:00.000Z',
+  };
+
+  it('rejects an end date that is not after the start date', () => {
+    const result = voucherCreateSchema.safeParse({
+      ...validVoucher,
+      validUntil: '2026-07-30T11:29:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('voucherValidateSchema', () => {
+  it('defaults validation intent to apply', () => {
+    const result = voucherValidateSchema.safeParse({
+      code: 'TRAVEL10',
+      cartSubtotal: 100,
+      intent: 'view',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.intent).toBe('view');
   });
 });

@@ -1,0 +1,4 @@
+code,name,voucherType,discountValue,minSpend,maxUses,perCustomerLimit,validFrom,validUntil,outletId,productId,buyQuantity,freeQuantity
+,Malaysia Welcome 15%,percent,15,30,300,2,2026-08-01T00:00:00+08:00,2026-08-31T23:59:59+08:00,,,,
+,Explorer RM10 Off,fixed,10,50,100,1,2026-08-01T00:00:00+08:00,2026-09-30T23:59:59+08:00,,,,
+,Weekend Malaysia Deal,percent,20,100,200,1,2026-08-15T00:00:00+08:00,2026-08-17T23:59:59+08:00,,,,

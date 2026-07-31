@@ -7,6 +7,8 @@ import { productCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { filterProductsByOutlet, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { getOutletProductIds } from '@/backend/domains/catalogue';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -27,12 +29,33 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = supabase
     .from('products')
-    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved,low_stock_threshold))', { count: 'exact' })
+    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state)),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved,low_stock_threshold))', { count: 'exact' })
     .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds.length ? access.access.outletIds : ['none'])
     .range((page - 1) * pageSize, page * pageSize - 1);
 
-  if (outletId) query = query.eq('outlet_id', outletId);
+  // Products became vendor-level records when outlet offers were introduced.
+  // Keep direct outlet products and shared products in the same vendor view;
+  // resolveProductOutlet below enforces the caller's outlet scope for shared
+  // rows after their offers have been loaded.
+  if (outletId) {
+    if (!access.access.outletIds.includes(outletId)) {
+      return apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403);
+    }
+    let outletProductIds: Set<string>;
+    try {
+      outletProductIds = await getOutletProductIds(supabase, outletId);
+    } catch (error) {
+      return apiFail('DB_ERROR', error instanceof Error ? error.message : 'Unable to verify outlet products', 500);
+    }
+    if (!outletProductIds.size) {
+      return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
+    }
+    query = query.in('id', [...outletProductIds]);
+  } else {
+    query = access.access.outletIds.length
+      ? query.or(`outlet_id.in.(${access.access.outletIds.join(',')}),outlet_id.is.null`)
+      : query.eq('outlet_id', 'none');
+  }
   if (categoryId) query = query.eq('category_id', categoryId);
   if (status) query = query.eq('status', status);
   if (productType) query = query.eq('product_type', productType);
@@ -45,13 +68,22 @@ export async function GET(request: Request, { params }: Props) {
 
   const { data, error, count } = await query;
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  const items = (data ?? []).map((product: any) => ({
-    ...product,
-    outlet: product.outlets ? { ...product.outlets, full_name: product.outlets.name, name: outletShortName(product.outlets.name) } : product.outlets,
-    variants: product.product_variants ?? [],
-    availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
-    lowStockThreshold: (product.product_variants ?? []).reduce((threshold: number, variant: any) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
-  }));
+  const scopedProducts = outletId
+    ? filterProductsByOutlet(data ?? [], outletId)
+    : data ?? [];
+  const items = scopedProducts.flatMap((product: any) => {
+    const resolvedOutlet = resolveProductOutlet(product, outletId ? [outletId] : access.access.outletIds);
+    if (!resolvedOutlet) return [];
+    const outlet = outletId ? resolvedOutlet : product.outlets || resolvedOutlet;
+    return [{
+      ...product,
+      outlet_id: product.outlet_id || resolvedOutlet.id,
+      outlet: { ...outlet, full_name: outlet.name, name: outletShortName(outlet.name) },
+      variants: product.product_variants ?? [],
+      availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
+      lowStockThreshold: (product.product_variants ?? []).reduce((threshold: number, variant: any) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
+    }];
+  });
   return apiOk({ items, pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }
 
@@ -138,6 +170,7 @@ export async function POST(request: Request, { params }: Props) {
   if (!body.requiresBooking && body.productType !== 'digital' && variant) {
     await supabase.from('inventory').insert({
       variant_id: variant.id,
+      outlet_id: body.outletId,
       quantity: body.availableStock ?? 0,
       reserved: 0,
       low_stock_threshold: body.lowStockThreshold ?? 5,

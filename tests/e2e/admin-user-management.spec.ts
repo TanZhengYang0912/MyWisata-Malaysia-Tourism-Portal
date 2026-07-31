@@ -66,9 +66,8 @@ test.describe('5. Admin Soft Delete', () => {
     // Enter violating content
     await reasonBox.fill('I will harass the user and publish their private information.');
 
-    // Accept the browser confirm dialog triggered by "Confirm action"
-    page.once('dialog', (dialog) => dialog.accept());
-    await drawer.getByRole('button', { name: /confirm action/i }).click();
+    await drawer.getByRole('button', { name: /review action/i }).click();
+    await drawer.getByRole('alertdialog').getByRole('button', { name: /confirm action/i }).click();
 
     // Error alert should appear in the drawer
     const alertMsg = drawer.locator('[role="alert"]');
@@ -109,13 +108,10 @@ test.describe('5. Admin Soft Delete', () => {
     await expect(reasonBox).toBeVisible();
     await reasonBox.fill('The account is being closed after confirmed policy violations.');
 
-    // "Confirm action" button should be enabled after ≥10 chars
-    const confirmBtn = drawer.getByRole('button', { name: /confirm action/i });
-    await expect(confirmBtn).toBeEnabled();
-
-    // Accept the native confirm dialog
-    page.once('dialog', (dialog) => dialog.accept());
-    await confirmBtn.click();
+    const reviewBtn = drawer.getByRole('button', { name: /review action/i });
+    await expect(reviewBtn).toBeEnabled();
+    await reviewBtn.click();
+    await drawer.getByRole('alertdialog').getByRole('button', { name: /confirm action/i }).click();
 
     // Drawer refreshes — status should now be "deleted"
     await expect(drawer.getByText('deleted', { exact: true })).toBeVisible({ timeout: 10_000 });

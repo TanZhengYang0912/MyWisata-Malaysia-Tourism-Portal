@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
+import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const REPORT_REASONS = [
@@ -29,6 +30,7 @@ interface ChatThreadPanelProps {
   readByOthers?: Set<string>;
   /** Ids of my messages the counterpart's client has received — renders the grey ✓✓ receipt. */
   deliveredByOthers?: Set<string>;
+  aiReply?: { draft: string | null; busy: boolean; error: string | null; onGenerate: () => void; onDiscard: () => void };
   /** Admin moderation view: hides the composer and report action. */
   readOnly?: boolean;
 }
@@ -43,6 +45,7 @@ export function ChatThreadPanel({
   backHref,
   readByOthers,
   deliveredByOthers,
+  aiReply,
   readOnly = false,
 }: ChatThreadPanelProps) {
   const [text, setText] = useState("");
@@ -400,6 +403,17 @@ export function ChatThreadPanel({
               </button>
             </div>
           )}
+          {aiReply && <div className="mx-auto mb-3 max-w-2xl"><AiWritingAssistant
+            compact
+            label="AI reply assistant"
+            buttonLabel="Suggest reply"
+            draft={aiReply.draft}
+            busy={aiReply.busy}
+            error={aiReply.error}
+            onGenerate={aiReply.onGenerate}
+            onApply={() => { if (aiReply.draft) { setText(aiReply.draft); aiReply.onDiscard(); } }}
+            onDiscard={aiReply.onDiscard}
+          /></div>}
           <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl items-end gap-2">
             <label className="sr-only" htmlFor="chat-message">
               Message {counterpart.name}

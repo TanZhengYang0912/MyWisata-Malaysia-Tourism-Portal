@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { preferenceSurveySchema } from '@/lib/validation/profile-schemas';
+import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 
 // POST: submit survey (promotes tier if all profile criteria met)
 export async function POST(request: Request) {
@@ -80,5 +81,5 @@ export async function GET() {
   if (error && error.code === 'PGRST116') return apiOk(null);
   if (error) return apiFail('DB_ERROR', error.message, 500);
 
-  return apiOk(data);
+  return apiOk(data ? { ...data, interests: normalizeCategorySlugs(data.interests) } : data);
 }

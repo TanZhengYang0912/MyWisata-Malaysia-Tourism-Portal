@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import type { WithdrawalListResponse } from '@/lib/wallet/withdrawal-review';
+import { WITHDRAWAL_REVIEW_STATUSES } from '@/lib/wallet/withdrawal-display';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,8 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize - 1);
 
-  if (status) query = query.eq('status', status);
+  if (status === 'review') query = query.in('status', [...WITHDRAWAL_REVIEW_STATUSES]);
+  else if (status) query = query.eq('status', status);
   if (risk) query = query.eq('withdrawal_risk_assessments.risk_level', risk);
   if (search) {
     // PostgREST's `or` grammar treats commas and parentheses as operators;

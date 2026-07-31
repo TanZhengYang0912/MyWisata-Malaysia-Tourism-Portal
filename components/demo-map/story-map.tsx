@@ -11,8 +11,8 @@ import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 import { MalaysiaStateMap, type StateCounts } from "./malaysia-state-map";
 
-// Display metadata for the 4 top-level categories — CATEGORY_DETAILS only
-// carries their `types`, not a human label/icon for the category itself.
+// Display metadata for the 4 real categories — Hidden Gem is a collection
+// filter backed by the listing flag and is rendered separately below.
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   food: { label: "Food", icon: "🍜" },
   activity: { label: "Activity", icon: "🧭" },
@@ -22,7 +22,6 @@ const CATEGORY_META: Record<string, { label: string; icon: string }> = {
 
 type BadgeKey = "hidden_gem" | "family_friendly" | "couple_friendly";
 const BADGE_OPTIONS: { key: BadgeKey; label: string }[] = [
-  { key: "hidden_gem", label: "💎 Hidden Gem" },
   { key: "family_friendly", label: "Family Friendly" },
   { key: "couple_friendly", label: "Couple Friendly" },
 ];
@@ -220,7 +219,13 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                 );
               })}
 
-              <div className="mt-1 border-t border-border pt-3">
+              <label className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-sm font-bold text-foreground">
+                <input type="checkbox" checked={selectedBadges.has("hidden_gem")} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
+                <span className="flex-1">💎 Hidden Gem</span>
+                <span className="text-[11px] font-normal text-muted-foreground">{activities.filter((activity) => activity.isHiddenGem).length}</span>
+              </label>
+
+              <div className="mt-3 border-t border-border pt-3">
                 <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Good for</p>
                 <div className="flex flex-col gap-1">
                   {BADGE_OPTIONS.map((b) => (

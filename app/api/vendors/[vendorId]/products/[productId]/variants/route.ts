@@ -3,6 +3,7 @@
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { variantCreateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string }> }
 
@@ -12,7 +13,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 
-  const { data: product } = await supabase.from('products').select('id').eq('id', productId).eq('vendor_id', vendorId).in('outlet_id', access.access.outletIds).maybeSingle();
+  const { data: product } = await getScopedProduct<{ id: string }>(supabase, vendorId, productId, access.access.outletIds, 'id');
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
 
   const { data, error } = await supabase
@@ -32,14 +33,14 @@ export async function POST(request: Request, { params }: Props) {
   const supabase = access.access.serviceDb;
 
   // Verify product belongs to vendor
-  const { data: product } = await supabase
-    .from('products')
-    .select('id, requires_booking')
-    .eq('id', productId)
-    .eq('vendor_id', vendorId)
-    .in('outlet_id', access.access.outletIds)
-    .single();
-  if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
+  const { data: product, outlet: productOutlet } = await getScopedProduct<{ id: string; requires_booking: boolean }>(
+    supabase,
+    vendorId,
+    productId,
+    access.access.outletIds,
+    'id,requires_booking',
+  );
+  if (!product || !productOutlet) return apiFail('NOT_FOUND', 'Product not found in an assigned outlet', 404);
 
   const parsed = await parseBody(request, variantCreateSchema);
   if (!parsed.ok) return parsed.response;
@@ -67,6 +68,7 @@ export async function POST(request: Request, { params }: Props) {
   if (!product.requires_booking && variant) {
     await supabase.from('inventory').insert({
       variant_id: variant.id,
+      outlet_id: productOutlet.id,
       quantity: 0,
       reserved: 0,
     });

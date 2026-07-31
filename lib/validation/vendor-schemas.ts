@@ -164,7 +164,11 @@ export const voucherCreateSchema = z.object({
 ).refine(
   (data) => data.voucherType !== 'bogo' || (data.productId && data.buyQuantity && data.freeQuantity),
   { message: 'BOGO vouchers require a product, buy quantity and free quantity', path: ['productId'] },
-);
+).superRefine((data, context) => {
+  if (data.validFrom && data.validUntil && new Date(data.validUntil) <= new Date(data.validFrom)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Valid until must be after valid from', path: ['validUntil'] });
+  }
+});
 
 export const voucherUpdateSchema = z.object({
   name: z.string().trim().min(2).max(255).optional(),
@@ -203,6 +207,7 @@ export const voucherValidateSchema = z.object({
   code: z.string().trim().min(1).max(50).toUpperCase(),
   cartSubtotal: rmMoney,
   vendorId: uuid.optional(),
+  intent: z.enum(['view', 'apply']).default('apply'),
   items: z.array(z.object({
     productId: uuid,
     outletId: uuid.optional(),

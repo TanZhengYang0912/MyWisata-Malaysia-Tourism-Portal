@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, CirclePlus, Copy, Eye, Landmark, MapPinned, Pencil, Store, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { StatusBadge } from '@/components/ui/badge';
 import OutletForm from '@/components/vendor/outlet-form';
@@ -11,14 +12,18 @@ import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import OutletManagerPanel from '@/components/vendor/outlet-manager-panel';
 import OutletPageBuilder from '@/components/vendor/outlet-page-builder';
+import OutletShopPreview from '@/components/vendor/outlet-shop-preview';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { getOutletManagerEditorDestination, isOutletManagerShopEditMode, isOutletManagerShopMode } from '@/lib/vendor/outlet-manager-navigation';
 
 interface OutletData { id: string; display_id?: string; name: string; slug: string; city: string | null; state: string | null; postcode?: string | null; country?: string | null; lat: number | null; lng: number | null; phone: string | null; email: string | null; status: string; review_status?: string; address: string | null; coverUrl?: string | null; productsCount: number; welcome_message?: string | null; welcome_enabled?: boolean; manager?: { id: string; fullName: string; email: string } | null; pendingInvitation?: { email: string; expiresAt: string } | null; }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 
 export default function VendorOutletsPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { showFeedback } = useActionFeedback();
   const [outlets, setOutlets] = useState<OutletData[]>([]);
   const [states, setStates] = useState<string[]>([]);
@@ -35,6 +40,10 @@ export default function VendorOutletsPage() {
   const [batchMessage, setBatchMessage] = useState('');
   const vendorId = user?.activeVendorId;
   const isOwner = user?.roles.includes('vendor_owner') ?? false;
+  const isOutletManager = user?.roles.includes('outlet_manager') ?? false;
+  const managerMode = searchParams.get('mode');
+  const managerShopMode = isOutletManagerShopMode(isOutletManager, managerMode);
+  const managerShopEditMode = isOutletManagerShopEditMode(isOutletManager, searchParams.get('edit'));
   const canManageOutlet = isOwner || (user?.roles.includes('outlet_manager') ?? false);
   const [builderOutlet, setBuilderOutlet] = useState<OutletData | null>(null);
 
@@ -49,6 +58,12 @@ export default function VendorOutletsPage() {
   }, [filters, pagination.page, vendorId]);
 
   useEffect(() => { loadOutlets(1); }, [filters, vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (managerShopMode && loading) return <div className="rounded-2xl border border-gray-100 bg-white p-8 text-sm text-gray-500">Loading your shop page…</div>;
+  if (managerShopMode && error) return <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>;
+  if (managerShopMode && !outlets[0]) return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6"><h1 className="text-xl font-bold text-gray-950">Shop page unavailable</h1><p className="mt-2 text-sm text-gray-600">No assigned outlet is available for this account yet.</p></div>;
+  if (managerShopMode && vendorId && outlets[0] && managerShopEditMode) return <OutletPageBuilder vendorId={vendorId} outletId={outlets[0].id} outletName={outletShortName(outlets[0].name)} onClose={() => router.push('/vendor/outlets?mode=shop')} />;
+  if (managerShopMode && vendorId && outlets[0]) return <OutletShopPreview vendorId={vendorId} outlet={{ id: outlets[0].id, name: outletShortName(outlets[0].name), address: outlets[0].address, city: outlets[0].city, state: outlets[0].state }} onEdit={() => router.push(getOutletManagerEditorDestination(true))} />;
 
   async function closeOutlet(outletId: string) {
     if (!vendorId || !confirm('Close this outlet? It will be hidden from customers.')) return;

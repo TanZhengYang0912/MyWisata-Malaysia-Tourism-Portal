@@ -4,11 +4,14 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut, ShieldCheck, Building2, Bell } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut, ShieldCheck, Building2, Bell, Store, type LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
+import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
 
-const NAV = [
+type VendorNavItem = { href: string; activeHref?: string; label: string; icon: LucideIcon };
+
+const NAV: VendorNavItem[] = [
   { href: '/vendor/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
   { href: '/vendor/outlets',    label: 'Outlets',     icon: MapPinned },
   { href: '/vendor/profile',    label: 'Business profile', icon: Building2 },
@@ -22,9 +25,9 @@ const NAV = [
   { href: '/vendor/analytics',  label: 'Analytics',  icon: ChartNoAxesCombined },
 ];
 
-const OUTLET_MANAGER_NAV = [
+const OUTLET_MANAGER_NAV: VendorNavItem[] = [
   { href: '/vendor/dashboard', label: 'Operations', icon: LayoutDashboard },
-  { href: '/vendor/outlets', label: 'My outlet', icon: MapPinned },
+  { href: OUTLET_MANAGER_SHOP_PAGE_HREF, activeHref: '/vendor/outlets', label: 'Shop page', icon: Store },
   { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
   { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
   { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
@@ -71,7 +74,7 @@ export default function VendorSidebar() {
   }
 
   return (
-    <aside className="fixed top-0 left-0 bottom-0 w-56 bg-gray-900 text-gray-200 flex flex-col z-40">
+    <aside className="fixed top-0 left-0 bottom-0 w-60 bg-gray-900 text-gray-200 flex flex-col z-40">
       <div className="px-5 py-5 border-b border-gray-700">
         <p className="text-xs text-gray-400 uppercase tracking-wider">Vendor Portal</p>
         <p className="font-semibold text-white mt-0.5">Malaysia Tourism</p>
@@ -79,11 +82,11 @@ export default function VendorSidebar() {
         {!loading && isOutletManager && user?.activeOutletName && <p className="mt-2 truncate text-xs text-gray-400" title={user.activeOutletName}>{user.activeOutletName}</p>}
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => (
+        {nav.map(({ href, activeHref, label, icon: Icon }) => (
           <Link
             key={href} href={href}
             className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors
-              ${pathname.startsWith(href)
+              ${pathname.startsWith(activeHref || href)
                 ? 'bg-gray-800 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >

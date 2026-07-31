@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import type { RecentOrder } from '@/components/vendor/recent-transactions';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
+import { isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m' | 'custom';
 export type DashboardCustomRange = { from?: string; to?: string };
@@ -27,6 +28,17 @@ type DashboardRow = {
   requires_booking?: boolean | null;
   rating?: number;
   orders?: { display_id?: string | null; status?: string | null };
+};
+
+type DashboardProduct = {
+  id: string;
+  name: string;
+  status: string | null;
+  outlet_id: string | null;
+  cover_url?: string | null;
+  product_type?: string | null;
+  requires_booking?: boolean | null;
+  outlet_offers?: Array<{ outlet_id: string; status?: string | null }> | null;
 };
 
 type RecentOrderDraft = RecentOrder & { display_id?: string | null; fulfil_statuses: string[] };
@@ -163,12 +175,14 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     outletIds.length
       ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,total_amount,created_at,paid_at,completed_at)').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
-    db.from('products').select('id,name,base_price,product_type,status,outlet_id,cover_url').eq('vendor_id', vendor.id).in('outlet_id', outletIds.length ? outletIds : ['none']),
-    db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true),
+    outletIds.length
+      ? db.from('products').select('id,name,base_price,product_type,status,outlet_id,cover_url,outlet_offers(outlet_id,status)').eq('vendor_id', vendor.id).or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
+      : Promise.resolve({ data: [], error: null }),
+    db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true).gte('created_at', start.toISOString()).lte('created_at', now.toISOString()),
     outletIds.length
       ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
       : Promise.resolve({ data: [], error: null }),
-    db.from('inventory').select('variant_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,products!inner(id,name,outlet_id,cover_url))'),
+    db.from('inventory').select('variant_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,products!inner(id,name,outlet_id,cover_url,outlet_offers(outlet_id,status)))'),
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;
@@ -182,7 +196,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const currentOrderIds = new Set(currentItems.map((item) => item.order_id));
   const pendingOrdersCount = new Set((pendingResult.data || []).map((item: { order_id: string }) => item.order_id)).size;
   const previousOrderIds = new Set(previousItems.map((item) => item.order_id));
-  const products = (productsResult.data || []) as unknown as DashboardRow[];
+  const products = (productsResult.data || []) as unknown as DashboardProduct[];
   const reviews = (reviewsResult.data || []) as unknown as DashboardRow[];
   const outletNames = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outlet.name]));
   // Strip the vendor brand prefix from each outlet name to get a unique location label.
@@ -201,15 +215,20 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const outletLocations = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outletLocation(outlet.city, outlet.state)]));
   const productNames = Object.fromEntries(products.map((product) => [product.id, product.name]));
   const productById = Object.fromEntries(products.map((product) => [product.id, product]));
+  const productOutletIds = Object.fromEntries(products.flatMap((product) => {
+    const outlet = resolveProductOutlet(product, outletIds);
+    return outlet ? [[product.id, outlet.id]] : [];
+  }));
   const stockAlerts = ((inventoryResult.data || []) as Array<{ product_variants: unknown; quantity: number | string | null; reserved: number | string | null; low_stock_threshold: number | string | null; variant_id: string }>).flatMap((row) => {
     const variant = Array.isArray(row.product_variants) ? row.product_variants[0] : row.product_variants;
     const product = Array.isArray(variant?.products) ? variant.products[0] : variant?.products;
-    if (!variant || !product || !outletIds.includes(product.outlet_id)) return [];
+    const resolvedOutlet = product ? resolveProductOutlet(product, outletIds) : null;
+    if (!variant || !product || !resolvedOutlet) return [];
     const quantity = number(row.quantity);
     const reserved = number(row.reserved);
     const available = Math.max(0, quantity - reserved);
     const threshold = Math.max(0, number(row.low_stock_threshold ?? 5));
-    return available <= threshold ? [{ variantId: row.variant_id, productId: product.id, productName: product.name, variantName: variant.name, outletId: product.outlet_id, quantity, reserved, available, threshold, coverUrl: product.cover_url || null }] : [];
+    return available <= threshold ? [{ variantId: row.variant_id, productId: product.id, productName: product.name, variantName: variant.name, outletId: resolvedOutlet.id, quantity, reserved, available, threshold, coverUrl: product.cover_url || null }] : [];
   }).sort((a, b) => a.available - b.available).slice(0, 12) as StockAlert[];
 
   const chartMap = new Map<string, { revenue: number; orders: Set<string> }>();
@@ -245,14 +264,14 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     const key = review.product_id;
     if (!key) continue;
     const product = productById[key];
-    if (!product || (!product.requires_booking && !['activity', 'experience', 'service'].includes(product.product_type ?? ''))) continue;
+    if (!product || !isRatingEligibleProduct(product, outletIds)) continue;
     const rating = ratingMap.get(key) || { total: 0, count: 0 };
     rating.total += number(review.rating);
     rating.count += 1;
     ratingMap.set(key, rating);
   }
   const topRated = [...ratingMap.entries()].sort(([, a], [, b]) => (b.total / b.count) - (a.total / a.count) || b.count - a.count).slice(0, 5).map(([productId, rating]) => ({
-    name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count, outletName: outletShortNames[productById[productId]?.outlet_id || ''] || 'Unknown outlet',
+    name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count, outletName: outletShortNames[productOutletIds[productId] || ''] || 'Unknown outlet',
   }));
 
   const recentOrderMap = new Map<string, RecentOrderDraft>();
@@ -279,7 +298,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     }));
   const totalRevenue = sumRevenue(currentItems);
   const previousRevenue = sumRevenue(previousItems);
-  const activeProducts = products.filter((product) => product.status === 'active').length;
+  const activeProducts = products.filter((product) => isVisibleActiveProduct(product, outletIds)).length;
   const activeOutlets = outletRows.filter((outlet) => outlet.status === 'active').length;
   const bookingItems = currentItems.filter((item) => item.slot_id || item.slot_starts_at).length;
   const totalOutletSales = salesByOutlet.reduce((total, outlet) => total + outlet.revenue, 0);

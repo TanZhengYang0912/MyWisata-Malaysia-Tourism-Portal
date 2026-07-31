@@ -17,11 +17,12 @@ interface Props {
   productId?: string;
   kind?: 'image' | 'digital';
   value?: string | null;
+  successMessage?: string;
   onUploaded: (media: UploadedMedia) => void;
   onError?: (message: string) => void;
 }
 
-export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, onUploaded, onError }: Props) {
+export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, successMessage, onUploaded, onError }: Props) {
   const { showFeedback } = useActionFeedback();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -38,7 +39,7 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Upload failed.');
       onUploaded(payload.data);
-      showFeedback('success', kind === 'image' ? 'Product image uploaded.' : 'Digital asset uploaded.');
+      showFeedback('success', successMessage || (kind === 'image' ? 'Product image uploaded.' : 'Digital asset uploaded.'));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Upload failed.';
       onError?.(message);

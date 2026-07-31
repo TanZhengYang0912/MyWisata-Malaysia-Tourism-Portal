@@ -381,6 +381,20 @@ export interface WithdrawalRequest {
   createdAt: string;
 }
 
+export interface WalletTransaction {
+  id: string;
+  userId: string;
+  walletId: string;
+  orderId: string | null;
+  withdrawalId: string | null;
+  type: string;
+  amount: number;
+  bucket: string;
+  direction: "credit" | "debit";
+  note: string | null;
+  createdAt: string;
+}
+
 // ─── Domain event helper (Contract #5) ──────────────────────────────────────
 export type DomainEventName =
   | "order.paid"

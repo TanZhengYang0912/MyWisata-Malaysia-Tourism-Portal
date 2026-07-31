@@ -22,7 +22,7 @@ export default function VendorListingsPage() {
   }, [activeVendorId, activeOutletIds]);
 
   return (
-    <div className="p-6 sm:p-8">
+    <div>
       <h1 className="font-bold text-lg text-foreground mb-6">Product Catalogue</h1>
       {listings.length === 0 ? (
         <EmptyState title="No listings yet" description="Listings for your outlets will appear here once created." />

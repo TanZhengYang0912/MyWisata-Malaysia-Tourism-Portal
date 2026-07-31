@@ -7,6 +7,7 @@ import type {
 } from "@/lib/vendor/outlet-page-schema";
 import ProductMediaUploader from "@/components/vendor/product-media-uploader";
 import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
+import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 
 interface ProductOption {
   id: string;
@@ -33,6 +34,12 @@ interface Props {
   onUpdateBlock: (updates: Partial<OutletPageBlock>) => void;
   onUpdateHero: (updates: Record<string, unknown>) => void;
   onUpdateGallery: (gallery: GalleryItem[]) => void;
+  heroAiDraft?: { title: string; body: string; cta?: string } | null;
+  heroAiBusy?: boolean;
+  heroAiError?: string | null;
+  onGenerateHeroAi?: () => void;
+  onApplyHeroAi?: () => void;
+  onDiscardHeroAi?: () => void;
 }
 
 function MediaLibrary({
@@ -95,6 +102,12 @@ export default function OutletBuilderInspector({
   onUpdateBlock,
   onUpdateHero,
   onUpdateGallery,
+  heroAiDraft,
+  heroAiBusy,
+  heroAiError,
+  onGenerateHeroAi,
+  onApplyHeroAi,
+  onDiscardHeroAi,
 }: Props) {
   const panelClassName =
     "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
@@ -106,6 +119,17 @@ export default function OutletBuilderInspector({
           Editing · Hero banner
         </p>
         <div className="mt-4 space-y-3">
+          {onGenerateHeroAi && <AiWritingAssistant
+            compact
+            label="AI hero copy"
+            buttonLabel="Generate"
+            draft={heroAiDraft && <div><p className="font-semibold">{heroAiDraft.title}</p><p className="mt-1">{heroAiDraft.body}</p>{heroAiDraft.cta && <p className="mt-2 text-xs text-gray-500">Button: {heroAiDraft.cta}</p>}</div>}
+            busy={heroAiBusy}
+            error={heroAiError}
+            onGenerate={onGenerateHeroAi}
+            onApply={onApplyHeroAi}
+            onDiscard={onDiscardHeroAi}
+          />}
           {fieldLabel(
             "Title",
             <input

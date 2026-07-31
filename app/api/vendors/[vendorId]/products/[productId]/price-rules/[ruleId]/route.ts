@@ -1,6 +1,7 @@
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { priceRuleUpdateSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string; ruleId: string }> }
 
@@ -8,7 +9,7 @@ export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, productId, ruleId } = await params;
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
-  const { data: product } = await access.access.serviceDb.from('products').select('id').eq('id', productId).eq('vendor_id', vendorId).in('outlet_id', access.access.outletIds).maybeSingle();
+  const { data: product } = await getScopedProduct<{ id: string }>(access.access.serviceDb, vendorId, productId, access.access.outletIds, 'id');
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
   const parsed = await parseBody(request, priceRuleUpdateSchema);
   if (!parsed.ok) return parsed.response;
@@ -34,7 +35,7 @@ export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, productId, ruleId } = await params;
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
-  const { data: product } = await access.access.serviceDb.from('products').select('id').eq('id', productId).eq('vendor_id', vendorId).in('outlet_id', access.access.outletIds).maybeSingle();
+  const { data: product } = await getScopedProduct<{ id: string }>(access.access.serviceDb, vendorId, productId, access.access.outletIds, 'id');
   if (!product) return apiFail('NOT_FOUND', 'Product not found', 404);
   const { error } = await access.access.serviceDb.from('price_rules').update({ is_active: false }).eq('id', ruleId).eq('product_id', productId);
   if (error) return apiFail('DB_ERROR', error.message, 500);

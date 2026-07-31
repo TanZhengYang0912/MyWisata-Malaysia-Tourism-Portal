@@ -53,18 +53,20 @@ test.describe('Wallet governance browser flows', () => {
 
     await signIn(page, ADMIN_EMAIL);
     await page.goto('/admin/wallet/settings');
-    await expect(page.getByRole('heading', { name: 'Wallet governance settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Wallet settings' })).toBeVisible();
 
     await page.getByLabel('Reward clearance days').fill('10');
     await page.locator('textarea').nth(0).fill('Adjust clearance for settlement operations');
     await page.getByRole('button', { name: /save settings/i }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: /save settings/i }).click();
     await expect(page.getByText('Wallet governance settings saved.')).toBeVisible();
     expect(patches[0].body).toMatchObject({ clearanceDays: 10, reason: 'Adjust clearance for settlement operations' });
     expect(patches[0].body).not.toHaveProperty('updatedAt');
 
+    await page.getByLabel('Reward clearance days').fill('11');
     await page.locator('textarea').nth(0).fill('short');
     await page.getByRole('button', { name: /save settings/i }).click();
-    await expect(page.getByText('A change reason of at least 10 characters is required.')).toBeVisible();
+    await expect(page.getByText('Add a change reason of at least 10 characters before saving.')).toBeVisible();
     expect(patches).toHaveLength(1);
   });
 
@@ -75,11 +77,12 @@ test.describe('Wallet governance browser flows', () => {
 
     await signIn(page, ADMIN_EMAIL);
     await page.goto('/admin/wallet/settings');
-    await expect(page.getByRole('heading', { name: 'Wallet governance settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Wallet settings' })).toBeVisible();
 
     await page.locator('textarea').nth(1).fill('Add a second reviewer for payout coverage');
-    await page.getByRole('combobox').nth(2).selectOption('user-2');
+    await page.getByRole('combobox').nth(1).selectOption('user-2');
     await page.getByRole('button', { name: 'Grant access' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Grant access' }).click();
     await expect(page.getByText('Wallet Approver granted.')).toBeVisible();
     expect(patches.at(-1)?.body).toMatchObject({ userId: 'user-2', action: 'grant' });
     await expect(page.getByText('Customer Bob', { exact: true })).toBeVisible();
@@ -97,7 +100,7 @@ test.describe('Wallet governance browser flows', () => {
 
     await signIn(page, ADMIN_EMAIL);
     await page.goto('/admin/reports/payouts');
-    await expect(page.getByRole('heading', { name: 'Monthly payout reports' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Payout reports' })).toBeVisible();
     await expect(page.getByText('Failed RM')).toBeVisible();
     await expect(page.getByText('Reserved RM')).toBeVisible();
     await expect(page.getByText('Withdrawn RM')).toBeVisible();
@@ -110,9 +113,9 @@ test.describe('Wallet governance browser flows', () => {
     await page.getByRole('button', { name: /export csv/i }).click();
     const download = await downloadPromise;
     const csv = await readFile(await download.path() ?? '', 'utf8');
-    expect(csv).toContain('amount_failed_rm,50');
-    expect(csv).toContain('amount_reserved_rm,100');
-    expect(csv).toContain('amount_withdrawn_rm,200');
+    expect(csv).toContain('summary,amount_failed_rm,,,,50,');
+    expect(csv).toContain('summary,amount_reserved_rm,,,,100,');
+    expect(csv).toContain('summary,amount_withdrawn_rm,,,,200,');
   });
 
   test('Customer can view an owned withdrawal receipt without raw Stripe identifiers', async ({ page }) => {

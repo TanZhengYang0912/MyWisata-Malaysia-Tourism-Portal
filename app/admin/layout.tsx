@@ -106,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
         {children}
       </div>
     </div>

@@ -3,7 +3,7 @@
 // POST /api/vouchers/validate
 
 import { createClient } from '@/lib/supabase/server';
-import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
+import { parseBody, apiOk } from '@/lib/validation/schemas';
 import { voucherValidateSchema } from '@/lib/validation/vendor-schemas';
 import { applyPercent } from '@/lib/money';
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, voucherValidateSchema);
   if (!parsed.ok) return parsed.response;
-  const { code, cartSubtotal, vendorId, items } = parsed.data;
+  const { code, cartSubtotal, vendorId, items, intent } = parsed.data;
 
   // Find voucher
   const { data: voucher } = await supabase
@@ -26,55 +26,63 @@ export async function POST(request: Request) {
     return apiOk({ valid: false, reason: 'Voucher code not found' });
   }
 
+  async function recordEvent(eventType: 'viewed' | 'entered' | 'apply_success' | 'apply_failed', metadata: Record<string, unknown> = {}) {
+    if (user) await supabase.from('voucher_events').insert({ voucher_id: voucher.id, user_id: user.id, event_type: eventType, metadata });
+  }
+
+  async function invalid(reason: string) {
+    await recordEvent(intent === 'view' ? 'viewed' : 'apply_failed', { reason, cartSubtotal });
+    return apiOk({ valid: false, reason });
+  }
+
+  if (intent === 'apply') await recordEvent('entered', { cartSubtotal });
+
   // Check active
   if (!voucher.is_active) {
-    return apiOk({ valid: false, reason: 'This voucher is no longer active' });
+    return invalid('This voucher is no longer active');
   }
 
   // Check vendor match (if vendorId provided)
   if (vendorId && voucher.vendor_id !== vendorId) {
-    return apiOk({ valid: false, reason: 'This voucher is not valid for this vendor' });
+    return invalid('This voucher is not valid for this vendor');
   }
 
   // Check validity period
   const now = new Date();
   if (voucher.valid_from && new Date(voucher.valid_from) > now) {
-    return apiOk({ valid: false, reason: 'This voucher is not yet valid' });
+    return invalid('This voucher is not yet valid');
   }
   if (voucher.valid_until && new Date(voucher.valid_until) < now) {
-    return apiOk({ valid: false, reason: 'This voucher has expired' });
+    return invalid('This voucher has expired');
   }
 
   // Check usage limit
   if (voucher.max_uses !== null && voucher.uses_count >= voucher.max_uses) {
-    return apiOk({ valid: false, reason: 'This voucher has reached its usage limit' });
+    return invalid('This voucher has reached its usage limit');
   }
   if (voucher.max_uses !== null && Number(voucher.uses_count ?? 0) + Number(voucher.reserved_uses ?? 0) >= voucher.max_uses) {
-    return apiOk({ valid: false, reason: 'This voucher is temporarily reserved at capacity' });
+    return invalid('This voucher is temporarily reserved at capacity');
   }
   if (voucher.outlet_id && !(items ?? []).some((item) => item.outletId === voucher.outlet_id)) {
-    return apiOk({ valid: false, reason: 'This voucher is not valid for the selected outlet' });
+    return invalid('This voucher is not valid for the selected outlet');
   }
   if (voucher.product_id && !(items ?? []).some((item) => item.productId === voucher.product_id)) {
-    return apiOk({ valid: false, reason: 'Add the eligible product to use this voucher' });
+    return invalid('Add the eligible product to use this voucher');
   }
   if (voucher.per_customer_limit !== null && user) {
     const { count } = await supabase.from('voucher_redemptions').select('id', { count: 'exact', head: true }).eq('voucher_id', voucher.id).eq('user_id', user.id);
     if (Number(count ?? 0) >= Number(voucher.per_customer_limit)) {
-      return apiOk({ valid: false, reason: 'You have reached this voucher’s per-customer limit' });
+      return invalid('You have reached this voucher’s per-customer limit');
     }
   }
 
   // Check minimum spend
   if (cartSubtotal < voucher.min_spend) {
-    return apiOk({
-      valid: false,
-      reason: `Minimum spend of RM ${voucher.min_spend.toFixed(2)} required (current: RM ${cartSubtotal.toFixed(2)})`,
-    });
+    return invalid(`Minimum spend of RM ${voucher.min_spend.toFixed(2)} required (current: RM ${cartSubtotal.toFixed(2)})`);
   }
 
   if (voucher.review_status && voucher.review_status !== 'approved') {
-    return apiOk({ valid: false, reason: 'This voucher is still awaiting approval' });
+    return invalid('This voucher is still awaiting approval');
   }
 
   // Calculate discount
@@ -84,7 +92,7 @@ export async function POST(request: Request) {
     const buyQuantity = Number(voucher.buy_quantity ?? 0);
     const freeQuantity = Number(voucher.free_quantity ?? 0);
     if (!eligible || buyQuantity < 1 || freeQuantity < 1) {
-      return apiOk({ valid: false, reason: 'Add the eligible product to your cart to use this voucher' });
+      return invalid('Add the eligible product to your cart to use this voucher');
     }
     discountAmount = Math.min(cartSubtotal, Math.floor(eligible.quantity / buyQuantity) * freeQuantity * eligible.unitPrice);
   } else if (voucher.voucher_type === 'percent') {
@@ -94,9 +102,7 @@ export async function POST(request: Request) {
     discountAmount = Math.min(voucher.discount_value, cartSubtotal);
   }
 
-  if (user) {
-    await supabase.from('voucher_events').insert({ voucher_id: voucher.id, user_id: user.id, event_type: 'apply_success', metadata: { cartSubtotal } });
-  }
+  await recordEvent(intent === 'view' ? 'viewed' : 'apply_success', { cartSubtotal, discountAmount });
   return apiOk({
     valid: true,
     voucherId: voucher.id,

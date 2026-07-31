@@ -1,20 +1,15 @@
 // §11.1 preference vocabulary — the single source of truth shared by the
-// Preferences UI (app/customer/profile/page.tsx) and the ranking engine
-// (backend/domains/recommend.ts). Interest slugs are `categories.slug` values,
-// so interest→listing matching is a plain join, no mapping table.
+// Preferences UI and the ranking engine. These are the four assignable,
+// canonical category slugs. Hidden Gem is an editorial listing flag, not a
+// preference category.
 
-export const INTEREST_OPTIONS = [
-  { slug: "food",       label: "Food & Dining" },
-  { slug: "nature",     label: "Nature & Hiking" },
-  { slug: "cultural",   label: "Cultural & Heritage" },
-  { slug: "adventure",  label: "Adventure Sports" },
-  { slug: "nightlife",  label: "Nightlife" },
-  { slug: "wellness",   label: "Wellness & Spa" },
-  { slug: "shopping",   label: "Shopping" },
-  { slug: "family",     label: "Family Friendly" },
-] as const;
+import { DISCOVERY_CATEGORIES, REAL_CATEGORY_SLUGS } from "@/lib/customer/discovery-categories";
 
-export type InterestSlug = (typeof INTEREST_OPTIONS)[number]["slug"];
+export const INTEREST_OPTIONS = DISCOVERY_CATEGORIES
+  .filter((category): category is (typeof DISCOVERY_CATEGORIES)[number] & { kind: "category" } => category.kind === "category")
+  .map(({ slug, label }) => ({ slug, label })) as ReadonlyArray<{ slug: (typeof REAL_CATEGORY_SLUGS)[number]; label: string }>;
+
+export type InterestSlug = (typeof REAL_CATEGORY_SLUGS)[number];
 export const INTEREST_SLUGS = INTEREST_OPTIONS.map((o) => o.slug) as InterestSlug[];
 
 export const TRAVEL_STYLES = [

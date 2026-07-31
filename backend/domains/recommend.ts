@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import type { ComputedActivity } from "@/backend/core/types";
 import { searchActivities } from "@/backend/domains/catalogue";
+import { canonicalCategorySlug, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 import {
   passesHardFilters, scoreActivity, REASON_LABELS,
   type UserPrefs, type ScoreContext, type ReasonTag,
@@ -34,13 +35,17 @@ function toPrefs(row: PrefRow): UserPrefs {
   const budget = (["budget", "mid_range", "luxury"].includes(row.budget_range ?? "") ? row.budget_range : "mid_range") as UserPrefs["budgetRange"];
   const mobility = (["none", "limited", "wheelchair"].includes(row.mobility_needs ?? "") ? row.mobility_needs : "none") as UserPrefs["mobilityNeeds"];
   return {
-    interests: row.interests ?? [],
+    interests: normalizeCategorySlugs(row.interests),
     travelStyle: row.travel_style ?? "mid_range",
     budgetRange: budget,
     mobilityNeeds: mobility,
     petFriendly: Boolean(row.pet_friendly),
     preferredRadiusKm: row.preferred_radius_km ?? 20,
-    learnedAffinity: row.learned_affinity ?? {},
+    learnedAffinity: Object.entries(row.learned_affinity ?? {}).reduce<Record<string, number>>((acc, [slug, score]) => {
+      const canonical = canonicalCategorySlug(slug);
+      if (canonical) acc[canonical] = (acc[canonical] ?? 0) + Number(score);
+      return acc;
+    }, {}),
   };
 }
 

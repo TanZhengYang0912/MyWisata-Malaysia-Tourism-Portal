@@ -3,14 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutGrid, MapPinned, Search, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, MapPinned, Search, Sparkles, X } from "lucide-react";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { MalaysiaDestinationRail } from "@/components/customer/malaysia-destination-rail";
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
+import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import type { ComputedActivity } from "@/backend/core/types";
+import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 
 const STATE_REGIONS = [
   { label: "Northern Malaysia", states: ["Kedah", "Perlis", "Penang", "Perak"] },
@@ -44,7 +46,6 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
   const [state, setState] = useState("All Malaysia");
   const [category, setCategory] = useState<string | null>(null);
   const [stateMenuOpen, setStateMenuOpen] = useState(false);
-  const [showAllCategories, setShowAllCategories] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
 
@@ -57,7 +58,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
       isFirstRender.current = false;
       return;
     }
-    searchActivities({ state, category }).then((nextActivities) => {
+    searchActivities({ state, ...getDiscoverySearchFilter(category) }).then((nextActivities) => {
       setActivities(nextActivities);
       setCurrentPage(1);
     });
@@ -112,7 +113,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
               <span className="truncate">{state}</span>
               <ChevronDown size={14} className={`shrink-0 transition-transform ${stateMenuOpen ? "rotate-180" : ""}`} />
             </button>
-            <span className="hidden text-xs text-muted-foreground md:inline">17 destinations across Malaysia</span>
+            <span className="hidden text-xs text-muted-foreground md:inline">{MALAYSIA_DESTINATIONS.length} destinations across Malaysia</span>
           </div>
 
           {stateMenuOpen && (
@@ -153,8 +154,8 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
           <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Browse by Category</h2>
           <p className="text-sm mt-1 text-muted-foreground">What kind of experience are you looking for?</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          {(showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 5)).map((cat) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+          {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               onClick={() => selectCategory(cat.id)}
@@ -173,10 +174,6 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
               </p>
             </button>
           ))}
-          <button type="button" onClick={() => setShowAllCategories((visible) => !visible)} className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/20 bg-primary/[0.03] p-3 text-primary transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.06]">
-            {showAllCategories ? <ChevronUp size={24} /> : <LayoutGrid size={24} />}
-            <span className="text-[10px] font-bold text-center leading-tight">{showAllCategories ? "Show less" : "More categories"}</span>
-          </button>
         </div>
       </section>
 

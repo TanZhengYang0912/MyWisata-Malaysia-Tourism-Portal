@@ -14,14 +14,10 @@ ON CONFLICT (name) DO NOTHING;
 
 -- ── Categories ─────────────────────────────────────────────
 INSERT INTO categories (id, name, slug, icon, sort_order) VALUES
-  ('11111111-0000-0000-0000-000000000001', 'Food & Dining',       'food',          'utensils',    1),
-  ('11111111-0000-0000-0000-000000000002', 'Nature & Hiking',     'nature',        'tree-pine',   2),
-  ('11111111-0000-0000-0000-000000000003', 'Cultural & Heritage', 'cultural',      'landmark',    3),
-  ('11111111-0000-0000-0000-000000000004', 'Adventure Sports',    'adventure',     'mountain',    4),
-  ('11111111-0000-0000-0000-000000000005', 'Wellness & Spa',      'wellness',      'heart',       5),
-  ('11111111-0000-0000-0000-000000000006', 'Shopping',            'shopping',      'shopping-bag',6),
-  ('11111111-0000-0000-0000-000000000007', 'Family Friendly',     'family',        'baby',        7),
-  ('11111111-0000-0000-0000-000000000008', 'Accommodation',       'accommodation', 'hotel',       8)
+  ('11111111-0000-0000-0000-000000000001', 'Food',            'food',          'utensils',    1),
+  ('11111111-0000-0000-0000-000000000009', 'Activity',        'activity',      'compass',     2),
+  ('11111111-0000-0000-0000-000000000008', 'Accommodation',   'accommodation', 'bed-double',  3),
+  ('11111111-0000-0000-0000-000000000010', 'Retail',           'retail',        'shopping-bag',4)
 ON CONFLICT DO NOTHING;
 
 -- ── Demo Users (email/password managed by Supabase Auth seed or test accounts) ─
@@ -171,19 +167,19 @@ INSERT INTO products (id, vendor_id, outlet_id, category_id, name, slug, product
   ('dddddddd-0000-0000-0000-000000000003',
    'bbbbbbbb-0000-0000-0000-000000000002',
    'cccccccc-0000-0000-0000-000000000003',
-   '11111111-0000-0000-0000-000000000003',
+   '11111111-0000-0000-0000-000000000009',
    'Georgetown Heritage Walk (2h)', 'georgetown-heritage-walk', 'activity', TRUE, 55.00, 'active',
    ARRAY['history','walking','guided']),
   ('dddddddd-0000-0000-0000-000000000004',
    'bbbbbbbb-0000-0000-0000-000000000002',
    'cccccccc-0000-0000-0000-000000000004',
-   '11111111-0000-0000-0000-000000000004',
+   '11111111-0000-0000-0000-000000000009',
    'Batu Ferringhi Sunset Kayak', 'batu-ferringhi-kayak', 'activity', TRUE, 85.00, 'active',
    ARRAY['water','sunset','adventure']),
   ('dddddddd-0000-0000-0000-000000000005',
    'bbbbbbbb-0000-0000-0000-000000000003',
    'cccccccc-0000-0000-0000-000000000005',
-   '11111111-0000-0000-0000-000000000003',
+   '11111111-0000-0000-0000-000000000009',
    'Melaka River Night Cruise', 'melaka-river-cruise', 'activity', TRUE, 35.00, 'active',
    ARRAY['river','history','night'])
 ON CONFLICT DO NOTHING;
@@ -227,17 +223,17 @@ INSERT INTO vouchers (vendor_id, code, name, voucher_type, discount_value, min_s
 ON CONFLICT DO NOTHING;
 
 -- ── Preference profiles (§11.1, unified table) ───────────────
--- interests are category slugs so they join straight to products→categories.
+-- interests use the canonical real category slugs.
 INSERT INTO preference_survey_responses
   (user_id, interests, travel_style, budget_range, mobility_needs, group_composition, pet_friendly, preferred_radius_km) VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000005', ARRAY['food','cultural','nature'], 'mid_range',         'mid_range', 'none',       ARRAY['couple'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000006', ARRAY['adventure','wellness'],     'budget_backpacker', 'budget',    'none',       ARRAY['solo'],    TRUE,  10),
-  ('aaaaaaaa-0000-0000-0000-000000000007', ARRAY['food','shopping'],          'mid_range',         'mid_range', 'none',       ARRAY['friends'], FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000008', ARRAY['food','nature'],            'luxury',            'luxury',    'none',       ARRAY['couple'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000009', ARRAY['cultural','adventure'],     'mid_range',         'mid_range', 'limited',    ARRAY['family'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000010', ARRAY['cultural','family'],        'family_group',      'mid_range', 'wheelchair', ARRAY['family','senior'], FALSE, 5),
-  ('aaaaaaaa-0000-0000-0000-000000000011', ARRAY['adventure','food'],         'budget_backpacker', 'budget',    'none',       ARRAY['friends'], FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000012', ARRAY['wellness','nature'],        'luxury',            'luxury',    'none',       ARRAY['couple'],  TRUE,  20)
+  ('aaaaaaaa-0000-0000-0000-000000000005', ARRAY['food','activity'], 'mid_range',         'mid_range', 'none',       ARRAY['couple'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000006', ARRAY['activity'],        'budget_backpacker', 'budget',    'none',       ARRAY['solo'],    TRUE,  10),
+  ('aaaaaaaa-0000-0000-0000-000000000007', ARRAY['food','retail'],    'mid_range',         'mid_range', 'none',       ARRAY['friends'], FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000008', ARRAY['food','activity'], 'luxury',            'luxury',    'none',       ARRAY['couple'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000009', ARRAY['activity'],        'mid_range',         'mid_range', 'limited',    ARRAY['family'],  FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000010', ARRAY['activity'],        'family_group',      'mid_range', 'wheelchair', ARRAY['family','senior'], FALSE, 5),
+  ('aaaaaaaa-0000-0000-0000-000000000011', ARRAY['activity','food'], 'budget_backpacker', 'budget',    'none',       ARRAY['friends'], FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000012', ARRAY['activity'],        'luxury',            'luxury',    'none',       ARRAY['couple'],  TRUE,  20)
 ON CONFLICT (user_id) DO NOTHING;
 
 -- ── Mock interaction signals (§11.2.2 collaborative + §11.2.7 feedback) ───────

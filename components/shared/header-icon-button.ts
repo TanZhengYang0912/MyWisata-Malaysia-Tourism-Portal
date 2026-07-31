@@ -1,0 +1,1 @@
+export const HEADER_ICON_BUTTON_CLASS = "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";

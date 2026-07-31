@@ -1,300 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckSquare, XCircle, MessageSquare } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckSquare, Clock3, ExternalLink, FileCheck2, FileWarning, MessageSquare, ShieldCheck, UserRound, XCircle } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getUsers } from "@/backend/domains/identity";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import type { AdminKycSubmission, User } from "@/backend/core/types";
+import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import type { AdminKycSubmission, User } from "@/backend/core/types";
 import { KYC_REVIEW_REASON_CODES, type KycReviewReasonCode } from "@/lib/kyc/types";
 
-const DOC_LABEL: Record<string, string> = {
-  national_id:     "MyKad",
-  passport:        "Passport",
-  driving_license: "Driving License / MyPolis",
-};
-
-type PendingAction = {
-  userId: string;
-  action: "reject" | "request_info";
-  reasonCode: KycReviewReasonCode | "";
-  reasonDetail: string;
-} | null;
-
+const DOC_LABEL: Record<string, string> = { national_id: "MyKad", passport: "Passport", driving_license: "Driving licence / MyPolis" };
 const REVIEW_REASON_LABELS: Record<KycReviewReasonCode, string> = {
-  document_unreadable: "Document is unreadable",
-  document_incomplete: "Document is incomplete",
-  document_mismatch: "Document details do not match",
-  document_expired: "Document is expired",
-  document_suspected_tampering: "Document is suspected of tampering",
-  other: "Other (add details)",
+  document_unreadable: "Document is unreadable", document_incomplete: "Document is incomplete", document_mismatch: "Document details do not match", document_expired: "Document is expired", document_suspected_tampering: "Document is suspected of tampering", other: "Other (add details)",
 };
+
+type PendingAction = { userId: string; action: "reject" | "request_info"; reasonCode: KycReviewReasonCode | ""; reasonDetail: string } | null;
+type ConfirmAction = { userId: string; action: "approve" | "reject" | "request_info"; reasonCode?: KycReviewReasonCode; reasonDetail?: string } | null;
+
+function dateLabel(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+}
 
 export default function AdminKycPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
-  const [users,         setUsers]         = useState<User[]>([]);
-  const [submissions,   setSubmissions]   = useState<Map<string, AdminKycSubmission>>(new Map());
-  const [reviewing,     setReviewing]     = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [error,         setError]         = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getUsers().then((all) => setUsers(all.filter((u) => u.role === "customer")));
-    fetch('/api/admin/kyc/submissions')
-      .then((res) => res.json())
-      .then((body) => setSubmissions(new Map((body.data?.submissions ?? []).map((s: AdminKycSubmission) => [s.userId, s]))));
-  }, []);
-
-  async function review(
-    userId: string,
-    action: "approve" | "reject" | "request_info",
-    reasonCode?: KycReviewReasonCode,
-    reasonDetail?: string,
-  ) {
-    if (!currentUser || reviewing) return;
-    if (action !== "approve" && !reasonCode) {
-      setError("Select a review reason.");
-      return;
-    }
-    if (reasonCode === "other" && (reasonDetail?.trim().length ?? 0) < 10) {
-      setError("Add at least 10 characters of detail for Other.");
-      return;
-    }
-    setReviewing(userId);
-    setError(null);
+  async function load() {
     try {
-      const res = await fetch("/api/admin/kyc/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          action,
-          ...(reasonCode ? { reasonCode } : {}),
-          ...(reasonDetail?.trim() ? { reasonDetail: reasonDetail.trim() } : {}),
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError((body as { error?: { message?: string } })?.error?.message ?? "Review failed.");
-        return;
-      }
-      // Remove from submissions map (no longer active)
-      setSubmissions((prev) => {
-        const next = new Map(prev);
-        next.delete(userId);
-        return next;
-      });
-      if (action === "approve") {
-        setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, verificationTier: "kyc_verified" } : u));
-      }
-      showFeedback("success", action === "approve" ? "KYC submission approved." : action === "reject" ? "KYC submission rejected." : "Information request sent.");
-      setPendingAction(null);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Review failed.";
-      setError(message);
-      showFeedback("error", message);
-    } finally {
-      setReviewing(null);
-    }
+      const [allUsers, response] = await Promise.all([getUsers(), fetch("/api/admin/kyc/submissions", { cache: "no-store" })]);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? "Unable to load KYC submissions");
+      setUsers(allUsers.filter((user) => user.role === "customer"));
+      setSubmissions(new Map((body.data?.submissions ?? []).map((submission: AdminKycSubmission) => [submission.userId, submission])));
+    } catch (err) { setError(err instanceof Error ? err.message : "Unable to load KYC review queue"); }
   }
 
-  // Users with an active submission (pending or info_requested)
-  const pending  = users.filter((u) => submissions.has(u.id));
-  const verified = users.filter((u) => u.verificationTier === "kyc_verified");
+  useEffect(() => { void load(); }, []);
 
-  return (
-    <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-1">KYC Review</h1>
-      <p className="text-xs text-muted-foreground mb-6">
-        Review submitted KYC documents and approve, reject, or request additional information.
-      </p>
+  async function review(userId: string, action: "approve" | "reject" | "request_info", reasonCode?: KycReviewReasonCode, reasonDetail?: string) {
+    if (!currentUser || reviewing) return;
+    if (action !== "approve" && !reasonCode) { setError("Select a review reason."); return; }
+    if (reasonCode === "other" && (reasonDetail?.trim().length ?? 0) < 10) { setError("Add at least 10 characters of detail for Other."); return; }
+    setReviewing(userId); setError(null);
+    try {
+      const response = await fetch("/api/admin/kyc/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, action, ...(reasonCode ? { reasonCode } : {}), ...(reasonDetail?.trim() ? { reasonDetail: reasonDetail.trim() } : {}) }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? "Review failed.");
+      setSubmissions((previous) => { const next = new Map(previous); next.delete(userId); return next; });
+      if (action === "approve") setUsers((previous) => previous.map((user) => user.id === userId ? { ...user, verificationTier: "kyc_verified" } : user));
+      showFeedback("success", action === "approve" ? "KYC submission approved." : action === "reject" ? "KYC submission rejected." : "Information request sent.");
+      setPendingAction(null); setConfirmAction(null);
+    } catch (err) { const message = err instanceof Error ? err.message : "Review failed."; setError(message); showFeedback("error", message); }
+    finally { setReviewing(null); }
+  }
 
-      {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
-      )}
+  async function openDocument(submission: AdminKycSubmission, side: "front" | "back") {
+    try {
+      const response = await fetch(`/api/admin/kyc/documents/${submission.id}/${side}`);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? "Failed to load document");
+      window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err) { showFeedback("error", err instanceof Error ? err.message : "Failed to load document"); }
+  }
 
-      {/* Pending submissions */}
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">Pending Review ({pending.length})</h2>
-        </div>
-        {pending.length === 0 ? (
-          <EmptyState title="No pending KYC submissions" />
-        ) : (
-          <div className="divide-y divide-border">
-            {pending.map((u) => {
-              const sub = submissions.get(u.id);
-              const isInfoRequested = sub?.status === "info_requested";
-              const isActioning = pendingAction?.userId === u.id;
+  const pending = useMemo(() => users.filter((user) => submissions.has(user.id)), [submissions, users]);
+  const verified = useMemo(() => users.filter((user) => user.verificationTier === "kyc_verified"), [users]);
+  const infoRequested = pending.filter((user) => submissions.get(user.id)?.status === "info_requested").length;
+  const oldest = pending.map((user) => submissions.get(user.id)?.submittedAt).filter(Boolean).sort()[0];
 
-              return (
-                <div key={u.id}>
-                  <div className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0 bg-primary">
-                      {u.avatarInitial}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-foreground">{u.name}</p>
-                        {isInfoRequested && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFF4CC] text-[#7A5A00]">
-                            Info Requested
-                          </span>
-                        )}
-                      </div>
-                      {sub ? (
-                        <p className="text-xs text-muted-foreground">{DOC_LABEL[sub.docType] ?? sub.docType}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">No submission data</p>
-                      )}
-                    </div>
+  return <main className="mx-auto w-full max-w-[1500px] p-6 sm:p-8">
+    <header className="mb-7"><div className="flex items-center gap-2 text-primary"><ShieldCheck size={18} /><p className="text-xs font-semibold uppercase tracking-[0.18em]">Verification operations</p></div><h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">KYC Review</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Review identity documents, resolve exceptions and keep verification decisions auditable.</p></header>
+    {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
-                    {sub?.documents.map(({ side }) => (
-                      <button
-                        key={side}
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`/api/admin/kyc/documents/${sub.id}/${side}`);
-                            const body = await res.json().catch(() => ({}));
-                            if (!res.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? "Failed to load document");
-                            window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
-                          } catch (err) {
-                            alert(err instanceof Error ? err.message : "Failed to load document");
-                          }
-                        }}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border hover:bg-secondary transition-colors"
-                      >
-                        View {side}
-                      </button>
-                    ))}
+    <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Pending review", pending.length, "Awaiting a decision"], ["Information requested", infoRequested, "Waiting for customer action"], ["Verified users", verified.length, "Current KYC verified accounts"], ["Oldest queue item", oldest ? dateLabel(oldest) : "—", oldest ? "Submitted first" : "Queue is clear"]].map(([label, value, note]) => <div key={label} className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold text-foreground">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div>)}</section>
 
-                    {sub?.ocr && (
-                      <div className="mt-3 rounded-xl border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
-                        <p className="font-semibold text-foreground">OCR check: {sub.ocr.status}</p>
-                        {sub.ocr.holderName && <p className="mt-1">Extracted name: {sub.ocr.holderName}</p>}
-                        {sub.ocr.documentNumberLast4 && <p>Document ending: {sub.ocr.documentNumberLast4}</p>}
-                        {sub.ocr.expiryDate && <p>Expiry date: {sub.ocr.expiryDate}</p>}
-                        {sub.ocr.mismatchFields.length > 0 && <p className="mt-1 text-destructive">Mismatch: {sub.ocr.mismatchFields.join(', ').replaceAll('_', ' ')}</p>}
-                        {sub.ocr.status === 'unavailable' && <p className="mt-1">AI reading was unavailable; complete a manual document review.</p>}
-                        {sub.ocr.status === 'unreadable' && <p className="mt-1">The document could not be read reliably; inspect both images manually.</p>}
-                      </div>
-                    )}
+    <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-semibold text-foreground">Review queue</h2><p className="mt-1 text-xs text-muted-foreground">Open each submission to inspect documents before taking action.</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 size={14} /> Oldest first</div></div>
+      {pending.length === 0 ? <EmptyState icon={<FileCheck2 size={28} />} title="No pending KYC submissions" description="New submissions will appear here when customers complete identity verification." /> : <div className="divide-y divide-border">{pending.map((user) => { const submission = submissions.get(user.id); const action = pendingAction?.userId === user.id ? pendingAction : null; return <div key={user.id} className="p-5 sm:p-6"><div className="flex flex-col gap-4 xl:flex-row xl:items-start"><div className="flex min-w-0 flex-1 items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-foreground">{user.name}</p>{submission?.status === "info_requested" && <span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">Info requested</span>}</div><p className="mt-1 text-sm text-muted-foreground">{submission ? DOC_LABEL[submission.docType] ?? submission.docType : "No submission data"}</p><p className="mt-1 text-xs text-muted-foreground">Submitted {dateLabel(submission?.submittedAt)} · Queue position {submission?.queuePosition ?? "—"}</p></div></div><div className="flex flex-wrap items-center gap-2 xl:justify-end">{submission?.documents.map(({ side }) => <Button key={side} variant="outline" size="sm" onClick={() => void openDocument(submission, side)}><ExternalLink size={14} /> View {side}</Button>)}<Button size="sm" disabled={Boolean(reviewing)} onClick={() => setConfirmAction({ userId: user.id, action: "approve" })}><CheckSquare size={14} /> Approve</Button><Button size="sm" variant="outline" disabled={Boolean(reviewing)} onClick={() => setPendingAction(action?.action === "request_info" ? null : { userId: user.id, action: "request_info", reasonCode: "", reasonDetail: "" })}><MessageSquare size={14} /> Request info</Button><Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={Boolean(reviewing)} onClick={() => setPendingAction(action?.action === "reject" ? null : { userId: user.id, action: "reject", reasonCode: "", reasonDetail: "" })}><XCircle size={14} /> Reject</Button></div></div>
+        {submission?.ocr && <div className="mt-4 grid gap-3 rounded-xl border border-border bg-secondary/30 p-4 text-xs sm:grid-cols-2"><div><p className="font-semibold text-foreground">OCR check: <span className="capitalize">{submission.ocr.status}</span></p><p className="mt-1 text-muted-foreground">Extracted name: {submission.ocr.holderName ?? "Not available"}</p><p className="text-muted-foreground">Document ending: {submission.ocr.documentNumberLast4 ?? "Not available"}</p></div><div><p className="text-muted-foreground">Expiry date: {submission.ocr.expiryDate ?? "Not available"}</p>{submission.ocr.mismatchFields.length > 0 ? <p className="mt-1 flex items-start gap-1 text-destructive"><FileWarning size={14} className="mt-0.5 shrink-0" /> Mismatch: {submission.ocr.mismatchFields.join(", ").replaceAll("_", " ")}</p> : <p className="mt-1 text-emerald-700">No OCR mismatch detected</p>}</div></div>}
+        {action && <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4"><p className="text-sm font-semibold text-foreground">{action.action === "reject" ? "Rejection reason" : "Information requested"}</p><p className="mt-1 text-xs text-muted-foreground">Choose a reason first. You will review the final action in a confirmation step.</p><select aria-label="KYC review reason" value={action.reasonCode} onChange={(event) => setPendingAction((current) => current ? { ...current, reasonCode: event.target.value as KycReviewReasonCode | "", reasonDetail: event.target.value === "other" ? current.reasonDetail : "" } : current)} className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="">Select a reason…</option>{KYC_REVIEW_REASON_CODES.filter((code) => action.action === "reject" || code !== "document_suspected_tampering").map((code) => <option key={code} value={code}>{REVIEW_REASON_LABELS[code]}</option>)}</select>{action.reasonCode === "other" && <textarea aria-label="KYC review details" rows={3} value={action.reasonDetail} onChange={(event) => setPendingAction((current) => current ? { ...current, reasonDetail: event.target.value } : current)} placeholder="Add at least 10 characters of detail." className="mt-3 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm" />}<div className="mt-3 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setPendingAction(null)}>Cancel</Button><Button size="sm" variant={action.action === "reject" ? "destructive" : "default"} disabled={!action.reasonCode || (action.reasonCode === "other" && action.reasonDetail.trim().length < 10)} onClick={() => setConfirmAction({ userId: action.userId, action: action.action, reasonCode: action.reasonCode || undefined, reasonDetail: action.reasonDetail })}>Review action</Button></div></div>}
+      </div>; })}</div>}
+    </section>
 
-                    {/* Action buttons */}
-                    <div className="flex gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        className="text-xs"
-                        disabled={reviewing === u.id}
-                        onClick={() => review(u.id, "approve")}
-                      >
-                        <CheckSquare size={12} /> Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs"
-                        disabled={reviewing === u.id}
-                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "request_info" ? null : { userId: u.id, action: "request_info", reasonCode: "", reasonDetail: "" })}
-                      >
-                        <MessageSquare size={12} /> Request Info
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs border-destructive text-destructive hover:bg-destructive/10"
-                        disabled={reviewing === u.id}
-                        onClick={() => setPendingAction(isActioning && pendingAction?.action === "reject" ? null : { userId: u.id, action: "reject", reasonCode: "", reasonDetail: "" })}
-                      >
-                        <XCircle size={12} /> Reject
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Inline reason form */}
-                  {isActioning && pendingAction && (
-                    <div className="px-6 pb-4 pt-0">
-                      <div
-                        className="rounded-xl border p-4 space-y-3"
-                        style={{
-                          borderColor: pendingAction.action === "reject" ? "var(--destructive)" : "var(--border)",
-                          backgroundColor: pendingAction.action === "reject"
-                            ? "color-mix(in srgb, var(--destructive) 5%, transparent)"
-                            : "color-mix(in srgb, var(--accent) 5%, transparent)",
-                        }}
-                      >
-                        <p className="text-xs font-semibold text-foreground">
-                          {pendingAction.action === "reject" ? "Rejection Reason" : "Information Requested"}
-                        </p>
-                        <select
-                          value={pendingAction.reasonCode}
-                          onChange={(e) => setPendingAction((a) => a ? { ...a, reasonCode: e.target.value as KycReviewReasonCode | "", reasonDetail: e.target.value === "other" ? a.reasonDetail : "" } : a)}
-                          className="w-full px-3 py-2 text-xs rounded-lg border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-                        >
-                          <option value="">Select a reason…</option>
-                          {KYC_REVIEW_REASON_CODES.filter((reasonCode) => pendingAction.action === "reject" || reasonCode !== "document_suspected_tampering").map((reasonCode) => (
-                            <option key={reasonCode} value={reasonCode}>{REVIEW_REASON_LABELS[reasonCode]}</option>
-                          ))}
-                        </select>
-                        {pendingAction.reasonCode === "other" && (
-                          <textarea
-                            rows={2}
-                            value={pendingAction.reasonDetail}
-                            onChange={(e) => setPendingAction((a) => a ? { ...a, reasonDetail: e.target.value } : a)}
-                            placeholder="Explain what additional information is needed (at least 10 characters)."
-                            className="w-full px-3 py-2 text-xs rounded-lg border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                          />
-                        )}
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs"
-                            onClick={() => { setPendingAction(null); setError(null); }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            className={`text-xs ${pendingAction.action === "reject" ? "bg-destructive hover:bg-destructive/90 text-white" : ""}`}
-                            disabled={reviewing === u.id || !pendingAction.reasonCode || (pendingAction.reasonCode === "other" && pendingAction.reasonDetail.trim().length < 10)}
-                            onClick={() => review(u.id, pendingAction.action, pendingAction.reasonCode || undefined, pendingAction.reasonDetail)}
-                          >
-                            {reviewing === u.id ? "Processing…" : pendingAction.action === "reject" ? "Confirm Reject" : "Send Request"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Verified users */}
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">KYC Verified ({verified.length})</h2>
-        </div>
-        {verified.length === 0 ? (
-          <EmptyState title="No verified users yet" />
-        ) : (
-          <div className="divide-y divide-border">
-            {verified.map((u) => (
-              <div key={u.id} className="px-6 py-3.5 flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">{u.name}</p>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">Verified</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-semibold text-foreground">Verified users</h2><p className="mt-1 text-xs text-muted-foreground">Accounts that currently hold the verified KYC tier.</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><UserRound size={14} /> {verified.length} accounts</div></div>{verified.length === 0 ? <EmptyState title="No verified users yet" /> : <div className="divide-y divide-border">{verified.map((user) => <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div><p className="text-sm font-medium text-foreground">{user.name}</p><p className="mt-1 text-xs text-muted-foreground">Customer account · KYC approved</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Verified</span></div>)}</div>}</section>
+    <AdminConfirmDialog open={Boolean(confirmAction)} title={confirmAction?.action === "approve" ? "Approve KYC submission?" : confirmAction?.action === "reject" ? "Reject KYC submission?" : "Send information request?"} description={confirmAction?.action === "approve" ? "This will mark the customer as KYC verified and close the active submission." : confirmAction?.action === "reject" ? "This will reject the submission and record the selected reason in the review history." : "This will notify the customer that more information is required before KYC can be completed."} confirmLabel={confirmAction?.action === "approve" ? "Confirm approval" : confirmAction?.action === "reject" ? "Confirm rejection" : "Send request"} confirmVariant={confirmAction?.action === "reject" ? "destructive" : "default"} busy={Boolean(confirmAction && reviewing === confirmAction.userId)} onCancel={() => setConfirmAction(null)} onConfirm={() => confirmAction && void review(confirmAction.userId, confirmAction.action, confirmAction.reasonCode, confirmAction.reasonDetail)} />
+  </main>;
 }
