@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORY_DETAILS, getCategoryChips } from "@/lib/customer/category-details";
+import { CATEGORY_DETAILS, PLACE_BOUND_TYPES, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 
 // Phase 1 taxonomy: 4 top-level categories.slug values — see
@@ -95,5 +95,39 @@ describe("getCategoryChips", () => {
     expect(chips.find((c) => c.label === "Hours")?.value).toBe("10:00 - 22:00");
     expect(chips.find((c) => c.label === "Tags")?.value).toBe("halal · spicy");
     expect(chips.find((c) => c.label === "Contact")).toMatchObject({ value: "+60111222333", href: "tel:+60111222333" });
+  });
+});
+
+describe("isPlaceBound", () => {
+  it.each(PLACE_BOUND_TYPES)("is true for the place-bound type %s", (slug) => {
+    expect(isPlaceBound({ typeSlugs: [slug] })).toBe(true);
+  });
+
+  it("is false for types where the branch is the product", () => {
+    expect(isPlaceBound({ typeSlugs: ["nightlife"] })).toBe(false);
+    expect(isPlaceBound({ typeSlugs: ["wellness"] })).toBe(false);
+  });
+
+  it("is false when the product has no type_slugs at all", () => {
+    expect(isPlaceBound({ typeSlugs: undefined })).toBe(false);
+    expect(isPlaceBound({ typeSlugs: [] })).toBe(false);
+  });
+
+  it("is true when any one of several types is place-bound", () => {
+    expect(isPlaceBound({ typeSlugs: ["wellness", "nature"] })).toBe(true);
+  });
+});
+
+describe("getPriceUnit", () => {
+  it("names the unit each category actually sells", () => {
+    expect(getPriceUnit("activity")).toBe("per person");
+    expect(getPriceUnit("accommodation")).toBe("per night");
+    expect(getPriceUnit("retail")).toBe("each");
+    expect(getPriceUnit("food")).toBe("each");
+  });
+
+  it("never calls an unknown category's unit 'per person'", () => {
+    expect(getPriceUnit("some-future-category")).toBe("each");
+    expect(getPriceUnit(undefined)).toBe("each");
   });
 });

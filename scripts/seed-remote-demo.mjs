@@ -128,6 +128,49 @@ const PRODUCT_SEEDS = [
   ['Sunset Waterfront Picnic', 'experience', 85, true, 1, "A relaxed picnic set up right on the waterfront, timed for sunset. Mats and shaded seating provided — just show up and enjoy the view.", 'nature', true],
 ];
 
+// A canopy trek exists in exactly one forest. The `PRODUCT_SEEDS[i % length]`
+// loop below used to clone each of these templates into six cities at once,
+// which is how "Rainforest Canopy Trek" ended up listed in Seremban.
+//
+// These types are therefore NOT cloned. Only the loop indices named in
+// PLACE_BOUND_ACTIVITIES are created, each renamed to the real activity that
+// belongs at the outlet index `i % OUTLETS.length` resolves to. Product ids
+// stay stableUuid(`product:${i}`), so re-running this against the live database
+// updates the same rows migration 20260801010000 kept, rather than duplicating
+// them.
+const PLACE_BOUND_TYPES = new Set(['nature', 'cultural', 'adventure', 'wellness']);
+
+// loop index → [name, slug, typeSlug, description]
+const PLACE_BOUND_ACTIVITIES = {
+  // Explore Outdoors Malaysia
+  94: ['Penang National Park Monkey Beach Trek', 'penang-national-park-monkey-beach-trek', 'nature', 'Coastal jungle trek inside Penang National Park from Teluk Bahang to Monkey Beach, with a guided stop at the meromictic lake.'],
+  8: ['Kilim Geoforest Mangrove Kayak', 'kilim-geoforest-mangrove-kayak', 'adventure', 'Paddle the limestone channels of the Kilim Karst Geoforest Park in Langkawi, past eagle roosts, bat caves and mangrove nurseries.'],
+  26: ['Bukit Nanas Forest Reserve Walk', 'bukit-nanas-forest-reserve-walk', 'nature', 'Guided walk through the last patch of primary rainforest inside Kuala Lumpur, ending at the KL Tower canopy deck.'],
+  // Warisan Cultural Journeys
+  80: ['George Town Story Walk', 'george-town-story-walk-penang', 'cultural', "Shophouse-to-shophouse walk through George Town's UNESCO core, tracing clan jetties, street art and Peranakan trade history."],
+  56: ['Jonker Walk Heritage Trail', 'jonker-walk-heritage-trail', 'cultural', 'Evening trail along Jonker Street and the Melaka River, covering Baba-Nyonya townhouses, Cheng Hoon Teng and the night market.'],
+  40: ['Merdeka Square Heritage Walk', 'merdeka-square-heritage-walk', 'cultural', 'Colonial-era circuit around Dataran Merdeka, the Sultan Abdul Samad Building, Masjid Jamek and the Klang river confluence.'],
+  10: ['Siti Khadijah Market & Wau Craft', 'siti-khadijah-market-wau-craft', 'cultural', "Morning at Kota Bharu's trader-run Siti Khadijah Market followed by a hands-on wau bulan kite-making session."],
+  97: ['Sarawak Cultural Village Day', 'sarawak-cultural-village-day', 'cultural', 'Full day at the Sarawak Cultural Village below Mount Santubong — longhouses of seven ethnic groups, craft demos and a dance performance.'],
+  // Serenity Wellness Retreats — a spa's product is the treatment, not the
+  // building, so these three are also sold at each other's outlets (see the
+  // outlet_offers rows further down). That is the one genuine multi-outlet
+  // case in the demo catalogue.
+  79: ['Traditional Massage Escape', 'traditional-massage-escape', 'wellness', 'A traditional Malay massage session in a private treatment room, starting with a welcome foot soak and finished with herbal tea.'],
+  28: ['Aromatherapy Hot Stone Ritual', 'aromatherapy-hot-stone-ritual', 'wellness', 'Ninety minutes of warmed basalt stone work with a locally blended lemongrass and pandan oil, finished with a scalp massage.'],
+  96: ['Herbal Steam & Body Scrub', 'herbal-steam-body-scrub', 'wellness', 'Traditional herbal steam followed by a turmeric and rice bran scrub, drawn from Malay postnatal spa practice.'],
+};
+
+// The three Serenity treatments above, in the order their per-outlet prices are
+// listed: [loop index, [KL, George Town, Kota Kinabalu]].
+const WELLNESS_OFFER_PRICES = [
+  [79, [118, 112, 108]],
+  [28, [145, 138, 132]],
+  [96, [98, 92, 88]],
+];
+// Indices into OUTLETS for the three branches Serenity keeps.
+const WELLNESS_OUTLET_INDICES = [1, 2, 5]; // Kuala Lumpur (KLCC), George Town, Kota Kinabalu
+
 // Non-food PRODUCT_SEEDS entries (by typeSlug) get rehomed onto these themed
 // vendors instead of Rasa Malaysia Kitchen — mirrors the live
 // rehome_mis_vendored_products migration, so "Provided by" stays consistent
@@ -149,6 +192,38 @@ const EXTRA_VENDORS = [
     id: stableUuid('vendor:borneo-wild'), ownerId: DEMO_USERS[9][0], name: 'Borneo Wild Trails', slug: 'borneo-wild', description: 'Small-group rainforest, river and wildlife experiences hosted by local guides.', city: 'Kota Kinabalu', state: 'Sabah',
     outlets: [['borneo-kota-kinabalu', 'Borneo Wild — Kota Kinabalu', 'Kota Kinabalu', 'Sabah', 5.9804, 116.0735], ['borneo-sandakan', 'Borneo Wild — Sandakan', 'Sandakan', 'Sabah', 5.8402, 118.1179]],
   },
+];
+
+// Place-specific activities that only ever existed in the live database
+// (plan finding F3): hand-authored rows that no seed or migration reproduced.
+// Listed here with their live ids so a reseed updates those exact rows instead
+// of creating parallel copies, and a fresh database gets the same catalogue.
+//
+// outlet slug → [[product id, name, typeSlug, basePrice, description], …]
+const EXTRA_VENDOR_ACTIVITIES = {
+  'batik-kuantan': [
+    ['b60333b2-299a-4df2-8709-276c970ca4b5', 'Gunung Tapis Waterfall Hike', 'nature', 88, 'River-crossing hike to the hot springs and waterfalls of Gunung Tapis Park, inland from Kuantan.'],
+  ],
+  'batik-kuala-terengganu': [
+    ['ca3a10b2-6c46-4c53-a342-0df6d3d1675f', 'Batik Story Workshop', 'cultural', 96, 'A guided batik-making session with a local artist and a take-home textile.'],
+    ['5b9edc5c-0a24-4a68-966c-c52da4a30766', 'Setiu Wetlands Nature Walk', 'nature', 78, 'Boardwalk and boat walk through the Setiu river-mouth wetlands, one of the last brackish lagoon systems on the east coast.'],
+  ],
+  'borneo-kota-kinabalu': [
+    ['0a3b3258-42b6-4ab4-a70d-b88339123e5f', 'River & Rainforest Discovery', 'adventure', 145, 'A small-group nature experience with local guides and conservation stories.'],
+    ['843f1aa4-f142-4e4a-984b-cdb4d93dcc5f', 'Mount Kinabalu Foothill Trail', 'nature', 165, 'Day trek across the lower Kinabalu trails and the Poring foothills, without the summit permit.'],
+  ],
+  'borneo-sandakan': [
+    // New: Sandakan had a clone of the Kota Kinabalu product, which put one
+    // activity name in two cities. Sepilok actually is in Sandakan.
+    [null, 'Sepilok Orangutan Rehabilitation Visit', 'nature', 120, 'Feeding-platform visit at the Sepilok Orangutan Rehabilitation Centre, with the adjoining sun bear conservation centre.'],
+  ],
+};
+
+// Explore Outdoors activities that live only in the live database, same as
+// above. [product id, outlet index into OUTLETS, name, typeSlug, price, description]
+const EXPLORE_OUTDOORS_ACTIVITIES = [
+  ['c4291ea4-b07b-4106-bba0-ac1505b6c74f', 6, 'Bako National Park Coastal Trail', 'nature', 135, 'Boat-in coastal trail through Bako National Park, past the sea stack at Telok Pandan Kecil and proboscis monkey territory.'],
+  ['3c951980-7957-4e12-856b-ce40959e8900', 7, 'Kinta Valley Limestone Hike', 'nature', 98, 'Hike among the limestone karsts and cave temples of the Kinta Valley, with a stop at Gunung Lang.'],
 ];
 
 function stableUuid(value) {
@@ -277,14 +352,27 @@ async function seedAdditionalVendors(categories) {
     }));
     await upsert('outlets', outletRows);
     await seedRoles(vendor.id, outletRows.map((outlet) => outlet.id), [vendor.ownerId], []);
-    const products = outletRows.map((outlet, outletIndex) => ({
-      id: stableUuid(`product:${vendor.slug}:${outlet.slug}`), vendor_id: vendor.id, outlet_id: outlet.id, category_id: activityCategoryId, type_slugs: vendorIndex === 0 ? ['cultural'] : ['nature'], name: vendorIndex === 0 ? 'Batik Story Workshop' : 'River & Rainforest Discovery', slug: `demo-${vendor.slug}-${outlet.slug}`, description: vendorIndex === 0 ? 'A guided batik-making session with a local artist and a take-home textile.' : 'A small-group nature experience with local guides and conservation stories.', product_type: vendorIndex === 0 ? 'experience' : 'activity', requires_booking: true, base_price: vendorIndex === 0 ? 96 : 145, cover_url: PHOTO_URLS[(vendorIndex + outletIndex + 3) % PHOTO_URLS.length], tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), 'demo'], status: 'active', review_status: 'approved',
-    }));
+    // One real activity per outlet, from EXTRA_VENDOR_ACTIVITIES. Previously
+    // this cloned a single name onto every outlet, which put "River &
+    // Rainforest Discovery" in both Kota Kinabalu and Sandakan.
+    const products = outletRows.flatMap((outlet, outletIndex) =>
+      (EXTRA_VENDOR_ACTIVITIES[outlet.slug] ?? []).map(([id, name, typeSlug, basePrice, description], activityIndex) => ({
+        id: id ?? stableUuid(`product:${vendor.slug}:${outlet.slug}:${activityIndex}`),
+        vendor_id: vendor.id, outlet_id: outlet.id, category_id: activityCategoryId,
+        type_slugs: [typeSlug], name,
+        slug: `demo-${vendor.slug}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
+        description, product_type: typeSlug === 'cultural' ? 'experience' : 'activity',
+        requires_booking: true, base_price: basePrice,
+        cover_url: PHOTO_URLS[(vendorIndex + outletIndex + activityIndex + 3) % PHOTO_URLS.length],
+        tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), 'demo'],
+        status: 'active', review_status: 'approved',
+      })),
+    );
     await upsert('products', products);
     const variants = products.map((product, index) => ({ id: stableUuid(`variant:${product.id}:adult`), product_id: product.id, name: 'Adult', sku: `EXTRA-${vendorIndex}-${index}-ADULT`, price_offset: 0, is_default: true, is_active: true, sort_order: 0 }));
     await upsert('product_variants', variants);
     await upsert('inventory', variants.map((variant, index) => ({ id: stableUuid(`inventory:${variant.id}`), variant_id: variant.id, quantity: 25 + index * 5, reserved: 0, low_stock_threshold: 5 })), 'variant_id');
-    await upsert('outlet_pages', outletRows.map((outlet, index) => ({ id: stableUuid(`outlet-page:${outlet.id}`), outlet_id: outlet.id, hero_url: PHOTO_URLS[(index + vendorIndex + 2) % PHOTO_URLS.length], brand_colour: vendorIndex === 0 ? '#b45309' : '#0e7490', font_family: vendorIndex === 0 ? 'Fraunces' : 'Plus Jakarta Sans', featured_ids: [products[index].id], seo_title: `${outlet.name} | ${vendor.name}`, seo_description: vendor.description, blocks: [{ id: 'hero', type: 'hero', title: vendor.name, body: vendor.description, image: PHOTO_URLS[(index + 2) % PHOTO_URLS.length] }, { id: 'products', type: 'product_grid', title: 'Featured experiences', body: 'Book a local experience with this outlet.' }, { id: 'hours', type: 'hours', title: 'Plan your visit' }, { id: 'contact', type: 'contact', title: 'Find the outlet' }], gallery: [{ url: PHOTO_URLS[(index + 1) % PHOTO_URLS.length], alt: `${outlet.name} experience` }, { url: PHOTO_URLS[(index + 4) % PHOTO_URLS.length], alt: `${vendor.name} in Malaysia` }] })), 'outlet_id');
+    await upsert('outlet_pages', outletRows.map((outlet, index) => ({ id: stableUuid(`outlet-page:${outlet.id}`), outlet_id: outlet.id, hero_url: PHOTO_URLS[(index + vendorIndex + 2) % PHOTO_URLS.length], brand_colour: vendorIndex === 0 ? '#b45309' : '#0e7490', font_family: vendorIndex === 0 ? 'Fraunces' : 'Plus Jakarta Sans', featured_ids: products.filter((product) => product.outlet_id === outlet.id).slice(0, 1).map((product) => product.id), seo_title: `${outlet.name} | ${vendor.name}`, seo_description: vendor.description, blocks: [{ id: 'hero', type: 'hero', title: vendor.name, body: vendor.description, image: PHOTO_URLS[(index + 2) % PHOTO_URLS.length] }, { id: 'products', type: 'product_grid', title: 'Featured experiences', body: 'Book a local experience with this outlet.' }, { id: 'hours', type: 'hours', title: 'Plan your visit' }, { id: 'contact', type: 'contact', title: 'Find the outlet' }], gallery: [{ url: PHOTO_URLS[(index + 1) % PHOTO_URLS.length], alt: `${outlet.name} experience` }, { url: PHOTO_URLS[(index + 4) % PHOTO_URLS.length], alt: `${vendor.name} in Malaysia` }] })), 'outlet_id');
     extraProducts.push(...products);
   }
   return extraProducts;
@@ -463,30 +551,89 @@ async function main() {
   }
 
   const productRows = [];
+  // Loop index per kept product. Variant ids and SKUs are derived from this,
+  // not from the array position, so skipping the clones does not renumber the
+  // variants of the products that survive.
+  const productSeedIndex = [];
   for (let i = 0; i < 100; i += 1) {
     const seed = PRODUCT_SEEDS[i % PRODUCT_SEEDS.length];
     const [baseName, productType, basePrice, requiresBooking, categoryIndex, baseDescription, typeSlug, isFamilyFriendly] = seed;
+    const placeBound = PLACE_BOUND_ACTIVITIES[i];
+    // A place-bound type is only created where it actually is. Every other
+    // index of these types is a clone this seed used to scatter across cities.
+    if (!placeBound && PLACE_BOUND_TYPES.has(typeSlug)) continue;
     const themedVendor = typeSlug ? TYPE_TO_THEMED_VENDOR[typeSlug] : undefined;
     const outlet = themedVendor ? themedOutletRows[themedVendor.slug][i % outletRows.length] : outletRows[i % outletRows.length];
+    const name = placeBound ? placeBound[0] : baseName;
+    productSeedIndex.push(i);
     productRows.push({
       id: stableUuid(`product:${i}`),
       vendor_id: themedVendor ? themedVendor.id : vendorId,
       outlet_id: outlet.id,
       category_id: CATEGORIES[categoryIndex][0],
-      name: baseName,
-      slug: `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
-      description: productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
+      name,
+      slug: placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
+      description: placeBound ? placeBound[3] : productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
       product_type: productType,
       requires_booking: requiresBooking,
       base_price: basePrice + ((i % 5) * 2),
       cover_url: PHOTO_URLS[i % PHOTO_URLS.length],
       tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), productType],
-      type_slugs: typeSlug ? [typeSlug] : [],
+      type_slugs: placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [],
       is_family_friendly: !!isFamilyFriendly,
       status: 'active',
     });
   }
   await upsert('products', productRows);
+
+  // The one genuine multi-outlet case: each Serenity treatment is also sold at
+  // the other two branches, at its own price. Until this existed, outlet_offers
+  // was empty and the detail page's "Available at N outlets" picker could never
+  // render (plan finding F4).
+  const serenityOutlets = themedOutletRows['serenity-wellness-retreats'];
+  await upsert('outlet_offers', WELLNESS_OFFER_PRICES.flatMap(([seedIndex, prices]) =>
+    WELLNESS_OUTLET_INDICES.map((outletIndex, priceIndex) => ({
+      id: stableUuid(`offer:${seedIndex}:${outletIndex}`),
+      product_id: stableUuid(`product:${seedIndex}`),
+      outlet_id: serenityOutlets[outletIndex].id,
+      price: prices[priceIndex],
+      status: 'active',
+    })),
+  ));
+
+  // Two Explore Outdoors trails that only ever existed in the live database.
+  const exploreOutdoors = THEMED_VENDORS.find((tv) => tv.slug === 'explore-outdoors-malaysia');
+  const exploreOutlets = themedOutletRows[exploreOutdoors.slug];
+  const exploreActivityRows = EXPLORE_OUTDOORS_ACTIVITIES.map(([id, outletIndex, name, typeSlug, basePrice, description]) => ({
+    id, vendor_id: exploreOutdoors.id, outlet_id: exploreOutlets[outletIndex].id,
+    category_id: CATEGORIES[1][0], type_slugs: [typeSlug], name,
+    slug: `demo-explore-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
+    description, product_type: 'activity', requires_booking: true, base_price: basePrice,
+    cover_url: PHOTO_URLS[outletIndex % PHOTO_URLS.length],
+    tags: ['malaysia', exploreOutlets[outletIndex].state.toLowerCase().replaceAll(' ', '-'), 'activity'],
+    status: 'active', review_status: 'approved',
+  }));
+  await upsert('products', exploreActivityRows);
+  await upsert('product_variants', exploreActivityRows.map((product) => ({
+    id: stableUuid(`variant:${product.id}:standard`), product_id: product.id, name: 'Standard',
+    sku: `EXPLORE-${product.slug.slice(-8).toUpperCase()}`, price_offset: 0, is_default: true, is_active: true, sort_order: 0,
+  })));
+
+  // Themed outlets exist one-per-city for every themed vendor, but only a few
+  // now hold a product. Deactivate the empty ones rather than leaving dead pins
+  // on the map — never delete, orders reference outlet_id.
+  const stockedOutletIds = new Set([
+    ...productRows.map((product) => product.outlet_id),
+    ...exploreActivityRows.map((product) => product.outlet_id),
+    ...WELLNESS_OUTLET_INDICES.map((outletIndex) => serenityOutlets[outletIndex].id),
+  ]);
+  const emptyThemedOutletIds = Object.values(themedOutletRows)
+    .flat()
+    .map((outlet) => outlet.id)
+    .filter((id) => !stockedOutletIds.has(id));
+  if (emptyThemedOutletIds.length > 0) {
+    await supabase.from('outlets').update({ status: 'inactive' }).in('id', emptyThemedOutletIds);
+  }
   const extraProductRows = await seedAdditionalVendors(CATEGORIES);
   const extraCommerce = await seedAdditionalVendorCommerce();
   const allProductRows = [...productRows, ...extraProductRows];
@@ -497,10 +644,14 @@ async function main() {
     };
   }), 'outlet_id');
 
-  const variantRows = productRows.flatMap((product, index) => [
-    { id: stableUuid(`variant:${index}:standard`), product_id: product.id, name: 'Standard', sku: `DEMO-${String(index + 1).padStart(4, '0')}-STD`, price_offset: 0, is_default: true, is_active: true, sort_order: 0 },
-    ...(product.requires_booking ? [{ id: stableUuid(`variant:${index}:child`), product_id: product.id, name: 'Child', sku: `DEMO-${String(index + 1).padStart(4, '0')}-CHD`, price_offset: -15, is_default: false, is_active: true, sort_order: 1 }] : []),
-  ]);
+  // Keyed on the loop index, not the array position — see productSeedIndex.
+  const variantRows = productRows.flatMap((product, index) => {
+    const seedIndex = productSeedIndex[index];
+    return [
+      { id: stableUuid(`variant:${seedIndex}:standard`), product_id: product.id, name: 'Standard', sku: `DEMO-${String(seedIndex + 1).padStart(4, '0')}-STD`, price_offset: 0, is_default: true, is_active: true, sort_order: 0 },
+      ...(product.requires_booking ? [{ id: stableUuid(`variant:${seedIndex}:child`), product_id: product.id, name: 'Child', sku: `DEMO-${String(seedIndex + 1).padStart(4, '0')}-CHD`, price_offset: -15, is_default: false, is_active: true, sort_order: 1 }] : []),
+    ];
+  });
   await upsert('product_variants', variantRows);
   const inventoryRows = variantRows.filter((variant) => variant.name === 'Standard' && !productRows.find((p) => p.id === variant.product_id)?.requires_booking).map((variant, index) => ({
     id: stableUuid(`inventory:${variant.id}`), variant_id: variant.id, quantity: 180 + ((index * 37) % 420), reserved: 0, low_stock_threshold: 5,
@@ -512,12 +663,16 @@ async function main() {
   await upsert('inventory', lowStockVariants.map((variant, index) => ({ id: stableUuid(`inventory:${variant.id}`), variant_id: variant.id, quantity: index === 0 ? 3 : 0, reserved: 0, low_stock_threshold: 5 })), 'variant_id');
   if (outOfStockProduct) await supabase.from('products').update({ status: 'inactive' }).eq('id', outOfStockProduct.id).eq('vendor_id', vendorId);
 
+  // Positional picks: skipping the place-bound clones shortens productRows, so
+  // wrap rather than index straight in — these only need *a* product to hang a
+  // demo rule on, not a specific one.
+  const pick = (n) => productRows[n % productRows.length];
   const priceRuleRows = [
-    { id: stableUuid('price-rule:peak'), product_id: productRows[5].id, rule_type: 'peak', label: 'School holiday peak', multiplier: 1.2, priority: 30, is_active: true },
-    { id: stableUuid('price-rule:off-peak'), product_id: productRows[6].id, rule_type: 'off_peak', label: 'Weekday off-peak', multiplier: 0.9, priority: 20, is_active: true },
-    { id: stableUuid('price-rule:group'), product_id: productRows[7].id, rule_type: 'group_size', label: 'Group of four', multiplier: 0.85, min_quantity: 4, priority: 25, is_active: true },
-    { id: stableUuid('price-rule:tiered'), product_id: productRows[8].id, rule_type: 'tiered', label: 'Family tier', fixed_amount: 118, min_quantity: 3, priority: 15, is_active: true },
-    { id: stableUuid('price-rule:bundle'), product_id: productRows[0].id, rule_type: 'bundle', label: 'Breakfast plus postcard bundle', fixed_amount: 30, bundle_product_ids: [productRows[14].id, productRows[15].id], priority: 40, is_active: true },
+    { id: stableUuid('price-rule:peak'), product_id: pick(5).id, rule_type: 'peak', label: 'School holiday peak', multiplier: 1.2, priority: 30, is_active: true },
+    { id: stableUuid('price-rule:off-peak'), product_id: pick(6).id, rule_type: 'off_peak', label: 'Weekday off-peak', multiplier: 0.9, priority: 20, is_active: true },
+    { id: stableUuid('price-rule:group'), product_id: pick(7).id, rule_type: 'group_size', label: 'Group of four', multiplier: 0.85, min_quantity: 4, priority: 25, is_active: true },
+    { id: stableUuid('price-rule:tiered'), product_id: pick(8).id, rule_type: 'tiered', label: 'Family tier', fixed_amount: 118, min_quantity: 3, priority: 15, is_active: true },
+    { id: stableUuid('price-rule:bundle'), product_id: pick(0).id, rule_type: 'bundle', label: 'Breakfast plus postcard bundle', fixed_amount: 30, bundle_product_ids: [pick(14).id, pick(15).id], priority: 40, is_active: true },
   ];
   await upsert('price_rules', priceRuleRows);
 
@@ -543,7 +698,7 @@ async function main() {
     min_spend: i % 2 ? 50 : 30, max_uses: 100 + (i % 5) * 50, uses_count: Math.min(100 + (i % 5) * 50, i * 3),
     valid_from: new Date(Date.now() - 30 * 86400000).toISOString(), valid_until: new Date(Date.now() + (14 + (i % 90)) * 86400000).toISOString(), is_active: i % 17 !== 0, review_status: 'approved',
   })), ...Array.from({ length: 6 }, (_, i) => {
-    const product = productRows[10 + i];
+    const product = pick(10 + i);
     return { id: stableUuid(`voucher:bogo:${i}`), vendor_id: vendorId, outlet_id: product.outlet_id, code: `MYBOGO${String(i + 1).padStart(2, '0')}`, name: `Buy ${i % 2 ? 2 : 1} Get 1 ${product.name}`, voucher_type: 'bogo', discount_value: 0, min_spend: i % 2 ? 80 : 0, max_uses: 60, uses_count: 0, valid_from: new Date(Date.now() - 7 * 86400000).toISOString(), valid_until: new Date(Date.now() + 45 * 86400000).toISOString(), is_active: true, product_id: product.id, buy_quantity: i % 2 ? 2 : 1, free_quantity: 1, review_status: 'approved' };
   })];
   await upsert('vouchers', voucherRows);

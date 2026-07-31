@@ -6,6 +6,8 @@ interface Props {
   params: Promise<{ productId: string }>;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function queryInteger(value: string | null, fallback: number): number {
   if (value === null || value.trim() === "") return fallback;
   return Number(value);
@@ -19,9 +21,13 @@ export async function GET(request: Request, { params }: Props) {
   if (!Number.isInteger(page) || page < 1 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 10) {
     return apiFail("INVALID_QUERY", "page must be positive and pageSize must be between 1 and 10", 400);
   }
+  const outletIdParam = query.get("outletId");
+  if (outletIdParam && !UUID.test(outletIdParam)) {
+    return apiFail("INVALID_QUERY", "outletId must be a valid UUID", 400);
+  }
 
   try {
-    const data = await getProductReviewsPage(productId, { page, pageSize }, await createClient());
+    const data = await getProductReviewsPage(productId, { page, pageSize, outletId: outletIdParam ?? undefined }, await createClient());
     return apiOk(data);
   } catch (error) {
     return apiFail("DB_ERROR", error instanceof Error ? error.message : "Could not load reviews", 500);
