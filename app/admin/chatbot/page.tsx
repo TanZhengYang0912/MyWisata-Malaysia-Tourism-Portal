@@ -9,6 +9,7 @@ import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp, WandSpar
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 
 interface TopQuestion { question: string; count: number; lastAskedAt: string }
 
@@ -38,11 +39,13 @@ interface KbFormState {
   title: string;
   body: string;
   keywords: string; // comma-separated in the form, split on save
-  category: string;
+  category: string; // one of TICKET_CATEGORIES going forward — see the category <select> below
   isActive: boolean;
 }
 
-const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "", isActive: true };
+// "general" — always a valid member of TICKET_CATEGORIES — so a brand new
+// doc never starts on a blank category the dropdown itself doesn't offer.
+const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "general", isActive: true };
 
 export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
@@ -146,12 +149,18 @@ export default function AdminChatbotPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),
       });
-      const body = (await res.json()) as { data: { title: string; body: string } | null; error: { message: string } | null };
+      const body = (await res.json()) as {
+        data: { title: string; body: string; category: string } | null;
+        error: { message: string } | null;
+      };
       if (!res.ok || !body.data) {
         showFeedback("error", body.error?.message ?? "Could not draft a KB entry right now.");
         return;
       }
-      setForm({ ...EMPTY_FORM, title: body.data.title, body: body.data.body });
+      // category is classifyTicket(question) from the route — a pre-fill,
+      // not a decision; the dropdown below lets the admin override it
+      // before saving, same as it already does for a manual/"Add to KB" doc.
+      setForm({ ...EMPTY_FORM, title: body.data.title, body: body.data.body, category: body.data.category });
       setFormError(null);
       setEditingId("new");
     } catch {
@@ -173,7 +182,13 @@ export default function AdminChatbotPage() {
       title: doc.title,
       body: doc.body,
       keywords: doc.keywords.join(", "),
-      category: doc.category ?? "",
+      // Preserves a legacy category (e.g. "rewards"/"wallet"/"account" — real
+      // values on the pre-existing seeded docs, predating this dropdown and
+      // outside TICKET_CATEGORIES) exactly as stored; only a genuinely null
+      // category falls back to "general". The <select> below adds this as
+      // an extra option when it isn't one of the fixed six, so opening this
+      // form can never silently reclassify a doc just by loading it.
+      category: doc.category ?? "general",
       isActive: doc.isActive,
     });
     setFormError(null);
@@ -368,12 +383,29 @@ export default function AdminChatbotPage() {
               placeholder="Keywords, comma-separated (used by the keyword fallback)"
               className="flex-1 min-w-[200px] h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
             />
-            <input
+            {/* CLAUDE-P4-EXTRAS-2.md: fixed dropdown, not free text — the
+                same TICKET_CATEGORIES set support tickets classify into
+                (lib/chatbot/classify.ts). chatbot_kb_documents.category has
+                no DB constraint of its own, so this dropdown is what
+                enforces the fixed set going forward, not the schema. A few
+                pre-existing seeded docs carry categories from before this
+                (rewards/wallet/account) that aren't in the set — appended
+                as an extra option only when editing one of those, so
+                opening the form can't silently reclassify it. */}
+            <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              placeholder="Category"
               className="w-40 h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
-            />
+            >
+              {[
+                ...TICKET_CATEGORIES,
+                ...(form.category && !(TICKET_CATEGORIES as string[]).includes(form.category) ? [form.category] : []),
+              ].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
             <label className="flex items-center gap-1.5 text-sm text-foreground">
               <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />
               Active
