@@ -5,7 +5,7 @@
 // questions, a KB editor (add/edit/deactivate a doc -> auto re-embed on save)."
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp, WandSparkles } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -55,6 +55,10 @@ export default function AdminChatbotPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const kbFormRef = useRef<HTMLDivElement>(null);
+  // CLAUDE-P4-EXTRAS-2.md Extra 5 — which gap question is currently being
+  // drafted (there can be several rows across both gap lists; this scopes
+  // the "Drafting…" state to the one actually clicked, not the whole page).
+  const [draftingQuestion, setDraftingQuestion] = useState<string | null>(null);
 
   async function loadStats() {
     try {
@@ -123,6 +127,38 @@ export default function AdminChatbotPage() {
     setForm({ ...EMPTY_FORM, title: question });
     setFormError(null);
     setEditingId("new");
+  }
+
+  // CLAUDE-P4-EXTRAS-2.md Extra 5: the AI-assisted version of addToKb()
+  // above — prefills BOTH title and body with a Gemini-drafted answer
+  // (including [ADMIN: confirm …] placeholders for anything it doesn't
+  // actually know), instead of leaving the admin to write the body from
+  // scratch. Still opens the exact same form, still requires the admin to
+  // review/edit and press the existing Save button — nothing here writes to
+  // chatbot_kb_documents itself. Sits alongside "Add to KB", not in place of
+  // it — a manual title-only start is still one click away if preferred.
+  async function draftAnswer(question: string) {
+    if (draftingQuestion) return;
+    setDraftingQuestion(question);
+    try {
+      const res = await fetch("/api/admin/chatbot/kb/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const body = (await res.json()) as { data: { title: string; body: string } | null; error: { message: string } | null };
+      if (!res.ok || !body.data) {
+        showFeedback("error", body.error?.message ?? "Could not draft a KB entry right now.");
+        return;
+      }
+      setForm({ ...EMPTY_FORM, title: body.data.title, body: body.data.body });
+      setFormError(null);
+      setEditingId("new");
+    } catch {
+      showFeedback("error", "Could not draft a KB entry right now.");
+    } finally {
+      setDraftingQuestion(null);
+    }
   }
 
   // Deferred to an effect rather than called inline in addToKb()/startNew():
@@ -253,9 +289,14 @@ export default function AdminChatbotPage() {
                     ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" className="shrink-0" onClick={() => addToKb(q.question)}>
-                  <Sparkles size={12} /> Add to KB
-                </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => addToKb(q.question)}>
+                    <Sparkles size={12} /> Add to KB
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={draftingQuestion === q.question} onClick={() => draftAnswer(q.question)}>
+                    <WandSparkles size={12} /> {draftingQuestion === q.question ? "Drafting…" : "AI: draft a KB answer"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -282,6 +323,15 @@ export default function AdminChatbotPage() {
                     ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
                   </p>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={draftingQuestion === q.question}
+                  onClick={() => draftAnswer(q.question)}
+                >
+                  <WandSparkles size={12} /> {draftingQuestion === q.question ? "Drafting…" : "AI: draft a KB answer"}
+                </Button>
               </div>
             ))}
           </div>

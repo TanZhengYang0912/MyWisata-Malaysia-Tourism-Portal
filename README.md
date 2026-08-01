@@ -696,6 +696,64 @@ authenticated session; there's no request parameter for it at all).
   a spoofable parameter to test against. An unauthenticated request
   correctly gets `401 UNAUTHORIZED`.
 
+**Extra 5 — Self-improving chatbot (AI-drafted KB entries from feedback gaps), done.**
+Closes the loop `/admin/chatbot`'s existing gap views (`topUnanswered`,
+`notHelpfulAnswered` — both pre-existing, from `CLAUDE-QUICKWINS.md`/
+`CLAUDE-CHATBOT-FEEDBACK.md`) were already showing but not acting on.
+
+- `lib/chatbot/kb-draft.ts` (new) — `draftKbEntry(question, existingWeakAnswer)`.
+  Same Gemini provider/key/model as `generate.ts`, a different system
+  prompt: draft a KB title + body, but **any specific figure, deadline, or
+  policy the model doesn't actually know must become a literal
+  `[ADMIN: confirm …]` placeholder, never an invented number** — this is
+  the actual integrity guarantee, not a UI label. PII-redacted via the same
+  `redactPII()` boundary every other Gemini call in this module uses.
+- `POST /api/admin/chatbot/kb/draft` (new) — body `{ question }`, returns
+  `{ title, body }`. Before calling Gemini, it runs the question through
+  the **existing synchronous keyword matcher** (`lib/chatbot/match.ts`,
+  the same one the live bot falls back to) against the active KB — if
+  something matches, that doc's body is passed to the model as "existing
+  weak answer" context to improve on, at zero extra Gemini cost/latency;
+  for a fully-unanswered question nothing matches and the model is told
+  plainly it has no prior answer to build on.
+- **Never saves anything.** The route only returns a draft; a new
+  "AI: draft a KB answer" button on both gap lists (`app/admin/chatbot/page.tsx`)
+  prefills the **existing** KB form's title *and* body (the pre-existing
+  "Add to KB" button only ever prefilled the title — kept as-is,
+  side-by-side, for a manual title-only start). Saving still goes through
+  the untouched, already-auto-embedding `POST`/`PATCH /api/admin/chatbot/kb`
+  path — no parallel save/embed logic built, per the extras doc's own
+  instruction.
+- **Live-verified, the full loop, real dev server + real DB + real Gemini
+  key — not simulated**:
+  1. Asked the live bot *"can I get a refund if it rains heavily during my
+     outdoor tour?"* (deliberately uncovered by any seeded KB doc) →
+     `botAnswered: false`.
+  2. Confirmed it surfaced in `/admin/chatbot`'s **topUnanswered** gap list
+     via the real stats endpoint.
+  3. Called the new draft endpoint on that exact question → got back a
+     sensible title plus a body reasoning generally about weather
+     cancellations, correctly ending in
+     `[ADMIN: confirm exact weather refund and cancellation policy details]`
+     rather than inventing a refund percentage or day count.
+  4. Simulated the admin's edit-and-save (replaced the placeholder with a
+     concrete policy line) through the **existing, untouched**
+     `POST /api/admin/chatbot/kb` — confirmed the row landed in
+     `chatbot_kb_documents` with `embedded_at` set and a real 768-dimension
+     embedding vector, auto-generated inline exactly as that route's
+     existing comment describes.
+  5. Asked the bot **the exact same question again** → this time
+     `botAnswered: true`, answered from the new doc's content.
+  - Cleanup: the test KB doc was explicit throwaway verification content
+    (its own body said so), not a legitimate demo artifact worth keeping —
+    attempted a hard delete, hit a real FK constraint
+    (`chatbot_message_kb_refs_document_id_fkey`, because step 5's "ask
+    again" legitimately logged a provenance reference to it), and
+    deactivated it instead via the same `isActive: false` path the
+    "Deactivate" button already uses — the app's own design is
+    soft-delete-only for KB docs once referenced, for exactly this
+    integrity reason, so that's what was used rather than fighting it.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

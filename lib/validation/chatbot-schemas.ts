@@ -61,6 +61,14 @@ const kbDocumentFields = z.object({
   isActive: z.boolean().optional(),
 });
 
+// ── AI-drafted KB entries from chatbot gaps (CLAUDE-P4-EXTRAS-2.md Extra 5) ──
+
+export const draftKbEntrySchema = z.object({
+  question: z.string().trim().min(1).max(500),
+}).strict();
+
+export type DraftKbEntryInput = z.infer<typeof draftKbEntrySchema>;
+
 export const createKbDocumentSchema = kbDocumentFields.strict();
 export type CreateKbDocumentInput = z.infer<typeof createKbDocumentSchema>;
 
