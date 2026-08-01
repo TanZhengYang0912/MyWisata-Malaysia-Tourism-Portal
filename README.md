@@ -449,6 +449,62 @@ prompt + detection work, not a translation pipeline.
   content gap, not a language or retrieval bug, confirmed unaffected by
   language during live testing).
 
+**Extra 2 — Fraud analytics dashboard (trends, not just flags), done.**
+Read-only aggregation over the existing `affiliate_fraud_flags` table — no
+new fraud *detection* logic, per the extras doc's own guardrail. Extends
+`/admin/affiliate` (a new "Fraud analytics" section, not a separate tab —
+the page was already the natural home for it).
+
+- `lib/affiliate/fraud-analytics.ts` (new) — `getFraudAnalytics(service,
+  range)`, `range` one of `7d`/`30d`/`all`. Returns a zero-filled per-day
+  time series, a fixed-category type breakdown (all 7 `flag_type`s, so a
+  type with zero hits still shows a zero bar — itself useful signal),
+  a severity breakdown, headline stats, and the top 5 flagged affiliates by
+  count. `all` is still bounded (capped at 90 days back from the earliest
+  flag) so the query and chart can't grow unbounded.
+- **Headline stats reuse `getFraudCounters()`'s existing metrics
+  (self-referrals blocked, duplicate payouts prevented) but scope them to
+  the selected range**, and add two new ones: open-vs-reviewed ratio, and
+  **links auto-disabled** — this last one reads `audit_logs` for
+  `action='affiliate.link.disabled' AND actor_id IS NULL`, which is exactly
+  how `lib/affiliate/fraud.ts::autoDisableLink()` already distinguishes an
+  automatic fraud-triggered disable (`actor_id: null`) from an admin's
+  manual "Confirm & disable" click (`actor_id`: the admin's id) — a real,
+  precise signal that already existed in the data, not a new one invented
+  for this dashboard.
+- `GET /api/admin/affiliate/fraud-analytics?range=` (new) — same
+  `isSuperAdminOrApprover` gate, checked server-side, as every other route
+  on this admin page.
+- `components/shared/fraud-trend-chart.tsx` / `fraud-breakdown-charts.tsx`
+  (new) — recharts (already installed, per the extras doc's instruction to
+  use it): an area chart for the time series, a horizontal bar chart for
+  the type breakdown (long labels), a small donut for severity. Themed with
+  the same CSS-variable approach as the existing
+  `components/customer/affiliate-clicks-chart.tsx` (`var(--primary)`,
+  `var(--destructive)`, etc.) so it matches dark mode, rather than the
+  fixed-hex approach some other charts in the repo use.
+- A 7d/30d/all-time range toggle sits above the section; switching it
+  re-fetches. Reviewing a flag or running the fraud sweep also refreshes
+  this section (not just the existing raw flag list), so the two stay in
+  sync.
+- **Live-verified against the real DB**: every number the API returned
+  (`totalFlags: 11`, `selfReferralsBlocked: 5`, `duplicatePayoutsPrevented:
+  0`, `openFlags/reviewedFlags/dismissedFlags: 7/1/3`, `linksAutoDisabled:
+  2`, top-flagged affiliate `Customer Alice` with 10 flags) was
+  cross-checked against raw `COUNT`/`SELECT` queries on
+  `affiliate_fraud_flags` and `audit_logs` run independently against the
+  same live project — exact match on every field, including the
+  auto-disabled-vs-admin-disabled distinction (2 automatic, 1 manual, out
+  of 3 total disable events on the same link).
+- **Known limitation of this verification pass**: `AdminAffiliatePage` is a
+  `"use client"` component with client-side role gating, so its rendered
+  DOM isn't present in a plain `curl` fetch of `/admin/affiliate` (confirmed
+  HTTP 200, no server error, but the page's own text isn't in that raw
+  HTML — it renders after hydration). The data layer (API route → real DB)
+  is fully verified above; the component's actual on-screen rendering was
+  checked via typecheck + lint + code review only, not a real browser.
+  Flagging rather than silently claiming full visual verification.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

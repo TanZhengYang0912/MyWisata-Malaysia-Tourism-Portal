@@ -7,9 +7,12 @@ import { AlertTriangle, RefreshCw, Share2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
+import { FraudTrendChart } from "@/components/shared/fraud-trend-chart";
+import { FraudTypeBarChart, FraudSeverityDonut } from "@/components/shared/fraud-breakdown-charts";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import type { Funnel } from "@/lib/affiliate/funnel";
+import type { FraudAnalytics, FraudAnalyticsRange } from "@/lib/affiliate/fraud-analytics";
 
 interface AdminTier {
   id: string;
@@ -117,6 +120,12 @@ export default function AdminAffiliatePage() {
   const [reviewingFlagId, setReviewingFlagId] = useState<string | null>(null);
   const [reactivatingLinkId, setReactivatingLinkId] = useState<string | null>(null);
 
+  // CLAUDE-P4-EXTRAS.md Extra 2: trends/breakdown/top-offenders, separate
+  // from the raw flag list above (fraudFlags/fraudCounters) — this is
+  // read-only aggregation over the same table, range-scoped.
+  const [fraudAnalytics, setFraudAnalytics] = useState<FraudAnalytics | null | undefined>(undefined);
+  const [fraudRange, setFraudRange] = useState<FraudAnalyticsRange>("30d");
+
   async function loadStats() {
     try {
       const res = await fetch("/api/admin/affiliate/stats");
@@ -183,6 +192,16 @@ export default function AdminAffiliatePage() {
     }
   }
 
+  async function loadFraudAnalytics(range: FraudAnalyticsRange) {
+    try {
+      const res = await fetch(`/api/admin/affiliate/fraud-analytics?range=${range}`);
+      const body = (await res.json()) as { data: FraudAnalytics | null };
+      setFraudAnalytics(res.ok && body.data ? body.data : null);
+    } catch {
+      setFraudAnalytics(null);
+    }
+  }
+
   async function reactivateLink(linkId: string) {
     if (reactivatingLinkId) return;
     setReactivatingLinkId(linkId);
@@ -208,6 +227,12 @@ export default function AdminAffiliatePage() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      await loadFraudAnalytics(fraudRange);
+    })();
+  }, [fraudRange]);
+
   async function runFraudSweepAction() {
     if (sweeping) return;
     setSweeping(true);
@@ -220,7 +245,7 @@ export default function AdminAffiliatePage() {
       };
       if (res.ok && body.data) {
         setSweepResult(`Scanned ${body.data.linksScanned} links, ${body.data.flagsCreated.length} new flag(s)`);
-        await loadFraudFlags();
+        await Promise.all([loadFraudFlags(), loadFraudAnalytics(fraudRange)]);
       } else {
         setSweepResult(body.error?.message ?? "Fraud sweep failed.");
       }
@@ -242,7 +267,7 @@ export default function AdminAffiliatePage() {
       });
       if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not review fraud flag."); return; }
       showFeedback("success", action === "confirm" ? "Fraud flag confirmed." : "Fraud flag dismissed.");
-      await Promise.all([loadFraudFlags(), loadStats()]);
+      await Promise.all([loadFraudFlags(), loadStats(), loadFraudAnalytics(fraudRange)]);
     } catch {
       showFeedback("error", "Could not review fraud flag. Please try again.");
     } finally {
@@ -487,6 +512,91 @@ export default function AdminAffiliatePage() {
           )}
         </div>
       </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-destructive flex items-center gap-1.5">
+          <AlertTriangle size={13} /> Fraud analytics
+        </p>
+        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+          {(["7d", "30d", "all"] as FraudAnalyticsRange[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setFraudRange(r)}
+              className={`h-7 px-3 rounded-md text-xs font-medium transition-colors ${
+                fraudRange === r ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {r === "all" ? "All time" : r.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {fraudAnalytics === undefined ? (
+        <p className="text-sm text-muted-foreground mb-6">Loading fraud analytics…</p>
+      ) : fraudAnalytics === null ? (
+        <p className="text-sm text-muted-foreground mb-6">Couldn&apos;t load fraud analytics.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+            {[
+              { label: "Total flags", value: String(fraudAnalytics.headline.totalFlags) },
+              { label: "Self-referrals blocked", value: String(fraudAnalytics.headline.selfReferralsBlocked) },
+              { label: "Duplicate payouts prevented", value: String(fraudAnalytics.headline.duplicatePayoutsPrevented) },
+              { label: "Links auto-disabled", value: String(fraudAnalytics.headline.linksAutoDisabled) },
+              {
+                label: "Open vs reviewed",
+                value: fraudAnalytics.headline.totalFlags
+                  ? `${Math.round((fraudAnalytics.headline.openFlags / fraudAnalytics.headline.totalFlags) * 100)}% open`
+                  : "—",
+              },
+            ].map((card) => (
+              <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
+                <p className="text-xl font-bold text-foreground">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl bg-card p-4 mb-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Flags over time</p>
+            <FraudTrendChart data={fraudAnalytics.overTime} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">By type</p>
+              <FraudTypeBarChart data={fraudAnalytics.byType} />
+            </div>
+
+            <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+              <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">By severity</p>
+              <FraudSeverityDonut data={fraudAnalytics.bySeverity} />
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Top flagged affiliates</p>
+            {fraudAnalytics.topFlaggedAffiliates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No flags in this range.</p>
+            ) : (
+              <div className="space-y-2">
+                {fraudAnalytics.topFlaggedAffiliates.map((a, i) => (
+                  <div key={a.userId} className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">
+                      {i + 1}. {a.userName}
+                      {a.affiliateCode && <span className="text-muted-foreground font-normal"> ({a.affiliateCode})</span>}
+                    </span>
+                    <span className="text-muted-foreground">
+                      <span className="font-semibold text-foreground">{a.flagCount}</span> flag{a.flagCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">Fraud flags</p>
