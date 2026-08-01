@@ -115,6 +115,29 @@ body {
   scrollbar-width: none;
 }
 
+/* No pre-existing "visible but subtle" scrollbar convention in this file
+   (only .hide-scrollbar, which hides it entirely) — added for internally-
+   scrolling popovers/dropdowns where the scrollbar should stay visible as
+   an affordance, just not the default chunky OS one. Uses the app's own
+   border/muted-foreground tokens rather than an arbitrary gray. */
+.thin-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--border) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
 @keyframes malaysia-route-pulse {
   0% {
     opacity: 0.2;
