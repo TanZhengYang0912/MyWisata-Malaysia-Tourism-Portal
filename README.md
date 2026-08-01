@@ -625,6 +625,77 @@ redirect unchanged.
   entirely) — so that user's QR encodes the plain, code-free URL, same as
   their Share button already does.
 
+**Extra 6 — Affiliate earnings CSV export, done.** `GET /api/affiliate/earnings-export?range=month|year|all`
+returns a downloadable CSV of the current user's own commission history —
+own data only, enforced by construction (userId always comes from the
+authenticated session; there's no request parameter for it at all).
+
+- `lib/affiliate/earnings-export.ts` (new) — deliberately **not** a reuse of
+  `getAffiliateStats()` despite the overlap: that function has no
+  date-range filtering (applied here at the query level, not client-side)
+  and returns a lot of aggregate data (`byProduct`, `clicksByDay`, `funnel`,
+  `tier`) this export has no use for. Reuses the same building blocks
+  instead — `resolveProductNames()`, and the same service-role `orders`
+  lookup `stats.ts` already needs for the identical `orders_own_or_admin`
+  RLS gap (an affiliate isn't the buyer/admin/vendor, so their own
+  cookie-aware client can't read the order total otherwise).
+- **CSV escaping reuses `lib/admin/csv.ts::csvRow`** (another member's
+  file, a small leaf utility) per the extras doc's own instruction — no
+  hand-rolled escaping.
+- **Uses the rate stamped on each attribution row** (`commission_rate`),
+  never recomputed from the affiliate's current tier — a past commission
+  shows the rate it was actually paid at, same principle
+  `lib/affiliate/attribution.ts` already documents for why the rate is
+  stamped once and never revisited.
+- `GET` route returns a raw `text/csv` `Response` with `Content-Disposition:
+  attachment`, not the repo's `apiOk()` JSON envelope — same class of
+  exception as `app/api/share-image/[type]/[id]/route.tsx`'s raw
+  `ImageResponse`: a file download can't be wrapped in a JSON envelope and
+  still trigger a browser save dialog. Error paths still use `apiFail()`.
+  UTF-8 BOM prefixed so Excel opens non-ASCII product names correctly.
+- A **"Download earnings (CSV)"** button + range selector (This month /
+  This year / All time) sits in the dashboard's "Earnings history" header.
+- **Real, significant finding while getting the "Cleared Date" column
+  right, flagged not fixed**: `affiliate_attributions` carries **two
+  independent "when did this clear" timestamps from two different clearing
+  mechanisms that both still exist**. `lib/affiliate/clearing.ts::clearMaturedCommissions()`
+  — the one this module's own docs (CLAUDE.md, CLAUDE-PHASE2.md) describe
+  as authoritative — sets `cleared_at`. But migrations `014`–`016` also
+  built an **earlier, separate DB-level `confirm_pending_earnings()` RPC**
+  that sets `confirmed_at` instead, gated on a `hold_until` column the
+  current `onOrderPaid()` never populates for new rows — **and that RPC is
+  still live**, still wired to a daily Vercel Cron
+  (`app/api/cron/clear-earnings`) and an admin route
+  (`app/api/admin/clear-earnings`), neither of which carries any P4/Phase-2
+  attribution comment, suggesting a different author or an earlier,
+  superseded design pass that was never removed. Live-confirmed against
+  real data: structurally a no-op for anything created after Phase 2 (no
+  new row ever gets a `hold_until`), but at least one pre-Phase-2 row
+  (`status='confirmed'`, `confirmed_at` set, `cleared_at` NULL) still
+  exists from before the switch — reading `cleared_at` alone would have
+  shown a **blank Cleared Date for a row that's genuinely confirmed**, on a
+  document whose entire purpose is financial accuracy. This export falls
+  back to `confirmed_at` when `cleared_at` is null (live-verified: that
+  exact row's date changed from blank to `2026-07-13` after the fix). **Not
+  attempted here**: reconciling or retiring either clearing mechanism —
+  well outside a CSV export's scope, and risky to touch without whoever
+  owns it understanding both paths first. Worth owning deliberately.
+- **Live-verified, real DB, matching the extras doc's checklist exactly**:
+  downloaded Alice's export (10 rows) and independently summed the
+  commission column — **RM 12.36**, exactly matching the same sum computed
+  from `GET /api/affiliate/stats`'s `commissions` array (same 10 rows).
+  Temporarily renamed a real referred product to
+  `Siti Khadijah Market, Wau Craft & "Souvenirs"` (comma **and** an
+  embedded quote — reverted immediately after) and confirmed the exported
+  cell came back correctly RFC 4180-quoted:
+  `"Siti Khadijah Market, Wau Craft & ""Souvenirs"""`. `range=month`
+  (today's 1 August, all of Alice's history is July) correctly returned
+  zero data rows; `range=year` correctly returned all 10. Signed in as a
+  second affiliate (Dave) and confirmed his export shows only his own 5
+  rows — none of Alice's — proving the per-session scoping without needing
+  a spoofable parameter to test against. An unauthenticated request
+  correctly gets `401 UNAUTHORIZED`.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

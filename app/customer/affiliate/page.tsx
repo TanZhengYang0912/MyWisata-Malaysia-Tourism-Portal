@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Gift, Link2, Share2, Wallet } from "lucide-react";
+import { Copy, Download, Gift, Link2, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
@@ -20,6 +20,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import type { AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } from "@/lib/affiliate/stats";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
+import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
 
 interface StatsResponse {
   affiliateCode: string | null;
@@ -42,6 +43,35 @@ export default function AffiliateDashboardPage() {
   const [copied, setCopied] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("clicks");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // CLAUDE-P4-EXTRAS-2.md Extra 6.
+  const [exportRange, setExportRange] = useState<EarningsExportRange>("all");
+  const [exporting, setExporting] = useState(false);
+
+  async function downloadEarnings() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/affiliate/earnings-export?range=${exportRange}`);
+      if (!res.ok) {
+        showFeedback("error", "Could not export earnings. Please try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mywisata-affiliate-earnings.csv";
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      showFeedback("error", "Could not export earnings. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function loadStats() {
     try {
@@ -307,8 +337,22 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-2.5 bg-muted">
+        <div className="px-4 py-2.5 bg-muted flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Earnings history</p>
+          <div className="flex items-center gap-2">
+            <select
+              value={exportRange}
+              onChange={(e) => setExportRange(e.target.value as EarningsExportRange)}
+              className="h-7 rounded-lg border border-border px-2 text-[11px] bg-background text-foreground"
+            >
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+              <option value="all">All time</option>
+            </select>
+            <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={downloadEarnings} disabled={exporting}>
+              <Download size={12} /> {exporting ? "Exporting…" : "Download earnings (CSV)"}
+            </Button>
+          </div>
         </div>
         <div className="divide-y divide-border">
           {stats.commissions.length === 0 ? (
