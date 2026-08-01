@@ -4,10 +4,12 @@
 //                             (profile-complete limited; KYC-approved full)
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { affiliateUrl, getAffiliateLink, getOrCreateAffiliateLink } from '@/lib/affiliate/links';
 import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 import { getMonthlyClickCap } from '@/lib/affiliate/settings';
+import { getVendorIneligibleRole } from '@/lib/affiliate/vendor-role-guard';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -19,6 +21,11 @@ export async function GET(request: Request) {
 
   const { data: profile } = await supabase.from('users').select('tier,kyc_status').eq('id', user.id).maybeSingle();
   if (!profile || profile.kyc_status === 'rejected' || !meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_BASIC)) return apiOk(null);
+
+  // Fresh, authoritative — see lib/affiliate/vendor-role-guard.ts. Service-role
+  // since this checks a real state fact, not something that should ever
+  // silently differ by RLS visibility.
+  if (await getVendorIneligibleRole(createServiceClient(), user.id)) return apiOk(null);
 
   const origin = new URL(request.url).origin;
   const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
@@ -50,6 +57,10 @@ export async function POST(request: Request) {
   }
   if (!meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_BASIC)) {
     return apiFail('TIER_INSUFFICIENT', 'Complete your verified profile before generating an affiliate link', 403);
+  }
+  const ineligibleRole = await getVendorIneligibleRole(createServiceClient(), user.id);
+  if (ineligibleRole) {
+    return apiFail('VENDOR_INELIGIBLE', 'Vendor and outlet manager accounts cannot earn affiliate commission', 403);
   }
 
   let result: Awaited<ReturnType<typeof getOrCreateAffiliateLink>>;

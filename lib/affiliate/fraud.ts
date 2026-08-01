@@ -39,6 +39,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getFraudThresholds } from './settings';
+import { getVendorIneligibleRole } from './vendor-role-guard';
 
 const SELF_REFERRAL_STATUSES_COUNTED = ['open', 'reviewed'] as const; // exclude 'dismissed' — an admin already ruled it a false positive
 
@@ -53,7 +54,12 @@ export type FraudFlagType =
   // evidence of abuse (a legitimate limited affiliate is expected to reach
   // it eventually), just observability so a silent cap isn't an unprovable
   // one. See lib/affiliate/redirect.ts.
-  | 'click_cap_reached';
+  | 'click_cap_reached'
+  // Team decision 2026-08-01: vendor_owner/outlet_manager accounts cannot
+  // earn affiliate commission. Not abuse either — an ineligible account,
+  // not a malicious one — logged so a blocked commission is provable, same
+  // reasoning as click_cap_reached. See lib/affiliate/vendor-role-guard.ts.
+  | 'vendor_ineligible';
 
 export type FraudSeverity = 'low' | 'medium' | 'high';
 export type FraudFlagStatus = 'open' | 'reviewed' | 'dismissed';
@@ -266,6 +272,30 @@ export async function runFraudSweep(service: SupabaseClient): Promise<FraudSweep
   const result: FraudSweepResult = { linksScanned: links.length, flagsCreated: [] };
 
   for (const link of links) {
+    // ── vendor_ineligible (deactivation cleanup, item 3) ─────────
+    // Team decision 2026-08-01 — see lib/affiliate/vendor-role-guard.ts.
+    // This is cleanup, not the security boundary: onOrderPaid() already
+    // blocks the money independent of is_active, regardless of whether
+    // this sweep has run yet. Only checked for still-active links — no
+    // point re-flagging/re-disabling one already caught.
+    if (link.is_active) {
+      const ineligibleRole = await getVendorIneligibleRole(service, link.user_id);
+      if (ineligibleRole) {
+        if (!(await hasRecentOpenFlag(service, link.id, 'vendor_ineligible'))) {
+          await logFraudFlag(service, {
+            linkId: link.id,
+            userId: link.user_id,
+            flagType: 'vendor_ineligible',
+            severity: 'low',
+            detail: { role: ineligibleRole, source: 'sweep' },
+          });
+          result.flagsCreated.push({ linkId: link.id, flagType: 'vendor_ineligible', severity: 'low' });
+        }
+        await autoDisableLink(service, link.id, `auto-disabled: link owner is ${ineligibleRole}, ineligible for affiliate commission`, null);
+        continue; // nothing else to check on a link just deactivated for this reason
+      }
+    }
+
     const linkClicks = clicksByLink.get(link.id) ?? [];
 
     // ── click_velocity ──────────────────────────────────────────

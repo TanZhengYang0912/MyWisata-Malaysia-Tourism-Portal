@@ -83,6 +83,7 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
   visitor_clustering: "Clicks clustered on one visitor",
   zero_conversion: "Many clicks, zero referrals",
   click_cap_reached: "Limited-tier monthly click cap reached",
+  vendor_ineligible: "Vendor/outlet manager ineligible for commission",
 };
 
 const SEVERITY_STYLE: Record<string, string> = {

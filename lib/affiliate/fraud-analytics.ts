@@ -24,6 +24,7 @@ const FLAG_TYPES: FraudFlagType[] = [
   'visitor_clustering',
   'zero_conversion',
   'click_cap_reached',
+  'vendor_ineligible',
 ];
 const SEVERITIES: FraudSeverity[] = ['low', 'medium', 'high'];
 

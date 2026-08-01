@@ -754,6 +754,99 @@ Closes the loop `/admin/chatbot`'s existing gap views (`topUnanswered`,
     soft-delete-only for KB docs once referenced, for exactly this
     integrity reason, so that's what was used rather than fighting it.
 
+### Vendor accounts blocked from earning affiliate commission
+
+Team decision (2026-08-01): `vendor_owner` and `outlet_manager` accounts
+cannot earn affiliate commission at all. Built and live-verified per an
+explicit plan reviewed and approved before any code was written (the team
+wanted the real schema confirmed first, given this is money/permission-
+sensitive).
+
+**Schema, confirmed before writing anything — not assumed**: there is no
+`users.role` column anywhere. `vendor_owner` = a row in `vendors` where
+`owner_id` matches; `outlet_manager` = a row in `outlet_managers` where
+`user_id` matches (enforced 1:1). A separate `user_roles`/`roles` join table
+exists and is what populates the *client-side* `currentUser.role`
+(`components/providers/auth.tsx`) — a best-effort mirror, not authoritative.
+Every server-side enforcement point below queries `vendors`/`outlet_managers`
+directly, matching `lib/vendor-authorization.ts`'s own established pattern,
+never `user_roles`.
+
+- `lib/affiliate/vendor-role-guard.ts` (new) — `getVendorIneligibleRole()`,
+  the single shared check. `vendors.status` blocks on `pending`/`approved`/
+  `suspended`; **a `rejected` vendor application does not block** — team's
+  own call, given verbatim: "A rejected vendor applicant is just a regular
+  customer... permanently barring them over a failed application is wrong."
+  `outlet_managers` blocks unconditionally (no "rejected" state exists there).
+- **The commission guard — the real enforcement** —
+  `lib/affiliate/attribution.ts::onOrderPaid()`, right after the existing
+  self-referral guard: a fresh (never cached) check on the link owner,
+  independent of `affiliate_links.is_active` — a not-yet-deactivated old
+  link still pays nothing. Blocks the attribution insert, logs a new
+  `'vendor_ineligible'` fraud flag (severity `low` — ineligible, not
+  abusive), and auto-disables the link on the spot as a free side effect.
+- **Eligibility gate** — `POST`/`GET /api/affiliate/link` both add the same
+  fresh check (403 `VENDOR_INELIGIBLE` / null respectively).
+  `lib/affiliate/verification.ts::isAffiliateEligible()` also rejects
+  `role === 'vendor_owner' | 'outlet_manager'` — explicitly documented as
+  best-effort client-side UX only (relies on the non-authoritative
+  `currentUser.role`), since the routes above and the commission guard are
+  what actually enforce this regardless of what the client believes.
+- **Deactivation — cleanup only** — folded into the existing
+  `runFraudSweep()` rather than a new admin button or hooking into P1's
+  vendor-approval flow: for every still-active link, checks the owner,
+  disables + flags on a match, deduped via the sweep's existing 24h
+  `hasRecentOpenFlag()` pattern. Rides the same schedule
+  `clearMaturedCommissions()` already runs the sweep on.
+- **Existing earnings honored** — `lib/affiliate/clearing.ts` untouched, no
+  vendor check added there at all. A pending attribution created before this
+  change clears exactly as it did before, regardless of the link owner's
+  current vendor status.
+- New migration `20260801030000_affiliate_vendor_ineligible_flag.sql` adds
+  `'vendor_ineligible'` to `affiliate_fraud_flags.flag_type`'s CHECK
+  constraint (same DROP+ADD pattern as `037_affiliate_click_cap.sql`).
+  **Could not apply this one via a one-off REST script** like every other
+  migration this session — it's DDL, and unlike INSERTs, Supabase's REST API
+  has no path to execute raw `ALTER TABLE`. No `exec_sql`-style RPC exists on
+  this project; the connected Supabase MCP tool is still pointed at an
+  unrelated project; the Supabase CLI is linked to the right project ref but
+  has no cached credentials (`LegacyProjectNotLinkedError`, no
+  `SUPABASE_ACCESS_TOKEN`/DB password anywhere in env). Applied by the user
+  directly via the SQL Editor instead — flagged clearly rather than silently
+  blocked or worked around. (Notably this did **not** weaken the actual
+  security fix in the meantime: `logFraudFlag()` already fails soft on a
+  constraint violation, and the commission-blocking `return` in
+  `onOrderPaid()` happens regardless of whether the flag insert succeeds.)
+- Fraud dashboard surfacing: `'vendor_ineligible'` added to the three
+  fixed lists this needs to stay in sync with the DB constraint —
+  `lib/affiliate/fraud-analytics.ts`'s `FLAG_TYPES`, and the `FLAG_TYPE_LABEL`
+  copies in `app/admin/affiliate/page.tsx` and
+  `components/shared/fraud-breakdown-charts.tsx`.
+- **Live-verified, real DB, both roles, both the block and the exception** —
+  used reversible scratch rows throughout, all reverted after:
+  - **outlet_manager (Dave)**: scratch `outlet_managers` row → `POST` 403 +
+    `GET` null → a real buyer's purchase through his pre-existing link
+    created **no** attribution and a real `vendor_ineligible` flag
+    (`detail.role: "outlet_manager"`) → his link's `is_active` flipped to
+    `false` → his 5 pre-existing confirmed attributions (RM 55.88 total)
+    verified byte-for-byte unchanged after.
+  - **vendor_owner, pending status (Alice)**: scratch `vendors` row
+    (`status: 'pending'`) → same four checks, all passed
+    (`detail.role: "vendor_owner"`) → her 10 pre-existing confirmed
+    attributions (RM 12.36 total) unchanged.
+  - **vendor_owner, rejected status (the exception)**: flipped the same
+    scratch row to `status: 'rejected'`, reactivated her link → `POST`
+    succeeded (`200`, not `403`) → a real buyer's purchase through her link
+    created a genuine new `pending` attribution (RM 15.50 at her real 5%
+    rate) — proving a rejected application does not block earning.
+  - Fetched `GET /api/admin/affiliate/fraud-analytics` and confirmed
+    `vendor_ineligible` appears in `byType` with the correct count (2, one
+    per blocking case).
+  - Cleanup: deleted the scratch `vendors` row; the two real
+    `vendor_ineligible` flags and the genuinely-earned rejected-vendor test
+    commission were left in place as legitimate exercises of the feature,
+    same as every other live test this session.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

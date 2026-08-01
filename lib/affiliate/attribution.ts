@@ -41,8 +41,9 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { applyPercent } from '@/lib/money';
 import { getAttributionCookieDays } from './settings';
 import { getTierForUser } from './tier';
-import { logFraudFlag } from './fraud';
+import { logFraudFlag, autoDisableLink } from './fraud';
 import { notifyCommissionEarned } from './notifications';
+import { getVendorIneligibleRole } from './vendor-role-guard';
 
 const MW_REF_COOKIE = 'mw_ref';
 const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
@@ -134,6 +135,31 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         severity: 'high',
         detail: { buyerId: order.user_id, linkOwnerId, clickId: click.id },
       });
+      return;
+    }
+
+    // VENDOR-INELIGIBILITY GUARD — the real enforcement (team decision
+    // 2026-08-01, see lib/affiliate/vendor-role-guard.ts's header for the
+    // full reasoning). Fresh query every call, deliberately independent of
+    // affiliate_links.is_active — a pre-existing link that hasn't been
+    // deactivated yet (lib/affiliate/fraud.ts::runFraudSweep()'s cleanup
+    // pass, which runs on its own schedule) must still pay nothing at the
+    // moment of payment, not just once cleanup has caught up.
+    const ineligibleRole = await getVendorIneligibleRole(service, linkOwnerId);
+    if (ineligibleRole) {
+      await logFraudFlag(service, {
+        linkId: click.link_id,
+        userId: linkOwnerId,
+        orderId,
+        flagType: 'vendor_ineligible',
+        severity: 'low', // ineligible, not abusive — same tone as click_cap_reached
+        detail: { role: ineligibleRole, buyerId: order.user_id },
+      });
+      // Bonus immediate cleanup — we've just confirmed vendor status anyway,
+      // so deactivate right here rather than waiting for the next sweep.
+      // The sweep (item 3) still exists to catch links nobody ever tries to
+      // use again.
+      await autoDisableLink(service, click.link_id, `auto-disabled: link owner is ${ineligibleRole}, ineligible for affiliate commission`, null);
       return;
     }
 

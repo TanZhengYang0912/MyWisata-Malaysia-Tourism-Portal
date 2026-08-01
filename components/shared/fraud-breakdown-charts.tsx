@@ -15,6 +15,7 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
   visitor_clustering: "Visitor clustering",
   zero_conversion: "Zero conversion",
   click_cap_reached: "Click cap reached",
+  vendor_ineligible: "Vendor ineligible",
 };
 
 const SEVERITY_COLOR: Record<string, string> = {
