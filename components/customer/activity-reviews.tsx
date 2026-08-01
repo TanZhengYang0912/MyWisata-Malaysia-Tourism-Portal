@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Star, X } from "lucide-react";
 import type { ProductReview } from "@/backend/core/types";
 import { DEFAULT_REVIEW_PAGE_SIZE, getReviewPageState } from "@/lib/customer/review-pagination";
 
 interface Props {
   productId: string;
+  /** Reviews are filtered to this outlet when set. Changing it refreshes the preview and closes any open review list. */
+  outletId?: string;
   rating: number;
   totalReviews: number;
   initialReviews: ProductReview[];
@@ -31,19 +33,47 @@ function ReviewCard({ review }: { review: ProductReview }) {
   );
 }
 
-export function ActivityReviews({ productId, rating, totalReviews, initialReviews }: Props) {
+function reviewsQueryString(page: number, pageSize: number, outletId?: string): string {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (outletId) params.set("outletId", outletId);
+  return params.toString();
+}
+
+export function ActivityReviews({ productId, outletId, rating, totalReviews, initialReviews }: Props) {
   const [open, setOpen] = useState(false);
+  // Inline 3-review preview — kept separate from the modal's paginated list so
+  // paging through the modal never leaks a stale page into the preview.
+  const [preview, setPreview] = useState(initialReviews);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [reviews, setReviews] = useState(initialReviews);
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const pageState = getReviewPageState(totalReviews, page, DEFAULT_REVIEW_PAGE_SIZE);
+  const previousOutletId = useRef(outletId);
+
+  // Switching outlets means the previous preview belongs to a different
+  // outlet — close any open review list (it's paginating the old outlet's
+  // reviews) and refetch the preview. Skipped on first mount: SSR already
+  // matches the initially-selected outlet.
+  useEffect(() => {
+    if (previousOutletId.current === outletId) return;
+    previousOutletId.current = outletId;
+    setOpen(false);
+    let cancelled = false;
+    setPreviewLoading(true);
+    fetch(`/api/products/${productId}/reviews?${reviewsQueryString(1, 3, outletId)}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => { if (!cancelled && payload.data) setPreview(payload.data.items); })
+      .finally(() => { if (!cancelled) setPreviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [outletId, productId]);
 
   async function loadPage(nextPage: number) {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`/api/products/${productId}/reviews?page=${nextPage}&pageSize=${DEFAULT_REVIEW_PAGE_SIZE}`, { cache: "no-store" });
+      const response = await fetch(`/api/products/${productId}/reviews?${reviewsQueryString(nextPage, DEFAULT_REVIEW_PAGE_SIZE, outletId)}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Could not load reviews");
       setReviews(payload.data.items);
@@ -77,11 +107,13 @@ export function ActivityReviews({ productId, rating, totalReviews, initialReview
           </div>
         </div>
 
-        {initialReviews.length === 0 ? (
-          <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">No reviews yet.</p>
+        {previewLoading ? (
+          <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">Loading reviews…</p>
+        ) : totalReviews === 0 ? (
+          <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">No reviews yet for this outlet.</p>
         ) : (
           <div className="mt-4 space-y-3">
-            {initialReviews.slice(0, 3).map((review) => <ReviewCard key={review.id} review={review} />)}
+            {preview.slice(0, 3).map((review) => <ReviewCard key={review.id} review={review} />)}
             {totalReviews > 3 && (
               <button type="button" onClick={openAllReviews} className="w-full rounded-xl border border-primary/20 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-secondary">
                 View all {totalReviews} reviews
@@ -102,7 +134,7 @@ export function ActivityReviews({ productId, rating, totalReviews, initialReview
               <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Close all reviews"><X size={18} /></button>
             </div>
 
-            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">Loading reviews…</p> : error ? <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">Retry</button></div> : <div className="mt-5 space-y-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</div>}
+            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">Loading reviews…</p> : error ? <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">Retry</button></div> : reviews.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">No reviews yet for this outlet.</p> : <div className="mt-5 space-y-3">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</div>}
 
             {!loading && !error && totalReviews > 0 && (
               <nav aria-label="Review pages" className="mt-5 flex items-center justify-between border-t border-border pt-4">

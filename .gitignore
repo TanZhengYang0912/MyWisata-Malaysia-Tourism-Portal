@@ -51,3 +51,6 @@ scripts/figma-screenshots/
 /CLAUDE.md
 /docs/
 AGENTS.md
+
+# Lint / analysis output — never commit
+lint-results.json

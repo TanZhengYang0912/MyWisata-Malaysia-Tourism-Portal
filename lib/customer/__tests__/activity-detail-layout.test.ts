@@ -30,10 +30,25 @@ describe("activity detail booking layout", () => {
     expect(source).toContain("<ActivityReviews");
   });
 
-  it("moves the Visit shop action into the booking aside", () => {
+  it("moves the Visit vendor action into the booking aside", () => {
     const asideIndex = source.indexOf("<aside className=");
-    const visitShopIndex = source.indexOf("Visit shop");
-    expect(visitShopIndex).toBeGreaterThan(asideIndex);
+    const visitVendorIndex = source.indexOf("Visit vendor");
+    expect(visitVendorIndex).toBeGreaterThan(asideIndex);
+  });
+
+  it("names the outlet only when the place is not the product itself", () => {
+    const namesOutletIndex = source.indexOf("const namesOutlet =");
+    const visitOutletIndex = source.indexOf("Visit outlet");
+    expect(namesOutletIndex).toBeGreaterThanOrEqual(0);
+    expect(source).toContain("isPlaceBound");
+    // The outlet name and its link are inside the namesOutlet branch.
+    expect(source.indexOf("{namesOutlet && (")).toBeGreaterThan(namesOutletIndex);
+    expect(visitOutletIndex).toBeGreaterThan(source.indexOf("{namesOutlet && ("));
+  });
+
+  it("reads the price unit from the category instead of hardcoding per person", () => {
+    expect(source).not.toContain(">per person<");
+    expect(source).toContain("getPriceUnit(activity.categorySlug)");
   });
 
   it("shows a Hidden Gem badge driven by activity.isHiddenGem", () => {

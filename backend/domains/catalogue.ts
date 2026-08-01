@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
-import { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
@@ -96,6 +95,13 @@ export interface OutletChoice {
   city: string;
   price: number;
   open: boolean;
+  state: string;
+  verified: boolean;
+  vendorId: string;
+  vendorName?: string;
+  /** This product's rating/review count at this outlet specifically. */
+  rating: number;
+  reviews: number;
 }
 
 /**
@@ -105,17 +111,59 @@ export interface OutletChoice {
  */
 export async function getOutletChoices(activity: Activity, db: SupabaseClient = supabase): Promise<OutletChoice[]> {
   if (!activity.offers?.length) return [];
-  const outlets = await getOutlets(db);
+  const [outlets, reviewMetrics] = await Promise.all([
+    getOutlets(db),
+    getOutletReviewMetrics(activity.id, db),
+  ]);
   const byId = new Map(outlets.map((outlet) => [outlet.id, outlet]));
   return activity.offers
-    .map((offer) => {
+    .map((offer): OutletChoice | null => {
       const outlet = byId.get(offer.outletId);
-      return outlet
-        ? { outletId: outlet.id, outletName: outlet.name, city: outlet.city, price: offer.price, open: outlet.open }
-        : null;
+      if (!outlet) return null;
+      const metric = reviewMetrics.get(outlet.id) ?? { rating: 0, reviews: 0 };
+      return {
+        outletId: outlet.id,
+        outletName: outlet.name,
+        city: outlet.city,
+        price: offer.price,
+        open: outlet.open,
+        state: outlet.state,
+        verified: outlet.verified,
+        vendorId: outlet.vendorId,
+        vendorName: outlet.vendorName,
+        rating: metric.rating,
+        reviews: metric.reviews,
+      };
     })
     .filter((choice): choice is OutletChoice => choice !== null)
     .sort((a, b) => a.price - b.price);
+}
+
+/**
+ * A single product's rating/review count broken down by outlet — for the
+ * product page's per-outlet display, not the catalogue-wide aggregate. Only
+ * ever queries one product's reviews, so it never hits PostgREST's row cap.
+ */
+export async function getOutletReviewMetrics(productId: string, db: SupabaseClient = supabase): Promise<Map<string, ReviewMetric>> {
+  const { data, error } = await db
+    .from("reviews")
+    .select("outlet_id,rating")
+    .eq("product_id", productId)
+    .eq("is_visible", true);
+  if (error) throw error;
+
+  const totals = new Map<string, { total: number; reviews: number }>();
+  for (const row of (data ?? []) as { outlet_id: string | null; rating: number }[]) {
+    if (!row.outlet_id) continue;
+    const current = totals.get(row.outlet_id) ?? { total: 0, reviews: 0 };
+    current.total += Number(row.rating);
+    current.reviews += 1;
+    totals.set(row.outlet_id, current);
+  }
+  return new Map([...totals.entries()].map(([outletId, value]) => [
+    outletId,
+    { rating: Math.round((value.total / value.reviews) * 10) / 10, reviews: value.reviews },
+  ]));
 }
 
 /**
@@ -217,14 +265,20 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
   const rows = data as unknown as ProductRow[];
   if (rows.length === 0) return [];
 
-  const { data: reviewRows, error: reviewError } = await db
-    .from("reviews")
-    .select("product_id,rating")
-    .eq("is_visible", true)
+  // Read the database-side aggregate view instead of pulling raw review rows and
+  // averaging in memory — that hit PostgREST's silent 1000-row cap and produced
+  // wrong ratings site-wide (M8). Number() is required: PostgREST serialises
+  // NUMERIC and BIGINT as strings.
+  const { data: metricRows, error: reviewError } = await db
+    .from("product_review_metrics")
+    .select("product_id,rating,reviews")
     .in("product_id", rows.map((row) => row.id));
   if (reviewError) throw reviewError;
 
-  const reviewMetrics = aggregateReviewMetrics(reviewRows ?? []);
+  const reviewMetrics = new Map(
+    ((metricRows ?? []) as { product_id: string; rating: number | string; reviews: number | string }[])
+      .map((row) => [row.product_id, { rating: Number(row.rating), reviews: Number(row.reviews) }]),
+  );
   return rows.map((row) => mapActivity(row, reviewMetrics.get(row.id)));
 }
 
@@ -234,8 +288,8 @@ export async function getBookingSlots(activityId: string, db: SupabaseClient = s
   return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
 
-export async function getProductReviews(productId: string, db: SupabaseClient = supabase): Promise<ProductReview[]> {
-  return (await getProductReviewsPage(productId, { page: 1, pageSize: 3 }, db)).items;
+export async function getProductReviews(productId: string, db: SupabaseClient = supabase, options: { outletId?: string } = {}): Promise<ProductReview[]> {
+  return (await getProductReviewsPage(productId, { page: 1, pageSize: 3, outletId: options.outletId }, db)).items;
 }
 
 export interface ProductReviewPage {
@@ -248,16 +302,19 @@ export interface ProductReviewPage {
 
 export async function getProductReviewsPage(
   productId: string,
-  options: { page?: number; pageSize?: number } = {},
+  options: { page?: number; pageSize?: number; outletId?: string } = {},
   db: SupabaseClient = supabase,
 ): Promise<ProductReviewPage> {
   const requestedPageSize = Math.floor(Number(options.pageSize ?? 5));
   const pageSize = Math.min(10, Math.max(1, Number.isFinite(requestedPageSize) ? requestedPageSize : 5));
-  const { count, error: countError } = await db
+
+  let countQuery = db
     .from("reviews")
     .select("id", { count: "exact", head: true })
     .eq("product_id", productId)
     .eq("is_visible", true);
+  if (options.outletId) countQuery = countQuery.eq("outlet_id", options.outletId);
+  const { count, error: countError } = await countQuery;
   if (countError) throw countError;
 
   const total = count ?? 0;
@@ -265,11 +322,14 @@ export async function getProductReviewsPage(
   const requestedPage = Math.floor(Number(options.page ?? 1));
   const page = Math.min(totalPages, Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1));
   const offset = (page - 1) * pageSize;
-  const { data, error } = await db
+
+  let dataQuery = db
     .from("reviews")
     .select("id,rating,title,body,created_at,users(full_name)")
     .eq("product_id", productId)
-    .eq("is_visible", true)
+    .eq("is_visible", true);
+  if (options.outletId) dataQuery = dataQuery.eq("outlet_id", options.outletId);
+  const { data, error } = await dataQuery
     .order("created_at", { ascending: false })
     .range(offset, offset + pageSize - 1);
   if (error) throw error;
@@ -328,9 +388,61 @@ async function getComputedActivities(from?: { lat: number; lng: number }, db: Su
     .filter((a): a is ComputedActivity => a !== null);
 }
 
+/**
+ * One product plus only the outlets it actually sells at. Deliberately does not
+ * go through getComputedActivities(): that pulls the entire catalogue and every
+ * outlet just to .find() a single row, so opening one product page — or one
+ * wishlist entry — scanned the whole table (H4).
+ */
 export async function getComputedActivity(id: string, from?: { lat: number; lng: number }, db: SupabaseClient = supabase): Promise<ComputedActivity | null> {
-  const all = await getComputedActivities(from, db);
-  return all.find((a) => a.id === id) ?? null;
+  const { data: row, error } = await db
+    .from("products")
+    .select(ACTIVITY_SELECT)
+    .eq("id", id)
+    .eq("status", "active")
+    .eq("review_status", "approved")
+    .maybeSingle();
+  if (error) throw error;
+  if (!row) return null;
+
+  const { data: metricRow, error: metricError } = await db
+    .from("product_review_metrics")
+    .select("product_id,rating,reviews")
+    .eq("product_id", id)
+    .maybeSingle();
+  if (metricError) throw metricError;
+
+  const metric = metricRow
+    ? {
+        rating: Number((metricRow as { rating: number | string }).rating),
+        reviews: Number((metricRow as { reviews: number | string }).reviews),
+      }
+    : { rating: 0, reviews: 0 };
+
+  const activity = mapActivity(row as unknown as ProductRow, metric);
+
+  // A shared product lists several outlets in offers; a single-outlet product
+  // only has outletId. Fetch whichever set applies, nothing more.
+  const outletIds = [...new Set([
+    ...(activity.offers ?? []).map((offer) => offer.outletId),
+    activity.outletId,
+  ].filter(Boolean))];
+  if (outletIds.length === 0) return null;
+
+  const { data: outletRows, error: outletError } = await db
+    .from("outlets")
+    .select(OUTLET_SELECT)
+    .in("id", outletIds);
+  if (outletError) throw outletError;
+
+  const outletMap = new Map(
+    ((outletRows ?? []) as unknown as OutletRow[]).map((outletRow) => {
+      const outlet = mapOutlet(outletRow);
+      return [outlet.id, outlet] as const;
+    }),
+  );
+
+  return toComputed(activity, outletMap, from);
 }
 
 export interface SearchFilters {

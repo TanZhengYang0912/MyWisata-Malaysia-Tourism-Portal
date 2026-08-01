@@ -32,6 +32,9 @@ export interface TypeOption {
 interface CategoryDetail {
   types: TypeOption[];
   fields: AttrField[];
+  // What one unit of this category is, shown under the price on the detail
+  // page. A batik scarf is not sold "per person".
+  priceUnit: string;
 }
 
 // Reused across every category so listings don't lose today's baseline info.
@@ -44,6 +47,7 @@ const CONTACT: AttrField = { key: "_contact", label: "Contact", icon: Phone, typ
 // category — see docs plan "Phase 1 taxonomy foundation" for the source list.
 export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
   food: {
+    priceUnit: "each",
     types: [
       { slug: "chinese", label: "Chinese" },
       { slug: "malay", label: "Malay" },
@@ -74,6 +78,7 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
     ],
   },
   activity: {
+    priceUnit: "per person",
     types: [
       { slug: "nature", label: "Nature" },
       { slug: "adventure", label: "Adventure" },
@@ -122,6 +127,7 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
     ],
   },
   accommodation: {
+    priceUnit: "per night",
     types: [
       { slug: "5-star", label: "5-Star" },
       { slug: "4-star", label: "4-Star" },
@@ -146,6 +152,7 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
     ],
   },
   retail: {
+    priceUnit: "each",
     types: [
       { slug: "handicrafts", label: "Handicrafts" },
       { slug: "souvenirs", label: "Souvenirs" },
@@ -177,7 +184,23 @@ export const CATEGORY_DETAILS: Record<string, CategoryDetail> = {
   },
 };
 
-const GENERIC_DETAIL: CategoryDetail = { types: [], fields: [HOURS, TAGS, CONTACT] };
+const GENERIC_DETAIL: CategoryDetail = { priceUnit: "each", types: [], fields: [HOURS, TAGS, CONTACT] };
+
+// Types where the place IS the product. A national park trail or a heritage
+// walk is not a branch of a company, so naming an outlet next to it ("Bukit
+// Nanas Forest Reserve Walk — Kuala Lumpur Outlet") reads as nonsense. A spa
+// treatment or a restaurant dish is the opposite: the branch is real and the
+// customer needs to know which one.
+export const PLACE_BOUND_TYPES = ["nature", "cultural", "adventure"] as const;
+
+export function isPlaceBound(activity: Pick<ComputedActivity, "typeSlugs">): boolean {
+  return (activity.typeSlugs ?? []).some((slug) => (PLACE_BOUND_TYPES as readonly string[]).includes(slug));
+}
+
+/** What one unit is — "per person", "each", "per night". */
+export function getPriceUnit(categorySlug?: string | null): string {
+  return (CATEGORY_DETAILS[categorySlug ?? ""] ?? GENERIC_DETAIL).priceUnit;
+}
 
 function resolveValue(field: AttrField, activity: ComputedActivity): string | null {
   switch (field.key) {

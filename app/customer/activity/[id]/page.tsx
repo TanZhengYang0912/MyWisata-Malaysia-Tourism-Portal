@@ -31,7 +31,11 @@ export default async function ActivityDetailPage({ params }: Props) {
   const [slots, reviews, outletChoices] = activity
     ? await Promise.all([
         activity.requiresBooking ? getBookingSlots(activity.id, db) : Promise.resolve([]),
-        getProductReviews(activity.id, db),
+        // The client pre-selects activity.outletId (the outlet toComputed()
+        // picked), so the SSR preview must be scoped to that same outlet —
+        // otherwise the first paint shows all-outlets reviews under a
+        // single-outlet header.
+        getProductReviews(activity.id, db, { outletId: activity.outletId }),
         getOutletChoices(activity, db),
       ])
     : [[], [], []];
