@@ -42,6 +42,7 @@ import { applyPercent } from '@/lib/money';
 import { getAttributionCookieDays } from './settings';
 import { getTierForUser } from './tier';
 import { logFraudFlag } from './fraud';
+import { notifyCommissionEarned } from './notifications';
 
 const MW_REF_COOKIE = 'mw_ref';
 const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
@@ -193,6 +194,11 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       throw attrErr;
     }
     if (!attribution) return;
+
+    // CLAUDE-P4-EXTRAS.md Extra 3: fire-and-forget, never throws (see
+    // lib/affiliate/notifications.ts's own header) — a notification failure
+    // must not undo or mask the attribution that was just created above.
+    await notifyCommissionEarned(service, { userId: linkOwnerId, amountRM: commission, attributionId: attribution.id as string });
 
     // No wallet credit here anymore — see the Phase 2 note at the top of
     // this file. The mw_ref cookie is still cleared (best-effort — it may

@@ -505,6 +505,73 @@ the page was already the natural home for it).
   checked via typecheck + lint + code review only, not a real browser.
   Flagging rather than silently claiming full visual verification.
 
+**Extra 3 — Commission notifications, done.** Reuses the existing
+`notifications` table — no new table, no new UI. `components/shared/notification-bell.tsx`
+already existed, was already mounted in `app/customer/layout.tsx`, and
+already had a "Recommendations & Affiliate" category filter tab
+(`recommendations_affiliate`) sitting unused for this module — these
+notifications just needed to start showing up in it.
+
+- **Schema note**: the extras doc's shorthand for the table's shape
+  (`type, user_id, title, body, link, read, created_at`) doesn't quite match
+  the real column — it's `read_at TIMESTAMPTZ`, not a `read` boolean — and
+  the live table has grown three more columns since `001_initial_schema.sql`
+  (`event_key`, `category`, `metadata`, added by
+  `079_wallet_hold_resume_notifications.sql` / `080_vendor_notifications.sql`).
+  Read the real, current shape rather than the doc's summary, per Rule Zero.
+- `lib/affiliate/notifications.ts` (new) — `notifyCommissionEarned()`,
+  `notifyCommissionCleared()`, `notifyTierUp()`. Each is its own
+  fire-and-forget function with its own internal try/catch (never throws) —
+  deliberately not relying on the caller's own try/catch alone, since
+  `clearing.ts`'s per-attribution loop already has one that feeds a
+  `result.errors` list treated as a **real** clearing failure; a
+  notification hiccup must never show up there.
+- **Idempotency reuses the established pattern**, not a new one: every
+  insert sets a unique `event_key` and upserts with
+  `{ onConflict: 'event_key', ignoreDuplicates: true }` — the exact same
+  mechanism `lib/wallet/approver-notifications.ts` already uses against the
+  same `notifications_event_key_unique` index. In practice each call site is
+  *already* idempotent on its own too (attribution.ts's `UNIQUE(order_id)`
+  guard; clearing.ts's atomic `pending`→`confirmed` claim only ever succeeds
+  once per attribution) — `event_key` is what directly protects against a
+  double-notify, per the extras doc's guardrail, rather than relying on that
+  indirectly.
+- **Commission earned** — fired from `onOrderPaid()`
+  (`lib/affiliate/attribution.ts`), right after a new attribution row is
+  created, before the `mw_ref` cookie is cleared. Deep-links to
+  `/customer/affiliate`.
+- **Commission cleared** — fired from `clearMaturedCommissions()`
+  (`lib/affiliate/clearing.ts`), right after `creditAffiliateCommission()`
+  succeeds for that attribution. Deep-links to `/customer/wallet`.
+- **Tier up** — fired from the same clearing step: `getTierForUser()` is
+  read once *before* the atomic claim (tier is a function of lifetime
+  CONFIRMED referrals, and this attribution is still `pending` at that
+  point) and once *after* the credit succeeds; a `tierName` change between
+  the two fires the notification. Referral count only ever increases in
+  this flow, so any change here is necessarily an upgrade. Deep-links to
+  `/customer/affiliate`.
+- **Live-verified end to end**, real dev server + real DB, matching the
+  extras doc's own checklist exactly: clicked a live affiliate link as one
+  demo buyer, simulated a purchase → a real `affiliate_commission_earned`
+  row appeared for the referrer (RM 5.12, matching the attribution exactly)
+  → force-cleared it → a real `affiliate_commission_cleared` row appeared,
+  plus (after temporarily lowering the "top" tier's threshold from 8 to 5
+  confirmed referrals — a reversible `commission_rules` scratch edit,
+  reverted immediately after) an `affiliate_tier_up` row correctly naming
+  "top" and the new 5% rate → ran force-clear a **second** time → zero new
+  rows, `notifications` count for that user unchanged at exactly 3 → fetched
+  `GET /api/notifications?category=recommendations_affiliate` as that same
+  user (the exact request `NotificationBell` makes) and confirmed all three
+  rows come back through the real consuming API, not just the raw table.
+- **Unrelated pre-existing bug found while picking a test product, not
+  fixed here**: `demo-022-cendol-gula-melaka` has `outlet_id: null`
+  (orphaned seed data, same shape as the `demo-020-chicken-rice-ball-set`
+  bug noted earlier in this file) — `POST /api/dev/simulate-purchase`
+  fails with a `NOT NULL` constraint violation on `order_items.outlet_id`
+  for it. Switched to a different, correctly-linked product for the live
+  test instead of investigating further; flagging since it'll trip up the
+  next person who reaches for that specific product in a demo.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

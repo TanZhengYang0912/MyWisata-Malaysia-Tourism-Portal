@@ -12,6 +12,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getClearanceDays } from './settings';
 import { creditAffiliateCommission } from './wallet-credit';
 import { runFraudSweep } from './fraud';
+import { getTierForUser } from './tier';
+import { notifyCommissionCleared, notifyTierUp } from './notifications';
 
 export interface ClearedCommission {
   attributionId: string;
@@ -127,6 +129,12 @@ export async function clearMaturedCommissions(
         continue;
       }
 
+      // CLAUDE-P4-EXTRAS.md Extra 3: tier is a function of lifetime CONFIRMED
+      // referrals (lib/affiliate/tier.ts), and this attribution's status is
+      // still 'pending' at this point in the loop — so this read is the
+      // "before" state for the tier-up comparison after the claim below.
+      const tierBefore = await getTierForUser(service, link.user_id);
+
       // Atomic claim — only proceeds if this row is still 'pending' at the
       // moment of update. A concurrent/repeated run gets zero rows back here.
       const { data: claimed, error: claimErr } = await service
@@ -153,6 +161,24 @@ export async function clearMaturedCommissions(
           orderId: attribution.order_id,
           amountRM: Number(attribution.commission_amount),
         });
+
+        // Fire-and-forget, never throws (lib/affiliate/notifications.ts) —
+        // only reached once per attribution, since the atomic claim above
+        // already guarantees this credit only ever runs once.
+        await notifyCommissionCleared(service, {
+          userId: link.user_id,
+          amountRM: Number(attribution.commission_amount),
+          attributionId: attribution.id,
+        });
+        const tierAfter = await getTierForUser(service, link.user_id);
+        if (tierAfter.tierName !== tierBefore.tierName) {
+          await notifyTierUp(service, {
+            userId: link.user_id,
+            tierName: tierAfter.tierName,
+            ratePercent: Number((tierAfter.rate * 100).toFixed(2)),
+            attributionId: attribution.id,
+          });
+        }
       } catch (creditErr) {
         // Claimed (status='confirmed') but the wallet credit failed — a real
         // anomaly needing manual reconciliation, not a normal skip. Logged
