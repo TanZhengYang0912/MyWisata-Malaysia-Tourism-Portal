@@ -34,4 +34,24 @@ describe("classifyIntent", () => {
     expect(classifyIntent("is the tour wheelchair accessible")).toBe("question");
     expect(classifyIntent("where do I see my orders")).toBe("question");
   });
+
+  // CLAUDE-P4-EXTRAS.md Extra 1: Chinese has no spaces, so the word-count
+  // heuristics above would have classified every Chinese question — no
+  // matter how substantive — as "unclear" (it's a single "word" with no
+  // spaces to split on). This is the regression test for that fix.
+  it("classifies Chinese greetings and chitchat", () => {
+    expect(classifyIntent("你好")).toBe("greeting");
+    expect(classifyIntent("嗨")).toBe("greeting");
+    expect(classifyIntent("谢谢")).toBe("chitchat");
+    expect(classifyIntent("再见")).toBe("chitchat");
+  });
+
+  it("classifies a real Chinese question as question, not unclear", () => {
+    expect(classifyIntent("我要怎么提现？")).toBe("question");
+    expect(classifyIntent("这个行程可以轮椅出行吗")).toBe("question");
+  });
+
+  it("classifies a bare punctuation-only Chinese message as unclear", () => {
+    expect(classifyIntent("？")).toBe("unclear");
+  });
 });

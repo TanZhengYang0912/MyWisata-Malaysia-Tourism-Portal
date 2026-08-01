@@ -372,6 +372,83 @@ moving is the correct, complete signal.
   explanation). The money is real the moment it's credited; the dashboard
   label just hasn't caught up to that yet.
 
+### Beyond spec: P4 extras (`CLAUDE-P4-EXTRAS.md`)
+
+**Extra 1 — Trilingual chatbot (English / Bahasa Melayu / Chinese), done.**
+No separate translation service — Gemini handles all three natively; this is
+prompt + detection work, not a translation pipeline.
+
+- `lib/chatbot/generate.ts`'s system prompt now instructs the model to
+  detect the question's language (EN/BM/Chinese, simplified) and reply in
+  the same one, including for "rojak" (mixed-language) messages, with the
+  same "never invent a number" rule stated explicitly per language — the
+  real risk isn't the bot refusing to answer, it's a correct English fact
+  becoming a subtly wrong translation. Also pins `NO_ANSWER` to stay literal
+  and untranslated, since `generate.ts` checks for that exact token.
+- `lib/chatbot/language.ts` (new) — a lightweight, pure `detectLanguage()`
+  heuristic (Han-script check for Chinese, a BM marker-word list for Malay,
+  else English). Used only to pick which language's *fixed* strings to show
+  (fallback/greeting/chitchat/unclear in `answer.ts`, and the feedback-flow
+  chrome in `chatbot-widget.tsx`) — never to translate anything itself, and
+  never to gate what the LLM does. `AnswerResult.language` and the
+  `/api/chatbot/ask` response's `language` field carry this through so the
+  widget can localize the "Was this helpful?" / ticket-offer UI next to
+  each specific reply.
+- `lib/chatbot/strings.ts` (new) — the EN/BM/Chinese strings map the extras
+  doc asked for, kept in one place rather than scattered inline.
+- **Real bug found and fixed, not just a translation gap:**
+  `lib/chatbot/intent.ts`'s pre-LLM intent gate classified messages as
+  greeting/chitchat/question/unclear by splitting on whitespace and counting
+  words. Chinese has no spaces between words at all, so *every* Chinese
+  message — including a real, specific question — normalized to a single
+  "word" and fell into the `words.length < 3` → `'unclear'` branch every
+  time. Without this fix, no Chinese question would ever have reached
+  retrieval or the LLM; the bot would always ask "could you tell me more?"
+  in response to any real Chinese question. Han-script messages now take a
+  separate character-count-based path instead. Regression-tested in
+  `lib/chatbot/__tests__/intent.test.ts`.
+- KB retrieval was **not** translated or given a second, English-only
+  retrieval step. Live-tested cross-lingual retrieval quality directly
+  against the real Gemini embedding + `match_kb_documents` RPC before
+  deciding: BM and Chinese phrasings of the same question retrieved the
+  correct KB doc at comparable or even *higher* cosine similarity than the
+  English phrasing in every case tested (e.g. the withdrawal-timeline
+  question: EN 0.592, BM 0.685, ZH 0.614 against the live
+  `chatbot.similarity_threshold = 0.55`). Per the extras doc's own
+  instruction ("only do this if plain non-English retrieval underperforms
+  in testing"), the simplest option (English KB, multilingual embeddings)
+  was kept.
+- **Live-verified**, real dev server + real Gemini key, all per the extras
+  doc's own checklist:
+  - BM ("macam mana nak keluarkan duit saya?"), Chinese ("我要怎么提现？"),
+    and English equivalents of an *answerable* KB question all returned a
+    correctly localized answer.
+  - **Cross-language fact-consistency check** (the one the extras doc calls
+    out as the check that "catches a bad translation silently changing a
+    number"): the same withdrawal-timeline question in all three languages
+    all stated the same **24-48 hour** approval window (BM/Chinese also
+    surfaced the RM500 dual-approval and 7-day clearing facts from the same
+    KB doc) — no drift between languages.
+  - Rojak ("boleh tak I withdraw my earnings?") → correctly treated as
+    dominant-language BM by both the intent gate and the fixed-string
+    picker.
+  - Off-topic questions in all three languages → localized fallback +
+    escalation offer, never a guess.
+  - Greetings/chitchat ("hi"/"selamat pagi"/"你好", "thanks"/"terima
+    kasih"/"谢谢") → localized canned replies, no LLM call.
+  - **One live-caught bug, fixed before landing:** `detectLanguage()`'s BM
+    marker list had no overlap with "selamat pagi" (a BM greeting
+    `intent.ts` already recognized) — it was silently defaulting to English
+    strings for that one greeting. Added `selamat`/`pagi`/`petang`/`malam`/
+    `hai` to the marker list; regression-tested.
+- **Not attempted / explicitly out of scope**, matching the extras doc: a
+  real translation pipeline, translating the KB itself, or a general
+  similarity-threshold retune (the KB genuinely has no "how do I withdraw"
+  *procedure* doc — only a *timeline* one — so that specific phrasing
+  correctly falls back to "I don't know" in all three languages; that's a
+  content gap, not a language or retrieval bug, confirmed unaffected by
+  language during live testing).
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

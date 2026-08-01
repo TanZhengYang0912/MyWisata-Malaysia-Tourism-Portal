@@ -35,17 +35,19 @@ import { generateAnswer } from './generate';
 import { answerQuestion as matchKeyword, type KbDoc } from './match';
 import { classifyIntent } from './intent';
 import { redactPII } from './pii';
+import { detectLanguage, type ChatLanguage } from './language';
+import { CHAT_STRINGS } from './strings';
 
 // CLAUDE-CHATBOT-FEEDBACK.md Flow 2: this line IS the ticket offer's lead-in
 // now — no separate "would you like our team to help?" phrasing needed here
 // since the widget renders the actual yes/no ticket offer as its own box
 // right below this message.
-export const FALLBACK_ANSWER =
-  "I'm an AI assistant and I can only help with things like bookings, vouchers, your wallet, withdrawals, and affiliate questions — I couldn't answer that one.";
-const GREETING_REPLY =
-  "Hi! I'm the MyWisata assistant. I can help with bookings, vouchers, your wallet, withdrawals, or affiliate earnings. What do you need?";
-const CHITCHAT_REPLY = "Glad to help! Let me know if there's anything else you need.";
-const UNCLEAR_REPLY = "Could you tell me a bit more about what you need help with?";
+//
+// CLAUDE-P4-EXTRAS.md Extra 1: kept as the English default export (nothing
+// else in the repo imports it, but it's referenced in a comment in
+// lib/admin-ai/orchestrate.ts) — the actual per-language values now live in
+// lib/chatbot/strings.ts, picked below via detectLanguage().
+export const FALLBACK_ANSWER = CHAT_STRINGS.en.fallback;
 
 export interface UsedKbRef {
   id: string;
@@ -63,12 +65,22 @@ export interface AnswerResult {
    *  of mode, since this describes what the user typed, not how it was
    *  answered. CLAUDE-ADMIN-AI.md Part 1: logged on the message row. */
   piiDetected: boolean;
+  /** Lightweight pre-detection of the QUESTION's language (see
+   *  lib/chatbot/language.ts) — used to pick which language's fixed
+   *  strings this result used, and returned so the widget can localize the
+   *  feedback-flow chrome (Was this helpful?/ticket offer) that sits next
+   *  to this specific reply. Not a claim about what language `answer` is
+   *  in for `mode: 'llm'` — Gemini decides that itself from the system
+   *  prompt — but the two should agree in practice since both start from
+   *  the same question. */
+  language: ChatLanguage;
 }
 
 async function answerWithKeywordFallback(
   service: ReturnType<typeof createServiceClient>,
   question: string,
   piiDetected: boolean,
+  language: ChatLanguage,
 ): Promise<AnswerResult> {
   const { data: kbRows } = await service
     .from('chatbot_kb_documents')
@@ -83,10 +95,17 @@ async function answerWithKeywordFallback(
     category: row.category,
   }));
 
+  // The keyword matcher only ever scores against an English KB (Extra 1
+  // deliberately doesn't translate the KB — see lib/chatbot/retrieve.ts's
+  // header), so its ANSWER is always English regardless of `language`. Only
+  // the fallback line (no match at all) gets localized here — there's
+  // nothing to translate on a successful match without risking exactly the
+  // "subtly wrong translation" the extras doc warns about, and this path
+  // only runs when the LLM is unavailable/failing anyway.
   const match = matchKeyword(question, docs);
   return match
-    ? { answer: match.body, kbMatched: true, canEscalate: false, usedKb: [{ id: match.id, similarity: null }], mode: 'keyword', piiDetected }
-    : { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected };
+    ? { answer: match.body, kbMatched: true, canEscalate: false, usedKb: [{ id: match.id, similarity: null }], mode: 'keyword', piiDetected, language }
+    : { answer: CHAT_STRINGS[language].fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
 }
 
 export async function answerQuestion(question: string): Promise<AnswerResult> {
@@ -97,20 +116,27 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
   // for the pii_detected signal the route logs on the message row.
   const piiDetected = redactPII(question).found;
 
+  // CLAUDE-P4-EXTRAS.md Extra 1: computed once, used to pick every fixed
+  // string below (this function never calls a translation service — see
+  // lib/chatbot/language.ts's header for why a lightweight heuristic here
+  // is sufficient).
+  const language = detectLanguage(question);
+
   // Never escalate, never retrieve, never call the LLM for these — see the
   // file header and lib/chatbot/intent.ts. kbMatched: true because the bot
   // DID successfully handle the message; marking it false would (a) offer
   // a "get help from our team" button for someone who just said "hi", and
   // (b) pollute the admin's "top unanswered questions" list with greetings.
   const intent = classifyIntent(question);
+  const strings = CHAT_STRINGS[language];
   if (intent === 'greeting') {
-    return { answer: GREETING_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
+    return { answer: strings.greeting, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected, language };
   }
   if (intent === 'chitchat') {
-    return { answer: CHITCHAT_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
+    return { answer: strings.chitchat, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected, language };
   }
   if (intent === 'unclear') {
-    return { answer: UNCLEAR_REPLY, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected };
+    return { answer: strings.unclear, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected, language };
   }
 
   const service = createServiceClient();
@@ -121,7 +147,7 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
       if (retrieved.length === 0) {
         // Threshold check happens BEFORE the LLM call — the model never
         // sees an off-topic question at all. See lib/chatbot/retrieve.ts.
-        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected };
+        return { answer: strings.fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
       }
 
       const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
@@ -131,15 +157,15 @@ export async function answerQuestion(question: string): Promise<AnswerResult> {
         // NO_ANSWER — still record which docs were retrieved/considered,
         // useful admin-side provenance even though the model couldn't
         // ground an answer in them.
-        return { answer: FALLBACK_ANSWER, kbMatched: false, canEscalate: true, usedKb, mode: 'llm', piiDetected };
+        return { answer: strings.fallback, kbMatched: false, canEscalate: true, usedKb, mode: 'llm', piiDetected, language };
       }
 
-      return { answer: llmAnswer, kbMatched: true, canEscalate: false, usedKb, mode: 'llm', piiDetected };
+      return { answer: llmAnswer, kbMatched: true, canEscalate: false, usedKb, mode: 'llm', piiDetected, language };
     } catch (error) {
       console.error('[chatbot] LLM pipeline failed, falling back to keyword matcher', error instanceof Error ? error.message : error);
       // fall through to keyword fallback below
     }
   }
 
-  return answerWithKeywordFallback(service, question, piiDetected);
+  return answerWithKeywordFallback(service, question, piiDetected, language);
 }

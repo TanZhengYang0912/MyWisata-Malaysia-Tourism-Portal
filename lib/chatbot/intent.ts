@@ -6,6 +6,15 @@
 // questions in the first place, so treating a KB miss as failure was wrong
 // for them specifically — no amount of retrieval tuning fixes a category
 // error like that.
+//
+// CLAUDE-P4-EXTRAS.md Extra 1 (trilingual): Chinese needed a real fix here,
+// not just more phrases. The word-count heuristics below (`words.length <=
+// 4` / `< 3`) assume whitespace-delimited words. Chinese has no spaces
+// between words at all, so ANY Chinese message — including a real, specific
+// question — normalizes to a single "word" with this splitter, and would
+// have fallen into the `words.length < 3` 'unclear' branch every time,
+// never reaching retrieval or the LLM. Han-script messages now take a
+// separate character-count-based path instead of the word-count one.
 
 import { normalize } from './match';
 
@@ -24,6 +33,14 @@ const CHITCHAT_PHRASES = [
   'lol', 'haha',
   'bye', 'goodbye', 'see ya', 'see you', 'cya',
 ];
+
+// Chinese greetings/chitchat are matched by exact standalone token only
+// (no "starts with, followed by more content" rule like the Latin-script
+// list below) — CJK has no space to mark where the filler word ends and a
+// real question begins, so only a short, single-token message can be
+// classified this way with any confidence.
+const GREETING_PHRASES_ZH = new Set(['你好', '嗨', '哈喽', '早安', '午安', '晚安', '早上好', '下午好', '晚上好']);
+const CHITCHAT_PHRASES_ZH = new Set(['谢谢', '谢了', '多谢', '感谢', '好的', '好', '可以', '再见', '拜拜', '拜']);
 
 /** True if `normalized` IS one of `phrases`, or starts with one followed by more filler (e.g. "hi there"). */
 function matchesAnyPhrase(normalized: string, phrases: string[]): boolean {
@@ -45,6 +62,17 @@ function matchesAnyPhrase(normalized: string, phrases: string[]): boolean {
 export function classifyIntent(message: string): Intent {
   const normalized = normalize(message);
   if (!normalized) return 'unclear';
+
+  if (/\p{Script=Han}/u.test(normalized)) {
+    if (GREETING_PHRASES_ZH.has(normalized)) return 'greeting';
+    if (CHITCHAT_PHRASES_ZH.has(normalized)) return 'chitchat';
+    // Character count, not word count — see the file header. Chinese is
+    // information-dense per character, so a much lower bar than the 3-word
+    // English/BM one is the right equivalent for "too short to be a real
+    // question" (e.g. a bare "嗯" or "？" with punctuation stripped).
+    const charCount = normalized.replace(/\s/g, '').length;
+    return charCount < 3 ? 'unclear' : 'question';
+  }
 
   const words = normalized.split(' ').filter(Boolean);
 

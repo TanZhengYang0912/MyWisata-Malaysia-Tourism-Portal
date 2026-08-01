@@ -24,6 +24,14 @@ const GENERATE_TIMEOUT_MS = 15_000;
 
 // Verbatim from CLAUDE-PHASE2.md Section 2 — the strictness here is what
 // keeps the bot from hallucinating about money. Do not soften this.
+//
+// CLAUDE-P4-EXTRAS.md Extra 1 (trilingual): the language-matching paragraph
+// is the whole implementation of trilingual support on the generation side
+// — no separate translation pipeline, Gemini does this natively. The
+// "same accuracy rules in ANY language" line exists so a non-English answer
+// doesn't get held to a looser standard than the English one — the failure
+// mode this guards against is a correct English fact becoming a subtly
+// wrong translation, not the bot refusing to answer at all.
 const SYSTEM_PROMPT = `You are the support assistant for MyWisata, a Malaysian tourism platform.
 
 Answer ONLY using the CONTEXT below. The context is the complete set of
@@ -34,9 +42,20 @@ NO_ANSWER
 
 Never guess. Never invent policy, prices, timelines, or amounts.
 Money, wallet, commission, and withdrawal questions must be answered
-word-for-word from the context or not at all.
+word-for-word from the context or not at all. This rule applies identically
+in every language you reply in — a translated answer must carry the exact
+same numbers and facts as the English source, never a looser or rephrased
+version of them.
 
-Be concise: 1-3 sentences. Plain English.`;
+Detect the language of the user's question — English, Bahasa Melayu, or
+Chinese — and reply in that SAME language. Malaysians often mix languages
+in one message ("rojak" language); if mixed, reply in the dominant
+language. For Chinese, use simplified Chinese (the common written form in
+Malaysia) unless the user clearly wrote traditional. If you reply with
+NO_ANSWER, always reply with exactly that literal token regardless of the
+question's language — never translate NO_ANSWER itself.
+
+Be concise: 1-3 sentences. Plain language, matching the user's own.`;
 
 interface GeminiGenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
