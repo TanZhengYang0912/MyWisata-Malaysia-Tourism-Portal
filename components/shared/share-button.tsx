@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
+import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
 
 export type ShareType = "product" | "vendor" | "outlet" | "recommendation";
 
@@ -291,6 +292,11 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
             <ImageDown size={18} />
           </Button>
         )}
+        {/* CLAUDE-P4-EXTRAS-2.md Extra 4: reuses buildShareUrl() as-is —
+            same eligibility check, same URL a click/copy would produce, so
+            an ineligible user's QR encodes the plain (non-affiliate) URL
+            exactly like the share button already does. */}
+        <AffiliateQrCode resolveUrl={buildShareUrl} label={title} variant="icon" />
       </div>
       {status === "shared" && <p className="text-xs text-primary">Shared</p>}
       {status === "copied" && <p className="text-xs text-primary">Link copied</p>}

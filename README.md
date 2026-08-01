@@ -572,6 +572,59 @@ notifications just needed to start showing up in it.
   test instead of investigating further; flagging since it'll trip up the
   next person who reaches for that specific product in a demo.
 
+### Beyond spec, batch 2: P4 extras (`CLAUDE-P4-EXTRAS-2.md`)
+
+**Extra 4 — QR code for affiliate links, done.** No new tracking path — the
+QR just encodes the exact same `/r/[code]/[slug]` (or plain, no-code) URL
+the share button already produces, so a scan hits the real attribution
+redirect unchanged.
+
+- Added one dependency: `qrcode` (+ `@types/qrcode`) — checked
+  `package.json` first, nothing QR-related existed. Picked the plain
+  `qrcode` package over `qrcode.react` specifically to avoid any React
+  19 peer-dependency risk (`qrcode` has zero React dependency; installed
+  clean, no `--force`/`--legacy-peer-deps` needed).
+- `components/shared/affiliate-qr-code.tsx` (new) — one reusable component,
+  three trigger variants (`text` for the dashboard, `icon` to match
+  `ShareButton`'s large circular icon row, `compact` to match its small
+  grid-card icon), a modal with the rendered QR (`<canvas>` via
+  `QRCode.toCanvas`) and a **Download PNG** button
+  (`canvas.toDataURL('image/png')`).
+- **`resolveUrl` is a function, not a string** — called lazily, only when
+  the modal actually opens. On `ShareButton` this is passed as
+  `buildShareUrl` **directly, the exact same function** the Share/Copy
+  actions already use — not a reimplementation, so the QR is *guaranteed*
+  to encode the identical URL (same eligibility check, same
+  `/api/affiliate/link` call, same slug resolution) with zero risk of the
+  two ever disagreeing.
+- Wired into two places: the affiliate dashboard's "My link" row (the
+  generic, no-slug "my code" QR, next to Copy) and `ShareButton` itself (a
+  per-product QR next to the existing Share/Share-as-image icons) — the
+  "optional nice touch" from the extras doc, essentially free once the
+  component existed.
+- **Live-verified, real round-trip, not just a code read**: generated a QR
+  with the same `qrcode` library call the component uses, for both a real
+  dashboard URL (`/r/AF-V2F8FR`) and a real per-product URL
+  (`/r/AF-V2F8FR/penang-national-park-monkey-beach-trek`) fetched live from
+  Alice's own session — then **decoded** each PNG with `jsqr` (installed
+  `--no-save`, confirmed via `git status`/`grep` that neither package.json
+  nor package-lock.json picked it up) and confirmed the decoded text
+  matches the original URL exactly, both times. Then hit the decoded
+  per-product URL with a **fresh, cookie-free session** (simulating an
+  actual phone scan) and confirmed the real behaviour: `302` to
+  `/guest/activity/[id]` for the correct product, `mw_ref` **and**
+  `mw_visitor` cookies set, and a real row written to `affiliate_clicks`
+  correctly linked to Alice's link and that exact product — i.e. the QR
+  doesn't just *look* right, decoding and following it produces a real,
+  correctly-attributed click.
+- **Ineligibility guardrail live-verified** too: signed in as an
+  `email_verified`-tier demo account (below `AFFILIATE_BASIC`) and
+  confirmed `POST /api/affiliate/link` returns `403 TIER_INSUFFICIENT` —
+  the exact response `buildShareUrl()`'s fallback already handles (on top
+  of its own client-side `isVerified` short-circuit that skips the API call
+  entirely) — so that user's QR encodes the plain, code-free URL, same as
+  their Share button already does.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

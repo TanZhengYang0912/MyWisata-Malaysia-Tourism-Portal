@@ -13,6 +13,7 @@ import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-cha
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
+import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -232,9 +233,17 @@ export default function AffiliateDashboardPage() {
           )}
         </div>
         {stats.affiliateCode ? (
-          <Button size="sm" onClick={copyLink} className="shrink-0">
-            <Copy size={14} /> {copied ? "Copied" : "Copy"}
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={copyLink}>
+              <Copy size={14} /> {copied ? "Copied" : "Copy"}
+            </Button>
+            {/* CLAUDE-P4-EXTRAS-2.md Extra 4: the generic "my code" QR — no
+                slug, same URL the Copy button copies. Eligibility is already
+                enforced by this page's own gate above (an ineligible user
+                never reaches this section), unlike the per-product QR on
+                ShareButton, which has to resolve eligibility itself. */}
+            <AffiliateQrCode resolveUrl={() => stats.affiliateUrl!} label="My affiliate link" />
+          </div>
         ) : (
           <Button size="sm" onClick={generateLink} disabled={generating} className="shrink-0">
             {generating ? "Generating…" : "Generate my link"}
