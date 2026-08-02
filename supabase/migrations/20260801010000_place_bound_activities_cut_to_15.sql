@@ -263,10 +263,17 @@ DELETE FROM products WHERE id IN (SELECT doomed FROM repoint);
 
 -- ── 9. Outlets left with nothing to sell ────────────────────────────────────
 -- Deactivated, not deleted: order_items.outlet_id still references them.
+--
+-- The outlet_offers clause is NOT optional. A shared product carries
+-- products.outlet_id = NULL and reaches its outlets only through outlet_offers
+-- — every food product is modelled that way. Testing products.outlet_id alone
+-- reads those outlets as empty and switches off the entire Food catalogue;
+-- 20260801030000 exists to undo exactly that.
 UPDATE outlets o
    SET status = 'inactive'
  WHERE o.status = 'active'
-   AND NOT EXISTS (SELECT 1 FROM products p WHERE p.outlet_id = o.id);
+   AND NOT EXISTS (SELECT 1 FROM products p WHERE p.outlet_id = o.id)
+   AND NOT EXISTS (SELECT 1 FROM outlet_offers oo WHERE oo.outlet_id = o.id AND oo.status = 'active');
 
 
 -- ── 10. Post-conditions ─────────────────────────────────────────────────────
