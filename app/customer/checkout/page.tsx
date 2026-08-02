@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle, CreditCard, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -95,7 +96,7 @@ export default function CheckoutPage() {
   const walletInsufficient = walletSummaryLoaded && walletSpendableSen < totalSen;
 
   if (selectedItems.length === 0) {
-    return <EmptyState title="Nothing to check out" description="Select at least one item in your cart to continue." />;
+    return <EmptyState title="Nothing to check out" description="Select at least one item in your cart to continue." action={<Link href="/customer/cart" className="font-semibold text-primary hover:underline">Back to cart</Link>} />;
   }
 
   async function handlePay(shouldSucceed: boolean) {
@@ -137,7 +138,15 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
+      <Link href="/customer/cart" className="mb-5 inline-flex items-center text-sm font-semibold text-primary hover:underline">← Back to cart</Link>
       <h1 className="text-2xl font-bold text-foreground mb-2 font-[family-name:var(--font-display)]">Checkout</h1>
+      <nav aria-label="Checkout progress" className="mb-5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <Link href="/customer/cart" className="text-primary hover:underline">Cart</Link>
+        <span aria-hidden="true">→</span>
+        <span className="text-foreground" aria-current="step">Checkout</span>
+        <span aria-hidden="true">→</span>
+        <span>Confirmation</span>
+      </nav>
       <p className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
         <ShieldCheck size={13} /> Stripe uses the existing test-mode integration. Other methods remain demo flows until their provider is connected.
       </p>

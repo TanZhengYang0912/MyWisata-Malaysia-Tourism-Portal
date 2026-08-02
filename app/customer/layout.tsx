@@ -188,7 +188,21 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             </button>
 
             {accountMenuOpen && (
-              <div role="menu" aria-label="Account menu" className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
+              // max-height derived from the real, known layout numbers, not a
+              // guessed px: the nav row is h-16 (4rem) and this menu opens
+              // top-[calc(100%+0.75rem)] below it, so 4.75rem is exactly how
+              // far down the viewport this menu's own top edge sits — plus a
+              // little breathing room so it doesn't touch the viewport edge.
+              // overflow-y-auto only shows a scrollbar once content actually
+              // exceeds that height; overflow-x-hidden keeps the rounded
+              // corners clean now that overflow-hidden (which clipped both
+              // axes but allowed no scrolling at all) is gone.
+              <div
+                role="menu"
+                aria-label="Account menu"
+                className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-white p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                style={{ maxHeight: "calc(100vh - 5.75rem)" }}
+              >
                 <div className="border-b border-border px-3 pb-3 pt-2">
                   <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser.email}</p>

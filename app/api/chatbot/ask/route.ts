@@ -98,5 +98,7 @@ export async function POST(request: Request) {
   // the honest fallback) tells the widget which feedback flow to render —
   // "was this helpful?" vs going straight to the ticket offer. messageId
   // lets the widget attach feedback/ticket state to this specific reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id });
+  // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
+  // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language });
 }

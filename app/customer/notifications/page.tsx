@@ -1,6 +1,7 @@
 "use client";
 
 import { NotificationCenter } from "@/components/shared/notification-center";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
 const filters = [
   { value: "all", label: "All" },
@@ -13,13 +14,13 @@ const filters = [
 
 export default function NotificationsPage() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <div className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Account</p>
-        <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">Notifications</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Updates about your bookings, wallet and account.</p>
-      </div>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Account"
+        title="Notifications"
+        description="Updates about your bookings, wallet and account."
+      />
       <NotificationCenter scope="customer" categories={filters} pageSize={15} />
-    </div>
+    </CustomerPageShell>
   );
 }

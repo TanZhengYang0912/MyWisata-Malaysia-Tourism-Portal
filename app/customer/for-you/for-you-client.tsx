@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, MapPin } from 'lucide-react';
-import { toRM } from '@/lib/money';
+import { ActivityCard } from '@/components/customer/activity-card';
 import type { ComputedActivity } from '@/backend/core/types';
 
 type Card = { activity: ComputedActivity; score?: number; whyItFits?: string };
@@ -45,7 +45,7 @@ export default function ForYouClient() {
     {error && <p className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     {result?.locationSource === 'city' && <p className="mt-4 text-xs text-muted-foreground">Showing distances from your profile city.</p>}
     {!personalized && !loading && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">Complete your profile and travel survey to unlock personalised suggestions. <Link href="/customer/profile" className="font-semibold text-primary">Continue verification →</Link></p>}
-    {loading ? <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={18} /> Loading recommendations…</div> : <div className="mt-8 grid gap-5 md:grid-cols-3">{result?.activities.map(({ activity, whyItFits }) => <article key={activity.id} className="overflow-hidden rounded-2xl border border-border bg-card"><img src={activity.image} alt="" className="h-44 w-full object-cover" /><div className="p-4"><p className="text-xs font-semibold text-primary">{activity.category}</p><h2 className="mt-1 font-bold text-foreground">{activity.name}</h2><p className="mt-1 text-sm text-muted-foreground">{activity.outlet.city}, {activity.outlet.state}</p><p className="mt-2 text-sm font-semibold">{toRM(activity.price)}</p>{personalized && <div className="mt-3 rounded-xl bg-primary p-3 text-sm text-white"><strong>Why it fits you</strong><p className="mt-1 text-primary-foreground/90">{whyItFits}</p></div>}</div></article>)}</div>}
+    {loading ? <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={18} /> Loading recommendations…</div> : <div className="mt-8 grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">{result?.activities.map(({ activity, whyItFits }) => <ActivityCard key={activity.id} activity={activity} recommendationReason={personalized ? whyItFits : undefined} returnTo="/customer/for-you" />)}</div>}
     <Link href="/customer/profile#preferences" className="mt-8 inline-block font-semibold text-primary">Edit preferences →</Link>
   </div>;
 }

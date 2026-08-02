@@ -53,6 +53,18 @@ describe("discovery category contract", () => {
     expect(getDiscoverySearchFilter(null)).toEqual({});
   });
 
+  it("maps every customer category to its exact search predicate", () => {
+    expect(Object.fromEntries(
+      DISCOVERY_CATEGORIES.map(({ slug }) => [slug, getDiscoverySearchFilter(slug)]),
+    )).toEqual({
+      food: { categorySlug: "food" },
+      activity: { categorySlug: "activity" },
+      accommodation: { categorySlug: "accommodation" },
+      retail: { categorySlug: "retail" },
+      hidden_gem: { hiddenGemOnly: true },
+    });
+  });
+
   it("normalizes legacy database rows into one option per real category", () => {
     expect(normalizeCategoryRows([
       { id: "food-id", name: "Food & Dining", slug: "food" },

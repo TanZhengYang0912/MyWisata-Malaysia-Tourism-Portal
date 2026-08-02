@@ -12,7 +12,9 @@ export interface OutletRendererOutlet {
 export interface OutletRendererProduct {
   id: string;
   name: string;
+  description?: string | null;
   base_price: number;
+  requires_booking?: boolean;
   cover_url?: string | null;
 }
 

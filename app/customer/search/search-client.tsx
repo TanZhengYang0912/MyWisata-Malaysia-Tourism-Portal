@@ -218,9 +218,9 @@ export function SearchClient({
           <p className="mb-4 text-sm text-muted-foreground">
             Showing <span className="font-bold text-foreground">{pageStart + 1}-{Math.min(pageStart + RESULTS_PER_PAGE, results.length)}</span> of <span className="font-bold text-foreground">{results.length}</span> results
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+          <div className="grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
             {visibleResults.map((a) => (
-              <ActivityCard key={a.id} activity={a} />
+              <ActivityCard key={a.id} activity={a} returnTo="/customer/search" />
             ))}
           </div>
           {totalPages > 1 && (

@@ -372,6 +372,481 @@ moving is the correct, complete signal.
   explanation). The money is real the moment it's credited; the dashboard
   label just hasn't caught up to that yet.
 
+### Beyond spec: P4 extras (`CLAUDE-P4-EXTRAS.md`)
+
+**Extra 1 — Trilingual chatbot (English / Bahasa Melayu / Chinese), done.**
+No separate translation service — Gemini handles all three natively; this is
+prompt + detection work, not a translation pipeline.
+
+- `lib/chatbot/generate.ts`'s system prompt now instructs the model to
+  detect the question's language (EN/BM/Chinese, simplified) and reply in
+  the same one, including for "rojak" (mixed-language) messages, with the
+  same "never invent a number" rule stated explicitly per language — the
+  real risk isn't the bot refusing to answer, it's a correct English fact
+  becoming a subtly wrong translation. Also pins `NO_ANSWER` to stay literal
+  and untranslated, since `generate.ts` checks for that exact token.
+- `lib/chatbot/language.ts` (new) — a lightweight, pure `detectLanguage()`
+  heuristic (Han-script check for Chinese, a BM marker-word list for Malay,
+  else English). Used only to pick which language's *fixed* strings to show
+  (fallback/greeting/chitchat/unclear in `answer.ts`, and the feedback-flow
+  chrome in `chatbot-widget.tsx`) — never to translate anything itself, and
+  never to gate what the LLM does. `AnswerResult.language` and the
+  `/api/chatbot/ask` response's `language` field carry this through so the
+  widget can localize the "Was this helpful?" / ticket-offer UI next to
+  each specific reply.
+- `lib/chatbot/strings.ts` (new) — the EN/BM/Chinese strings map the extras
+  doc asked for, kept in one place rather than scattered inline.
+- **Real bug found and fixed, not just a translation gap:**
+  `lib/chatbot/intent.ts`'s pre-LLM intent gate classified messages as
+  greeting/chitchat/question/unclear by splitting on whitespace and counting
+  words. Chinese has no spaces between words at all, so *every* Chinese
+  message — including a real, specific question — normalized to a single
+  "word" and fell into the `words.length < 3` → `'unclear'` branch every
+  time. Without this fix, no Chinese question would ever have reached
+  retrieval or the LLM; the bot would always ask "could you tell me more?"
+  in response to any real Chinese question. Han-script messages now take a
+  separate character-count-based path instead. Regression-tested in
+  `lib/chatbot/__tests__/intent.test.ts`.
+- KB retrieval was **not** translated or given a second, English-only
+  retrieval step. Live-tested cross-lingual retrieval quality directly
+  against the real Gemini embedding + `match_kb_documents` RPC before
+  deciding: BM and Chinese phrasings of the same question retrieved the
+  correct KB doc at comparable or even *higher* cosine similarity than the
+  English phrasing in every case tested (e.g. the withdrawal-timeline
+  question: EN 0.592, BM 0.685, ZH 0.614 against the live
+  `chatbot.similarity_threshold = 0.55`). Per the extras doc's own
+  instruction ("only do this if plain non-English retrieval underperforms
+  in testing"), the simplest option (English KB, multilingual embeddings)
+  was kept.
+- **Live-verified**, real dev server + real Gemini key, all per the extras
+  doc's own checklist:
+  - BM ("macam mana nak keluarkan duit saya?"), Chinese ("我要怎么提现？"),
+    and English equivalents of an *answerable* KB question all returned a
+    correctly localized answer.
+  - **Cross-language fact-consistency check** (the one the extras doc calls
+    out as the check that "catches a bad translation silently changing a
+    number"): the same withdrawal-timeline question in all three languages
+    all stated the same **24-48 hour** approval window (BM/Chinese also
+    surfaced the RM500 dual-approval and 7-day clearing facts from the same
+    KB doc) — no drift between languages.
+  - Rojak ("boleh tak I withdraw my earnings?") → correctly treated as
+    dominant-language BM by both the intent gate and the fixed-string
+    picker.
+  - Off-topic questions in all three languages → localized fallback +
+    escalation offer, never a guess.
+  - Greetings/chitchat ("hi"/"selamat pagi"/"你好", "thanks"/"terima
+    kasih"/"谢谢") → localized canned replies, no LLM call.
+  - **One live-caught bug, fixed before landing:** `detectLanguage()`'s BM
+    marker list had no overlap with "selamat pagi" (a BM greeting
+    `intent.ts` already recognized) — it was silently defaulting to English
+    strings for that one greeting. Added `selamat`/`pagi`/`petang`/`malam`/
+    `hai` to the marker list; regression-tested.
+- **Not attempted / explicitly out of scope**, matching the extras doc: a
+  real translation pipeline, translating the KB itself, or a general
+  similarity-threshold retune (the KB genuinely has no "how do I withdraw"
+  *procedure* doc — only a *timeline* one — so that specific phrasing
+  correctly falls back to "I don't know" in all three languages; that's a
+  content gap, not a language or retrieval bug, confirmed unaffected by
+  language during live testing).
+
+**Extra 2 — Fraud analytics dashboard (trends, not just flags), done.**
+Read-only aggregation over the existing `affiliate_fraud_flags` table — no
+new fraud *detection* logic, per the extras doc's own guardrail. Extends
+`/admin/affiliate` (a new "Fraud analytics" section, not a separate tab —
+the page was already the natural home for it).
+
+- `lib/affiliate/fraud-analytics.ts` (new) — `getFraudAnalytics(service,
+  range)`, `range` one of `7d`/`30d`/`all`. Returns a zero-filled per-day
+  time series, a fixed-category type breakdown (all 7 `flag_type`s, so a
+  type with zero hits still shows a zero bar — itself useful signal),
+  a severity breakdown, headline stats, and the top 5 flagged affiliates by
+  count. `all` is still bounded (capped at 90 days back from the earliest
+  flag) so the query and chart can't grow unbounded.
+- **Headline stats reuse `getFraudCounters()`'s existing metrics
+  (self-referrals blocked, duplicate payouts prevented) but scope them to
+  the selected range**, and add two new ones: open-vs-reviewed ratio, and
+  **links auto-disabled** — this last one reads `audit_logs` for
+  `action='affiliate.link.disabled' AND actor_id IS NULL`, which is exactly
+  how `lib/affiliate/fraud.ts::autoDisableLink()` already distinguishes an
+  automatic fraud-triggered disable (`actor_id: null`) from an admin's
+  manual "Confirm & disable" click (`actor_id`: the admin's id) — a real,
+  precise signal that already existed in the data, not a new one invented
+  for this dashboard.
+- `GET /api/admin/affiliate/fraud-analytics?range=` (new) — same
+  `isSuperAdminOrApprover` gate, checked server-side, as every other route
+  on this admin page.
+- `components/shared/fraud-trend-chart.tsx` / `fraud-breakdown-charts.tsx`
+  (new) — recharts (already installed, per the extras doc's instruction to
+  use it): an area chart for the time series, a horizontal bar chart for
+  the type breakdown (long labels), a small donut for severity. Themed with
+  the same CSS-variable approach as the existing
+  `components/customer/affiliate-clicks-chart.tsx` (`var(--primary)`,
+  `var(--destructive)`, etc.) so it matches dark mode, rather than the
+  fixed-hex approach some other charts in the repo use.
+- A 7d/30d/all-time range toggle sits above the section; switching it
+  re-fetches. Reviewing a flag or running the fraud sweep also refreshes
+  this section (not just the existing raw flag list), so the two stay in
+  sync.
+- **Live-verified against the real DB**: every number the API returned
+  (`totalFlags: 11`, `selfReferralsBlocked: 5`, `duplicatePayoutsPrevented:
+  0`, `openFlags/reviewedFlags/dismissedFlags: 7/1/3`, `linksAutoDisabled:
+  2`, top-flagged affiliate `Customer Alice` with 10 flags) was
+  cross-checked against raw `COUNT`/`SELECT` queries on
+  `affiliate_fraud_flags` and `audit_logs` run independently against the
+  same live project — exact match on every field, including the
+  auto-disabled-vs-admin-disabled distinction (2 automatic, 1 manual, out
+  of 3 total disable events on the same link).
+- **Known limitation of this verification pass**: `AdminAffiliatePage` is a
+  `"use client"` component with client-side role gating, so its rendered
+  DOM isn't present in a plain `curl` fetch of `/admin/affiliate` (confirmed
+  HTTP 200, no server error, but the page's own text isn't in that raw
+  HTML — it renders after hydration). The data layer (API route → real DB)
+  is fully verified above; the component's actual on-screen rendering was
+  checked via typecheck + lint + code review only, not a real browser.
+  Flagging rather than silently claiming full visual verification.
+
+**Extra 3 — Commission notifications, done.** Reuses the existing
+`notifications` table — no new table, no new UI. `components/shared/notification-bell.tsx`
+already existed, was already mounted in `app/customer/layout.tsx`, and
+already had a "Recommendations & Affiliate" category filter tab
+(`recommendations_affiliate`) sitting unused for this module — these
+notifications just needed to start showing up in it.
+
+- **Schema note**: the extras doc's shorthand for the table's shape
+  (`type, user_id, title, body, link, read, created_at`) doesn't quite match
+  the real column — it's `read_at TIMESTAMPTZ`, not a `read` boolean — and
+  the live table has grown three more columns since `001_initial_schema.sql`
+  (`event_key`, `category`, `metadata`, added by
+  `079_wallet_hold_resume_notifications.sql` / `080_vendor_notifications.sql`).
+  Read the real, current shape rather than the doc's summary, per Rule Zero.
+- `lib/affiliate/notifications.ts` (new) — `notifyCommissionEarned()`,
+  `notifyCommissionCleared()`, `notifyTierUp()`. Each is its own
+  fire-and-forget function with its own internal try/catch (never throws) —
+  deliberately not relying on the caller's own try/catch alone, since
+  `clearing.ts`'s per-attribution loop already has one that feeds a
+  `result.errors` list treated as a **real** clearing failure; a
+  notification hiccup must never show up there.
+- **Idempotency reuses the established pattern**, not a new one: every
+  insert sets a unique `event_key` and upserts with
+  `{ onConflict: 'event_key', ignoreDuplicates: true }` — the exact same
+  mechanism `lib/wallet/approver-notifications.ts` already uses against the
+  same `notifications_event_key_unique` index. In practice each call site is
+  *already* idempotent on its own too (attribution.ts's `UNIQUE(order_id)`
+  guard; clearing.ts's atomic `pending`→`confirmed` claim only ever succeeds
+  once per attribution) — `event_key` is what directly protects against a
+  double-notify, per the extras doc's guardrail, rather than relying on that
+  indirectly.
+- **Commission earned** — fired from `onOrderPaid()`
+  (`lib/affiliate/attribution.ts`), right after a new attribution row is
+  created, before the `mw_ref` cookie is cleared. Deep-links to
+  `/customer/affiliate`.
+- **Commission cleared** — fired from `clearMaturedCommissions()`
+  (`lib/affiliate/clearing.ts`), right after `creditAffiliateCommission()`
+  succeeds for that attribution. Deep-links to `/customer/wallet`.
+- **Tier up** — fired from the same clearing step: `getTierForUser()` is
+  read once *before* the atomic claim (tier is a function of lifetime
+  CONFIRMED referrals, and this attribution is still `pending` at that
+  point) and once *after* the credit succeeds; a `tierName` change between
+  the two fires the notification. Referral count only ever increases in
+  this flow, so any change here is necessarily an upgrade. Deep-links to
+  `/customer/affiliate`.
+- **Live-verified end to end**, real dev server + real DB, matching the
+  extras doc's own checklist exactly: clicked a live affiliate link as one
+  demo buyer, simulated a purchase → a real `affiliate_commission_earned`
+  row appeared for the referrer (RM 5.12, matching the attribution exactly)
+  → force-cleared it → a real `affiliate_commission_cleared` row appeared,
+  plus (after temporarily lowering the "top" tier's threshold from 8 to 5
+  confirmed referrals — a reversible `commission_rules` scratch edit,
+  reverted immediately after) an `affiliate_tier_up` row correctly naming
+  "top" and the new 5% rate → ran force-clear a **second** time → zero new
+  rows, `notifications` count for that user unchanged at exactly 3 → fetched
+  `GET /api/notifications?category=recommendations_affiliate` as that same
+  user (the exact request `NotificationBell` makes) and confirmed all three
+  rows come back through the real consuming API, not just the raw table.
+- **Unrelated pre-existing bug found while picking a test product, not
+  fixed here**: `demo-022-cendol-gula-melaka` has `outlet_id: null`
+  (orphaned seed data, same shape as the `demo-020-chicken-rice-ball-set`
+  bug noted earlier in this file) — `POST /api/dev/simulate-purchase`
+  fails with a `NOT NULL` constraint violation on `order_items.outlet_id`
+  for it. Switched to a different, correctly-linked product for the live
+  test instead of investigating further; flagging since it'll trip up the
+  next person who reaches for that specific product in a demo.
+
+### Beyond spec, batch 2: P4 extras (`CLAUDE-P4-EXTRAS-2.md`)
+
+**Extra 4 — QR code for affiliate links, done.** No new tracking path — the
+QR just encodes the exact same `/r/[code]/[slug]` (or plain, no-code) URL
+the share button already produces, so a scan hits the real attribution
+redirect unchanged.
+
+- Added one dependency: `qrcode` (+ `@types/qrcode`) — checked
+  `package.json` first, nothing QR-related existed. Picked the plain
+  `qrcode` package over `qrcode.react` specifically to avoid any React
+  19 peer-dependency risk (`qrcode` has zero React dependency; installed
+  clean, no `--force`/`--legacy-peer-deps` needed).
+- `components/shared/affiliate-qr-code.tsx` (new) — one reusable component,
+  three trigger variants (`text` for the dashboard, `icon` to match
+  `ShareButton`'s large circular icon row, `compact` to match its small
+  grid-card icon), a modal with the rendered QR (`<canvas>` via
+  `QRCode.toCanvas`) and a **Download PNG** button
+  (`canvas.toDataURL('image/png')`).
+- **`resolveUrl` is a function, not a string** — called lazily, only when
+  the modal actually opens. On `ShareButton` this is passed as
+  `buildShareUrl` **directly, the exact same function** the Share/Copy
+  actions already use — not a reimplementation, so the QR is *guaranteed*
+  to encode the identical URL (same eligibility check, same
+  `/api/affiliate/link` call, same slug resolution) with zero risk of the
+  two ever disagreeing.
+- Wired into two places: the affiliate dashboard's "My link" row (the
+  generic, no-slug "my code" QR, next to Copy) and `ShareButton` itself (a
+  per-product QR next to the existing Share/Share-as-image icons) — the
+  "optional nice touch" from the extras doc, essentially free once the
+  component existed.
+- **Live-verified, real round-trip, not just a code read**: generated a QR
+  with the same `qrcode` library call the component uses, for both a real
+  dashboard URL (`/r/AF-V2F8FR`) and a real per-product URL
+  (`/r/AF-V2F8FR/penang-national-park-monkey-beach-trek`) fetched live from
+  Alice's own session — then **decoded** each PNG with `jsqr` (installed
+  `--no-save`, confirmed via `git status`/`grep` that neither package.json
+  nor package-lock.json picked it up) and confirmed the decoded text
+  matches the original URL exactly, both times. Then hit the decoded
+  per-product URL with a **fresh, cookie-free session** (simulating an
+  actual phone scan) and confirmed the real behaviour: `302` to
+  `/guest/activity/[id]` for the correct product, `mw_ref` **and**
+  `mw_visitor` cookies set, and a real row written to `affiliate_clicks`
+  correctly linked to Alice's link and that exact product — i.e. the QR
+  doesn't just *look* right, decoding and following it produces a real,
+  correctly-attributed click.
+- **Ineligibility guardrail live-verified** too: signed in as an
+  `email_verified`-tier demo account (below `AFFILIATE_BASIC`) and
+  confirmed `POST /api/affiliate/link` returns `403 TIER_INSUFFICIENT` —
+  the exact response `buildShareUrl()`'s fallback already handles (on top
+  of its own client-side `isVerified` short-circuit that skips the API call
+  entirely) — so that user's QR encodes the plain, code-free URL, same as
+  their Share button already does.
+
+**Extra 6 — Affiliate earnings CSV export, done.** `GET /api/affiliate/earnings-export?range=month|year|all`
+returns a downloadable CSV of the current user's own commission history —
+own data only, enforced by construction (userId always comes from the
+authenticated session; there's no request parameter for it at all).
+
+- `lib/affiliate/earnings-export.ts` (new) — deliberately **not** a reuse of
+  `getAffiliateStats()` despite the overlap: that function has no
+  date-range filtering (applied here at the query level, not client-side)
+  and returns a lot of aggregate data (`byProduct`, `clicksByDay`, `funnel`,
+  `tier`) this export has no use for. Reuses the same building blocks
+  instead — `resolveProductNames()`, and the same service-role `orders`
+  lookup `stats.ts` already needs for the identical `orders_own_or_admin`
+  RLS gap (an affiliate isn't the buyer/admin/vendor, so their own
+  cookie-aware client can't read the order total otherwise).
+- **CSV escaping reuses `lib/admin/csv.ts::csvRow`** (another member's
+  file, a small leaf utility) per the extras doc's own instruction — no
+  hand-rolled escaping.
+- **Uses the rate stamped on each attribution row** (`commission_rate`),
+  never recomputed from the affiliate's current tier — a past commission
+  shows the rate it was actually paid at, same principle
+  `lib/affiliate/attribution.ts` already documents for why the rate is
+  stamped once and never revisited.
+- `GET` route returns a raw `text/csv` `Response` with `Content-Disposition:
+  attachment`, not the repo's `apiOk()` JSON envelope — same class of
+  exception as `app/api/share-image/[type]/[id]/route.tsx`'s raw
+  `ImageResponse`: a file download can't be wrapped in a JSON envelope and
+  still trigger a browser save dialog. Error paths still use `apiFail()`.
+  UTF-8 BOM prefixed so Excel opens non-ASCII product names correctly.
+- A **"Download earnings (CSV)"** button + range selector (This month /
+  This year / All time) sits in the dashboard's "Earnings history" header.
+- **Real, significant finding while getting the "Cleared Date" column
+  right, flagged not fixed**: `affiliate_attributions` carries **two
+  independent "when did this clear" timestamps from two different clearing
+  mechanisms that both still exist**. `lib/affiliate/clearing.ts::clearMaturedCommissions()`
+  — the one this module's own docs (CLAUDE.md, CLAUDE-PHASE2.md) describe
+  as authoritative — sets `cleared_at`. But migrations `014`–`016` also
+  built an **earlier, separate DB-level `confirm_pending_earnings()` RPC**
+  that sets `confirmed_at` instead, gated on a `hold_until` column the
+  current `onOrderPaid()` never populates for new rows — **and that RPC is
+  still live**, still wired to a daily Vercel Cron
+  (`app/api/cron/clear-earnings`) and an admin route
+  (`app/api/admin/clear-earnings`), neither of which carries any P4/Phase-2
+  attribution comment, suggesting a different author or an earlier,
+  superseded design pass that was never removed. Live-confirmed against
+  real data: structurally a no-op for anything created after Phase 2 (no
+  new row ever gets a `hold_until`), but at least one pre-Phase-2 row
+  (`status='confirmed'`, `confirmed_at` set, `cleared_at` NULL) still
+  exists from before the switch — reading `cleared_at` alone would have
+  shown a **blank Cleared Date for a row that's genuinely confirmed**, on a
+  document whose entire purpose is financial accuracy. This export falls
+  back to `confirmed_at` when `cleared_at` is null (live-verified: that
+  exact row's date changed from blank to `2026-07-13` after the fix). **Not
+  attempted here**: reconciling or retiring either clearing mechanism —
+  well outside a CSV export's scope, and risky to touch without whoever
+  owns it understanding both paths first. Worth owning deliberately.
+- **Live-verified, real DB, matching the extras doc's checklist exactly**:
+  downloaded Alice's export (10 rows) and independently summed the
+  commission column — **RM 12.36**, exactly matching the same sum computed
+  from `GET /api/affiliate/stats`'s `commissions` array (same 10 rows).
+  Temporarily renamed a real referred product to
+  `Siti Khadijah Market, Wau Craft & "Souvenirs"` (comma **and** an
+  embedded quote — reverted immediately after) and confirmed the exported
+  cell came back correctly RFC 4180-quoted:
+  `"Siti Khadijah Market, Wau Craft & ""Souvenirs"""`. `range=month`
+  (today's 1 August, all of Alice's history is July) correctly returned
+  zero data rows; `range=year` correctly returned all 10. Signed in as a
+  second affiliate (Dave) and confirmed his export shows only his own 5
+  rows — none of Alice's — proving the per-session scoping without needing
+  a spoofable parameter to test against. An unauthenticated request
+  correctly gets `401 UNAUTHORIZED`.
+
+**Extra 5 — Self-improving chatbot (AI-drafted KB entries from feedback gaps), done.**
+Closes the loop `/admin/chatbot`'s existing gap views (`topUnanswered`,
+`notHelpfulAnswered` — both pre-existing, from `CLAUDE-QUICKWINS.md`/
+`CLAUDE-CHATBOT-FEEDBACK.md`) were already showing but not acting on.
+
+- `lib/chatbot/kb-draft.ts` (new) — `draftKbEntry(question, existingWeakAnswer)`.
+  Same Gemini provider/key/model as `generate.ts`, a different system
+  prompt: draft a KB title + body, but **any specific figure, deadline, or
+  policy the model doesn't actually know must become a literal
+  `[ADMIN: confirm …]` placeholder, never an invented number** — this is
+  the actual integrity guarantee, not a UI label. PII-redacted via the same
+  `redactPII()` boundary every other Gemini call in this module uses.
+- `POST /api/admin/chatbot/kb/draft` (new) — body `{ question }`, returns
+  `{ title, body }`. Before calling Gemini, it runs the question through
+  the **existing synchronous keyword matcher** (`lib/chatbot/match.ts`,
+  the same one the live bot falls back to) against the active KB — if
+  something matches, that doc's body is passed to the model as "existing
+  weak answer" context to improve on, at zero extra Gemini cost/latency;
+  for a fully-unanswered question nothing matches and the model is told
+  plainly it has no prior answer to build on.
+- **Never saves anything.** The route only returns a draft; a new
+  "AI: draft a KB answer" button on both gap lists (`app/admin/chatbot/page.tsx`)
+  prefills the **existing** KB form's title *and* body (the pre-existing
+  "Add to KB" button only ever prefilled the title — kept as-is,
+  side-by-side, for a manual title-only start). Saving still goes through
+  the untouched, already-auto-embedding `POST`/`PATCH /api/admin/chatbot/kb`
+  path — no parallel save/embed logic built, per the extras doc's own
+  instruction.
+- **Live-verified, the full loop, real dev server + real DB + real Gemini
+  key — not simulated**:
+  1. Asked the live bot *"can I get a refund if it rains heavily during my
+     outdoor tour?"* (deliberately uncovered by any seeded KB doc) →
+     `botAnswered: false`.
+  2. Confirmed it surfaced in `/admin/chatbot`'s **topUnanswered** gap list
+     via the real stats endpoint.
+  3. Called the new draft endpoint on that exact question → got back a
+     sensible title plus a body reasoning generally about weather
+     cancellations, correctly ending in
+     `[ADMIN: confirm exact weather refund and cancellation policy details]`
+     rather than inventing a refund percentage or day count.
+  4. Simulated the admin's edit-and-save (replaced the placeholder with a
+     concrete policy line) through the **existing, untouched**
+     `POST /api/admin/chatbot/kb` — confirmed the row landed in
+     `chatbot_kb_documents` with `embedded_at` set and a real 768-dimension
+     embedding vector, auto-generated inline exactly as that route's
+     existing comment describes.
+  5. Asked the bot **the exact same question again** → this time
+     `botAnswered: true`, answered from the new doc's content.
+  - Cleanup: the test KB doc was explicit throwaway verification content
+    (its own body said so), not a legitimate demo artifact worth keeping —
+    attempted a hard delete, hit a real FK constraint
+    (`chatbot_message_kb_refs_document_id_fkey`, because step 5's "ask
+    again" legitimately logged a provenance reference to it), and
+    deactivated it instead via the same `isActive: false` path the
+    "Deactivate" button already uses — the app's own design is
+    soft-delete-only for KB docs once referenced, for exactly this
+    integrity reason, so that's what was used rather than fighting it.
+
+### Vendor accounts blocked from earning affiliate commission
+
+Team decision (2026-08-01): `vendor_owner` and `outlet_manager` accounts
+cannot earn affiliate commission at all. Built and live-verified per an
+explicit plan reviewed and approved before any code was written (the team
+wanted the real schema confirmed first, given this is money/permission-
+sensitive).
+
+**Schema, confirmed before writing anything — not assumed**: there is no
+`users.role` column anywhere. `vendor_owner` = a row in `vendors` where
+`owner_id` matches; `outlet_manager` = a row in `outlet_managers` where
+`user_id` matches (enforced 1:1). A separate `user_roles`/`roles` join table
+exists and is what populates the *client-side* `currentUser.role`
+(`components/providers/auth.tsx`) — a best-effort mirror, not authoritative.
+Every server-side enforcement point below queries `vendors`/`outlet_managers`
+directly, matching `lib/vendor-authorization.ts`'s own established pattern,
+never `user_roles`.
+
+- `lib/affiliate/vendor-role-guard.ts` (new) — `getVendorIneligibleRole()`,
+  the single shared check. `vendors.status` blocks on `pending`/`approved`/
+  `suspended`; **a `rejected` vendor application does not block** — team's
+  own call, given verbatim: "A rejected vendor applicant is just a regular
+  customer... permanently barring them over a failed application is wrong."
+  `outlet_managers` blocks unconditionally (no "rejected" state exists there).
+- **The commission guard — the real enforcement** —
+  `lib/affiliate/attribution.ts::onOrderPaid()`, right after the existing
+  self-referral guard: a fresh (never cached) check on the link owner,
+  independent of `affiliate_links.is_active` — a not-yet-deactivated old
+  link still pays nothing. Blocks the attribution insert, logs a new
+  `'vendor_ineligible'` fraud flag (severity `low` — ineligible, not
+  abusive), and auto-disables the link on the spot as a free side effect.
+- **Eligibility gate** — `POST`/`GET /api/affiliate/link` both add the same
+  fresh check (403 `VENDOR_INELIGIBLE` / null respectively).
+  `lib/affiliate/verification.ts::isAffiliateEligible()` also rejects
+  `role === 'vendor_owner' | 'outlet_manager'` — explicitly documented as
+  best-effort client-side UX only (relies on the non-authoritative
+  `currentUser.role`), since the routes above and the commission guard are
+  what actually enforce this regardless of what the client believes.
+- **Deactivation — cleanup only** — folded into the existing
+  `runFraudSweep()` rather than a new admin button or hooking into P1's
+  vendor-approval flow: for every still-active link, checks the owner,
+  disables + flags on a match, deduped via the sweep's existing 24h
+  `hasRecentOpenFlag()` pattern. Rides the same schedule
+  `clearMaturedCommissions()` already runs the sweep on.
+- **Existing earnings honored** — `lib/affiliate/clearing.ts` untouched, no
+  vendor check added there at all. A pending attribution created before this
+  change clears exactly as it did before, regardless of the link owner's
+  current vendor status.
+- New migration `20260801030000_affiliate_vendor_ineligible_flag.sql` adds
+  `'vendor_ineligible'` to `affiliate_fraud_flags.flag_type`'s CHECK
+  constraint (same DROP+ADD pattern as `037_affiliate_click_cap.sql`).
+  **Could not apply this one via a one-off REST script** like every other
+  migration this session — it's DDL, and unlike INSERTs, Supabase's REST API
+  has no path to execute raw `ALTER TABLE`. No `exec_sql`-style RPC exists on
+  this project; the connected Supabase MCP tool is still pointed at an
+  unrelated project; the Supabase CLI is linked to the right project ref but
+  has no cached credentials (`LegacyProjectNotLinkedError`, no
+  `SUPABASE_ACCESS_TOKEN`/DB password anywhere in env). Applied by the user
+  directly via the SQL Editor instead — flagged clearly rather than silently
+  blocked or worked around. (Notably this did **not** weaken the actual
+  security fix in the meantime: `logFraudFlag()` already fails soft on a
+  constraint violation, and the commission-blocking `return` in
+  `onOrderPaid()` happens regardless of whether the flag insert succeeds.)
+- Fraud dashboard surfacing: `'vendor_ineligible'` added to the three
+  fixed lists this needs to stay in sync with the DB constraint —
+  `lib/affiliate/fraud-analytics.ts`'s `FLAG_TYPES`, and the `FLAG_TYPE_LABEL`
+  copies in `app/admin/affiliate/page.tsx` and
+  `components/shared/fraud-breakdown-charts.tsx`.
+- **Live-verified, real DB, both roles, both the block and the exception** —
+  used reversible scratch rows throughout, all reverted after:
+  - **outlet_manager (Dave)**: scratch `outlet_managers` row → `POST` 403 +
+    `GET` null → a real buyer's purchase through his pre-existing link
+    created **no** attribution and a real `vendor_ineligible` flag
+    (`detail.role: "outlet_manager"`) → his link's `is_active` flipped to
+    `false` → his 5 pre-existing confirmed attributions (RM 55.88 total)
+    verified byte-for-byte unchanged after.
+  - **vendor_owner, pending status (Alice)**: scratch `vendors` row
+    (`status: 'pending'`) → same four checks, all passed
+    (`detail.role: "vendor_owner"`) → her 10 pre-existing confirmed
+    attributions (RM 12.36 total) unchanged.
+  - **vendor_owner, rejected status (the exception)**: flipped the same
+    scratch row to `status: 'rejected'`, reactivated her link → `POST`
+    succeeded (`200`, not `403`) → a real buyer's purchase through her link
+    created a genuine new `pending` attribution (RM 15.50 at her real 5%
+    rate) — proving a rejected application does not block earning.
+  - Fetched `GET /api/admin/affiliate/fraud-analytics` and confirmed
+    `vendor_ineligible` appears in `byType` with the correct count (2, one
+    per blocking case).
+  - Cleanup: deleted the scratch `vendors` row; the two real
+    `vendor_ineligible` flags and the genuinely-earned rejected-vendor test
+    commission were left in place as legitimate exercises of the feature,
+    same as every other live test this session.
+
 ## Admin AI + PII Compliance (§7.1 / §7.3)
 
 Built per `CLAUDE-ADMIN-AI.md`: PII redaction at every Gemini call, plus an

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyTicket } from "../classify";
+import { classifyTicket, TICKET_CATEGORIES } from "../classify";
 
 describe("classifyTicket", () => {
   it("classifies a withdrawal question", () => {
@@ -28,5 +28,17 @@ describe("classifyTicket", () => {
 
   it("falls back to general for empty text", () => {
     expect(classifyTicket("")).toBe("general");
+  });
+
+  // CLAUDE-P4-EXTRAS-2.md follow-up: TICKET_CATEGORIES is the single source
+  // of truth the admin chatbot KB form's category dropdown reads from
+  // (app/admin/chatbot/page.tsx) — if a category is ever added to (or
+  // removed from) the classifier's real output set without updating that
+  // exported array, this test catches the drift before the dropdown does.
+  it("TICKET_CATEGORIES covers every value classifyTicket() can return", () => {
+    const sample = ["withdraw", "book", "pay", "vendor", "affiliate", "unrelated gibberish"];
+    for (const text of sample) {
+      expect(TICKET_CATEGORIES).toContain(classifyTicket(text));
+    }
   });
 });

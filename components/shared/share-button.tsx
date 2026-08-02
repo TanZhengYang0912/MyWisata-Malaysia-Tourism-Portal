@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
+import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
 
 export type ShareType = "product" | "vendor" | "outlet" | "recommendation";
 
@@ -60,8 +61,7 @@ interface ShareButtonProps {
 // falls back to /customer/explore instead of landing on the right page.
 const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
   product: (id) => `/customer/activity/${id}`,
-  // No separate vendor page exists — outlets ARE the public storefront.
-  vendor: (id) => `/customer/outlet/${id}`,
+  vendor: (id) => `/customer/vendor/${id}`,
   outlet: (id) => `/customer/outlet/${id}`,
   // No per-post detail route exists yet (Member 3's recommendations page is
   // list-only) — points at the list until one exists.
@@ -291,6 +291,11 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
             <ImageDown size={18} />
           </Button>
         )}
+        {/* CLAUDE-P4-EXTRAS-2.md Extra 4: reuses buildShareUrl() as-is —
+            same eligibility check, same URL a click/copy would produce, so
+            an ineligible user's QR encodes the plain (non-affiliate) URL
+            exactly like the share button already does. */}
+        <AffiliateQrCode resolveUrl={buildShareUrl} label={title} variant="icon" />
       </div>
       {status === "shared" && <p className="text-xs text-primary">Shared</p>}
       {status === "copied" && <p className="text-xs text-primary">Link copied</p>}

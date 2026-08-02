@@ -11,6 +11,7 @@ import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
 type SectionId = "personal" | "contact";
 
@@ -24,7 +25,7 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${good ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>{good && <CheckCircle2 size={12} />}{label}</span>;
 }
 
-export function ProfileSections() {
+export function ProfileSections({ shellClassName, showHeader = true }: { shellClassName?: string; showHeader?: boolean } = {}) {
   const { currentUser, refreshUser } = useAuth();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -129,12 +130,18 @@ export function ProfileSections() {
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to close account"); setBusy(false); }
   }
 
-  if (loading) return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-sm text-muted-foreground">Loading profile…</div>;
-  if (!summary) return <div className="mx-auto max-w-2xl px-4 py-16 text-center text-sm text-destructive">{error ?? "Profile unavailable"}</div>;
+  if (loading) return <CustomerPageShell><div className="py-8 text-center text-sm text-muted-foreground">Loading profile…</div></CustomerPageShell>;
+  if (!summary) return <CustomerPageShell><div className="py-8 text-center text-sm text-destructive">{error ?? "Profile unavailable"}</div></CustomerPageShell>;
 
   return (
-    <main className="mx-auto max-w-2xl space-y-5 px-4 py-8 sm:px-6">
-      <header><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">My profile</p><h1 className="mt-2 text-3xl font-bold text-foreground">{summary.displayName || summary.fullName || currentUser?.email || "Your profile"}</h1><p className="mt-2 text-sm text-muted-foreground">Manage your personal information, verification and preferences.</p></header>
+    <CustomerPageShell className={shellClassName}>
+      <main className="space-y-5">
+      {showHeader && <CustomerPageHeader
+        eyebrow="Account"
+        title={summary.displayName || summary.fullName || currentUser?.email || "Your profile"}
+        description="Manage your personal information, verification and preferences."
+        className="mb-2"
+      />}
       {error && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <SectionCard title="Personal details" description="These details appear on your public contributor profile.">
@@ -164,6 +171,7 @@ export function ProfileSections() {
       </SectionCard>
 
       <section className="rounded-2xl border border-destructive/25 bg-destructive/[0.03] p-5 sm:p-6"><div className="flex items-center gap-2"><Trash2 size={17} className="text-destructive" /><h2 className="font-bold text-foreground">Danger Zone</h2></div><p className="mt-2 text-sm text-muted-foreground">Closing your account signs you out and hides your profile. Orders, wallet history and KYC audit records are retained.</p><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE to confirm" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><Button variant="destructive" onClick={closeAccount} disabled={busy || deleteConfirm !== "DELETE"}>Close account</Button></div></section>
-    </main>
+      </main>
+    </CustomerPageShell>
   );
 }

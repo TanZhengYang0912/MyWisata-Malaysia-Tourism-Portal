@@ -46,7 +46,7 @@ export default async function WishlistPage() {
         <EmptyState title="No saved experiences yet" description="Tap the heart on any experience to build your travel shortlist." action={<Link href="/customer" className="inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white">Explore Malaysia</Link>} />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
-          {activities.map((activity) => <ActivityCard key={activity.id} activity={activity} />)}
+          {activities.map((activity) => <ActivityCard key={activity.id} activity={activity} returnTo="/customer/saved" />)}
         </div>
       )}
     </div>

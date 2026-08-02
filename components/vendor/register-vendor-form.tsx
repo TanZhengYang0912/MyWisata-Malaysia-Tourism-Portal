@@ -51,45 +51,45 @@ export default function RegisterVendorForm({ onClose }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <h2 className="text-lg font-semibold">Register as Vendor</h2>
-      <p className="text-sm text-gray-500">Submit the basic business profile first. After approval, you can add the outlet, products, photos and time slots from the vendor dashboard.</p>
+      <p className="text-sm text-muted-foreground">Submit the basic business profile first. After approval, you can add the outlet, products, photos and time slots from the vendor dashboard.</p>
 
       {serverError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {serverError}
         </div>
       )}
 
       {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Business Name *</label>
         <input
           {...register('name')}
           placeholder="e.g. Rasa Malaysia Kitchen"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+        {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Description</label>
         <textarea
           {...register('description')}
           rows={3}
           placeholder="Describe your business..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent resize-none"
+          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
+        {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>}
       </div>
 
       {/* Business Type */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Business Type</label>
         <select
           {...register('businessType')}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         >
           <option value="">Select type...</option>
           <option value="restaurant">Restaurant / Food & Beverage</option>
@@ -103,38 +103,38 @@ export default function RegisterVendorForm({ onClose }: Props) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Legal Business Name</label><input {...register('legalBusinessName')} placeholder="Registered business name" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.legalBusinessName && <p className="text-red-500 text-xs mt-1">{errors.legalBusinessName.message}</p>}</div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label><input {...register('registrationNumber')} placeholder="Optional for sole proprietors" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.registrationNumber && <p className="text-red-500 text-xs mt-1">{errors.registrationNumber.message}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">Legal Business Name</label><input {...register('legalBusinessName')} placeholder="Registered business name" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.legalBusinessName && <p className="mt-1 text-xs text-destructive">{errors.legalBusinessName.message}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">Registration Number</label><input {...register('registrationNumber')} placeholder="Optional for sole proprietors" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.registrationNumber && <p className="mt-1 text-xs text-destructive">{errors.registrationNumber.message}</p>}</div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label><input {...register('contactName')} placeholder="Owner or authorised person" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
-        <div><label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label><input {...register('contactPhone')} placeholder="+60..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" /></div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">Contact Person</label><input {...register('contactName')} placeholder="Owner or authorised person" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">Contact Phone</label><input {...register('contactPhone')} placeholder="+60..." className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
       </div>
 
-      <div><label className="block text-sm font-medium text-gray-700 mb-1">Business Email</label><input {...register('contactEmail')} type="email" placeholder="business@example.com" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />{errors.contactEmail && <p className="text-red-500 text-xs mt-1">{errors.contactEmail.message}</p>}</div>
-      <div><label className="block text-sm font-medium text-gray-700 mb-1">Business Address</label><textarea {...register('businessAddress')} rows={2} placeholder="Registered business address" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" /></div>
+      <div><label className="mb-1 block text-sm font-medium text-foreground">Business Email</label><input {...register('contactEmail')} type="email" placeholder="business@example.com" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.contactEmail && <p className="mt-1 text-xs text-destructive">{errors.contactEmail.message}</p>}</div>
+      <div><label className="mb-1 block text-sm font-medium text-foreground">Business Address</label><textarea {...register('businessAddress')} rows={2} placeholder="Registered business address" className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
 
       {/* Logo URL */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Logo URL</label>
         <input
           {...register('logoUrl')}
           placeholder="https://..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.logoUrl && <p className="text-red-500 text-xs mt-1">{errors.logoUrl.message}</p>}
+        {errors.logoUrl && <p className="mt-1 text-xs text-destructive">{errors.logoUrl.message}</p>}
       </div>
 
       {/* Cover URL */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Cover Image URL</label>
         <input
           {...register('coverUrl')}
           placeholder="https://..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-transparent"
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.coverUrl && <p className="text-red-500 text-xs mt-1">{errors.coverUrl.message}</p>}
+        {errors.coverUrl && <p className="mt-1 text-xs text-destructive">{errors.coverUrl.message}</p>}
       </div>
 
       {/* Actions */}
@@ -142,7 +142,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Application'}
         </button>
@@ -150,7 +150,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            className="rounded-xl border border-border px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             Cancel
           </button>

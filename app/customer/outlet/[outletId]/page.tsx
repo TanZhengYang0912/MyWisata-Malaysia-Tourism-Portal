@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
 import { getOutletProductIds } from '@/backend/domains/catalogue';
+import { selectPublicOutletProductIds } from '@/lib/customer/outlet-shop';
 import { OutletPageRenderer } from '@/components/outlet/outlet-page-renderer';
 import { ShareButton } from '@/components/shared/share-button';
 import { OutletChatButton } from '@/components/customer/outlet-chat-button';
@@ -40,15 +41,17 @@ export default async function OutletShopPage({ params }: { params: Promise<{ out
 
   const document = selectPublicDocument(page || {});
   // A featured product may be a shared vendor product (outlet_id = NULL) that
-  // this outlet sells through an offer, so resolve the id set first.
-  const { data: products } = document.featuredIds.length
-    ? await createClient().then(async (db) => {
-        const sellable = await getOutletProductIds(db, outletId, document.featuredIds);
-        if (sellable.size === 0) return { data: [] };
-        return db.from('products').select('id,name,base_price,cover_url').eq('status', 'active').in('id', [...sellable]);
-      })
+  // this outlet sells through an offer. When no featured list is configured,
+  // fall back to every active, approved product sold by this outlet so a new
+  // public shop never renders as an empty page by default.
+  const db = await createClient();
+  const sellable = await getOutletProductIds(db, outletId);
+  const productIds = selectPublicOutletProductIds(document.featuredIds, [...sellable]);
+  const { data: products } = productIds.length
+    ? await db.from('products').select('id,name,description,base_price,requires_booking,cover_url').eq('status', 'active').eq('review_status', 'approved').in('id', productIds)
     : { data: [] };
-  const orderedProducts = [...(products || [])].sort((a, b) => document.featuredIds.indexOf(a.id) - document.featuredIds.indexOf(b.id));
+  const productOrder = new Map(productIds.map((id, index) => [id, index]));
+  const orderedProducts = [...(products || [])].sort((a, b) => (productOrder.get(a.id) ?? 0) - (productOrder.get(b.id) ?? 0));
   const jsonLd = { '@context': 'https://schema.org', '@type': 'LocalBusiness', name: outlet.name, address: { '@type': 'PostalAddress', streetAddress: outlet.address, addressLocality: outlet.city, addressRegion: outlet.state, addressCountry: 'MY' }, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/outlet/${outlet.id}` };
 
   return <main className="min-h-screen bg-[#f8fafc] text-slate-900">

@@ -122,10 +122,10 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
                     key={destination.state}
                     type="button"
                     onClick={() => selectDestination(destination)}
-                    className={`group relative min-w-[68%] overflow-hidden rounded-2xl border text-left transition-all duration-700 sm:min-w-[28%] lg:min-w-[29%] ${transitioningId === destination.state ? "scale-105 border-accent shadow-[0_0_0_2px_rgba(255,204,0,0.35)]" : "border-white/15 hover:-translate-y-1 hover:border-white/45"}`}
+                    className={`group relative h-[285px] min-w-[68%] overflow-hidden rounded-2xl border text-left transition-all duration-700 sm:h-[350px] sm:min-w-[28%] lg:min-w-[29%] ${transitioningId === destination.state ? "scale-105 border-accent shadow-[0_0_0_2px_rgba(255,204,0,0.35)]" : "border-white/15 hover:-translate-y-1 hover:border-white/45"}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} loading="lazy" className="h-[285px] w-full object-cover saturate-[1.35] contrast-[1.08] brightness-[1.05] transition duration-700 group-hover:scale-105 sm:h-[350px]" />
+                    <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} loading="lazy" className="absolute inset-0 h-full w-full object-cover saturate-[1.35] contrast-[1.08] brightness-[1.05] transition duration-700 group-hover:scale-105" />
                     <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_34%,rgba(2,6,23,0.82))]" />
                     <span className="absolute inset-x-0 bottom-0 p-4">
                       <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-accent">{destination.state}</span>

@@ -41,7 +41,9 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { applyPercent } from '@/lib/money';
 import { getAttributionCookieDays } from './settings';
 import { getTierForUser } from './tier';
-import { logFraudFlag } from './fraud';
+import { logFraudFlag, autoDisableLink } from './fraud';
+import { notifyCommissionEarned } from './notifications';
+import { getVendorIneligibleRole } from './vendor-role-guard';
 
 const MW_REF_COOKIE = 'mw_ref';
 const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
@@ -136,6 +138,31 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       return;
     }
 
+    // VENDOR-INELIGIBILITY GUARD — the real enforcement (team decision
+    // 2026-08-01, see lib/affiliate/vendor-role-guard.ts's header for the
+    // full reasoning). Fresh query every call, deliberately independent of
+    // affiliate_links.is_active — a pre-existing link that hasn't been
+    // deactivated yet (lib/affiliate/fraud.ts::runFraudSweep()'s cleanup
+    // pass, which runs on its own schedule) must still pay nothing at the
+    // moment of payment, not just once cleanup has caught up.
+    const ineligibleRole = await getVendorIneligibleRole(service, linkOwnerId);
+    if (ineligibleRole) {
+      await logFraudFlag(service, {
+        linkId: click.link_id,
+        userId: linkOwnerId,
+        orderId,
+        flagType: 'vendor_ineligible',
+        severity: 'low', // ineligible, not abusive — same tone as click_cap_reached
+        detail: { role: ineligibleRole, buyerId: order.user_id },
+      });
+      // Bonus immediate cleanup — we've just confirmed vendor status anyway,
+      // so deactivate right here rather than waiting for the next sweep.
+      // The sweep (item 3) still exists to catch links nobody ever tries to
+      // use again.
+      await autoDisableLink(service, click.link_id, `auto-disabled: link owner is ${ineligibleRole}, ineligible for affiliate commission`, null);
+      return;
+    }
+
     // Tiered rate — based on the owner's CONFIRMED referrals as of right now.
     // This is resolved once and written onto the attribution row below;
     // historical commissions never get recomputed if the owner's tier (or
@@ -193,6 +220,11 @@ export async function onOrderPaid(orderId: string): Promise<void> {
       throw attrErr;
     }
     if (!attribution) return;
+
+    // CLAUDE-P4-EXTRAS.md Extra 3: fire-and-forget, never throws (see
+    // lib/affiliate/notifications.ts's own header) — a notification failure
+    // must not undo or mask the attribution that was just created above.
+    await notifyCommissionEarned(service, { userId: linkOwnerId, amountRM: commission, attributionId: attribution.id as string });
 
     // No wallet credit here anymore — see the Phase 2 note at the top of
     // this file. The mw_ref cookie is still cleared (best-effort — it may

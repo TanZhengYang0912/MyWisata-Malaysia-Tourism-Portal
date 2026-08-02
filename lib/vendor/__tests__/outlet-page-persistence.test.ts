@@ -20,4 +20,15 @@ describe('outlet page persistence selection', () => {
 
     expect(result.hero.imageUrl).toBe('https://example.com/hero.jpg');
   });
+
+  it('keeps a published page useful when its document has no content blocks', () => {
+    const result = selectPublicDocument({
+      published_document: {
+        ...createDefaultOutletPageDocument('Published Outlet'),
+        blocks: [],
+      },
+    });
+
+    expect(result.blocks.map((block) => block.type)).toContain('product_grid');
+  });
 });

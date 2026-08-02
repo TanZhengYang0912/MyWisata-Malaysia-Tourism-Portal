@@ -5,6 +5,15 @@ import { contentWords, normalize } from "./match";
 
 export type TicketCategory = "booking" | "payment" | "vendor" | "withdrawal" | "affiliate" | "general";
 
+// CLAUDE-P4-EXTRAS-2.md Extra 5 follow-up: the single source of truth for
+// this category set, reused by the admin chatbot KB form's category
+// dropdown (app/admin/chatbot/page.tsx) so it can't drift from what this
+// classifier actually produces. chatbot_kb_documents.category itself is an
+// unconstrained VARCHAR(50) (001_initial_schema.sql — no CHECK constraint,
+// confirmed against every migration that touches the table) — this array,
+// not the schema, is what enforces the fixed set for KB docs going forward.
+export const TICKET_CATEGORIES: TicketCategory[] = ["booking", "payment", "vendor", "withdrawal", "affiliate", "general"];
+
 const CATEGORY_KEYWORDS: Record<Exclude<TicketCategory, "general">, string[]> = {
   booking: ["book", "booking", "slot", "activity", "reservation", "cancel", "itinerary", "qr"],
   payment: ["pay", "payment", "card", "charge", "checkout", "refund", "receipt", "voucher"],
