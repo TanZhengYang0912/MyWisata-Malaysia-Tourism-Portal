@@ -9,6 +9,7 @@ import Link from "next/link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import type { CustomerKycSubmission } from "@/backend/core/types";
@@ -145,16 +146,13 @@ export default function KycPage() {
   const submitDisabled = submitting || !frontFile || !backFile || Boolean(fileErrors.front || fileErrors.back);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex items-center gap-3 mb-2">
-        <ShieldCheck size={28} className="text-primary" />
-        <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">
-          KYC Verification
-        </h1>
-      </div>
-      <p className="text-sm text-muted-foreground mb-8">
-        Submit your identity documents to unlock wallet withdrawals and full affiliate earnings.
-      </p>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Account"
+        title="KYC Verification"
+        description="Submit your identity documents to unlock wallet withdrawals and full affiliate earnings."
+        icon={<ShieldCheck size={14} />}
+      />
 
       {/* Status badge */}
       <div
@@ -343,6 +341,6 @@ export default function KycPage() {
           </Button>
         </form>
       )}
-    </div>
+    </CustomerPageShell>
   );
 }

@@ -12,6 +12,7 @@ import {
   getMyWithdrawals,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
+import { CustomerPageHeader, CustomerPageShell, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
@@ -222,11 +223,13 @@ function WalletContent() {
   const { pending, history, pendingTotal, availableEarnings } = displayGroups;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex items-center gap-3 mb-8">
-        <Wallet size={28} className="text-primary" />
-        <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">My Wallet</h1>
-      </div>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Account"
+        title="My Wallet"
+        description="Manage your spendable balance, earnings, and payout withdrawals."
+        icon={<Wallet size={14} />}
+      />
 
       {/* ── Banners ── */}
       {topupSuccess && (
@@ -250,7 +253,7 @@ function WalletContent() {
 
       {/* ── Balance card ── */}
       <div
-        className="rounded-2xl p-6 mb-6 text-white"
+        className="mb-8 rounded-2xl p-6 text-white shadow-[0_18px_40px_rgba(1,0,102,0.16)] sm:p-7"
         style={{ background: "linear-gradient(135deg, #010066 0%, #1D2A8A 100%)" }}
       >
         <p className="text-sm opacity-75 mb-1">Total Spendable Balance</p>
@@ -258,7 +261,7 @@ function WalletContent() {
           {buckets === null ? "—" : `RM ${totalBalance.toFixed(2)}`}
         </p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <div className="rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Top-up balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
@@ -310,7 +313,7 @@ function WalletContent() {
 
       {/* ── Connect status card (Task 18) ── */}
       {connectStatus !== "loading" && (
-        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+        <CustomerPanel className="mb-8">
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
               connectStatus === "verified"    ? "bg-primary/15" :
@@ -355,7 +358,7 @@ function WalletContent() {
               </Button>
             )}
           </div>
-        </div>
+        </CustomerPanel>
       )}
 
       {/* ── Top-up form ── */}
@@ -565,7 +568,7 @@ function WalletContent() {
           </div>
         )}
       </div>
-    </div>
+    </CustomerPageShell>
   );
 }
 

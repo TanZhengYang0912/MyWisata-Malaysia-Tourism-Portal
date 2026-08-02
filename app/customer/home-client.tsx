@@ -154,12 +154,12 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
           <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Browse by Category</h2>
           <p className="text-sm mt-1 text-muted-foreground">What kind of experience are you looking for?</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        <div className="grid items-stretch grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               onClick={() => selectCategory(cat.id)}
-              className="flex flex-col items-center gap-2 rounded-2xl border-2 p-3 transition-all hover:-translate-y-0.5"
+              className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all hover:-translate-y-0.5"
               style={{
                 backgroundColor: category === cat.id ? "color-mix(in srgb, var(--primary) 12%, transparent)" : "var(--card)",
                 borderColor: category === cat.id ? "var(--primary)" : "transparent",
@@ -198,9 +198,9 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
           {picked.length === 0 ? (
             <EmptyState title="No experiences match yet" description="Try a different state or category." />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
               {picked.map((a) => (
-                <ActivityCard key={a.id} activity={a} />
+                <ActivityCard key={a.id} activity={a} returnTo="/customer" />
               ))}
             </div>
           )}
@@ -225,9 +225,9 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
         ) : activities.length === 0 ? (
           <EmptyState title="No experiences found" description="Try clearing your state or category filter." />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
+          <div className="grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
             {visibleExperiences.map((a) => (
-              <ActivityCard key={a.id} activity={a} />
+              <ActivityCard key={a.id} activity={a} returnTo="/customer" />
             ))}
           </div>
         )}

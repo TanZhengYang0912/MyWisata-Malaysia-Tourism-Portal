@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CheckCircle, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, CheckCircle, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -18,6 +18,7 @@ import type { OutletChoice } from "@/backend/domains/catalogue";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import { outletShortName } from "@/lib/outlet-display";
+import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getDetailBody } from "./bodies";
 
 export function ActivityDetailClient({
@@ -33,6 +34,7 @@ export function ActivityDetailClient({
   outletChoices?: OutletChoice[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const { addItem } = useCart();
 
@@ -103,6 +105,7 @@ export function ActivityDetailClient({
   const body = getDetailBody(activity?.categorySlug);
   // A trail or a heritage walk is the place itself, not a branch of a company.
   const namesOutlet = activity ? !isPlaceBound(activity) : true;
+  const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
 
   if (activity === null) {
     return <EmptyState title="Experience not found" description="This listing may have been removed." />;
@@ -133,6 +136,12 @@ export function ActivityDetailClient({
     // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
     // only the reviews list scrolls internally; mobile keeps normal page scroll.
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
+      <div className="mb-4">
+        <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <ArrowLeft size={16} aria-hidden="true" /> Back to results
+        </Link>
+      </div>
+
       <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
       <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
       <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
@@ -232,7 +241,9 @@ export function ActivityDetailClient({
                   return (
                     <button
                       key={choice.outletId}
-                      onClick={() => setOutletId(choice.outletId)}
+                      type="button"
+                      onClick={() => { setOutletId(choice.outletId); setAdded(false); }}
+                      aria-pressed={selected}
                       className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors"
                       style={{
                         borderColor: selected ? "var(--primary)" : "var(--border)",
@@ -263,7 +274,9 @@ export function ActivityDetailClient({
                 {activity.variants.map((v) => (
                   <button
                     key={v.id}
-                    onClick={() => setVariantId(v.id)}
+                    type="button"
+                    onClick={() => { setVariantId(v.id); setAdded(false); }}
+                    aria-pressed={variantId === v.id}
                     className="rounded-xl border px-3 py-2 text-xs font-semibold transition-colors"
                     style={{
                       borderColor: variantId === v.id ? "var(--primary)" : "var(--border)",
@@ -278,15 +291,17 @@ export function ActivityDetailClient({
             </div>
           )}
 
-          {body.Options && <body.Options activity={activity} slots={slots} slotId={slotId} onSlotChange={setSlotId} />}
+          {body.Options && <body.Options activity={activity} slots={slots} slotId={slotId} onSlotChange={(nextSlotId) => { setSlotId(nextSlotId); setAdded(false); }} />}
 
           <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted px-3 py-2.5">
             <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity" className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
               <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
               <button
+                type="button"
                 onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                aria-label="Increase quantity"
                 disabled={seatsLeft !== undefined && qty >= seatsLeft}
                 className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -297,6 +312,7 @@ export function ActivityDetailClient({
 
           {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{seatsLeft} seats left</p>}
           <Button
+            type="button"
             onClick={handleAddToCart}
             disabled={adding || (activity.requiresBooking && !slotId)}
             className="h-12 w-full rounded-full text-base"
@@ -304,8 +320,18 @@ export function ActivityDetailClient({
             {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
           </Button>
 
+          {added && (
+            <div role="status" aria-live="polite" className="mt-3 rounded-2xl bg-primary/5 p-3 text-center">
+              <p className="text-sm font-semibold text-primary">Added to cart. What would you like to do next?</p>
+              <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs font-bold">
+                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">View cart</Link>
+                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">Continue exploring</Link>
+              </div>
+            </div>
+          )}
+
           <div className="mt-3 flex items-center justify-center gap-3">
-            <Button variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor">
+            <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor" aria-label="Chat with vendor">
               <MessageCircle size={17} />
             </Button>
             <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
@@ -344,9 +370,13 @@ export function ActivityDetailClient({
             <p className="truncate text-xs text-muted-foreground">{body.quantityLabel(qty)}</p>
             <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {price * qty}</p>
           </div>
-          <Button onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
-            {added ? "Added ✓" : activity.requiresBooking ? "Add Booking" : "Add to Cart"}
-          </Button>
+          {added ? (
+            <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">View Cart</Link>
+          ) : (
+            <Button type="button" onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
+              {activity.requiresBooking ? "Add Booking" : "Add to Cart"}
+            </Button>
+          )}
         </div>
       </div>
     </div>

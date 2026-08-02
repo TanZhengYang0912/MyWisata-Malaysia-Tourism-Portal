@@ -13,6 +13,7 @@ import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
 type RecommendationResponse = {
   id: string;
@@ -130,19 +131,16 @@ export default function RecommendationsPage() {
   const reviewed = (recs ?? []).filter((r) => r.status !== "pending");
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <Star size={28} className="text-accent" />
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Recommend a Vendor</h1>
-        </div>
-        <Button onClick={() => setShowForm((v) => !v)} className="flex items-center gap-2">
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Community"
+        title="Recommend a Vendor"
+        description="Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation."
+        icon={<Star size={14} className="text-accent" />}
+        actions={<Button onClick={() => setShowForm((v) => !v)} className="flex items-center gap-2">
           <Plus size={15} /> Recommend
-        </Button>
-      </div>
-      <p className="text-sm text-muted-foreground mb-8">
-        Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation.
-      </p>
+        </Button>}
+      />
 
       {showForm && (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-5 mb-6 space-y-4">
@@ -277,6 +275,6 @@ export default function RecommendationsPage() {
           </div>
         )}
       </div>
-    </div>
+    </CustomerPageShell>
   );
 }

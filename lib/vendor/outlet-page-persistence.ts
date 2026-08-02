@@ -1,4 +1,5 @@
 import {
+  createDefaultOutletPageDocument,
   normalizeOutletPageDocument,
   type LegacyOutletPageFields,
   type OutletPageDocument,
@@ -14,5 +15,9 @@ export function selectDraftDocument(row: LegacyOrLifecyclePageRow): OutletPageDo
 }
 
 export function selectPublicDocument(row: LegacyOrLifecyclePageRow): OutletPageDocument {
-  return normalizeOutletPageDocument(row.published_document || row, row);
+  const document = normalizeOutletPageDocument(row.published_document || row, row);
+  if (document.blocks.length > 0) return document;
+
+  const defaults = createDefaultOutletPageDocument(document.hero.title);
+  return { ...defaults, ...document, blocks: defaults.blocks };
 }

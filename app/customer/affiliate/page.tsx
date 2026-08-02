@@ -14,6 +14,7 @@ import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -139,41 +140,43 @@ export default function AffiliateDashboardPage() {
   }
 
   if (authLoading || stats === undefined) {
-    return <div className="max-w-4xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">Loading…</div></CustomerPageShell>;
   }
 
   if (!currentUser) {
-    return <EmptyState title="Sign in required" description="Sign in to see your affiliate dashboard." />;
+    return <CustomerPageShell><EmptyState title="Sign in required" description="Sign in to see your affiliate dashboard." /></CustomerPageShell>;
   }
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —
   // this is how the feature recruits affiliates in the first place.
   if (!isAffiliateEligible(currentUser)) {
     return (
-      <div className="max-w-md mx-auto px-4 sm:px-6 py-20 text-center">
+      <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Community"
+        title="Earn & Share"
+        description="Share activities you love and earn commission when someone books through your link."
+        icon={<Gift size={14} />}
+      />
+      <div className="mx-auto max-w-md py-4 text-center sm:py-8">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Gift size={24} className="text-primary" />
         </div>
-        <h1 className="text-xl font-bold text-foreground mb-2 font-[family-name:var(--font-display)]">
-          Earn & Share
-        </h1>
-        <p className="text-sm text-muted-foreground mb-6">
-          Share activities you love and earn commission when someone books through your link. Verify your account
-          to unlock.
-        </p>
+        <p className="text-sm text-muted-foreground mb-6">Verify your account to unlock affiliate sharing and earnings.</p>
         <Button asChild>
           <Link href="/customer/kyc">Verify my account</Link>
         </Button>
       </div>
+      </CustomerPageShell>
     );
   }
 
   if (stats === null) {
     return (
-      <EmptyState
+      <CustomerPageShell><EmptyState
         title="Couldn't load your stats"
         description="Something went wrong loading your affiliate dashboard. Try refreshing the page."
-      />
+      /></CustomerPageShell>
     );
   }
 
@@ -182,21 +185,24 @@ export default function AffiliateDashboardPage() {
     .reduce((min, c) => Math.min(min, c.clearsInDays as number), Infinity);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h1 className="text-2xl font-bold text-foreground mb-6 font-[family-name:var(--font-display)]">
-        Earn & Share
-      </h1>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Community"
+        title="Earn & Share"
+        description="Share local experiences you love and track the rewards generated through your referral link."
+        icon={<Gift size={14} />}
+      />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="rounded-xl border border-border p-4">
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Clicks</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.clicks}</p>
         </div>
-        <div className="rounded-xl border border-border p-4">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">People who ordered</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.referrals}</p>
         </div>
-        <div className="rounded-xl border border-border p-4">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Pending</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
             RM {stats.totals.pendingEarnings.toFixed(2)}
@@ -207,7 +213,7 @@ export default function AffiliateDashboardPage() {
             </p>
           )}
         </div>
-        <div className="rounded-xl border border-border p-4">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Available</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
             RM {stats.totals.availableToWithdraw.toFixed(2)}
@@ -224,7 +230,7 @@ export default function AffiliateDashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border p-4 mb-6">
+      <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <div className="flex items-center justify-between gap-3 mb-2">
           <p className="text-sm font-bold text-foreground capitalize">{stats.tier.tierName} · {(stats.tier.rate * 100).toFixed(0)}%</p>
         </div>
@@ -251,7 +257,7 @@ export default function AffiliateDashboardPage() {
 
       <AffiliateRankCard />
 
-      <div className="rounded-xl border border-border p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <div className="flex items-center gap-2 min-w-0">
           <Link2 size={16} className="text-teal shrink-0" />
           {stats.affiliateCode ? (
@@ -281,18 +287,18 @@ export default function AffiliateDashboardPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-border p-4 mb-6">
+      <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <Share2 size={13} /> Funnel
         </p>
         <AffiliateFunnelSection funnel={stats.funnel} conversionLabel="Bookings" />
       </div>
 
-      <div className="mb-6">
+      <div className="mb-8">
         <AffiliateInsightCard scope="user" />
       </div>
 
-      <div className="rounded-xl border border-border overflow-hidden">
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
@@ -331,12 +337,12 @@ export default function AffiliateDashboardPage() {
         </table>
       </div>
 
-      <div className="rounded-xl border border-border p-4 my-6">
+      <div className="my-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Clicks — last 30 days</p>
         <AffiliateClicksChart data={stats.clicksByDay} />
       </div>
 
-      <div className="rounded-xl border border-border overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
         <div className="px-4 py-2.5 bg-muted flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Earnings history</p>
           <div className="flex items-center gap-2">
@@ -383,6 +389,6 @@ export default function AffiliateDashboardPage() {
           )}
         </div>
       </div>
-    </div>
+    </CustomerPageShell>
   );
 }

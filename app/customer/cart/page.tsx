@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
@@ -47,7 +46,6 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
 export default function CartPage() {
   const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
@@ -251,9 +249,12 @@ export default function CartPage() {
         title="Your cart is empty"
         description="Browse experiences and add a booking or product to get started."
         action={
-          <Link href="/customer">
-            <Button>Explore Experiences</Button>
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/customer">
+              <Button>Explore Experiences</Button>
+            </Link>
+            <Link href="/customer" className="text-sm font-semibold text-primary hover:underline">Continue shopping</Link>
+          </div>
         }
       />
     );
@@ -261,8 +262,11 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Your Cart</h1>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Your Cart</h1>
+          <Link href="/customer" className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline">Continue shopping</Link>
+        </div>
       </div>
 
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
@@ -502,13 +506,18 @@ export default function CartPage() {
         </div>
       </div>
 
-      <Button
-        className="w-full h-12 rounded-full text-base"
-        disabled={selectedKeys.size === 0}
-        onClick={() => router.push(appliedVoucher ? `/customer/checkout?voucher=${appliedVoucher.code}` : "/customer/checkout")}
-      >
-        Proceed to Checkout {selectedKeys.size > 0 && `(${selectedKeys.size})`}
-      </Button>
+      {selectedKeys.size > 0 ? (
+        <a
+          href={appliedVoucher ? `/customer/checkout?voucher=${appliedVoucher.code}` : "/customer/checkout"}
+          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-base font-medium text-primary-foreground transition-all hover:bg-primary/90"
+        >
+          Proceed to Checkout ({selectedKeys.size})
+        </a>
+      ) : (
+        <Button type="button" className="h-12 w-full rounded-full text-base" disabled>
+          Proceed to Checkout
+        </Button>
+      )}
     </div>
   );
 }

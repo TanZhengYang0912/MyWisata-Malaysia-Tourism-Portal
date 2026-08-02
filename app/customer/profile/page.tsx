@@ -14,6 +14,7 @@ import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { computeProfileCompletion } from "@/lib/verification/eligibility";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
 
 function initialStep(tier: string): number {
@@ -257,11 +258,18 @@ export default function ProfilePage() {
 
   if (isDone) return (
     <>
-      <div className="mx-auto max-w-2xl px-4 pt-8 text-sm font-semibold text-primary" aria-label="Verification wizard complete">
-        Step 5 of 5 · Current: Complete · 100% complete
-      </div>
-      <div className="mx-auto max-w-2xl px-4 pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
-      <ProfileSections />
+      <CustomerPageShell className="pb-0">
+        <CustomerPageHeader
+          eyebrow="Account"
+          title="Your profile"
+          description="Manage your personal information, verification and preferences."
+        />
+        <div className="text-sm font-semibold text-primary" aria-label="Verification wizard complete">
+          Step 5 of 5 · Current: Complete · 100% complete
+        </div>
+        <div className="pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
+      </CustomerPageShell>
+      <ProfileSections shellClassName="pt-0 sm:pt-0" showHeader={false} />
     </>
   );
 
@@ -270,13 +278,12 @@ export default function ProfilePage() {
   const currentProgress = wizardProgress.currentStep - 1;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      <h1 className="text-2xl font-bold text-foreground mb-1 font-[family-name:var(--font-display)]">
-        Complete Your Profile
-      </h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        Finish all steps to unlock recommendation submissions and affiliate links.
-      </p>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Account"
+        title="Complete Your Profile"
+        description="Finish all steps to unlock recommendation submissions and affiliate links."
+      />
       <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
         <span className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
@@ -512,6 +519,6 @@ export default function ProfilePage() {
           />
         </div>
       )}
-    </div>
+    </CustomerPageShell>
   );
 }

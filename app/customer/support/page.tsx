@@ -8,6 +8,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
 interface TicketSummary {
   id: string;
@@ -72,17 +73,22 @@ export default function CustomerSupportPage() {
   }
 
   if (tickets === undefined) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">Loading…</div></CustomerPageShell>;
   }
   if (tickets === null) {
     return (
-      <EmptyState title="Couldn't load your tickets" description="Something went wrong. Try refreshing the page." />
+      <CustomerPageShell><EmptyState title="Couldn't load your tickets" description="Something went wrong. Try refreshing the page." /></CustomerPageShell>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h1 className="text-2xl font-bold text-foreground mb-6 font-[family-name:var(--font-display)]">My Tickets</h1>
+    <CustomerPageShell>
+      <CustomerPageHeader
+        eyebrow="Support"
+        title="My Tickets"
+        description="Track your questions and follow up with the MyWisata support team."
+        icon={<MessageSquare size={14} />}
+      />
 
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
         <p className="font-semibold text-foreground">Provide information for your held withdrawal</p>
@@ -124,6 +130,6 @@ export default function CustomerSupportPage() {
           </div>
         </div>
       )}
-    </div>
+    </CustomerPageShell>
   );
 }

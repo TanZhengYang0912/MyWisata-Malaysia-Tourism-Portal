@@ -61,8 +61,7 @@ interface ShareButtonProps {
 // falls back to /customer/explore instead of landing on the right page.
 const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
   product: (id) => `/customer/activity/${id}`,
-  // No separate vendor page exists — outlets ARE the public storefront.
-  vendor: (id) => `/customer/outlet/${id}`,
+  vendor: (id) => `/customer/vendor/${id}`,
   outlet: (id) => `/customer/outlet/${id}`,
   // No per-post detail route exists yet (Member 3's recommendations page is
   // list-only) — points at the list until one exists.

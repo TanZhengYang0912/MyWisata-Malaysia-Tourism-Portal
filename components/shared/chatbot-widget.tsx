@@ -292,7 +292,7 @@ export function ChatbotWidget() {
         </div>
       )}
 
-      <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen((o) => !o)} title="Chat with us">
+      <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen((o) => !o)} title="Chat with us" aria-label="Open chat">
         <MessageCircle size={22} />
       </Button>
     </div>

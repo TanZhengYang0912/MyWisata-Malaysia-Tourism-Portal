@@ -21,19 +21,18 @@ export function GuestCatalogue({ activities, error }: GuestCatalogueProps) {
 
       {activities.length === 0 ? <section className="mt-10 rounded-2xl border border-border bg-card p-10 text-center"><h2 className="text-xl font-bold">No listings available</h2><p className="mt-2 text-muted-foreground">Please check back later.</p></section> : (
         <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {activities.map((activity) => <article key={activity.id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="h-44 bg-secondary">
+          {activities.map((activity) => <article key={activity.id} className="mw-card">
+            <div className="mw-card-media">
               {activity.image ? <>
                 {/* Guest catalogue supports vendor-uploaded storage URLs, which are not statically enumerable for next/image. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={activity.image} alt="" className="h-full w-full object-cover" />
               </> : null}
             </div>
-            <div className="space-y-3 p-5">
-              <div><p className="text-xs font-semibold text-primary">{activity.category || "Experience"}</p><h2 className="mt-1 line-clamp-2 text-lg font-bold">{activity.name}</h2></div>
-              <p className="flex items-center gap-1 text-sm text-muted-foreground"><MapPin size={14} />{activity.outlet.city}, {activity.outlet.state}</p>
-              <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {activity.price}</p>
-              <div className="flex flex-wrap gap-3 text-sm font-semibold"><Link href={`/guest/activity/${activity.id}`} className="text-primary underline underline-offset-4">View listing</Link><Link href={guestVendorHref(activity.outlet.vendorId)} className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-4"><Store size={14} />View vendor</Link></div>
+            <div className="mw-card-body space-y-3 p-5">
+              <div><p className="text-xs font-semibold text-primary">{activity.category || "Experience"}</p><h2 className="mw-card-title mt-1 text-lg font-bold" title={activity.name}>{activity.name}</h2></div>
+              <p className="mw-card-meta flex items-center gap-1 text-sm text-muted-foreground" title={`${activity.outlet.city}, ${activity.outlet.state}`}><MapPin size={14} />{activity.outlet.city}, {activity.outlet.state}</p>
+              <div className="mw-card-footer"><p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {activity.price}</p><div className="flex flex-wrap justify-end gap-3 text-sm font-semibold"><Link href={`/guest/activity/${activity.id}`} className="text-primary underline underline-offset-4">View listing</Link><Link href={guestVendorHref(activity.outlet.vendorId)} className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-4"><Store size={14} />View vendor</Link></div></div>
             </div>
           </article>)}
         </section>

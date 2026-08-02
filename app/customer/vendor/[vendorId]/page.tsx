@@ -1,46 +1,107 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowRight, CheckCircle2, Clock3, ExternalLink, MapPin, Navigation, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { ShareButton } from '@/components/shared/share-button';
+import { getVendorProductTypeLabel, selectFeaturedVendorProducts, summarizeVendorReviews } from '@/lib/customer/vendor-page';
 
 export const dynamic = 'force-dynamic';
 
+type OutletRecord = {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+type OutletOffer = { outlet_id: string; price: number; status: string };
+
+type CatalogueProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  productType: string | null;
+  requiresBooking: boolean;
+  coverUrl: string | null;
+  fromPrice: number;
+  soldAt: Array<{ id: string; name: string; price: number }>;
+  rating: number;
+  reviews: number;
+};
+
+type LocationSummary = OutletRecord & {
+  coverUrl: string | null;
+  listingCount: number;
+  fromPrice: number | null;
+};
+
+function formatBusinessType(value: string | null) {
+  if (!value) return 'Local experience partner';
+  return value.split(/[_-]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' & ');
+}
+
 async function getVendor(vendorId: string) {
   const db = await createClient();
-  const { data: vendor } = await db.from('vendors').select('id,name,slug,description,logo_url,cover_url').eq('id', vendorId).eq('status', 'approved').maybeSingle();
+  const { data: vendor } = await db.from('vendors').select('id,name,slug,description,logo_url,cover_url,business_type').eq('id', vendorId).eq('status', 'approved').maybeSingle();
   if (!vendor) return null;
-  const { data: outlets } = await db.from('outlets').select('id,name,city,state,address').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name');
 
-  // Brand-level catalogue: one card per product, listing which outlets sell it.
-  // A shared product has outlet_id = NULL and its outlets come from
-  // outlet_offers; a single-outlet product still carries its own outlet_id.
-  const { data: products } = await db
-    .from('products')
-    .select('id,name,base_price,cover_url,outlet_id,outlet_offers(outlet_id,price,status)')
-    .eq('vendor_id', vendorId)
-    .eq('status', 'active')
-    .eq('review_status', 'approved')
-    .order('name');
+  const [{ data: outlets }, { data: products }] = await Promise.all([
+    db.from('outlets').select('id,name,city,state,address,lat,lng').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+    db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+  ]);
 
-  const outletNames = new Map((outlets ?? []).map((outlet) => [outlet.id, outlet.name]));
-  const catalogue = (products ?? []).map((product) => {
-    const offers = ((product.outlet_offers ?? []) as { outlet_id: string; price: number; status: string }[])
-      .filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id));
+  const outletRows = (outlets ?? []) as OutletRecord[];
+  const outletNames = new Map(outletRows.map((outlet) => [outlet.id, outlet.name]));
+  const productRows = products ?? [];
+  const metricRows = productRows.length
+    ? (await db.from('product_review_metrics').select('product_id,rating,reviews').in('product_id', productRows.map((product) => product.id))).data ?? []
+    : [];
+  const reviewMetrics = new Map((metricRows as { product_id: string; rating: number | string; reviews: number | string }[]).map((row) => [row.product_id, { rating: Number(row.rating), reviews: Number(row.reviews) }]));
+
+  const catalogue = productRows.map((product) => {
+    const offers = ((product.outlet_offers ?? []) as OutletOffer[]).filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id));
     const soldAt = offers.length
       ? offers.map((offer) => ({ id: offer.outlet_id, name: outletNames.get(offer.outlet_id)!, price: Number(offer.price) }))
       : product.outlet_id && outletNames.has(product.outlet_id)
         ? [{ id: product.outlet_id, name: outletNames.get(product.outlet_id)!, price: Number(product.base_price) }]
         : [];
+    const metric = reviewMetrics.get(product.id) ?? { rating: 0, reviews: 0 };
     return {
       id: product.id,
       name: product.name,
+      description: product.description as string | null,
+      productType: product.product_type as string | null,
+      requiresBooking: Boolean(product.requires_booking),
       coverUrl: product.cover_url as string | null,
       fromPrice: soldAt.length ? Math.min(...soldAt.map((entry) => entry.price)) : Number(product.base_price),
       soldAt,
-    };
+      rating: metric.rating,
+      reviews: metric.reviews,
+    } satisfies CatalogueProduct;
   }).filter((product) => product.soldAt.length > 0);
 
-  return { vendor, outlets: outlets ?? [], catalogue };
+  const outletImages = new Map<string, string>();
+  for (const product of catalogue) {
+    if (!product.coverUrl) continue;
+    for (const outlet of product.soldAt) if (!outletImages.has(outlet.id)) outletImages.set(outlet.id, product.coverUrl);
+  }
+  const locations = outletRows.map((outlet) => {
+    const outletProducts = catalogue.filter((product) => product.soldAt.some((entry) => entry.id === outlet.id));
+    const prices = outletProducts.flatMap((product) => product.soldAt.filter((entry) => entry.id === outlet.id).map((entry) => entry.price));
+    return { ...outlet, coverUrl: outletImages.get(outlet.id) ?? null, listingCount: outletProducts.length, fromPrice: prices.length ? Math.min(...prices) : null } satisfies LocationSummary;
+  });
+
+  return {
+    vendor,
+    locations,
+    catalogue,
+    featuredProducts: selectFeaturedVendorProducts(catalogue),
+    reviewSummary: summarizeVendorReviews(catalogue.map((product) => ({ rating: product.rating, reviews: product.reviews }))),
+  };
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ vendorId: string }> }): Promise<Metadata> {
@@ -49,47 +110,58 @@ export async function generateMetadata({ params }: { params: Promise<{ vendorId:
   return { title: `${result.vendor.name} | MyWisata`, description: result.vendor.description ?? `Explore ${result.vendor.name} outlets and experiences.`, openGraph: { title: result.vendor.name, description: result.vendor.description ?? undefined, images: result.vendor.cover_url ? [{ url: result.vendor.cover_url }] : undefined } };
 }
 
+function ProductCard({ product }: { product: CatalogueProduct }) {
+  return <Link href={`/customer/activity/${product.id}`} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+    <div className="mw-card-media h-48 aspect-auto bg-gradient-to-br from-primary/15 via-secondary to-amber-50">
+      {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">Experience photo coming soon</div>}
+      <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">{getVendorProductTypeLabel(product.productType)}</span>
+    </div>
+    <div className="mw-card-body p-4">
+      <div className="flex items-start justify-between gap-3"><h3 className="mw-card-title min-w-0 flex-1 font-bold text-slate-950" title={product.name}>{product.name}</h3><p className="shrink-0 text-sm font-bold text-primary">RM {product.fromPrice.toFixed(2)}</p></div>
+      <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="line-clamp-2 text-xs leading-5 text-slate-600">{product.description}</p>}</div>
+      <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-slate-500">{product.soldAt.length} location{product.soldAt.length === 1 ? '' : 's'}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-slate-400">({product.reviews})</span></span> : <span className="font-semibold text-primary">{product.requiresBooking ? 'Booking required' : 'Available to explore'}</span>}</div>
+    </div>
+  </Link>;
+}
+
+function LocationCard({ location }: { location: LocationSummary }) {
+  const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || 'Malaysia';
+  const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
+  return <article className="mw-card">
+    <div className="mw-card-media h-36 aspect-auto bg-gradient-to-br from-primary/20 via-secondary to-amber-50">{location.coverUrl ? <img src={location.coverUrl} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-3xl font-black text-primary/25">{location.city?.slice(0, 1) || 'M'}</div>}<span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active outlet</span></div>
+    <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-slate-950" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-slate-100 pt-3 text-xs"><span className="font-semibold text-slate-500">{location.listingCount} published experience{location.listingCount === 1 ? '' : 's'}</span>{location.fromPrice !== null && <span className="font-semibold text-primary">From RM {location.fromPrice.toFixed(2)}</span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">View outlet <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={`Get directions to ${location.name}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
+  </article>;
+}
+
 export default async function VendorBrandPage({ params }: { params: Promise<{ vendorId: string }> }) {
   const result = await getVendor((await params).vendorId);
   if (!result) notFound();
-  const { vendor, outlets, catalogue } = result;
+  const { vendor, locations, catalogue, featuredProducts, reviewSummary } = result;
+  const heroImage = vendor.cover_url || featuredProducts.find((product) => product.coverUrl)?.coverUrl || null;
+  const vendorType = formatBusinessType(vendor.business_type);
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
-  return <main className="min-h-screen bg-[#f8fafc] text-slate-900"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} /><section className="bg-[#010066] px-6 py-16 text-white"><div className="mx-auto max-w-6xl"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#ffd21f]">Verified MyWisata vendor</p><h1 className="mt-3 text-4xl font-bold tracking-tight">{vendor.name}</h1>{vendor.description && <p className="mt-4 max-w-2xl text-white/75">{vendor.description}</p>}</div></section><section className="mx-auto max-w-6xl px-6 py-10"><div className="mb-6 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Outlet switcher</p><h2 className="mt-1 text-2xl font-bold">Choose a location</h2></div><span className="text-sm text-slate-500">{outlets.length} outlet{outlets.length === 1 ? '' : 's'}</span></div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{outlets.map((outlet) => <Link key={outlet.id} href={`/customer/outlet/${outlet.id}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-primary/40"><p className="text-lg font-bold">{outlet.name}</p><p className="mt-2 text-sm text-slate-500">{[outlet.city, outlet.state].filter(Boolean).join(', ') || 'Malaysia'}</p>{outlet.address && <p className="mt-1 line-clamp-2 text-xs text-slate-400">{outlet.address}</p>}<span className="mt-5 inline-flex text-sm font-semibold text-primary">View outlet shop →</span></Link>)}</div>{outlets.length === 0 && <p className="rounded-2xl bg-white p-8 text-center text-slate-500">No public outlets yet.</p>}</section>
-    <section className="mx-auto max-w-6xl px-6 pb-14">
-      <div className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Menu</p>
-        <h2 className="mt-1 text-2xl font-bold">What {vendor.name} sells</h2>
+
+  return <main className="min-h-screen bg-[#f8fafc] text-slate-900">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <section className="relative isolate overflow-hidden bg-[#030052] text-white">
+      {heroImage && <img src={heroImage} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" />}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_75%_20%,rgba(255,210,31,.2),transparent_28%),linear-gradient(110deg,rgba(3,0,82,.98),rgba(3,0,82,.74))]" />
+      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_350px] lg:items-center lg:py-20">
+        <div><div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#ffd21f]"><span className="inline-flex items-center gap-1.5"><ShieldCheck size={15} /> Verified MyWisata vendor</span><span className="h-1 w-1 rounded-full bg-white/50" /><span>{vendorType}</span></div><h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{vendor.name}</h1>{vendor.description && <p className="mt-5 max-w-2xl text-base leading-7 text-white/80">{vendor.description}</p>}<div className="mt-8 flex flex-wrap items-center gap-3"><a href="#experiences" className="inline-flex items-center gap-2 rounded-xl bg-[#ffd21f] px-5 py-3 text-sm font-bold text-[#030052] transition hover:bg-white">Browse experiences <ArrowRight size={16} /></a><a href="#locations" className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"><MapPin size={16} /> View locations</a><ShareButton shareType="vendor" contentId={vendor.id} title={vendor.name} /></div></div>
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm"><div className="flex items-center gap-3 border-b border-white/15 pb-5">{vendor.logo_url ? <img src={vendor.logo_url} alt={`${vendor.name} logo`} className="h-14 w-14 rounded-2xl bg-white object-cover p-1" /> : <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-black text-primary">{vendor.name.slice(0, 1)}</div>}<div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#ffd21f]">Partner profile</p><p className="mt-1 font-bold">Explore with confidence</p></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div><p className="text-2xl font-black">{locations.length}</p><p className="mt-1 text-xs text-white/65">active locations</p></div><div><p className="text-2xl font-black">{catalogue.length}</p><p className="mt-1 text-xs text-white/65">published listings</p></div></div></div>
       </div>
-      {catalogue.length === 0 ? (
-        <p className="rounded-2xl bg-white p-8 text-center text-slate-500">No products published yet.</p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {catalogue.map((product) => (
-            <Link key={product.id} href={`/customer/activity/${product.id}`} className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-primary/40">
-              {product.coverUrl && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={product.coverUrl} alt={product.name} className="h-36 w-full object-cover" />
-              )}
-              <div className="flex flex-1 flex-col p-5">
-                <p className="text-base font-bold">{product.name}</p>
-                <p className="mt-1 text-sm font-semibold text-primary">
-                  {product.soldAt.length > 1 ? 'From ' : ''}RM {product.fromPrice.toFixed(2)}
-                </p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Available at {product.soldAt.length} outlet{product.soldAt.length === 1 ? '' : 's'}
-                </p>
-                <ul className="mt-1.5 space-y-0.5">
-                  {product.soldAt.map((entry) => (
-                    <li key={entry.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                      <span className="truncate">{entry.name}</span>
-                      <span className="shrink-0 font-medium text-slate-600">RM {entry.price.toFixed(2)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </section></main>;
+    </section>
+
+    <section className="relative z-10 mx-auto -mt-8 max-w-6xl px-6"><div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg sm:grid-cols-2 lg:grid-cols-4"><div className="flex items-center gap-3 border-b border-slate-100 p-4 lg:border-b-0 lg:border-r"><CheckCircle2 className="shrink-0 text-emerald-600" size={20} /><div><p className="text-sm font-bold">Verified vendor</p><p className="text-xs text-slate-500">Approved on MyWisata</p></div></div><div className="flex items-center gap-3 border-b border-slate-100 p-4 sm:border-l lg:border-b-0 lg:border-r"><MapPin className="shrink-0 text-primary" size={20} /><div><p className="text-sm font-bold">{locations.length} locations</p><p className="text-xs text-slate-500">Across Malaysia</p></div></div><div className="flex items-center gap-3 border-b border-slate-100 p-4 lg:border-b-0 lg:border-r"><Sparkles className="shrink-0 text-amber-600" size={20} /><div><p className="text-sm font-bold">{catalogue.length} listings</p><p className="text-xs text-slate-500">Ready to explore</p></div></div><div className="flex items-center gap-3 p-4 sm:border-l">{reviewSummary.rating !== null ? <Star className="shrink-0 text-amber-500" size={20} fill="currentColor" /> : <ShieldCheck className="shrink-0 text-slate-400" size={20} />}<div><p className="text-sm font-bold">{reviewSummary.rating !== null ? `${reviewSummary.rating.toFixed(1)} / 5` : 'New partner'}</p><p className="text-xs text-slate-500">{reviewSummary.reviews > 0 ? `${reviewSummary.reviews} traveller reviews` : 'Reviews will appear here'}</p></div></div></div></section>
+
+    <div className="mx-auto max-w-6xl space-y-16 px-6 py-16">
+      <section id="experiences" aria-labelledby="experiences-heading"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Featured experiences</p><h2 id="experiences-heading" className="mt-2 text-3xl font-black tracking-tight">Make your Malaysia day memorable</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Discover the experiences this vendor offers, with clear pricing and the locations where you can book them.</p></div><span className="text-sm font-semibold text-slate-500">{catalogue.length} published listing{catalogue.length === 1 ? '' : 's'}</span></div>{featuredProducts.length ? <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{featuredProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No experiences are published yet. Check back soon.</div>}</section>
+
+      <section id="locations" aria-labelledby="locations-heading"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Find us across Malaysia</p><h2 id="locations-heading" className="mt-2 text-3xl font-black tracking-tight">Choose the location that suits your trip</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Each outlet has its own availability and shop page. Select one to see the exact details before booking.</p></div><span className="text-sm font-semibold text-slate-500">{locations.length} active outlet{locations.length === 1 ? '' : 's'}</span></div>{locations.length ? <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{locations.map((location) => <LocationCard key={location.id} location={location} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No public outlets yet.</div>}</section>
+
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,.85fr)]" aria-label="Vendor information"><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">About the vendor</p><h2 className="mt-2 text-2xl font-black">A local partner for your Malaysia plans</h2><p className="mt-4 text-sm leading-7 text-slate-600">{vendor.description || `${vendor.name} brings local products and experiences together across Malaysia.`}</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">Verified business</span><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{vendorType}</span><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">Book through MyWisata</span></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Policies & support</p><h2 className="mt-2 text-2xl font-black">Plan with the right details</h2><div className="mt-5 space-y-4"><div className="flex gap-3"><Clock3 className="mt-0.5 shrink-0 text-primary" size={18} /><p className="text-sm leading-6 text-slate-600"><strong className="text-slate-900">Hours vary by outlet.</strong> Open the selected outlet to check its current schedule.</p></div><div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-primary" size={18} /><p className="text-sm leading-6 text-slate-600"><strong className="text-slate-900">Booking details stay clear.</strong> Product pages show availability, price and booking requirements.</p></div></div><a href="#locations" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">Choose an outlet <ArrowRight size={15} /></a></div></section>
+
+      {reviewSummary.reviews > 0 && <section aria-labelledby="reviews-heading" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Traveller favourites</p><h2 id="reviews-heading" className="mt-2 text-2xl font-black">Trusted by people who have been there</h2><p className="mt-2 text-sm text-slate-500">A combined score from visible reviews across this vendor&apos;s published listings.</p></div><div className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3"><Star size={24} fill="currentColor" className="text-amber-500" /><div><p className="text-2xl font-black text-slate-950">{reviewSummary.rating?.toFixed(1)} <span className="text-sm font-semibold text-slate-500">/ 5</span></p><p className="text-xs text-slate-500">{reviewSummary.reviews} reviews</p></div></div></div></section>}
+    </div>
+  </main>;
 }

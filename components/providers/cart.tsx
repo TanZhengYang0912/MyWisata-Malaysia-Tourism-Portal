@@ -21,6 +21,7 @@ interface CartContextValue {
   toggleSelected: (key: string) => void;
   setAllSelected: (selected: boolean, keys?: string[]) => void;
   setGroupSelected: (keys: string[], selected: boolean) => void;
+  setSelectedKeys: (keys: string[]) => void;
   addItem: (item: CartItem) => Promise<void>;
   updateQty: (index: number, qty: number) => Promise<void>;
   removeItem: (index: number) => Promise<void>;
@@ -34,28 +35,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [selectedKeys, setSelectedKeysState] = useState<Set<string>>(new Set());
   const { currentUser } = useAuth();
 
   useEffect(() => {
     let active = true;
     setMounted(false);
     getActivities().then((nextActivities) => { if (active) setActivities(nextActivities); });
-    if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => { if (active) { setItems(nextItems); setMounted(true); } });
+    if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => {
+      if (!active) return;
+      setItems(nextItems);
+      try {
+        const saved = sessionStorage.getItem(`customer-cart-selection-${currentUser.id}`);
+        setSelectedKeysState(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
+      } catch {
+        setSelectedKeysState(new Set());
+      }
+      setMounted(true);
+    });
     else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);
 
   useEffect(() => {
+    if (!currentUser || !mounted || items.length === 0) return;
+    try {
+      sessionStorage.setItem(`customer-cart-selection-${currentUser.id}`, JSON.stringify([...selectedKeys]));
+    } catch {
+      // Selection persistence is best-effort; checkout still works in-memory.
+    }
+  }, [currentUser, items.length, mounted, selectedKeys]);
+
+  useEffect(() => {
     const validKeys = new Set(items.map(cartItemKey));
-    setSelectedKeys((prev) => {
+    setSelectedKeysState((prev) => {
       const next = new Set([...prev].filter((k) => validKeys.has(k)));
       return next.size === prev.size ? prev : next;
     });
   }, [items]);
 
   const toggleSelected = useCallback((key: string) => {
-    setSelectedKeys((prev) => {
+    setSelectedKeysState((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -64,14 +84,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAllSelected = useCallback((selected: boolean, keys?: string[]) => {
-    setSelectedKeys(selected ? new Set(keys ?? items.map(cartItemKey)) : new Set());
+    setSelectedKeysState(selected ? new Set(keys ?? items.map(cartItemKey)) : new Set());
   }, [items]);
 
   // Outlet-group selection. Unlike setAllSelected (which replaces the whole
   // selection), this merges or subtracts only the given keys, so ticking one
   // outlet never clears another outlet's selection.
   const setGroupSelected = useCallback((keys: string[], selected: boolean) => {
-    setSelectedKeys((prev) => {
+    setSelectedKeysState((prev) => {
       const next = new Set(prev);
       for (const key of keys) {
         if (selected) next.add(key);
@@ -80,6 +100,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const replaceSelectedKeys = useCallback((keys: string[]) => {
+    setSelectedKeysState((current) => {
+      const available = new Set(items.map(cartItemKey));
+      return new Set(keys.filter((key) => available.has(key)));
+    });
+  }, [items]);
 
   useEffect(() => {
     const channel = supabase
@@ -123,7 +150,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, addItem, updateQty, removeItem, clear, totals }}
+      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
     >
       {children}
     </CartContext.Provider>

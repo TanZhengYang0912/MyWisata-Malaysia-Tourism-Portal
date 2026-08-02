@@ -25,6 +25,21 @@ describe("activity detail booking layout", () => {
     expect(source).toContain("Add to Cart");
   });
 
+  it("provides a safe in-app return path and clear next steps after adding", () => {
+    expect(source).toContain("useSearchParams");
+    expect(source).toContain("getCustomerReturnPath");
+    expect(source).toContain("Back to results");
+    expect(source).toContain('role="status"');
+    expect(source).toContain("View cart");
+    expect(source).toContain("Continue exploring");
+  });
+
+  it("gives booking controls explicit accessible state", () => {
+    expect(source).toContain('aria-pressed={selected}');
+    expect(source).toContain('aria-label="Decrease quantity"');
+    expect(source).toContain('aria-label="Increase quantity"');
+  });
+
   it("scopes scrolling to the reviews list, not the whole page", () => {
     expect(source).toContain("lg:overflow-y-auto");
     expect(source).toContain("<ActivityReviews");

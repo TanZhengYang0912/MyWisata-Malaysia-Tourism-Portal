@@ -110,10 +110,12 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      <div className="flex gap-3 print:hidden">
+      <div className="flex flex-wrap gap-3 print:hidden">
         {(order.status === "PAID" || order.status === "COMPLETED") && <Button type="button" variant="outline" className="flex-1" disabled={requestingRefund} onClick={() => void requestRefund()}>{requestingRefund ? "Submitting…" : "Request refund"}</Button>}
         <Button type="button" variant="outline" className="flex-1" onClick={() => window.print()}>Print receipt</Button>
         <Link href="/customer/activity?tab=orders" className="flex-1"><Button variant="outline" className="w-full">Back to Order History</Button></Link>
+        <Link href="/customer/activity" className="flex-1"><Button variant="outline" className="w-full">View My Activity</Button></Link>
+        <Link href="/customer" className="flex-1"><Button className="w-full">Continue exploring</Button></Link>
       </div>
       {refundMessage && <p className="mt-3 text-center text-xs font-semibold text-primary">{refundMessage}</p>}
     </div>
