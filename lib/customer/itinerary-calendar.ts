@@ -1,9 +1,23 @@
 import type { Booking } from "@/backend/core/types";
 
 export const CALENDAR_VISIBLE_BOOKINGS = 3;
+const MALAYSIA_TIME_ZONE = "Asia/Kuala_Lumpur";
+
+const calendarDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: MALAYSIA_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function calendarDateParts(date: Date) {
+  const parts = calendarDateFormatter.formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
 
 export function calendarDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const { year, month, day } = calendarDateParts(date);
+  return `${year}-${month}-${day}`;
 }
 
 export function groupBookingsByDay(bookings: Booking[]) {
@@ -19,10 +33,10 @@ export function getHiddenBookingCount(bookings: Booking[], visibleLimit = CALEND
 }
 
 export function countBookingsInMonth(bookings: Booking[], monthStart: Date) {
+  const monthKey = calendarDateKey(monthStart).slice(0, 7);
   return bookings.filter((booking) => {
     if (!booking.slotStartsAt) return false;
-    const date = new Date(booking.slotStartsAt);
-    return date.getMonth() === monthStart.getMonth() && date.getFullYear() === monthStart.getFullYear();
+    return calendarDateKey(new Date(booking.slotStartsAt)).slice(0, 7) === monthKey;
   }).length;
 }
 

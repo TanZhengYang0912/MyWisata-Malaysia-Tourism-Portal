@@ -37,4 +37,11 @@ describe("itinerary calendar helpers", () => {
 
     expect(countBookingsInMonth([august, september], new Date(2026, 7, 1))).toBe(1);
   });
+
+  it("uses Malaysia calendar boundaries regardless of the runtime timezone", () => {
+    const boundary = booking("boundary", "2026-08-03T00:30:00+08:00");
+
+    expect(groupBookingsByDay([boundary])).toEqual({ "2026-08-03": [boundary] });
+    expect(countBookingsInMonth([boundary], new Date("2026-08-01T00:00:00+08:00"))).toBe(1);
+  });
 });
