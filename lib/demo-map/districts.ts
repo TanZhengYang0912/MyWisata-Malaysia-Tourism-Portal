@@ -100,6 +100,7 @@ export const DEMO_DISTRICTS: Record<string, DemoDistrict[]> = {
     district("Kota Belud", 116.43, 6.35), district("Kudat", 116.84, 6.88),
     district("Kota Marudu", 116.75, 6.5), district("Ranau", 116.67, 5.95),
     district("Sandakan", 118.12, 5.84), district("Beluran", 117.5, 5.8),
+    district("Kinabatangan", 118.32, 5.53),
     district("Lahad Datu", 118.33, 5.02), district("Tawau", 117.89, 4.25),
     district("Semporna", 118.61, 4.48), district("Keningau", 116.16, 5.34),
     district("Beaufort", 115.74, 5.35), district("Sipitang", 115.55, 5.08),

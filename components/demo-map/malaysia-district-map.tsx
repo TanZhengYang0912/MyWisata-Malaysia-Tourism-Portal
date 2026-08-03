@@ -6,6 +6,7 @@ import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 import { getDistricts } from "@/lib/demo-map/districts";
 import { featureToPath, geometryBounds, projectPoint, type GeoBounds, type GeoJsonGeometry } from "@/lib/demo-map/geo";
+import { districtLabelWidth, layoutDistrictLabels, type DistrictLabelLayout } from "@/lib/demo-map/district-label-layout";
 
 const MAX_WIDTH = 1080;
 const MAX_HEIGHT = 760;
@@ -33,6 +34,23 @@ const nationalBounds = geometryBounds(stateFeatures.map((feature) => feature.geo
 
 /** Listing counts keyed by state id, then district id. "" holds the state total. */
 export type DistrictCounts = Record<string, Record<string, number>>;
+
+/**
+ * A business or place pin the map renders once a state is selected — built
+ * by lib/demo-map/discovery-pins.ts from the real catalogue, kept minimal
+ * here so the map component doesn't need to know about Activity/Outlet.
+ */
+export interface MapMarker {
+  id: string;
+  kind: "outlet" | "activity" | "cluster";
+  lat: number;
+  lng: number;
+  name: string;
+  /** Second line — vendor name for an outlet, price/type for an activity. */
+  detail?: string;
+  /** Item count when kind is "cluster". */
+  count?: number;
+}
 
 /**
  * projectPoint scales longitude and latitude independently, so the canvas has
@@ -103,9 +121,9 @@ const EAST_STEP = graticuleStep(EAST_GEO.bounds);
 
 /** Sizing for a state's pin card, pulled out to the plate's outer gutter. */
 const CARD_PADDING_X = 8;
-const CARD_HEIGHT = 34;
-const NAME_CHAR_WIDTH = 6.4;
-const COUNT_CHAR_WIDTH = 5.4;
+const CARD_HEIGHT = 40;
+const NAME_CHAR_WIDTH = 7.4;
+const COUNT_CHAR_WIDTH = 6.4;
 const ELBOW_GAP = 14;
 const CARD_ROW_SPACING = CARD_HEIGHT + 12;
 
@@ -123,12 +141,19 @@ export function MalaysiaDistrictMap({
   districtId,
   onSelectState,
   onSelectDistrict,
+  markers,
+  selectedMarkerId,
+  onSelectMarker,
 }: {
   counts: DistrictCounts;
   stateId: string | null;
   districtId: string | null;
   onSelectState: (stateId: string | null) => void;
   onSelectDistrict: (districtId: string | null) => void;
+  /** Rendered once a state is selected — see spec D5. Empty/omitted at national scale. */
+  markers?: MapMarker[];
+  selectedMarkerId?: string | null;
+  onSelectMarker?: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -145,21 +170,30 @@ export function MalaysiaDistrictMap({
   const stockedCount = districts.filter((d) => (counts[stateId!]?.[d.id] ?? 0) > 0).length;
 
   /**
-   * A dot per daerah, the way a printed tourist map marks towns — no
-   * invented boundaries, no permanent label. Every district's name shows on
-   * hover/focus only; the stocked/hollow dot colour is the only thing that's
-   * always visible.
+   * Every district in the selected state gets a permanent label (spec D3) —
+   * the earlier hover-only version is gone. layoutDistrictLabels() resolves
+   * collisions deterministically; districts it can't fit nearby fall into an
+   * outer lane, which can widen or heighten the plate beyond `core`.
    */
-  const districtPoints = useMemo(() => {
-    if (!feature || !core) return [];
-    const midLng = (bounds.minLng + bounds.maxLng) / 2;
-    return districts.map((district) => ({
-      district,
-      point: projectPoint(district.seed, bounds, core),
-      stocked: (counts[stateId!]?.[district.id] ?? 0) > 0,
-      flip: district.seed[0] > midLng,
-    }));
-  }, [feature, core, districts, bounds, counts, stateId]);
+  const districtLayout = useMemo(() => {
+    if (!feature || !core) return null;
+    const points = districts.map((district) => ({ district, point: projectPoint(district.seed, bounds, core) }));
+    const labels = layoutDistrictLabels(
+      points.map(({ district, point }) => ({ id: district.id, name: district.name, x: point.x, y: point.y })),
+      { width: core.width, height: core.height },
+    );
+    const byId = new Map(labels.map((l) => [l.id, l]));
+    const nameById = new Map(points.map(({ district }) => [district.id, district.name]));
+    const leftWidth = Math.max(0, ...labels.filter((l) => l.lane === "left").map((l) => -l.labelX + districtLabelWidth(nameById.get(l.id)!)));
+    const rightWidth = Math.max(0, ...labels.filter((l) => l.lane === "right").map((l) => l.labelX + districtLabelWidth(nameById.get(l.id)!) - core.width));
+    const extraHeight = Math.max(0, ...labels.map((l) => l.labelY + 12 - core.height));
+    return {
+      points,
+      labels: byId,
+      leftWidth,
+      canvas: { width: leftWidth + core.width + rightWidth, height: core.height + extraHeight, padding: core.padding },
+    };
+  }, [feature, core, districts, bounds]);
 
   /**
    * National view: pull every stocked state's name + count out to a card in
@@ -208,7 +242,7 @@ export function MalaysiaDistrictMap({
     };
   }, [counts]);
 
-  const canvas = feature && core ? core : { width: nationalLayout.width, height: nationalLayout.height, padding: PADDING };
+  const canvas = feature && districtLayout ? districtLayout.canvas : { width: nationalLayout.width, height: nationalLayout.height, padding: PADDING };
   const gapCenterX = nationalLayout.west.offsetX + WEST_GEO.canvas.width + nationalLayout.west.rightWidth + REGION_GAP / 2;
 
   return (
@@ -219,18 +253,20 @@ export function MalaysiaDistrictMap({
           <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: COAST }}>
             {stateId ? "Negeri / State" : "Malaysia"}
           </p>
-          <h2 className="mt-0.5 text-xl font-bold text-foreground font-[family-name:var(--font-display)]">
+          <h2
+            className={`mt-0.5 font-bold text-foreground font-[family-name:var(--font-display)] ${stateId ? "text-xl" : "text-3xl"}`}
+          >
             {activeState?.name ?? "All states and federal territories"}
           </h2>
           {!stateId && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               West and East Malaysia scaled independently to fill the plate — not true relative scale.
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
           {stateId && (
-            <span className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ backgroundColor: "#ffffff", color: COAST }}>
+            <span className="rounded-full px-3 py-1.5 text-[13px] font-semibold" style={{ backgroundColor: "#ffffff", color: COAST }}>
               {districts.length > 0
                 ? `${districts.length} daerah · ${stockedCount} with listings`
                 : activeState?.kind === "federal-territory"
@@ -242,7 +278,7 @@ export function MalaysiaDistrictMap({
             <button
               type="button"
               onClick={() => { onSelectState(null); onSelectDistrict(null); }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-foreground transition hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-foreground transition hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ArrowLeft size={12} /> All Malaysia
             </button>
@@ -318,56 +354,107 @@ export function MalaysiaDistrictMap({
                       const cardY = nationalLayout.cardY.get(state.id);
                       const cardW = stocked ? cardWidth(state.name, listings) : 0;
                       const rectX = flip ? edgeX + ELBOW_GAP : edgeX - ELBOW_GAP - cardW;
+                      const stateDistricts = getDistricts(state.id);
                       return (
-                        <g
-                          key={state.id}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Open ${state.name}, ${listings} listings`}
-                          className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                          onMouseEnter={() => setHovered(state.id)}
-                          onMouseLeave={() => setHovered((current) => (current === state.id ? null : current))}
-                          onFocus={() => setHovered(state.id)}
-                          onBlur={() => setHovered((current) => (current === state.id ? null : current))}
-                          onClick={() => onSelectState(state.id)}
-                          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectState(state.id); } }}
-                        >
-                          <path
-                            d={featureToPath(item.geometry, geo.bounds, geo.canvas)}
-                            fill={isHovered ? LAND_ACTIVE : stocked ? LAND : LAND_QUIET}
-                            stroke={COAST}
-                            strokeWidth={0.8}
-                            strokeOpacity={0.7}
-                          />
-                          {stocked && cardY !== undefined && (
-                            <>
-                              <path
-                                d={`M${point.x},${point.y} L${edgeX},${point.y} L${edgeX},${cardY}`}
-                                fill="none"
-                                stroke={COAST}
-                                strokeWidth={0.9}
-                              />
-                              <circle cx={point.x} cy={point.y} r={10} fill="transparent" />
-                              {isHovered && <circle cx={point.x} cy={point.y} r={9} fill="var(--primary)" opacity={0.16} />}
-                              <circle cx={point.x} cy={point.y} r={5.5} fill={isHovered ? "var(--primary)" : "var(--highlight-yellow, #D97706)"} stroke="#ffffff" strokeWidth={1.8} />
-                              <rect
-                                x={rectX}
-                                y={cardY - CARD_HEIGHT / 2}
-                                width={cardW}
-                                height={CARD_HEIGHT}
-                                rx={6}
-                                fill="#ffffff"
-                                stroke={isHovered ? "var(--primary)" : COAST}
-                                strokeWidth={isHovered ? 1.6 : 1}
-                              />
-                              <text x={rectX + CARD_PADDING_X} y={cardY - CARD_HEIGHT / 2 + 15} className="pointer-events-none text-[11px] font-bold" fill="#16233F">
-                                {state.name}
-                              </text>
-                              <text x={rectX + CARD_PADDING_X} y={cardY - CARD_HEIGHT / 2 + 27} className="pointer-events-none text-[10px]" fill={COAST}>
-                                {countLabel(listings)}
-                              </text>
-                            </>
-                          )}
+                        <g key={state.id}>
+                          <g
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Open ${state.name}, ${listings} listings`}
+                            className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                            onMouseEnter={() => setHovered(state.id)}
+                            onMouseLeave={() => setHovered((current) => (current === state.id ? null : current))}
+                            onFocus={() => setHovered(state.id)}
+                            onBlur={() => setHovered((current) => (current === state.id ? null : current))}
+                            onClick={() => onSelectState(state.id)}
+                            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectState(state.id); } }}
+                          >
+                            <path
+                              d={featureToPath(item.geometry, geo.bounds, geo.canvas)}
+                              fill={isHovered ? LAND_ACTIVE : stocked ? LAND : LAND_QUIET}
+                              stroke={COAST}
+                              strokeWidth={0.8}
+                              strokeOpacity={0.7}
+                            />
+                            {stocked && cardY !== undefined && (
+                              <>
+                                <path
+                                  d={`M${point.x},${point.y} L${edgeX},${point.y} L${edgeX},${cardY}`}
+                                  fill="none"
+                                  stroke={COAST}
+                                  strokeWidth={0.9}
+                                />
+                                <circle cx={point.x} cy={point.y} r={10} fill="transparent" />
+                                {isHovered && <circle cx={point.x} cy={point.y} r={9} fill="var(--primary)" opacity={0.16} />}
+                                <circle cx={point.x} cy={point.y} r={5.5} fill={isHovered ? "var(--primary)" : "var(--highlight-yellow, #D97706)"} stroke="#ffffff" strokeWidth={1.8} />
+                                <rect
+                                  x={rectX}
+                                  y={cardY - CARD_HEIGHT / 2}
+                                  width={cardW}
+                                  height={CARD_HEIGHT}
+                                  rx={6}
+                                  fill="#ffffff"
+                                  stroke={isHovered ? "var(--primary)" : COAST}
+                                  strokeWidth={isHovered ? 1.6 : 1}
+                                />
+                                <text x={rectX + CARD_PADDING_X} y={cardY - CARD_HEIGHT / 2 + 17} className="pointer-events-none text-[13px] font-bold" fill="#16233F">
+                                  {state.name}
+                                </text>
+                                <text x={rectX + CARD_PADDING_X} y={cardY - CARD_HEIGHT / 2 + 32} className="pointer-events-none text-[13px]" fill={COAST}>
+                                  {countLabel(listings)}
+                                </text>
+                              </>
+                            )}
+                          </g>
+
+                          {/* Every district plotted as a bare dot at national scale (spec
+                              D3, revised Δ1) — 115 permanent names don't fit this zoomed
+                              out; hover/focus reveals one at a time instead. Selecting a dot
+                              jumps straight into that state+district in one action: the
+                              onSelectDistrict call below must run AFTER onSelectState, since
+                              onSelectState's own handler resets districtId to null. */}
+                          {stateDistricts.map((district) => {
+                            const dPoint = projectPoint(district.seed, geo.bounds, geo.canvas);
+                            const dStocked = (counts[state.id]?.[district.id] ?? 0) > 0;
+                            const hoverKey = `d:${district.id}`;
+                            const dHovered = hovered === hoverKey;
+                            return (
+                              <g
+                                key={district.id}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`${district.name}, ${state.name}`}
+                                className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                onMouseEnter={() => setHovered(hoverKey)}
+                                onMouseLeave={() => setHovered((current) => (current === hoverKey ? null : current))}
+                                onFocus={() => setHovered(hoverKey)}
+                                onBlur={() => setHovered((current) => (current === hoverKey ? null : current))}
+                                onClick={(event) => { event.stopPropagation(); onSelectState(state.id); onSelectDistrict(district.id); }}
+                                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onSelectState(state.id); onSelectDistrict(district.id); } }}
+                              >
+                                <circle cx={dPoint.x} cy={dPoint.y} r={7} fill="transparent" />
+                                <circle
+                                  cx={dPoint.x}
+                                  cy={dPoint.y}
+                                  r={dStocked ? 3 : 2}
+                                  fill={dStocked ? "var(--highlight-yellow, #D97706)" : "#ffffff"}
+                                  stroke={COAST}
+                                  strokeWidth={1}
+                                />
+                                {dHovered && (
+                                  <text
+                                    x={dPoint.x + 6}
+                                    y={dPoint.y - 6}
+                                    className="pointer-events-none text-[13px] font-semibold"
+                                    fill="#16233F"
+                                    style={{ paintOrder: "stroke", stroke: "#ffffff", strokeWidth: 3.5, strokeLinejoin: "round" }}
+                                  >
+                                    {district.name}
+                                  </text>
+                                )}
+                              </g>
+                            );
+                          })}
                         </g>
                       );
                     })}
@@ -378,8 +465,8 @@ export function MalaysiaDistrictMap({
           </>
         )}
 
-        {feature && core && (
-          <g>
+        {feature && core && districtLayout && (
+          <g transform={`translate(${districtLayout.leftWidth},0)`}>
             {/* Whole-degree grid at national scale, finer as you drill in —
                 these are the actual coordinates the outlets are stored at. */}
             <g stroke={GRATICULE} strokeWidth={0.6} opacity={0.55}>
@@ -415,12 +502,16 @@ export function MalaysiaDistrictMap({
 
             <path d={featureToPath(feature.geometry, bounds, core)} fill={LAND} stroke={COAST} strokeWidth={1.6} />
 
-            {/* A dot per daerah, the way a printed tourist map marks towns —
-                no invented boundaries. Name shows on hover/focus only. */}
-            {districtPoints.map(({ district, point, stocked, flip }) => {
+            {/* Every daerah now carries a permanent label (spec D3) — placed by
+                layoutDistrictLabels(), which tries a spot right next to the dot
+                first and only pushes a name out to the side lane, on a leader
+                line, when the state is too crowded for that (Sabah). */}
+            {districtLayout.points.map(({ district, point }) => {
               const listings = counts[stateId!]?.[district.id] ?? 0;
+              const stocked = listings > 0;
               const isSelected = district.id === districtId;
               const isHovered = hovered === district.id;
+              const label: DistrictLabelLayout | undefined = districtLayout.labels.get(district.id);
               return (
                 <g
                   key={district.id}
@@ -437,6 +528,14 @@ export function MalaysiaDistrictMap({
                 >
                   {/* Generous invisible hit area — the visible dot is small. */}
                   <circle cx={point.x} cy={point.y} r={16} fill="transparent" />
+                  {label?.leader && (
+                    <path
+                      d={`M${point.x},${point.y} L${label.lane === "left" ? 0 : core.width},${point.y} L${label.lane === "left" ? 0 : core.width},${label.labelY}`}
+                      fill="none"
+                      stroke={COAST}
+                      strokeWidth={0.9}
+                    />
+                  )}
                   {(isSelected || isHovered) && <circle cx={point.x} cy={point.y} r={12} fill="var(--primary)" opacity={0.16} />}
                   <circle
                     cx={point.x}
@@ -446,16 +545,57 @@ export function MalaysiaDistrictMap({
                     stroke={isSelected ? "#ffffff" : COAST}
                     strokeWidth={stocked ? 1.8 : 1.2}
                   />
-                  {isHovered && (
+                  {label && (
                     <text
-                      x={point.x + (flip ? -11 : 11)}
-                      y={point.y + 3.6}
-                      textAnchor={flip ? "end" : "start"}
-                      className={`pointer-events-none text-[11px] tracking-[0.06em] ${isSelected ? "font-bold" : "font-medium"}`}
-                      fill={isSelected ? "var(--primary)" : "#16233F"}
-                      style={{ paintOrder: "stroke", stroke: LAND, strokeWidth: 3.5, strokeLinejoin: "round" }}
+                      x={label.labelX}
+                      y={label.labelY + 4}
+                      textAnchor={label.anchor}
+                      className={`pointer-events-none text-[13px] tracking-[0.02em] ${isSelected ? "font-bold" : stocked ? "font-semibold" : "font-medium"}`}
+                      fill={isSelected ? "var(--primary)" : stocked ? "#16233F" : COAST}
+                      style={label.lane === "none" ? { paintOrder: "stroke", stroke: LAND, strokeWidth: 3.5, strokeLinejoin: "round" } : undefined}
                     >
                       {district.name}{stocked ? ` · ${listings}` : ""}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Outlet and place-activity pins — only present once a state is
+                selected (spec D5). Circle = outlet, diamond = a place-bound
+                activity's own destination, numbered circle = a cluster of
+                several pins sharing one coordinate. */}
+            {(markers ?? []).map((marker) => {
+              const point = projectPoint([marker.lng, marker.lat], bounds, core);
+              const isSelected = selectedMarkerId === marker.id;
+              const kindLabel = marker.kind === "outlet" ? "Outlet" : marker.kind === "activity" ? "Activity place" : `${marker.count ?? 0} places here`;
+              const fill = isSelected ? "var(--primary)" : "var(--highlight-yellow, #D97706)";
+              return (
+                <g
+                  key={marker.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${marker.name} — ${kindLabel}`}
+                  className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  onClick={() => onSelectMarker?.(marker.id)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectMarker?.(marker.id); } }}
+                >
+                  {/* Hit area only modestly bigger than the visible glyph (r=7) — a
+                      generous r=14 let two markers ~10px apart (real, distinct
+                      coordinates that render close together at this zoom, e.g.
+                      George Town's 4-outlet cluster next to the separate
+                      Nusantara Homestay pin) steal each other's clicks entirely
+                      via overlapping invisible circles. */}
+                  <circle cx={point.x} cy={point.y} r={9} fill="transparent" />
+                  {isSelected && <circle cx={point.x} cy={point.y} r={13} fill="var(--primary)" opacity={0.16} />}
+                  {marker.kind === "activity" ? (
+                    <rect x={point.x - 5.2} y={point.y - 5.2} width={10.4} height={10.4} rx={2} fill={fill} stroke="#ffffff" strokeWidth={1.6} transform={`rotate(45 ${point.x} ${point.y})`} />
+                  ) : (
+                    <circle cx={point.x} cy={point.y} r={7} fill={fill} stroke="#ffffff" strokeWidth={1.6} />
+                  )}
+                  {marker.kind === "cluster" && (
+                    <text x={point.x} y={point.y + 3.4} textAnchor="middle" className="pointer-events-none fill-white text-[10px] font-bold">
+                      {marker.count}
                     </text>
                   )}
                 </g>
@@ -466,7 +606,7 @@ export function MalaysiaDistrictMap({
       </svg>
 
       {/* Legend — what the dots mean, shown rather than described. */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-5 py-3 text-[11px]" style={{ borderColor: COAST + "55", backgroundColor: "#ffffffcc", color: "#4A5C71" }}>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-5 py-3 text-[13px]" style={{ borderColor: COAST + "55", backgroundColor: "#ffffffcc", color: "#4A5C71" }}>
         {stateId ? (
           <>
             <span className="inline-flex items-center gap-1.5">
@@ -481,7 +621,15 @@ export function MalaysiaDistrictMap({
               <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--primary)" /></svg>
               Selected
             </span>
-            <span className="ml-auto">Hover or focus a dot for its name.</span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--highlight-yellow, #D97706)" stroke="#ffffff" strokeWidth="1.6" /></svg>
+              Outlet
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg width="12" height="12" aria-hidden="true"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="var(--highlight-yellow, #D97706)" stroke="#ffffff" strokeWidth="1.4" transform="rotate(45 6 6)" /></svg>
+              Activity place
+            </span>
+            <span className="ml-auto">Every daerah is labelled; pins open a preview.</span>
           </>
         ) : (
           <>
