@@ -33,6 +33,14 @@ describe("DEMO_DISTRICTS", () => {
     }
   });
 
+  it("includes Kinabatangan in Sabah — the district for River & Rainforest Discovery's place coordinate", () => {
+    // Added for docs/plans/2026-08-03-0237-dev-explore-discovery-map.md Δ2:
+    // the product's real destination (the Kinabatangan River) has no seeded
+    // town of its own, unlike the outlet-derived cities already in this list.
+    const sabah = getDistricts("sabah");
+    expect(sabah.some((d) => d.name === "Kinabatangan")).toBe(true);
+  });
+
   it("places every district seed inside its state's bounding box", () => {
     for (const state of DEMO_STATES) {
       const districts = getDistricts(state.id);
