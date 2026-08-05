@@ -14,6 +14,11 @@ export function cartItemKey(item: Pick<CartItem, "activityId" | "variantId" | "s
   return `${item.activityId}|${item.variantId}|${item.slotId ?? ""}|${item.outletId ?? ""}`;
 }
 
+/** The database only accepts cart lines backed by a variant or booking slot. */
+export function assertCartItemHasBackingRecord(item: Pick<CartItem, "variantId" | "slotId">): void {
+  if (!item.variantId?.trim() && !item.slotId?.trim()) throw new Error("cart_item_requires_variant_or_slot");
+}
+
 // ─── Contract #4: order state machine ──────────────────────────────────────
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   DRAFT: ["PENDING_PAYMENT"],

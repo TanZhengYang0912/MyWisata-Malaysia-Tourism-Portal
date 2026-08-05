@@ -161,6 +161,15 @@ const PLACE_BOUND_ACTIVITIES = {
   96: ['Herbal Steam & Body Scrub', 'herbal-steam-body-scrub', 'wellness', 'Traditional herbal steam followed by a turmeric and rice bran scrub, drawn from Malay postnatal spa practice.'],
 };
 
+// These are public routes and landmarks, not paid tours. A vendor may still
+// publish a separate guided product for the same area, but the public-place
+// row itself must stay free and non-bookable.
+const PUBLIC_PLACE_SLUGS = new Set([
+  'george-town-story-walk-penang',
+  'jonker-walk-heritage-trail',
+  'merdeka-square-heritage-walk',
+]);
+
 // The three Serenity treatments above, in the order their per-outlet prices are
 // listed: [loop index, [KL, George Town, Kota Kinabalu]].
 const WELLNESS_OFFER_PRICES = [
@@ -288,8 +297,8 @@ async function ensureVendor() {
     description: 'A Malaysia-wide collection of local flavours, heritage trails and small-group experiences.',
     business_type: 'food_and_tourism',
     status: 'approved',
-    logo_url: PHOTO_URLS[0],
-    cover_url: PHOTO_URLS[4],
+    logo_url: null,
+    cover_url: null,
     approved_by: DEMO_USERS[0][0],
     approved_at: new Date().toISOString(),
   }]);
@@ -342,7 +351,7 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
 async function seedAdditionalVendors(categories) {
   const activityCategoryId = categories.find(([, , slug]) => slug === 'activity')[0];
   const vendors = EXTRA_VENDORS.map((vendor) => ({
-    id: vendor.id, owner_id: vendor.ownerId, name: vendor.name, slug: vendor.slug, description: vendor.description, business_type: 'tourism_experience', status: 'approved', logo_url: PHOTO_URLS[2], cover_url: PHOTO_URLS[6], approved_by: DEMO_USERS[0][0], approved_at: new Date().toISOString(),
+    id: vendor.id, owner_id: vendor.ownerId, name: vendor.name, slug: vendor.slug, description: vendor.description, business_type: 'tourism_experience', status: 'approved', logo_url: null, cover_url: null, approved_by: DEMO_USERS[0][0], approved_at: new Date().toISOString(),
   }));
   await upsert('vendors', vendors);
   const extraProducts = [];
@@ -565,6 +574,8 @@ async function main() {
     const themedVendor = typeSlug ? TYPE_TO_THEMED_VENDOR[typeSlug] : undefined;
     const outlet = themedVendor ? themedOutletRows[themedVendor.slug][i % outletRows.length] : outletRows[i % outletRows.length];
     const name = placeBound ? placeBound[0] : baseName;
+    const slug = placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95);
+    const isPublicPlace = Boolean(placeBound && PUBLIC_PLACE_SLUGS.has(slug));
     productSeedIndex.push(i);
     productRows.push({
       id: stableUuid(`product:${i}`),
@@ -572,11 +583,11 @@ async function main() {
       outlet_id: outlet.id,
       category_id: CATEGORIES[categoryIndex][0],
       name,
-      slug: placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),
+      slug,
       description: placeBound ? placeBound[3] : productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
       product_type: productType,
-      requires_booking: requiresBooking,
-      base_price: basePrice + ((i % 5) * 2),
+      requires_booking: isPublicPlace ? false : requiresBooking,
+      base_price: isPublicPlace ? 0 : basePrice + ((i % 5) * 2),
       cover_url: PHOTO_URLS[i % PHOTO_URLS.length],
       tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), productType],
       type_slugs: placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [],

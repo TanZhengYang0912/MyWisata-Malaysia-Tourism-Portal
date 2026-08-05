@@ -262,32 +262,32 @@ function WalletContent() {
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Top-up balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.topup.toFixed(2)}`}
             </p>
           </div>
-          <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Earnings balance</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.earnings.toFixed(2)}`}
             </p>
           </div>
-          <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Pending rewards</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.pendingEarnings.toFixed(2)}`}
             </p>
             <p className="mt-1 text-[10px] leading-snug opacity-60">Available after the 7-day hold and KYC approval.</p>
           </div>
-          <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Reserved withdrawals</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.reservedEarnings.toFixed(2)}`}
             </p>
           </div>
-          <div className="rounded-xl bg-white/10 px-4 py-2">
+          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
             <p className="text-xs opacity-60">Withdrawn earnings</p>
             <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
               {buckets === null ? "—" : `RM ${buckets.withdrawnEarnings.toFixed(2)}`}

@@ -105,13 +105,13 @@ export default function CustomerSupportPage() {
           description="If our chatbot can't answer your question, you can raise a ticket right from the chat — it'll show up here."
         />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(36,49,58,0.07)" }}>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <div className="divide-y divide-border">
             {tickets.map((t) => (
               <Link
                 key={t.id}
                 href={`/customer/support/${t.id}`}
-                className="px-6 py-4 flex items-center gap-4 flex-wrap hover:bg-muted/50 transition-colors"
+                className="flex flex-wrap items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset sm:px-6"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">

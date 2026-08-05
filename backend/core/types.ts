@@ -38,6 +38,8 @@ export interface VendorSummary {
   id: string;
   name: string;
   status: string; // "pending" | "approved" | "rejected"
+  logoUrl: string | null;
+  coverUrl: string | null;
   outlets: { id: string; name: string; city: string; state: string }[];
 }
 
@@ -219,7 +221,7 @@ export interface Booking {
   slotStartsAt?: string;
   qty: number;
   status: "confirmed" | "checked_in" | "no_show" | "cancelled";
-  qrCode: string; // demo placeholder string
+  qrCode: string; // booking id retained as a compatibility payload; customer UI renders a real QR
 }
 
 export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";

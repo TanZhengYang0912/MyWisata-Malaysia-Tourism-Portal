@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Package, QrCode } from "lucide-react";
+import { CheckCircle2, Package } from "lucide-react";
 import { getBookingsForOrder, getOrder } from "@/backend/domains/commerce";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order } from "@/backend/core/types";
 
@@ -93,8 +94,8 @@ export default function OrderDetailPage() {
           <p className="text-sm font-bold text-foreground">Your Bookings</p>
           {bookings.map((b) => (
             <div key={b.id} className="rounded-xl border border-border p-4 flex items-center gap-4">
-              <div className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
-                <QrCode size={32} className="text-primary" />
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-primary/10 p-1">
+                <BookingQrCode bookingId={b.id} size={72} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{b.activityName}</p>
@@ -103,7 +104,7 @@ export default function OrderDetailPage() {
                     {new Date(b.slotStartsAt).toLocaleString("en-MY", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
                   </p>
                 )}
-                <p className="text-xs font-mono text-muted-foreground mt-0.5">{b.qrCode} (Demo QR)</p>
+                <p className="mt-0.5 truncate text-xs font-mono text-muted-foreground">Booking reference: {b.id}</p>
               </div>
             </div>
           ))}

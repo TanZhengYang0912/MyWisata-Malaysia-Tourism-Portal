@@ -17,6 +17,13 @@ describe("shared card layout contract", () => {
     expect(styles).toContain(".mw-card-footer {");
   });
 
+  it("keeps media consumer backgrounds from being overwritten", () => {
+    const styles = read("app/globals.css");
+
+    expect(styles).toContain("background-color: var(--secondary);");
+    expect(styles).not.toContain("  background: var(--secondary);");
+  });
+
   it("uses the contract across customer-facing card families", () => {
     const cardConsumers = [
       "components/customer/activity-card.tsx",

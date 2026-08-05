@@ -10,13 +10,15 @@ import {
 describe("customer header navigation", () => {
   it("keeps every customer destination discoverable", () => {
     expect(CUSTOMER_NAV.map((item) => item.href)).toEqual([
-      "/customer/for-you",
+      "/customer/search",
       "/customer/explore",
       "/customer/map",
       "/customer/chat",
       "/customer/activity?tab=itinerary",
       "/customer/wishlist",
     ]);
+    expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer/search", label: "Partners" });
+    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/for-you")).toBe(false);
 
     expect(getAllAccountRoutes()).toEqual([
       "/customer/profile",
