@@ -7,24 +7,21 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { callGemini } from './gemini';
+import { redactPII } from '@/lib/chatbot/pii';
+import { callGemini, type GeminiInlineImage } from './gemini';
 
-const SYSTEM_PROMPT = `You are a moderation assistant for MyWisata's admin team, reviewing a
-community-submitted vendor recommendation. You are ADVISORY ONLY — you never approve, reject, or
-issue a verdict. You give the human reviewer a structured read to help them decide.
+const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
+Review the supplied safe evidence summary and the submitted photos. A human administrator makes
+the final decision; you never execute or claim to execute approval, rejection, or changes.
 
-Assess:
-- completeness: is the submission missing information a reviewer would need (address, description, category)?
-- qualityNotes: brief notes on how well-written/plausible the submission is.
-- riskFlag: "low_risk" or "needs_review" — needs_review if something looks off (vague, spammy,
-  suspiciously similar to an existing entry, or clearly incomplete).
+Assess missing or weak evidence, obvious spam or test content, policy conflicts, and whether each
+supplied photo appears relevant, clear, or has an obvious category conflict. The exact normalized-
+name match count is computed separately and must be treated as the authoritative duplicate signal.
+Photo analysis must not claim authenticity, location proof, ownership, or publishing rights.
+Use only the supplied Photo ID values in photoAssessments. Do not invent IDs.
 
-You are given a DUPLICATE SIGNAL computed separately (not by you) — a fuzzy name-match count
-against existing submissions. Incorporate it into duplicateLikelihood ("low"/"medium"/"high"); do
-not guess your own duplicate assessment from the text alone.
-
-Respond with ONLY strict JSON, no markdown:
-{"completeness": "...", "duplicateLikelihood": "low"|"medium"|"high", "qualityNotes": "...", "riskFlag": "low_risk"|"needs_review"}`;
+Respond with ONLY strict JSON matching this shape:
+{"suggestedAction":"approve"|"request_changes"|"reject","confidence":"low"|"medium"|"high","findings":[{"field":"vendor_name"|"description"|"why_recommend"|"category"|"location"|"contact"|"photos"|"image_attestation"|"duplicate","severity":"low"|"medium"|"high","kind":"low_quality"|"conflict"|"spam"|"test_content"|"policy"|"duplicate"|"manual_review","message":"...","evidenceSummary":"..."|null}],"feedbackDraft":"..."|null,"photoAssessments":[{"imageId":"supplied Photo ID","status":"appears_relevant"|"possible_conflict"|"unclear"|"could_not_analyse","message":"..."}]}`;
 
 export type RecommendationEvidenceField =
   | 'vendor_name'
@@ -103,6 +100,12 @@ export interface RecommendationEvidenceRow {
   contact_website: string | null;
   image_attested_at: string | null;
   state?: string | null;
+}
+
+export interface RecommendationImageRow {
+  id: string;
+  storage_path: string;
+  sort_order: number;
 }
 
 export const aiResultSchema = z.object({
@@ -258,30 +261,130 @@ export function applyDecisionGuardrails(
   };
 }
 
-interface LegacyModerationAssessment {
-  completeness: string;
-  duplicateLikelihood: 'low' | 'medium' | 'high';
-  qualityNotes: string;
-  riskFlag: 'low_risk' | 'needs_review';
-}
-
-const assessmentSchema = z.object({
-  completeness: z.string(),
-  duplicateLikelihood: z.enum(['low', 'medium', 'high']),
-  qualityNotes: z.string(),
-  riskFlag: z.enum(['low_risk', 'needs_review']),
-}).strict();
-
 function extractJson(text: string): unknown {
   const stripped = text.replace(/```json\s*|```/g, '').trim();
   return JSON.parse(stripped);
 }
 
+function normalizeImageMime(contentType: string | null): GeminiInlineImage['mimeType'] {
+  const mimeType = contentType?.split(';', 1)[0]?.trim().toLowerCase();
+  if (mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/webp') {
+    return mimeType;
+  }
+  throw new Error('unsupported_image_type');
+}
+
+export async function loadRecommendationImages(
+  service: SupabaseClient,
+  rows: RecommendationImageRow[],
+): Promise<{ images: GeminiInlineImage[]; failures: string[] }> {
+  const loaded = await Promise.all(rows.slice(0, 5).map(async (row) => {
+    try {
+      const { data, error } = await service.storage
+        .from('recommendation-images')
+        .createSignedUrl(row.storage_path, 60, {
+          transform: { width: 1024, height: 1024, resize: 'contain' },
+        });
+      if (error || !data?.signedUrl) throw new Error('signed_image_unavailable');
+
+      const response = await fetch(data.signedUrl, { cache: 'no-store' });
+      if (!response.ok) throw new Error('image_fetch_failed');
+      const mimeType = normalizeImageMime(response.headers.get('content-type'));
+      const dataBase64 = Buffer.from(await response.arrayBuffer()).toString('base64');
+
+      return {
+        image: { id: row.id, mimeType, data: dataBase64 },
+        failure: null,
+      };
+    } catch {
+      return { image: null, failure: row.id };
+    }
+  }));
+
+  return {
+    images: loaded.flatMap((item) => item.image ? [item.image] : []),
+    failures: loaded.flatMap((item) => item.failure ? [item.failure] : []),
+  };
+}
+
+function safeSummaryValue(value: string | null | undefined): string {
+  const { clean } = redactPII(value ?? '(not provided)');
+  return clean
+    .replace(/https?:\/\/\S+/gi, '[URL]')
+    .replace(/(?:storage_path|staged|private|recommendation-images)\/\S+/gi, '[PATH]');
+}
+
+export function buildSafeSubmissionText(
+  rec: RecommendationEvidenceRow,
+  imageCount: number,
+  duplicateCount: number,
+): string {
+  const categoryName = (Array.isArray(rec.categories)
+    ? rec.categories[0]?.name
+    : rec.categories?.name)?.trim();
+  const contactKinds = [
+    rec.contact_phone?.trim() ? 'phone' : null,
+    rec.contact_email?.trim() ? 'email' : null,
+    rec.contact_website?.trim() ? 'website' : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return [
+    `Vendor name: ${safeSummaryValue(rec.vendor_name)}`,
+    `Description: ${safeSummaryValue(rec.description)}`,
+    `Recommendation reason: ${safeSummaryValue(rec.why_recommend)}`,
+    `Category: ${safeSummaryValue(categoryName)}`,
+    `Google place name: ${safeSummaryValue(rec.location_name)}`,
+    `Formatted address: ${safeSummaryValue(rec.formatted_address)}`,
+    `Coordinates present: ${Number.isFinite(rec.latitude) && Number.isFinite(rec.longitude) ? 'yes' : 'no'}`,
+    `Contact methods present: ${contactKinds.join(', ') || 'none'}`,
+    `Photo count: ${imageCount}`,
+    `Image rights attested: ${rec.image_attested_at?.trim() ? 'yes' : 'no'}`,
+    `Exact normalized-name matches: ${duplicateCount}`,
+  ].join('\n');
+}
+
+function photoFailureAssessments(failures: string[]): PhotoAssessment[] {
+  return failures.map((imageId) => ({
+    imageId,
+    status: 'could_not_analyse' as const,
+    message: 'This photo could not be analysed.',
+  }));
+}
+
+function sanitizeModelText(value: string, imageData: readonly string[]): string {
+  const { clean } = redactPII(value);
+  return imageData.reduce((safeText, data) => data ? safeText.split(data).join('[IMAGE_DATA]') : safeText, clean)
+    .replace(/https?:\/\/\S+/gi, '[URL]')
+    .replace(/(?:storage_path|staged|private|recommendation-images)\/\S+/gi, '[PATH]')
+    .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/gi, '[IMAGE_DATA]')
+    .replace(/\b[A-Za-z0-9+/]{24,}={0,2}\b/g, '[IMAGE_DATA]');
+}
+
+function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInlineImage[]): AiModerationResult {
+  const imageData = images.map((image) => image.data);
+  return {
+    ...result,
+    findings: result.findings.map((finding) => ({
+      ...finding,
+      message: sanitizeModelText(finding.message, imageData),
+      evidenceSummary: finding.evidenceSummary === null
+        ? null
+        : sanitizeModelText(finding.evidenceSummary, imageData),
+    })),
+    feedbackDraft: result.feedbackDraft === null
+      ? null
+      : sanitizeModelText(result.feedbackDraft, imageData),
+    photoAssessments: result.photoAssessments.map((photo) => ({
+      ...photo,
+      message: sanitizeModelText(photo.message, imageData),
+    })),
+  };
+}
+
 /**
- * Fuzzy duplicate signal — count of OTHER non-rejected recommendations
+ * Exact duplicate signal — count of OTHER non-rejected recommendations
  * whose normalized name matches this one. Aggregate count only, never the
- * other submitters' identities (CLAUDE-ADMIN-AI.md: "compare against
- * existing vendor names — aggregate/fuzzy, not by exposing other users' data").
+ * other submitters' identities.
  */
 async function duplicateSignal(service: SupabaseClient, recommendationId: string, normalizedName: string | null): Promise<number> {
   if (!normalizedName) return 0;
@@ -295,27 +398,81 @@ async function duplicateSignal(service: SupabaseClient, recommendationId: string
   return count ?? 0;
 }
 
-export async function reviewRecommendation(service: SupabaseClient, recommendationId: string): Promise<LegacyModerationAssessment> {
+export async function reviewRecommendation(service: SupabaseClient, recommendationId: string): Promise<ModerationAssessment> {
   const { data: rec, error } = await service
     .from('vendor_recommendations')
-    .select('vendor_name, vendor_name_normalized, vendor_address, description, state, category_id')
+    .select(`
+      id, vendor_name, vendor_name_normalized, description, why_recommend,
+      category_id, google_place_id, location_name, formatted_address,
+      latitude, longitude, contact_phone, contact_email, contact_website,
+      image_attested_at, state, categories(name)
+    `)
     .eq('id', recommendationId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!rec) throw new Error('recommendation_not_found');
 
-  const dupCount = await duplicateSignal(service, recommendationId, rec.vendor_name_normalized);
+  const recommendation = rec as RecommendationEvidenceRow;
+  const { data: imageRows, error: imageError } = await service
+    .from('recommendation_images')
+    .select('id,storage_path,sort_order')
+    .eq('recommendation_id', recommendationId)
+    .eq('is_staged', false)
+    .is('removed_at', null)
+    .order('sort_order', { ascending: true });
+  if (imageError) throw new Error(imageError.message);
 
-  const submissionText = [
-    `Vendor name: ${rec.vendor_name}`,
-    `State: ${rec.state ?? '(not provided)'}`,
-    `Address: ${rec.vendor_address ?? '(not provided)'}`,
-    `Description: ${rec.description ?? '(not provided)'}`,
-    `DUPLICATE SIGNAL: ${dupCount} other active submission(s) with a matching normalized name.`,
-  ].join('\n');
+  const activeImageRows = (imageRows ?? []) as RecommendationImageRow[];
+  const duplicateCount = await duplicateSignal(service, recommendationId, recommendation.vendor_name_normalized);
+  const { images, failures } = await loadRecommendationImages(service, activeImageRows);
+  const evidenceChecks = buildEvidenceChecks(recommendation, activeImageRows.length, duplicateCount).map((check) => {
+    if (check.field !== 'photos' || failures.length === 0) return check;
+    return {
+      ...check,
+      status: 'needs_manual_review' as const,
+      message: `${check.message} ${failures.length} photo${failures.length === 1 ? '' : 's'} could not be analysed.`,
+    };
+  });
+  const photoFailures = photoFailureAssessments(failures);
+  const unavailable = (): ModerationAssessment => ({
+    suggestedAction: null,
+    confidence: null,
+    evidenceChecks,
+    findings: [],
+    duplicateCount,
+    duplicateBasis: 'exact_normalized_name',
+    feedbackDraft: null,
+    photoAssessments: photoFailures,
+    aiAvailable: false,
+  });
 
-  const raw = await callGemini(SYSTEM_PROMPT, submissionText, { temperature: 0, maxOutputTokens: 300 });
-  const parsed = assessmentSchema.safeParse(extractJson(raw));
-  if (!parsed.success) throw new Error('moderation_assessment_malformed');
-  return parsed.data;
+  try {
+    const raw = await callGemini(
+      SYSTEM_PROMPT,
+      buildSafeSubmissionText(recommendation, activeImageRows.length, duplicateCount),
+      { temperature: 0, maxOutputTokens: 1200, images },
+    );
+    const parsed = aiResultSchema.safeParse(extractJson(raw));
+    if (!parsed.success) return unavailable();
+
+    const sanitized = sanitizeAiResult(parsed.data, images);
+    const activeImageIds = new Set(images.map((image) => image.id));
+    const photoAssessments = [
+      ...sanitized.photoAssessments.filter((photo) => activeImageIds.has(photo.imageId)),
+      ...photoFailures,
+    ];
+    const guardrails = applyDecisionGuardrails(sanitized, evidenceChecks, duplicateCount);
+
+    return {
+      ...guardrails,
+      evidenceChecks,
+      findings: sanitized.findings,
+      duplicateCount,
+      duplicateBasis: 'exact_normalized_name',
+      photoAssessments,
+      aiAvailable: true,
+    };
+  } catch {
+    return unavailable();
+  }
 }

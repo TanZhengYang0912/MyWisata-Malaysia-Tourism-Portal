@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   applyDecisionGuardrails,
   aiResultSchema,
   buildEvidenceChecks,
+  buildSafeSubmissionText,
+  loadRecommendationImages,
   type AiModerationResult,
   type RecommendationEvidenceRow,
 } from '@/lib/admin-ai/moderation';
@@ -196,4 +199,42 @@ describe('applyDecisionGuardrails', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 2);
     expect(applyDecisionGuardrails(aiResult, checks, 2).suggestedAction).toBe('reject');
   });
+});
+
+it('builds a complete safe summary without raw contact values or paths', () => {
+  const safeText = buildSafeSubmissionText(completeRow, 2, 0);
+  expect(safeText).toContain('Recommendation reason: Friendly service');
+  expect(safeText).toContain('Category: Food');
+  expect(safeText).toContain('Contact methods present: email');
+  expect(safeText).toContain('Photo count: 2');
+  expect(safeText).toContain('Exact normalized-name matches: 0');
+  expect(safeText).not.toContain('vendor@example.com');
+  expect(safeText).not.toContain('storage_path');
+  expect(safeText).not.toContain('staged/');
+});
+
+it('continues when one transformed photo cannot be loaded', async () => {
+  const createSignedUrl = vi.fn()
+    .mockResolvedValueOnce({ data: { signedUrl: 'https://signed/one' }, error: null })
+    .mockResolvedValueOnce({ data: { signedUrl: 'https://signed/two' }, error: null });
+  const service = {
+    storage: { from: vi.fn(() => ({ createSignedUrl })) },
+  } as unknown as SupabaseClient;
+  vi.stubGlobal('fetch', vi.fn()
+    .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    }))
+    .mockResolvedValueOnce(new Response('unavailable', { status: 503 })));
+
+  const result = await loadRecommendationImages(service, [
+    { id: '00000000-0000-4000-8000-000000000001', storage_path: 'private/one.jpg', sort_order: 0 },
+    { id: '00000000-0000-4000-8000-000000000002', storage_path: 'private/two.jpg', sort_order: 1 },
+  ]);
+
+  expect(result.images).toEqual([expect.objectContaining({
+    id: '00000000-0000-4000-8000-000000000001',
+    mimeType: 'image/jpeg',
+  })]);
+  expect(result.failures).toEqual(['00000000-0000-4000-8000-000000000002']);
 });
