@@ -44,6 +44,7 @@ export function RecommendationAiReviewPanel({
   async function runReview() {
     if (loading) return;
     setLoading(true);
+    setResult(null);
     setError(null);
     try {
       const response = await fetch("/api/admin-ai/moderation-review", {
@@ -56,11 +57,13 @@ export function RecommendationAiReviewPanel({
         error: { message: string } | null;
       };
       if (!response.ok || !body.data) {
+        setResult(null);
         setError(body.error?.message ?? "AI review unavailable right now.");
         return;
       }
       setResult(body.data);
     } catch {
+      setResult(null);
       setError("AI review unavailable right now.");
     } finally {
       setLoading(false);
@@ -87,7 +90,7 @@ export function RecommendationAiReviewPanel({
       <Button size="sm" variant="outline" onClick={runReview} disabled={loading} className="gap-1.5">
         <Sparkles size={13} /> {loading ? "Reviewing…" : "AI review"}
       </Button>
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      {error && <p role="alert" aria-live="polite" className="mt-2 text-xs text-destructive">{error}</p>}
       {result && (
         <div className="mt-3 space-y-3 rounded-xl bg-muted p-4 text-xs">
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">

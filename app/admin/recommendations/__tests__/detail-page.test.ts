@@ -38,6 +38,38 @@ describe('admin recommendation detail workflow', () => {
     expect(panel).not.toContain('/api/admin/recommendations/review');
   });
 
+  it('clears stale AI results on rerun and failed responses with an accessible error contract', () => {
+    const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
+    const reviewStart = panel.indexOf('async function runReview()');
+    const fetchStart = panel.indexOf('const response = await fetch', reviewStart);
+
+    expect(reviewStart).toBeGreaterThanOrEqual(0);
+    expect(fetchStart).toBeGreaterThan(reviewStart);
+    expect(panel.indexOf('setResult(null);', reviewStart)).toBeLessThan(fetchStart);
+    expect(panel.match(/setResult\(null\);/g) ?? []).toHaveLength(3);
+    expect(panel).toContain('if (!response.ok || !body.data) {\n        setResult(null);');
+    expect(panel).toContain('} catch {\n      setResult(null);');
+    expect(panel).toContain('{error && <p role="alert" aria-live="polite"');
+  });
+
+  it('keeps the AI reason handoff local and outside confirmation/submission handlers', () => {
+    const detail = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
+    const handlerStart = detail.indexOf('function handleAiReason(');
+    const handlerEnd = detail.indexOf('\n  function continueWithReason', handlerStart);
+    const handler = detail.slice(handlerStart, handlerEnd);
+
+    expect(handlerStart).toBeGreaterThanOrEqual(0);
+    expect(handlerEnd).toBeGreaterThan(handlerStart);
+    expect(handler).toContain('setAction(suggestedAction)');
+    expect(handler).toContain('setReason(feedbackDraft)');
+    expect(handler).toContain('setConfirmOpen(false)');
+    expect(handler).toContain('setError(null)');
+    expect(handler).toContain('requestAnimationFrame');
+    expect(handler).not.toContain('continueWithReason');
+    expect(handler).not.toContain('submitReview');
+    expect(handler).not.toContain('/api/admin/recommendations/review');
+  });
+
   it('requires a useful reason for both rejection and requested changes', () => {
     const source = readFileSync('app/api/admin/recommendations/review/route.ts', 'utf8');
 
