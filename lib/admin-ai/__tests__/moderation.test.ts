@@ -1,12 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+const { callGeminiMock } = vi.hoisted(() => ({ callGeminiMock: vi.fn() }));
+vi.mock('@/lib/admin-ai/gemini', () => ({ callGemini: callGeminiMock }));
+
 import {
   applyDecisionGuardrails,
   aiResultSchema,
   buildEvidenceChecks,
   buildSafeSubmissionText,
   loadRecommendationImages,
+  reviewRecommendation,
   type AiModerationResult,
+  type RecommendationImageRow,
   type RecommendationEvidenceRow,
 } from '@/lib/admin-ai/moderation';
 
@@ -36,6 +41,45 @@ const validSchemaResult = {
   feedbackDraft: null,
   photoAssessments: [],
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  callGeminiMock.mockReset();
+});
+
+function makeReviewService(imageRows: RecommendationImageRow[], duplicateCount = 0) {
+  const recommendationQuery = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: completeRow, error: null }),
+  };
+  const imageQuery = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: imageRows, error: null }),
+  };
+  const duplicateQuery = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    neq: vi.fn(),
+  };
+  duplicateQuery.neq
+    .mockReturnValueOnce(duplicateQuery)
+    .mockResolvedValueOnce({ count: duplicateCount, error: null });
+  const vendorFrom = vi.fn()
+    .mockReturnValueOnce(recommendationQuery)
+    .mockReturnValueOnce(duplicateQuery);
+  const createSignedUrl = vi.fn().mockResolvedValue({
+    data: { signedUrl: 'https://signed/photo' },
+    error: null,
+  });
+  const service = {
+    from: vi.fn((table: string) => table === 'recommendation_images' ? imageQuery : vendorFrom()),
+    storage: { from: vi.fn(() => ({ createSignedUrl })) },
+  } as unknown as SupabaseClient;
+  return { service, createSignedUrl };
+}
 
 describe('buildEvidenceChecks', () => {
   it('passes complete Google location evidence without requiring legacy state', () => {
@@ -237,4 +281,109 @@ it('continues when one transformed photo cannot be loaded', async () => {
     mimeType: 'image/jpeg',
   })]);
   expect(result.failures).toEqual(['00000000-0000-4000-8000-000000000002']);
+});
+
+describe('reviewRecommendation photo guardrails', () => {
+  it('downgrades a reject when an active photo cannot be analysed', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000001';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('unavailable', { status: 503 })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      suggestedAction: 'reject',
+      confidence: 'high',
+      findings: [{
+        field: 'vendor_name',
+        severity: 'high',
+        kind: 'test_content',
+        message: 'The submission is clearly test content.',
+        evidenceSummary: 'test content',
+      }],
+      feedbackDraft: 'Please remove the test content.',
+      photoAssessments: [],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.evidenceChecks.find((check) => check.field === 'photos')?.status)
+      .toBe('needs_manual_review');
+    expect(result.photoAssessments).toEqual([{
+      imageId,
+      status: 'could_not_analyse',
+      message: 'This photo could not be analysed.',
+    }]);
+  });
+
+  it('discards prohibited photo claims and forces manual review', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000002';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'This proves authenticity, location, ownership, and publishing rights. storage_path/private/photo.jpg data:image/png;base64,QUJDREVGRw==',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+    const photo = result.photoAssessments.find((assessment) => assessment.imageId === imageId);
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(photo?.status).toBe('could_not_analyse');
+    expect(photo?.message).toBe('Photo assessment omitted because it made a prohibited claim.');
+    expect(photo?.message).not.toMatch(/authentic|location|ownership|rights|storage_path|base64/i);
+  });
+
+  it('reports overflow active photos, sends at most five images, and filters invented IDs', async () => {
+    const imageRows = Array.from({ length: 7 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      storage_path: `private/photo-${index + 1}.jpg`,
+      sort_order: index,
+    }));
+    const inventedId = '00000000-0000-4000-8000-000000009999';
+    const { service, createSignedUrl } = makeReviewService(imageRows);
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    vi.stubGlobal('fetch', fetchMock);
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      photoAssessments: [
+        {
+          imageId: imageRows[0].id,
+          status: 'appears_relevant',
+          message: 'The photo appears relevant.',
+        },
+        {
+          imageId: inventedId,
+          status: 'possible_conflict',
+          message: 'Invented photo assessment.',
+        },
+      ],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+    const geminiOptions = callGeminiMock.mock.calls[0]?.[2] as { images: unknown[] };
+
+    expect(createSignedUrl).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(geminiOptions.images).toHaveLength(5);
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.photoAssessments).toEqual(expect.arrayContaining(imageRows.slice(5).map((row) => ({
+      imageId: row.id,
+      status: 'could_not_analyse',
+      message: 'This photo could not be analysed.',
+    }))));
+    expect(result.photoAssessments.some((assessment) => assessment.imageId === inventedId)).toBe(false);
+  });
 });

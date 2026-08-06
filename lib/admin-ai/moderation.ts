@@ -236,6 +236,8 @@ export function applyDecisionGuardrails(
   const requiredIssue = checks.some((check) =>
     ['missing', 'invalid', 'low_quality'].includes(check.status));
   const photoConflict = ai.photoAssessments.some((photo) => photo.status === 'possible_conflict');
+  const photoNeedsManualReview = ai.photoAssessments.some((photo) =>
+    photo.status === 'could_not_analyse' || containsProhibitedPhotoClaim(photo.message));
   const highFinding = ai.findings.some((finding) => finding.severity === 'high');
   const deterministicDuplicateBasis = duplicateCount >= 2;
   const rejectBasis = deterministicDuplicateBasis || ai.findings.some((finding) =>
@@ -251,6 +253,9 @@ export function applyDecisionGuardrails(
     suggestedAction = 'request_changes';
   }
   if (suggestedAction === 'approve' && (photoConflict || highFinding)) {
+    suggestedAction = 'request_changes';
+  }
+  if (photoNeedsManualReview) {
     suggestedAction = 'request_changes';
   }
 
@@ -278,7 +283,9 @@ export async function loadRecommendationImages(
   service: SupabaseClient,
   rows: RecommendationImageRow[],
 ): Promise<{ images: GeminiInlineImage[]; failures: string[] }> {
-  const loaded = await Promise.all(rows.slice(0, 5).map(async (row) => {
+  const supportedRows = rows.slice(0, 5);
+  const overflowFailures = rows.slice(5).map((row) => row.id);
+  const loaded = await Promise.all(supportedRows.map(async (row) => {
     try {
       const { data, error } = await service.storage
         .from('recommendation-images')
@@ -303,7 +310,10 @@ export async function loadRecommendationImages(
 
   return {
     images: loaded.flatMap((item) => item.image ? [item.image] : []),
-    failures: loaded.flatMap((item) => item.failure ? [item.failure] : []),
+    failures: [
+      ...loaded.flatMap((item) => item.failure ? [item.failure] : []),
+      ...overflowFailures,
+    ],
   };
 }
 
@@ -351,6 +361,13 @@ function photoFailureAssessments(failures: string[]): PhotoAssessment[] {
   }));
 }
 
+const PROHIBITED_PHOTO_CLAIM = /\b(?:authentic(?:ity)?|genuine|real|actual|legitimate|verif(?:y|ied|ies|ication)|prove(?:s|d)?|proof|confirm(?:s|ed|ation)?|establish(?:es|ed|ing)?|demonstrat(?:es|ed|ing)?|claim(?:s|ed|ing)?|proclaim(?:s|ed|ing)?|ownership|owner|own(?:s|ed)?|belong(?:s|ed|ing)?|rights?|copyright|permission|authori[sz](?:e|ed|ation)|license(?:d)?|located|location)\b/i;
+const PROHIBITED_PHOTO_MESSAGE = 'Photo assessment omitted because it made a prohibited claim.';
+
+function containsProhibitedPhotoClaim(text: string): boolean {
+  return PROHIBITED_PHOTO_CLAIM.test(text);
+}
+
 function sanitizeModelText(value: string, imageData: readonly string[]): string {
   const { clean } = redactPII(value);
   return imageData.reduce((safeText, data) => data ? safeText.split(data).join('[IMAGE_DATA]') : safeText, clean)
@@ -374,11 +391,41 @@ function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInl
     feedbackDraft: result.feedbackDraft === null
       ? null
       : sanitizeModelText(result.feedbackDraft, imageData),
-    photoAssessments: result.photoAssessments.map((photo) => ({
-      ...photo,
-      message: sanitizeModelText(photo.message, imageData),
-    })),
+    photoAssessments: result.photoAssessments.map((photo) => containsProhibitedPhotoClaim(photo.message)
+      ? { ...photo, status: 'could_not_analyse' as const, message: PROHIBITED_PHOTO_MESSAGE }
+      : { ...photo, message: sanitizeModelText(photo.message, imageData) }),
   };
+}
+
+function mergePhotoAssessments(
+  modelAssessments: PhotoAssessment[],
+  images: readonly GeminiInlineImage[],
+  failures: string[],
+  activeImageIds: string[],
+): PhotoAssessment[] {
+  const suppliedImageIds = new Set(images.map((image) => image.id));
+  const assessments: PhotoAssessment[] = [];
+  const seenImageIds = new Set<string>();
+
+  for (const assessment of modelAssessments) {
+    if (!suppliedImageIds.has(assessment.imageId) || seenImageIds.has(assessment.imageId)) continue;
+    seenImageIds.add(assessment.imageId);
+    assessments.push(assessment);
+  }
+
+  const failedImageIds = new Set([
+    ...failures,
+    ...activeImageIds.filter((imageId) => suppliedImageIds.has(imageId) && !seenImageIds.has(imageId)),
+  ]);
+  for (const imageId of failedImageIds) {
+    assessments.push({
+      imageId,
+      status: 'could_not_analyse',
+      message: 'This photo could not be analysed.',
+    });
+  }
+
+  return assessments;
 }
 
 /**
@@ -456,12 +503,13 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
     if (!parsed.success) return unavailable();
 
     const sanitized = sanitizeAiResult(parsed.data, images);
-    const activeImageIds = new Set(images.map((image) => image.id));
-    const photoAssessments = [
-      ...sanitized.photoAssessments.filter((photo) => activeImageIds.has(photo.imageId)),
-      ...photoFailures,
-    ];
-    const guardrails = applyDecisionGuardrails(sanitized, evidenceChecks, duplicateCount);
+    const photoAssessments = mergePhotoAssessments(
+      sanitized.photoAssessments,
+      images,
+      failures,
+      activeImageRows.map((row) => row.id),
+    );
+    const guardrails = applyDecisionGuardrails({ ...sanitized, photoAssessments }, evidenceChecks, duplicateCount);
 
     return {
       ...guardrails,
