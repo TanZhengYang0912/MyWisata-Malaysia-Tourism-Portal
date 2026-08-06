@@ -102,7 +102,7 @@ export interface RecommendationEvidenceRow {
   contact_email: string | null;
   contact_website: string | null;
   image_attested_at: string | null;
-  state: string | null;
+  state?: string | null;
 }
 
 export const aiResultSchema = z.object({
@@ -162,9 +162,9 @@ export function buildEvidenceChecks(
   imageCount: number,
   duplicateCount: number,
 ): EvidenceCheck[] {
-  const categoryName = Array.isArray(row.categories)
+  const categoryName = (Array.isArray(row.categories)
     ? row.categories[0]?.name
-    : row.categories?.name;
+    : row.categories?.name)?.trim();
   const hasLocation = Boolean(
     row.location_name?.trim()
     && row.formatted_address?.trim()
@@ -176,6 +176,7 @@ export function buildEvidenceChecks(
     || row.contact_email?.trim()
     || row.contact_website?.trim(),
   );
+  const imageAttestation = row.image_attested_at?.trim();
 
   return [
     checkText('vendor_name', 'Business name', row.vendor_name, 3),
@@ -208,8 +209,8 @@ export function buildEvidenceChecks(
     {
       field: 'image_attestation',
       label: 'Image rights',
-      status: row.image_attested_at ? 'passed' : 'missing',
-      message: row.image_attested_at ? 'Image rights were attested.' : 'Image rights attestation is missing.',
+      status: imageAttestation ? 'passed' : 'missing',
+      message: imageAttestation ? 'Image rights were attested.' : 'Image rights attestation is missing.',
     },
     {
       field: 'duplicate',
@@ -233,14 +234,20 @@ export function applyDecisionGuardrails(
     ['missing', 'invalid', 'low_quality'].includes(check.status));
   const photoConflict = ai.photoAssessments.some((photo) => photo.status === 'possible_conflict');
   const highFinding = ai.findings.some((finding) => finding.severity === 'high');
-  const rejectBasis = ai.findings.some((finding) =>
-    finding.severity === 'high' && REJECT_KINDS.has(finding.kind));
+  const deterministicDuplicateBasis = duplicateCount >= 2;
+  const rejectBasis = deterministicDuplicateBasis || ai.findings.some((finding) =>
+    finding.severity === 'high'
+    && finding.kind !== 'duplicate'
+    && REJECT_KINDS.has(finding.kind));
 
   let suggestedAction = ai.suggestedAction;
-  if (suggestedAction === 'reject' && !rejectBasis && duplicateCount < 2) {
+  if (requiredIssue) {
     suggestedAction = 'request_changes';
   }
-  if (suggestedAction === 'approve' && (requiredIssue || photoConflict || highFinding)) {
+  if (suggestedAction === 'reject' && !rejectBasis) {
+    suggestedAction = 'request_changes';
+  }
+  if (suggestedAction === 'approve' && (photoConflict || highFinding)) {
     suggestedAction = 'request_changes';
   }
 
