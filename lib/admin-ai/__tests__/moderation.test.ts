@@ -343,6 +343,100 @@ describe('reviewRecommendation photo guardrails', () => {
     expect(photo?.message).not.toMatch(/authentic|location|ownership|rights|storage_path|base64/i);
   });
 
+  it('replaces prohibited claims in photo findings and forces manual review', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000003';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      findings: [{
+        field: 'photos',
+        severity: 'low',
+        kind: 'conflict',
+        message: 'The photo proves authenticity and location ownership.',
+        evidenceSummary: 'It confirms the publishing rights.',
+      }],
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+    const finding = result.findings.find((candidate) => candidate.field === 'photos');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(finding).toEqual(expect.objectContaining({
+      kind: 'manual_review',
+      message: 'Photo review requires manual review.',
+      evidenceSummary: null,
+    }));
+  });
+
+  it('drops prohibited claims in feedback drafts and forces manual review', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000004';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      feedbackDraft: 'The submitted photo proves authenticity, location, ownership, and rights.',
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.feedbackDraft).toBeNull();
+    expect(result.findings).toEqual(expect.arrayContaining([{
+      field: 'photos',
+      severity: 'medium',
+      kind: 'manual_review',
+      message: 'Photo review requires manual review.',
+      evidenceSummary: null,
+    }]));
+  });
+
+  it('preserves legitimate non-photo feedback', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000005';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      suggestedAction: 'request_changes',
+      confidence: 'medium',
+      feedbackDraft: 'Please provide a clearer description and recommendation reason.',
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.feedbackDraft).toBe('Please provide a clearer description and recommendation reason.');
+  });
+
   it('reports overflow active photos, sends at most five images, and filters invented IDs', async () => {
     const imageRows = Array.from({ length: 7 }, (_, index) => ({
       id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,

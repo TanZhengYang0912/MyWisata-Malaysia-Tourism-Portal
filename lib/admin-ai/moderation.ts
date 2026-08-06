@@ -238,6 +238,13 @@ export function applyDecisionGuardrails(
   const photoConflict = ai.photoAssessments.some((photo) => photo.status === 'possible_conflict');
   const photoNeedsManualReview = ai.photoAssessments.some((photo) =>
     photo.status === 'could_not_analyse' || containsProhibitedPhotoClaim(photo.message));
+  const unsafePhotoFinding = ai.findings.some((finding) =>
+    finding.field === 'photos'
+    && (finding.kind === 'manual_review'
+      || containsProhibitedPhotoClaim(finding.message)
+      || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary))));
+  const unsafePhotoFeedback = ai.feedbackDraft !== null
+    && containsProhibitedPhotoFeedback(ai.feedbackDraft);
   const highFinding = ai.findings.some((finding) => finding.severity === 'high');
   const deterministicDuplicateBasis = duplicateCount >= 2;
   const rejectBasis = deterministicDuplicateBasis || ai.findings.some((finding) =>
@@ -255,7 +262,7 @@ export function applyDecisionGuardrails(
   if (suggestedAction === 'approve' && (photoConflict || highFinding)) {
     suggestedAction = 'request_changes';
   }
-  if (photoNeedsManualReview) {
+  if (photoNeedsManualReview || unsafePhotoFinding || unsafePhotoFeedback) {
     suggestedAction = 'request_changes';
   }
 
@@ -368,6 +375,21 @@ function containsProhibitedPhotoClaim(text: string): boolean {
   return PROHIBITED_PHOTO_CLAIM.test(text);
 }
 
+function containsProhibitedPhotoFeedback(text: string): boolean {
+  return /\b(?:photo|photos|image|images|picture|pictures|uploaded|submitted)\b/i.test(text)
+    && containsProhibitedPhotoClaim(text);
+}
+
+function manualPhotoFinding(): ModerationFinding {
+  return {
+    field: 'photos',
+    severity: 'medium',
+    kind: 'manual_review',
+    message: 'Photo review requires manual review.',
+    evidenceSummary: null,
+  };
+}
+
 function sanitizeModelText(value: string, imageData: readonly string[]): string {
   const { clean } = redactPII(value);
   return imageData.reduce((safeText, data) => data ? safeText.split(data).join('[IMAGE_DATA]') : safeText, clean)
@@ -379,16 +401,26 @@ function sanitizeModelText(value: string, imageData: readonly string[]): string 
 
 function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInlineImage[]): AiModerationResult {
   const imageData = images.map((image) => image.data);
+  const findings = result.findings.map((finding) => {
+    const unsafe = finding.field === 'photos'
+      && (containsProhibitedPhotoClaim(finding.message)
+        || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary)));
+    return unsafe
+      ? manualPhotoFinding()
+      : {
+        ...finding,
+        message: sanitizeModelText(finding.message, imageData),
+        evidenceSummary: finding.evidenceSummary === null
+          ? null
+          : sanitizeModelText(finding.evidenceSummary, imageData),
+      };
+  });
+  const unsafeFeedback = result.feedbackDraft !== null
+    && containsProhibitedPhotoFeedback(result.feedbackDraft);
   return {
     ...result,
-    findings: result.findings.map((finding) => ({
-      ...finding,
-      message: sanitizeModelText(finding.message, imageData),
-      evidenceSummary: finding.evidenceSummary === null
-        ? null
-        : sanitizeModelText(finding.evidenceSummary, imageData),
-    })),
-    feedbackDraft: result.feedbackDraft === null
+    findings: unsafeFeedback ? [...findings, manualPhotoFinding()] : findings,
+    feedbackDraft: unsafeFeedback || result.feedbackDraft === null
       ? null
       : sanitizeModelText(result.feedbackDraft, imageData),
     photoAssessments: result.photoAssessments.map((photo) => containsProhibitedPhotoClaim(photo.message)
