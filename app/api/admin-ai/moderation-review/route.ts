@@ -1,11 +1,12 @@
 // P4 — Member 4: moderation assistant. CLAUDE-ADMIN-AI.md Part 2, Capability 3.
 // POST /api/admin-ai/moderation-review — body { recommendationId }. Gated on
 // super_admin. READ-ONLY overlay on vendor_recommendations (another
-// member's table) — this route never writes to it. Uses the cookie-aware
-// client for the read: vendor_rec_read's RLS policy already covers admins
-// (is_admin(auth.uid())), no need for service-role here.
+// member's table) — this route never writes to it. The cookie-aware client
+// authenticates and authorizes first; service-role access is created only
+// after the Super Admin check for private recommendation evidence.
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { adminAiModerationReviewSchema } from '@/lib/validation/admin-ai-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const assessment = await reviewRecommendation(supabase, parsed.data.recommendationId);
+    const service = createServiceClient();
+    const assessment = await reviewRecommendation(service, parsed.data.recommendationId);
     return apiOk(assessment);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown_error';
