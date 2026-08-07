@@ -194,15 +194,15 @@ export default function AffiliateDashboardPage() {
       />
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
+        <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Clicks</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.clicks}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
+        <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">People who ordered</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.referrals}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
+        <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Pending</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
             RM {stats.totals.pendingEarnings.toFixed(2)}
@@ -213,7 +213,7 @@ export default function AffiliateDashboardPage() {
             </p>
           )}
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
+        <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Available</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
             RM {stats.totals.availableToWithdraw.toFixed(2)}

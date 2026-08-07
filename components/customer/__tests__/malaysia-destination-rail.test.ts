@@ -28,4 +28,14 @@ describe("Malaysia destination rail", () => {
     expect(railSource).toContain("rgba(2,6,23,0.82)");
     expect(railSource).not.toContain("rgba(2,6,23,0.92)");
   });
+
+  it("opens the shared destination preview from the spotlight action, not card selection", () => {
+    expect(railSource).toContain("previewDestination");
+    expect(railSource).toContain("<DestinationPreviewModal");
+    expect(railSource).toContain("setPreviewDestination(active)");
+    expect(railSource).not.toContain("setPreviewDestination(destination)");
+    expect(railSource).toContain("View destination");
+    expect(railSource).toContain("onExploreState");
+    expect(railSource).toContain("getVisibleDestinationQueue(queue, activeId, 5)");
+  });
 });

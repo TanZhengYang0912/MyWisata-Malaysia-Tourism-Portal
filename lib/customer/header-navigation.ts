@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Gift, Heart, Inbox, Map, MessageCircle, ReceiptText, Search, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
+import { Bell, Compass, Gift, Heart, Inbox, Map, MessageCircle, ReceiptText, Search, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -17,8 +17,8 @@ export type CustomerAccountGroup = {
 };
 
 export const CUSTOMER_NAV: CustomerNavigationItem[] = [
-  { href: "/customer/for-you", label: "For You", icon: Star },
-  { href: "/customer/explore", label: "Explore", icon: Search },
+  { href: "/customer/search", label: "Partners", icon: Search },
+  { href: "/customer/explore", label: "Explore", icon: Compass },
   { href: "/customer/map", label: "Map", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
   { href: "/customer/activity?tab=itinerary", label: "My Activity", icon: ReceiptText },

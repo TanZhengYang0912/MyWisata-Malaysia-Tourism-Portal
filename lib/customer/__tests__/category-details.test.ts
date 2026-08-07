@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORY_DETAILS, PLACE_BOUND_TYPES, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
+import { CATEGORY_DETAILS, PLACE_BOUND_TYPES, getActivityCommerceMode, getActivityDiscoveryMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 
 // Phase 1 taxonomy: 4 top-level categories.slug values — see
@@ -12,7 +12,7 @@ function makeActivity(overrides: Partial<ComputedActivity> = {}): ComputedActivi
     image: "", price: 10, rating: 4.5, reviews: 3, duration: "", requiresBooking: false,
     variants: [], categorySlug: "activity", typeSlugs: ["nature"], attributes: {},
     outlet: {
-      id: "o1", vendorId: "v1", name: "Outlet", category: "Activity", state: "Penang", city: "Georgetown",
+      id: "o1", vendorId: "v1", vendorName: "Explore Outdoors Malaysia", name: "Outlet", category: "Activity", state: "Penang", city: "Georgetown",
       address: "", lat: 5.4, lng: 100.3, hours: "09:00 - 18:00", phone: "+60123456789",
       verified: true, open: true, rating: 4.5, reviews: 3,
     },
@@ -115,6 +115,34 @@ describe("isPlaceBound", () => {
 
   it("is true when any one of several types is place-bound", () => {
     expect(isPlaceBound({ typeSlugs: ["wellness", "nature"] })).toBe(true);
+  });
+});
+
+describe("getActivityDiscoveryMode", () => {
+  it.each(["nature", "cultural", "adventure"])("uses the place path for %s activities", (slug) => {
+    expect(getActivityDiscoveryMode({ typeSlugs: [slug] })).toBe("place");
+  });
+
+  it("keeps vendor path for a branch-based activity", () => {
+    expect(getActivityDiscoveryMode({ typeSlugs: ["nightlife"] })).toBe("vendor");
+  });
+});
+
+describe("getActivityCommerceMode", () => {
+  it("keeps price and booking available for a named vendor", () => {
+    expect(getActivityCommerceMode(makeActivity())).toBe("vendor");
+  });
+
+  it("uses public-place mode when no vendor is available", () => {
+    expect(getActivityCommerceMode(makeActivity({ outlet: { ...makeActivity().outlet, vendorName: undefined } }))).toBe("public");
+  });
+
+  it("uses public-place mode for a free self-guided route even when a vendor owns the catalogue row", () => {
+    expect(getActivityCommerceMode(makeActivity({ price: 0, requiresBooking: false }))).toBe("public");
+  });
+
+  it("keeps a paid guided route commercial", () => {
+    expect(getActivityCommerceMode(makeActivity({ price: 65, requiresBooking: true }))).toBe("vendor");
   });
 });
 

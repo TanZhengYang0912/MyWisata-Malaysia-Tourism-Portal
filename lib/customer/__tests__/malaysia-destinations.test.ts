@@ -14,6 +14,14 @@ describe("MALAYSIA_DESTINATIONS", () => {
     expect(MALAYSIA_DESTINATIONS.every((destination) => destination.image.startsWith("/assets/customer/malaysia/"))).toBe(true);
     expect(MALAYSIA_DESTINATIONS.every((destination) => existsSync(resolve(process.cwd(), "public", destination.image.slice(1))))).toBe(true);
   });
+
+  it("gives every destination a concise introduction and three highlights", () => {
+    for (const destination of MALAYSIA_DESTINATIONS) {
+      expect(destination.intro.trim()).not.toBe("");
+      expect(destination.highlights).toHaveLength(3);
+      expect(destination.highlights.every((item) => item.trim().length > 0)).toBe(true);
+    }
+  });
 });
 
 describe("getVisibleDestinationQueue", () => {

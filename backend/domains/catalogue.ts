@@ -17,9 +17,9 @@ export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,outlets(id,name,city,state)");
+  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state)");
   if (error) throw error;
-  return (data ?? []).map((v) => ({ id: v.id, name: v.name, status: v.status, outlets: v.outlets ?? [] }));
+  return (data ?? []).map((v) => ({ id: v.id, name: v.name, status: v.status, logoUrl: v.logo_url, coverUrl: v.cover_url, outlets: v.outlets ?? [] }));
 }
 
 export async function setVendorApproved(vendorId: string, approved: boolean): Promise<void> {

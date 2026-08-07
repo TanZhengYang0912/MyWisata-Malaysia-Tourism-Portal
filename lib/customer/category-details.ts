@@ -193,8 +193,32 @@ const GENERIC_DETAIL: CategoryDetail = { priceUnit: "each", types: [], fields: [
 // customer needs to know which one.
 export const PLACE_BOUND_TYPES = ["nature", "cultural", "adventure"] as const;
 
+export type ActivityDiscoveryMode = "vendor" | "place";
+
+export type ActivityCommerceMode = "vendor" | "public";
+
 export function isPlaceBound(activity: Pick<ComputedActivity, "typeSlugs">): boolean {
   return (activity.typeSlugs ?? []).some((slug) => (PLACE_BOUND_TYPES as readonly string[]).includes(slug));
+}
+
+/**
+ * Place-bound activities are discovered from the place first. Their optional
+ * vendor/guide relationship is still available on the activity detail page,
+ * but the trail, park, or heritage route is not presented as a branch.
+ */
+export function getActivityDiscoveryMode(activity: Pick<ComputedActivity, "typeSlugs">): ActivityDiscoveryMode {
+  return isPlaceBound(activity) ? "place" : "vendor";
+}
+
+/**
+ * A customer must never see a charge for a self-guided public route. The
+ * current product schema still requires a vendor id, so public places are
+ * represented by a zero-price, non-bookable place row; a named vendor only
+ * makes the row commercial when it actually sells a paid booking.
+ */
+export function getActivityCommerceMode(activity: Pick<ComputedActivity, "outlet" | "typeSlugs" | "requiresBooking" | "price">): ActivityCommerceMode {
+  if (isPlaceBound(activity) && !activity.requiresBooking && activity.price <= 0) return "public";
+  return activity.outlet.vendorId && activity.outlet.vendorName ? "vendor" : "public";
 }
 
 /** What one unit is — "per person", "each", "per night". */

@@ -10,6 +10,7 @@ import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { WishlistProvider } from "@/components/providers/wishlist";
+import { SavedDestinationsProvider } from "@/components/providers/saved-destinations";
 import { TripProvider, useTrip } from "@/components/providers/trip";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
@@ -19,7 +20,11 @@ const UNREAD_POLL_MS = 30_000;
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
     <TripProvider>
-      <CustomerLayoutInner>{children}</CustomerLayoutInner>
+      <WishlistProvider>
+        <SavedDestinationsProvider>
+          <CustomerLayoutInner>{children}</CustomerLayoutInner>
+        </SavedDestinationsProvider>
+      </WishlistProvider>
     </TripProvider>
   );
 }
@@ -276,7 +281,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="flex-1 min-h-0"><WishlistProvider>{children}</WishlistProvider></main>
+      <main className="flex-1 min-h-0">{children}</main>
       {!pathname.startsWith("/customer/chat") && <ChatbotWidget />}
     </div>
   );

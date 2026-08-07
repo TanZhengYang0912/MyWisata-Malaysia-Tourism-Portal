@@ -1,4 +1,6 @@
 import type { ComputedActivity } from "@/backend/core/types";
+import { isPlaceBound } from "@/lib/customer/category-details";
+import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 
 export interface PromotionSpotlightItem {
   activityId: string;
@@ -55,7 +57,7 @@ export function buildPromotionSpotlight(activities: ComputedActivity[]): Promoti
       eyebrow: campaign.eyebrow,
       title: campaign.title,
       description: campaign.description,
-      image: activity.image,
+      image: isPlaceBound(activity) ? getPlaceActivityImage(activity) : activity.image,
       href: `/customer/activity/${activity.id}`,
       ctaLabel: campaign.ctaLabel,
       accent: campaign.accent,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Search, Sparkles } from "lucide-react";
+import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
 import {
   getVisibleDestinationQueue,
   MALAYSIA_DESTINATIONS,
@@ -23,6 +24,7 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
   const [isPaused, setIsPaused] = useState(false);
   const [slideDirection, setSlideDirection] = useState<"next" | null>(null);
   const [routePulse, setRoutePulse] = useState(0);
+  const [previewDestination, setPreviewDestination] = useState<MalaysiaDestination | null>(null);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
@@ -94,8 +96,8 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
               <p className="mt-3 text-lg font-semibold text-white/95">{active.attraction}</p>
               <p className="mt-2 max-w-md text-sm leading-6 text-white/70">{active.tagline}</p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button type="button" onClick={() => onExploreState(active.state)} className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground transition hover:brightness-105">
-                  Explore {active.state} <ArrowRight size={15} />
+                <button type="button" onClick={() => setPreviewDestination(active)} className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground transition hover:brightness-105">
+                  View destination <ArrowRight size={15} />
                 </button>
                 <span className="text-xs text-white/50">Featured destination</span>
               </div>
@@ -161,6 +163,14 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
           </div>
         </div>
       </div>
+      <DestinationPreviewModal
+        destination={previewDestination}
+        onClose={() => setPreviewDestination(null)}
+        onExplore={(state) => {
+          setPreviewDestination(null);
+          onExploreState(state);
+        }}
+      />
     </section>
   );
 }
