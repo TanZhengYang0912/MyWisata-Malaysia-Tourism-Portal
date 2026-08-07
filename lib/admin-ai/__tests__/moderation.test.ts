@@ -262,6 +262,26 @@ describe('applyDecisionGuardrails', () => {
     expect(result.suggestedAction).toBe('request_changes');
   });
 
+  it.each(['low', 'medium'] as const)('blocks approve for a %s-severity photo conflict finding', (severity) => {
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'approve',
+      confidence: 'high',
+      findings: [{
+        field: 'photos',
+        severity,
+        kind: 'conflict',
+        message: 'The photo conflicts with the selected category.',
+        evidenceSummary: null,
+      }],
+      feedbackDraft: null,
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.confidence).toBe('medium');
+    expect(result.feedbackDraft).toBeTruthy();
+  });
+
   it.each([
     ['missing', { why_recommend: null }],
     ['low quality', { why_recommend: 'Too short' }],
@@ -389,7 +409,7 @@ describe('applyDecisionGuardrails', () => {
     });
   });
 
-  it('retains a structured non-duplicate request basis with server-aligned feedback', () => {
+  it.each([1, 3])('composes deterministic duplicate and structured-basis feedback at count %i', (duplicateCount) => {
     const result = applyDecisionGuardrails({
       suggestedAction: 'request_changes',
       confidence: 'high',
@@ -411,11 +431,32 @@ describe('applyDecisionGuardrails', () => {
       ],
       feedbackDraft: 'Please check for a duplicate listing.',
       photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, duplicateCount), duplicateCount);
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.feedbackDraft).toContain(`${duplicateCount} exact normalized-name match`);
+    expect(result.feedbackDraft).toContain('description quality');
+    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
+  });
+
+  it('preserves model feedback at zero count when a structured non-duplicate issue exists', () => {
+    const feedbackDraft = 'Please check for a duplicate listing.';
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [{
+        field: 'description',
+        severity: 'low',
+        kind: 'low_quality',
+        message: 'The description needs more detail.',
+        evidenceSummary: null,
+      }],
+      feedbackDraft,
+      photoAssessments: [],
     }, buildEvidenceChecks(completeRow, 1, 0), 0);
 
     expect(result.suggestedAction).toBe('request_changes');
-    expect(result.feedbackDraft).toContain('submitted evidence');
-    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
+    expect(result.feedbackDraft).toBe(feedbackDraft);
   });
 
   it('caps confidence whenever guardrails override the model action', () => {
@@ -525,7 +566,7 @@ describe('deterministic duplicate findings', () => {
     }
   });
 
-  it('preserves non-duplicate findings and uses server-aligned feedback', async () => {
+  it('preserves non-duplicate findings and model feedback at zero count', async () => {
     const imageId = '00000000-0000-4000-8000-000000000015';
     const { service } = makeReviewService([{
       id: imageId,
@@ -570,8 +611,7 @@ describe('deterministic duplicate findings', () => {
       expect.objectContaining({ field: 'description', message: 'The description needs more detail.' }),
     ]));
     expect(result.findings.some((finding) => finding.kind === 'duplicate')).toBe(false);
-    expect(result.feedbackDraft).toContain('submitted evidence');
-    expect(result.feedbackDraft).not.toContain('duplicate');
+    expect(result.feedbackDraft).toBe('This is a duplicate submission. Please provide a clearer description.');
   });
 });
 
@@ -742,7 +782,7 @@ describe('reviewRecommendation photo guardrails', () => {
     }]));
   });
 
-  it('uses server-aligned feedback for a legitimate non-photo request basis', async () => {
+  it('preserves model feedback for a legitimate non-photo request basis at zero count', async () => {
     const imageId = '00000000-0000-4000-8000-000000000005';
     const { service } = makeReviewService([
       { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
@@ -773,7 +813,7 @@ describe('reviewRecommendation photo guardrails', () => {
     const result = await reviewRecommendation(service, 'rec-1');
 
     expect(result.suggestedAction).toBe('request_changes');
-    expect(result.feedbackDraft).toBe('Please review the submitted evidence and provide any missing details before approval.');
+    expect(result.feedbackDraft).toBe('Please provide a clearer description and recommendation reason.');
   });
 
   it('reports overflow active photos, sends at most five images, and filters invented IDs', async () => {
@@ -998,7 +1038,10 @@ describe('reviewRecommendation photo guardrails', () => {
     expect(result.findings).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ field: 'photos', message: implicitClaim }),
     ]));
-    expect(result.feedbackDraft).toBe(implicitClaim);
+    expect(result.feedbackDraft).toContain('1 exact normalized-name match');
+    expect(result.feedbackDraft).toContain('location quality');
+    expect(result.feedbackDraft).toContain('photo analysis');
+    expect(result.feedbackDraft).not.toContain(implicitClaim);
     expect(result.photoAssessments).toEqual([{
       imageId,
       status: 'could_not_analyse',

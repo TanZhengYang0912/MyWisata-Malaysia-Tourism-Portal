@@ -263,28 +263,83 @@ function buildDuplicateFeedback(duplicateCount: number): string {
   return `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'} and requires manual review.`;
 }
 
+const FINDING_FIELD_LABELS: Record<RecommendationEvidenceField, string> = {
+  vendor_name: 'business name',
+  description: 'description',
+  why_recommend: 'recommendation reason',
+  category: 'category',
+  location: 'location',
+  contact: 'contact method',
+  photos: 'photo evidence',
+  image_attestation: 'image rights',
+  duplicate: 'duplicate evidence',
+};
+
+function buildStructuredBasisLabels(
+  checks: EvidenceCheck[],
+  findings: ModerationFinding[],
+  photoAssessments: PhotoAssessment[],
+): string[] {
+  const labels = [
+    ...checks
+      .filter((check) => check.field !== 'duplicate' && check.status !== 'passed')
+      .map((check) => check.label.toLowerCase()),
+    ...findings.map((finding) => {
+      const fieldLabel = FINDING_FIELD_LABELS[finding.field];
+      return finding.kind === 'low_quality'
+        ? `${fieldLabel} quality`
+        : `${fieldLabel} review`;
+    }),
+    ...photoAssessments
+      .filter((photo) => photo.status !== 'appears_relevant')
+      .map((photo) => photo.status === 'possible_conflict' ? 'photo conflict' : 'photo analysis'),
+  ];
+
+  return [...new Set(labels)].slice(0, 3);
+}
+
+function buildDuplicateRequestFeedback(
+  duplicateCount: number,
+  checks: EvidenceCheck[],
+  findings: ModerationFinding[],
+  photoAssessments: PhotoAssessment[],
+): string {
+  const duplicateSummary = `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'}.`;
+  const basisLabels = buildStructuredBasisLabels(checks, findings, photoAssessments);
+  if (basisLabels.length === 0) return buildDuplicateFeedback(duplicateCount);
+  return `${duplicateSummary} Please review ${basisLabels.join(', ')} and provide any missing details before approval.`;
+}
+
+function rejectBasisDescription(kind: ModerationFinding['kind']): string | null {
+  switch (kind) {
+    case 'spam':
+      return 'spam content';
+    case 'test_content':
+      return 'clear test content';
+    case 'policy':
+      return 'a policy conflict';
+    default:
+      return null;
+  }
+}
+
 function buildAuthoritativeRejectFeedback(
   findings: ModerationFinding[],
   duplicateCount: number,
 ): string | null {
-  if (duplicateCount >= 2) {
-    return `This recommendation has ${duplicateCount} exact normalized-name matches and requires rejection.`;
-  }
-
   const basis = findings.find((finding) =>
     finding.severity === 'high' && REJECT_KINDS.has(finding.kind));
-  if (!basis) return null;
+  const duplicateSummary = duplicateCount > 0
+    ? `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'}.`
+    : null;
+  const basisDescription = basis ? rejectBasisDescription(basis.kind) : null;
 
-  switch (basis.kind) {
-    case 'spam':
-      return 'This recommendation contains spam content and requires rejection.';
-    case 'test_content':
-      return 'This recommendation contains clear test content and requires rejection.';
-    case 'policy':
-      return 'This recommendation has a policy conflict and requires rejection.';
-    default:
-      return REJECT_FEEDBACK;
+  if (duplicateSummary && basisDescription) {
+    return `${duplicateSummary} It also contains ${basisDescription}. Rejection is required.`;
   }
+  if (duplicateSummary) return `${duplicateSummary} Rejection is required.`;
+  if (basisDescription) return `This recommendation contains ${basisDescription}. Rejection is required.`;
+  return null;
 }
 
 export function applyDecisionGuardrails(
@@ -306,6 +361,8 @@ export function applyDecisionGuardrails(
     || ai.photoAssessments.some((photo) => containsProhibitedPhotoClaim(photo.message, true));
   const manualPhotoFindingPresent = nonDuplicateFindings.some((finding) =>
     finding.field === 'photos' && finding.kind === 'manual_review');
+  const photoFindingConflict = nonDuplicateFindings.some((finding) =>
+    finding.field === 'photos' && finding.kind === 'conflict');
   const highFinding = nonDuplicateFindings.some((finding) => finding.severity === 'high');
   const deterministicDuplicateBasis = duplicateCount >= 2;
   const rejectBasis = deterministicDuplicateBasis || nonDuplicateFindings.some((finding) =>
@@ -327,7 +384,7 @@ export function applyDecisionGuardrails(
   if (suggestedAction === 'reject' && !rejectBasis) {
     suggestedAction = 'request_changes';
   }
-  if (suggestedAction === 'approve' && (photoConflict || highFinding || duplicateCount > 0)) {
+  if (suggestedAction === 'approve' && (photoConflict || photoFindingConflict || highFinding || duplicateCount > 0)) {
     suggestedAction = 'request_changes';
   }
   if (photoNeedsManualReview || unsafeModelProse || manualPhotoFindingPresent) {
@@ -346,13 +403,8 @@ export function applyDecisionGuardrails(
   const authoritativeRejectFeedback = suggestedAction === 'reject'
     ? buildAuthoritativeRejectFeedback(nonDuplicateFindings, duplicateCount)
     : null;
-  const duplicateFeedback = duplicateCount > 0 && !legitimateRequestBasis
-    ? buildDuplicateFeedback(duplicateCount)
-    : null;
-  const serverAlignedRequestFeedback = duplicateCount === 0
-    && suggestedAction === 'request_changes'
-    && legitimateRequestBasis
-    ? REQUEST_CHANGES_FEEDBACK
+  const duplicateRequestFeedback = duplicateCount > 0 && suggestedAction === 'request_changes'
+    ? buildDuplicateRequestFeedback(duplicateCount, checks, nonDuplicateFindings, ai.photoAssessments)
     : null;
 
   return {
@@ -362,8 +414,7 @@ export function applyDecisionGuardrails(
       ? null
       : suggestedAction === 'reject'
         ? authoritativeRejectFeedback ?? REJECT_FEEDBACK
-        : duplicateFeedback
-          ?? serverAlignedRequestFeedback
+        : duplicateRequestFeedback
           ?? normalizeFeedbackDraft(ai.feedbackDraft, suggestedAction, downgradedReject),
   };
 }
