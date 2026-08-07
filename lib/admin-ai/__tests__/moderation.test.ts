@@ -439,8 +439,8 @@ describe('applyDecisionGuardrails', () => {
     expect(result.feedbackDraft).not.toMatch(/duplicate/i);
   });
 
-  it('preserves model feedback at zero count when a structured non-duplicate issue exists', () => {
-    const feedbackDraft = 'Please check for a duplicate listing.';
+  it('composes zero-count request feedback from the structured non-duplicate issue', () => {
+    const feedbackDraft = 'This is a duplicate submission. Please provide more detail.';
     const result = applyDecisionGuardrails({
       suggestedAction: 'request_changes',
       confidence: 'high',
@@ -456,7 +456,10 @@ describe('applyDecisionGuardrails', () => {
     }, buildEvidenceChecks(completeRow, 1, 0), 0);
 
     expect(result.suggestedAction).toBe('request_changes');
-    expect(result.feedbackDraft).toBe(feedbackDraft);
+    expect(result.feedbackDraft).toContain('description quality');
+    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
+    expect(result.feedbackDraft!.length).toBeGreaterThanOrEqual(10);
+    expect(result.feedbackDraft!.length).toBeLessThanOrEqual(500);
   });
 
   it('caps confidence whenever guardrails override the model action', () => {
@@ -566,7 +569,7 @@ describe('deterministic duplicate findings', () => {
     }
   });
 
-  it('preserves non-duplicate findings and model feedback at zero count', async () => {
+  it('composes non-duplicate request feedback at zero count', async () => {
     const imageId = '00000000-0000-4000-8000-000000000015';
     const { service } = makeReviewService([{
       id: imageId,
@@ -611,7 +614,8 @@ describe('deterministic duplicate findings', () => {
       expect.objectContaining({ field: 'description', message: 'The description needs more detail.' }),
     ]));
     expect(result.findings.some((finding) => finding.kind === 'duplicate')).toBe(false);
-    expect(result.feedbackDraft).toBe('This is a duplicate submission. Please provide a clearer description.');
+    expect(result.feedbackDraft).toContain('description quality');
+    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
   });
 });
 
@@ -782,7 +786,7 @@ describe('reviewRecommendation photo guardrails', () => {
     }]));
   });
 
-  it('preserves model feedback for a legitimate non-photo request basis at zero count', async () => {
+  it('composes feedback for a legitimate non-photo request basis at zero count', async () => {
     const imageId = '00000000-0000-4000-8000-000000000005';
     const { service } = makeReviewService([
       { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
@@ -813,7 +817,8 @@ describe('reviewRecommendation photo guardrails', () => {
     const result = await reviewRecommendation(service, 'rec-1');
 
     expect(result.suggestedAction).toBe('request_changes');
-    expect(result.feedbackDraft).toBe('Please provide a clearer description and recommendation reason.');
+    expect(result.feedbackDraft).toContain('description quality');
+    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
   });
 
   it('reports overflow active photos, sends at most five images, and filters invented IDs', async () => {

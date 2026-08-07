@@ -14,11 +14,9 @@ export const RECOMMENDATION_PHOTO_TIMEOUT_MS = 10_000;
 export const MAX_RECOMMENDATION_PHOTO_BYTES = 5 * 1024 * 1024;
 export const MAX_GEMINI_IMAGE_PAYLOAD_BYTES = 8 * 1024 * 1024;
 
-const MIN_FEEDBACK_DRAFT_LENGTH = 10;
 const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provide any missing details before approval.';
 const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
 const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
-const REJECTION_LANGUAGE = /\b(?:reject(?:ed|s|ing|ion)?|declin(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|den(?:y|ied|ies|ial)|not\s+accept(?:ed|able)?|cannot\s+approve)\b/i;
 
 const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
@@ -298,16 +296,20 @@ function buildStructuredBasisLabels(
   return [...new Set(labels)].slice(0, 3);
 }
 
-function buildDuplicateRequestFeedback(
-  duplicateCount: number,
+function buildRequestChangesFeedback(
   checks: EvidenceCheck[],
   findings: ModerationFinding[],
   photoAssessments: PhotoAssessment[],
+  duplicateCount: number,
 ): string {
-  const duplicateSummary = `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'}.`;
   const basisLabels = buildStructuredBasisLabels(checks, findings, photoAssessments);
-  if (basisLabels.length === 0) return buildDuplicateFeedback(duplicateCount);
-  return `${duplicateSummary} Please review ${basisLabels.join(', ')} and provide any missing details before approval.`;
+  const duplicateSummary = duplicateCount > 0
+    ? `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'}. `
+    : '';
+  if (basisLabels.length === 0) {
+    return duplicateCount > 0 ? buildDuplicateFeedback(duplicateCount) : REQUEST_CHANGES_FEEDBACK;
+  }
+  return `${duplicateSummary}Please review ${basisLabels.join(', ')} and provide any missing details before approval.`;
 }
 
 function rejectBasisDescription(kind: ModerationFinding['kind']): string | null {
@@ -399,12 +401,11 @@ export function applyDecisionGuardrails(
   }
 
   const actionOverridden = suggestedAction !== ai.suggestedAction;
-  const downgradedReject = ai.suggestedAction === 'reject' && suggestedAction !== 'reject';
   const authoritativeRejectFeedback = suggestedAction === 'reject'
     ? buildAuthoritativeRejectFeedback(nonDuplicateFindings, duplicateCount)
     : null;
-  const duplicateRequestFeedback = duplicateCount > 0 && suggestedAction === 'request_changes'
-    ? buildDuplicateRequestFeedback(duplicateCount, checks, nonDuplicateFindings, ai.photoAssessments)
+  const requestChangesFeedback = suggestedAction === 'request_changes'
+    ? buildRequestChangesFeedback(checks, nonDuplicateFindings, ai.photoAssessments, duplicateCount)
     : null;
 
   return {
@@ -414,29 +415,8 @@ export function applyDecisionGuardrails(
       ? null
       : suggestedAction === 'reject'
         ? authoritativeRejectFeedback ?? REJECT_FEEDBACK
-        : duplicateRequestFeedback
-          ?? normalizeFeedbackDraft(ai.feedbackDraft, suggestedAction, downgradedReject),
+        : requestChangesFeedback ?? REQUEST_CHANGES_FEEDBACK,
   };
-}
-
-function normalizeFeedbackDraft(
-  draft: string | null,
-  action: Exclude<AiModerationResult['suggestedAction'], 'approve'>,
-  downgradedReject: boolean,
-): string {
-  if (downgradedReject) return REQUEST_CHANGES_FEEDBACK;
-
-  const sanitized = draft === null ? '' : sanitizeModelText(draft, []).trim();
-  if (containsProhibitedPhotoClaim(sanitized)) {
-    return action === 'request_changes' ? MANUAL_PHOTO_FEEDBACK : REJECT_FEEDBACK;
-  }
-  if (action === 'request_changes' && REJECTION_LANGUAGE.test(sanitized)) {
-    return REQUEST_CHANGES_FEEDBACK;
-  }
-
-  const bounded = sanitized.slice(0, 500).trim();
-  if (bounded.length >= MIN_FEEDBACK_DRAFT_LENGTH) return bounded;
-  return action === 'request_changes' ? REQUEST_CHANGES_FEEDBACK : REJECT_FEEDBACK;
 }
 
 function extractJson(text: string): unknown {
