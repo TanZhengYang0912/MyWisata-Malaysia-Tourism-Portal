@@ -191,10 +191,13 @@ describe('applyDecisionGuardrails', () => {
     photoAssessments: [],
   };
 
-  it('downgrades an unsupported reject suggestion to request changes', () => {
+  it('normalizes an unsupported duplicate-only reject suggestion to approve', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 0);
-    expect(applyDecisionGuardrails(aiResult, checks, 0).suggestedAction)
-      .toBe('request_changes');
+    expect(applyDecisionGuardrails(aiResult, checks, 0)).toMatchObject({
+      suggestedAction: 'approve',
+      confidence: 'medium',
+      feedbackDraft: null,
+    });
   });
 
   it('allows reject only with a high-severity reject basis', () => {
@@ -212,7 +215,7 @@ describe('applyDecisionGuardrails', () => {
     expect(result.suggestedAction).toBe('reject');
   });
 
-  it('does not let an AI duplicate finding reject without deterministic matches', () => {
+  it('does not let an AI duplicate finding control the final action without deterministic matches', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 0);
     const result = applyDecisionGuardrails({
       ...aiResult,
@@ -224,7 +227,11 @@ describe('applyDecisionGuardrails', () => {
         evidenceSummary: 'AI-only duplicate suspicion',
       }],
     }, checks, 0);
-    expect(result.suggestedAction).toBe('request_changes');
+    expect(result).toMatchObject({
+      suggestedAction: 'approve',
+      confidence: 'medium',
+      feedbackDraft: null,
+    });
   });
 
   it('keeps approve only when required evidence and findings are clear', () => {
@@ -283,7 +290,7 @@ describe('applyDecisionGuardrails', () => {
     const result = applyDecisionGuardrails({
       ...aiResult,
       feedbackDraft: 'Reject this recommendation because it must be declined.',
-    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+    }, buildEvidenceChecks({ ...completeRow, why_recommend: null }, 1, 0), 0);
 
     expect(result).toMatchObject({
       suggestedAction: 'request_changes',
@@ -301,7 +308,7 @@ describe('applyDecisionGuardrails', () => {
       suggestedAction: 'request_changes',
       confidence: 'high',
       feedbackDraft: 'Email person@example.com; please provide more evidence.',
-    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+    }, buildEvidenceChecks({ ...completeRow, why_recommend: null }, 1, 0), 0);
 
     expect(result.feedbackDraft).toBeTruthy();
     expect(result.feedbackDraft!.length).toBeGreaterThanOrEqual(10);
@@ -335,6 +342,78 @@ describe('applyDecisionGuardrails', () => {
     expect(result.suggestedAction).toBe('reject');
     expect(result.feedbackDraft).toMatch(expected);
     expect(result.feedbackDraft).not.toMatch(/provide more evidence|request changes|before approval/i);
+  });
+
+  it.each([
+    'It looks like a duplicate.',
+    'Please check for a duplicate listing.',
+  ])('ignores duplicate wording when no structured basis remains: %s', (feedbackDraft) => {
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [],
+      feedbackDraft,
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result).toEqual({
+      suggestedAction: 'approve',
+      confidence: 'medium',
+      feedbackDraft: null,
+    });
+  });
+
+  it('retains a structured non-duplicate request basis with server-aligned feedback', () => {
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [
+        {
+          field: 'duplicate',
+          severity: 'high',
+          kind: 'duplicate',
+          message: 'It looks like a duplicate.',
+          evidenceSummary: null,
+        },
+        {
+          field: 'description',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The description needs more detail.',
+          evidenceSummary: null,
+        },
+      ],
+      feedbackDraft: 'Please check for a duplicate listing.',
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.feedbackDraft).toContain('submitted evidence');
+    expect(result.feedbackDraft).not.toMatch(/duplicate/i);
+  });
+
+  it('caps confidence whenever guardrails override the model action', () => {
+    const requestToApprove = applyDecisionGuardrails({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [],
+      feedbackDraft: 'It looks like a duplicate.',
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+    const approveToRequest = applyDecisionGuardrails({
+      suggestedAction: 'approve',
+      confidence: 'high',
+      findings: [],
+      feedbackDraft: null,
+      photoAssessments: [{
+        imageId: '00000000-0000-4000-8000-000000000021',
+        status: 'possible_conflict',
+        message: 'The photo may conflict with the category.',
+      }],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(requestToApprove).toMatchObject({ suggestedAction: 'approve', confidence: 'medium' });
+    expect(approveToRequest).toMatchObject({ suggestedAction: 'request_changes', confidence: 'medium' });
   });
 });
 
@@ -420,7 +499,7 @@ describe('deterministic duplicate findings', () => {
     }
   });
 
-  it('preserves non-duplicate findings and feedback while stripping duplicate prose', async () => {
+  it('preserves non-duplicate findings and uses server-aligned feedback', async () => {
     const imageId = '00000000-0000-4000-8000-000000000015';
     const { service } = makeReviewService([{
       id: imageId,
@@ -465,7 +544,7 @@ describe('deterministic duplicate findings', () => {
       expect.objectContaining({ field: 'description', message: 'The description needs more detail.' }),
     ]));
     expect(result.findings.some((finding) => finding.kind === 'duplicate')).toBe(false);
-    expect(result.feedbackDraft).toContain('clearer description');
+    expect(result.feedbackDraft).toContain('submitted evidence');
     expect(result.feedbackDraft).not.toContain('duplicate');
   });
 });
@@ -637,7 +716,7 @@ describe('reviewRecommendation photo guardrails', () => {
     }]));
   });
 
-  it('preserves legitimate non-photo feedback', async () => {
+  it('uses server-aligned feedback for a legitimate non-photo request basis', async () => {
     const imageId = '00000000-0000-4000-8000-000000000005';
     const { service } = makeReviewService([
       { id: imageId, storage_path: 'private/photo.jpg', sort_order: 0 },
@@ -650,6 +729,13 @@ describe('reviewRecommendation photo guardrails', () => {
       ...validSchemaResult,
       suggestedAction: 'request_changes',
       confidence: 'medium',
+      findings: [{
+        field: 'description',
+        severity: 'low',
+        kind: 'low_quality',
+        message: 'The description needs more detail.',
+        evidenceSummary: null,
+      }],
       feedbackDraft: 'Please provide a clearer description and recommendation reason.',
       photoAssessments: [{
         imageId,
@@ -660,7 +746,8 @@ describe('reviewRecommendation photo guardrails', () => {
 
     const result = await reviewRecommendation(service, 'rec-1');
 
-    expect(result.feedbackDraft).toBe('Please provide a clearer description and recommendation reason.');
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.feedbackDraft).toBe('Please review the submitted evidence and provide any missing details before approval.');
   });
 
   it('reports overflow active photos, sends at most five images, and filters invented IDs', async () => {
@@ -835,6 +922,64 @@ describe('reviewRecommendation photo guardrails', () => {
     ]));
   });
 
+  it('uses structured photo channels for implicit photo location claims', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000021';
+    const implicitClaim = 'It was taken at the listed location.';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/implicit-location-claim.jpg', sort_order: 0 },
+    ], 1);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      findings: [
+        {
+          field: 'photos',
+          severity: 'low',
+          kind: 'low_quality',
+          message: implicitClaim,
+          evidenceSummary: null,
+        },
+        {
+          field: 'location',
+          severity: 'low',
+          kind: 'low_quality',
+          message: implicitClaim,
+          evidenceSummary: null,
+        },
+      ],
+      feedbackDraft: implicitClaim,
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: implicitClaim,
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        field: 'photos',
+        kind: 'manual_review',
+        message: 'Photo review requires manual review.',
+      }),
+      expect.objectContaining({ field: 'location', message: implicitClaim }),
+    ]));
+    expect(result.findings).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'photos', message: implicitClaim }),
+    ]));
+    expect(result.feedbackDraft).toBe(implicitClaim);
+    expect(result.photoAssessments).toEqual([{
+      imageId,
+      status: 'could_not_analyse',
+      message: 'Photo assessment omitted because it made a prohibited claim.',
+    }]);
+  });
+
   it('returns photo assessments in active order with failed and omitted IDs filled in place', async () => {
     const imageRows = [
       { id: '00000000-0000-4000-8000-000000000017', storage_path: 'private/failed.jpg', sort_order: 0 },
@@ -889,6 +1034,35 @@ describe('reviewRecommendation photo guardrails', () => {
         message: 'The photo appears relevant.',
       },
     ]);
+  });
+
+  it('returns every active photo in order when Gemini output is malformed after a later photo failure', async () => {
+    const imageRows = [
+      { id: '00000000-0000-4000-8000-000000000022', storage_path: 'private/first.jpg', sort_order: 0 },
+      { id: '00000000-0000-4000-8000-000000000023', storage_path: 'private/second.jpg', sort_order: 1 },
+      { id: '00000000-0000-4000-8000-000000000024', storage_path: 'private/later-failure.jpg', sort_order: 2 },
+    ];
+    const { service } = makeReviewService(imageRows);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg' },
+      })))
+      .mockImplementationOnce(() => Promise.resolve(new Response(new Uint8Array([4, 5, 6]), {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg' },
+      })))
+      .mockImplementationOnce(() => Promise.resolve(new Response('unavailable', { status: 503 }))));
+    callGeminiMock.mockResolvedValue('{ malformed moderation output');
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.aiAvailable).toBe(false);
+    expect(result.photoAssessments).toEqual(imageRows.map((row) => ({
+      imageId: row.id,
+      status: 'could_not_analyse',
+      message: 'This photo could not be analysed.',
+    })));
   });
 
   it('degrades an oversized photo without approving the recommendation', async () => {

@@ -19,14 +19,6 @@ const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provi
 const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
 const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
 const REJECTION_LANGUAGE = /\b(?:reject(?:ed|s|ing|ion)?|declin(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|den(?:y|ied|ies|ial)|not\s+accept(?:ed|able)?|cannot\s+approve)\b/i;
-const DUPLICATE_PROSE = /\b(?:duplicate(?:s|d|ly)?|exact\s+normalized[-\s]name\s+match(?:es)?|same\s+(?:normalized\s+)?name)\b/i;
-const DUPLICATE_ONLY_WORDS = new Set([
-  'a', 'an', 'another', 'already', 'appears', 'are', 'basis', 'be', 'been', 'could', 'detected',
-  'duplicate', 'duplicates', 'duplicated', 'evidence', 'exact', 'exists', 'finding', 'findings',
-  'found', 'have', 'has', 'is', 'listing', 'listings', 'match', 'matches', 'may', 'might', 'name',
-  'normalized', 'of', 'only', 'possibly', 'recommendation', 'recommendations', 'same', 'seem',
-  'seems', 'submission', 'submissions', 'suspected', 'the', 'there', 'this', 'to', 'was', 'were',
-]);
 
 const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
@@ -267,19 +259,6 @@ function isModelDuplicateFinding(finding: ModerationFinding): boolean {
   return finding.field === 'duplicate' || finding.kind === 'duplicate';
 }
 
-function isDuplicateOnlyProse(value: string): boolean {
-  if (!DUPLICATE_PROSE.test(value)) return false;
-  const words = value.toLowerCase().match(/[a-z]+/g) ?? [];
-  return words.length > 0 && words.every((word) => DUPLICATE_ONLY_WORDS.has(word));
-}
-
-function stripDuplicateProse(value: string | null): string | null {
-  if (value === null) return null;
-  const segments = value.split(/(?<=[.!?;,:])\s+/).map((segment) => segment.trim()).filter(Boolean);
-  const retained = segments.filter((segment) => !isDuplicateOnlyProse(segment));
-  return retained.length === segments.length ? value.trim() : retained.join(' ').trim();
-}
-
 function buildDuplicateFeedback(duplicateCount: number): string {
   return `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'} and requires manual review.`;
 }
@@ -318,12 +297,13 @@ export function applyDecisionGuardrails(
     ['missing', 'invalid', 'low_quality'].includes(check.status));
   const photoConflict = ai.photoAssessments.some((photo) => photo.status === 'possible_conflict');
   const photoNeedsManualReview = ai.photoAssessments.some((photo) =>
-    photo.status === 'could_not_analyse' || containsProhibitedPhotoClaim(photo.message));
+    photo.status === 'could_not_analyse' || containsProhibitedPhotoClaim(photo.message, true));
   const unsafeModelProse = ai.findings.some((finding) =>
-    containsProhibitedPhotoClaim(finding.message)
-    || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary)))
+    containsProhibitedPhotoClaim(finding.message, finding.field === 'photos')
+    || (finding.evidenceSummary !== null
+      && containsProhibitedPhotoClaim(finding.evidenceSummary, finding.field === 'photos')))
     || (ai.feedbackDraft !== null && containsProhibitedPhotoClaim(ai.feedbackDraft))
-    || ai.photoAssessments.some((photo) => containsProhibitedPhotoClaim(photo.message));
+    || ai.photoAssessments.some((photo) => containsProhibitedPhotoClaim(photo.message, true));
   const manualPhotoFindingPresent = nonDuplicateFindings.some((finding) =>
     finding.field === 'photos' && finding.kind === 'manual_review');
   const highFinding = nonDuplicateFindings.some((finding) => finding.severity === 'high');
@@ -331,18 +311,14 @@ export function applyDecisionGuardrails(
   const rejectBasis = deterministicDuplicateBasis || nonDuplicateFindings.some((finding) =>
     finding.severity === 'high'
     && REJECT_KINDS.has(finding.kind));
-  const duplicateFreeFeedback = stripDuplicateProse(ai.feedbackDraft);
-  const hasNonDuplicateFeedback = Boolean(duplicateFreeFeedback?.trim());
-  const duplicateOnlyModelSignal = duplicateCount === 0
-    && ai.findings.some(isModelDuplicateFinding)
-    && !hasNonDuplicateFeedback;
-  const duplicateOnlyFeedbackSignal = duplicateCount === 0
-    && ai.feedbackDraft !== null
-    && DUPLICATE_PROSE.test(ai.feedbackDraft)
-    && !hasNonDuplicateFeedback;
   const nonDuplicateCheckIssue = checks.some((check) =>
     check.field !== 'duplicate' && check.status !== 'passed');
   const photoIssue = ai.photoAssessments.some((photo) => photo.status !== 'appears_relevant');
+  const legitimateRequestBasis = nonDuplicateCheckIssue
+    || nonDuplicateFindings.length > 0
+    || photoIssue
+    || photoNeedsManualReview
+    || unsafeModelProse;
 
   let suggestedAction = ai.suggestedAction;
   if (requiredIssue) {
@@ -358,35 +334,34 @@ export function applyDecisionGuardrails(
     suggestedAction = 'request_changes';
   }
 
-  if ((duplicateOnlyModelSignal || duplicateOnlyFeedbackSignal)
-    && nonDuplicateFindings.length === 0
-    && !nonDuplicateCheckIssue
-    && !photoIssue
-    && !photoConflict
-    && !photoNeedsManualReview
-    && !unsafeModelProse
-    && !manualPhotoFindingPresent) {
+  if (duplicateCount === 0 && suggestedAction === 'request_changes' && !legitimateRequestBasis) {
     suggestedAction = 'approve';
   }
 
+  const actionOverridden = suggestedAction !== ai.suggestedAction;
   const downgradedReject = ai.suggestedAction === 'reject' && suggestedAction !== 'reject';
   const authoritativeRejectFeedback = suggestedAction === 'reject'
     ? buildAuthoritativeRejectFeedback(nonDuplicateFindings, duplicateCount)
     : null;
-  const duplicateFeedback = duplicateCount > 0 && !hasNonDuplicateFeedback
+  const duplicateFeedback = duplicateCount > 0 && !legitimateRequestBasis
     ? buildDuplicateFeedback(duplicateCount)
+    : null;
+  const serverAlignedRequestFeedback = duplicateCount === 0
+    && suggestedAction === 'request_changes'
+    && legitimateRequestBasis
+    ? REQUEST_CHANGES_FEEDBACK
     : null;
 
   return {
     suggestedAction,
-    confidence: suggestedAction === 'request_changes' && suggestedAction !== ai.suggestedAction
-      ? 'medium'
-      : ai.confidence,
+    confidence: actionOverridden && ai.confidence === 'high' ? 'medium' : ai.confidence,
     feedbackDraft: suggestedAction === 'approve'
       ? null
       : suggestedAction === 'reject'
         ? authoritativeRejectFeedback ?? REJECT_FEEDBACK
-        : duplicateFeedback ?? normalizeFeedbackDraft(duplicateFreeFeedback, suggestedAction, downgradedReject),
+        : duplicateFeedback
+          ?? serverAlignedRequestFeedback
+          ?? normalizeFeedbackDraft(ai.feedbackDraft, suggestedAction, downgradedReject),
   };
 }
 
@@ -397,7 +372,7 @@ function normalizeFeedbackDraft(
 ): string {
   if (downgradedReject) return REQUEST_CHANGES_FEEDBACK;
 
-  const sanitized = stripDuplicateProse(draft === null ? '' : sanitizeModelText(draft, []).trim())?.trim() ?? '';
+  const sanitized = draft === null ? '' : sanitizeModelText(draft, []).trim();
   if (containsProhibitedPhotoClaim(sanitized)) {
     return action === 'request_changes' ? MANUAL_PHOTO_FEEDBACK : REJECT_FEEDBACK;
   }
@@ -566,13 +541,13 @@ const PHOTO_LOCATION_ASSERTION = /\b(?:is|are|was|were|has\s+been|had\s+been)\s+
 const BENIGN_PHOTO_RELEVANCE = /\b(?:appear(?:s)?|seem(?:s)?|look(?:s)?)\s+(?:to\s+be\s+)?relevant\b[^.!?]{0,100}\b(?:listed|provided|submitted)\s+(?:place(?:\s*\/\s*location)?|location)\b/gi;
 const PROHIBITED_PHOTO_MESSAGE = 'Photo assessment omitted because it made a prohibited claim.';
 
-function containsProhibitedPhotoClaim(text: string): boolean {
+function containsProhibitedPhotoClaim(text: string, isPhotoContext = false): boolean {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (!normalized) return false;
   const withoutBenignRelevance = normalized.replace(BENIGN_PHOTO_RELEVANCE, ' ');
   const hasProhibitedSubject = PROHIBITED_PHOTO_SUBJECT.test(withoutBenignRelevance);
   if (!hasProhibitedSubject) return false;
-  const hasPhotoContext = PHOTO_REFERENCE.test(withoutBenignRelevance);
+  const hasPhotoContext = isPhotoContext || PHOTO_REFERENCE.test(withoutBenignRelevance);
   const hasAssertion = PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
   const hasDirectAssertion = DIRECT_PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
   const hasPhotoLocationAssertion = PHOTO_LOCATION_ASSERTION.test(withoutBenignRelevance);
@@ -602,8 +577,9 @@ function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInl
   const imageData = images.map((image) => image.data);
   let unsafeProse = false;
   const findings = result.findings.flatMap((finding) => {
-    const unsafe = containsProhibitedPhotoClaim(finding.message)
-      || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary));
+    const isPhotoFinding = finding.field === 'photos';
+    const unsafe = containsProhibitedPhotoClaim(finding.message, isPhotoFinding)
+      || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary, isPhotoFinding));
     if (unsafe) {
       unsafeProse = true;
       return [];
@@ -631,7 +607,7 @@ function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInl
       : result.feedbackDraft === null
       ? null
       : sanitizeModelText(result.feedbackDraft, imageData),
-    photoAssessments: result.photoAssessments.map((photo) => containsProhibitedPhotoClaim(photo.message)
+    photoAssessments: result.photoAssessments.map((photo) => containsProhibitedPhotoClaim(photo.message, true)
       ? { ...photo, status: 'could_not_analyse' as const, message: PROHIBITED_PHOTO_MESSAGE }
       : { ...photo, message: sanitizeModelText(photo.message, imageData) }),
   };
@@ -713,7 +689,7 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
       message: `${check.message} ${failures.length} photo${failures.length === 1 ? '' : 's'} could not be analysed.`,
     };
   });
-  const photoFailures = photoFailureAssessments(failures);
+  const unavailablePhotoAssessments = photoFailureAssessments(activeImageRows.map((row) => row.id));
   const unavailable = (): ModerationAssessment => ({
     suggestedAction: null,
     confidence: null,
@@ -722,7 +698,7 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
     duplicateCount,
     duplicateBasis: 'exact_normalized_name',
     feedbackDraft: null,
-    photoAssessments: photoFailures,
+    photoAssessments: unavailablePhotoAssessments,
     aiAvailable: false,
   });
 
