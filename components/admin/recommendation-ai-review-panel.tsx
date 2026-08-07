@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
   ModerationAssessment,
+  ModerationFinding,
+  PhotoAssessment,
   RecommendationEvidenceField,
 } from "@/lib/admin-ai/moderation";
 
@@ -14,6 +16,41 @@ interface RecommendationAiReviewPanelProps {
   recommendationId: string;
   onUseReason: (action: ReasonAction, reason: string) => void;
 }
+
+const FIELD_LABELS: Record<RecommendationEvidenceField, string> = {
+  vendor_name: "Business name",
+  description: "Description",
+  why_recommend: "Recommendation reason",
+  category: "Category",
+  location: "Google location",
+  contact: "Contact method",
+  photos: "Photos",
+  image_attestation: "Image rights",
+  duplicate: "Exact name matches",
+};
+
+const FINDING_KIND_LABELS: Record<ModerationFinding["kind"], string> = {
+  low_quality: "Low quality",
+  conflict: "Conflict",
+  spam: "Spam",
+  test_content: "Test content",
+  policy: "Policy",
+  duplicate: "Duplicate",
+  manual_review: "Manual review",
+};
+
+const SEVERITY_LABELS: Record<ModerationFinding["severity"], string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};
+
+const PHOTO_STATUS_LABELS: Record<PhotoAssessment["status"], string> = {
+  appears_relevant: "Appears relevant",
+  possible_conflict: "Possible conflict",
+  unclear: "Unclear",
+  could_not_analyse: "Could not analyse",
+};
 
 const FIELD_TARGETS: Partial<Record<RecommendationEvidenceField, string>> = {
   vendor_name: "recommendation-field-vendor-name",
@@ -31,6 +68,33 @@ function scrollToEvidence(field: RecommendationEvidenceField) {
   if (!targetId) return;
   document.getElementById(targetId)
     ?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function issueKey(field: RecommendationEvidenceField, message: string) {
+  return JSON.stringify([field, message]);
+}
+
+function EvidenceIssue({
+  field,
+  children,
+}: {
+  field: RecommendationEvidenceField;
+  children: ReactNode;
+}) {
+  const targetId = FIELD_TARGETS[field];
+  return targetId ? (
+    <button
+      type="button"
+      onClick={() => scrollToEvidence(field)}
+      className="block w-full text-left"
+    >
+      {children}
+    </button>
+  ) : (
+    <div className="block w-full text-left">
+      {children}
+    </div>
+  );
 }
 
 export function RecommendationAiReviewPanel({
@@ -72,7 +136,13 @@ export function RecommendationAiReviewPanel({
 
   const failedChecks = result?.evidenceChecks.filter((check) => check.status !== "passed") ?? [];
   const passedChecks = result?.evidenceChecks.filter((check) => check.status === "passed") ?? [];
-  const photoIssues = result?.photoAssessments.filter((photo) => photo.status !== "appears_relevant") ?? [];
+  const photoAssessments = result?.photoAssessments ?? [];
+  const photoIssues = photoAssessments.filter((photo) => photo.status !== "appears_relevant");
+  const issueCount = result ? new Set([
+    ...failedChecks.map((check) => issueKey(check.field, check.message)),
+    ...result.findings.map((finding) => issueKey(finding.field, finding.message)),
+    ...photoIssues.map((photo) => issueKey("photos", photo.message)),
+  ]).size : 0;
   const actionLabel = result?.suggestedAction === "request_changes"
     ? "Request changes"
     : result?.suggestedAction === "reject"
@@ -101,7 +171,12 @@ export function RecommendationAiReviewPanel({
             <section aria-label="Suggested decision">
               <p className="text-[10px] font-semibold uppercase text-muted-foreground">Suggested decision</p>
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-base font-bold text-foreground">{actionLabel}</p>
+                <div>
+                  <p className="text-base font-bold text-foreground">{actionLabel}</p>
+                  <p aria-label="Unique issue count" className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                    {issueCount} unique {issueCount === 1 ? "issue" : "issues"}
+                  </p>
+                </div>
                 <span className="rounded-full bg-background px-2 py-1 font-semibold">
                   {result.confidence} confidence
                 </span>
@@ -120,36 +195,44 @@ export function RecommendationAiReviewPanel({
             ) : (
               <div className="mt-2 space-y-2">
                 {failedChecks.map((check) => (
-                  <button
-                    key={`check-${check.field}`}
-                    type="button"
-                    onClick={() => scrollToEvidence(check.field)}
-                    className="block w-full text-left"
-                  >
+                  <EvidenceIssue key={`check-${check.field}`} field={check.field}>
                     <span className="font-semibold">{check.label}: </span>{check.message}
-                  </button>
+                  </EvidenceIssue>
                 ))}
                 {result.findings.map((finding, index) => (
-                  <button
-                    key={`finding-${finding.field}-${index}`}
-                    type="button"
-                    onClick={() => scrollToEvidence(finding.field)}
-                    className="block w-full text-left"
-                  >
-                    <span className="font-semibold">{finding.field}: </span>{finding.message}
-                  </button>
+                  <EvidenceIssue key={`finding-${finding.field}-${index}`} field={finding.field}>
+                    <span className="block">
+                      <span className="font-semibold">{FIELD_LABELS[finding.field]}</span>
+                      <span className="text-muted-foreground">
+                        {" · Kind: "}{FINDING_KIND_LABELS[finding.kind]}
+                        {" · Severity: "}{SEVERITY_LABELS[finding.severity]}
+                      </span>
+                    </span>
+                    <span className="mt-1 block">{finding.message}</span>
+                    {finding.evidenceSummary && (
+                      <span className="mt-1 block text-muted-foreground">Evidence: {finding.evidenceSummary}</span>
+                    )}
+                  </EvidenceIssue>
                 ))}
-                {photoIssues.map((photo) => (
-                  <button
-                    key={`photo-${photo.imageId}`}
-                    type="button"
-                    onClick={() => scrollToEvidence("photos")}
-                    className="block w-full text-left"
-                  >
-                    <span className="font-semibold">Photo: </span>{photo.message}
-                  </button>
-                ))}
+                {photoIssues.length > 0 && (
+                  <p className="text-muted-foreground">Photo assessments requiring attention are shown below.</p>
+                )}
               </div>
+            )}
+            {photoAssessments.length > 0 && (
+              <section aria-label="Photo assessments" className="mt-3 rounded-lg bg-muted/50 p-3">
+                <p className="font-semibold text-foreground">Photo assessments</p>
+                <div className="mt-2 space-y-2">
+                  {photoAssessments.map((photo, index) => (
+                    <EvidenceIssue key={`photo-assessment-${photo.imageId}-${index}`} field="photos">
+                      <span className="block font-semibold">
+                        Photo {index + 1} · {PHOTO_STATUS_LABELS[photo.status]}
+                      </span>
+                      <span className="mt-1 block">{photo.message}</span>
+                    </EvidenceIssue>
+                  ))}
+                </div>
+              </section>
             )}
           </section>
 

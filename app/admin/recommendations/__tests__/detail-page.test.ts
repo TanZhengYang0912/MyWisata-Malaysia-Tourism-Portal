@@ -38,6 +38,48 @@ describe('admin recommendation detail workflow', () => {
     expect(panel).not.toContain('/api/admin/recommendations/review');
   });
 
+  it('renders every photo assessment and complete finding details with a deduplicated issue count', () => {
+    const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
+
+    expect(panel).toContain('Photo assessments');
+    expect(panel).toContain('photoAssessments.map((photo, index)');
+    expect(panel).toContain('Photo {index + 1}');
+    expect(panel).toContain('PHOTO_STATUS_LABELS[photo.status]');
+    expect(panel).toContain('{photo.message}');
+    expect(panel).toContain('FIELD_LABELS[finding.field]');
+    expect(panel).toContain('FINDING_KIND_LABELS[finding.kind]');
+    expect(panel).toContain('SEVERITY_LABELS[finding.severity]');
+    expect(panel).toContain('{finding.message}');
+    expect(panel).toContain('{finding.evidenceSummary}');
+    expect(panel).toContain('finding.evidenceSummary && (');
+    expect(panel).toContain('Unique issue count');
+    expect(panel).toContain('new Set(');
+    expect(panel).toContain('issueKey(check.field, check.message)');
+    expect(panel).toContain('issueKey(finding.field, finding.message)');
+    expect(panel).toContain('issueKey("photos", photo.message)');
+    expect(panel).toContain('failedChecks.map');
+    expect(panel).toContain('result.findings.map');
+    expect(panel).toContain('photoIssues.map');
+  });
+
+  it('only makes evidence rows buttons when a target exists', () => {
+    const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
+    const targetsStart = panel.indexOf('const FIELD_TARGETS');
+    const targetsEnd = panel.indexOf('};', targetsStart);
+    const targets = panel.slice(targetsStart, targetsEnd);
+
+    expect(targetsStart).toBeGreaterThanOrEqual(0);
+    expect(targetsEnd).toBeGreaterThan(targetsStart);
+    expect(targets).not.toContain('duplicate');
+    expect(panel).toContain('const targetId = FIELD_TARGETS[field];');
+    expect(panel).toContain('return targetId ? (');
+    expect(panel).toContain('onClick={() => scrollToEvidence(field)}');
+    expect(panel).toContain(') : (');
+    expect(panel).toContain('field={check.field}');
+    expect(panel).toContain('field={finding.field}');
+    expect(panel).toContain('field="photos"');
+  });
+
   it('clears stale AI results on rerun and failed responses with an accessible error contract', () => {
     const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
     const reviewStart = panel.indexOf('async function runReview()');
