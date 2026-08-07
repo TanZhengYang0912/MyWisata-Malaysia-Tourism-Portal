@@ -19,6 +19,14 @@ const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provi
 const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
 const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
 const REJECTION_LANGUAGE = /\b(?:reject(?:ed|s|ing|ion)?|declin(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|den(?:y|ied|ies|ial)|not\s+accept(?:ed|able)?|cannot\s+approve)\b/i;
+const DUPLICATE_PROSE = /\b(?:duplicate(?:s|d|ly)?|exact\s+normalized[-\s]name\s+match(?:es)?|same\s+(?:normalized\s+)?name)\b/i;
+const DUPLICATE_ONLY_WORDS = new Set([
+  'a', 'an', 'another', 'already', 'appears', 'are', 'basis', 'be', 'been', 'could', 'detected',
+  'duplicate', 'duplicates', 'duplicated', 'evidence', 'exact', 'exists', 'finding', 'findings',
+  'found', 'have', 'has', 'is', 'listing', 'listings', 'match', 'matches', 'may', 'might', 'name',
+  'normalized', 'of', 'only', 'possibly', 'recommendation', 'recommendations', 'same', 'seem',
+  'seems', 'submission', 'submissions', 'suspected', 'the', 'there', 'this', 'to', 'was', 'were',
+]);
 
 const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
@@ -259,6 +267,47 @@ function isModelDuplicateFinding(finding: ModerationFinding): boolean {
   return finding.field === 'duplicate' || finding.kind === 'duplicate';
 }
 
+function isDuplicateOnlyProse(value: string): boolean {
+  if (!DUPLICATE_PROSE.test(value)) return false;
+  const words = value.toLowerCase().match(/[a-z]+/g) ?? [];
+  return words.length > 0 && words.every((word) => DUPLICATE_ONLY_WORDS.has(word));
+}
+
+function stripDuplicateProse(value: string | null): string | null {
+  if (value === null) return null;
+  const segments = value.split(/(?<=[.!?;,:])\s+/).map((segment) => segment.trim()).filter(Boolean);
+  const retained = segments.filter((segment) => !isDuplicateOnlyProse(segment));
+  return retained.length === segments.length ? value.trim() : retained.join(' ').trim();
+}
+
+function buildDuplicateFeedback(duplicateCount: number): string {
+  return `This recommendation has ${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'} and requires manual review.`;
+}
+
+function buildAuthoritativeRejectFeedback(
+  findings: ModerationFinding[],
+  duplicateCount: number,
+): string | null {
+  if (duplicateCount >= 2) {
+    return `This recommendation has ${duplicateCount} exact normalized-name matches and requires rejection.`;
+  }
+
+  const basis = findings.find((finding) =>
+    finding.severity === 'high' && REJECT_KINDS.has(finding.kind));
+  if (!basis) return null;
+
+  switch (basis.kind) {
+    case 'spam':
+      return 'This recommendation contains spam content and requires rejection.';
+    case 'test_content':
+      return 'This recommendation contains clear test content and requires rejection.';
+    case 'policy':
+      return 'This recommendation has a policy conflict and requires rejection.';
+    default:
+      return REJECT_FEEDBACK;
+  }
+}
+
 export function applyDecisionGuardrails(
   ai: AiModerationResult,
   checks: EvidenceCheck[],
@@ -282,6 +331,18 @@ export function applyDecisionGuardrails(
   const rejectBasis = deterministicDuplicateBasis || nonDuplicateFindings.some((finding) =>
     finding.severity === 'high'
     && REJECT_KINDS.has(finding.kind));
+  const duplicateFreeFeedback = stripDuplicateProse(ai.feedbackDraft);
+  const hasNonDuplicateFeedback = Boolean(duplicateFreeFeedback?.trim());
+  const duplicateOnlyModelSignal = duplicateCount === 0
+    && ai.findings.some(isModelDuplicateFinding)
+    && !hasNonDuplicateFeedback;
+  const duplicateOnlyFeedbackSignal = duplicateCount === 0
+    && ai.feedbackDraft !== null
+    && DUPLICATE_PROSE.test(ai.feedbackDraft)
+    && !hasNonDuplicateFeedback;
+  const nonDuplicateCheckIssue = checks.some((check) =>
+    check.field !== 'duplicate' && check.status !== 'passed');
+  const photoIssue = ai.photoAssessments.some((photo) => photo.status !== 'appears_relevant');
 
   let suggestedAction = ai.suggestedAction;
   if (requiredIssue) {
@@ -297,7 +358,24 @@ export function applyDecisionGuardrails(
     suggestedAction = 'request_changes';
   }
 
+  if ((duplicateOnlyModelSignal || duplicateOnlyFeedbackSignal)
+    && nonDuplicateFindings.length === 0
+    && !nonDuplicateCheckIssue
+    && !photoIssue
+    && !photoConflict
+    && !photoNeedsManualReview
+    && !unsafeModelProse
+    && !manualPhotoFindingPresent) {
+    suggestedAction = 'approve';
+  }
+
   const downgradedReject = ai.suggestedAction === 'reject' && suggestedAction !== 'reject';
+  const authoritativeRejectFeedback = suggestedAction === 'reject'
+    ? buildAuthoritativeRejectFeedback(nonDuplicateFindings, duplicateCount)
+    : null;
+  const duplicateFeedback = duplicateCount > 0 && !hasNonDuplicateFeedback
+    ? buildDuplicateFeedback(duplicateCount)
+    : null;
 
   return {
     suggestedAction,
@@ -306,7 +384,9 @@ export function applyDecisionGuardrails(
       : ai.confidence,
     feedbackDraft: suggestedAction === 'approve'
       ? null
-      : normalizeFeedbackDraft(ai.feedbackDraft, suggestedAction, downgradedReject),
+      : suggestedAction === 'reject'
+        ? authoritativeRejectFeedback ?? REJECT_FEEDBACK
+        : duplicateFeedback ?? normalizeFeedbackDraft(duplicateFreeFeedback, suggestedAction, downgradedReject),
   };
 }
 
@@ -317,7 +397,7 @@ function normalizeFeedbackDraft(
 ): string {
   if (downgradedReject) return REQUEST_CHANGES_FEEDBACK;
 
-  const sanitized = draft === null ? '' : sanitizeModelText(draft, []).trim();
+  const sanitized = stripDuplicateProse(draft === null ? '' : sanitizeModelText(draft, []).trim())?.trim() ?? '';
   if (containsProhibitedPhotoClaim(sanitized)) {
     return action === 'request_changes' ? MANUAL_PHOTO_FEEDBACK : REJECT_FEEDBACK;
   }
@@ -478,10 +558,11 @@ function photoFailureAssessments(failures: string[]): PhotoAssessment[] {
   }));
 }
 
-const PHOTO_REFERENCE = /\b(?:photo|photos|image|images|picture|pictures|uploaded|submitted)\b/i;
+const PHOTO_REFERENCE = /\b(?:photo|photos|image|images|picture|pictures|uploaded[\s-]+media|(?:submitted|provided)\s+(?:photo|image|picture|media))\b/i;
 const PROHIBITED_PHOTO_SUBJECT = /\b(?:authentic(?:ity)?|genuine|real|actual|legitimate|ownership|owner|own(?:s|ed)?|belong(?:s|ed|ing)?|rights?|copyright|permission|authori[sz](?:e|ed|ation)|license(?:d)?|located|location|place|address)\b/i;
 const PROHIBITED_PHOTO_ASSERTION = /\b(?:verif(?:y|ied|ies|ication)|prove(?:s|d)?|proof|confirm(?:s|ed|ation)?|establish(?:es|ed|ing)?|demonstrat(?:es|ed|ing)?|show(?:s|n)?|indicat(?:e|es|ed|ing)?|claim(?:s|ed|ing)?|proclaim(?:s|ed|ing)?)\b/i;
 const DIRECT_PROHIBITED_PHOTO_ASSERTION = /\b(?:is|are|was|were|looks?|seems?|appears?)\s+(?:to\s+be\s+)?(?:authentic(?:ity)?|genuine|real|actual|legitimate|ownership|owner|rights?|copyright|permission|license(?:d)?|located|location|place|address)\b/i;
+const PHOTO_LOCATION_ASSERTION = /\b(?:is|are|was|were|has\s+been|had\s+been)\s+(?:taken|captured|photographed|shot)\b[^.!?]{0,100}\b(?:location|place|address)\b/i;
 const BENIGN_PHOTO_RELEVANCE = /\b(?:appear(?:s)?|seem(?:s)?|look(?:s)?)\s+(?:to\s+be\s+)?relevant\b[^.!?]{0,100}\b(?:listed|provided|submitted)\s+(?:place(?:\s*\/\s*location)?|location)\b/gi;
 const PROHIBITED_PHOTO_MESSAGE = 'Photo assessment omitted because it made a prohibited claim.';
 
@@ -494,7 +575,8 @@ function containsProhibitedPhotoClaim(text: string): boolean {
   const hasPhotoContext = PHOTO_REFERENCE.test(withoutBenignRelevance);
   const hasAssertion = PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
   const hasDirectAssertion = DIRECT_PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
-  return (hasPhotoContext || hasAssertion) && (hasAssertion || hasDirectAssertion);
+  const hasPhotoLocationAssertion = PHOTO_LOCATION_ASSERTION.test(withoutBenignRelevance);
+  return hasPhotoContext && (hasAssertion || hasDirectAssertion || hasPhotoLocationAssertion);
 }
 
 function manualPhotoFinding(): ModerationFinding {
@@ -562,28 +644,21 @@ function mergePhotoAssessments(
   activeImageIds: string[],
 ): PhotoAssessment[] {
   const suppliedImageIds = new Set(images.map((image) => image.id));
-  const assessments: PhotoAssessment[] = [];
-  const seenImageIds = new Set<string>();
+  const failedImageIds = new Set(failures);
+  const assessmentsByImageId = new Map<string, PhotoAssessment>();
 
   for (const assessment of modelAssessments) {
-    if (!suppliedImageIds.has(assessment.imageId) || seenImageIds.has(assessment.imageId)) continue;
-    seenImageIds.add(assessment.imageId);
-    assessments.push(assessment);
+    if (!suppliedImageIds.has(assessment.imageId) || assessmentsByImageId.has(assessment.imageId)) continue;
+    assessmentsByImageId.set(assessment.imageId, assessment);
   }
 
-  const failedImageIds = new Set([
-    ...failures,
-    ...activeImageIds.filter((imageId) => suppliedImageIds.has(imageId) && !seenImageIds.has(imageId)),
-  ]);
-  for (const imageId of failedImageIds) {
-    assessments.push({
-      imageId,
-      status: 'could_not_analyse',
-      message: 'This photo could not be analysed.',
-    });
-  }
-
-  return assessments;
+  return activeImageIds.map((imageId) => failedImageIds.has(imageId) || !assessmentsByImageId.has(imageId)
+    ? {
+        imageId,
+        status: 'could_not_analyse' as const,
+        message: 'This photo could not be analysed.',
+      }
+    : assessmentsByImageId.get(imageId)!);
 }
 
 /**
@@ -661,14 +736,14 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
     if (!parsed.success) return unavailable();
 
     const sanitized = sanitizeAiResult(parsed.data, images);
-    const findings = sanitized.findings.filter((finding) => !isModelDuplicateFinding(finding));
     const photoAssessments = mergePhotoAssessments(
       sanitized.photoAssessments,
       images,
       failures,
       activeImageRows.map((row) => row.id),
     );
-    const guardrails = applyDecisionGuardrails({ ...sanitized, findings, photoAssessments }, evidenceChecks, duplicateCount);
+    const guardrails = applyDecisionGuardrails({ ...sanitized, photoAssessments }, evidenceChecks, duplicateCount);
+    const findings = sanitized.findings.filter((finding) => !isModelDuplicateFinding(finding));
 
     return {
       ...guardrails,

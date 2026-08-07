@@ -14,6 +14,7 @@ import {
   RECOMMENDATION_PHOTO_TIMEOUT_MS,
   reviewRecommendation,
   type AiModerationResult,
+  type ModerationFinding,
   type RecommendationImageRow,
   type RecommendationEvidenceRow,
 } from '@/lib/admin-ai/moderation';
@@ -312,6 +313,29 @@ describe('applyDecisionGuardrails', () => {
       feedbackDraft: 'This draft must never be returned.',
     }, buildEvidenceChecks(completeRow, 1, 0), 0).feedbackDraft).toBeNull();
   });
+
+  it.each([
+    [0, [{
+      field: 'vendor_name' as const,
+      severity: 'high' as const,
+      kind: 'test_content' as const,
+      message: 'The name is clearly test content.',
+      evidenceSummary: 'test content',
+    }], /test content|rejection/i],
+    [2, [], /exact normalized-name match|rejection/i],
+  ] satisfies Array<[number, ModerationFinding[], RegExp]>)('aligns accepted reject feedback with its authoritative basis (%i)', (duplicateCount, findings, expected) => {
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'reject',
+      confidence: 'high',
+      findings,
+      feedbackDraft: 'Please provide more evidence before approval.',
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, duplicateCount), duplicateCount);
+
+    expect(result.suggestedAction).toBe('reject');
+    expect(result.feedbackDraft).toMatch(expected);
+    expect(result.feedbackDraft).not.toMatch(/provide more evidence|request changes|before approval/i);
+  });
 });
 
 describe('deterministic duplicate findings', () => {
@@ -351,6 +375,98 @@ describe('deterministic duplicate findings', () => {
     expect(duplicateCheck?.message).toContain(`${duplicateCount} exact normalized-name match`);
     expect(duplicateCheck?.status).toBe(duplicateCount === 0 ? 'passed' : 'needs_manual_review');
     expect(result.suggestedAction).toBe(duplicateCount === 0 ? 'approve' : 'request_changes');
+  });
+
+  it.each([0, 1, 3])('ignores duplicate-only model action and feedback at count %i', async (duplicateCount) => {
+    const imageId = '00000000-0000-4000-8000-000000000014';
+    const { service } = makeReviewService([{
+      id: imageId,
+      storage_path: 'private/duplicate-only.jpg',
+      sort_order: 0,
+    }], duplicateCount);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [{
+        field: 'duplicate',
+        severity: 'high',
+        kind: 'duplicate',
+        message: 'This is a duplicate submission.',
+        evidenceSummary: 'Duplicate-only model evidence',
+      }],
+      feedbackDraft: 'This is a duplicate submission.',
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.findings.some((finding) => finding.kind === 'duplicate' || finding.field === 'duplicate'))
+      .toBe(false);
+    if (duplicateCount === 0) {
+      expect(result.suggestedAction).toBe('approve');
+      expect(result.feedbackDraft).toBeNull();
+    } else {
+      expect(result.suggestedAction).toBe('request_changes');
+      expect(result.feedbackDraft).toContain(`${duplicateCount} exact normalized-name match`);
+      expect(result.feedbackDraft).not.toContain('duplicate submission');
+    }
+  });
+
+  it('preserves non-duplicate findings and feedback while stripping duplicate prose', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000015';
+    const { service } = makeReviewService([{
+      id: imageId,
+      storage_path: 'private/mixed-feedback.jpg',
+      sort_order: 0,
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      suggestedAction: 'request_changes',
+      confidence: 'medium',
+      findings: [
+        {
+          field: 'duplicate',
+          severity: 'high',
+          kind: 'duplicate',
+          message: 'A duplicate may exist.',
+          evidenceSummary: null,
+        },
+        {
+          field: 'description',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The description needs more detail.',
+          evidenceSummary: null,
+        },
+      ],
+      feedbackDraft: 'This is a duplicate submission. Please provide a clearer description.',
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: 'description', message: 'The description needs more detail.' }),
+    ]));
+    expect(result.findings.some((finding) => finding.kind === 'duplicate')).toBe(false);
+    expect(result.feedbackDraft).toContain('clearer description');
+    expect(result.feedbackDraft).not.toContain('duplicate');
   });
 });
 
@@ -662,6 +778,117 @@ describe('reviewRecommendation photo guardrails', () => {
         message: 'The photo appears relevant to the listed place/location.',
       },
     ]));
+  });
+
+  it('screens explicit photo location claims but preserves submitted-address prose', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000016';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/location-claim.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      suggestedAction: 'approve',
+      confidence: 'high',
+      findings: [
+        {
+          field: 'vendor_name',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The photo was taken at the listed location.',
+          evidenceSummary: null,
+        },
+        {
+          field: 'location',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The submitted address confirms the location.',
+          evidenceSummary: null,
+        },
+      ],
+      feedbackDraft: null,
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        field: 'photos',
+        kind: 'manual_review',
+        message: 'Photo review requires manual review.',
+      }),
+      expect.objectContaining({
+        field: 'location',
+        message: 'The submitted address confirms the location.',
+      }),
+    ]));
+    expect(result.findings).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: 'The photo was taken at the listed location.' }),
+    ]));
+  });
+
+  it('returns photo assessments in active order with failed and omitted IDs filled in place', async () => {
+    const imageRows = [
+      { id: '00000000-0000-4000-8000-000000000017', storage_path: 'private/failed.jpg', sort_order: 0 },
+      { id: '00000000-0000-4000-8000-000000000018', storage_path: 'private/second.jpg', sort_order: 1 },
+      { id: '00000000-0000-4000-8000-000000000019', storage_path: 'private/omitted.jpg', sort_order: 2 },
+      { id: '00000000-0000-4000-8000-000000000020', storage_path: 'private/fourth.jpg', sort_order: 3 },
+    ];
+    const { service } = makeReviewService(imageRows);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response('unavailable', { status: 503 }))
+      .mockImplementation(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        }))));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      photoAssessments: [
+        {
+          imageId: imageRows[3].id,
+          status: 'appears_relevant',
+          message: 'The photo appears relevant.',
+        },
+        {
+          imageId: imageRows[1].id,
+          status: 'appears_relevant',
+          message: 'The photo appears relevant.',
+        },
+      ],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.photoAssessments).toEqual([
+      {
+        imageId: imageRows[0].id,
+        status: 'could_not_analyse',
+        message: 'This photo could not be analysed.',
+      },
+      {
+        imageId: imageRows[1].id,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      },
+      {
+        imageId: imageRows[2].id,
+        status: 'could_not_analyse',
+        message: 'This photo could not be analysed.',
+      },
+      {
+        imageId: imageRows[3].id,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      },
+    ]);
   });
 
   it('degrades an oversized photo without approving the recommendation', async () => {
