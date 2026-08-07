@@ -191,13 +191,16 @@ describe('applyDecisionGuardrails', () => {
     photoAssessments: [],
   };
 
-  it('normalizes an unsupported duplicate-only reject suggestion to approve', () => {
+  it('keeps an unsupported original reject as request changes with capped confidence', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 0);
-    expect(applyDecisionGuardrails(aiResult, checks, 0)).toMatchObject({
-      suggestedAction: 'approve',
+    const result = applyDecisionGuardrails(aiResult, checks, 0);
+
+    expect(result).toMatchObject({
+      suggestedAction: 'request_changes',
       confidence: 'medium',
-      feedbackDraft: null,
     });
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft).not.toMatch(/reject|declin/i);
   });
 
   it('allows reject only with a high-severity reject basis', () => {
@@ -215,7 +218,7 @@ describe('applyDecisionGuardrails', () => {
     expect(result.suggestedAction).toBe('reject');
   });
 
-  it('does not let an AI duplicate finding control the final action without deterministic matches', () => {
+  it('keeps an original reject as request changes when only an AI duplicate exists', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 0);
     const result = applyDecisionGuardrails({
       ...aiResult,
@@ -228,10 +231,11 @@ describe('applyDecisionGuardrails', () => {
       }],
     }, checks, 0);
     expect(result).toMatchObject({
-      suggestedAction: 'approve',
+      suggestedAction: 'request_changes',
       confidence: 'medium',
-      feedbackDraft: null,
     });
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft).not.toMatch(/reject|declin/i);
   });
 
   it('keeps approve only when required evidence and findings are clear', () => {
@@ -353,6 +357,28 @@ describe('applyDecisionGuardrails', () => {
       confidence: 'high',
       findings: [],
       feedbackDraft,
+      photoAssessments: [],
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result).toEqual({
+      suggestedAction: 'approve',
+      confidence: 'medium',
+      feedbackDraft: null,
+    });
+  });
+
+  it('promotes an original duplicate-only request to approve with null feedback', () => {
+    const result = applyDecisionGuardrails({
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      findings: [{
+        field: 'duplicate',
+        severity: 'high',
+        kind: 'duplicate',
+        message: 'It looks like a duplicate.',
+        evidenceSummary: null,
+      }],
+      feedbackDraft: 'Please check for a duplicate listing.',
       photoAssessments: [],
     }, buildEvidenceChecks(completeRow, 1, 0), 0);
 

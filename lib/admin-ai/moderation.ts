@@ -334,7 +334,10 @@ export function applyDecisionGuardrails(
     suggestedAction = 'request_changes';
   }
 
-  if (duplicateCount === 0 && suggestedAction === 'request_changes' && !legitimateRequestBasis) {
+  if (duplicateCount === 0
+    && ai.suggestedAction === 'request_changes'
+    && suggestedAction === 'request_changes'
+    && !legitimateRequestBasis) {
     suggestedAction = 'approve';
   }
 
