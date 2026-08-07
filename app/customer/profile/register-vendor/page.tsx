@@ -52,7 +52,7 @@ export default async function RegisterVendorPage() {
         className="mb-6"
       />
 
-      <div className="mb-6 grid gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-5 text-sm text-muted-foreground sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-5 text-sm text-muted-foreground sm:grid-cols-3 sm:p-6">
         <div><p className="font-semibold text-foreground">1. Apply</p><p className="mt-1 text-xs leading-5">Tell us about your business.</p></div>
         <div><p className="font-semibold text-foreground">2. Admin review</p><p className="mt-1 text-xs leading-5">We verify the application.</p></div>
         <div><p className="font-semibold text-foreground">3. Go live</p><p className="mt-1 text-xs leading-5">Set up outlets and listings after approval.</p></div>

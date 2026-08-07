@@ -13,7 +13,7 @@ import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageHeader, CustomerPageShell, CustomerPanel } from "@/components/customer/customer-page-shell";
 
 type RecommendationResponse = {
   id: string;
@@ -143,7 +143,7 @@ export default function RecommendationsPage() {
       />
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-5 mb-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
           <h2 className="font-bold text-foreground">New Recommendation</h2>
 
           <div className="space-y-1">
@@ -170,7 +170,7 @@ export default function RecommendationsPage() {
             <p className="text-[10px] text-muted-foreground text-right">{form.description.length}/2000</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Category</label>
               <select
@@ -217,7 +217,7 @@ export default function RecommendationsPage() {
       )}
 
       {pending.length > 0 && (
-        <div className="rounded-2xl overflow-hidden border border-border bg-card mb-4">
+        <CustomerPanel className="mb-6 overflow-hidden !p-0 sm:!p-0">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
             <Clock size={14} className="text-accent" />
             <h2 className="font-bold text-foreground text-sm">Pending Review ({pending.length})</h2>
@@ -235,10 +235,10 @@ export default function RecommendationsPage() {
               </div>
             ))}
           </div>
-        </div>
+        </CustomerPanel>
       )}
 
-      <div className="rounded-2xl overflow-hidden border border-border bg-card">
+      <CustomerPanel className="overflow-hidden !p-0 sm:!p-0">
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-bold text-foreground text-sm">My Recommendations</h2>
         </div>
@@ -274,7 +274,7 @@ export default function RecommendationsPage() {
             ))}
           </div>
         )}
-      </div>
+      </CustomerPanel>
     </CustomerPageShell>
   );
 }

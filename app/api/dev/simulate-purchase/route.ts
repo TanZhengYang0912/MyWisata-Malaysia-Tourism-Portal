@@ -51,7 +51,6 @@ export async function POST(request: Request) {
   if (productErr || !product) return apiFail('NOT_FOUND', 'Product not found', 404);
 
   const amount = Number(product.base_price);
-  const now = new Date().toISOString();
 
   // Look the cookie up rather than trusting it blindly — affiliate_click_id
   // has a real FK to affiliate_clicks(id), so a stale/forged cookie value
@@ -66,40 +65,22 @@ export async function POST(request: Request) {
     affiliateClickId = existingClick?.id ?? null;
   }
 
-  const { data: order, error: orderErr } = await service
-    .from('orders')
-    .insert({
-      user_id: user.id,
-      status: 'paid', // lowercase — matches the orders.status CHECK constraint
-      subtotal: amount,
-      discount_amount: 0,
-      total_amount: amount,
-      payment_method: 'mock_card',
-      paid_at: now,
-      affiliate_click_id: affiliateClickId,
-    })
-    .select('id')
-    .single();
-  if (orderErr || !order) return apiFail('DB_ERROR', orderErr?.message ?? 'Unable to create order', 500);
-
-  const { error: itemErr } = await service.from('order_items').insert({
-    order_id: order.id,
-    vendor_id: product.vendor_id,
-    outlet_id: product.outlet_id,
-    product_id: product.id,
-    product_name: product.name,
-    unit_price: amount,
-    quantity: 1,
-    line_total: amount,
+  const { data: order, error: orderErr } = await service.rpc('create_demo_purchase', {
+    p_user_id: user.id,
+    p_product_id: product.id,
+    p_affiliate_click_id: affiliateClickId,
   });
-  if (itemErr) return apiFail('DB_ERROR', itemErr.message, 500);
+  if (orderErr || !order || typeof order !== 'object' || typeof order.order_id !== 'string') {
+    return apiFail('DB_ERROR', orderErr?.message ?? 'Unable to create order', 500);
+  }
+  const orderId = order.order_id;
 
-  await onOrderPaid(order.id);
+  await onOrderPaid(orderId);
 
   // The order is persisted before the vendor feed is touched. Notification
   // failure must not make the completed demo purchase look unsuccessful.
   void emitVendorNotification({
-    eventKey: `order:paid:${order.id}`,
+    eventKey: `order:paid:${orderId}`,
     vendorId: product.vendor_id,
     outletId: product.outlet_id,
     audience: VENDOR_EVENT_MATRIX.newOrder.audience,
@@ -107,12 +88,12 @@ export async function POST(request: Request) {
     type: 'vendor_order_created',
     title: 'New order received',
     body: `A new order for ${product.name} is ready for fulfilment.`,
-    link: `/vendor/orders/${order.id}`,
+    link: `/vendor/orders/${orderId}`,
     email: VENDOR_EVENT_MATRIX.newOrder.email,
-    reference: order.id,
+    reference: orderId,
     metadata: { amount: Number(amount.toFixed(2)), vendorName: 'Vendor' },
     serviceDb: service,
   }).catch((error) => console.error('[vendor-notifications] order event failed', error));
 
-  return apiOk({ orderId: order.id }, { status: 201 });
+  return apiOk({ orderId }, { status: 201 });
 }

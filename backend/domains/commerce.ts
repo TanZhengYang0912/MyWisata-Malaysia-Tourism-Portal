@@ -1,6 +1,6 @@
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
-import { cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
+import { assertCartItemHasBackingRecord, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
@@ -43,7 +43,7 @@ async function getCartRows(userId: string): Promise<CartItemRow[]> {
 
 function mapCartItem(row: CartItemRow): CartItem {
   const productId = relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id;
-  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, priceOverride: row.slot_id && row.unit_price > 0 ? Number(row.unit_price) : undefined };
+  return { activityId: productId ?? "", variantId: row.variant_id ?? "", slotId: row.slot_id ?? undefined, outletId: row.outlet_id ?? undefined, qty: row.quantity, priceOverride: row.unit_price > 0 ? Number(row.unit_price) : undefined };
 }
 
 export async function getCart(userId: string): Promise<CartItem[]> {
@@ -51,6 +51,7 @@ export async function getCart(userId: string): Promise<CartItem[]> {
 }
 
 export async function addToCart(userId: string, item: CartItem): Promise<CartItem[]> {
+  assertCartItemHasBackingRecord(item);
   const cart = await getOrCreateCart(userId);
   const rows = await getCartRows(userId);
   // The outlet is part of the line's identity: the same variant bought from two
@@ -179,7 +180,6 @@ export async function getOrdersForOutlets(outletIds: string[]): Promise<Order[]>
 
 type BookingRow = {
   id: string;
-  demo_qr_code: string | null;
   status: Booking["status"];
   order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
 };
@@ -196,16 +196,28 @@ function mapBooking(row: BookingRow): Booking | null {
     slotStartsAt: row.order_items.slot_starts_at ?? undefined,
     qty: row.order_items.quantity,
     status: row.status,
-    qrCode: row.demo_qr_code ?? "",
+    qrCode: row.id,
   };
 }
 
-const BOOKING_SELECT = "id,status,demo_qr_code,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
+const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);
   if (error) throw error;
   return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
+}
+
+export async function getBookingForUser(userId: string, bookingId: string): Promise<Booking | undefined> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(BOOKING_SELECT)
+    .eq("id", bookingId)
+    .eq("customer_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  const booking = data ? mapBooking(data as unknown as BookingRow) : null;
+  return booking ?? undefined;
 }
 
 export async function getBookingsForOutlets(outletIds: string[]): Promise<Booking[]> {
@@ -304,7 +316,6 @@ export async function createOrder(userId: string, voucherCode?: string, paymentM
       order_item_id: item.id,
       slot_id: item.slot_id,
       customer_id: userId,
-      demo_qr_code: `MY-2026-${String(orderRow.id).slice(-6).toUpperCase()}`,
     }));
   if (bookingRows.length > 0) {
     const { error: bookingErr } = await supabase.from("bookings").insert(bookingRows);

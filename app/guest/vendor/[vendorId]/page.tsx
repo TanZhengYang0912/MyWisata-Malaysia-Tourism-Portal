@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getVendorVisual } from "@/lib/customer/vendor-visual";
 
 type GuestVendorPageProps = { params: Promise<{ vendorId: string }> };
 
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }: GuestVendorPageProps): Promis
   if (!vendor) return {};
 
   const description = vendor.description ?? undefined;
+  const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url });
 
   return {
     title: vendor.name,
@@ -39,7 +41,7 @@ export async function generateMetadata({ params }: GuestVendorPageProps): Promis
     openGraph: {
       title: vendor.name,
       description,
-      images: vendor.cover_url ? [{ url: vendor.cover_url }] : undefined,
+      images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined,
       url: `${SITE_URL}/guest/vendor/${vendorId}`,
     },
   };
@@ -49,6 +51,7 @@ export default async function GuestVendorPage({ params }: GuestVendorPageProps) 
   const { vendorId } = await params;
   const vendor = await getGuestVendor(vendorId);
   if (!vendor) notFound();
+  const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url });
 
   const db = await createClient();
   const { data: outlets } = await db
@@ -61,10 +64,10 @@ export default async function GuestVendorPage({ params }: GuestVendorPageProps) 
   return <main className="mx-auto max-w-5xl px-6 py-10">
     <Link href="/guest/explore" className="text-sm font-semibold text-primary underline underline-offset-4">← Back to listings</Link>
     <section className="mt-6 overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-      {vendor.cover_url ? <>
+      {vendorVisual.coverUrl ? <>
         {/* Guest vendor pages support uploaded cover URLs, which are not statically enumerable for next/image. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={vendor.cover_url} alt="" className="h-56 w-full object-cover" />
+        <img src={vendorVisual.coverUrl} alt="" className="h-56 w-full object-cover" />
       </> : null}
       <div className="p-7"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Verified MyWisata vendor</p><h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold">{vendor.name}</h1>{vendor.description ? <p className="mt-3 max-w-3xl text-muted-foreground">{vendor.description}</p> : null}<Link href="/guest/explore" className="mt-6 inline-flex rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">Browse listings</Link></div>
     </section>

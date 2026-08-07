@@ -20,6 +20,7 @@ import { apiFail } from '@/lib/validation/schemas';
 import { aggregateReviewMetrics } from '@/backend/domains/review-metrics';
 import { toRM } from '@/lib/money';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
+import { getVendorVisual } from '@/lib/customer/vendor-visual';
 
 export const runtime = 'edge';
 
@@ -88,11 +89,12 @@ async function loadListing(type: ShareType, id: string): Promise<CardData | null
   if (type === 'vendor') {
     const { data: vendor } = await supabase.from('vendors').select('name, cover_url').eq('id', id).maybeSingle();
     if (!vendor) return null;
+    const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url });
 
     const { data: reviewRows } = await supabase.from('reviews').select('rating').eq('vendor_id', id).eq('is_visible', true);
     const { rating, reviewCount } = await ratingFromRows(reviewRows ?? []);
 
-    return { name: vendor.name, coverUrl: vendor.cover_url, priceLabel: null, rating, reviewCount };
+    return { name: vendor.name, coverUrl: vendorVisual.coverUrl, priceLabel: null, rating, reviewCount };
   }
 
   // 'outlet' — outlets ARE the public storefront in this app (no separate

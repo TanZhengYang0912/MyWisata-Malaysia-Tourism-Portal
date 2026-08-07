@@ -183,7 +183,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
           </span>
         </div>
         <div className="bg-[#f8fafc] p-3 sm:p-6">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
             <OutletPageRenderer
               document={preview.document}
               outlet={outlet}

@@ -233,7 +233,7 @@ export default function KycPage() {
         {TIER_STEPS.map(({ value, label }, i) => {
           const done = tierIndex >= i;
           return (
-            <div key={value} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
+            <div key={value} className="flex min-h-[52px] items-center gap-3 rounded-xl border border-border bg-card p-3">
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 style={{

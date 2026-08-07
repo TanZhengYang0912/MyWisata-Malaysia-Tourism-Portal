@@ -3,6 +3,19 @@ import type { Booking } from "@/backend/core/types";
 export const CALENDAR_VISIBLE_BOOKINGS = 3;
 const MALAYSIA_TIME_ZONE = "Asia/Kuala_Lumpur";
 
+export type ItineraryGroupStatus = Booking["status"] | "mixed";
+
+export interface BookingItineraryGroup {
+  key: string;
+  activityId: string;
+  activityName: string;
+  outletId: string;
+  slotStartsAt?: string;
+  bookings: Booking[];
+  totalQty: number;
+  status: ItineraryGroupStatus;
+}
+
 const calendarDateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: MALAYSIA_TIME_ZONE,
   year: "numeric",
@@ -20,23 +33,56 @@ export function calendarDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function itineraryGroupKey(booking: Booking) {
+  const slotKey = booking.slotStartsAt ? new Date(booking.slotStartsAt).getTime() : "unscheduled";
+  return [booking.activityId, booking.outletId, slotKey].join("::");
+}
+
+export function groupBookings(bookings: Booking[]) {
+  const groups = new Map<string, BookingItineraryGroup>();
+
+  for (const booking of bookings) {
+    const key = itineraryGroupKey(booking);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.bookings.push(booking);
+      existing.totalQty += booking.qty;
+      if (existing.status !== booking.status) existing.status = "mixed";
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      activityId: booking.activityId,
+      activityName: booking.activityName,
+      outletId: booking.outletId,
+      slotStartsAt: booking.slotStartsAt,
+      bookings: [booking],
+      totalQty: booking.qty,
+      status: booking.status,
+    });
+  }
+
+  return [...groups.values()];
+}
+
 export function groupBookingsByDay(bookings: Booking[]) {
-  return bookings.reduce<Record<string, Booking[]>>((result, booking) => {
-    if (!booking.slotStartsAt) return result;
-    (result[calendarDateKey(new Date(booking.slotStartsAt))] ??= []).push(booking);
+  return groupBookings(bookings).reduce<Record<string, BookingItineraryGroup[]>>((result, group) => {
+    if (!group.slotStartsAt) return result;
+    (result[calendarDateKey(new Date(group.slotStartsAt))] ??= []).push(group);
     return result;
   }, {});
 }
 
-export function getHiddenBookingCount(bookings: Booking[], visibleLimit = CALENDAR_VISIBLE_BOOKINGS) {
-  return Math.max(0, bookings.length - visibleLimit);
+export function getHiddenItineraryGroupCount(groups: BookingItineraryGroup[], visibleLimit = CALENDAR_VISIBLE_BOOKINGS) {
+  return Math.max(0, groups.length - visibleLimit);
 }
 
-export function countBookingsInMonth(bookings: Booking[], monthStart: Date) {
+export function countItineraryGroupsInMonth(bookings: Booking[], monthStart: Date) {
   const monthKey = calendarDateKey(monthStart).slice(0, 7);
-  return bookings.filter((booking) => {
-    if (!booking.slotStartsAt) return false;
-    return calendarDateKey(new Date(booking.slotStartsAt)).slice(0, 7) === monthKey;
+  return groupBookings(bookings).filter((group) => {
+    if (!group.slotStartsAt) return false;
+    return calendarDateKey(new Date(group.slotStartsAt)).slice(0, 7) === monthKey;
   }).length;
 }
 
