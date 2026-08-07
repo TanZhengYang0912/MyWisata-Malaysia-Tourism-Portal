@@ -366,7 +366,7 @@ export interface VendorRecommendation {
   name: string;
   category: string;
   state: string;
-  status: "pending" | "approved" | "rejected" | "converted";
+  status: "pending" | "approved" | "invited" | "claimed" | "onboarding" | "vendor_pending_review" | "rejected" | "converted";
   qualityScore: number;
   duplicate: boolean;
   /** Present when the public author is still active and visible. */

@@ -3,7 +3,7 @@
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, RefreshCw, Share2, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -118,6 +118,7 @@ export default function AdminAffiliatePage() {
   const [fraudStatusFilter, setFraudStatusFilter] = useState("open");
   const [sweeping, setSweeping] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [reviewingFlagId, setReviewingFlagId] = useState<string | null>(null);
   const [reactivatingLinkId, setReactivatingLinkId] = useState<string | null>(null);
 
@@ -233,6 +234,35 @@ export default function AdminAffiliatePage() {
       await loadFraudAnalytics(fraudRange);
     })();
   }, [fraudRange]);
+
+  // Same fetch-blob-download pattern as app/customer/affiliate/page.tsx's
+  // downloadEarnings() (CSV, Extra 6) — file downloads can't go through the
+  // usual fetch-JSON-then-setState path. Uses the currently-selected
+  // fraudRange so the PDF's fraud breakdown matches what's on screen.
+  async function exportPdf() {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const res = await fetch(`/api/admin/affiliate/report?range=${fraudRange}`);
+      if (!res.ok) {
+        showFeedback("error", "Could not export the affiliate report. Please try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mywisata-affiliate-report.pdf";
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      showFeedback("error", "Could not export the affiliate report. Please try again.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   async function runFraudSweepAction() {
     if (sweeping) return;
@@ -355,6 +385,11 @@ export default function AdminAffiliatePage() {
       <div className="flex items-start justify-between flex-wrap gap-3 mb-1">
         <h1 className="font-bold text-lg text-foreground">Affiliate Oversight</h1>
         <div className="text-right flex items-start gap-2">
+          <div>
+            <Button size="sm" variant="outline" onClick={exportPdf} disabled={exportingPdf}>
+              <Download size={13} /> {exportingPdf ? "Exporting…" : "Export PDF"}
+            </Button>
+          </div>
           <div>
             <Button size="sm" variant="outline" onClick={runClearing} disabled={clearing}>
               <RefreshCw size={13} className={clearing ? "animate-spin" : ""} /> {clearing ? "Running…" : "Run clearing"}
