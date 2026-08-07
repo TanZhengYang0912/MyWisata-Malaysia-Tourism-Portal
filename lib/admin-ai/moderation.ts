@@ -10,6 +10,16 @@ import { z } from 'zod';
 import { redactPII } from '@/lib/chatbot/pii';
 import { callGemini, type GeminiInlineImage } from './gemini';
 
+export const RECOMMENDATION_PHOTO_TIMEOUT_MS = 10_000;
+export const MAX_RECOMMENDATION_PHOTO_BYTES = 5 * 1024 * 1024;
+export const MAX_GEMINI_IMAGE_PAYLOAD_BYTES = 8 * 1024 * 1024;
+
+const MIN_FEEDBACK_DRAFT_LENGTH = 10;
+const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provide any missing details before approval.';
+const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
+const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
+const REJECTION_LANGUAGE = /\b(?:reject(?:ed|s|ing|ion)?|declin(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|den(?:y|ied|ies|ial)|not\s+accept(?:ed|able)?|cannot\s+approve)\b/i;
+
 const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
 the final decision; you never execute or claim to execute approval, rejection, or changes.
@@ -82,6 +92,11 @@ export interface ModerationAssessment {
   aiAvailable: boolean;
 }
 
+export interface RecommendationCategoryRelation {
+  name: string | null;
+  is_active?: boolean | null;
+}
+
 export interface RecommendationEvidenceRow {
   id: string;
   vendor_name: string | null;
@@ -89,7 +104,7 @@ export interface RecommendationEvidenceRow {
   description: string | null;
   why_recommend: string | null;
   category_id: string | null;
-  categories: { name: string | null } | { name: string | null }[] | null;
+  categories: RecommendationCategoryRelation | RecommendationCategoryRelation[] | null;
   google_place_id: string | null;
   location_name: string | null;
   formatted_address: string | null;
@@ -160,14 +175,22 @@ function checkText(
   };
 }
 
+function resolvedCategory(row: RecommendationEvidenceRow): RecommendationCategoryRelation | null {
+  return Array.isArray(row.categories) ? row.categories[0] ?? null : row.categories;
+}
+
+function resolvedCategoryName(row: RecommendationEvidenceRow): string {
+  return resolvedCategory(row)?.name?.trim() ?? '';
+}
+
 export function buildEvidenceChecks(
   row: RecommendationEvidenceRow,
   imageCount: number,
   duplicateCount: number,
 ): EvidenceCheck[] {
-  const categoryName = (Array.isArray(row.categories)
-    ? row.categories[0]?.name
-    : row.categories?.name)?.trim();
+  const category = resolvedCategory(row);
+  const categoryName = category?.name?.trim() ?? '';
+  const categoryPasses = Boolean(categoryName) && category?.is_active === true;
   const hasLocation = Boolean(
     row.location_name?.trim()
     && row.formatted_address?.trim()
@@ -188,8 +211,12 @@ export function buildEvidenceChecks(
     {
       field: 'category',
       label: 'Category',
-      status: categoryName ? 'passed' : 'missing',
-      message: categoryName ? `Category: ${categoryName}` : 'Category is not available.',
+      status: categoryPasses ? 'passed' : 'missing',
+      message: categoryPasses
+        ? `Category: ${categoryName}`
+        : categoryName
+          ? 'Category is inactive or not available.'
+          : 'Category is not available.',
     },
     {
       field: 'location',
@@ -228,28 +255,32 @@ const REJECT_KINDS = new Set<ModerationFinding['kind']>([
   'spam', 'test_content', 'policy', 'duplicate',
 ]);
 
+function isModelDuplicateFinding(finding: ModerationFinding): boolean {
+  return finding.field === 'duplicate' || finding.kind === 'duplicate';
+}
+
 export function applyDecisionGuardrails(
   ai: AiModerationResult,
   checks: EvidenceCheck[],
   duplicateCount: number,
 ): Pick<ModerationAssessment, 'suggestedAction' | 'confidence' | 'feedbackDraft'> {
+  const nonDuplicateFindings = ai.findings.filter((finding) => !isModelDuplicateFinding(finding));
   const requiredIssue = checks.some((check) =>
     ['missing', 'invalid', 'low_quality'].includes(check.status));
   const photoConflict = ai.photoAssessments.some((photo) => photo.status === 'possible_conflict');
   const photoNeedsManualReview = ai.photoAssessments.some((photo) =>
     photo.status === 'could_not_analyse' || containsProhibitedPhotoClaim(photo.message));
-  const unsafePhotoFinding = ai.findings.some((finding) =>
-    finding.field === 'photos'
-    && (finding.kind === 'manual_review'
-      || containsProhibitedPhotoClaim(finding.message)
-      || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary))));
-  const unsafePhotoFeedback = ai.feedbackDraft !== null
-    && containsProhibitedPhotoFeedback(ai.feedbackDraft);
-  const highFinding = ai.findings.some((finding) => finding.severity === 'high');
+  const unsafeModelProse = ai.findings.some((finding) =>
+    containsProhibitedPhotoClaim(finding.message)
+    || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary)))
+    || (ai.feedbackDraft !== null && containsProhibitedPhotoClaim(ai.feedbackDraft))
+    || ai.photoAssessments.some((photo) => containsProhibitedPhotoClaim(photo.message));
+  const manualPhotoFindingPresent = nonDuplicateFindings.some((finding) =>
+    finding.field === 'photos' && finding.kind === 'manual_review');
+  const highFinding = nonDuplicateFindings.some((finding) => finding.severity === 'high');
   const deterministicDuplicateBasis = duplicateCount >= 2;
-  const rejectBasis = deterministicDuplicateBasis || ai.findings.some((finding) =>
+  const rejectBasis = deterministicDuplicateBasis || nonDuplicateFindings.some((finding) =>
     finding.severity === 'high'
-    && finding.kind !== 'duplicate'
     && REJECT_KINDS.has(finding.kind));
 
   let suggestedAction = ai.suggestedAction;
@@ -259,18 +290,44 @@ export function applyDecisionGuardrails(
   if (suggestedAction === 'reject' && !rejectBasis) {
     suggestedAction = 'request_changes';
   }
-  if (suggestedAction === 'approve' && (photoConflict || highFinding)) {
+  if (suggestedAction === 'approve' && (photoConflict || highFinding || duplicateCount > 0)) {
     suggestedAction = 'request_changes';
   }
-  if (photoNeedsManualReview || unsafePhotoFinding || unsafePhotoFeedback) {
+  if (photoNeedsManualReview || unsafeModelProse || manualPhotoFindingPresent) {
     suggestedAction = 'request_changes';
   }
 
+  const downgradedReject = ai.suggestedAction === 'reject' && suggestedAction !== 'reject';
+
   return {
     suggestedAction,
-    confidence: ai.confidence,
-    feedbackDraft: suggestedAction === 'approve' ? null : ai.feedbackDraft,
+    confidence: suggestedAction === 'request_changes' && suggestedAction !== ai.suggestedAction
+      ? 'medium'
+      : ai.confidence,
+    feedbackDraft: suggestedAction === 'approve'
+      ? null
+      : normalizeFeedbackDraft(ai.feedbackDraft, suggestedAction, downgradedReject),
   };
+}
+
+function normalizeFeedbackDraft(
+  draft: string | null,
+  action: Exclude<AiModerationResult['suggestedAction'], 'approve'>,
+  downgradedReject: boolean,
+): string {
+  if (downgradedReject) return REQUEST_CHANGES_FEEDBACK;
+
+  const sanitized = draft === null ? '' : sanitizeModelText(draft, []).trim();
+  if (containsProhibitedPhotoClaim(sanitized)) {
+    return action === 'request_changes' ? MANUAL_PHOTO_FEEDBACK : REJECT_FEEDBACK;
+  }
+  if (action === 'request_changes' && REJECTION_LANGUAGE.test(sanitized)) {
+    return REQUEST_CHANGES_FEEDBACK;
+  }
+
+  const bounded = sanitized.slice(0, 500).trim();
+  if (bounded.length >= MIN_FEEDBACK_DRAFT_LENGTH) return bounded;
+  return action === 'request_changes' ? REQUEST_CHANGES_FEEDBACK : REJECT_FEEDBACK;
 }
 
 function extractJson(text: string): unknown {
@@ -286,6 +343,35 @@ function normalizeImageMime(contentType: string | null): GeminiInlineImage['mime
   throw new Error('unsupported_image_type');
 }
 
+async function readResponseBytes(response: Response, maxBytes: number): Promise<Buffer> {
+  const contentLengthHeader = response.headers.get('content-length');
+  const contentLength = contentLengthHeader === null ? null : Number(contentLengthHeader);
+  if (contentLength !== null && Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new Error('image_too_large');
+  }
+  if (!response.body) throw new Error('image_body_unavailable');
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) throw new Error('image_too_large');
+      chunks.push(Buffer.from(value));
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
 export async function loadRecommendationImages(
   service: SupabaseClient,
   rows: RecommendationImageRow[],
@@ -293,34 +379,60 @@ export async function loadRecommendationImages(
   const supportedRows = rows.slice(0, 5);
   const overflowFailures = rows.slice(5).map((row) => row.id);
   const loaded = await Promise.all(supportedRows.map(async (row) => {
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const { data, error } = await service.storage
-        .from('recommendation-images')
-        .createSignedUrl(row.storage_path, 60, {
-          transform: { width: 1024, height: 1024, resize: 'contain' },
-        });
-      if (error || !data?.signedUrl) throw new Error('signed_image_unavailable');
+      const load = (async () => {
+        const { data, error } = await service.storage
+          .from('recommendation-images')
+          .createSignedUrl(row.storage_path, 60, {
+            transform: { width: 1024, height: 1024, resize: 'contain' },
+          });
+        if (error || !data?.signedUrl) throw new Error('signed_image_unavailable');
 
-      const response = await fetch(data.signedUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error('image_fetch_failed');
-      const mimeType = normalizeImageMime(response.headers.get('content-type'));
-      const dataBase64 = Buffer.from(await response.arrayBuffer()).toString('base64');
+        const response = await fetch(data.signedUrl, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('image_fetch_failed');
+        const mimeType = normalizeImageMime(response.headers.get('content-type'));
+        const bytes = await readResponseBytes(response, MAX_RECOMMENDATION_PHOTO_BYTES);
 
-      return {
-        image: { id: row.id, mimeType, data: dataBase64 },
-        failure: null,
-      };
+        return { id: row.id, mimeType, data: bytes.toString('base64') };
+      })();
+      const timeoutFailure = new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => {
+          controller.abort();
+          reject(new Error('image_fetch_timeout'));
+        }, RECOMMENDATION_PHOTO_TIMEOUT_MS);
+      });
+      const image = await Promise.race([load, timeoutFailure]);
+      return { image, failure: null };
     } catch {
       return { image: null, failure: row.id };
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
     }
   }));
 
+  const images: GeminiInlineImage[] = [];
+  const failures: string[] = [];
+  let totalPayloadBytes = 0;
+  for (const item of loaded) {
+    if (!item.image) {
+      if (item.failure) failures.push(item.failure);
+      continue;
+    }
+    const imagePayloadBytes = Buffer.byteLength(item.image.data, 'ascii');
+    if (totalPayloadBytes + imagePayloadBytes > MAX_GEMINI_IMAGE_PAYLOAD_BYTES) {
+      failures.push(item.image.id);
+      continue;
+    }
+    images.push(item.image);
+    totalPayloadBytes += imagePayloadBytes;
+  }
+  failures.push(...overflowFailures);
+
   return {
-    images: loaded.flatMap((item) => item.image ? [item.image] : []),
-    failures: [
-      ...loaded.flatMap((item) => item.failure ? [item.failure] : []),
-      ...overflowFailures,
-    ],
+    images,
+    failures,
   };
 }
 
@@ -336,9 +448,7 @@ export function buildSafeSubmissionText(
   imageCount: number,
   duplicateCount: number,
 ): string {
-  const categoryName = (Array.isArray(rec.categories)
-    ? rec.categories[0]?.name
-    : rec.categories?.name)?.trim();
+  const categoryName = resolvedCategoryName(rec);
   const contactKinds = [
     rec.contact_phone?.trim() ? 'phone' : null,
     rec.contact_email?.trim() ? 'email' : null,
@@ -349,7 +459,7 @@ export function buildSafeSubmissionText(
     `Vendor name: ${safeSummaryValue(rec.vendor_name)}`,
     `Description: ${safeSummaryValue(rec.description)}`,
     `Recommendation reason: ${safeSummaryValue(rec.why_recommend)}`,
-    `Category: ${safeSummaryValue(categoryName)}`,
+    `Category: ${safeSummaryValue(categoryName || null)}`,
     `Google place name: ${safeSummaryValue(rec.location_name)}`,
     `Formatted address: ${safeSummaryValue(rec.formatted_address)}`,
     `Coordinates present: ${Number.isFinite(rec.latitude) && Number.isFinite(rec.longitude) ? 'yes' : 'no'}`,
@@ -368,16 +478,23 @@ function photoFailureAssessments(failures: string[]): PhotoAssessment[] {
   }));
 }
 
-const PROHIBITED_PHOTO_CLAIM = /\b(?:authentic(?:ity)?|genuine|real|actual|legitimate|verif(?:y|ied|ies|ication)|prove(?:s|d)?|proof|confirm(?:s|ed|ation)?|establish(?:es|ed|ing)?|demonstrat(?:es|ed|ing)?|claim(?:s|ed|ing)?|proclaim(?:s|ed|ing)?|ownership|owner|own(?:s|ed)?|belong(?:s|ed|ing)?|rights?|copyright|permission|authori[sz](?:e|ed|ation)|license(?:d)?|located|location)\b/i;
+const PHOTO_REFERENCE = /\b(?:photo|photos|image|images|picture|pictures|uploaded|submitted)\b/i;
+const PROHIBITED_PHOTO_SUBJECT = /\b(?:authentic(?:ity)?|genuine|real|actual|legitimate|ownership|owner|own(?:s|ed)?|belong(?:s|ed|ing)?|rights?|copyright|permission|authori[sz](?:e|ed|ation)|license(?:d)?|located|location|place|address)\b/i;
+const PROHIBITED_PHOTO_ASSERTION = /\b(?:verif(?:y|ied|ies|ication)|prove(?:s|d)?|proof|confirm(?:s|ed|ation)?|establish(?:es|ed|ing)?|demonstrat(?:es|ed|ing)?|show(?:s|n)?|indicat(?:e|es|ed|ing)?|claim(?:s|ed|ing)?|proclaim(?:s|ed|ing)?)\b/i;
+const DIRECT_PROHIBITED_PHOTO_ASSERTION = /\b(?:is|are|was|were|looks?|seems?|appears?)\s+(?:to\s+be\s+)?(?:authentic(?:ity)?|genuine|real|actual|legitimate|ownership|owner|rights?|copyright|permission|license(?:d)?|located|location|place|address)\b/i;
+const BENIGN_PHOTO_RELEVANCE = /\b(?:appear(?:s)?|seem(?:s)?|look(?:s)?)\s+(?:to\s+be\s+)?relevant\b[^.!?]{0,100}\b(?:listed|provided|submitted)\s+(?:place(?:\s*\/\s*location)?|location)\b/gi;
 const PROHIBITED_PHOTO_MESSAGE = 'Photo assessment omitted because it made a prohibited claim.';
 
 function containsProhibitedPhotoClaim(text: string): boolean {
-  return PROHIBITED_PHOTO_CLAIM.test(text);
-}
-
-function containsProhibitedPhotoFeedback(text: string): boolean {
-  return /\b(?:photo|photos|image|images|picture|pictures|uploaded|submitted)\b/i.test(text)
-    && containsProhibitedPhotoClaim(text);
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return false;
+  const withoutBenignRelevance = normalized.replace(BENIGN_PHOTO_RELEVANCE, ' ');
+  const hasProhibitedSubject = PROHIBITED_PHOTO_SUBJECT.test(withoutBenignRelevance);
+  if (!hasProhibitedSubject) return false;
+  const hasPhotoContext = PHOTO_REFERENCE.test(withoutBenignRelevance);
+  const hasAssertion = PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
+  const hasDirectAssertion = DIRECT_PROHIBITED_PHOTO_ASSERTION.test(withoutBenignRelevance);
+  return (hasPhotoContext || hasAssertion) && (hasAssertion || hasDirectAssertion);
 }
 
 function manualPhotoFinding(): ModerationFinding {
@@ -401,26 +518,35 @@ function sanitizeModelText(value: string, imageData: readonly string[]): string 
 
 function sanitizeAiResult(result: AiModerationResult, images: readonly GeminiInlineImage[]): AiModerationResult {
   const imageData = images.map((image) => image.data);
-  const findings = result.findings.map((finding) => {
-    const unsafe = finding.field === 'photos'
-      && (containsProhibitedPhotoClaim(finding.message)
-        || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary)));
-    return unsafe
-      ? manualPhotoFinding()
-      : {
+  let unsafeProse = false;
+  const findings = result.findings.flatMap((finding) => {
+    const unsafe = containsProhibitedPhotoClaim(finding.message)
+      || (finding.evidenceSummary !== null && containsProhibitedPhotoClaim(finding.evidenceSummary));
+    if (unsafe) {
+      unsafeProse = true;
+      return [];
+    }
+    return [{
         ...finding,
         message: sanitizeModelText(finding.message, imageData),
         evidenceSummary: finding.evidenceSummary === null
           ? null
           : sanitizeModelText(finding.evidenceSummary, imageData),
-      };
+      }];
   });
   const unsafeFeedback = result.feedbackDraft !== null
-    && containsProhibitedPhotoFeedback(result.feedbackDraft);
+    && containsProhibitedPhotoClaim(result.feedbackDraft);
+  if (unsafeFeedback) unsafeProse = true;
+  const safeFindings = unsafeProse
+    && !findings.some((finding) => finding.field === 'photos' && finding.kind === 'manual_review')
+    ? [...findings, manualPhotoFinding()]
+    : findings;
   return {
     ...result,
-    findings: unsafeFeedback ? [...findings, manualPhotoFinding()] : findings,
-    feedbackDraft: unsafeFeedback || result.feedbackDraft === null
+    findings: safeFindings,
+    feedbackDraft: unsafeFeedback
+      ? MANUAL_PHOTO_FEEDBACK
+      : result.feedbackDraft === null
       ? null
       : sanitizeModelText(result.feedbackDraft, imageData),
     photoAssessments: result.photoAssessments.map((photo) => containsProhibitedPhotoClaim(photo.message)
@@ -484,7 +610,7 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
       id, vendor_name, vendor_name_normalized, description, why_recommend,
       category_id, google_place_id, location_name, formatted_address,
       latitude, longitude, contact_phone, contact_email, contact_website,
-      image_attested_at, state, categories(name)
+      image_attested_at, state, categories(name,is_active)
     `)
     .eq('id', recommendationId)
     .maybeSingle();
@@ -535,18 +661,19 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
     if (!parsed.success) return unavailable();
 
     const sanitized = sanitizeAiResult(parsed.data, images);
+    const findings = sanitized.findings.filter((finding) => !isModelDuplicateFinding(finding));
     const photoAssessments = mergePhotoAssessments(
       sanitized.photoAssessments,
       images,
       failures,
       activeImageRows.map((row) => row.id),
     );
-    const guardrails = applyDecisionGuardrails({ ...sanitized, photoAssessments }, evidenceChecks, duplicateCount);
+    const guardrails = applyDecisionGuardrails({ ...sanitized, findings, photoAssessments }, evidenceChecks, duplicateCount);
 
     return {
       ...guardrails,
       evidenceChecks,
-      findings: sanitized.findings,
+      findings,
       duplicateCount,
       duplicateBasis: 'exact_normalized_name',
       photoAssessments,

@@ -9,6 +9,9 @@ import {
   buildEvidenceChecks,
   buildSafeSubmissionText,
   loadRecommendationImages,
+  MAX_GEMINI_IMAGE_PAYLOAD_BYTES,
+  MAX_RECOMMENDATION_PHOTO_BYTES,
+  RECOMMENDATION_PHOTO_TIMEOUT_MS,
   reviewRecommendation,
   type AiModerationResult,
   type RecommendationImageRow,
@@ -22,7 +25,7 @@ const completeRow: RecommendationEvidenceRow = {
   description: 'A meaningful description of the local business.',
   why_recommend: 'Friendly service and a distinctive local menu.',
   category_id: 'category-1',
-  categories: { name: 'Food' },
+  categories: { name: 'Food', is_active: true },
   google_place_id: 'place-1',
   location_name: 'Kedai Kopi Damansara',
   formatted_address: '1 Jalan Example, Kuala Lumpur',
@@ -44,6 +47,7 @@ const validSchemaResult = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   callGeminiMock.mockReset();
 });
 
@@ -78,7 +82,7 @@ function makeReviewService(imageRows: RecommendationImageRow[], duplicateCount =
     from: vi.fn((table: string) => table === 'recommendation_images' ? imageQuery : vendorFrom()),
     storage: { from: vi.fn(() => ({ createSignedUrl })) },
   } as unknown as SupabaseClient;
-  return { service, createSignedUrl };
+  return { service, createSignedUrl, recommendationQuery };
 }
 
 describe('buildEvidenceChecks', () => {
@@ -108,6 +112,36 @@ describe('buildEvidenceChecks', () => {
     expect(checks.find((check) => check.field === 'category')?.status).toBe('missing');
     expect(checks.find((check) => check.field === 'image_attestation')?.status).toBe('missing');
   });
+
+  it.each([
+    ['inactive relation', { name: 'Food', is_active: false }],
+    ['legacy relation', { name: 'Food' }],
+  ] as const)('does not pass an %s category relation', (_label, category) => {
+    const checks = buildEvidenceChecks({ ...completeRow, categories: category }, 1, 0);
+    expect(checks.find((check) => check.field === 'category')?.status).toBe('missing');
+  });
+
+  it('passes an active category relation in object and array shapes', () => {
+    expect(buildEvidenceChecks({
+      ...completeRow,
+      categories: { name: ' Food ', is_active: true },
+    }, 1, 0).find((check) => check.field === 'category')?.status).toBe('passed');
+    expect(buildEvidenceChecks({
+      ...completeRow,
+      categories: [{ name: 'Food', is_active: true }],
+    }, 1, 0).find((check) => check.field === 'category')?.status).toBe('passed');
+  });
+});
+
+it('selects category activity with the recommendation evidence', async () => {
+  const { service, recommendationQuery } = makeReviewService([]);
+  callGeminiMock.mockResolvedValue(JSON.stringify(validSchemaResult));
+
+  await reviewRecommendation(service, 'rec-1');
+
+  expect(recommendationQuery.select).toHaveBeenCalledWith(
+    expect.stringContaining('categories(name,is_active)'),
+  );
 });
 
 describe('aiResultSchema', () => {
@@ -242,6 +276,81 @@ describe('applyDecisionGuardrails', () => {
   it('accepts reject when two or more other exact-name matches form a high duplicate signal', () => {
     const checks = buildEvidenceChecks(completeRow, 1, 2);
     expect(applyDecisionGuardrails(aiResult, checks, 2).suggestedAction).toBe('reject');
+  });
+
+  it('aligns a downgraded reject with medium confidence and non-rejection feedback', () => {
+    const result = applyDecisionGuardrails({
+      ...aiResult,
+      feedbackDraft: 'Reject this recommendation because it must be declined.',
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result).toMatchObject({
+      suggestedAction: 'request_changes',
+      confidence: 'medium',
+    });
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft!.length).toBeGreaterThanOrEqual(10);
+    expect(result.feedbackDraft!.length).toBeLessThanOrEqual(500);
+    expect(result.feedbackDraft).not.toMatch(/reject|declin/i);
+  });
+
+  it('provides sanitized useful feedback for every non-approve action', () => {
+    const result = applyDecisionGuardrails({
+      ...aiResult,
+      suggestedAction: 'request_changes',
+      confidence: 'high',
+      feedbackDraft: 'Email person@example.com; please provide more evidence.',
+    }, buildEvidenceChecks(completeRow, 1, 0), 0);
+
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft!.length).toBeGreaterThanOrEqual(10);
+    expect(result.feedbackDraft!.length).toBeLessThanOrEqual(500);
+    expect(result.feedbackDraft).not.toContain('person@example.com');
+    expect(applyDecisionGuardrails({
+      ...aiResult,
+      suggestedAction: 'approve',
+      feedbackDraft: 'This draft must never be returned.',
+    }, buildEvidenceChecks(completeRow, 1, 0), 0).feedbackDraft).toBeNull();
+  });
+});
+
+describe('deterministic duplicate findings', () => {
+  it.each([0, 1, 3])('uses only the deterministic duplicate count (%i)', async (duplicateCount) => {
+    const imageId = '00000000-0000-4000-8000-000000000013';
+    const { service } = makeReviewService([{
+      id: imageId,
+      storage_path: 'private/duplicate-fixture.jpg',
+      sort_order: 0,
+    }], duplicateCount);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      findings: [{
+        field: 'duplicate',
+        severity: 'high',
+        kind: 'duplicate',
+        message: 'AI claims this matches another submission.',
+        evidenceSummary: 'Model-authored duplicate evidence',
+      }],
+      photoAssessments: [{
+        imageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant.',
+      }],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+    const duplicateCheck = result.evidenceChecks.find((check) => check.field === 'duplicate');
+
+    expect(result.findings.some((finding) => finding.field === 'duplicate' || finding.kind === 'duplicate'))
+      .toBe(false);
+    expect(result.duplicateCount).toBe(duplicateCount);
+    expect(duplicateCheck?.message).toContain(`${duplicateCount} exact normalized-name match`);
+    expect(duplicateCheck?.status).toBe(duplicateCount === 0 ? 'passed' : 'needs_manual_review');
+    expect(result.suggestedAction).toBe(duplicateCount === 0 ? 'approve' : 'request_changes');
   });
 });
 
@@ -401,7 +510,8 @@ describe('reviewRecommendation photo guardrails', () => {
     const result = await reviewRecommendation(service, 'rec-1');
 
     expect(result.suggestedAction).toBe('request_changes');
-    expect(result.feedbackDraft).toBeNull();
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft!.length).toBeGreaterThanOrEqual(10);
     expect(result.findings).toEqual(expect.arrayContaining([{
       field: 'photos',
       severity: 'medium',
@@ -479,5 +589,195 @@ describe('reviewRecommendation photo guardrails', () => {
       message: 'This photo could not be analysed.',
     }))));
     expect(result.photoAssessments.some((assessment) => assessment.imageId === inventedId)).toBe(false);
+  });
+
+  it('screens every model prose channel while allowing benign relevance wording', async () => {
+    const unsafeImageId = '00000000-0000-4000-8000-000000000006';
+    const relevantImageId = '00000000-0000-4000-8000-000000000007';
+    const { service } = makeReviewService([
+      { id: unsafeImageId, storage_path: 'private/unsafe.jpg', sort_order: 0 },
+      { id: relevantImageId, storage_path: 'private/relevant.jpg', sort_order: 1 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg' },
+      }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([4, 5, 6]), {
+        status: 200,
+        headers: { 'content-type': 'image/jpeg' },
+      })));
+    callGeminiMock.mockResolvedValue(JSON.stringify({
+      ...validSchemaResult,
+      findings: [
+        {
+          field: 'vendor_name',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The photo proves ownership.',
+          evidenceSummary: null,
+        },
+        {
+          field: 'description',
+          severity: 'low',
+          kind: 'low_quality',
+          message: 'The description is clear.',
+          evidenceSummary: 'The image confirms the listed location.',
+        },
+      ],
+      feedbackDraft: 'The submitted image proves authenticity.',
+      photoAssessments: [
+        {
+          imageId: unsafeImageId,
+          status: 'appears_relevant',
+          message: 'This photo proves authenticity.',
+        },
+        {
+          imageId: relevantImageId,
+          status: 'appears_relevant',
+          message: 'The photo appears relevant to the listed place/location.',
+        },
+      ],
+    }));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.confidence).toBe('medium');
+    expect(result.findings.filter((finding) => finding.kind === 'manual_review')).toHaveLength(1);
+    expect(result.findings).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: expect.stringMatching(/proves|confirms|authenticity|ownership/i) }),
+    ]));
+    expect(result.feedbackDraft).toBeTruthy();
+    expect(result.feedbackDraft).not.toMatch(/proves|confirms|authenticity|ownership|reject|declin/i);
+    expect(result.photoAssessments).toEqual(expect.arrayContaining([
+      {
+        imageId: unsafeImageId,
+        status: 'could_not_analyse',
+        message: 'Photo assessment omitted because it made a prohibited claim.',
+      },
+      {
+        imageId: relevantImageId,
+        status: 'appears_relevant',
+        message: 'The photo appears relevant to the listed place/location.',
+      },
+    ]));
+  });
+
+  it('degrades an oversized photo without approving the recommendation', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000008';
+    const { service } = makeReviewService([
+      { id: imageId, storage_path: 'private/oversized.jpg', sort_order: 0 },
+    ]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new Uint8Array([1]), {
+      status: 200,
+      headers: {
+        'content-type': 'image/jpeg',
+        'content-length': String(MAX_RECOMMENDATION_PHOTO_BYTES + 1),
+      },
+    })));
+    callGeminiMock.mockResolvedValue(JSON.stringify(validSchemaResult));
+
+    const result = await reviewRecommendation(service, 'rec-1');
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.photoAssessments).toEqual([{
+      imageId,
+      status: 'could_not_analyse',
+      message: 'This photo could not be analysed.',
+    }]);
+  });
+});
+
+describe('bounded recommendation photo loading', () => {
+  it('times out a stalled photo fetch and aborts its request', async () => {
+    vi.useFakeTimers();
+    const imageId = '00000000-0000-4000-8000-000000000009';
+    const createSignedUrl = vi.fn().mockResolvedValue({
+      data: { signedUrl: 'https://signed/stalled' },
+      error: null,
+    });
+    const service = {
+      storage: { from: vi.fn(() => ({ createSignedUrl })) },
+    } as unknown as SupabaseClient;
+    const fetchMock = vi.fn().mockResolvedValue(new Response(new ReadableStream<Uint8Array>(), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const loading = loadRecommendationImages(service, [{
+      id: imageId,
+      storage_path: 'private/stalled.jpg',
+      sort_order: 0,
+    }]);
+    const completion = Promise.race([
+      loading.then(() => 'complete' as const),
+      new Promise<'guard'>(resolve => setTimeout(() => resolve('guard'), RECOMMENDATION_PHOTO_TIMEOUT_MS + 100)),
+    ]);
+
+    await vi.advanceTimersByTimeAsync(RECOMMENDATION_PHOTO_TIMEOUT_MS + 100);
+
+    expect(await completion).toBe('complete');
+    await expect(loading).resolves.toEqual({ images: [], failures: [imageId] });
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({
+      signal: expect.any(AbortSignal),
+    }));
+  });
+
+  it('enforces the streaming per-photo byte limit without buffering an oversized body', async () => {
+    const imageId = '00000000-0000-4000-8000-000000000010';
+    const service = {
+      storage: { from: vi.fn(() => ({
+        createSignedUrl: vi.fn().mockResolvedValue({
+          data: { signedUrl: 'https://signed/streaming-oversize' },
+          error: null,
+        }),
+      })) },
+    } as unknown as SupabaseClient;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(MAX_RECOMMENDATION_PHOTO_BYTES + 1));
+        controller.close();
+      },
+    }), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    })));
+
+    await expect(loadRecommendationImages(service, [{
+      id: imageId,
+      storage_path: 'private/streaming-oversize.jpg',
+      sort_order: 0,
+    }])).resolves.toEqual({ images: [], failures: [imageId] });
+  });
+
+  it('keeps the total Gemini image payload within its bound', async () => {
+    const firstId = '00000000-0000-4000-8000-000000000011';
+    const secondId = '00000000-0000-4000-8000-000000000012';
+    const rawBytes = Math.min(
+      MAX_RECOMMENDATION_PHOTO_BYTES - 1,
+      Math.floor(MAX_GEMINI_IMAGE_PAYLOAD_BYTES * 0.6 * 0.75),
+    );
+    const service = {
+      storage: { from: vi.fn(() => ({
+        createSignedUrl: vi.fn()
+          .mockResolvedValueOnce({ data: { signedUrl: 'https://signed/first' }, error: null })
+          .mockResolvedValueOnce({ data: { signedUrl: 'https://signed/second' }, error: null }),
+      })) },
+    } as unknown as SupabaseClient;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(new Response(new Uint8Array(rawBytes), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg' },
+    }))));
+
+    const result = await loadRecommendationImages(service, [
+      { id: firstId, storage_path: 'private/first.jpg', sort_order: 0 },
+      { id: secondId, storage_path: 'private/second.jpg', sort_order: 1 },
+    ]);
+
+    expect(result.images).toHaveLength(1);
+    expect(result.images[0]?.data.length).toBeLessThanOrEqual(MAX_GEMINI_IMAGE_PAYLOAD_BYTES);
+    expect(result.failures).toEqual([secondId]);
   });
 });
