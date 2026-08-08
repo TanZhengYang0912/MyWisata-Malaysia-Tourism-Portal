@@ -52,8 +52,39 @@ describe('resolveActiveVendorInvite', () => {
     expect(JSON.stringify(result)).not.toContain('stored-token-hash');
   });
 
+  it('maps a revoked invitation to the stable already-claimed response', async () => {
+    const service = makeService({
+      recommendation_id: 'rec-1',
+      email: 'owner@example.com',
+      status: 'revoked',
+      expires_at: '2099-01-01T00:00:00.000Z',
+    });
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: {
+        code: 'INVITE_ALREADY_CLAIMED',
+        message: 'This vendor invitation has already been claimed.',
+        status: 409,
+      },
+    });
+  });
+
   it('maps missing invite data to the stable invalid response', async () => {
     const service = makeService(null);
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: { code: 'INVITE_INVALID', message: 'This invitation link is invalid.', status: 404 },
+    });
+  });
+
+  it('maps a missing email to the stable invalid response', async () => {
+    const service = makeService({
+      recommendation_id: 'rec-1',
+      status: 'invited',
+      expires_at: '2099-01-01T00:00:00.000Z',
+    });
 
     await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
       ok: false,
