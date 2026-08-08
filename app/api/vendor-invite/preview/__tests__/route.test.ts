@@ -5,9 +5,10 @@ const mocks = vi.hoisted(() => ({
   userFrom: vi.fn(),
   serviceFrom: vi.fn(),
   createSignedUrl: vi.fn(),
-  invite: null as Record<string, unknown> | null,
+  resolveActiveVendorInvite: vi.fn(),
   recommendation: null as Record<string, unknown> | null,
   images: [] as Array<Record<string, unknown>>,
+  categories: [] as Array<Record<string, unknown>>,
   profile: null as Record<string, unknown> | null,
 }));
 
@@ -20,6 +21,10 @@ vi.mock('@/lib/supabase/service', () => ({
     from: mocks.serviceFrom,
     storage: { from: vi.fn(() => ({ createSignedUrl: mocks.createSignedUrl })) },
   })),
+}));
+
+vi.mock('@/lib/recommendations/vendor-invite-access', () => ({
+  resolveActiveVendorInvite: mocks.resolveActiveVendorInvite,
 }));
 
 import { POST } from '@/app/api/vendor-invite/preview/route';
@@ -39,28 +44,34 @@ function singleResult(data: unknown) {
 describe('POST /api/vendor-invite/preview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.invite = {
-      recommendation_id: 'rec-1',
-      email: 'owner@example.com',
-      status: 'invited',
-      expires_at: '2099-01-01T00:00:00.000Z',
-    };
+    mocks.resolveActiveVendorInvite.mockResolvedValue({ ok: true, invite: { recommendationId: 'rec-1', email: 'owner@example.com' } });
     mocks.recommendation = {
       id: 'rec-1', vendor_name: 'Rasa Malaysia Kitchen', status: 'invited',
       description: 'Local Malaysian food in Kuala Lumpur.',
       why_recommend: 'Consistent food, welcoming service, and a convenient location.',
       location_name: 'Rasa Malaysia Kitchen', formatted_address: '12 Jalan Alor, Kuala Lumpur',
       vendor_address: null, contact_email: 'owner@example.com', contact_phone: '+60123456789',
-      categories: { name: 'Food' },
+      category_id: 'food-uuid', latitude: 3.1469, longitude: 101.7113,
+      categories: { id: 'food-uuid', name: 'Food', slug: 'food' },
     };
     mocks.images = [{ id: 'image-1', storage_path: 'private/rec-1/image.jpg', sort_order: 0 }];
-    mocks.profile = { phone_verified_at: '2026-08-01T00:00:00.000Z' };
+    mocks.categories = [
+      { id: 'food-uuid', name: 'Food', slug: 'food' },
+      { id: 'activity-uuid', name: 'Activity', slug: 'activity' },
+    ];
+    mocks.profile = { phone: '+60112223344', phone_verified_at: '2026-08-01T00:00:00.000Z' };
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     mocks.userFrom.mockImplementation(() => singleResult(mocks.profile));
     mocks.createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed.example/image.jpg' }, error: null });
     mocks.serviceFrom.mockImplementation((table: string) => {
-      if (table === 'vendor_recommendation_invites') return singleResult(mocks.invite);
       if (table === 'vendor_recommendations') return singleResult(mocks.recommendation);
+      if (table === 'categories') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({ order: vi.fn().mockResolvedValue({ data: mocks.categories, error: null }) })),
+          })),
+        };
+      }
       if (table === 'recommendation_images') {
         return {
           select: vi.fn(() => ({
@@ -83,14 +94,24 @@ describe('POST /api/vendor-invite/preview', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       data: {
-        authenticated: false,
-        emailMatched: false,
+        account: {
+          authenticated: false,
+          emailMatched: false,
+          phoneVerified: false,
+          maskedInviteEmail: 'o***@example.com',
+          maskedVerifiedPhone: null,
+        },
+        categories: mocks.categories,
+        recommendation: { categoryId: 'food-uuid', categoryName: 'Food', latitude: 3.1469, longitude: 101.7113 },
         maskedContact: { email: 'o***@example.com', phone: '********6789' },
-        prefill: { contactEmail: null, contactPhone: null },
+        prefill: { categoryId: 'food-uuid', outletName: 'Rasa Malaysia Kitchen', contactEmail: null, contactPhone: null, latitude: 3.1469, longitude: 101.7113 },
       },
     });
     expect(JSON.stringify(body)).not.toContain('storage_path');
     expect(JSON.stringify(body)).not.toContain('private/rec-1');
+    expect(JSON.stringify(body)).not.toContain('recommender');
+    expect(JSON.stringify(body)).not.toContain('valid-invite-token-value');
+    expect(mocks.userFrom).not.toHaveBeenCalled();
   });
 
   it('unlocks contacts for the authenticated invitation email', async () => {
@@ -101,29 +122,35 @@ describe('POST /api/vendor-invite/preview', () => {
 
     expect(body).toMatchObject({
       data: {
-        authenticated: true,
-        emailMatched: true,
-        phoneVerified: true,
+        account: {
+          authenticated: true,
+          emailMatched: true,
+          phoneVerified: true,
+          maskedVerifiedPhone: '********3344',
+        },
         prefill: { contactEmail: 'owner@example.com', contactPhone: '+60123456789' },
       },
     });
+    expect(mocks.userFrom).toHaveBeenCalledTimes(1);
   });
 
-  it('returns a stable expired invitation error', async () => {
-    mocks.invite = { ...mocks.invite, expires_at: '2020-01-01T00:00:00.000Z' };
+  it('does not query private phone data for an authenticated email mismatch', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-2', email: 'other@example.com' } }, error: null });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(body).toMatchObject({ data: { account: { authenticated: true, emailMatched: false, phoneVerified: false, maskedVerifiedPhone: null }, prefill: { contactEmail: null, contactPhone: null } } });
+    expect(mocks.userFrom).not.toHaveBeenCalled();
+  });
+
+  it('passes resolver lifecycle errors through with their stable code and status', async () => {
+    mocks.resolveActiveVendorInvite.mockResolvedValue({ ok: false, error: { code: 'INVITE_EXPIRED', message: 'This invitation has expired.', status: 409 } });
 
     const response = await POST(request());
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVITE_EXPIRED' } });
-  });
-
-  it('returns a stable already-claimed error', async () => {
-    mocks.invite = { ...mocks.invite, status: 'claimed' };
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVITE_ALREADY_CLAIMED' } });
+    expect(mocks.serviceFrom).not.toHaveBeenCalled();
   });
 });
