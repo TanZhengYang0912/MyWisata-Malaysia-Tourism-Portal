@@ -27,6 +27,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
+import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 // 'welcomed' is UI-only — not a real vendors.status value. It's a narrower
@@ -400,12 +401,13 @@ export default function AdminVendorsPage() {
               </div>
               <span className="rounded-full bg-[#eef2ff] px-3 py-1.5 text-xs font-semibold text-[#010066]">{total} matching vendors</span>
             </div>
-            <div className="mt-5 flex gap-1 overflow-x-auto pb-0" role="tablist" aria-label="Vendor status">
-              {STATUS_FILTERS.map((item) => (
-                <button key={item.value} type="button" role="tab" aria-selected={filter === item.value} onClick={() => { setPage(1); setFilter(item.value); }} className={`whitespace-nowrap border-b-2 px-3 pb-3 text-sm font-semibold transition ${filter === item.value ? 'border-[#010066] text-[#010066]' : `border-transparent ${item.tone} hover:border-slate-200`}`}>
-                  {item.label} <span className="ml-1 text-xs opacity-60">{counts[item.value]}</span>
-                </button>
-              ))}
+            <div className="mt-5">
+              <AdminSegmentedFilter
+                value={filter}
+                ariaLabel="Vendor status"
+                items={STATUS_FILTERS.map((item) => ({ value: item.value, label: item.label, count: counts[item.value] }))}
+                onChange={(value) => { setPage(1); setFilter(value as FilterStatus); }}
+              />
             </div>
           </div>
 
@@ -498,11 +500,11 @@ export default function AdminVendorsPage() {
 
           <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>{total === 0 ? 'No vendors to display' : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`}</span>
-            <div className="flex items-center gap-2">
+            {pageCount > 1 && <div className="flex items-center gap-2">
               <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1 || loading} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /></button>
               <span className="min-w-[75px] text-center font-semibold text-slate-600">Page {page} of {pageCount}</span>
               <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page === pageCount || loading} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={16} /></button>
-            </div>
+            </div>}
           </div>
         </section>
       </div>

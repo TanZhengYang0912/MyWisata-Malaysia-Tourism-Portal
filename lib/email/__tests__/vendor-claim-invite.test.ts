@@ -24,14 +24,14 @@ describe('enqueueVendorClaimInviteEmail', () => {
       recommendationId: 'rec-1',
       email: 'owner@example.com',
       vendorName: 'Rasa Malaysia Kitchen',
-      claimUrl: 'https://example.com/vendor/register?recommendation=secret-token',
+      claimUrl: 'https://example.com/vendor-invite?recommendation=secret-token',
     });
 
     expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({
       eventKey: 'vendor_claim_invite:rec-1',
       eventType: 'vendor_account_update',
       toEmail: 'owner@example.com',
-      reference: 'https://example.com/vendor/register?recommendation=secret-token',
+      reference: 'https://example.com/vendor-invite?recommendation=secret-token',
     }));
   });
 });

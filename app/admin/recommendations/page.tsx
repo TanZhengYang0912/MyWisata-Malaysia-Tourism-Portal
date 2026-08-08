@@ -1,125 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Mail, Play, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Filter, Play, Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
-import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
-import { AiDraftEmailModal } from "@/components/admin/ai-draft-email-modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 
-// P4 — Member 4: CLAUDE-ADMIN-AI.md Part 2, Capability 3. Read-only overlay
-// — this component never writes to vendor_recommendations; it only calls a
-// new admin-ai route that reads it. Does not touch review()/getVendorRecommendations() above.
-interface ModerationAssessment {
-  completeness: string;
-  duplicateLikelihood: "low" | "medium" | "high";
-  qualityNotes: string;
-  riskFlag: "low_risk" | "needs_review";
-}
-
-function AiReviewPanel({ recommendationId }: { recommendationId: string }) {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ModerationAssessment | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function runReview() {
-    if (loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin-ai/moderation-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recommendationId }),
-      });
-      const body = (await res.json()) as { data: ModerationAssessment | null; error: { message: string } | null };
-      if (!res.ok || !body.data) {
-        setError(body.error?.message ?? "AI review unavailable right now.");
-        return;
-      }
-      setResult(body.data);
-    } catch {
-      setError("AI review unavailable right now.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="w-full">
-      <Button size="sm" variant="outline" onClick={runReview} disabled={loading} className="gap-1.5">
-        <Sparkles size={13} /> {loading ? "Reviewing…" : "AI review"}
-      </Button>
-      {error && <p className="text-xs text-destructive mt-1.5">{error}</p>}
-      {result && (
-        <div className="mt-2 rounded-xl bg-muted px-3 py-2.5 text-xs space-y-1">
-          <p className="font-bold uppercase tracking-wide text-[10px] text-muted-foreground">
-            Advisory only — does not approve or reject
-          </p>
-          <p>
-            <span className="font-semibold">Risk: </span>
-            <span className={result.riskFlag === "needs_review" ? "text-destructive font-semibold" : "text-primary font-semibold"}>
-              {result.riskFlag === "needs_review" ? "Needs review" : "Low risk"}
-            </span>
-          </p>
-          <p><span className="font-semibold">Completeness: </span>{result.completeness}</p>
-          <p><span className="font-semibold">Duplicate likelihood: </span>{result.duplicateLikelihood}</p>
-          <p><span className="font-semibold">Quality notes: </span>{result.qualityNotes}</p>
-        </div>
-      )}
-    </div>
-  );
-}
+const PENDING_PAGE_SIZE = 10;
 
 export default function AdminRecommendationsPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[]>([]);
-  const [reviewing, setReviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [clearingMessage, setClearingMessage] = useState<string | null>(null);
-  const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [reviewedPage, setReviewedPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   useEffect(() => {
     getVendorRecommendations().then(setRecs);
   }, []);
 
-  async function review(r: VendorRecommendation, approve: boolean) {
-    if (!currentUser || reviewing) return;
-    setReviewing(r.id);
-    setError(null);
-    try {
-      const res = await fetch('/api/admin/recommendations/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recommendationId: r.id,
-          action: approve ? 'approve' : 'reject',
-        }),
+  useEffect(() => {
+    if (currentUser?.role === "super_admin") {
+      void fetch("/api/admin/recommendations/mark-seen", { method: "POST" }).catch(() => {
+        // best-effort — a read-state failure must not block the moderation queue
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error?.message ?? 'Review failed.');
-        return;
-      }
-      const status = approve ? "approved" : "rejected";
-      setRecs((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)));
-      showFeedback("success", `Recommendation ${approve ? "approved" : "rejected"}.`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Review failed.';
-      setError(message);
-      showFeedback("error", message);
-    } finally {
-      setReviewing(null);
     }
-  }
+  }, [currentUser?.role]);
 
   async function runRewardClearing() {
     if (clearing) return;
@@ -148,19 +69,107 @@ export default function AdminRecommendationsPage() {
     }
   }
 
-  const pending  = recs.filter((r) => r.status === "pending");
-  const approved = recs.filter((r) => r.status === "approved");
-  const invited  = recs.filter((r) => r.status !== "pending" && r.status !== "approved");
+  async function applyBatch(action: "approve" | "request_changes" | "reject") {
+    const selected = visiblePending.filter((recommendation) => selectedPendingIds.has(recommendation.id));
+    if (!selected.length || batchBusy) return;
+    const reason = action === "approve" ? undefined : window.prompt(action === "reject" ? "Reason for rejecting all selected recommendations (at least 10 characters):" : "What needs to be changed for all selected recommendations? (at least 10 characters):")?.trim();
+    if (action !== "approve" && (!reason || reason.length < 10)) {
+      setError("Batch reject/request changes requires a reason of at least 10 characters.");
+      return;
+    }
+    setBatchBusy(true);
+    setError(null);
+    try {
+      const responses = await Promise.all(selected.map((recommendation) => fetch("/api/admin/recommendations/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recommendationId: recommendation.id, action, ...(reason ? { reason } : {}) }),
+      })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body.error?.message ?? "One or more recommendation reviews failed.");
+      }
+      setSelectedPendingIds(new Set());
+      showFeedback("success", `${selected.length} recommendations processed.`);
+      setRecs(await getVendorRecommendations());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Batch recommendation review failed.";
+      setError(message);
+      showFeedback("error", message);
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  const filteredRecs = recs.filter((recommendation) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || [recommendation.name, recommendation.category, recommendation.state, recommendation.author?.name]
+      .filter(Boolean)
+      .some((value) => value?.toLowerCase().includes(query));
+    const matchesCategory = categoryFilter === "all" || recommendation.category === categoryFilter;
+    const matchesState = stateFilter === "all" || recommendation.state === stateFilter;
+    return matchesSearch && matchesCategory && matchesState;
+  });
+  const pending  = filteredRecs.filter((r) => r.status === "pending");
+  const reviewed = filteredRecs.filter((r) => r.status !== "pending");
+  const pendingPageCount = Math.max(1, Math.ceil(pending.length / PENDING_PAGE_SIZE));
+  const reviewedPageCount = Math.max(1, Math.ceil(reviewed.length / PENDING_PAGE_SIZE));
+  const activePendingPage = Math.min(pendingPage, pendingPageCount);
+  const activeReviewedPage = Math.min(reviewedPage, reviewedPageCount);
+  const visiblePending = pending.slice(
+    (activePendingPage - 1) * PENDING_PAGE_SIZE,
+    activePendingPage * PENDING_PAGE_SIZE,
+  );
+  const visibleReviewed = reviewed.slice(
+    (activeReviewedPage - 1) * PENDING_PAGE_SIZE,
+    activeReviewedPage * PENDING_PAGE_SIZE,
+  );
+  const categories = Array.from(new Set(recs.map((recommendation) => recommendation.category).filter(Boolean))).sort();
+  const states = Array.from(new Set(recs.map((recommendation) => recommendation.state).filter(Boolean))).sort();
+  const hasFilters = Boolean(search.trim()) || categoryFilter !== "all" || stateFilter !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setCategoryFilter("all");
+    setStateFilter("all");
+    setPendingPage(1);
+    setReviewedPage(1);
+  }
 
   return (
-    <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-1">Recommendation Moderation</h1>
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">Recommendation Moderation</h1>
       <p className="text-xs text-muted-foreground mb-2">Community-submitted vendors and hidden gems.</p>
       <p className="mb-6 max-w-2xl text-xs text-muted-foreground">Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.</p>
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
+
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:flex-row sm:items-center">
+        <label className="relative min-w-0 flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setPendingPage(1); setReviewedPage(1); }}
+            placeholder="Search recommendation, category, state or contributor…"
+            className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+        </label>
+        <select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <option value="all">All categories</option>
+          {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+        </select>
+        <select value={stateFilter} onChange={(event) => { setStateFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <option value="all">All states</option>
+          {states.map((state) => <option key={state} value={state}>{state}</option>)}
+        </select>
+        <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground">10 per page</span>
+        <Button type="button" variant="outline" onClick={clearFilters} disabled={!hasFilters} className="gap-1.5">
+          <Filter size={14} /> Clear
+        </Button>
+      </div>
 
       <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label="Recommendation reward clearing">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -178,17 +187,44 @@ export default function AdminRecommendationsPage() {
         {clearingMessage && <p className="mt-3 text-xs font-medium text-primary">{clearingMessage}</p>}
       </section>
 
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
+      <div className="rounded-2xl overflow-hidden border border-border bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-bold text-foreground">Pending ({pending.length})</h2>
+          {pendingPageCount > 1 && (
+            <nav aria-label="Pending recommendation pagination" className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="mr-1 hidden sm:inline">Page {activePendingPage} of {pendingPageCount}</span>
+              <button
+                type="button"
+                aria-label="Previous pending recommendation page"
+                onClick={() => setPendingPage((page) => Math.max(1, page - 1))}
+                disabled={activePendingPage === 1}
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{activePendingPage} / {pendingPageCount}</span>
+              <button
+                type="button"
+                aria-label="Next pending recommendation page"
+                onClick={() => setPendingPage((page) => Math.min(pendingPageCount, page + 1))}
+                disabled={activePendingPage === pendingPageCount}
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </nav>
+          )}
         </div>
+        <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label="Select all visible pending recommendations" checked={visiblePending.length > 0 && visiblePending.every((recommendation) => selectedPendingIds.has(recommendation.id))} onChange={(event) => setSelectedPendingIds((previous) => { const next = new Set(previous); visiblePending.forEach((recommendation) => event.target.checked ? next.add(recommendation.id) : next.delete(recommendation.id)); return next; })} /><span className="text-muted-foreground">Select all on this page</span></div>
+        <AdminBatchActionBar selectedCount={visiblePending.filter((recommendation) => selectedPendingIds.has(recommendation.id)).length} onClear={() => setSelectedPendingIds(new Set())} onApply={(action) => void applyBatch(action as "approve" | "request_changes" | "reject")} actions={[{ value: "approve", label: "Approve" }, { value: "request_changes", label: "Request changes" }, { value: "reject", label: "Reject" }]} busy={batchBusy} />
         {pending.length === 0 ? (
           <EmptyState title="No pending recommendations" />
         ) : (
           <div className="divide-y divide-border">
-            {pending.map((r) => {
+            {visiblePending.map((r) => {
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                  <input type="checkbox" aria-label={`Select recommendation ${r.name}`} checked={selectedPendingIds.has(r.id)} onChange={(event) => setSelectedPendingIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(r.id) : next.delete(r.id); return next; })} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-foreground">{r.name}</p>
@@ -210,75 +246,75 @@ export default function AdminRecommendationsPage() {
                       {r.qualityScore}
                     </span>
                   </div>
-                  <ApproveRejectBar
-                    onApprove={() => review(r, true)}
-                    onReject={() => review(r, false)}
-                    disabled={reviewing === r.id}
-                  />
-                  {currentUser?.role === "super_admin" && <AiReviewPanel recommendationId={r.id} />}
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/admin/recommendations/${r.id}`} className="gap-1.5">
+                      <Eye size={14} /> View details
+                    </Link>
+                  </Button>
                 </div>
               );
             })}
           </div>
         )}
-      </div>
-
-      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">Approved ({approved.length})</h2>
-        </div>
-        {approved.length === 0 ? (
-          <EmptyState title="No approved recommendations awaiting invite" />
-        ) : (
-          <div className="divide-y divide-border">
-            {approved.map((r) => (
-              <div key={r.id} className="px-6 py-3.5 flex items-center justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{r.name}</p>
-                  <p className="text-xs text-muted-foreground">{r.category} · {r.state}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={r.status} />
-                  <Button size="sm" onClick={() => setInviteTarget({ id: r.id, name: r.name })} className="gap-1.5">
-                    <Mail size={13} /> Invite Vendor
-                  </Button>
-                </div>
-              </div>
-            ))}
+        {pending.length > 0 && (
+          <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            Showing {(activePendingPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(activePendingPage * PENDING_PAGE_SIZE, pending.length)} of {pending.length} pending recommendations
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">Invited ({invited.length})</h2>
+      <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-bold text-foreground">Reviewed ({reviewed.length})</h2>
+          {reviewedPageCount > 1 && (
+            <nav aria-label="Reviewed recommendation pagination" className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="mr-1 hidden sm:inline">Page {activeReviewedPage} of {reviewedPageCount}</span>
+              <button
+                type="button"
+                aria-label="Previous reviewed recommendation page"
+                onClick={() => setReviewedPage((page) => Math.max(1, page - 1))}
+                disabled={activeReviewedPage === 1}
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{activeReviewedPage} / {reviewedPageCount}</span>
+              <button
+                type="button"
+                aria-label="Next reviewed recommendation page"
+                onClick={() => setReviewedPage((page) => Math.min(reviewedPageCount, page + 1))}
+                disabled={activeReviewedPage === reviewedPageCount}
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </nav>
+          )}
         </div>
         <div className="divide-y divide-border">
-          {invited.map((r) => (
+          {visibleReviewed.map((r) => (
             <div key={r.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
-              <p className="text-sm text-foreground">{r.name}</p>
-              <StatusBadge status={r.status} />
+              <div className="min-w-0">
+                <p className="truncate text-sm text-foreground">{r.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{r.category} · {r.state} · by {r.author?.name ?? "MyWisata member"}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <StatusBadge status={r.status} />
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/recommendations/${r.id}`} className="gap-1.5">
+                    <Eye size={14} /> View details
+                  </Link>
+                </Button>
+              </div>
             </div>
           ))}
         </div>
+        {reviewed.length > 0 && (
+          <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            Showing {(activeReviewedPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(activeReviewedPage * PENDING_PAGE_SIZE, reviewed.length)} of {reviewed.length} reviewed recommendations
+          </div>
+        )}
       </div>
-
-      <AiDraftEmailModal
-        open={!!inviteTarget}
-        target={inviteTarget}
-        title={inviteTarget ? `Invite ${inviteTarget.name}` : ""}
-        draftUrl="/api/admin/vendors/recommendation-invite/draft"
-        sendUrl="/api/admin/vendors/recommendation-invite"
-        extraBody={inviteTarget ? { recommendationId: inviteTarget.id } : {}}
-        sendLabel="Send invite"
-        linkHint="The real sign-up link is appended automatically when you send — no need to include it."
-        onClose={() => setInviteTarget(null)}
-        onSent={(id) => {
-          setRecs((prev) => prev.map((x) => (x.id === id ? { ...x, status: "invited" } : x)));
-          setInviteTarget(null);
-          showFeedback("success", "Invite sent.");
-        }}
-      />
     </div>
   );
 }

@@ -95,6 +95,19 @@ export interface BookingSlot {
   priceOverride?: number;
 }
 
+/**
+ * A place-bound product's own destination — independent of the outlet that
+ * sells it. Only nature/cultural/adventure products carry this; everything
+ * else is found through its outlet's location instead. See
+ * docs/plans/2026-08-03-0237-dev-explore-discovery-map.md.
+ */
+export interface PlaceLocation {
+  state: string;
+  district?: string;
+  lat: number;
+  lng: number;
+}
+
 // ─── Contract #2: Catalogue DTO ────────────────────────────────────────────
 export interface Activity {
   id: string;
@@ -131,6 +144,8 @@ export interface Activity {
   isHiddenGem?: boolean;
   isFamilyFriendly?: boolean;
   isCoupleFriendly?: boolean;
+  /** The product's own destination coordinate, when it has one — see PlaceLocation. */
+  place?: PlaceLocation;
 }
 
 /** One outlet's actual listing of a shared vendor product: its own price and state. */
@@ -366,7 +381,7 @@ export interface VendorRecommendation {
   name: string;
   category: string;
   state: string;
-  status: "pending" | "approved" | "invited" | "claimed" | "onboarding" | "vendor_pending_review" | "rejected" | "converted";
+  status: "pending" | "changes_requested" | "approved" | "invited" | "claimed" | "onboarding" | "vendor_pending_review" | "rejected" | "converted";
   qualityScore: number;
   duplicate: boolean;
   /** Present when the public author is still active and visible. */

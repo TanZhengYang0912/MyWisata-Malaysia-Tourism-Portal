@@ -8,12 +8,13 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MessageSquare, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
@@ -69,6 +70,7 @@ interface TicketDetail {
 
 const CATEGORIES = ["booking", "payment", "vendor", "withdrawal", "affiliate", "general"] as const;
 const STATUSES = ["open", "in_progress", "resolved"] as const;
+const TICKETS_PER_PAGE = 10;
 
 const STATUS_LABEL: Record<string, string> = {
   open: "Open",
@@ -88,11 +90,14 @@ function AdminSupportContent() {
   const [assignedToMeFilter, setAssignedToMeFilter] = useState(false);
   const [unreadOnlyFilter, setUnreadOnlyFilter] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("default");
+  const [ticketPage, setTicketPage] = useState(1);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   async function loadTickets() {
     const params = new URLSearchParams();
@@ -135,6 +140,11 @@ function AdminSupportContent() {
         return a.createdAt < b.createdAt ? 1 : -1;
       })
     : [];
+  const totalTicketPages = Math.max(1, Math.ceil(sortedTickets.length / TICKETS_PER_PAGE));
+  const visibleTickets = sortedTickets.slice(
+    (ticketPage - 1) * TICKETS_PER_PAGE,
+    ticketPage * TICKETS_PER_PAGE,
+  );
 
   async function loadDetail(id: string) {
     try {
@@ -217,6 +227,32 @@ function AdminSupportContent() {
     }
   }
 
+  async function applyBatch(action: "resolved") {
+    if (batchBusy) return;
+    const selected = visibleTickets.filter((ticket) => selectedIds.has(ticket.id) && ticket.status !== "resolved");
+    if (!selected.length) return;
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selected.map((ticket) => fetch(`/api/admin/tickets/${ticket.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: action }),
+      })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more tickets could not be updated.");
+      }
+      setTickets((previous) => previous?.map((ticket) => selected.some((item) => item.id === ticket.id) ? { ...ticket, status: "resolved" } : ticket) ?? null);
+      setSelectedIds(new Set());
+      showFeedback("success", `${selected.length} tickets marked resolved.`);
+    } catch (error) {
+      showFeedback("error", error instanceof Error ? error.message : "Batch ticket update failed.");
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
   async function sendReply() {
     const text = reply.trim();
     if (!text || sending || !openTicketId) return;
@@ -240,8 +276,8 @@ function AdminSupportContent() {
   }
 
   return (
-    <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-4">Support Tickets</h1>
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4">Support Tickets</h1>
 
       <ModerationFlagsPanel />
 
@@ -253,9 +289,9 @@ function AdminSupportContent() {
             { label: "Resolved", value: stats.resolved, alert: false },
             { label: "Unanswered", value: stats.unanswered, alert: stats.unanswered > 0 },
           ].map((card) => (
-            <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
-              <p className={`text-xl font-bold ${card.alert ? "text-destructive" : "text-foreground"}`}>{card.value}</p>
+            <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+              <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
+              <p className={`mt-4 text-3xl font-bold tracking-[-0.05em] ${card.alert ? "text-destructive" : "text-foreground"}`}>{card.value}</p>
             </div>
           ))}
         </div>
@@ -271,25 +307,25 @@ function AdminSupportContent() {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-foreground">
-            <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => setAssignedToMeFilter(e.target.checked)} />
+            <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); }} />
             Assigned to me
           </label>
           <label className="flex items-center gap-1.5 text-foreground">
-            <input type="checkbox" checked={unreadOnlyFilter} onChange={(e) => setUnreadOnlyFilter(e.target.checked)} />
+            <input type="checkbox" checked={unreadOnlyFilter} onChange={(e) => { setUnreadOnlyFilter(e.target.checked); setTicketPage(1); }} />
             Unread only
           </label>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            onChange={(e) => { setSortKey(e.target.value as SortKey); setTicketPage(1); }}
             className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
           >
             {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
               <option key={k} value={k}>{SORT_LABEL[k]}</option>
             ))}
           </select>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setTicketPage(1); }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -300,7 +336,7 @@ function AdminSupportContent() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setTicketPage(1); }}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -320,9 +356,12 @@ function AdminSupportContent() {
         <EmptyState title="No support tickets" />
       ) : (
         <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label="Select all visible support tickets" checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">Select all on this page</span></div>
+          <AdminBatchActionBar selectedCount={visibleTickets.filter((ticket) => selectedIds.has(ticket.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved")} actions={[{ value: "resolved", label: "Mark resolved" }]} busy={batchBusy} />
           <div className="divide-y divide-border">
-            {sortedTickets.map((t) => (
+            {visibleTickets.map((t) => (
               <div key={t.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                <input type="checkbox" aria-label={`Select support ticket ${t.subject}`} checked={selectedIds.has(t.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(t.id) : next.delete(t.id); return next; })} />
                 <button onClick={() => openTicket(t.id)} className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <MessageSquare size={13} className="text-muted-foreground shrink-0" /> {t.subject}
@@ -361,6 +400,34 @@ function AdminSupportContent() {
               </div>
             ))}
           </div>
+          {sortedTickets.length > 0 && (
+            <nav aria-label="Support ticket pagination" className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Showing {(ticketPage - 1) * TICKETS_PER_PAGE + 1}–{Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length)} of {sortedTickets.length} tickets
+              </span>
+              {totalTicketPages > 1 && <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Previous ticket page"
+                  onClick={() => setTicketPage((page) => Math.max(1, page - 1))}
+                  disabled={ticketPage === 1}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={14} /> Previous
+                </button>
+                <span className="min-w-20 text-center font-semibold text-foreground">Page {ticketPage} of {totalTicketPages}</span>
+                <button
+                  type="button"
+                  aria-label="Next ticket page"
+                  onClick={() => setTicketPage((page) => Math.min(totalTicketPages, page + 1))}
+                  disabled={ticketPage === totalTicketPages}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>}
+            </nav>
+          )}
         </div>
       )}
 

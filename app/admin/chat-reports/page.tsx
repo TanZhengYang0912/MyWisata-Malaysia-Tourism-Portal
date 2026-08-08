@@ -7,8 +7,9 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
@@ -70,6 +71,8 @@ export default function AdminChatReportsPage() {
   const [resolveNote, setResolveNote] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [blockingReporterId, setBlockingReporterId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   const [archiveDays, setArchiveDays] = useState<number | null>(null);
   const [archiveDaysInput, setArchiveDaysInput] = useState("");
@@ -191,6 +194,38 @@ export default function AdminChatReportsPage() {
     }
   }
 
+  async function applyBatch(action: "resolved" | "dismissed") {
+    if (batchBusy) return;
+    const selected = filtered.filter((report) => selectedIds.has(report.id) && report.status === "open");
+    if (!selected.length) return;
+    const enteredReason = window.prompt(`Resolution reason (${RESOLUTION_REASONS.map((reason) => reason.value).join(", ")}):`, RESOLUTION_REASONS[0].value)?.trim();
+    if (!enteredReason || !RESOLUTION_REASONS.some((reason) => reason.value === enteredReason)) {
+      showFeedback("error", "Choose a valid resolution reason.");
+      return;
+    }
+    const note = window.prompt("Resolution note (optional):", "")?.trim() ?? "";
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selected.map((report) => fetch(`/api/admin/chat-reports/${report.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: action, resolution_reason: enteredReason, resolution_note: note }),
+      })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more reports could not be updated.");
+      }
+      setReports((previous) => previous?.map((report) => selected.some((item) => item.id === report.id) ? { ...report, status: action, resolution_reason: enteredReason, resolution_note: note || null } : report) ?? null);
+      setSelectedIds(new Set());
+      showFeedback("success", `${selected.length} reports marked ${action}.`);
+    } catch (error) {
+      showFeedback("error", error instanceof Error ? error.message : "Batch report update failed.");
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
   // A ban applies to the reporter across every report they've filed, not just
   // the one open in the dialog — update every matching row in the list plus
   // whichever report (if any) is currently open.
@@ -242,8 +277,8 @@ export default function AdminChatReportsPage() {
   }
 
   return (
-    <div className="p-6 sm:p-8">
-      <h1 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2"><Flag size={18} /> Chat Reports</h1>
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4 flex items-center gap-2"><Flag size={18} /> Chat Reports</h1>
 
       {archiveDays !== null && (
         <div className="mb-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-xs" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
@@ -263,12 +298,14 @@ export default function AdminChatReportsPage() {
         </div>
       )}
 
-      <Tabs value={statusTab} onValueChange={(v) => setStatusTab(v as StatusTab)} className="mb-4">
-        <TabsList>
-          <TabsTrigger value="open">Pending ({openCount})</TabsTrigger>
-          <TabsTrigger value="closed">Resolved ({closedCount})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="mb-4">
+        <AdminSegmentedFilter
+          value={statusTab}
+          ariaLabel="Chat report status"
+          items={[{ value: "open", label: "Pending", count: openCount }, { value: "closed", label: "Resolved", count: closedCount }]}
+          onChange={(value) => setStatusTab(value as StatusTab)}
+        />
+      </div>
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div className="relative w-64">
@@ -321,7 +358,8 @@ export default function AdminChatReportsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState title={statusTab === "open" ? "No pending reports" : "No resolved reports"} description="Reported conversations will show up here." />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          {statusTab === "open" && <><div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label="Select all visible chat reports" checked={filtered.length > 0 && filtered.every((report) => selectedIds.has(report.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); filtered.forEach((report) => event.target.checked ? next.add(report.id) : next.delete(report.id)); return next; })} /><span className="text-muted-foreground">Select all visible reports</span></div><AdminBatchActionBar selectedCount={filtered.filter((report) => selectedIds.has(report.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved" | "dismissed")} actions={[{ value: "resolved", label: "Resolve" }, { value: "dismissed", label: "Dismiss" }]} busy={batchBusy} /></>}
           <div className="divide-y divide-border">
             {filtered.map((r) => {
               const outletName = r.chat_threads?.outlets?.name ?? "Unknown outlet";
@@ -329,6 +367,7 @@ export default function AdminChatReportsPage() {
               const isRepeatFalseReporter = r.reporterStats.total >= 3 && r.reporterStats.dismissed / r.reporterStats.total >= 0.5;
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                  {r.status === "open" && <input type="checkbox" aria-label={`Select chat report ${r.id}`} checked={selectedIds.has(r.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(r.id) : next.delete(r.id); return next; })} />}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-2 flex-wrap">
                       {REASON_LABEL[r.reason] ?? r.reason} · {outletName}

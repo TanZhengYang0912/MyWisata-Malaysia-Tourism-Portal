@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Copy, Search, UsersRound } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { UserManagementDrawer } from "@/components/admin/user-management-drawer";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { getAdminUserInitial, getAdminUserLabel, hasAdminDisplayName } from "@/lib/admin/identity";
 import type { UserManagementFilters, UserManagementListItem, UserManagementListResponse } from "@/lib/user-management/types";
@@ -27,6 +28,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [pageInput, setPageInput] = useState("1");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   async function load(nextFilters = filters) {
     setLoading(true); setError(null);
@@ -57,21 +60,59 @@ export default function AdminUsersPage() {
     showFeedback("success", "User ID copied.");
   }
 
+  const selectedUsers = result.items.filter((user) => selectedIds.has(user.id));
+  const batchActions = selectedUsers.length === 0 ? [] : (["clear_bio_restriction", "suspend", "unsuspend", "restore"] as const).filter((action) => selectedUsers.every((user) => {
+    if (action === "clear_bio_restriction") return user.bioViolationCount > 0 || Boolean(user.bioCooldownUntil);
+    if (action === "suspend") return user.status === "active";
+    if (action === "unsuspend") return user.status === "suspended";
+    return user.status === "deleted";
+  }));
+
+  async function applyBatch(action: (typeof batchActions)[number]) {
+    if (batchBusy || !selectedUsers.length || !batchActions.includes(action)) return;
+    const reason = window.prompt("Reason for this batch account action (at least 10 characters):")?.trim();
+    if (!reason || reason.length < 10) {
+      setError("A reason of at least 10 characters is required.");
+      return;
+    }
+    if (!window.confirm(`${action.replaceAll("_", " ")} ${selectedUsers.length} selected user accounts?`)) return;
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selectedUsers.map((user) => fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, reason }),
+      })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more user actions failed.");
+      }
+      setSelectedIds(new Set());
+      showFeedback("success", `${selectedUsers.length} user accounts processed.`);
+      await load();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Batch user action failed.");
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
   const pageStats = useMemo(() => ({
     incomplete: result.items.filter((user) => !user.profileComplete).length,
     pendingKyc: result.items.filter((user) => user.kycStatus === "pending").length,
     restricted: result.items.filter((user) => user.status !== "active" || user.bioCooldownUntil || user.bioViolationCount >= 5).length,
   }), [result.items]);
 
-  return <main className="mx-auto w-full max-w-[1500px] p-6 sm:p-8">
-    <header className="mb-7">
+  return <main className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+    <header>
       <div className="flex items-center gap-2 text-primary"><UsersRound size={18} /><p className="text-xs font-semibold uppercase tracking-[0.18em]">Administration</p></div>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">User Management</h1>
+      <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">User Management</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Review ordinary user accounts, verification progress, profile completeness and account status.</p>
     </header>
 
     <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {[["Total users", result.total, "All users matching the current filters"], ["Pending KYC", pageStats.pendingKyc, "On this page"], ["Incomplete profiles", pageStats.incomplete, "On this page"], ["Needs attention", pageStats.restricted, "Suspended, deleted or bio restricted"]].map(([label, value, note]) => <div key={label} className="rounded-2xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold text-foreground">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div>)}
+      {[["Total users", result.total, "All users matching the current filters"], ["Pending KYC", pageStats.pendingKyc, "On this page"], ["Incomplete profiles", pageStats.incomplete, "On this page"], ["Needs attention", pageStats.restricted, "Suspended, deleted or bio restricted"]].map(([label, value, note]) => <div key={label} className="rounded-2xl border border-border bg-card p-5"><p className="text-sm font-semibold text-muted-foreground">{label}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{value}</p><p className="mt-1 text-xs font-medium text-muted-foreground">{note}</p></div>)}
     </section>
 
     <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
@@ -93,7 +134,9 @@ export default function AdminUsersPage() {
     {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><p className="text-sm font-semibold text-foreground">User directory</p><p className="mt-0.5 text-xs text-muted-foreground">Select a row to review account details and actions.</p></div><label className="flex items-center gap-2 text-xs text-muted-foreground">Rows<select aria-label="Rows per page" value={filters.pageSize} onChange={(event) => changeFilter("pageSize", Number(event.target.value) as UserManagementFilters["pageSize"])} className="rounded-lg border border-border bg-background px-2 py-1"><option value={15}>15</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></label></div>
-      {loading ? <p className="p-12 text-center text-sm text-muted-foreground">Loading users…</p> : result.items.length === 0 ? <EmptyState title="No users match these filters" description="Try clearing a filter or searching for an email or user ID." action={<Button variant="outline" size="sm" onClick={resetFilters}>Clear filters</Button>} /> : <div className="overflow-x-auto"><table className="w-full min-w-[1080px] text-left text-sm"><thead className="bg-secondary/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">User</th><th className="px-3 py-3">Role</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Verification</th><th className="px-3 py-3">KYC</th><th className="px-3 py-3">Bio</th><th className="px-5 py-3">Registered</th><th className="px-5 py-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-border">{result.items.map((user: UserManagementListItem) => { const label = getAdminUserLabel(user); const named = hasAdminDisplayName(user); return <tr key={user.id} onClick={() => setSelectedUserId(user.id)} className="cursor-pointer hover:bg-secondary/40 focus-within:bg-secondary/40"><td className="px-5 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary">{user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : getAdminUserInitial(user)}</div><div className="min-w-0"><p className="font-semibold text-foreground">{label}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p><div className="mt-1 flex items-center gap-1.5"><p className="truncate text-[10px] text-muted-foreground">{named ? "Profile name set" : "Display name not set"}</p><button type="button" aria-label={`Copy user ID for ${label}`} onClick={(event) => void copyUserId(event, user.id)} className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"><Copy size={12} /></button></div></div></div></td><td className="px-3 py-4 text-xs capitalize">{user.role.replaceAll("_", " ")}</td><td className="px-3 py-4"><span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badgeClass(user.status)}`}>{user.status}</span></td><td className="px-3 py-4"><div className="flex flex-wrap gap-1"><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badgeClass(user.emailVerified ? "Verified" : "Unverified")}`}>Email {user.emailVerified ? "✓" : "—"}</span><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badgeClass(user.phoneVerified ? "Verified" : "Unverified")}`}>Phone {user.phoneVerified ? "✓" : "—"}</span></div></td><td className="px-3 py-4"><span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badgeClass(user.kycStatus)}`}>{user.kycStatus}</span></td><td className="px-3 py-4 text-xs">{user.bioCooldownUntil || user.bioViolationCount >= 5 ? <span className="font-semibold text-red-700">Locked ({user.bioViolationCount})</span> : <span className="text-muted-foreground">Clear</span>}</td><td className="px-5 py-4 text-xs text-muted-foreground">{new Date(user.createdAt).toLocaleDateString("en-MY")}</td><td className="px-5 py-4 text-right"><Button variant="outline" size="sm" onClick={(event) => { event.stopPropagation(); setSelectedUserId(user.id); }}>View</Button></td></tr>; })}</tbody></table></div>}
+      <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs"><input type="checkbox" aria-label="Select all visible users" checked={result.items.length > 0 && result.items.every((user) => selectedIds.has(user.id))} onChange={(event) => setSelectedIds(event.target.checked ? new Set(result.items.map((user) => user.id)) : new Set())} /><span className="text-muted-foreground">Select all on this page</span></div>
+      <AdminBatchActionBar selectedCount={selectedUsers.length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as (typeof batchActions)[number])} actions={batchActions.map((action) => ({ value: action, label: action.replaceAll("_", " ") }))} busy={batchBusy} message={selectedUsers.length > 0 && batchActions.length === 0 ? "No single account action is valid for every selected user." : undefined} />
+      {loading ? <p className="p-12 text-center text-sm text-muted-foreground">Loading users…</p> : result.items.length === 0 ? <EmptyState title="No users match these filters" description="Try clearing a filter or searching for an email or user ID." action={<Button variant="outline" size="sm" onClick={resetFilters}>Clear filters</Button>} /> : <div className="overflow-x-auto"><table className="w-full min-w-[1080px] text-left text-sm"><thead className="bg-secondary/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">Select</th><th className="px-5 py-3">User</th><th className="px-3 py-3">Role</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Verification</th><th className="px-3 py-3">KYC</th><th className="px-3 py-3">Bio</th><th className="px-5 py-3">Registered</th><th className="px-5 py-3 text-right">Action</th></tr></thead><tbody className="divide-y divide-border">{result.items.map((user: UserManagementListItem) => { const label = getAdminUserLabel(user); const named = hasAdminDisplayName(user); return <tr key={user.id} onClick={() => setSelectedUserId(user.id)} className="cursor-pointer hover:bg-secondary/40 focus-within:bg-secondary/40"><td className="px-5 py-4"><input type="checkbox" aria-label={`Select user ${label}`} checked={selectedIds.has(user.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(user.id) : next.delete(user.id); return next; })} /></td><td className="px-5 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary">{user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : getAdminUserInitial(user)}</div><div className="min-w-0"><p className="font-semibold text-foreground">{label}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p><div className="mt-1 flex items-center gap-1.5"><p className="truncate text-[10px] text-muted-foreground">{named ? "Profile name set" : "Display name not set"}</p><button type="button" aria-label={`Copy user ID for ${label}`} onClick={(event) => void copyUserId(event, user.id)} className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"><Copy size={12} /></button></div></div></div></td><td className="px-3 py-4 text-xs capitalize">{user.role.replaceAll("_", " ")}</td><td className="px-3 py-4"><span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badgeClass(user.status)}`}>{user.status}</span></td><td className="px-3 py-4"><div className="flex flex-wrap gap-1"><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badgeClass(user.emailVerified ? "Verified" : "Unverified")}`}>Email {user.emailVerified ? "✓" : "—"}</span><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badgeClass(user.phoneVerified ? "Verified" : "Unverified")}`}>Phone {user.phoneVerified ? "✓" : "—"}</span></div></td><td className="px-3 py-4"><span className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${badgeClass(user.kycStatus)}`}>{user.kycStatus}</span></td><td className="px-3 py-4 text-xs">{user.bioCooldownUntil || user.bioViolationCount >= 5 ? <span className="font-semibold text-red-700">Locked ({user.bioViolationCount})</span> : <span className="text-muted-foreground">Clear</span>}</td><td className="px-5 py-4 text-xs text-muted-foreground">{new Date(user.createdAt).toLocaleDateString("en-MY")}</td><td className="px-5 py-4 text-right"><Button variant="outline" size="sm" onClick={(event) => { event.stopPropagation(); setSelectedUserId(user.id); }}>View</Button></td></tr>; })}</tbody></table></div>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4"><p className="text-xs text-muted-foreground">Page {result.page} of {Math.max(result.totalPages, 1)}</p><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={loading || result.page <= 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}><ChevronLeft size={15} /> Previous</Button><div className="flex items-center gap-1"><input aria-label="Page number" value={pageInput} onChange={(event) => setPageInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") goToPage(); }} inputMode="numeric" className="h-9 w-14 rounded-lg border border-border bg-background px-2 text-center text-sm" /><Button variant="outline" size="sm" onClick={goToPage}>Go</Button></div><Button variant="outline" size="sm" disabled={loading || result.totalPages === 0 || result.page >= result.totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>Next <ChevronRight size={15} /></Button></div></div>
     </section>
     <UserManagementDrawer userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={() => void load()} />

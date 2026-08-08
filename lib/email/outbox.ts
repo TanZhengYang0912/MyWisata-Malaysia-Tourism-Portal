@@ -1,17 +1,33 @@
 import { createServiceClient } from '@/lib/supabase/service';
-import { sendAccountEmail, sendTransactionEmail, sendVendorEmail } from '@/lib/email/sender';
+import {
+  sendAccountEmail,
+  sendRecommendationEmail,
+  sendTransactionEmail,
+  sendVendorEmail,
+} from '@/lib/email/sender';
 import type {
   AccountEmailInput,
   AccountEmailType,
+  RecommendationEmailInput,
+  RecommendationEmailType,
   TransactionEmailInput,
   TransactionEmailType,
   VendorEmailInput,
   VendorEmailType,
 } from '@/lib/email/templates';
 
-export type EmailEventType = TransactionEmailType | AccountEmailType | VendorEmailType;
+export type EmailEventType =
+  | TransactionEmailType
+  | AccountEmailType
+  | VendorEmailType
+  | RecommendationEmailType;
 
-export type EmailOutboxInput = (TransactionEmailInput | AccountEmailInput | VendorEmailInput) & {
+export type EmailOutboxInput = (
+  | TransactionEmailInput
+  | AccountEmailInput
+  | VendorEmailInput
+  | RecommendationEmailInput
+) & {
   eventKey: string;
   userId?: string | null;
   toEmail: string;
@@ -75,7 +91,15 @@ export async function processEmailOutbox(limit = 20): Promise<{ sent: number; fa
   let failed = 0;
   for (const row of (claimed ?? []) as OutboxRow[]) {
     try {
-      if (row.event_type.startsWith('vendor_')) {
+      if (row.event_type === 'recommendation_approved') {
+        await sendRecommendationEmail({
+          eventType: row.event_type,
+          recipientName: row.payload?.recipientName ?? null,
+          vendorName: String(row.payload?.vendorName ?? 'Your recommendation'),
+          occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
+          to: row.to_email,
+        });
+      } else if (row.event_type.startsWith('vendor_')) {
         await sendVendorEmail({
           eventType: row.event_type as VendorEmailType,
           recipientName: row.payload?.recipientName ?? null,

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UsersRound, Settings2, FileBarChart2 } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
+import { createClient } from "@/lib/supabase/client";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -31,9 +32,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { currentUser, loading } = useRequireRole(["admin", "approver", "super_admin"]);
 
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
   const [unreadTickets, setUnreadTickets] = useState(0);
+  const [unreadRecommendations, setUnreadRecommendations] = useState(0);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   useEffect(() => {
     if (!currentUser) return;
@@ -61,13 +71,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (currentUser?.role !== "super_admin") return;
+
+    let cancelled = false;
+    async function pollRecommendationUnread() {
+      try {
+        const response = await fetch("/api/admin/recommendations/unread-count");
+        const body = (await response.json()) as { data?: { count?: number } | null };
+        if (!cancelled && response.ok) {
+          setUnreadRecommendations(body.data?.count ?? 0);
+        }
+      } catch {
+        // best-effort — a failed poll leaves the last-known count showing
+      }
+    }
+
+    void pollRecommendationUnread();
+    const interval = setInterval(() => {
+      void pollRecommendationUnread();
+    }, UNREAD_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentUser?.role]);
+
   if (loading || !currentUser) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
   }
 
   return (
-    <div className="flex min-h-screen">
-      <div className="flex flex-col w-60 shrink-0 bg-gray-900">
+    <div className="flex h-screen overflow-hidden">
+      <aside className="flex h-screen w-60 shrink-0 flex-col bg-gray-900">
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-800">
             <Shield size={16} className="text-white" />
@@ -84,12 +121,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Shield size={9} /> {currentUser.role.replace("_", " ")}
           </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {NAV.filter((item) => !item.superAdminOnly || currentUser.role === "super_admin").map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
               <item.icon size={15} /> {item.label}
               {item.href === "/admin/support" && unreadTickets > 0 && (
@@ -97,16 +134,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   {unreadTickets}
                 </span>
               )}
+              {item.href === "/admin/recommendations" && currentUser.role === "super_admin" && unreadRecommendations > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={`${unreadRecommendations} unread recommendations`}>
+                  {unreadRecommendations}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
-        <div className="p-3 border-t border-white/10">
-          <Link href="/login" className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/35">
-            <LogOut size={15} /> Switch account
-          </Link>
+        <div className="shrink-0 border-t border-white/10 p-3">
+          <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-white/55 transition-colors hover:bg-gray-800 hover:text-white">
+            <LogOut size={15} /> Sign out
+          </button>
         </div>
-      </div>
-      <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      </aside>
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
         {children}
       </div>
     </div>

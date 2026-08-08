@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   const { token, tokenHash } = createRecommendationInviteToken();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
-  const claimUrl = `${origin}/vendor/register?recommendation=${encodeURIComponent(token)}`;
+  const claimUrl = `${origin}/vendor-invite?recommendation=${encodeURIComponent(token)}`;
 
   // The admin's edited body never carries the real link (it doesn't exist
   // until this exact point) — the server appends it after their text.

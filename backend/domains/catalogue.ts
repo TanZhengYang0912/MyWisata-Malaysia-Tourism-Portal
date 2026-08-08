@@ -2,7 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Activity, BookingSlot, ComputedActivity, Outlet, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, ComputedActivity, Outlet, PlaceLocation, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
@@ -212,12 +212,16 @@ type ProductRow = {
   type_slugs: string[] | null;
   is_family_friendly: boolean;
   is_couple_friendly: boolean;
+  place_state: string | null;
+  place_district: string | null;
+  place_lat: number | string | null;
+  place_lng: number | string | null;
   categories: { name: string; slug: string } | null;
   product_variants: { id: string; name: string; price_offset: number; inventory?: { quantity: number; reserved: number; low_stock_threshold: number }[] }[];
   price_rules: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
 };
 
-const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
+const ACTIVITY_SELECT = "id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,inventory(quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
 
 function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0, reviews: 0 }): Activity {
   // A shared product carries outlet_id = NULL and lists its outlets in
@@ -229,6 +233,20 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
   const cheapest = offers.length
     ? offers.reduce((min, offer) => (offer.price < min.price ? offer : min))
     : undefined;
+
+  // Only ever set when all three of state/lat/lng are present — the same
+  // all-or-nothing rule the DB CHECK constraint enforces, checked again here
+  // because a partial row should never silently plot at (0, 0). NUMERIC
+  // columns arrive as strings over PostgREST, hence the Number() calls.
+  const place: PlaceLocation | undefined =
+    row.place_state != null && row.place_lat != null && row.place_lng != null
+      ? {
+          state: row.place_state,
+          district: row.place_district ?? undefined,
+          lat: Number(row.place_lat),
+          lng: Number(row.place_lng),
+        }
+      : undefined;
 
   return {
     id: row.id,
@@ -252,6 +270,7 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     typeSlugs: row.type_slugs ?? undefined,
     isFamilyFriendly: row.is_family_friendly,
     isCoupleFriendly: row.is_couple_friendly,
+    place,
     variants: (row.product_variants ?? []).map((v) => ({ id: v.id, label: v.name, priceDelta: Number(v.price_offset) })),
     priceRules: (row.price_rules ?? []).filter((rule) => rule.is_active).map((rule) => ({ id: rule.id, productId: row.id, ruleType: rule.rule_type, label: rule.label ?? undefined, multiplier: rule.multiplier === null ? undefined : Number(rule.multiplier), fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount), validFrom: rule.valid_from ?? undefined, validUntil: rule.valid_until ?? undefined, minQuantity: rule.min_quantity ?? undefined, bundleProductIds: rule.bundle_product_ids ?? undefined, priority: Number(rule.priority ?? 0), isActive: rule.is_active })),
     availableStock: row.requires_booking ? undefined : (row.product_variants ?? []).reduce((total, variant) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
