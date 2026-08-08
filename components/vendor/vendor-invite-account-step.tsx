@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
+import { buildGoogleInvitationCallbackUrl } from '@/components/vendor/vendor-invite-wizard-state';
 
 type AccountStepState = 'choose' | 'email-code' | 'busy' | 'mismatch';
 
@@ -69,10 +70,9 @@ export function VendorInviteAccountStep({ token, account, onContinue, onReload }
   async function continueWithGoogle() {
     setState('busy');
     setError(null);
-    const next = `/vendor-invite?recommendation=${encodeURIComponent(token)}`;
     const { error: oauthError } = await createClient().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+      options: { redirectTo: buildGoogleInvitationCallbackUrl(window.location.origin, token) },
     });
     if (oauthError) {
       setError('Unable to continue with Google. Please try again.');

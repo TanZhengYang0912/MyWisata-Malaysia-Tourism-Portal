@@ -1,37 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 import { VendorInviteAccountStep } from '@/components/vendor/vendor-invite-account-step';
 import { VendorInviteDetailsStep } from '@/components/vendor/vendor-invite-details-step';
+import {
+  createVendorInviteStoragePayload,
+  draftFromVendorInvitePreview,
+  mergeUntouchedVendorInviteDraft,
+  restoreVendorInviteStoragePayload,
+  sanitizeVendorInviteDraftForAccount,
+  type VendorInviteDraft,
+  type VendorInviteDraftField,
+  type VendorInviteStep,
+} from '@/components/vendor/vendor-invite-wizard-state';
 
 const STORAGE_KEY = 'mywisata.vendor-invite-wizard-v2';
 
-export type VendorInviteStep = 'account' | 'details' | 'verify';
-
-export type VendorInviteDraft = {
-  businessName: string;
-  legalBusinessName: string;
-  description: string;
-  categoryId: string;
-  outletName: string;
-  contactEmail: string;
-  contactPhone: string;
-  businessAddress: string;
-  latitude: number | null;
-  longitude: number | null;
-  authorizedToRepresent: boolean;
-};
-
-type DraftField = keyof VendorInviteDraft;
-
-type StoredDraft = {
-  version: 2;
-  tokenFingerprint: string;
-  step: VendorInviteStep;
-  draft: VendorInviteDraft;
-  dirtyFields: DraftField[];
-};
+export type { VendorInviteDraft, VendorInviteStep } from '@/components/vendor/vendor-invite-wizard-state';
 
 type VendorInviteWizardProps = {
   token: string;
@@ -39,44 +25,37 @@ type VendorInviteWizardProps = {
   onReload: () => Promise<void>;
 };
 
-function draftFromPreview(preview: VendorInvitePreview): VendorInviteDraft {
-  return {
-    businessName: preview.prefill.businessName,
-    legalBusinessName: preview.prefill.legalBusinessName,
-    description: preview.prefill.description,
-    categoryId: preview.prefill.categoryId,
-    outletName: preview.prefill.outletName,
-    contactEmail: preview.prefill.contactEmail ?? '',
-    contactPhone: preview.prefill.contactPhone ?? '',
-    businessAddress: preview.prefill.businessAddress,
-    latitude: preview.prefill.latitude,
-    longitude: preview.prefill.longitude,
-    authorizedToRepresent: false,
-  };
-}
-
 async function fingerprintToken(token: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function isStoredDraft(value: unknown): value is StoredDraft {
-  if (!value || typeof value !== 'object') return false;
-  const saved = value as Partial<StoredDraft>;
-  return saved.version === 2
-    && typeof saved.tokenFingerprint === 'string'
-    && (saved.step === 'account' || saved.step === 'details' || saved.step === 'verify')
-    && Boolean(saved.draft)
-    && Array.isArray(saved.dirtyFields);
+type DraftState = { draft: VendorInviteDraft; dirtyFields: VendorInviteDraftField[] };
+
+type DraftAction =
+  | { type: 'replace'; state: DraftState }
+  | { type: 'merge-prefill'; prefill: VendorInviteDraft; emailMatched: boolean }
+  | { type: 'update'; field: VendorInviteDraftField; value: VendorInviteDraft[VendorInviteDraftField] };
+
+function draftReducer(current: DraftState, action: DraftAction): DraftState {
+  if (action.type === 'replace') return action.state;
+  if (action.type === 'update') {
+    return {
+      draft: { ...current.draft, [action.field]: action.value },
+      dirtyFields: current.dirtyFields.includes(action.field) ? current.dirtyFields : [...current.dirtyFields, action.field],
+    };
+  }
+  const merged = mergeUntouchedVendorInviteDraft(current.draft, action.prefill, current.dirtyFields);
+  return sanitizeVendorInviteDraftForAccount(merged, current.dirtyFields, action.emailMatched);
 }
 
 export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWizardProps) {
-  const initialDraft = useMemo(() => draftFromPreview(preview), [preview]);
+  const initialDraft = useMemo(() => draftFromVendorInvitePreview(preview), [preview]);
   const [step, setStep] = useState<VendorInviteStep>('account');
-  const [draft, setDraft] = useState<VendorInviteDraft>(initialDraft);
-  const [dirtyFields, setDirtyFields] = useState<DraftField[]>([]);
+  const [draftState, dispatchDraft] = useReducer(draftReducer, { draft: initialDraft, dirtyFields: [] });
   const [tokenFingerprint, setTokenFingerprint] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const initialEmailMatchedRef = useRef(preview.account.emailMatched);
 
   useEffect(() => {
     let active = true;
@@ -84,12 +63,17 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
       if (!active) return;
       setTokenFingerprint(fingerprint);
       try {
-        const raw = window.sessionStorage.getItem(`${STORAGE_KEY}.${fingerprint}`);
-        const saved = raw ? JSON.parse(raw) as unknown : null;
-        if (isStoredDraft(saved) && saved.tokenFingerprint === fingerprint) {
-          setDraft(saved.draft);
-          setDirtyFields(saved.dirtyFields);
+        const saved = restoreVendorInviteStoragePayload(window.sessionStorage.getItem(`${STORAGE_KEY}.${fingerprint}`), fingerprint);
+        if (saved) {
+          const sanitized = sanitizeVendorInviteDraftForAccount(saved.draft, saved.dirtyFields, initialEmailMatchedRef.current);
+          dispatchDraft({ type: 'replace', state: sanitized });
           setStep(saved.step);
+          if (!initialEmailMatchedRef.current) {
+            window.sessionStorage.setItem(
+              `${STORAGE_KEY}.${fingerprint}`,
+              JSON.stringify(createVendorInviteStoragePayload(fingerprint, saved.step, sanitized.draft, sanitized.dirtyFields)),
+            );
+          }
         }
       } catch {
         window.sessionStorage.removeItem(`${STORAGE_KEY}.${fingerprint}`);
@@ -104,27 +88,20 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
 
   useEffect(() => {
     if (!restored) return;
-    const timer = window.setTimeout(() => {
-      setDraft((current) => {
-        const next = { ...current };
-        (Object.keys(initialDraft) as DraftField[]).forEach((field) => {
-          if (!dirtyFields.includes(field)) Object.assign(next, { [field]: initialDraft[field] });
-        });
-        return next;
-      });
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [dirtyFields, initialDraft, restored]);
+    dispatchDraft({ type: 'merge-prefill', prefill: initialDraft, emailMatched: preview.account.emailMatched });
+  }, [initialDraft, preview.account.emailMatched, restored]);
 
   useEffect(() => {
     if (!restored || !tokenFingerprint) return;
-    const saved: StoredDraft = { version: 2, tokenFingerprint, step, draft, dirtyFields };
-    window.sessionStorage.setItem(`${STORAGE_KEY}.${tokenFingerprint}`, JSON.stringify(saved));
-  }, [dirtyFields, draft, restored, step, tokenFingerprint]);
+    const sanitized = sanitizeVendorInviteDraftForAccount(draftState.draft, draftState.dirtyFields, preview.account.emailMatched);
+    window.sessionStorage.setItem(
+      `${STORAGE_KEY}.${tokenFingerprint}`,
+      JSON.stringify(createVendorInviteStoragePayload(tokenFingerprint, step, sanitized.draft, sanitized.dirtyFields)),
+    );
+  }, [draftState, preview.account.emailMatched, restored, step, tokenFingerprint]);
 
-  function update<Field extends DraftField>(field: Field, value: VendorInviteDraft[Field]) {
-    setDraft((current) => ({ ...current, [field]: value }));
-    setDirtyFields((current) => current.includes(field) ? current : [...current, field]);
+  function update<Field extends VendorInviteDraftField>(field: Field, value: VendorInviteDraft[Field]) {
+    dispatchDraft({ type: 'update', field, value });
   }
 
   const activeStep = preview.account.emailMatched ? step : 'account';
@@ -134,7 +111,7 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
     <section aria-label="Vendor invitation setup">
       <p className="mb-3 text-sm font-semibold text-primary">Step {stepNumber} of 3</p>
       {activeStep === 'account' && <VendorInviteAccountStep token={token} account={preview.account} onContinue={() => setStep('details')} onReload={onReload} />}
-      {activeStep === 'details' && <VendorInviteDetailsStep preview={preview} draft={draft} update={update} onContinue={() => setStep('verify')} />}
+      {activeStep === 'details' && <VendorInviteDetailsStep preview={preview} draft={draftState.draft} update={update} onContinue={() => setStep('verify')} />}
       {activeStep === 'verify' && (
         <section className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-xl font-bold text-foreground">Verify and submit</h2>

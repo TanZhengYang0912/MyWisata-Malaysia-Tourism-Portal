@@ -1,10 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import { VendorInviteWizard } from '@/components/vendor/vendor-invite-wizard';
+import { buildVendorInviteSupportMailto } from '@/components/vendor/vendor-invite-wizard-state';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 
 type LoadState =
@@ -83,8 +83,8 @@ export default function VendorInviteClient({ token }: { token: string }) {
             </button>
           )}
           <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-semibold text-primary">
-            <Link href="/customer/support" className="hover:underline">Request a new invitation</Link>
-            <Link href="/customer/support" className="hover:underline">Contact MyWisata support</Link>
+            <a href={buildVendorInviteSupportMailto('Request a new vendor invitation')} className="hover:underline">Request a new invitation</a>
+            <a href={buildVendorInviteSupportMailto('Vendor invitation support')} className="hover:underline">Contact MyWisata support</a>
           </div>
         </section>
       </main>

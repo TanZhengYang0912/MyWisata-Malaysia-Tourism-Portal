@@ -1,7 +1,7 @@
 'use client';
 
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
-import type { VendorInviteDraft } from '@/components/vendor/vendor-invite-wizard';
+import type { VendorInviteDraft } from '@/components/vendor/vendor-invite-wizard-state';
 
 type VendorInviteDetailsStepProps = {
   preview: VendorInvitePreview;
@@ -41,8 +41,8 @@ export function VendorInviteDetailsStep({ preview, draft, update, onContinue }: 
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {preview.categories.map((category) => (
                 <label key={category.id} className={`cursor-pointer rounded-xl border p-3 text-sm font-semibold transition-colors ${category.id === draft.categoryId ? 'border-primary bg-primary/[0.06] text-primary' : 'border-border bg-background text-foreground hover:bg-secondary'}`}>
-                  <input type="radio" name="category" value={category.id} checked={category.id === draft.categoryId} onChange={() => update('categoryId', category.id)} className="sr-only" />
-                  {category.name}
+                  <input type="radio" name="category" value={category.id} checked={category.id === draft.categoryId} onChange={() => update('categoryId', category.id)} className="peer sr-only" />
+                  <span className="block rounded-lg peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2">{category.name}</span>
                 </label>
               ))}
             </div>
