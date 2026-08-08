@@ -31,6 +31,8 @@ export type VendorEmailType =
   | 'vendor_account_update'
   | 'vendor_permission_update';
 
+export type RecommendationEmailType = 'recommendation_approved';
+
 export type TransactionEmailInput = {
   eventType: TransactionEmailType;
   recipientName?: string | null;
@@ -53,6 +55,13 @@ export type VendorEmailInput = {
   vendorName: string;
   reason: string;
   reference?: string | null;
+  occurredAt: string;
+};
+
+export type RecommendationEmailInput = {
+  eventType: RecommendationEmailType;
+  recipientName?: string | null;
+  vendorName: string;
   occurredAt: string;
 };
 
@@ -215,6 +224,40 @@ export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
   <p><strong>Reason:</strong> ${safeReason}</p>
   <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
   <p>For questions, please contact support. Never reply with passwords or identity documents.</p>
+</body></html>`;
+  return { subject, html, text };
+}
+
+export function renderRecommendationEmail(input: RecommendationEmailInput): RenderedEmail {
+  const subject = 'Your recommendation was approved';
+  const name = input.recipientName?.trim() || 'there';
+  const vendorName = sanitizeVendorText(input.vendorName.trim());
+  const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const safeName = escapeHtml(name);
+  const safeVendorName = escapeHtml(vendorName);
+  const safeOccurredAt = escapeHtml(occurredAt);
+  const text = [
+    `Hi ${name},`,
+    '',
+    subject,
+    `Recommendation: ${vendorName}`,
+    'Great find! We will reach out to the vendor soon.',
+    `Time: ${occurredAt}`,
+    '',
+    'You can view your recommendations in MyWisata.',
+  ].join('\n');
+  const html = `<!doctype html>
+<html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
+  <h2>${subject}</h2>
+  <p>Hi ${safeName},</p>
+  <p>Your recommendation for <strong>${safeVendorName}</strong> has been approved.</p>
+  <p>Great find! We will reach out to the vendor soon.</p>
+  <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
+  <p>You can view your recommendations in MyWisata.</p>
 </body></html>`;
   return { subject, html, text };
 }

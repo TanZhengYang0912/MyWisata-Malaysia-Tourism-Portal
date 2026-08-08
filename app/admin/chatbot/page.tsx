@@ -4,11 +4,12 @@
 // "Also on /admin/chatbot: total questions, answer rate, top unanswered
 // questions, a KB editor (add/edit/deactivate a doc -> auto re-embed on save)."
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp, WandSparkles } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 
 interface TopQuestion { question: string; count: number; lastAskedAt: string }
@@ -62,6 +63,8 @@ export default function AdminChatbotPage() {
   // drafted (there can be several rows across both gap lists; this scopes
   // the "Drafting…" state to the one actually clicked, not the whole page).
   const [draftingQuestion, setDraftingQuestion] = useState<string | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   async function loadStats() {
     try {
@@ -246,10 +249,32 @@ export default function AdminChatbotPage() {
     } catch { showFeedback("error", "Could not update document status. Please try again."); }
   }
 
-  const sortedDocs = useMemo(() => {
-    if (!docs) return [];
-    return [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title));
-  }, [docs]);
+  async function applyBatch(action: "activate" | "deactivate") {
+    if (batchBusy) return;
+    const selected = sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && (action === "activate" ? !doc.isActive : doc.isActive));
+    if (!selected.length || selected.length !== selectedDocIds.size) {
+      showFeedback("error", "Select documents with the same current status before applying this action.");
+      return;
+    }
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selected.map((doc) => fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: action === "activate" }) })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more knowledge documents could not be updated.");
+      }
+      setSelectedDocIds(new Set());
+      showFeedback("success", `${selected.length} knowledge documents ${action}d.`);
+      await loadDocs();
+    } catch (error) {
+      showFeedback("error", error instanceof Error ? error.message : "Batch knowledge document update failed.");
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  const sortedDocs = docs ? [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title)) : [];
 
   if (stats === undefined || docs === undefined) {
     return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
@@ -264,9 +289,9 @@ export default function AdminChatbotPage() {
   }
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
-        <h1 className="font-bold text-lg text-foreground flex items-center gap-2">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl flex items-center gap-2">
           <Bot size={18} /> Chatbot Oversight
         </h1>
         <div className="text-right">
@@ -278,17 +303,17 @@ export default function AdminChatbotPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-w-2xl">
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Questions asked</p>
-          <p className="text-xl font-bold text-foreground">{stats.totalQuestions}</p>
+        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <p className="text-sm font-semibold text-muted-foreground">Questions asked</p>
+          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{stats.totalQuestions}</p>
         </div>
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Answer rate</p>
-          <p className="text-xl font-bold text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
+        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <p className="text-sm font-semibold text-muted-foreground">Answer rate</p>
+          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
         </div>
-        <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Escalation rate</p>
-          <p className="text-xl font-bold text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
+        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <p className="text-sm font-semibold text-muted-foreground">Escalation rate</p>
+          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">of failed answers became a ticket</p>
         </div>
       </div>
@@ -433,12 +458,15 @@ export default function AdminChatbotPage() {
       )}
 
       <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label="Select all knowledge documents" checked={sortedDocs.length > 0 && sortedDocs.every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">Select all documents</span></div>
+        <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id)).length} onClear={() => setSelectedDocIds(new Set())} onApply={(action) => void applyBatch(action as "activate" | "deactivate")} actions={[{ value: "activate", label: "Activate" }, { value: "deactivate", label: "Deactivate" }]} busy={batchBusy} />
         {sortedDocs.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No KB documents yet.</p>
         ) : (
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
+                <input type="checkbox" aria-label={`Select knowledge document ${d.title}`} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
                     {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">(inactive)</span>}

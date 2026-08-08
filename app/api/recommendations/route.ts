@@ -1,16 +1,8 @@
-import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
+import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 import { computeProfileCompletion } from '@/lib/verification/eligibility';
-
-const recSubmitSchema = z.object({
-  vendorName:    z.string().trim().min(3).max(255),
-  description:   z.string().trim().min(20).max(2000),
-  categoryId:    z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).optional(),
-  state:         z.string().trim().min(2).max(50),
-  vendorAddress: z.string().trim().max(500).optional(),
-}).strict();
+import { recommendationSubmissionSchema } from '@/lib/recommendations/submission';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -40,17 +32,24 @@ export async function POST(request: Request) {
     });
   }
 
-  const parsed = await parseBody(request, recSubmitSchema);
-  if (!parsed.ok) return parsed.response;
-  const { vendorName, description, categoryId, state, vendorAddress } = parsed.data;
-
-  // Atomic: advisory lock + daily count + duplicate check + insert — all in one RPC.
-  const { data, error } = await supabase.rpc('submit_recommendation', {
-    p_vendor_name:    vendorName,
-    p_description:    description,
-    p_state:          state,
-    p_category_id:    categoryId ?? null,
-    p_vendor_address: vendorAddress ?? null,
+  const body = await request.json().catch(() => null);
+  const evidence = recommendationSubmissionSchema.safeParse(body);
+  if (!evidence.success) return apiFail('VALIDATION_FAILED', 'Complete all required recommendation evidence', 422, evidence.error.flatten());
+  const value = evidence.data;
+  const { data, error } = await supabase.rpc('submit_recommendation_with_evidence', {
+    p_vendor_name: value.vendorName,
+    p_description: value.description,
+    p_why_recommend: value.whyRecommend,
+    p_category_id: value.categoryId ?? null,
+    p_google_place_id: value.location.placeId ?? null,
+    p_location_name: value.location.name,
+    p_formatted_address: value.location.formattedAddress,
+    p_latitude: value.location.latitude,
+    p_longitude: value.location.longitude,
+    p_contact_phone: value.contact.phone ?? null,
+    p_contact_email: value.contact.email ?? null,
+    p_contact_website: value.contact.website ?? null,
+    p_image_ids: value.stagedImageIds,
   });
 
   if (error) {
@@ -61,7 +60,7 @@ export async function POST(request: Request) {
     return apiFail('DB_ERROR', error.message, 500);
   }
 
-  return apiOk({ id: data, vendor_name: vendorName, status: 'pending' }, { status: 201 });
+  return apiOk({ id: data, vendor_name: value.vendorName, status: 'pending' }, { status: 201 });
 }
 
 export async function GET() {

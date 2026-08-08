@@ -14,6 +14,8 @@ import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
 type SectionId = "personal" | "contact";
+const MIN_BIO_LENGTH = 30;
+const MAX_BIO_LENGTH = 200;
 
 const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
@@ -29,6 +31,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
   const { currentUser, refreshUser } = useAuth();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +66,15 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function savePersonal() {
+    const trimmedBio = bio.trim();
+    if (trimmedBio.length < MIN_BIO_LENGTH || trimmedBio.length > MAX_BIO_LENGTH) {
+      setError(`Bio must be between ${MIN_BIO_LENGTH} and ${MAX_BIO_LENGTH} characters. Current length: ${trimmedBio.length}.`);
+      return;
+    }
     setBusy(true); setError(null);
     try {
       const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: country.trim() }) });
       if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? "Unable to save personal details");
-      if (bio.trim().length < 10) throw new Error("Bio must be at least 10 characters");
       const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bio: bio.trim() }) });
       if (!bioResponse.ok) {
         const body = await bioResponse.json().catch(() => null);
@@ -86,6 +93,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     try {
       const response = await fetch("/api/phone/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164 }) });
       if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? "Unable to send OTP");
+      setPhoneCode("");
       setPhonePhase("verify");
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to send OTP"); }
     finally { setBusy(false); }
@@ -102,6 +110,18 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
       await loadProfile(); await refreshUser(); setEditing(null); setPhonePhase("enter"); setPhoneCode("");
     } catch (err) { setError(err instanceof Error ? err.message : "Invalid OTP"); }
     finally { setBusy(false); }
+  }
+
+  function updateOtpDigit(index: number, value: string) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const nextCode = phoneCode.split("");
+    nextCode[index] = digit;
+    setPhoneCode(nextCode.join("").slice(0, 6));
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus();
+  }
+
+  function handleOtpKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Backspace" && !phoneCode[index] && index > 0) otpRefs.current[index - 1]?.focus();
   }
 
   async function uploadAvatar() {
@@ -149,11 +169,11 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
           {avatarPreview || summary.avatarUrl ? <img src={avatarPreview || summary.avatarUrl || ""} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary"><Camera size={23} /></div>}
           <div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size <= 2 * 1024 * 1024) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} /><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Change photo</Button>{avatarFile && <Button size="sm" className="ml-2" onClick={uploadAvatar} disabled={busy}>Save photo</Button>}</div>
         </div>
-        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="grid gap-3 sm:grid-cols-2"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div><textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={4} placeholder="Short bio" className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : "Save details"}</Button><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || "Name not set"}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || "Location not set"}</p><p className="text-muted-foreground">{summary.bio || "Bio not set"}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>Edit details</Button></div>}
+        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="grid gap-3 sm:grid-cols-2"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder="Short bio (30–200 characters)" className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? `Bio needs at least ${MIN_BIO_LENGTH} characters.` : "Bio length is valid."}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : "Save details"}</Button><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || "Name not set"}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || "Location not set"}</p><p className="text-muted-foreground">{summary.bio || "Bio not set"}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>Edit details</Button></div>}
       </SectionCard>
 
       <SectionCard title="Contact" description="Contact details are private and never shown on public profiles.">
-        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">Email changes require confirmation from the new address.</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Phone</p>{editing === "contact" ? <div className="mt-2 space-y-2">{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy}>Send OTP</Button></> : <><input value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} maxLength={6} placeholder="6-digit OTP" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><Button onClick={verifyPhone} disabled={busy}>Verify phone</Button></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || "Not set"}</span><StatusBadge label={summary.phoneVerified ? "Verified" : "Unverified"} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>Change phone</Button>}</div>
+        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">Email changes require confirmation from the new address.</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Phone</p>{editing === "contact" ? <div className="mt-2 space-y-3">{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy}>Send OTP</Button></> : <><p className="font-medium text-green-600">✓ OTP sent successfully</p><p className="text-muted-foreground">OTP sent. Enter the 6-digit code to verify your phone.</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={`OTP digit ${index + 1}`} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : "Verify OTP"}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">Resend OTP</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || "Not set"}</span><StatusBadge label={summary.phoneVerified ? "Verified" : "Unverified"} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>Change phone</Button>}</div>
       </SectionCard>
 
       <SectionCard title="Verification" description="Verification states are managed by the system or Admin.">

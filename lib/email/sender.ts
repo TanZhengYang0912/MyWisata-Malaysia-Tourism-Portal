@@ -3,15 +3,18 @@ import { getEmailConfig } from '@/lib/email/config';
 import {
   escapeHtml,
   renderAccountEmail,
+  renderRecommendationEmail,
   renderTransactionEmail,
   renderVendorEmail,
   type AccountEmailInput,
+  type RecommendationEmailInput,
   type TransactionEmailInput,
   type VendorEmailInput,
 } from '@/lib/email/templates';
 
 export type SendTransactionEmailInput = TransactionEmailInput & { to: string };
 export type SendAccountEmailInput = AccountEmailInput & { to: string };
+export type SendRecommendationEmailInput = RecommendationEmailInput & { to: string };
 export type SendVendorEmailInput = VendorEmailInput & { to: string };
 
 function redactError(error: unknown): Error {
@@ -56,6 +59,10 @@ export function sendTransactionEmail(input: SendTransactionEmailInput): Promise<
 
 export function sendAccountEmail(input: SendAccountEmailInput): Promise<{ id: string }> {
   return sendRenderedEmail(input.to, renderAccountEmail(input));
+}
+
+export function sendRecommendationEmail(input: SendRecommendationEmailInput): Promise<{ id: string }> {
+  return sendRenderedEmail(input.to, renderRecommendationEmail(input));
 }
 
 export function sendVendorEmail(input: SendVendorEmailInput): Promise<{ id: string }> {

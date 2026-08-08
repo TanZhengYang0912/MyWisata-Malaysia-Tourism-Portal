@@ -2,10 +2,11 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { auditAndNotify } from '@/lib/audit';
+import { enqueueRecommendationApprovalEmail } from '@/lib/email/events';
 
 const reviewSchema = z.object({
   recommendationId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
-  action:           z.enum(['approve', 'reject']),
+  action:           z.enum(['approve', 'reject', 'request_changes']),
   reason:           z.string().max(500).optional(),
 }).strict();
 
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, reviewSchema);
   if (!parsed.ok) return parsed.response;
   const { recommendationId, action, reason } = parsed.data;
+  if (['reject', 'request_changes'].includes(action) && (!reason || reason.trim().length < 10)) {
+    return apiFail('REASON_REQUIRED', 'Explain the decision in at least 10 characters', 422);
+  }
 
   // Fetch submitter before the update (for notification)
   const { data: rec } = await supabase
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
     return apiFail('RPC_ERROR', rpcErr.message, 500);
   }
 
-  const newStatus = action === 'approve' ? 'approved' : 'rejected';
+  const newStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'changes_requested';
 
   await auditAndNotify(
     {
@@ -56,14 +60,26 @@ export async function POST(request: Request) {
     },
     [{
       userId: rec.recommender_id,
-      type:   `recommendation_${action}d`,
-      title:  `Your recommendation "${rec.vendor_name}" was ${newStatus}`,
+      type:   action === 'request_changes' ? 'recommendation_changes_requested' : `recommendation_${action}d`,
+      title:  action === 'request_changes' ? `Changes requested for "${rec.vendor_name}"` : `Your recommendation "${rec.vendor_name}" was ${newStatus}`,
       body:   action === 'approve'
         ? 'Great find! We will reach out to the vendor soon.'
         : (reason ?? 'Please check the submission guidelines and try again.'),
       link:   '/customer/recommendations',
     }],
   );
+
+  if (action === 'approve') {
+    try {
+      await enqueueRecommendationApprovalEmail({
+        recommendationId,
+        userId: rec.recommender_id,
+        vendorName: rec.vendor_name,
+      });
+    } catch (error) {
+      console.error('[recommendation-review] approval email enqueue failed', error);
+    }
+  }
 
   return apiOk({ recommendationId, status: newStatus });
 }

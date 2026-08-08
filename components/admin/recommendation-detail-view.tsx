@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ExternalLink, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
+import { AiDraftEmailModal } from "@/components/admin/ai-draft-email-modal";
 import { RecommendationAiReviewPanel } from "@/components/admin/recommendation-ai-review-panel";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useAuth } from "@/components/providers/auth";
@@ -46,6 +46,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const [action, setAction] = useState<ReviewAction | null>(null);
   const [reason, setReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const loadDetail = useCallback(async () => {
@@ -171,7 +172,47 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   }
 
   const isPending = detail.status === "pending";
+  const isApproved = detail.status === "approved";
   const reasonAction = action === "reject" || action === "request_changes";
+  const reviewDecision = isPending ? (
+    <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+      <h2 className="font-bold text-foreground">Review decision</h2>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">Review all evidence before taking an action.</p>
+      {currentUser?.role === "super_admin" && (
+        <div className="mt-4">
+          <RecommendationAiReviewPanel
+            recommendationId={detail.id}
+            onUseReason={handleAiReason}
+          />
+        </div>
+      )}
+      <div className="mt-5 grid gap-2">
+        <Button onClick={() => prepareAction("approve")}>Approve recommendation</Button>
+        <Button variant="outline" onClick={() => prepareAction("request_changes")}>Request changes</Button>
+        <Button variant="destructive" onClick={() => prepareAction("reject")}>Reject recommendation</Button>
+      </div>
+      {reasonAction && (
+        <div className="mt-4">
+          <label htmlFor="review-reason" className="text-xs font-semibold text-foreground">
+            {action === "reject" ? "Rejection reason" : "Required changes"}
+          </label>
+          <textarea
+            id="review-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+            rows={4}
+            className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            placeholder="Explain what the contributor needs to know (minimum 10 characters)"
+          />
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="text-[11px] text-muted-foreground">{reason.length}/500</span>
+            <Button size="sm" onClick={continueWithReason}>Continue</Button>
+          </div>
+        </div>
+      )}
+    </section>
+  ) : null;
 
   return (
     <div className="p-6 sm:p-8">
@@ -236,29 +277,6 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             )}
           </section>
 
-          <section id={EVIDENCE_TARGET_IDS.photos} className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-bold text-foreground">Submission photos</h2>
-            {detail.images.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">No photos were attached to this submission.</p>
-            ) : (
-              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                {detail.images.map((image, index) => (
-                  <a key={image.id} href={image.url} target="_blank" rel="noreferrer" className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
-                    <Image
-                      src={image.url}
-                      alt={`${detail.name} submission photo ${index + 1}`}
-                      fill
-                      unoptimized
-                      className="object-cover transition-transform group-hover:scale-[1.02]"
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
-            <p className="mt-3 text-xs text-muted-foreground">
-              Image rights attested: {displayDate(detail.imageAttestedAt)}
-            </p>
-          </section>
         </main>
 
         <aside className="space-y-6">
@@ -311,46 +329,48 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             </section>
           )}
 
-          {isPending && (
+          {isApproved && (
             <section className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="font-bold text-foreground">Review decision</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Review all evidence before taking an action.</p>
-              {currentUser?.role === "super_admin" && (
-                <div className="mt-4">
-                  <RecommendationAiReviewPanel
-                    recommendationId={detail.id}
-                    onUseReason={handleAiReason}
-                  />
-                </div>
-              )}
-              <div className="mt-5 grid gap-2">
-                <Button onClick={() => prepareAction("approve")}>Approve recommendation</Button>
-                <Button variant="outline" onClick={() => prepareAction("request_changes")}>Request changes</Button>
-                <Button variant="destructive" onClick={() => prepareAction("reject")}>Reject recommendation</Button>
-              </div>
-              {reasonAction && (
-                <div className="mt-4">
-                  <label htmlFor="review-reason" className="text-xs font-semibold text-foreground">
-                    {action === "reject" ? "Rejection reason" : "Required changes"}
-                  </label>
-                  <textarea
-                    id="review-reason"
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    maxLength={500}
-                    rows={4}
-                    className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                    placeholder="Explain what the contributor needs to know (minimum 10 characters)"
-                  />
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-muted-foreground">{reason.length}/500</span>
-                    <Button size="sm" onClick={continueWithReason}>Continue</Button>
-                  </div>
-                </div>
-              )}
+              <h2 className="font-bold text-foreground">Vendor outreach</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Draft an invitation with AI, review the message, then send it to the vendor.
+              </p>
+              <Button className="mt-4 w-full gap-2" onClick={() => setInviteOpen(true)}>
+                <Mail size={14} /> Invite vendor
+              </Button>
             </section>
           )}
+
         </aside>
+
+        <div className="grid gap-6 xl:col-span-2 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)] xl:items-start">
+          <section id={EVIDENCE_TARGET_IDS.photos} className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-bold text-foreground">Submission photos</h2>
+            {detail.images.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">No photos were attached to this submission.</p>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {detail.images.map((image, index) => (
+                  <a key={image.id} href={image.url} target="_blank" rel="noreferrer" className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
+                    {/* Signed Supabase URLs should be loaded directly; Next's image loader does not own this private bucket. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={image.url}
+                      alt={`${detail.name} submission photo ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Image rights attested: {displayDate(detail.imageAttestedAt)}
+            </p>
+          </section>
+          {reviewDecision}
+        </div>
       </div>
 
       <AdminConfirmDialog
@@ -364,6 +384,23 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         busy={submitting}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={submitReview}
+      />
+
+      <AiDraftEmailModal
+        open={inviteOpen}
+        target={inviteOpen ? { id: detail.id, name: detail.name, defaultEmail: detail.contact.email ?? undefined } : null}
+        title={`Invite ${detail.name}`}
+        draftUrl="/api/admin/vendors/recommendation-invite/draft"
+        sendUrl="/api/admin/vendors/recommendation-invite"
+        extraBody={{ recommendationId: detail.id }}
+        sendLabel="Send invite"
+        linkHint="The real sign-up link is appended automatically when you send — no need to include it."
+        onClose={() => setInviteOpen(false)}
+        onSent={() => {
+          setInviteOpen(false);
+          showFeedback("success", "Invite sent.");
+          void loadDetail();
+        }}
       />
     </div>
   );
