@@ -61,6 +61,64 @@ describe('resolveActiveVendorInvite', () => {
     });
   });
 
+  it('maps a Supabase query error to the stable invalid response', async () => {
+    const service = makeService(null, new Error('database unavailable'));
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: { code: 'INVITE_INVALID', message: 'This invitation link is invalid.', status: 404 },
+    });
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['non-string', 123],
+  ])('maps a %s status to the stable invalid response', async (_description, status) => {
+    const service = makeService({
+      recommendation_id: 'rec-1',
+      email: 'owner@example.com',
+      status,
+      expires_at: '2099-01-01T00:00:00.000Z',
+    });
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: { code: 'INVITE_INVALID', message: 'This invitation link is invalid.', status: 404 },
+    });
+  });
+
+  it('maps an invalid expiration timestamp to the stable invalid response', async () => {
+    const service = makeService({
+      recommendation_id: 'rec-1',
+      email: 'owner@example.com',
+      status: 'invited',
+      expires_at: 'not-a-timestamp',
+    });
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: { code: 'INVITE_INVALID', message: 'This invitation link is invalid.', status: 404 },
+    });
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['non-string', 123],
+    ['empty', ''],
+  ])('maps a %s recommendation id to the stable invalid response', async (_description, recommendationId) => {
+    const service = makeService({
+      recommendation_id: recommendationId,
+      email: 'owner@example.com',
+      status: 'invited',
+      expires_at: '2099-01-01T00:00:00.000Z',
+    });
+
+    await expect(resolveActiveVendorInvite(service as never, 'valid-invite-token-value')).resolves.toEqual({
+      ok: false,
+      error: { code: 'INVITE_INVALID', message: 'This invitation link is invalid.', status: 404 },
+    });
+  });
+
   it('maps an expired invited invitation to the stable expired response', async () => {
     const service = makeService({
       recommendation_id: 'rec-1',

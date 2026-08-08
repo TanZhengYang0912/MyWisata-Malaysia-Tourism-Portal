@@ -32,13 +32,18 @@ export async function resolveActiveVendorInvite(
     .eq('token_hash', hashRecommendationInviteToken(token))
     .maybeSingle();
   const invite = data as VendorInviteRow | null;
+  const expiresAt = typeof invite?.expires_at === 'string' ? new Date(invite.expires_at).getTime() : NaN;
 
   if (
     error
     || !invite
     || typeof invite.recommendation_id !== 'string'
+    || !invite.recommendation_id.trim()
     || typeof invite.email !== 'string'
     || !invite.email.trim()
+    || typeof invite.status !== 'string'
+    || !invite.status.trim()
+    || !Number.isFinite(expiresAt)
   ) {
     return fail('INVITE_INVALID', 'This invitation link is invalid.', 404);
   }
@@ -47,11 +52,6 @@ export async function resolveActiveVendorInvite(
   }
   if (invite.status !== 'invited') {
     return fail('INVITE_ALREADY_CLAIMED', 'This vendor invitation has already been claimed.', 409);
-  }
-
-  const expiresAt = typeof invite.expires_at === 'string' ? new Date(invite.expires_at).getTime() : NaN;
-  if (!Number.isFinite(expiresAt)) {
-    return fail('INVITE_INVALID', 'This invitation link is invalid.', 404);
   }
   if (expiresAt <= Date.now()) {
     return fail('INVITE_EXPIRED', 'This vendor invitation has expired.', 409);
