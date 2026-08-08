@@ -17,6 +17,12 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain('REVOKE ALL ON FUNCTION public.claim_vendor_recommendation(');
     expect(sql).toContain('FROM PUBLIC, anon');
     expect(sql).toContain('TO authenticated, service_role');
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.claim_vendor_recommendation\(\s*TEXT, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION\s*\) FROM PUBLIC, anon;/,
+    );
+    expect(sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.claim_vendor_recommendation\(\s*TEXT, TEXT, TEXT, TEXT, UUID, TEXT, TEXT, TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION\s*\) TO authenticated, service_role;/,
+    );
   });
 
   it('serializes each user and locks both single-use claim records before writing', () => {
@@ -31,6 +37,17 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain('vendor_recommendation_claims');
     expect(sql).toContain('claimed_by = v_user_id');
     expect(sql).toContain('recommendation_id = v_invite.recommendation_id');
+
+    const advisoryLock = sql.indexOf("pg_advisory_xact_lock(hashtext('claim_vendor_recommendation')");
+    const inviteLock = sql.indexOf('FROM public.vendor_recommendation_invites i');
+    const ownerCheck = sql.indexOf("v.status IN ('pending', 'approved')");
+    const recommendationLock = sql.indexOf('FROM public.vendor_recommendations r');
+    expect(advisoryLock).toBeGreaterThan(-1);
+    expect(inviteLock).toBeGreaterThan(advisoryLock);
+    expect(ownerCheck).toBeGreaterThan(inviteLock);
+    expect(recommendationLock).toBeGreaterThan(ownerCheck);
+    expect(sql.indexOf('FOR UPDATE', inviteLock)).toBeLessThan(ownerCheck);
+    expect(sql.indexOf('FOR UPDATE', recommendationLock)).toBeGreaterThan(recommendationLock);
   });
 
   it('validates identity, invitation lifecycle, and active category before creating rows', () => {
@@ -64,6 +81,9 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain('address, phone, email, lat, lng, status, review_status');
     expect(sql).toMatch(/'inactive'\s*,\s*'pending_review'/);
     expect(sql).toContain("'outlet_id', v_outlet_id");
+    expect(sql).toContain('RETURNING id INTO v_claim_id');
+    expect(sql).toContain("'claim_id', v_claim_id");
+    expect(sql).toContain("'onboarding_profile_vendor_id', v_vendor_id");
     expect(sql).not.toContain('INSERT INTO public.user_roles');
     expect(sql).not.toContain('category_id, status, review_status');
     expect(sql).not.toContain('approval_status');
@@ -78,6 +98,11 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toMatch(/v_outlet_base_slug := LEFT\([\s\S]*?,\s*100\s*\);/);
     expect(sql).toContain("LEFT(v_vendor_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)");
     expect(sql).toContain("LEFT(v_outlet_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)");
+    expect(sql.match(/EXCEPTION\s+WHEN unique_violation/g)).toHaveLength(2);
+    expect(sql).toMatch(/INSERT INTO public\.vendors[\s\S]*?EXCEPTION\s+WHEN unique_violation[\s\S]*?v_slug_suffix := v_slug_suffix \+ 1/);
+    expect(sql).toMatch(/INSERT INTO public\.outlets[\s\S]*?EXCEPTION\s+WHEN unique_violation[\s\S]*?v_slug_suffix := v_slug_suffix \+ 1/);
+    expect(sql).toMatch(/IF EXISTS \(SELECT 1 FROM public\.vendors v WHERE v\.slug = v_vendor_slug\)/);
+    expect(sql).toMatch(/IF EXISTS \(SELECT 1 FROM public\.outlets o WHERE o\.slug = v_outlet_slug\)/);
   });
 
   it('keeps recommendation onboarding compatible with the staged evidence migration', () => {

@@ -55,7 +55,10 @@ describe('POST /api/vendor/claim', () => {
 
   it('claims an approved recommendation through the atomic RPC', async () => {
     mocks.rpc.mockResolvedValue({
-      data: { vendor_id: 'vendor-1', outlet_id: 'outlet-1', recommendation_id: 'rec-1', status: 'onboarding' },
+      data: {
+        vendor_id: 'vendor-1', onboarding_profile_vendor_id: 'vendor-1', outlet_id: 'outlet-1',
+        claim_id: 'claim-1', recommendation_id: 'rec-1', status: 'onboarding',
+      },
       error: null,
     });
 
@@ -76,7 +79,10 @@ describe('POST /api/vendor/claim', () => {
       p_longitude: validBody.longitude,
     });
     await expect(response.json()).resolves.toMatchObject({
-      data: { vendor_id: 'vendor-1', outlet_id: 'outlet-1', recommendation_id: 'rec-1', status: 'onboarding' },
+      data: {
+        vendor_id: 'vendor-1', onboarding_profile_vendor_id: 'vendor-1', outlet_id: 'outlet-1',
+        claim_id: 'claim-1', recommendation_id: 'rec-1', status: 'onboarding',
+      },
     });
   });
 
@@ -94,15 +100,53 @@ describe('POST /api/vendor/claim', () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it('requires both coordinates', async () => {
+  it('accepts omitted coordinates and passes null to the RPC', async () => {
     const bodyWithoutCoordinates: Record<string, unknown> = { ...validBody };
     delete bodyWithoutCoordinates.latitude;
     delete bodyWithoutCoordinates.longitude;
 
+    mocks.rpc.mockResolvedValue({ data: { vendor_id: 'vendor-1' }, error: null });
     const response = await POST(request(bodyWithoutCoordinates));
 
-    expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_vendor_recommendation', expect.objectContaining({
+      p_latitude: null,
+      p_longitude: null,
+    }));
+  });
+
+  it('accepts null coordinates and passes null to the RPC', async () => {
+    mocks.rpc.mockResolvedValue({ data: { vendor_id: 'vendor-1' }, error: null });
+
+    const response = await POST(request({ ...validBody, latitude: null, longitude: null }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_vendor_recommendation', expect.objectContaining({
+      p_latitude: null,
+      p_longitude: null,
+    }));
+  });
+
+  it('maps an omitted contact phone to null', async () => {
+    const bodyWithoutPhone: Record<string, unknown> = { ...validBody };
+    delete bodyWithoutPhone.contactPhone;
+    mocks.rpc.mockResolvedValue({ data: { vendor_id: 'vendor-1' }, error: null });
+
+    const response = await POST(request(bodyWithoutPhone));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith('claim_vendor_recommendation', expect.objectContaining({
+      p_contact_phone: null,
+    }));
+  });
+
+  it('short-circuits unauthenticated requests before the RPC', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    const response = await POST(request(validBody));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'UNAUTHORIZED' } });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
@@ -120,7 +164,11 @@ describe('POST /api/vendor/claim', () => {
     ['invite_not_found', 'INVITE_INVALID', 404],
     ['invite_expired', 'INVITE_EXPIRED', 409],
     ['invite_already_claimed', 'INVITE_ALREADY_CLAIMED', 409],
+    ['invite_cancelled', 'INVITE_CANCELLED', 409],
     ['invite_email_mismatch', 'INVITE_EMAIL_MISMATCH', 409],
+    ['email_mismatch', 'INVITE_EMAIL_MISMATCH', 409],
+    ['recommendation_not_claimable', 'RECOMMENDATION_NOT_CLAIMABLE', 409],
+    ['owner_already_has_vendor', 'OWNER_ALREADY_HAS_VENDOR', 409],
     ['category_not_active', 'CATEGORY_NOT_ACTIVE', 409],
     ['phone_verification_required', 'PHONE_VERIFICATION_REQUIRED', 403],
   ])('maps %s to %s', async (dbCode, apiCode, status) => {

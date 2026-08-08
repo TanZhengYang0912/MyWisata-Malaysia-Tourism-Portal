@@ -45,6 +45,7 @@ DECLARE
   v_slug_suffix INTEGER := 1;
   v_vendor_id UUID;
   v_outlet_id UUID;
+  v_claim_id UUID;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'not_authenticated';
@@ -135,39 +136,35 @@ BEGIN
     ),
     100
   );
-  v_vendor_slug := v_vendor_base_slug;
-  WHILE EXISTS (SELECT 1 FROM public.vendors v WHERE v.slug = v_vendor_slug) LOOP
-    v_slug_suffix := v_slug_suffix + 1;
-    v_vendor_slug := LEFT(v_vendor_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)
-      || '-' || v_slug_suffix;
-  END LOOP;
-
-  v_outlet_base_slug := LEFT(
-    COALESCE(
-      NULLIF(trim(BOTH '-' FROM regexp_replace(lower(p_outlet_name), '[^a-z0-9]+', '-', 'g')), ''),
-      v_vendor_slug || '-main'
-    ),
-    100
-  );
-  v_outlet_slug := v_outlet_base_slug;
   v_slug_suffix := 1;
-  WHILE EXISTS (SELECT 1 FROM public.outlets o WHERE o.slug = v_outlet_slug) LOOP
-    v_slug_suffix := v_slug_suffix + 1;
-    v_outlet_slug := LEFT(v_outlet_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)
-      || '-' || v_slug_suffix;
+  LOOP
+    v_vendor_slug := CASE
+      WHEN v_slug_suffix = 1 THEN v_vendor_base_slug
+      ELSE LEFT(v_vendor_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)
+        || '-' || v_slug_suffix
+    END;
+    BEGIN
+      INSERT INTO public.vendors (
+        owner_id, name, slug, description, business_type, status
+      ) VALUES (
+        v_user_id,
+        BTRIM(p_business_name),
+        v_vendor_slug,
+        BTRIM(p_description),
+        v_category_slug,
+        'pending'
+      )
+      RETURNING id INTO v_vendor_id;
+      EXIT;
+    EXCEPTION
+      WHEN unique_violation THEN
+        IF EXISTS (SELECT 1 FROM public.vendors v WHERE v.slug = v_vendor_slug) THEN
+          v_slug_suffix := v_slug_suffix + 1;
+        ELSE
+          RAISE;
+        END IF;
+    END;
   END LOOP;
-
-  INSERT INTO public.vendors (
-    owner_id, name, slug, description, business_type, status
-  ) VALUES (
-    v_user_id,
-    BTRIM(p_business_name),
-    v_vendor_slug,
-    BTRIM(p_description),
-    v_category_slug,
-    'pending'
-  )
-  RETURNING id INTO v_vendor_id;
 
   INSERT INTO public.vendor_onboarding_profiles (
     vendor_id, legal_business_name, contact_email, contact_phone,
@@ -181,27 +178,53 @@ BEGIN
     'submitted'
   );
 
-  INSERT INTO public.outlets (
-    vendor_id, name, slug, address, phone, email, lat, lng, status, review_status
-  ) VALUES (
-    v_vendor_id,
-    BTRIM(p_outlet_name),
-    v_outlet_slug,
-    BTRIM(p_business_address),
-    NULLIF(BTRIM(p_contact_phone), ''),
-    lower(BTRIM(p_contact_email)),
-    p_latitude,
-    p_longitude,
-    'inactive',
-    'pending_review'
-  )
-  RETURNING id INTO v_outlet_id;
+  v_outlet_base_slug := LEFT(
+    COALESCE(
+      NULLIF(trim(BOTH '-' FROM regexp_replace(lower(p_outlet_name), '[^a-z0-9]+', '-', 'g')), ''),
+      v_vendor_slug || '-main'
+    ),
+    100
+  );
+  v_slug_suffix := 1;
+  LOOP
+    v_outlet_slug := CASE
+      WHEN v_slug_suffix = 1 THEN v_outlet_base_slug
+      ELSE LEFT(v_outlet_base_slug, 100 - char_length(v_slug_suffix::TEXT) - 1)
+        || '-' || v_slug_suffix
+    END;
+    BEGIN
+      INSERT INTO public.outlets (
+        vendor_id, name, slug, address, phone, email, lat, lng, status, review_status
+      ) VALUES (
+        v_vendor_id,
+        BTRIM(p_outlet_name),
+        v_outlet_slug,
+        BTRIM(p_business_address),
+        NULLIF(BTRIM(p_contact_phone), ''),
+        lower(BTRIM(p_contact_email)),
+        p_latitude,
+        p_longitude,
+        'inactive',
+        'pending_review'
+      )
+      RETURNING id INTO v_outlet_id;
+      EXIT;
+    EXCEPTION
+      WHEN unique_violation THEN
+        IF EXISTS (SELECT 1 FROM public.outlets o WHERE o.slug = v_outlet_slug) THEN
+          v_slug_suffix := v_slug_suffix + 1;
+        ELSE
+          RAISE;
+        END IF;
+    END;
+  END LOOP;
 
   INSERT INTO public.vendor_recommendation_claims (
     recommendation_id, vendor_id, claimed_by
   ) VALUES (
     v_recommendation.id, v_vendor_id, v_user_id
-  );
+  )
+  RETURNING id INTO v_claim_id;
 
   UPDATE public.vendor_recommendation_invites
      SET status = 'claimed',
@@ -215,7 +238,9 @@ BEGIN
 
   RETURN jsonb_build_object(
     'vendor_id', v_vendor_id,
+    'onboarding_profile_vendor_id', v_vendor_id,
     'outlet_id', v_outlet_id,
+    'claim_id', v_claim_id,
     'recommendation_id', v_recommendation.id,
     'status', 'onboarding'
   );

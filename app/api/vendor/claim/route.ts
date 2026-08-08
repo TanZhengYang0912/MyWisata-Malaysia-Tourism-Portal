@@ -14,8 +14,8 @@ const claimSchema = z.object({
   contactEmail: z.string().trim().email().max(255),
   contactPhone: z.string().trim().max(50).optional(),
   businessAddress: z.string().trim().min(5).max(500),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
   authorizedToRepresent: z.literal(true),
 }).strict();
 
@@ -65,8 +65,8 @@ export async function POST(request: Request) {
     p_contact_email: input.contactEmail,
     p_contact_phone: input.contactPhone?.trim() || null,
     p_business_address: input.businessAddress,
-    p_latitude: input.latitude,
-    p_longitude: input.longitude,
+    p_latitude: input.latitude ?? null,
+    p_longitude: input.longitude ?? null,
   });
 
   if (error) {
