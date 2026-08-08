@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Play, Sparkles } from "lucide-react";
+import { CheckCircle2, Mail, Play, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { ApproveRejectBar } from "@/components/admin/approve-reject-bar";
+import { AiDraftEmailModal } from "@/components/admin/ai-draft-email-modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -84,6 +85,7 @@ export default function AdminRecommendationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
   const [clearingMessage, setClearingMessage] = useState<string | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     getVendorRecommendations().then(setRecs);
@@ -147,7 +149,8 @@ export default function AdminRecommendationsPage() {
   }
 
   const pending  = recs.filter((r) => r.status === "pending");
-  const reviewed = recs.filter((r) => r.status !== "pending");
+  const approved = recs.filter((r) => r.status === "approved");
+  const invited  = recs.filter((r) => r.status !== "pending" && r.status !== "approved");
 
   return (
     <div className="p-6 sm:p-8">
@@ -220,12 +223,38 @@ export default function AdminRecommendationsPage() {
         )}
       </div>
 
+      <div className="rounded-2xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="px-6 py-5 border-b border-border">
+          <h2 className="font-bold text-foreground">Approved ({approved.length})</h2>
+        </div>
+        {approved.length === 0 ? (
+          <EmptyState title="No approved recommendations awaiting invite" />
+        ) : (
+          <div className="divide-y divide-border">
+            {approved.map((r) => (
+              <div key={r.id} className="px-6 py-3.5 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">{r.category} · {r.state}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusBadge status={r.status} />
+                  <Button size="sm" onClick={() => setInviteTarget({ id: r.id, name: r.name })} className="gap-1.5">
+                    <Mail size={13} /> Invite Vendor
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-bold text-foreground">Reviewed</h2>
+          <h2 className="font-bold text-foreground">Invited ({invited.length})</h2>
         </div>
         <div className="divide-y divide-border">
-          {reviewed.map((r) => (
+          {invited.map((r) => (
             <div key={r.id} className="px-6 py-3.5 flex items-center justify-between gap-3">
               <p className="text-sm text-foreground">{r.name}</p>
               <StatusBadge status={r.status} />
@@ -233,6 +262,23 @@ export default function AdminRecommendationsPage() {
           ))}
         </div>
       </div>
+
+      <AiDraftEmailModal
+        open={!!inviteTarget}
+        target={inviteTarget}
+        title={inviteTarget ? `Invite ${inviteTarget.name}` : ""}
+        draftUrl="/api/admin/vendors/recommendation-invite/draft"
+        sendUrl="/api/admin/vendors/recommendation-invite"
+        extraBody={inviteTarget ? { recommendationId: inviteTarget.id } : {}}
+        sendLabel="Send invite"
+        linkHint="The real sign-up link is appended automatically when you send — no need to include it."
+        onClose={() => setInviteTarget(null)}
+        onSent={(id) => {
+          setRecs((prev) => prev.map((x) => (x.id === id ? { ...x, status: "invited" } : x)));
+          setInviteTarget(null);
+          showFeedback("success", "Invite sent.");
+        }}
+      />
     </div>
   );
 }

@@ -150,7 +150,7 @@ export default function AdminChatbotPage() {
         body: JSON.stringify({ question }),
       });
       const body = (await res.json()) as {
-        data: { title: string; body: string; category: string } | null;
+        data: { title: string; body: string; keywords: string[]; category: string } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
@@ -160,7 +160,16 @@ export default function AdminChatbotPage() {
       // category is classifyTicket(question) from the route — a pre-fill,
       // not a decision; the dropdown below lets the admin override it
       // before saving, same as it already does for a manual/"Add to KB" doc.
-      setForm({ ...EMPTY_FORM, title: body.data.title, body: body.data.body, category: body.data.category });
+      // keywords is the same comma-separated string the form already uses
+      // for a manually-typed doc (split on save in saveDoc()) — the AI
+      // suggestion is just prefilling that same field, not a new code path.
+      setForm({
+        ...EMPTY_FORM,
+        title: body.data.title,
+        body: body.data.body,
+        keywords: body.data.keywords.join(", "),
+        category: body.data.category,
+      });
       setFormError(null);
       setEditingId("new");
     } catch {

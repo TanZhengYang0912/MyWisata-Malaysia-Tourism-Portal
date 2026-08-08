@@ -13,6 +13,7 @@ import {
   Copy,
   ExternalLink,
   Filter,
+  Mail,
   MapPin,
   Package,
   RefreshCw,
@@ -25,9 +26,15 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
-type FilterStatus = 'all' | VendorStatus;
+// 'welcomed' is UI-only — not a real vendors.status value. It's a narrower
+// view of the 'approved' rows: those that have already received the
+// AI-drafted approval email (approval_email_sent_at IS NOT NULL). See the
+// migration comment in supabase/migrations/20260807010000_... for why this
+// isn't a new status value.
+type FilterStatus = 'all' | VendorStatus | 'welcomed';
 type KycFilter = 'all' | 'unverified' | 'pending' | 'approved' | 'rejected';
 type ActionType = 'approve' | 'reject' | 'request_information' | 'suspend' | 'unsuspend';
 
@@ -48,6 +55,7 @@ interface VendorData {
   logo_url: string | null;
   cover_url: string | null;
   approved_at: string | null;
+  approval_email_sent_at: string | null;
   rejection_reason: string | null;
   users: VendorOwner | VendorOwner[] | null;
   outlets: { count: number }[];
@@ -66,6 +74,7 @@ const STATUS_FILTERS: { value: FilterStatus; label: string; tone: string }[] = [
   { value: 'all', label: 'All vendors', tone: 'text-slate-600' },
   { value: 'pending', label: 'Needs review', tone: 'text-amber-700' },
   { value: 'approved', label: 'Approved', tone: 'text-primary' },
+  { value: 'welcomed', label: 'Welcomed', tone: 'text-teal-700' },
   { value: 'rejected', label: 'Rejected', tone: 'text-rose-700' },
   { value: 'suspended', label: 'Suspended', tone: 'text-slate-600' },
 ];
@@ -108,7 +117,7 @@ function safeSearch(value: string) {
 export default function AdminVendorsPage() {
   const supabase = useMemo(() => createClient(), []);
   const [vendors, setVendors] = useState<VendorData[]>([]);
-  const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, rejected: 0, suspended: 0 });
+  const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, welcomed: 0, rejected: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -124,6 +133,7 @@ export default function AdminVendorsPage() {
   const [approvedRecs, setApprovedRecs] = useState<ApprovedRec[]>([]);
   const [linkingVendor, setLinkingVendor] = useState<string | null>(null);
   const [selectedRec, setSelectedRec] = useState<Record<string, string>>({});
+  const [approvalEmailTarget, setApprovalEmailTarget] = useState<{ id: string; name: string; defaultEmail?: string } | null>(null);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -157,11 +167,13 @@ export default function AdminVendorsPage() {
 
       let query = supabase
         .from('vendors')
-        .select('id,name,slug,status,created_at,description,business_type,logo_url,cover_url,approved_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
+        .select('id,name,slug,status,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-      if (filter !== 'all') query = query.eq('status', filter);
+      if (filter === 'approved') query = query.eq('status', 'approved').is('approval_email_sent_at', null);
+      else if (filter === 'welcomed') query = query.eq('status', 'approved').not('approval_email_sent_at', 'is', null);
+      else if (filter !== 'all') query = query.eq('status', filter);
       if (ownerIdsForKyc) query = query.in('owner_id', ownerIdsForKyc.length ? ownerIdsForKyc : ['00000000-0000-0000-0000-000000000000']);
       if (matchingVendorIds) query = query.in('id', matchingVendorIds.length ? matchingVendorIds : ['00000000-0000-0000-0000-000000000000']);
       if (term) {
@@ -173,9 +185,11 @@ export default function AdminVendorsPage() {
 
       const [{ data, error: vendorError, count }, ...statusResults] = await Promise.all([
         query,
-        ...(['all', 'pending', 'approved', 'rejected', 'suspended'] as FilterStatus[]).map(async (status) => {
+        ...(['all', 'pending', 'approved', 'welcomed', 'rejected', 'suspended'] as FilterStatus[]).map(async (status) => {
           let countQuery = supabase.from('vendors').select('id', { count: 'exact', head: true });
-          if (status !== 'all') countQuery = countQuery.eq('status', status);
+          if (status === 'approved') countQuery = countQuery.eq('status', 'approved').is('approval_email_sent_at', null);
+          else if (status === 'welcomed') countQuery = countQuery.eq('status', 'approved').not('approval_email_sent_at', 'is', null);
+          else if (status !== 'all') countQuery = countQuery.eq('status', status);
           const result = await countQuery;
           return { status, count: result.count ?? 0, error: result.error };
         }),
@@ -343,6 +357,12 @@ export default function AdminVendorsPage() {
     }
   }
 
+  function onOpenApprovalEmail(vendor: VendorData) {
+    const owner = ownerOf(vendor);
+    const onboarding = Array.isArray(vendor.vendor_onboarding_profiles) ? vendor.vendor_onboarding_profiles[0] : vendor.vendor_onboarding_profiles;
+    setApprovalEmailTarget({ id: vendor.id, name: vendor.name, defaultEmail: onboarding?.contact_email ?? owner.email ?? undefined });
+  }
+
   return (
     <div className="min-h-full bg-[#f8fafc] px-4 py-6 text-[#18242b] sm:px-6 sm:py-8 xl:px-8">
       <div className="w-full space-y-6">
@@ -367,7 +387,7 @@ export default function AdminVendorsPage() {
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Vendor summary">
           <SummaryCard label="Total vendors" value={counts.all} icon={Building2} accent="slate" />
           <SummaryCard label="Needs review" value={pendingCount} icon={Clipboard} accent="amber" helper={pendingCount ? 'Action needed' : 'Queue is clear'} />
-          <SummaryCard label="Approved" value={counts.approved} icon={CheckCircle2} accent="green" helper="Live on platform" />
+          <SummaryCard label="Approved" value={counts.approved + counts.welcomed} icon={CheckCircle2} accent="green" helper="Live on platform" />
           <SummaryCard label="Suspended" value={counts.suspended} icon={Archive} accent="rose" helper={counts.suspended ? 'Needs attention' : 'No active holds'} />
         </section>
 
@@ -463,7 +483,10 @@ export default function AdminVendorsPage() {
                       <td className="px-3 py-4 align-top"><div className="flex items-start gap-2"><UserRound size={15} className="mt-0.5 shrink-0 text-slate-400" /><span><span className="block font-semibold text-slate-700">{owner.full_name ?? 'Unnamed owner'}</span><span className="mt-1 block max-w-[210px] truncate text-xs text-slate-400">{owner.email ?? 'No email'}</span></span></div></td>
                       <td className="px-3 py-4 align-top"><div className="flex gap-3 text-xs text-slate-500"><span className="inline-flex items-center gap-1"><MapPin size={14} /> {countOf(vendor.outlets)} outlets</span><span className="inline-flex items-center gap-1"><Package size={14} /> {countOf(vendor.products)} listings</span></div></td>
                       <td className="px-3 py-4 align-top"><span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${owner.kyc_status === 'approved' ? 'text-primary' : owner.kyc_status === 'pending' ? 'text-amber-700' : 'text-slate-400'}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{owner.kyc_status ?? 'unverified'}</span></td>
-                      <td className="px-3 py-4 align-top"><StatusBadge status={vendor.status} /></td>
+                      <td className="px-3 py-4 align-top">
+                        <StatusBadge status={vendor.status} />
+                        {vendor.status === 'approved' && vendor.approval_email_sent_at && <span className="ml-1.5 text-[10px] font-semibold text-teal-700">· Welcomed</span>}
+                      </td>
                       <td className="whitespace-nowrap px-3 py-4 align-top text-xs text-slate-500">{format(new Date(vendor.created_at), 'd MMM yyyy')}</td>
                       <td className="px-5 py-4 align-top text-right"><button type="button" onClick={() => setActiveVendor(vendor)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500 opacity-70 transition hover:border-[#c7c8e8] hover:text-[#010066] group-hover:opacity-100">Review <ChevronRight size={14} /></button></td>
                     </tr>
@@ -484,7 +507,24 @@ export default function AdminVendorsPage() {
         </section>
       </div>
 
-      {activeVendor && <VendorDrawer vendor={activeVendor} busyAction={busyAction} onClose={() => setActiveVendor(null)} onAction={(action) => void handleAction(activeVendor, action)} onCopy={() => void copyVendorId(activeVendor.id)} approvedRecs={approvedRecs} selectedRecommendation={selectedRec[activeVendor.id] ?? ''} linkingRecommendation={linkingVendor === activeVendor.id} onSelectRecommendation={(value) => setSelectedRec((current) => ({ ...current, [activeVendor.id]: value }))} onLinkRecommendation={() => void handleLinkRecommendation(activeVendor.id)} />}
+      {activeVendor && <VendorDrawer vendor={activeVendor} busyAction={busyAction} onClose={() => setActiveVendor(null)} onAction={(action) => void handleAction(activeVendor, action)} onCopy={() => void copyVendorId(activeVendor.id)} approvedRecs={approvedRecs} selectedRecommendation={selectedRec[activeVendor.id] ?? ''} linkingRecommendation={linkingVendor === activeVendor.id} onSelectRecommendation={(value) => setSelectedRec((current) => ({ ...current, [activeVendor.id]: value }))} onLinkRecommendation={() => void handleLinkRecommendation(activeVendor.id)} onOpenApprovalEmail={() => onOpenApprovalEmail(activeVendor)} />}
+
+      <AiDraftEmailModal
+        open={!!approvalEmailTarget}
+        target={approvalEmailTarget}
+        title={approvalEmailTarget ? `Send approval email to ${approvalEmailTarget.name}` : ''}
+        draftUrl={approvalEmailTarget ? `/api/admin/vendors/${approvalEmailTarget.id}/approval-email/draft` : ''}
+        sendUrl={approvalEmailTarget ? `/api/admin/vendors/${approvalEmailTarget.id}/approval-email` : ''}
+        sendLabel="Send approval email"
+        linkHint="Your vendor dashboard link is appended automatically when you send — no need to include it."
+        onClose={() => setApprovalEmailTarget(null)}
+        onSent={() => {
+          setApprovalEmailTarget(null);
+          setActiveVendor(null);
+          setNotice('Approval email sent.');
+          void loadVendors();
+        }}
+      />
     </div>
   );
 }
@@ -498,7 +538,7 @@ function BatchButton({ label, icon: Icon, onClick, disabled, tone = 'default' }:
   return <button type="button" onClick={onClick} disabled={disabled} className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-50 ${tone === 'danger' ? 'border-rose-200 bg-white text-rose-700 hover:bg-rose-50' : 'border-[#d9d9f2] bg-white text-[#010066] hover:bg-[#eef2ff]'}`}><Icon size={14} /> {label}</button>;
 }
 
-function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedRecs, selectedRecommendation, linkingRecommendation, onSelectRecommendation, onLinkRecommendation }: { vendor: VendorData; busyAction: string | null; onClose: () => void; onAction: (action: ActionType) => void; onCopy: () => void; approvedRecs: ApprovedRec[]; selectedRecommendation: string; linkingRecommendation: boolean; onSelectRecommendation: (value: string) => void; onLinkRecommendation: () => void }) {
+function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedRecs, selectedRecommendation, linkingRecommendation, onSelectRecommendation, onLinkRecommendation, onOpenApprovalEmail }: { vendor: VendorData; busyAction: string | null; onClose: () => void; onAction: (action: ActionType) => void; onCopy: () => void; approvedRecs: ApprovedRec[]; selectedRecommendation: string; linkingRecommendation: boolean; onSelectRecommendation: (value: string) => void; onLinkRecommendation: () => void; onOpenApprovalEmail: () => void }) {
   const owner = ownerOf(vendor);
   const onboarding = Array.isArray(vendor.vendor_onboarding_profiles) ? vendor.vendor_onboarding_profiles[0] : vendor.vendor_onboarding_profiles;
   const actionBusy = busyAction?.endsWith(`:${vendor.id}`);
@@ -506,7 +546,7 @@ function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedR
     <aside className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
       <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#010066]">Vendor profile</p><h2 className="mt-1 text-xl font-bold tracking-[-0.03em] text-slate-800">{vendor.name}</h2><p className="mt-1 text-xs text-slate-400">/{vendor.slug}</p></div><button type="button" onClick={onClose} aria-label="Close vendor details" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={19} /></button></div>
       <div className="flex-1 space-y-6 px-6 py-6">
-        <div className="flex items-center justify-between"><StatusBadge status={vendor.status} /><span className="text-xs text-slate-400">Added {format(new Date(vendor.created_at), 'd MMM yyyy')}</span></div>
+        <div className="flex items-center justify-between"><span className="flex items-center"><StatusBadge status={vendor.status} />{vendor.status === 'approved' && vendor.approval_email_sent_at && <span className="ml-1.5 text-[10px] font-semibold text-teal-700">· Welcomed</span>}</span><span className="text-xs text-slate-400">Added {format(new Date(vendor.created_at), 'd MMM yyyy')}</span></div>
         <div className="rounded-2xl bg-[#f8fafc] p-4"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Vendor ID</p><div className="mt-2 flex items-center justify-between gap-3"><code className="truncate text-xs text-slate-700">{vendor.id}</code><button type="button" onClick={onCopy} className="shrink-0 rounded-lg bg-white p-2 text-[#010066] shadow-sm hover:bg-[#eef2ff]" aria-label="Copy vendor ID"><Copy size={15} /></button></div></div>
         <div><h3 className="mb-3 text-sm font-bold text-slate-800">Owner & verification</h3><div className="flex items-center gap-3 rounded-xl border border-slate-100 p-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#eef2ff] text-sm font-bold text-[#010066]">{initials(owner.full_name ?? 'Vendor owner')}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-700">{owner.full_name ?? 'Unnamed owner'}</p><p className="truncate text-xs text-slate-400">{owner.email ?? 'No email'}</p></div><span className="ml-auto shrink-0 text-right text-[11px] font-semibold text-slate-500">KYC<br /><span className={owner.kyc_status === 'approved' ? 'text-primary' : 'text-amber-700'}>{owner.kyc_status ?? 'unverified'}</span></span></div></div>
         <div><h3 className="mb-3 text-sm font-bold text-slate-800">Operating footprint</h3><div className="grid grid-cols-2 gap-3"><Metric icon={MapPin} label="Outlets" value={countOf(vendor.outlets)} /><Metric icon={Package} label="Listings" value={countOf(vendor.products)} /></div></div>
@@ -514,7 +554,7 @@ function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedR
         {vendor.status === 'approved' && approvedRecs.length > 0 && <div><h3 className="mb-2 text-sm font-bold text-slate-800">Recommendation attribution</h3><p className="mb-2 text-xs leading-5 text-slate-400">Link an approved customer recommendation to open its 90-day commission window.</p><div className="flex gap-2"><select value={selectedRecommendation} onChange={(event) => onSelectRecommendation(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600"><option value="">Select recommendation…</option>{approvedRecs.map((recommendation) => <option key={recommendation.id} value={recommendation.id}>{recommendation.vendor_name}</option>)}</select><button type="button" onClick={onLinkRecommendation} disabled={linkingRecommendation || !selectedRecommendation} className="rounded-xl bg-secondary px-3 py-2.5 text-xs font-semibold text-primary disabled:opacity-40">{linkingRecommendation ? 'Linking…' : 'Link'}</button></div></div>}
         {vendor.description && <div><h3 className="mb-2 text-sm font-bold text-slate-800">Description</h3><p className="rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-500">{vendor.description}</p></div>}
       </div>
-      <div className="border-t border-slate-100 px-6 py-5"><div className="flex flex-wrap gap-2">{vendor.status === 'pending' && <><DrawerAction label="Approve vendor" icon={Check} onClick={() => onAction('approve')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label="Request info" icon={Clipboard} onClick={() => onAction('request_information')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label="Reject" icon={XCircle} onClick={() => onAction('reject')} tone="danger" disabled={Boolean(actionBusy)} /></>}{vendor.status === 'approved' && <DrawerAction label="Suspend vendor" icon={Archive} onClick={() => onAction('suspend')} tone="danger" disabled={Boolean(actionBusy)} />}{vendor.status === 'suspended' && <DrawerAction label="Reactivate vendor" icon={RefreshCw} onClick={() => onAction('unsuspend')} tone="primary" disabled={Boolean(actionBusy)} />}<button type="button" onClick={onClose} className="ml-auto rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50">Close</button></div></div>
+      <div className="border-t border-slate-100 px-6 py-5"><div className="flex flex-wrap gap-2">{vendor.status === 'pending' && <><DrawerAction label="Approve vendor" icon={Check} onClick={() => onAction('approve')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label="Request info" icon={Clipboard} onClick={() => onAction('request_information')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label="Reject" icon={XCircle} onClick={() => onAction('reject')} tone="danger" disabled={Boolean(actionBusy)} /></>}{vendor.status === 'approved' && !vendor.approval_email_sent_at && <DrawerAction label="Send approval email" icon={Mail} onClick={onOpenApprovalEmail} tone="primary" disabled={Boolean(actionBusy)} />}{vendor.status === 'approved' && <DrawerAction label="Suspend vendor" icon={Archive} onClick={() => onAction('suspend')} tone="danger" disabled={Boolean(actionBusy)} />}{vendor.status === 'suspended' && <DrawerAction label="Reactivate vendor" icon={RefreshCw} onClick={() => onAction('unsuspend')} tone="primary" disabled={Boolean(actionBusy)} />}<button type="button" onClick={onClose} className="ml-auto rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50">Close</button></div></div>
     </aside>
   </div>;
 }
