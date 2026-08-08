@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Play } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Filter, Play, Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -24,6 +24,9 @@ export default function AdminRecommendationsPage() {
   const [clearingMessage, setClearingMessage] = useState<string | null>(null);
   const [pendingPage, setPendingPage] = useState(1);
   const [reviewedPage, setReviewedPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
   const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
@@ -99,18 +102,40 @@ export default function AdminRecommendationsPage() {
     }
   }
 
-  const pending  = recs.filter((r) => r.status === "pending");
-  const reviewed = recs.filter((r) => r.status !== "pending");
+  const filteredRecs = recs.filter((recommendation) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || [recommendation.name, recommendation.category, recommendation.state, recommendation.author?.name]
+      .filter(Boolean)
+      .some((value) => value?.toLowerCase().includes(query));
+    const matchesCategory = categoryFilter === "all" || recommendation.category === categoryFilter;
+    const matchesState = stateFilter === "all" || recommendation.state === stateFilter;
+    return matchesSearch && matchesCategory && matchesState;
+  });
+  const pending  = filteredRecs.filter((r) => r.status === "pending");
+  const reviewed = filteredRecs.filter((r) => r.status !== "pending");
   const pendingPageCount = Math.max(1, Math.ceil(pending.length / PENDING_PAGE_SIZE));
-  const visiblePending = pending.slice(
-    (pendingPage - 1) * PENDING_PAGE_SIZE,
-    pendingPage * PENDING_PAGE_SIZE,
-  );
   const reviewedPageCount = Math.max(1, Math.ceil(reviewed.length / PENDING_PAGE_SIZE));
-  const visibleReviewed = reviewed.slice(
-    (reviewedPage - 1) * PENDING_PAGE_SIZE,
-    reviewedPage * PENDING_PAGE_SIZE,
+  const activePendingPage = Math.min(pendingPage, pendingPageCount);
+  const activeReviewedPage = Math.min(reviewedPage, reviewedPageCount);
+  const visiblePending = pending.slice(
+    (activePendingPage - 1) * PENDING_PAGE_SIZE,
+    activePendingPage * PENDING_PAGE_SIZE,
   );
+  const visibleReviewed = reviewed.slice(
+    (activeReviewedPage - 1) * PENDING_PAGE_SIZE,
+    activeReviewedPage * PENDING_PAGE_SIZE,
+  );
+  const categories = Array.from(new Set(recs.map((recommendation) => recommendation.category).filter(Boolean))).sort();
+  const states = Array.from(new Set(recs.map((recommendation) => recommendation.state).filter(Boolean))).sort();
+  const hasFilters = Boolean(search.trim()) || categoryFilter !== "all" || stateFilter !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setCategoryFilter("all");
+    setStateFilter("all");
+    setPendingPage(1);
+    setReviewedPage(1);
+  }
 
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
@@ -121,6 +146,30 @@ export default function AdminRecommendationsPage() {
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
+
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:flex-row sm:items-center">
+        <label className="relative min-w-0 flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(event) => { setSearch(event.target.value); setPendingPage(1); setReviewedPage(1); }}
+            placeholder="Search recommendation, category, state or contributor…"
+            className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+        </label>
+        <select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <option value="all">All categories</option>
+          {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+        </select>
+        <select value={stateFilter} onChange={(event) => { setStateFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <option value="all">All states</option>
+          {states.map((state) => <option key={state} value={state}>{state}</option>)}
+        </select>
+        <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground">10 per page</span>
+        <Button type="button" variant="outline" onClick={clearFilters} disabled={!hasFilters} className="gap-1.5">
+          <Filter size={14} /> Clear
+        </Button>
+      </div>
 
       <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label="Recommendation reward clearing">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -141,24 +190,24 @@ export default function AdminRecommendationsPage() {
       <div className="rounded-2xl overflow-hidden border border-border bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex flex-col gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-bold text-foreground">Pending ({pending.length})</h2>
-          {pending.length > 0 && (
+          {pendingPageCount > 1 && (
             <nav aria-label="Pending recommendation pagination" className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="mr-1 hidden sm:inline">Page {pendingPage} of {pendingPageCount}</span>
+              <span className="mr-1 hidden sm:inline">Page {activePendingPage} of {pendingPageCount}</span>
               <button
                 type="button"
                 aria-label="Previous pending recommendation page"
                 onClick={() => setPendingPage((page) => Math.max(1, page - 1))}
-                disabled={pendingPage === 1}
+                disabled={activePendingPage === 1}
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={14} /> Previous
               </button>
-              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{pendingPage} / {pendingPageCount}</span>
+              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{activePendingPage} / {pendingPageCount}</span>
               <button
                 type="button"
                 aria-label="Next pending recommendation page"
                 onClick={() => setPendingPage((page) => Math.min(pendingPageCount, page + 1))}
-                disabled={pendingPage === pendingPageCount}
+                disabled={activePendingPage === pendingPageCount}
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next <ChevronRight size={14} />
@@ -209,7 +258,7 @@ export default function AdminRecommendationsPage() {
         )}
         {pending.length > 0 && (
           <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            Showing {(pendingPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(pendingPage * PENDING_PAGE_SIZE, pending.length)} of {pending.length} pending recommendations
+            Showing {(activePendingPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(activePendingPage * PENDING_PAGE_SIZE, pending.length)} of {pending.length} pending recommendations
           </div>
         )}
       </div>
@@ -217,24 +266,24 @@ export default function AdminRecommendationsPage() {
       <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex flex-col gap-3 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-bold text-foreground">Reviewed ({reviewed.length})</h2>
-          {reviewed.length > 0 && (
+          {reviewedPageCount > 1 && (
             <nav aria-label="Reviewed recommendation pagination" className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="mr-1 hidden sm:inline">Page {reviewedPage} of {reviewedPageCount}</span>
+              <span className="mr-1 hidden sm:inline">Page {activeReviewedPage} of {reviewedPageCount}</span>
               <button
                 type="button"
                 aria-label="Previous reviewed recommendation page"
                 onClick={() => setReviewedPage((page) => Math.max(1, page - 1))}
-                disabled={reviewedPage === 1}
+                disabled={activeReviewedPage === 1}
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft size={14} /> Previous
               </button>
-              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{reviewedPage} / {reviewedPageCount}</span>
+              <span className="min-w-20 text-center font-semibold text-foreground sm:hidden">{activeReviewedPage} / {reviewedPageCount}</span>
               <button
                 type="button"
                 aria-label="Next reviewed recommendation page"
                 onClick={() => setReviewedPage((page) => Math.min(reviewedPageCount, page + 1))}
-                disabled={reviewedPage === reviewedPageCount}
+                disabled={activeReviewedPage === reviewedPageCount}
                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next <ChevronRight size={14} />
@@ -262,7 +311,7 @@ export default function AdminRecommendationsPage() {
         </div>
         {reviewed.length > 0 && (
           <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            Showing {(reviewedPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(reviewedPage * PENDING_PAGE_SIZE, reviewed.length)} of {reviewed.length} reviewed recommendations
+            Showing {(activeReviewedPage - 1) * PENDING_PAGE_SIZE + 1}–{Math.min(activeReviewedPage * PENDING_PAGE_SIZE, reviewed.length)} of {reviewed.length} reviewed recommendations
           </div>
         )}
       </div>

@@ -405,7 +405,7 @@ function AdminSupportContent() {
               <span>
                 Showing {(ticketPage - 1) * TICKETS_PER_PAGE + 1}–{Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length)} of {sortedTickets.length} tickets
               </span>
-              <div className="flex items-center gap-2">
+              {totalTicketPages > 1 && <div className="flex items-center gap-2">
                 <button
                   type="button"
                   aria-label="Previous ticket page"
@@ -425,7 +425,7 @@ function AdminSupportContent() {
                 >
                   Next <ChevronRight size={14} />
                 </button>
-              </div>
+              </div>}
             </nav>
           )}
         </div>

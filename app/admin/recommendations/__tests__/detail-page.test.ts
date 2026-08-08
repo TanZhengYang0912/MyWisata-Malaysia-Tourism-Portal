@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('admin recommendation detail workflow', () => {
-  it('routes both queues to one detail page and keeps moderation off the list', () => {
+  it('routes both queues to one detail page and keeps batch review actions on the list', () => {
     const source = readFileSync('app/admin/recommendations/page.tsx', 'utf8');
 
     expect(source).toContain('/admin/recommendations/${r.id}');
     expect(source).toContain('View details');
     expect(source).not.toContain('ApproveRejectBar');
-    expect(source).not.toContain('/api/admin/recommendations/review');
+    expect(source).toContain('AdminBatchActionBar');
+    expect(source).toContain('/api/admin/recommendations/review');
   });
 
   it('shows the complete evidence and keeps actions on the detail view', () => {

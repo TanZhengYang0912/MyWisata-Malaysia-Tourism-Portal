@@ -500,11 +500,11 @@ export default function AdminVendorsPage() {
 
           <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>{total === 0 ? 'No vendors to display' : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}`}</span>
-            <div className="flex items-center gap-2">
+            {pageCount > 1 && <div className="flex items-center gap-2">
               <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1 || loading} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /></button>
               <span className="min-w-[75px] text-center font-semibold text-slate-600">Page {page} of {pageCount}</span>
               <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page === pageCount || loading} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={16} /></button>
-            </div>
+            </div>}
           </div>
         </section>
       </div>
