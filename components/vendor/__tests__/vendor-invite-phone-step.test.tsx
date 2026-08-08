@@ -88,12 +88,14 @@ describe('VendorInvitePhoneStep server-render-safe states', () => {
         draft={draft}
         submitting={false}
         forceUnverified
+        claimError="Verify your personal mobile before submitting the application."
         {...callbacks}
       />,
     );
 
     expect(markup).toContain('Personal mobile number');
     expect(markup).toContain('Send phone OTP');
+    expect(markup).toContain('Verify your personal mobile before submitting the application.');
     expect(markup).not.toContain('Review your application');
   });
 

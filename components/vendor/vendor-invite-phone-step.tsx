@@ -203,6 +203,7 @@ export function VendorInvitePhoneStep({
         )}
 
         {phoneError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{phoneError}</p>}
+        {claimError && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{claimError}</p>}
 
         <div className="flex items-center justify-between gap-4">
           <button type="button" onClick={onBack} disabled={phoneBusy} className="text-sm font-semibold text-primary hover:underline disabled:opacity-50">Back</button>
