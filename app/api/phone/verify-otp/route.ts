@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     // unique_violation: phone claimed by another account between pre-send and post-verify
     if (error.message.includes('unique') || error.message.includes('duplicate'))
       return apiFail('PHONE_ALREADY_CLAIMED', 'This number was just registered to another account', 409);
-    return apiFail('DB_ERROR', error.message, 500);
+    return apiFail('DB_ERROR', 'Unable to complete phone verification. Please try again later.', 500);
   }
 
   // Mark the phone_verifications row as verified

@@ -74,4 +74,23 @@ describe('POST /api/phone/verify-otp', () => {
     expect(JSON.stringify(body)).not.toContain('Provider secret');
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
+
+  it('returns a stable generic message for an unexpected promotion RPC error', async () => {
+    const internalSecret = 'rpc-internal-secret';
+    mocks.verifyOtp.mockResolvedValue({ ok: true });
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: `database exploded: ${internalSecret}` } });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      data: null,
+      error: {
+        code: 'DB_ERROR',
+        message: 'Unable to complete phone verification. Please try again later.',
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain(internalSecret);
+  });
 });

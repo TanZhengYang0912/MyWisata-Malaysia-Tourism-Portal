@@ -53,13 +53,10 @@ export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpR
       body: new URLSearchParams({ To: phone, Code: code }),
     });
 
-    if (!res.ok) {
+    if (res.status !== 200) {
       const body = await res.json().catch(() => ({})) as { code?: number };
       if (res.status === 429 || body.code === 20429) return { ok: false, code: 'rate_limited' };
-      if (res.status === 401 || res.status === 403 || res.status >= 500) {
-        return { ok: false, code: 'verification_unavailable' };
-      }
-      return { ok: false, code: 'otp_invalid' };
+      return { ok: false, code: 'verification_unavailable' };
     }
 
     const data = await res.json() as { status?: string };

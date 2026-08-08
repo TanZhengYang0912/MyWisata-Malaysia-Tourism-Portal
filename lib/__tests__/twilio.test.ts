@@ -40,14 +40,22 @@ describe('Twilio Verify', () => {
     await expect(verifyOtp('+60177143951', '000000')).resolves.toEqual({ ok: false, code: 'otp_invalid' });
   });
 
-  it('classifies Twilio 404 invalid/expired responses without preserving provider text', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      Response.json({ code: 20404, message: 'Provider secret invalid lookup detail' }, { status: 404 }),
-    ));
+  it('only classifies HTTP 200 non-approved responses as invalid OTPs', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ status: 'pending' }, { status: 201 })));
+    const verifyOtp = await loadVerifyOtp();
+
+    await expect(verifyOtp('+60177143951', '000000')).resolves.toEqual({ ok: false, code: 'verification_unavailable' });
+  });
+
+  it.each([
+    ['generic', { message: 'Provider secret invalid lookup detail' }],
+    ['20404', { code: 20404, message: 'Provider secret invalid lookup detail' }],
+  ])('classifies Twilio %s 404 responses as unavailable without preserving provider text', async (_label, body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(body, { status: 404 })));
     const verifyOtp = await loadVerifyOtp();
 
     const result = await verifyOtp('+60177143951', '000000');
-    expect(result).toEqual({ ok: false, code: 'otp_invalid' });
+    expect(result).toEqual({ ok: false, code: 'verification_unavailable' });
     expect(JSON.stringify(result)).not.toContain('Provider secret');
   });
 
