@@ -1,9 +1,10 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
-import VendorClaimForm, { type VendorClaimValues } from '@/components/vendor/vendor-claim-form';
+import { VendorInviteWizard } from '@/components/vendor/vendor-invite-wizard';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 
 type LoadState =
@@ -81,20 +82,16 @@ export default function VendorInviteClient({ token }: { token: string }) {
               <RefreshCw size={15} /> Retry
             </button>
           )}
+          <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-semibold text-primary">
+            <Link href="/customer/support" className="hover:underline">Request a new invitation</Link>
+            <Link href="/customer/support" className="hover:underline">Contact MyWisata support</Link>
+          </div>
         </section>
       </main>
     );
   }
 
   const { preview } = state;
-  const initialValues: VendorClaimValues = {
-    businessName: preview.prefill.businessName,
-    legalBusinessName: preview.prefill.legalBusinessName,
-    businessType: preview.prefill.businessType,
-    contactEmail: preview.prefill.contactEmail ?? '',
-    contactPhone: preview.prefill.contactPhone ?? '',
-    businessAddress: preview.prefill.businessAddress,
-  };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -123,7 +120,7 @@ export default function VendorInviteClient({ token }: { token: string }) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
-                <p className="mt-1 text-sm text-foreground">{preview.recommendation.category ?? 'Not provided'}</p>
+                <p className="mt-1 text-sm text-foreground">{preview.recommendation.categoryName ?? 'Not provided'}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</p>
@@ -154,13 +151,7 @@ export default function VendorInviteClient({ token }: { token: string }) {
           <p className="mb-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3 text-sm text-foreground">
             Pre-filled from a customer recommendation. Please review and edit any details that are incorrect.
           </p>
-          <VendorClaimForm
-            token={token}
-            initialValues={initialValues}
-            authenticated={preview.authenticated}
-            emailMatched={preview.emailMatched}
-            phoneVerified={preview.phoneVerified}
-          />
+          <VendorInviteWizard token={token} preview={preview} onReload={loadPreview} />
         </div>
       </div>
     </main>
