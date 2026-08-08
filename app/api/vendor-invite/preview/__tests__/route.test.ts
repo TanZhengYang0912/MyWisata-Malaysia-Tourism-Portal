@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   recommendation: null as Record<string, unknown> | null,
   images: [] as Array<Record<string, unknown>>,
   categories: [] as Array<Record<string, unknown>>,
+  categoriesEq: vi.fn(),
+  categoriesOrder: vi.fn(),
   profile: null as Record<string, unknown> | null,
 }));
 
@@ -59,6 +61,18 @@ describe('POST /api/vendor-invite/preview', () => {
       { id: 'food-uuid', name: 'Food', slug: 'food' },
       { id: 'activity-uuid', name: 'Activity', slug: 'activity' },
     ];
+    mocks.categoriesEq.mockImplementation((column: string, value: unknown) => {
+      if (column !== 'is_active' || value !== true) {
+        throw new Error(`Unexpected categories filter ${column}=${String(value)}`);
+      }
+      return { order: mocks.categoriesOrder };
+    });
+    mocks.categoriesOrder.mockImplementation((column: string, options: unknown) => {
+      if (column !== 'sort_order' || JSON.stringify(options) !== JSON.stringify({ ascending: true })) {
+        throw new Error(`Unexpected categories order ${column}=${JSON.stringify(options)}`);
+      }
+      return Promise.resolve({ data: mocks.categories, error: null });
+    });
     mocks.profile = { phone: '+60112223344', phone_verified_at: '2026-08-01T00:00:00.000Z' };
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     mocks.userFrom.mockImplementation(() => singleResult(mocks.profile));
@@ -68,7 +82,7 @@ describe('POST /api/vendor-invite/preview', () => {
       if (table === 'categories') {
         return {
           select: vi.fn(() => ({
-            eq: vi.fn(() => ({ order: vi.fn().mockResolvedValue({ data: mocks.categories, error: null }) })),
+            eq: mocks.categoriesEq,
           })),
         };
       }
@@ -112,10 +126,13 @@ describe('POST /api/vendor-invite/preview', () => {
     expect(JSON.stringify(body)).not.toContain('recommender');
     expect(JSON.stringify(body)).not.toContain('valid-invite-token-value');
     expect(mocks.userFrom).not.toHaveBeenCalled();
+    expect(mocks.categoriesEq).toHaveBeenCalledWith('is_active', true);
+    expect(mocks.categoriesOrder).toHaveBeenCalledWith('sort_order', { ascending: true });
   });
 
   it('unlocks contacts for the authenticated invitation email', async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: 'OWNER@example.com' } }, error: null });
+    mocks.resolveActiveVendorInvite.mockResolvedValue({ ok: true, invite: { recommendationId: 'rec-1', email: ' owner@example.com ' } });
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: ' OWNER@EXAMPLE.COM ' } }, error: null });
 
     const response = await POST(request());
     const body = await response.json();
