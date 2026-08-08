@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
-const pageSource = read("app/customer/search/page.tsx");
+const pageSource = read("app/customer/partners/page.tsx");
 const clientSource = read("app/customer/search/search-client.tsx");
 const catalogueSource = read("backend/domains/catalogue.ts");
 

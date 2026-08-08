@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Compass, Gift, Heart, Inbox, Map, MessageCircle, ReceiptText, Search, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
+import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -17,12 +17,13 @@ export type CustomerAccountGroup = {
 };
 
 export const CUSTOMER_NAV: CustomerNavigationItem[] = [
-  { href: "/customer/search", label: "Partners", icon: Search },
+  { href: "/customer", label: "Home", icon: Home },
   { href: "/customer/explore", label: "Explore", icon: Compass },
-  { href: "/customer/map", label: "Map", icon: Map },
+  { href: "/customer/partners", label: "Partners", icon: Store },
+  { href: "/customer/trip", label: "Trip", icon: Map },
   { href: "/customer/chat", label: "Chat", icon: MessageCircle },
   { href: "/customer/activity?tab=itinerary", label: "My Activity", icon: ReceiptText },
-  { href: "/customer/wishlist", label: "Saved", icon: Heart },
+  { href: "/customer/saved", label: "Saved", icon: Heart },
 ];
 
 export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
@@ -70,5 +71,7 @@ export function getCustomerDisplayName(user: { name?: string | null; email?: str
 
 export function isCustomerNavActive(pathname: string, href: string): boolean {
   const targetPath = href.split("?")[0];
+  // Home is exactly /customer — use strict equality so it does not light up on every sub-route.
+  if (targetPath === "/customer") return pathname === "/customer";
   return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
 }

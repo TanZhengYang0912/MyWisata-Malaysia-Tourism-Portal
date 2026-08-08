@@ -4,11 +4,144 @@ import { useEffect, useRef, useState } from "react";
 import { Expand, Eye, EyeOff, GripVertical, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
-import { useTrip, type TripStop } from "@/components/providers/trip";
+import { useCart } from "@/components/providers/cart";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, type GeoHit, type RouteResult } from "@/lib/routing";
 import type { ComputedActivity } from "@/backend/core/types";
+import type { Trip, TripItem } from "@/backend/domains/trips";
 import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
+import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction } from "../actions";
+
+export interface TripStop {
+  id: string; // e.g., experience_id or custom id
+  lat: number;
+  lng: number;
+  label: string;
+  sublabel?: string;
+  source: "vendor" | "location";
+  locationKind?: "custom" | "gps";
+}
+
+// local sync hook matching useTrip API
+function useSyncTrip(tripId: string, initialItems: TripItem[]) {
+  const [items, setItems] = useState<TripItem[]>(initialItems);
+
+  const stops: TripStop[] = items.map(i => ({
+    id: i.id, // using the item id (which matches experience_id or loc-xxx)
+    lat: i.lat,
+    lng: i.lng,
+    label: i.label,
+    sublabel: i.sublabel,
+    source: i.source,
+    locationKind: i.kind
+  }));
+
+  const origin = stops.find(s => s.source === "location") || null;
+
+  return {
+    origin,
+    stops,
+    has: (id: string) => stops.some(s => s.id === id),
+    add: async (stop: Omit<TripStop, "id"> & { id?: string }) => {
+      const tempId = stop.id || ("temp-" + Date.now());
+      const newItem: TripItem = {
+        id: tempId,
+        trip_id: tripId,
+        experience_id: stop.source === "vendor" ? tempId : null,
+        sequence: items.length,
+        scheduled_date: null,
+        scheduled_time: null,
+        created_at: new Date().toISOString(),
+        source: stop.source,
+        kind: stop.locationKind,
+        lat: stop.lat,
+        lng: stop.lng,
+        label: stop.label,
+        sublabel: stop.sublabel
+      };
+      setItems(prev => [...prev, newItem]);
+      await addTripItemAction({
+        trip_id: tripId,
+        experience_id: stop.source === "vendor" ? stop.id : undefined,
+        source: stop.source,
+        kind: stop.locationKind,
+        lat: stop.lat,
+        lng: stop.lng,
+        label: stop.label,
+        sublabel: stop.sublabel
+      });
+    },
+    remove: async (id: string) => {
+      setItems(prev => prev.filter(i => i.id !== id && i.experience_id !== id));
+      const target = items.find(i => i.id === id || i.experience_id === id);
+      if (target) await deleteTripItemAction(tripId, target.id);
+    },
+    move: async (from: number, to: number) => {
+      const newItems = [...items];
+      const [moved] = newItems.splice(from, 1);
+      newItems.splice(to, 0, moved);
+      setItems(newItems);
+      await reorderTripItemsAction(tripId, newItems.map(i => i.id));
+    },
+    setLocation: async (stop: Omit<TripStop, "id" | "source">) => {
+      const locIndex = items.findIndex(i => i.source === "location");
+      const tempId = "loc-" + Date.now();
+      const newLoc: TripItem = {
+        id: tempId,
+        trip_id: tripId,
+        experience_id: null,
+        sequence: locIndex >= 0 ? items[locIndex].sequence : 0,
+        scheduled_date: null,
+        scheduled_time: null,
+        created_at: new Date().toISOString(),
+        source: "location",
+        kind: stop.locationKind,
+        lat: stop.lat,
+        lng: stop.lng,
+        label: stop.label,
+        sublabel: stop.sublabel
+      };
+      
+      const newItems = [...items];
+      if (locIndex >= 0) {
+        const oldLocId = items[locIndex].id;
+        newItems[locIndex] = newLoc;
+        setItems(newItems);
+        await deleteTripItemAction(tripId, oldLocId);
+      } else {
+        newItems.unshift(newLoc); // origin is always top conceptually, or just add it
+        setItems(newItems);
+      }
+      
+      await addTripItemAction({
+        trip_id: tripId,
+        source: "location",
+        kind: stop.locationKind,
+        lat: stop.lat,
+        lng: stop.lng,
+        label: stop.label,
+        sublabel: stop.sublabel
+      });
+      // if we replaced, we should reorder to ensure sequences match
+      if (locIndex >= 0) {
+        await reorderTripItemsAction(tripId, newItems.map(i => i.id));
+      }
+    },
+    update: async (id: string, updates: { label: string; lat: number; lng: number }) => {
+      setItems(prev => prev.map(i => {
+        if (i.id === id || i.experience_id === id) {
+          return { ...i, label: updates.label, lat: updates.lat, lng: updates.lng };
+        }
+        return i;
+      }));
+      await updateTripItemLocationAction(tripId, id, updates);
+    },
+    clear: async () => {
+      // not implemented for db for safety, just stub
+      alert("Please delete the trip from the Trip Hub.");
+    }
+  };
+}
 
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 const RADIUS_OPTIONS_KM = [2, 5, 10];
@@ -33,8 +166,8 @@ function fmtShort(min: number): string {
   return m ? `${h}h${m}` : `${h}h`;
 }
 
-export function MapClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
-  const trip = useTrip();
+export function MapClient({ tripData, initialItems, initialActivities }: { tripData: Trip; initialItems: TripItem[]; initialActivities: ComputedActivity[] }) {
+  const trip = useSyncTrip(tripData.id, initialItems);
   const [category, setCategory] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
@@ -217,7 +350,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
     setEditingStart(true);
   }
   function chooseSuggestion(hit: GeoHit) {
-    trip.setLocation({ label: hit.label, lat: hit.lat, lng: hit.lng, kind: "custom" });
+    trip.setLocation({ label: hit.label, lat: hit.lat, lng: hit.lng, locationKind: "custom" });
     setEditingStart(false);
     setStartInput("");
     setSuggestions([]);
@@ -231,7 +364,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
     setLocError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        trip.setLocation({ label: "Your location", lat: pos.coords.latitude, lng: pos.coords.longitude, kind: "gps" });
+        trip.setLocation({ label: "Your location", lat: pos.coords.latitude, lng: pos.coords.longitude, locationKind: "gps" });
         setLocating(false);
         setEditingStart(false);
       },
@@ -248,7 +381,7 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
     else trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" });
   }
   function chooseStopSuggestion(hit: GeoHit) {
-    trip.add({ id: crypto.randomUUID(), lat: hit.lat, lng: hit.lng, label: hit.label, source: "custom" });
+    trip.add({ lat: hit.lat, lng: hit.lng, label: hit.label, source: "location", locationKind: "custom" });
     setAddingStop(false);
     setStopSearchInput("");
     setStopSuggestions([]);
@@ -325,50 +458,33 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
   const hasRouteInputs = trip.stops.length >= 2;
 
   return (
-    <div className={fullscreen ? "fixed inset-0 z-[60] bg-background" : "relative mx-auto max-w-7xl px-4 py-4 sm:px-6"}>
-      <div className={`relative overflow-hidden border border-border bg-card ${fullscreen ? "h-full rounded-none" : "rounded-[1.375rem] shadow-[0_18px_45px_rgba(1,0,102,0.14)]"}`}>
-        <MapView
-          pins={pins}
-          center={center}
-          zoom={near ? 12 : 7}
-          height={fullscreen ? "100%" : "max(520px, calc(100dvh - 8.5rem))"}
-          cluster
-          radiusCenter={near ? [near.lat, near.lng] : undefined}
-          radiusKm={near ? radiusKm : undefined}
-          onAddStop={toggleStop}
-          stopIds={trip.stops.map((s) => s.id)}
-          routes={activeRoutes.map((r, i) => ({ path: r.geometry, selected: i === selectedRouteIdx }))}
-          routeColor={MODE_STYLE[mode].color}
-          routeDashed={MODE_STYLE[mode].dashed}
-          focusRequest={focusRequest}
-        />
-
-        <div className={`static mt-3 flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.18)] sm:absolute sm:right-4 sm:top-4 sm:mt-0 sm:w-[360px] ${collapsed ? "" : "max-h-[72vh] sm:max-h-[calc(100%-2rem)]"}`}>
-          <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-3.5">
-            <div className="flex items-center gap-2 text-base font-bold text-foreground">
-              <Navigation size={16} className="text-primary" /> Your Trip
+    <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden md:flex-row">
+      {/* Left Side: Itinerary Panel */}
+      <div
+        className={`relative z-10 flex flex-col bg-card shadow-xl transition-all duration-300 border-r border-border ${
+          collapsed ? "h-auto w-full border-b md:h-full md:w-16 md:border-b-0" : "h-1/2 w-full md:h-full md:w-[450px]"
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+          {!collapsed ? (
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{tripData.name}</h1>
+              <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
+                {tripData.start_date ? (tripData.end_date ? `${tripData.start_date} to ${tripData.end_date}` : tripData.start_date) : "Dates pending"}
+              </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-amber-900" style={{ backgroundColor: "var(--highlight-yellow)" }}>
-                {waypointCount} stop{waypointCount === 1 ? "" : "s"}
-              </span>
-              {!collapsed && (
-                <button onClick={() => setFullscreen((f) => !f)} className="grid h-6 w-6 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen map"}>
-                  {fullscreen ? <Shrink size={14} /> : <Expand size={14} />}
-                </button>
-              )}
-              <button onClick={() => setCollapsed((c) => !c)} className="grid h-6 w-6 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={collapsed ? "Expand trip panel" : "Minimize trip panel"}>
-                {collapsed ? <Maximize2 size={14} /> : <Minus size={16} />}
-              </button>
-            </div>
+          ) : <span />}
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCollapsed(!collapsed)} className="grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground">
+              {collapsed ? <Maximize2 size={14} /> : <Minus size={14} />}
+            </button>
           </div>
-
-          {!collapsed && (
-            <>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4">
-                {/* filters */}
-                <div className="mb-2 flex gap-2">
-                  <label className="flex-1">
+        </div>
+        {!collapsed && (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4">
+              <div className="mb-2 flex gap-2 mt-4">
+                <label className="flex-1">
                     <span className="sr-only">Filter by category</span>
                     <select value={category ?? ""} onChange={(e) => setCategory(e.target.value || null)} className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">
                       <option value="">All categories</option>
@@ -436,8 +552,8 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
                   )}
 
                   {trip.stops.map((s, i) => {
-                    const isLocation = s.source === "location";
-                    const isCustom = s.source === "custom";
+                    const isLocation = s.source === "location" && s.id === trip.origin?.id;
+                    const isCustom = s.source === "location" && s.id !== trip.origin?.id;
                     const editing = isLocation ? editingStart : editingStopId === s.id;
                     const badge = i + 1;
                     return (
@@ -689,6 +805,34 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
             </>
           )}
         </div>
+
+      {/* Right Side: Map */}
+      <div className="relative flex-1 bg-muted">
+        <MapView
+          pins={pins}
+          center={center}
+          zoom={near ? 12 : 7}
+          height="100%"
+          cluster
+          radiusCenter={near ? [near.lat, near.lng] : undefined}
+          radiusKm={near ? radiusKm : undefined}
+          onAddStop={toggleStop}
+          stopIds={trip.stops.map((s) => s.id)}
+          routes={activeRoutes.map((r, i) => ({ path: r.geometry, selected: i === selectedRouteIdx }))}
+          routeColor={MODE_STYLE[mode].color}
+          routeDashed={MODE_STYLE[mode].dashed}
+          focusRequest={focusRequest}
+        />
+        {/* Radius toggle overlay */}
+        {near && (
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-card p-1 shadow-lg">
+            {RADIUS_OPTIONS_KM.map((r) => (
+              <button key={r} onClick={() => setRadiusKm(r)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${radiusKm === r ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                {r} km
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -150,11 +150,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
                 {item.label}
-                {item.href === "/customer/chat" && unreadChats > 0 && (
-                  <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-primary" />
-                )}
-                {item.href === "/customer/map" && tripCount > 0 && (
+                {item.href === "/customer/trip" && tripCount > 0 && (
                   <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
+                )}
+                {item.href === "/customer/chat" && unreadChats > 0 && (
+                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
                 )}
               </Link>
             ))}
@@ -270,11 +270,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
               <item.icon size={13} /> {item.label}
-              {item.href === "/customer/chat" && unreadChats > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              )}
-              {item.href === "/customer/map" && tripCount > 0 && (
+              {item.href === "/customer/trip" && tripCount > 0 && (
                 <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
+              )}
+              {item.href === "/customer/chat" && unreadChats > 0 && (
+                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
               )}
             </Link>
           ))}

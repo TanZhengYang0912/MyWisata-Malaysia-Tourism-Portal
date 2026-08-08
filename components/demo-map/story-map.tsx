@@ -209,7 +209,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
   return (
     <div className="bg-background text-foreground">
-      <section className="mx-auto max-w-[1800px] px-4 py-4 sm:px-6 lg:h-[min(920px,calc(100dvh-8rem))] lg:px-8 lg:py-6">
+      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:h-[min(920px,calc(100dvh-8rem))] lg:px-8 lg:py-6">
         <div className="grid gap-6 lg:h-full lg:grid-rows-[minmax(0,1fr)_240px] 2xl:grid-rows-[minmax(0,1fr)_320px]">
           <div className="relative min-w-0 lg:h-full lg:min-h-0">
             <MalaysiaStateMap stateCounts={stateCounts} selectedStateId={selectedStateId} onSelectState={selectState} onDismissPlace={() => setSelectedPlaceId(null)} />

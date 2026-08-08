@@ -78,7 +78,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
-    router.push(`/customer/search?q=${encodeURIComponent(query)}`);
+    router.push(`/customer/partners?q=${encodeURIComponent(query)}`);
   }
 
   function exploreState(destinationState: string) {
@@ -191,7 +191,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">{personalised ? "Recommended For You" : "Popular Right Now"}</h2>
             </div>
-            <Link href={personalised ? "/customer/preferences" : "/customer/search"} className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
+            <Link href={personalised ? "/customer/preferences" : "/customer/partners"} className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
               {personalised ? "Tune preferences" : "View all"} <ChevronRight size={14} />
             </Link>
           </div>
@@ -216,7 +216,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
             </h2>
             <p className="text-sm mt-0.5 text-muted-foreground">{activities?.length ?? 0} results</p>
           </div>
-          <Link href="/customer/search" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground shrink-0">
+          <Link href="/customer/partners" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border border-border text-muted-foreground shrink-0">
             <Search size={12} /> Search &amp; Filter
           </Link>
         </div>
