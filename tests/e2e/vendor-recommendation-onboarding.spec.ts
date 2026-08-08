@@ -61,6 +61,7 @@ async function openInvite(page: Page) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible({ timeout: 10_000 });
       return;
     } catch (error) {
       if (attempt === 2) throw error;
@@ -124,7 +125,12 @@ test('unverified invite completes inline OTP without persisting personal secrets
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'Verify your personal mobile' })).toBeVisible();
 
-  await page.getByLabel('Personal mobile number').fill('+60123456789');
+  await page.getByLabel('Personal mobile number').fill('123456789');
+  const outletContactConsent = page.getByRole('checkbox', { name: /Use this mobile as Outlet contact/i });
+  await outletContactConsent.check();
+  await expect.poll(async () => (await page.evaluate(() => Object.values(window.sessionStorage))).join('\n')).toContain('+60123456789');
+  await outletContactConsent.uncheck();
+  await expect.poll(async () => (await page.evaluate(() => Object.values(window.sessionStorage))).join('\n')).not.toContain('+60123456789');
   await page.getByRole('button', { name: 'Send phone OTP' }).click();
   for (const [index, digit] of [...'123456'].entries()) {
     await page.getByLabel(`OTP digit ${index + 1}`).fill(digit);
@@ -140,4 +146,37 @@ test('unverified invite completes inline OTP without persisting personal secrets
   await page.getByRole('button', { name: 'Submit application' }).click();
   await expect(page.getByRole('heading', { name: 'Vendor application submitted' })).toBeVisible();
   expect(claimBody).toMatchObject({ contactPhone: '+60311111111' });
+});
+
+test('explicit Outlet contact consent copies the verified personal mobile into the claim', async ({ page }) => {
+  let phoneVerified = false;
+  let claimBody: Record<string, unknown> | null = null;
+  await mockPreview(page, () => phoneVerified);
+  await page.route('**/api/phone/send-otp', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { sent: true }, error: null }) });
+  });
+  await page.route('**/api/phone/verify-otp', async (route) => {
+    phoneVerified = true;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { verified: true }, error: null }) });
+  });
+  await page.route('**/api/vendor/claim', async (route) => {
+    claimBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ data: { claimed: true }, error: null }) });
+  });
+
+  await openInvite(page);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel('Personal mobile number').fill('123456789');
+  await page.getByRole('checkbox', { name: /Use this mobile as Outlet contact/i }).check();
+  await page.getByRole('button', { name: 'Send phone OTP' }).click();
+  for (const [index, digit] of [...'123456'].entries()) {
+    await page.getByLabel(`OTP digit ${index + 1}`).fill(digit);
+  }
+  await page.getByRole('button', { name: 'Verify phone OTP' }).click();
+  await page.getByRole('checkbox', { name: /authorized to represent/i }).check();
+  await page.getByRole('button', { name: 'Submit application' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Vendor application submitted' })).toBeVisible();
+  expect(claimBody).toMatchObject({ contactPhone: '+60123456789' });
 });
