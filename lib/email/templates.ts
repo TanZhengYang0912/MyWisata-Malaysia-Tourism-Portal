@@ -82,7 +82,7 @@ const SUBJECTS: Record<TransactionEmailType, string> = {
   recommendation_reward_reversed: 'Your pending recommendation reward was reversed',
 };
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;',
     '<': '&lt;',

@@ -1,8 +1,9 @@
 // P4 — Member 4: AI-drafted KB entries (CLAUDE-P4-EXTRAS-2.md Extra 5)
 // POST /api/admin/chatbot/kb/draft — body { question }. Returns a draft
-// { title, body, category } for the admin's existing KB form to prefill;
-// never saves anything itself (see lib/chatbot/kb-draft.ts's header). Gated
-// on super_admin/approver, same as every other /admin/chatbot route.
+// { title, body, keywords, category } for the admin's existing KB form to
+// prefill; never saves anything itself (see lib/chatbot/kb-draft.ts's
+// header). Gated on super_admin/approver, same as every other
+// /admin/chatbot route.
 //
 // category is classifyTicket(question) — the EXACT same keyword classifier
 // support tickets already use (lib/chatbot/classify.ts), reused as-is, not
