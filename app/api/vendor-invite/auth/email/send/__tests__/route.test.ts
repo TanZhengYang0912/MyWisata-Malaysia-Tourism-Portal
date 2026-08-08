@@ -43,8 +43,8 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
     expect(JSON.stringify(body)).not.toContain('owner@example.com');
   });
 
-  it('rejects invalid payloads without resolving an invitation', async () => {
-    const response = await POST(request({ token: 'short', email: 'attacker@example.com' }));
+  it('rejects an otherwise-valid payload containing a client email', async () => {
+    const response = await POST(request({ token: 'valid-invite-token-value', email: 'attacker@example.com' }));
 
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'VALIDATION_FAILED' } });

@@ -42,8 +42,8 @@ describe('POST /api/vendor-invite/auth/email/verify', () => {
     expect(JSON.stringify(body)).not.toContain('owner@example.com');
   });
 
-  it('rejects client email fields and malformed codes before resolving an invitation', async () => {
-    const response = await POST(request({ token: 'valid-invite-token-value', code: '12345x', email: 'attacker@example.com' }));
+  it('rejects an otherwise-valid payload containing a client email', async () => {
+    const response = await POST(request({ token: 'valid-invite-token-value', code: '123456', email: 'attacker@example.com' }));
 
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
