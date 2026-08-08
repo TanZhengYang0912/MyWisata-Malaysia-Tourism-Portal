@@ -4,6 +4,7 @@ import {
   buildVendorInviteSupportMailto,
   createVendorInviteStoragePayload,
   mergeUntouchedVendorInviteDraft,
+  reconcileVendorInvitePrefill,
   restoreVendorInviteStoragePayload,
   sanitizeVendorInviteDraftForAccount,
   type VendorInviteDraft,
@@ -58,6 +59,33 @@ describe('vendor invite wizard state', () => {
     expect(merged.businessName).toBe('My edited brand');
     expect(merged.contactEmail).toBe('verified@example.com');
     expect(merged.contactPhone).toBe('+60119999999');
+  });
+
+  it('reconciles the wizard merge-prefill transition across a mismatched then matching account', () => {
+    const mismatched = reconcileVendorInvitePrefill(
+      {
+        draft: { ...draft, businessName: 'My edited brand' },
+        dirtyFields: ['businessName', 'contactEmail', 'contactPhone'],
+      },
+      { ...draft, contactEmail: '', contactPhone: '' },
+      false,
+    );
+
+    expect(mismatched.draft).toMatchObject({ businessName: 'My edited brand', contactEmail: '', contactPhone: '' });
+    expect(mismatched.dirtyFields).toEqual(['businessName']);
+
+    const matching = reconcileVendorInvitePrefill(
+      mismatched,
+      { ...draft, contactEmail: 'verified@example.com', contactPhone: '+60119999999' },
+      true,
+    );
+
+    expect(matching.draft).toMatchObject({
+      businessName: 'My edited brand',
+      contactEmail: 'verified@example.com',
+      contactPhone: '+60119999999',
+    });
+    expect(matching.dirtyFields).toEqual(['businessName']);
   });
 
   it('builds the exact safe Google callback and distinct public support mailto links', () => {

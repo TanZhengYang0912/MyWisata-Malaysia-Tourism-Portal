@@ -7,11 +7,12 @@ import { VendorInviteDetailsStep } from '@/components/vendor/vendor-invite-detai
 import {
   createVendorInviteStoragePayload,
   draftFromVendorInvitePreview,
-  mergeUntouchedVendorInviteDraft,
+  reconcileVendorInvitePrefill,
   restoreVendorInviteStoragePayload,
   sanitizeVendorInviteDraftForAccount,
   type VendorInviteDraft,
   type VendorInviteDraftField,
+  type VendorInviteDraftState,
   type VendorInviteStep,
 } from '@/components/vendor/vendor-invite-wizard-state';
 
@@ -30,7 +31,7 @@ async function fingerprintToken(token: string) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-type DraftState = { draft: VendorInviteDraft; dirtyFields: VendorInviteDraftField[] };
+type DraftState = VendorInviteDraftState;
 
 type DraftAction =
   | { type: 'replace'; state: DraftState }
@@ -45,8 +46,7 @@ function draftReducer(current: DraftState, action: DraftAction): DraftState {
       dirtyFields: current.dirtyFields.includes(action.field) ? current.dirtyFields : [...current.dirtyFields, action.field],
     };
   }
-  const merged = mergeUntouchedVendorInviteDraft(current.draft, action.prefill, current.dirtyFields);
-  return sanitizeVendorInviteDraftForAccount(merged, current.dirtyFields, action.emailMatched);
+  return reconcileVendorInvitePrefill(current, action.prefill, action.emailMatched);
 }
 
 export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWizardProps) {
@@ -56,6 +56,7 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
   const [tokenFingerprint, setTokenFingerprint] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
   const initialEmailMatchedRef = useRef(preview.account.emailMatched);
+  const initialDraftRef = useRef(initialDraft);
 
   useEffect(() => {
     let active = true;
@@ -65,7 +66,11 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
       try {
         const saved = restoreVendorInviteStoragePayload(window.sessionStorage.getItem(`${STORAGE_KEY}.${fingerprint}`), fingerprint);
         if (saved) {
-          const sanitized = sanitizeVendorInviteDraftForAccount(saved.draft, saved.dirtyFields, initialEmailMatchedRef.current);
+          const sanitized = reconcileVendorInvitePrefill(
+            { draft: saved.draft, dirtyFields: saved.dirtyFields },
+            initialDraftRef.current,
+            initialEmailMatchedRef.current,
+          );
           dispatchDraft({ type: 'replace', state: sanitized });
           setStep(saved.step);
           if (!initialEmailMatchedRef.current) {

@@ -20,6 +20,11 @@ export type VendorInviteDraft = {
 
 export type VendorInviteDraftField = keyof VendorInviteDraft;
 
+export type VendorInviteDraftState = {
+  draft: VendorInviteDraft;
+  dirtyFields: VendorInviteDraftField[];
+};
+
 export type VendorInviteStoragePayload = {
   version: 2;
   tokenFingerprint: string;
@@ -90,6 +95,15 @@ export function mergeUntouchedVendorInviteDraft(
     if (!dirtyFields.includes(field)) Object.assign(next, { [field]: prefill[field] });
   });
   return next;
+}
+
+export function reconcileVendorInvitePrefill(
+  current: VendorInviteDraftState,
+  prefill: VendorInviteDraft,
+  emailMatched: boolean,
+): VendorInviteDraftState {
+  const draft = mergeUntouchedVendorInviteDraft(current.draft, prefill, current.dirtyFields);
+  return sanitizeVendorInviteDraftForAccount(draft, current.dirtyFields, emailMatched);
 }
 
 export function buildGoogleInvitationCallbackUrl(origin: string, token: string) {
