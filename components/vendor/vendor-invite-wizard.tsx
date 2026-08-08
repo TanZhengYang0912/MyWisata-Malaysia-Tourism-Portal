@@ -4,6 +4,14 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 import { VendorInviteAccountStep } from '@/components/vendor/vendor-invite-account-step';
 import { VendorInviteDetailsStep } from '@/components/vendor/vendor-invite-details-step';
+import { VendorInvitePhoneStep } from '@/components/vendor/vendor-invite-phone-step';
+import {
+  buildGuidedVendorClaimInput,
+  mapClaimError,
+  readApiFailure,
+  recoveryRequiresPreviewReload,
+  submitGuidedVendorClaim,
+} from '@/components/vendor/vendor-invite-phone-state';
 import {
   createVendorInviteStoragePayload,
   draftFromVendorInvitePreview,
@@ -55,6 +63,12 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
   const [draftState, dispatchDraft] = useReducer(draftReducer, { draft: initialDraft, dirtyFields: [] });
   const [tokenFingerprint, setTokenFingerprint] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [inactive, setInactive] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
   const initialEmailMatchedRef = useRef(preview.account.emailMatched);
   const initialDraftRef = useRef(initialDraft);
 
@@ -109,20 +123,78 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
     dispatchDraft({ type: 'update', field, value });
   }
 
+  async function submitClaim() {
+    if (submittingRef.current || !draftState.draft.authorizedToRepresent) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setClaimError(null);
+    setRouteError(null);
+    try {
+      const response = await submitGuidedVendorClaim(fetch, buildGuidedVendorClaimInput(token, draftState.draft));
+      if (response.status === 201) {
+        const fingerprint = tokenFingerprint ?? await fingerprintToken(token);
+        window.sessionStorage.removeItem(`${STORAGE_KEY}.${fingerprint}`);
+        setSubmitted(true);
+        return;
+      }
+      const recovery = mapClaimError(await readApiFailure(response));
+      if (recovery.target === 'inactive') {
+        setInactive(true);
+      } else if (recovery.target === 'account' || recovery.target === 'details' || recovery.target === 'verify') {
+        setStep(recovery.target);
+        if (recovery.target === 'verify') setClaimError(recovery.message);
+        else setRouteError(recovery.message);
+        if (recoveryRequiresPreviewReload(recovery.target)) await onReload();
+      } else {
+        setClaimError(recovery.message);
+      }
+    } catch {
+      setClaimError(mapClaimError({ code: '', status: 503 }).message);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
   const activeStep = preview.account.emailMatched ? step : 'account';
   const stepNumber = activeStep === 'account' ? 1 : activeStep === 'details' ? 2 : 3;
+
+  if (submitted) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-6 text-center">
+        <h2 className="text-xl font-bold text-foreground">Vendor application submitted</h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Your Vendor and first Outlet are private while MyWisata reviews the application.</p>
+      </section>
+    );
+  }
+
+  if (inactive) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-6 text-center">
+        <h2 className="text-xl font-bold text-foreground">Vendor invitation inactive</h2>
+        <p className="mt-3 text-sm text-muted-foreground">This vendor invitation is no longer active. Contact MyWisata support if you need help.</p>
+      </section>
+    );
+  }
 
   return (
     <section aria-label="Vendor invitation setup">
       <p className="mb-3 text-sm font-semibold text-primary">Step {stepNumber} of 3</p>
+      {routeError && <p role="alert" className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{routeError}</p>}
       {activeStep === 'account' && <VendorInviteAccountStep token={token} account={preview.account} onContinue={() => setStep('details')} onReload={onReload} />}
       {activeStep === 'details' && <VendorInviteDetailsStep preview={preview} draft={draftState.draft} update={update} onContinue={() => setStep('verify')} />}
       {activeStep === 'verify' && (
-        <section className="rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-xl font-bold text-foreground">Verify and submit</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">Phone verification and application submission are the next step.</p>
-          <button type="button" onClick={() => setStep('details')} className="mt-5 text-sm font-semibold text-primary hover:underline">Back to details</button>
-        </section>
+        <VendorInvitePhoneStep
+          preview={preview}
+          draft={draftState.draft}
+          submitting={submitting}
+          claimError={claimError}
+          onBack={() => setStep('details')}
+          onUpdateContactPhone={(phone) => update('contactPhone', phone)}
+          onUpdateAuthorized={(authorized) => update('authorizedToRepresent', authorized)}
+          onVerified={onReload}
+          onSubmit={submitClaim}
+        />
       )}
     </section>
   );

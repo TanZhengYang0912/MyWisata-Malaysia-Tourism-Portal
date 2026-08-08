@@ -47,11 +47,15 @@ describe('VendorInviteWizard contract', () => {
     expect(source).not.toContain('sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ token');
   });
 
-  it('leaves phone verification and final submission clearly for Task 5', () => {
+  it('integrates phone verification, atomic claim submission, and private-until-review completion', () => {
     const source = wizardSource();
 
-    expect(source).toContain('Phone verification and application submission are the next step.');
-    expect(source).not.toContain("fetch('/api/vendor/claim'");
-    expect(source).not.toContain('/api/phone/send-otp');
+    expect(source).toContain('VendorInvitePhoneStep');
+    expect(source).toContain('submitGuidedVendorClaim');
+    expect(source).toContain('submittingRef.current');
+    expect(source).toContain('window.sessionStorage.removeItem');
+    expect(source).toContain('Vendor application submitted');
+    expect(source).toContain('private while MyWisata reviews the application');
+    expect(source).toContain('Vendor invitation inactive');
   });
 });
