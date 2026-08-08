@@ -8,6 +8,7 @@ import { VendorInvitePhoneStep } from '@/components/vendor/vendor-invite-phone-s
 import {
   buildGuidedVendorClaimInput,
   mapClaimError,
+  phoneVerificationRecoveryReducer,
   readApiFailure,
   recoveryRequiresPreviewReload,
   submitGuidedVendorClaim,
@@ -68,6 +69,7 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
   const [inactive, setInactive] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [phoneRecovery, dispatchPhoneRecovery] = useReducer(phoneVerificationRecoveryReducer, { forceUnverified: false });
   const submittingRef = useRef(false);
   const initialEmailMatchedRef = useRef(preview.account.emailMatched);
   const initialDraftRef = useRef(initialDraft);
@@ -142,7 +144,10 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
         setInactive(true);
       } else if (recovery.target === 'account' || recovery.target === 'details' || recovery.target === 'verify') {
         setStep(recovery.target);
-        if (recovery.target === 'verify') setClaimError(recovery.message);
+        if (recovery.target === 'verify') {
+          dispatchPhoneRecovery({ type: 'claim-phone-required' });
+          setClaimError(recovery.message);
+        }
         else setRouteError(recovery.message);
         if (recoveryRequiresPreviewReload(recovery.target)) await onReload();
       } else {
@@ -188,11 +193,15 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
           preview={preview}
           draft={draftState.draft}
           submitting={submitting}
+          forceUnverified={phoneRecovery.forceUnverified}
           claimError={claimError}
           onBack={() => setStep('details')}
           onUpdateContactPhone={(phone) => update('contactPhone', phone)}
           onUpdateAuthorized={(authorized) => update('authorizedToRepresent', authorized)}
-          onVerified={onReload}
+          onVerified={async () => {
+            dispatchPhoneRecovery({ type: 'verification-succeeded' });
+            await onReload();
+          }}
           onSubmit={submitClaim}
         />
       )}

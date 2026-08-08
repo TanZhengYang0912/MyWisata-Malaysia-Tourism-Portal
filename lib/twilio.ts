@@ -18,6 +18,10 @@ export type TwilioResult =
   | { ok: true }
   | { ok: false; code: 'rate_limited' | 'invalid_phone' | 'twilio_error'; message: string };
 
+export type VerifyOtpResult =
+  | { ok: true }
+  | { ok: false; code: 'otp_invalid' | 'rate_limited' | 'verification_unavailable' };
+
 export async function sendOtp(phone: string): Promise<TwilioResult> {
   const { url, auth } = twilioBase();
 
@@ -40,23 +44,27 @@ export async function sendOtp(phone: string): Promise<TwilioResult> {
   return { ok: false, code: 'twilio_error', message: body.message ?? 'SMS delivery failed' };
 }
 
-export async function verifyOtp(phone: string, code: string): Promise<TwilioResult> {
-  const { url, auth } = twilioBase();
+export async function verifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
+  try {
+    const { url, auth } = twilioBase();
+    const res = await fetch(`${url}/VerificationCheck`, {
+      method: 'POST',
+      headers: { Authorization: auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ To: phone, Code: code }),
+    });
 
-  const res = await fetch(`${url}/VerificationCheck`, {
-    method: 'POST',
-    headers: { Authorization: auth, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ To: phone, Code: code }),
-  });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { code?: number };
+      if (res.status === 429 || body.code === 20429) return { ok: false, code: 'rate_limited' };
+      if (res.status === 401 || res.status === 403 || res.status >= 500) {
+        return { ok: false, code: 'verification_unavailable' };
+      }
+      return { ok: false, code: 'otp_invalid' };
+    }
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as { message?: string };
-    return { ok: false, code: 'twilio_error', message: body.message ?? 'Verification failed' };
+    const data = await res.json() as { status?: string };
+    return data.status === 'approved' ? { ok: true } : { ok: false, code: 'otp_invalid' };
+  } catch {
+    return { ok: false, code: 'verification_unavailable' };
   }
-
-  const data = await res.json() as { status: string };
-  if (data.status !== 'approved') {
-    return { ok: false, code: 'twilio_error', message: 'Incorrect code — try again' };
-  }
-  return { ok: true };
 }

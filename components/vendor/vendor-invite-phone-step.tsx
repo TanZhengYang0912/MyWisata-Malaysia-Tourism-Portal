@@ -7,7 +7,9 @@ import {
   mapPhoneOtpError,
   requestPhoneOtp,
   resolveOutletContactPhone,
+  resolvePhoneVerificationPhase,
   verifyPhoneOtp,
+  type PhoneVerificationPhase,
 } from '@/components/vendor/vendor-invite-phone-state';
 import type { VendorInviteDraft } from '@/components/vendor/vendor-invite-wizard-state';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
@@ -56,6 +58,7 @@ type VendorInvitePhoneStepProps = {
   preview: VendorInvitePreview;
   draft: VendorInviteDraft;
   submitting: boolean;
+  forceUnverified?: boolean;
   claimError?: string | null;
   onBack: () => void;
   onUpdateContactPhone: (phone: string) => void;
@@ -68,6 +71,7 @@ export function VendorInvitePhoneStep({
   preview,
   draft,
   submitting,
+  forceUnverified = false,
   claimError,
   onBack,
   onUpdateContactPhone,
@@ -77,7 +81,7 @@ export function VendorInvitePhoneStep({
 }: VendorInvitePhoneStepProps) {
   const [personalMobile, setPersonalMobile] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [phonePhase, setPhonePhase] = useState<'enter' | 'code' | 'verified'>(
+  const [phonePhase, setPhonePhase] = useState<PhoneVerificationPhase>(
     preview.account.phoneVerified ? 'verified' : 'enter',
   );
   const [phoneBusy, setPhoneBusy] = useState(false);
@@ -92,7 +96,12 @@ export function VendorInvitePhoneStep({
     return () => window.clearInterval(timer);
   }, [resendSeconds]);
 
-  const mobileVerified = preview.account.phoneVerified || phonePhase === 'verified';
+  const resolvedPhonePhase = resolvePhoneVerificationPhase(
+    preview.account.phoneVerified,
+    phonePhase,
+    forceUnverified,
+  );
+  const mobileVerified = resolvedPhonePhase === 'verified';
   const categoryName = preview.categories.find((category) => category.id === draft.categoryId)?.name ?? 'Category unavailable';
 
   function updatePersonalMobile(value: string) {
@@ -102,7 +111,7 @@ export function VendorInvitePhoneStep({
   }
 
   async function sendOtp() {
-    if (preview.account.phoneVerified || phoneBusy || resendSeconds > 0) return;
+    if (mobileVerified || phoneBusy || resendSeconds > 0) return;
     setPhoneBusy(true);
     setPhoneError(null);
     try {
@@ -178,7 +187,7 @@ export function VendorInvitePhoneStep({
           <span><span className="font-semibold">Use this mobile as Outlet contact</span><span className="block text-xs text-muted-foreground">Only select this if customers may contact the Outlet on this number.</span></span>
         </label>
 
-        {phonePhase === 'code' && (
+        {resolvedPhonePhase === 'code' && (
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground">Enter the 6-digit code</p>
             <VendorInviteOtpDigits
@@ -197,7 +206,7 @@ export function VendorInvitePhoneStep({
 
         <div className="flex items-center justify-between gap-4">
           <button type="button" onClick={onBack} disabled={phoneBusy} className="text-sm font-semibold text-primary hover:underline disabled:opacity-50">Back</button>
-          {phonePhase === 'enter' && <button type="button" onClick={() => void sendOtp()} disabled={phoneBusy || !personalMobile} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Send phone OTP</button>}
+          {resolvedPhonePhase === 'enter' && <button type="button" onClick={() => void sendOtp()} disabled={phoneBusy || !personalMobile} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">Send phone OTP</button>}
         </div>
       </section>
     );

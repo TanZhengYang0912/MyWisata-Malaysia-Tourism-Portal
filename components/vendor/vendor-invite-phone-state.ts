@@ -24,6 +24,11 @@ export type ApiFailure = {
 };
 
 export type ClaimErrorTarget = 'details' | 'account' | 'verify' | 'inactive' | 'retry';
+export type PhoneVerificationPhase = 'enter' | 'code' | 'verified';
+export type PhoneVerificationRecoveryState = { forceUnverified: boolean };
+export type PhoneVerificationRecoveryAction =
+  | { type: 'claim-phone-required' }
+  | { type: 'verification-succeeded' };
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -63,13 +68,13 @@ export function mapPhoneOtpError({ phase, code, status }: ApiFailure & { phase: 
   if (code === 'RATE_LIMITED' || status === 429) {
     return 'Too many codes requested. Try again in 1 hour.';
   }
-  if (phase === 'verify' && (code === 'TWILIO_ERROR' || code === 'VALIDATION_FAILED' || status === 422)) {
+  if (phase === 'verify' && (code === 'OTP_INVALID' || code === 'VALIDATION_FAILED' || status === 422)) {
     return 'That code is invalid or has expired. Request a new code and try again.';
   }
   if (phase === 'send' && (code === 'INVALID_PHONE' || code === 'VALIDATION_FAILED' || status === 422)) {
     return 'Enter a valid mobile number.';
   }
-  if (status >= 500 || code === 'TWILIO_ERROR' || code === 'DB_ERROR') {
+  if (status >= 500 || code === 'VERIFICATION_UNAVAILABLE' || code === 'TWILIO_ERROR' || code === 'DB_ERROR') {
     return 'Mobile verification is temporarily unavailable. Try again later.';
   }
   return phase === 'verify'
@@ -150,5 +155,24 @@ export function mapClaimError({ code, fields = [] }: ApiFailure): {
 }
 
 export function recoveryRequiresPreviewReload(target: ClaimErrorTarget) {
-  return target === 'account' || target === 'verify';
+  return target === 'account';
+}
+
+export function phoneVerificationRecoveryReducer(
+  state: PhoneVerificationRecoveryState,
+  action: PhoneVerificationRecoveryAction,
+): PhoneVerificationRecoveryState {
+  if (action.type === 'claim-phone-required') return { forceUnverified: true };
+  if (action.type === 'verification-succeeded') return { forceUnverified: false };
+  return state;
+}
+
+export function resolvePhoneVerificationPhase(
+  previewVerified: boolean,
+  localPhase: PhoneVerificationPhase,
+  forceUnverified: boolean,
+): PhoneVerificationPhase {
+  if (forceUnverified) return localPhase === 'verified' ? 'enter' : localPhase;
+  if (localPhase === 'verified' || previewVerified) return 'verified';
+  return localPhase;
 }

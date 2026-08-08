@@ -6,8 +6,10 @@ import {
   formatResendCountdown,
   mapClaimError,
   mapPhoneOtpError,
+  phoneVerificationRecoveryReducer,
   requestPhoneOtp,
   recoveryRequiresPreviewReload,
+  resolvePhoneVerificationPhase,
   resolveOutletContactPhone,
   submitGuidedVendorClaim,
   verifyPhoneOtp,
@@ -79,6 +81,22 @@ describe('VendorInvitePhoneStep server-render-safe states', () => {
     expect(markup).not.toContain('checked=""');
   });
 
+  it('authoritatively renders OTP when claim recovery overrides a stale verified preview', () => {
+    const markup = renderToStaticMarkup(
+      <VendorInvitePhoneStep
+        preview={{ ...preview, account: { ...preview.account, phoneVerified: true, maskedVerifiedPhone: '********3344' } }}
+        draft={draft}
+        submitting={false}
+        forceUnverified
+        {...callbacks}
+      />,
+    );
+
+    expect(markup).toContain('Personal mobile number');
+    expect(markup).toContain('Send phone OTP');
+    expect(markup).not.toContain('Review your application');
+  });
+
   it('renders six separately labelled numeric OTP digits', () => {
     const markup = renderToStaticMarkup(
       <VendorInviteOtpDigits digits={['', '', '', '', '', '']} disabled={false} onChange={vi.fn()} />,
@@ -131,7 +149,8 @@ describe('vendor invite phone and claim executable state', () => {
   it.each([
     ['send', 'PHONE_ALREADY_CLAIMED', 409, 'This mobile number is already linked to another MyWisata account. Use a different number.'],
     ['send', 'RATE_LIMITED', 429, 'Too many codes requested. Try again in 1 hour.'],
-    ['verify', 'TWILIO_ERROR', 422, 'That code is invalid or has expired. Request a new code and try again.'],
+    ['verify', 'OTP_INVALID', 422, 'That code is invalid or has expired. Request a new code and try again.'],
+    ['verify', 'VERIFICATION_UNAVAILABLE', 502, 'Mobile verification is temporarily unavailable. Try again later.'],
     ['send', 'TWILIO_ERROR', 502, 'Mobile verification is temporarily unavailable. Try again later.'],
   ] as const)('maps %s %s without raw API fields', (phase, code, status, message) => {
     expect(mapPhoneOtpError({ phase, code, status })).toBe(message);
@@ -189,8 +208,30 @@ describe('vendor invite phone and claim executable state', () => {
 
   it('reloads stale account and phone status for routed claim recovery', () => {
     expect(recoveryRequiresPreviewReload('account')).toBe(true);
-    expect(recoveryRequiresPreviewReload('verify')).toBe(true);
+    expect(recoveryRequiresPreviewReload('verify')).toBe(false);
     expect(recoveryRequiresPreviewReload('details')).toBe(false);
     expect(recoveryRequiresPreviewReload('retry')).toBe(false);
+  });
+
+  it('forces OTP after a claim phone-required response and clears only after verified success', () => {
+    const initial = { forceUnverified: false };
+    const forced = phoneVerificationRecoveryReducer(initial, { type: 'claim-phone-required' });
+
+    expect(forced).toEqual({ forceUnverified: true });
+    expect(resolvePhoneVerificationPhase(true, 'verified', forced.forceUnverified)).toBe('enter');
+    expect(resolvePhoneVerificationPhase(true, 'enter', forced.forceUnverified)).toBe('enter');
+    expect(resolvePhoneVerificationPhase(true, 'code', forced.forceUnverified)).toBe('code');
+    expect(phoneVerificationRecoveryReducer(forced, { type: 'verification-succeeded' })).toEqual({ forceUnverified: false });
+  });
+
+  it('keeps recovery state free of personal mobile and OTP data', () => {
+    const serialized = JSON.stringify(phoneVerificationRecoveryReducer(
+      { forceUnverified: false },
+      { type: 'claim-phone-required' },
+    ));
+
+    expect(serialized).toBe('{"forceUnverified":true}');
+    expect(serialized).not.toContain('phone');
+    expect(serialized).not.toContain('123456');
   });
 });
