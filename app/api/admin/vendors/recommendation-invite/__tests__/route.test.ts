@@ -58,6 +58,7 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
       recommendationId: '11111111-1111-4111-8111-111111111111',
       email: 'owner@example.com',
       vendorName: 'Rasa Malaysia Kitchen',
+      claimUrl: expect.stringContaining('/vendor-invite?recommendation='),
     }));
     expect(mocks.sendCustomVendorEmail).not.toHaveBeenCalled();
   });
@@ -88,6 +89,9 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
       }));
       expect(mocks.sendCustomVendorEmail).toHaveBeenCalledWith(expect.objectContaining({
         body: expect.stringContaining('Complete your vendor sign-up here:'),
+      }));
+      expect(mocks.sendCustomVendorEmail).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.stringContaining('/vendor-invite?recommendation='),
       }));
       expect(mocks.enqueueInviteEmail).not.toHaveBeenCalled();
     });
