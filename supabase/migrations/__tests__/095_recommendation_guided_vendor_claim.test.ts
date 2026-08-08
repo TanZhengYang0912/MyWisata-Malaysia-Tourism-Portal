@@ -39,11 +39,14 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain('recommendation_id = v_invite.recommendation_id');
 
     const advisoryLock = sql.indexOf("pg_advisory_xact_lock(hashtext('claim_vendor_recommendation')");
+    const userLock = sql.indexOf('FROM public.users u');
     const inviteLock = sql.indexOf('FROM public.vendor_recommendation_invites i');
     const ownerCheck = sql.indexOf("v.status IN ('pending', 'approved')");
     const recommendationLock = sql.indexOf('FROM public.vendor_recommendations r');
     expect(advisoryLock).toBeGreaterThan(-1);
-    expect(inviteLock).toBeGreaterThan(advisoryLock);
+    expect(userLock).toBeGreaterThan(advisoryLock);
+    expect(inviteLock).toBeGreaterThan(userLock);
+    expect(sql.indexOf('FOR UPDATE', userLock)).toBeLessThan(inviteLock);
     expect(ownerCheck).toBeGreaterThan(inviteLock);
     expect(recommendationLock).toBeGreaterThan(ownerCheck);
     expect(sql.indexOf('FOR UPDATE', inviteLock)).toBeLessThan(ownerCheck);
@@ -59,7 +62,8 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain("RAISE EXCEPTION 'invite_expired'");
     expect(sql).toContain("RAISE EXCEPTION 'invite_cancelled'");
     expect(sql).toContain("RAISE EXCEPTION 'invite_already_claimed'");
-    expect(sql).toContain("RAISE EXCEPTION 'invite_email_mismatch'");
+    expect(sql).toContain("RAISE EXCEPTION 'email_mismatch'");
+    expect(sql).not.toContain("RAISE EXCEPTION 'invite_email_mismatch'");
     expect(sql).toContain("RAISE EXCEPTION 'owner_already_has_vendor'");
     expect(sql).toContain("RAISE EXCEPTION 'recommendation_not_claimable'");
     expect(sql).toContain('c.id = p_category_id');
@@ -103,6 +107,14 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toMatch(/INSERT INTO public\.outlets[\s\S]*?EXCEPTION\s+WHEN unique_violation[\s\S]*?v_slug_suffix := v_slug_suffix \+ 1/);
     expect(sql).toMatch(/IF EXISTS \(SELECT 1 FROM public\.vendors v WHERE v\.slug = v_vendor_slug\)/);
     expect(sql).toMatch(/IF EXISTS \(SELECT 1 FROM public\.outlets o WHERE o\.slug = v_outlet_slug\)/);
+    const vendorRetry = sql.match(
+      /INSERT INTO public\.vendors[\s\S]*?EXCEPTION\s+WHEN unique_violation[\s\S]*?END;\s*END LOOP;/,
+    )?.[0];
+    const outletRetry = sql.match(
+      /INSERT INTO public\.outlets[\s\S]*?EXCEPTION\s+WHEN unique_violation[\s\S]*?END;\s*END LOOP;/,
+    )?.[0];
+    expect(vendorRetry).toMatch(/IF EXISTS[\s\S]*?THEN[\s\S]*?ELSE\s+RAISE;\s+END IF;/);
+    expect(outletRetry).toMatch(/IF EXISTS[\s\S]*?THEN[\s\S]*?ELSE\s+RAISE;\s+END IF;/);
   });
 
   it('keeps recommendation onboarding compatible with the staged evidence migration', () => {

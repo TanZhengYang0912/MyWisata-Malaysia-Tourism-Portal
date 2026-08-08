@@ -90,7 +90,7 @@ BEGIN
      OR NULLIF(lower(BTRIM(p_contact_email)), '') IS NULL
      OR lower(BTRIM(v_user.email)) <> lower(BTRIM(v_invite.email))
      OR lower(BTRIM(v_user.email)) <> lower(BTRIM(p_contact_email)) THEN
-    RAISE EXCEPTION 'invite_email_mismatch';
+    RAISE EXCEPTION 'email_mismatch';
   END IF;
 
   IF EXISTS (
