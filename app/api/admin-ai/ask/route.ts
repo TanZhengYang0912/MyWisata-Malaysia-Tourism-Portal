@@ -15,6 +15,7 @@ import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { answerAdminQuestion } from '@/lib/admin-ai/orchestrate';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
+import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, adminAiAskSchema);
@@ -71,6 +72,16 @@ export async function POST(request: Request) {
         originalExcerpt: cleaned.original,
       });
     }
+    // CLAUDE-ADMIN-CONDUCT.md: a separate, super-admin-only conduct record —
+    // catches profanity too, not just slurs. No target user for this
+    // channel (the AI assistant, not a conversation with a customer).
+    await logAdminConductFlagIfNeeded(service, {
+      cleaned,
+      flaggedAdminId: userId,
+      targetUserId: null,
+      source: 'admin_ai',
+      sourceRefId: session!.session_key,
+    });
     return data.id;
   }
 

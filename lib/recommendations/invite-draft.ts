@@ -21,6 +21,11 @@ import { redactPII } from '@/lib/chatbot/pii';
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
 
+// Same address already used on order receipts (lib/pdf/receipt.ts,
+// lib/email/order-receipt.ts) — a real, known fact, not something the model
+// should placeholder.
+const SUPPORT_EMAIL = 'mywisatamalaysia@gmail.com';
+
 const SYSTEM_PROMPT = `You are drafting a short outreach email for MyWisata, a Malaysian tourism
 booking platform, inviting a locally-recommended business to join as a
 vendor.
@@ -34,6 +39,9 @@ Rules — these are strict:
   tourism booking platform (e.g. "join a growing platform of Malaysian
   travel experiences" is a reasonable inference; a specific commission
   rate, fee, or signup deadline is NOT — you cannot know that).
+- If the business needs a way to ask questions, the real support email is
+  ${SUPPORT_EMAIL} — use it directly. Never write a placeholder for the
+  support/contact email.
 - Wherever a specific figure, fee, deadline, or policy detail is needed and
   you do not actually know it from the context given, write a placeholder
   in EXACTLY this form: [ADMIN: confirm <what's needed>]. Never invent a
