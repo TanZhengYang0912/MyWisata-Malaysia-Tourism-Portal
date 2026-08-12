@@ -100,6 +100,46 @@ If unable, explain why.
 
 ---
 
+## Execution Timebox and Review Stop Rules
+
+Keep implementation and verification proportionate to the risk. Do not allow
+an open-ended review/fix/re-review loop to turn a bounded task into a
+multi-hour or overnight run.
+
+- Classify review findings as **must fix before handoff** or **follow-up**.
+- Must-fix findings are limited to confirmed security, privacy, data-loss,
+  authorization, broken core flow, or clear requirement violations.
+- Record non-blocking edge cases, polish, and speculative improvements as
+  follow-up work; do not repeatedly implement and re-review them in the same
+  task unless the user explicitly asks.
+- Before each additional repair cycle, state the concrete blocking risk and
+  verify that the fix is still within the approved scope.
+- Use at most one focused re-review after a repair. Escalate to the user
+  rather than continuing repeated review cycles when further findings are not
+  clearly blocking.
+- Do not run broad suites or browser flows more than once after the final
+  code change unless a failed verification or a user request requires a rerun.
+- Give a progress update before any wait longer than a few minutes, and do
+  not leave a task running unattended across user sessions without explicit
+  authorization.
+
+### Execution Strategy
+
+For a well-specified feature or bug fix whose changes are in one connected
+area, prefer **Inline Execution**: implement, test, and verify continuously in
+the current workspace. Do not split ordinary implementation into a chain of
+worker, report, commit, reviewer, and re-review cycles.
+
+Use `luna_worker` only for bounded, independent work that benefits from a
+fresh read-only perspective, especially permission checks, privacy audits,
+sensitive-data exposure checks, and signed URL or storage-path verification.
+
+For normal implementation, use one focused final review after the code and
+tests are ready. Use additional review cycles only for a confirmed must-fix
+risk under the rules above.
+
+---
+
 ## Documentation
 
 Architecture:

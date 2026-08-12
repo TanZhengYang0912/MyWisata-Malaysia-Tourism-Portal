@@ -29,7 +29,10 @@ function mapRecommendation(row: RecRow, authors: Map<string, VendorRecommendatio
 }
 
 export async function getVendorRecommendations(): Promise<VendorRecommendation[]> {
-  const { data, error } = await supabase.from("vendor_recommendations").select(REC_SELECT);
+  const { data, error } = await supabase
+    .from("vendor_recommendations")
+    .select(REC_SELECT)
+    .order("created_at", { ascending: false });
   if (error) throw error;
   const rows = data as unknown as RecRow[];
   const authors = await getPublicUsers([...new Set(rows.map((row) => row.recommender_id))]);

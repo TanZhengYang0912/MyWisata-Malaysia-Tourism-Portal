@@ -146,6 +146,19 @@ export async function POST(req: Request) {
     }
   }
 
+  if (event.type === 'charge.dispute.created') {
+    const dispute = event.data.object as Stripe.Dispute;
+    const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+    if (chargeId) {
+      const db = createServiceClient();
+      const { data: payment } = await db.from('payments').select('order_id').eq('provider_payment_id', chargeId).maybeSingle();
+      if (payment?.order_id) {
+        const { error } = await db.rpc('mark_order_financial_outcome', { p_order_id: payment.order_id, p_status: 'chargeback', p_actor_id: null, p_provider_event_id: event.id });
+        if (error) console.error('[stripe-webhook] dispute outcome failed:', error.message);
+      }
+    }
+  }
+
   // All other event types → acknowledge immediately (no-op)
   return NextResponse.json({ received: true });
 }

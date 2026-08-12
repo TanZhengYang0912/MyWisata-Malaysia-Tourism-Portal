@@ -17,6 +17,7 @@
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-avatar": "^1.2.2",
     "@radix-ui/react-checkbox": "^1.3.7",

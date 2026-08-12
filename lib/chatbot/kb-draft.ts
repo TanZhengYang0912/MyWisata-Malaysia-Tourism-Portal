@@ -38,14 +38,20 @@ Rules — these are strict:
   Never invent a specific number, deadline, percentage, or policy detail —
   a placeholder is always correct where a fabricated fact is not.
 - Be concise: the body should be 1-4 sentences.
+- Also suggest 3-8 keywords for this entry — the exact words/short phrases a
+  customer would type when asking this, for a keyword-fallback matcher (not
+  a semantic search — literal word overlap). Lowercase, comma-separated, no
+  duplicates, no full sentences.
 - Respond in EXACTLY this format and nothing else, no markdown fences, no
   extra commentary:
 TITLE: <a short title for this KB entry, phrased as a question>
-BODY: <the KB entry body>`;
+BODY: <the KB entry body>
+KEYWORDS: <comma-separated keywords>`;
 
 export interface KbDraft {
   title: string;
   body: string;
+  keywords: string[];
 }
 
 /**
@@ -99,17 +105,37 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
 }
 
 /**
- * Parses the strict "TITLE: ...\nBODY: ..." format the system prompt
- * requires. BODY may span multiple lines (everything after the BODY:
- * marker), TITLE is always the first line. Returns null if the model
- * didn't follow the format — treated as a draft failure by the caller,
- * never a half-parsed guess passed through as if it were reliable.
+ * Parses the strict "TITLE: ...\nBODY: ...\nKEYWORDS: ..." format the system
+ * prompt requires. BODY may span multiple lines (everything between the
+ * BODY: and KEYWORDS: markers), TITLE is always the first line. Title/body
+ * are required — returns null (a draft failure) if the model didn't follow
+ * that much of the format, never a half-parsed guess passed through as if
+ * it were reliable. KEYWORDS is best-effort: a model that skips it still
+ * yields a usable draft, just with an empty keyword list for the admin to
+ * fill in themselves — losing keyword suggestions isn't worth discarding an
+ * otherwise-good title+body.
  */
 function parseDraft(text: string): KbDraft | null {
   const titleMatch = /^TITLE:\s*(.+)$/m.exec(text);
-  const bodyMatch = /^BODY:\s*([\s\S]+)$/m.exec(text);
   const title = titleMatch?.[1]?.trim();
-  const body = bodyMatch?.[1]?.trim();
-  if (!title || !body) return null;
-  return { title, body };
+  const bodyStart = text.search(/^BODY:/m);
+  if (!title || bodyStart === -1) return null;
+
+  const keywordsStart = text.search(/^KEYWORDS:/m);
+  const bodyRaw = keywordsStart > bodyStart ? text.slice(bodyStart, keywordsStart) : text.slice(bodyStart);
+  const body = bodyRaw.replace(/^BODY:\s*/, '').trim();
+  if (!body) return null;
+
+  const keywords =
+    keywordsStart === -1
+      ? []
+      : text
+          .slice(keywordsStart)
+          .replace(/^KEYWORDS:\s*/, '')
+          .trim()
+          .split(',')
+          .map((k) => k.trim().toLowerCase())
+          .filter(Boolean);
+
+  return { title, body, keywords };
 }

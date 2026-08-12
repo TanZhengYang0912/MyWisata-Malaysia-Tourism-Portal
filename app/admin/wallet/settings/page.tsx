@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, Save, Search, ShieldCheck, UserPlus, UserRound, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { WALLET_REASON_CATEGORIES } from "@/lib/validation/wallet-reason-schemas";
 
@@ -40,6 +41,8 @@ export default function WalletSettingsPage() {
   const [error, setError] = useState("");
   const [confirmSettings, setConfirmSettings] = useState(false);
   const [pendingRoleAction, setPendingRoleAction] = useState<RoleAction>(null);
+  const [selectedApproverIds, setSelectedApproverIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   async function load() {
     setLoading(true); setError("");
@@ -93,12 +96,44 @@ export default function WalletSettingsPage() {
     setPendingRoleAction({ userId, action, name });
   }
 
+  async function revokeApproversBatch() {
+    if (batchBusy) return;
+    const selected = approvers.filter((approver) => selectedApproverIds.has(approver.id) && approver.active);
+    if (!selected.length || selected.length !== selectedApproverIds.size) {
+      setError("Select active wallet approvers only.");
+      return;
+    }
+    if (roleReason.trim().length < 10) {
+      setError("Add a role-change reason of at least 10 characters before using batch revoke.");
+      return;
+    }
+    if (!window.confirm(`Revoke wallet approval access for ${selected.length} selected approvers?`)) return;
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selected.map((approver) => fetch("/api/admin/wallet-approvers", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: approver.id, action: "revoke", reasonCategory: roleReasonCategory, reason: roleReason.trim() }) })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more approver revocations failed.");
+      }
+      setSelectedApproverIds(new Set());
+      showFeedback("success", `${selected.length} wallet approvers revoked.`);
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Batch approver revocation failed.";
+      setError(message);
+      showFeedback("error", message);
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
   const filteredEligible = eligibleUsers.filter((user) => `${user.name} ${user.email}`.toLowerCase().includes(approverSearch.toLowerCase()));
   const dirty = !sameSettings(settings, savedSettings);
 
-  return <main className="mx-auto w-full max-w-[1400px] p-6 sm:p-8">
+  return <main className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
     <Link href="/admin/withdrawals" className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> Back to withdrawals</Link>
-    <header className="mb-7"><div className="flex items-center gap-2 text-primary"><ShieldCheck size={18} /><p className="text-xs font-semibold uppercase tracking-[0.18em]">Wallet governance</p></div><h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">Wallet settings</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage payout policy, escalation windows and the people authorised to approve wallet requests.</p></header>
+    <header><div className="flex items-center gap-2 text-primary"><ShieldCheck size={18} /><p className="text-xs font-semibold uppercase tracking-[0.18em]">Wallet governance</p></div><h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">Wallet settings</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage payout policy, escalation windows and the people authorised to approve wallet requests.</p></header>
     {error && <p role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle size={16} /> {error}</p>}
     {loading ? <p className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">Loading wallet governance…</p> : <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
@@ -107,7 +142,6 @@ export default function WalletSettingsPage() {
           <div className="mt-6 border-t border-border pt-5"><h3 className="text-sm font-semibold text-foreground">Audit record</h3><p className="mt-1 text-xs text-muted-foreground">Every policy change requires a category and a reason of at least 10 characters.</p><div className="mt-3 grid gap-4 sm:grid-cols-2"><label className="text-sm"><span className="mb-1.5 block font-medium text-foreground">Change category</span><select value={reasonCategory} onChange={(event) => setReasonCategory(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">{WALLET_REASON_CATEGORIES.settings.map((category) => <option key={category} value={category}>{label(category)}</option>)}</select></label><label className="text-sm sm:col-span-2"><span className="mb-1.5 block font-medium text-foreground">Why are you changing this?</span><textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} placeholder="Describe the policy change and its reason." className="w-full resize-none rounded-xl border border-border bg-background p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /><span className="mt-1 block text-right text-[11px] text-muted-foreground">{reason.length}/500</span></label></div></div>
           <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={!dirty || saving} onClick={() => { setSettings(savedSettings); setReason(""); setError(""); }}>Discard changes</Button><Button disabled={!dirty || saving} onClick={requestSaveSettings}><Save size={15} /> Save settings</Button></div>
         </section>
-        <section className="rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ShieldCheck size={19} /></div><div><h2 className="text-base font-semibold text-foreground">Wallet approvers</h2><p className="mt-1 text-sm text-muted-foreground">Only active non-Super-Admin users can be granted access. The last active approver cannot be removed.</p></div></div><div className="mt-5 rounded-xl border border-border bg-secondary/25 p-4"><h3 className="text-sm font-semibold text-foreground">Grant access</h3><div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]"><div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={approverSearch} onChange={(event) => setApproverSearch(event.target.value)} placeholder="Search active user" className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm" /></div><select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm"><option value="">Select a user…</option>{filteredEligible.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}</select><Button disabled={!selectedUser || saving} onClick={() => { const user = eligibleUsers.find((item) => item.id === selectedUser); if (user) requestRoleChange(user.id, "grant", user.name); }}><UserPlus size={15} /> Grant access</Button></div><label className="mt-3 block text-sm"><span className="mb-1.5 block font-medium text-foreground">Role-change reason</span><textarea value={roleReason} onChange={(event) => setRoleReason(event.target.value)} maxLength={500} rows={2} placeholder="Explain why access should be granted or revoked." className="w-full resize-none rounded-xl border border-border bg-background p-3 text-sm" /></label><label className="mt-3 block text-sm"><span className="mb-1.5 block font-medium text-foreground">Reason category</span><select value={roleReasonCategory} onChange={(event) => setRoleReasonCategory(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">{WALLET_REASON_CATEGORIES.approver_role.map((category) => <option key={category} value={category}>{label(category)}</option>)}</select></label></div><div className="mt-5"><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-semibold text-foreground">Current approvers</h3><span className="text-xs text-muted-foreground">{approvers.filter((approver) => approver.active).length} active</span></div>{approvers.length === 0 ? <EmptyApprovers /> : <div className="divide-y divide-border rounded-xl border border-border">{approvers.map((approver) => <div key={approver.id} className="flex flex-wrap items-center gap-3 p-4"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound size={16} /></div><div className="min-w-[200px] flex-1"><p className="text-sm font-semibold text-foreground">{approver.name}</p><p className="mt-1 text-xs text-muted-foreground">{approver.email} · {approver.accountStatus}</p><p className="mt-1 text-[11px] text-muted-foreground">Granted {approver.grantedAt ? new Date(approver.grantedAt).toLocaleDateString("en-MY") : "date unavailable"}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${approver.active ? "bg-emerald-50 text-emerald-700" : "bg-secondary text-muted-foreground"}`}>{approver.active ? "Active" : "Inactive"}</span><Button size="sm" variant="outline" disabled={saving || !approver.active} onClick={() => requestRoleChange(approver.id, "revoke", approver.name)}><XCircle size={14} /> Revoke</Button></div>)}</div>}</div></section>
       </div>
       <aside className="h-fit rounded-2xl border border-primary/15 bg-gradient-to-b from-[#F0F3FF] to-[#ECF9FF] p-5 text-foreground shadow-sm xl:sticky xl:top-6"><div className="flex items-center gap-2 text-primary"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/80 shadow-sm"><CheckCircle2 size={16} /></span><p className="text-xs font-semibold uppercase tracking-[0.16em]">Effective policy</p></div><p className="mt-3 text-sm leading-5 text-muted-foreground">The values below are the current working configuration.</p><div className="mt-5 space-y-4">{[["Minimum withdrawal", moneyFromSen(settings.minAmountSen)], ["Two-person approval", moneyFromSen(settings.dualApprovalThresholdSen)], ["Reward clearance", `${settings.clearanceDays} days`], ["Pending escalation", `${settings.escalationHours} hours`], ["Hold escalation", `${settings.holdEscalationHours} hours`]].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3 border-b border-primary/10 pb-3"><span className="text-xs text-muted-foreground">{label}</span><span className="text-sm font-semibold text-primary">{value}</span></div>)}</div><div className="mt-5 flex items-start gap-2 rounded-xl border border-primary/10 bg-white/70 p-3 text-xs leading-5 text-muted-foreground"><Clock3 size={15} className="mt-0.5 shrink-0 text-primary" /> Existing withdrawal requests keep their recorded state when policy settings change.</div></aside>
     </div>}

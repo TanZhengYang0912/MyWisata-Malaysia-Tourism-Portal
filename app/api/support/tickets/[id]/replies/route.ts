@@ -26,6 +26,7 @@ import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
 import { notifyTicketReply } from '@/lib/support/notify';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
+import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -80,6 +81,19 @@ export async function POST(request: Request, { params }: Props) {
       sourceId: reply.id,
       userId: user.id,
       originalExcerpt: cleaned.original,
+    });
+  }
+
+  // CLAUDE-ADMIN-CONDUCT.md: a separate, super-admin-only conduct record —
+  // catches profanity too, not just slurs, and tracks which customer the
+  // admin was talking to. Does not replace the moderation_flags write above.
+  if (senderRole === 'admin') {
+    await logAdminConductFlagIfNeeded(service, {
+      cleaned,
+      flaggedAdminId: user.id,
+      targetUserId: ticket.user_id,
+      source: 'ticket_reply',
+      sourceRefId: ticket.id,
     });
   }
 

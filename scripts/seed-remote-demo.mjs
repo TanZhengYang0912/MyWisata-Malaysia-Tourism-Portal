@@ -235,6 +235,38 @@ const EXPLORE_OUTDOORS_ACTIVITIES = [
   ['3c951980-7957-4e12-856b-ce40959e8900', 7, 'Kinta Valley Limestone Hike', 'nature', 98, 'Hike among the limestone karsts and cave temples of the Kinta Valley, with a stop at Gunung Lang.'],
 ];
 
+// Verified destination coordinates for place-bound products — mirrors
+// supabase/migrations/20260803000000_product_place_coordinates.sql exactly,
+// so a fresh reseed reproduces the same backfill the live database got.
+// Keyed by product id, not name, so a rename never silently drops the pin.
+//
+// "Batik Story Workshop" is deliberately absent: it's a workshop held inside
+// the vendor's own shop, not a destination of its own (plan Δ3). It stays
+// without a place coordinate and shows up in the dev map's "missing place"
+// warning list instead of guessing.
+const PLACE_COORDS = {
+  [stableUuid('product:8')]:  { state: 'Kedah', district: 'Langkawi', lat: 6.4167, lng: 99.8556 },       // Kilim Geoforest Mangrove Kayak
+  [stableUuid('product:94')]: { state: 'Penang', district: 'Barat Daya', lat: 5.4700, lng: 100.1900 },   // Penang National Park Monkey Beach Trek
+  [stableUuid('product:80')]: { state: 'Penang', district: 'Timur Laut', lat: 5.4141, lng: 100.3288 },   // George Town Story Walk
+  [stableUuid('product:56')]: { state: 'Melaka', district: 'Melaka Tengah', lat: 2.1953, lng: 102.2470 }, // Jonker Walk Heritage Trail
+  [stableUuid('product:40')]: { state: 'Kuala Lumpur', district: null, lat: 3.1478, lng: 101.6935 },     // Merdeka Square Heritage Walk
+  [stableUuid('product:10')]: { state: 'Kelantan', district: 'Kota Bharu', lat: 6.1256, lng: 102.2386 }, // Siti Khadijah Market & Wau Craft
+  [stableUuid('product:97')]: { state: 'Sarawak', district: 'Kuching', lat: 1.7533, lng: 110.3197 },     // Sarawak Cultural Village Day
+  'b60333b2-299a-4df2-8709-276c970ca4b5': { state: 'Pahang', district: 'Kuantan', lat: 3.8500, lng: 103.0500 },     // Gunung Tapis Waterfall Hike
+  '5b9edc5c-0a24-4a68-966c-c52da4a30766': { state: 'Terengganu', district: 'Setiu', lat: 5.6667, lng: 102.7167 },   // Setiu Wetlands Nature Walk
+  '0a3b3258-42b6-4ab4-a70d-b88339123e5f': { state: 'Sabah', district: 'Kinabatangan', lat: 5.5300, lng: 118.3200 }, // River & Rainforest Discovery
+  '843f1aa4-f142-4e4a-984b-cdb4d93dcc5f': { state: 'Sabah', district: 'Ranau', lat: 6.0050, lng: 116.5583 },        // Mount Kinabalu Foothill Trail
+  'c4291ea4-b07b-4106-bba0-ac1505b6c74f': { state: 'Sarawak', district: 'Kuching', lat: 1.7167, lng: 110.4667 },    // Bako National Park Coastal Trail
+  '3c951980-7957-4e12-856b-ce40959e8900': { state: 'Perak', district: 'Kinta', lat: 4.6300, lng: 101.1400 },        // Kinta Valley Limestone Hike
+};
+
+function withPlace(row) {
+  const place = PLACE_COORDS[row.id];
+  return place
+    ? { ...row, place_state: place.state, place_district: place.district ?? null, place_lat: place.lat, place_lng: place.lng }
+    : row;
+}
+
 function stableUuid(value) {
   const hex = crypto.createHash('md5').update(`malaysia-tourism-demo:${value}`).digest('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20)}`;
@@ -365,7 +397,7 @@ async function seedAdditionalVendors(categories) {
     // this cloned a single name onto every outlet, which put "River &
     // Rainforest Discovery" in both Kota Kinabalu and Sandakan.
     const products = outletRows.flatMap((outlet, outletIndex) =>
-      (EXTRA_VENDOR_ACTIVITIES[outlet.slug] ?? []).map(([id, name, typeSlug, basePrice, description], activityIndex) => ({
+      (EXTRA_VENDOR_ACTIVITIES[outlet.slug] ?? []).map(([id, name, typeSlug, basePrice, description], activityIndex) => withPlace({
         id: id ?? stableUuid(`product:${vendor.slug}:${outlet.slug}:${activityIndex}`),
         vendor_id: vendor.id, outlet_id: outlet.id, category_id: activityCategoryId,
         type_slugs: [typeSlug], name,
@@ -577,7 +609,7 @@ async function main() {
     const slug = placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95);
     const isPublicPlace = Boolean(placeBound && PUBLIC_PLACE_SLUGS.has(slug));
     productSeedIndex.push(i);
-    productRows.push({
+    productRows.push(withPlace({
       id: stableUuid(`product:${i}`),
       vendor_id: themedVendor ? themedVendor.id : vendorId,
       outlet_id: outlet.id,
@@ -593,7 +625,7 @@ async function main() {
       type_slugs: placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [],
       is_family_friendly: !!isFamilyFriendly,
       status: 'active',
-    });
+    }));
   }
   await upsert('products', productRows);
 
@@ -615,7 +647,7 @@ async function main() {
   // Two Explore Outdoors trails that only ever existed in the live database.
   const exploreOutdoors = THEMED_VENDORS.find((tv) => tv.slug === 'explore-outdoors-malaysia');
   const exploreOutlets = themedOutletRows[exploreOutdoors.slug];
-  const exploreActivityRows = EXPLORE_OUTDOORS_ACTIVITIES.map(([id, outletIndex, name, typeSlug, basePrice, description]) => ({
+  const exploreActivityRows = EXPLORE_OUTDOORS_ACTIVITIES.map(([id, outletIndex, name, typeSlug, basePrice, description]) => withPlace({
     id, vendor_id: exploreOutdoors.id, outlet_id: exploreOutlets[outletIndex].id,
     category_id: CATEGORIES[1][0], type_slugs: [typeSlug], name,
     slug: `demo-explore-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95),

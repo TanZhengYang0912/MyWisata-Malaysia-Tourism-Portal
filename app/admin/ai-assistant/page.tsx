@@ -13,6 +13,7 @@ import { Bot, Send, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StaffConductPanel } from "@/components/admin/staff-conduct-panel";
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -248,7 +249,7 @@ export default function AdminAiAssistantPage() {
 
   if (currentUser && currentUser.role !== "super_admin") {
     return (
-      <div className="p-6">
+      <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Shield size={16} /> The AI assistant is limited to super admins.
         </div>
@@ -257,9 +258,9 @@ export default function AdminAiAssistantPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">AI Assistant</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">AI Assistant</h1>
         <p className="text-sm text-muted-foreground">
           Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of
           registered aggregate queries, and drafts use only what you type in.
@@ -269,6 +270,7 @@ export default function AdminAiAssistantPage() {
         <AskPanel />
         <DraftPanel />
       </div>
+      <StaffConductPanel />
     </div>
   );
 }

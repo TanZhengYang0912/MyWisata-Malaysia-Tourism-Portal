@@ -15,7 +15,13 @@ export async function POST(request: Request) {
   // Verify OTP via Twilio
   const result = await verifyOtp(phone, code);
   if (!result.ok) {
-    return apiFail(result.code.toUpperCase(), result.message, 422);
+    if (result.code === 'otp_invalid') {
+      return apiFail('OTP_INVALID', 'That code is invalid or has expired.', 422);
+    }
+    if (result.code === 'rate_limited') {
+      return apiFail('RATE_LIMITED', 'Too many verification attempts. Try again later.', 429);
+    }
+    return apiFail('VERIFICATION_UNAVAILABLE', 'Phone verification is temporarily unavailable.', 502);
   }
 
   // Post-verify: advance tier + record verified phone (atomic, with advisory lock in RPC)
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
     // unique_violation: phone claimed by another account between pre-send and post-verify
     if (error.message.includes('unique') || error.message.includes('duplicate'))
       return apiFail('PHONE_ALREADY_CLAIMED', 'This number was just registered to another account', 409);
-    return apiFail('DB_ERROR', error.message, 500);
+    return apiFail('DB_ERROR', 'Unable to complete phone verification. Please try again later.', 500);
   }
 
   // Mark the phone_verifications row as verified

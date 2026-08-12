@@ -3,7 +3,7 @@
 // P4 — Member 4: admin affiliate oversight. See CLAUDE.md Step 9.
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, RefreshCw, Share2, TrendingUp } from "lucide-react";
+import { AlertTriangle, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -11,6 +11,7 @@ import { FraudTrendChart } from "@/components/shared/fraud-trend-chart";
 import { FraudTypeBarChart, FraudSeverityDonut } from "@/components/shared/fraud-breakdown-charts";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { FraudAnalytics, FraudAnalyticsRange } from "@/lib/affiliate/fraud-analytics";
 
@@ -118,7 +119,10 @@ export default function AdminAffiliatePage() {
   const [fraudStatusFilter, setFraudStatusFilter] = useState("open");
   const [sweeping, setSweeping] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [reviewingFlagId, setReviewingFlagId] = useState<string | null>(null);
+  const [selectedFlagIds, setSelectedFlagIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
   const [reactivatingLinkId, setReactivatingLinkId] = useState<string | null>(null);
 
   // CLAUDE-P4-EXTRAS.md Extra 2: trends/breakdown/top-offenders, separate
@@ -234,6 +238,35 @@ export default function AdminAffiliatePage() {
     })();
   }, [fraudRange]);
 
+  // Same fetch-blob-download pattern as app/customer/affiliate/page.tsx's
+  // downloadEarnings() (CSV, Extra 6) — file downloads can't go through the
+  // usual fetch-JSON-then-setState path. Uses the currently-selected
+  // fraudRange so the PDF's fraud breakdown matches what's on screen.
+  async function exportPdf() {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const res = await fetch(`/api/admin/affiliate/report?range=${fraudRange}`);
+      if (!res.ok) {
+        showFeedback("error", "Could not export the affiliate report. Please try again.");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mywisata-affiliate-report.pdf";
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      showFeedback("error", "Could not export the affiliate report. Please try again.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   async function runFraudSweepAction() {
     if (sweeping) return;
     setSweeping(true);
@@ -273,6 +306,31 @@ export default function AdminAffiliatePage() {
       showFeedback("error", "Could not review fraud flag. Please try again.");
     } finally {
       setReviewingFlagId(null);
+    }
+  }
+
+  async function applyFlagBatch(action: "dismiss" | "confirm") {
+    if (batchBusy) return;
+    const selected = filteredFraudFlags.filter((flag) => selectedFlagIds.has(flag.id) && flag.status === "open" && (action === "dismiss" || Boolean(flag.linkId)));
+    if (!selected.length || selected.length !== selectedFlagIds.size) {
+      showFeedback("error", action === "confirm" ? "Every selected open flag must have a link before disabling it." : "Select open fraud flags first.");
+      return;
+    }
+    setBatchBusy(true);
+    try {
+      const responses = await Promise.all(selected.map((flag) => fetch(`/api/admin/affiliate/fraud-flags/${flag.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body?.error?.message ?? "One or more fraud flags could not be updated.");
+      }
+      setSelectedFlagIds(new Set());
+      showFeedback("success", `${selected.length} fraud flags processed.`);
+      await loadFraudFlags();
+    } catch (error) {
+      showFeedback("error", error instanceof Error ? error.message : "Batch fraud flag update failed.");
+    } finally {
+      setBatchBusy(false);
     }
   }
 
@@ -320,14 +378,11 @@ export default function AdminAffiliatePage() {
     });
   }, [stats, statusFilter, search, sortKey, sortDir]);
 
-  const filteredFraudFlags = useMemo(() => {
-    if (!fraudFlags) return [];
-    let rows = fraudFlags;
-    if (fraudTypeFilter !== "all") rows = rows.filter((f) => f.flagType === fraudTypeFilter);
-    if (fraudSeverityFilter !== "all") rows = rows.filter((f) => f.severity === fraudSeverityFilter);
-    if (fraudStatusFilter !== "all") rows = rows.filter((f) => f.status === fraudStatusFilter);
-    return rows;
-  }, [fraudFlags, fraudTypeFilter, fraudSeverityFilter, fraudStatusFilter]);
+  const filteredFraudFlags = (fraudFlags ?? []).filter((flag) =>
+    (fraudTypeFilter === "all" || flag.flagType === fraudTypeFilter)
+    && (fraudSeverityFilter === "all" || flag.severity === fraudSeverityFilter)
+    && (fraudStatusFilter === "all" || flag.status === fraudStatusFilter),
+  );
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -351,10 +406,15 @@ export default function AdminAffiliatePage() {
   }
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-1">
-        <h1 className="font-bold text-lg text-foreground">Affiliate Oversight</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">Affiliate Oversight</h1>
         <div className="text-right flex items-start gap-2">
+          <div>
+            <Button size="sm" variant="outline" onClick={exportPdf} disabled={exportingPdf}>
+              <Download size={13} /> {exportingPdf ? "Exporting…" : "Export PDF"}
+            </Button>
+          </div>
           <div>
             <Button size="sm" variant="outline" onClick={runClearing} disabled={clearing}>
               <RefreshCw size={13} className={clearing ? "animate-spin" : ""} /> {clearing ? "Running…" : "Run clearing"}
@@ -424,9 +484,9 @@ export default function AdminAffiliatePage() {
           { label: "Referrals", value: String(stats.totals.totalReferrals) },
           { label: "Commission committed", value: `RM ${stats.totals.totalCommission.toFixed(2)}` },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
-            <p className="text-xl font-bold text-foreground">{card.value}</p>
+          <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+            <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
+            <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{card.value}</p>
           </div>
         ))}
       </div>
@@ -552,9 +612,9 @@ export default function AdminAffiliatePage() {
                   : "—",
               },
             ].map((card) => (
-              <div key={card.label} className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{card.label}</p>
-                <p className="text-xl font-bold text-foreground">{card.value}</p>
+              <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+                <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
+                <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{card.value}</p>
               </div>
             ))}
           </div>
@@ -638,9 +698,12 @@ export default function AdminAffiliatePage() {
       </div>
 
       <div className="rounded-xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label="Select all visible open fraud flags" checked={filteredFraudFlags.length > 0 && filteredFraudFlags.filter((flag) => flag.status === "open").every((flag) => selectedFlagIds.has(flag.id))} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); filteredFraudFlags.filter((flag) => flag.status === "open").forEach((flag) => event.target.checked ? next.add(flag.id) : next.delete(flag.id)); return next; })} /><span className="text-muted-foreground">Select all open flags</span></div>
+        <AdminBatchActionBar selectedCount={filteredFraudFlags.filter((flag) => selectedFlagIds.has(flag.id)).length} onClear={() => setSelectedFlagIds(new Set())} onApply={(action) => void applyFlagBatch(action as "dismiss" | "confirm")} actions={[{ value: "dismiss", label: "Dismiss" }, { value: "confirm", label: "Confirm & disable" }]} busy={batchBusy} />
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
+              <th className="text-left px-4 py-2.5 font-semibold">Select</th>
               <th className="text-left px-4 py-2.5 font-semibold">Affiliate</th>
               <th className="text-left px-4 py-2.5 font-semibold">Type</th>
               <th className="text-left px-4 py-2.5 font-semibold">Severity</th>
@@ -653,19 +716,20 @@ export default function AdminAffiliatePage() {
           <tbody>
             {fraudFlags === undefined ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   Loading…
                 </td>
               </tr>
             ) : filteredFraudFlags.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   Nothing flagged.
                 </td>
               </tr>
             ) : (
               filteredFraudFlags.map((f) => (
                 <tr key={f.id} className="border-t border-border align-top">
+                  <td className="px-4 py-2.5"><input type="checkbox" aria-label={`Select fraud flag for ${f.userName}`} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(f.id) : next.delete(f.id); return next; })} /></td>
                   <td className="px-4 py-2.5 text-foreground">
                     {f.userName}
                     {f.affiliateCode && <span className="text-muted-foreground"> ({f.affiliateCode})</span>}

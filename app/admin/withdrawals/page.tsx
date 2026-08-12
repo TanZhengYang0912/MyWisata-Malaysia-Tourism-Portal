@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { isWalletReasonCategory, WALLET_REASON_CATEGORIES as WALLET_REASON_RULES, type WalletReasonAction } from "@/lib/validation/wallet-reason-schemas";
 
 type ListItem = {
@@ -177,6 +178,8 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<Action | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
   const [reason, setReason] = useState("");
   const [reasonCategory, setReasonCategory] = useState("");
   const [error, setError] = useState("");
@@ -293,19 +296,65 @@ export default function AdminWithdrawalsPage() {
     ...(canResume ? ["resume" as const] : []),
     ...(isSuperAdmin && detail?.riskLevel === "high" && !detail.riskOverridden ? ["fraud-override" as const] : []),
   ];
+  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+  const batchActions = selectedItems.length === 0 ? [] : (['approve', 'hold', 'reject', 'resume', 'fraud-override'] as Action[]).filter((action) => selectedItems.every((item) => {
+    const approve = action === 'approve' && ['pending', 'pending_second_approval'].includes(item.status);
+    const holdReject = ['hold', 'reject'].includes(action) && ['pending', 'pending_second_approval', 'approved', 'hold', 'overdue'].includes(item.status);
+    const resume = action === 'resume' && item.status === 'hold';
+    const fraudOverride = action === 'fraud-override' && isSuperAdmin && item.riskLevel === 'high' && !item.riskOverridden;
+    return approve || holdReject || resume || fraudOverride;
+  }));
   const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
   const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
   const visibleDualApproval = items.filter((item) => item.requiresDualApproval && item.approvalCount < 2).length;
   const visibleOverdue = items.filter((item) => item.status === "overdue").length;
   const oldestRequest = items.reduce<ListItem | null>((oldest, item) => !oldest || new Date(item.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? item : oldest, null);
 
-  return <div className="min-h-full p-6 sm:p-8 xl:p-10">
-    <div className="mx-auto max-w-[1500px]">
-    <div className="mb-7 flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><ShieldCheck size={14} /> Wallet governance</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground">Withdrawal Approvals</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review payout requests with the amount, risk, approval progress and age visible before opening the evidence drawer.</p></div><div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Review priority</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? "Oldest first" : "Queue clear"}</p></div></div>
-    <div aria-label="Withdrawal review summary" className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-5">
-      {[{ label: "Needs action", value: total, detail: "Requests in this queue" }, { label: "Pending payout value", value: formatRM(visiblePayoutValue), detail: "Visible page total" }, { label: "High risk", value: visibleHighRisk, detail: "Visible page total" }, { label: "Dual approval", value: visibleDualApproval, detail: "Waiting for second approver" }, { label: "Overdue", value: visibleOverdue, detail: oldestRequest ? `Oldest request ${formatAge(oldestRequest.createdAt)}` : "No overdue requests" }].map((metric) => <div key={metric.label} className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_10px_rgba(1,0,102,0.06)]"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{metric.label}</p><p className="mt-2 font-[family-name:var(--font-mono)] text-xl font-bold text-foreground">{metric.value}</p><p className="mt-1 text-[11px] text-muted-foreground">{metric.detail}</p></div>)}
+  async function applyBatch(action: Action) {
+    if (batchBusy || !selectedItems.length || !batchActions.includes(action)) return;
+    const reasonAction = toWalletReasonAction(action);
+    const allowedReasons: readonly string[] = WALLET_REASON_RULES[reasonAction];
+    const reasonCategory = window.prompt(`Reason category (${allowedReasons.join(', ')}):`, allowedReasons[0])?.trim();
+    if (!reasonCategory || !allowedReasons.includes(reasonCategory)) {
+      setError('Choose a valid reason category for this withdrawal action.');
+      return;
+    }
+    const note = window.prompt('Admin note (at least 10 characters):')?.trim();
+    if (!note || note.length < 10) {
+      setError('A note of at least 10 characters is required.');
+      return;
+    }
+    if (!window.confirm(`${DECISION_COPY[action].label} ${selectedItems.length} selected withdrawal${selectedItems.length === 1 ? '' : 's'}? Each item will still be checked by its own approval endpoint.`)) return;
+    setBatchBusy(true);
+    setError('');
+    try {
+      const responses = await Promise.all(selectedItems.map((item) => fetch(`/api/admin/withdrawals/${item.id}/${action}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(action === 'approve' ? { note, reasonCategory } : { reason: note, reasonCategory }),
+      })));
+      const failed = responses.find((response) => !response.ok);
+      if (failed) {
+        const body = await failed.json().catch(() => ({}));
+        throw new Error(body.error?.message ?? 'One or more withdrawal actions failed.');
+      }
+      setSelectedIds(new Set());
+      showFeedback('success', `${selectedItems.length} withdrawals processed.`);
+      await loadList();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Batch withdrawal action failed.');
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  return <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+    <div className="w-full space-y-6">
+    <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><ShieldCheck size={14} /> Wallet governance</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">Withdrawal Approvals</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Review payout requests with the amount, risk, approval progress and age visible before opening the evidence drawer.</p></div><div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Review priority</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? "Oldest first" : "Queue clear"}</p></div></div>
+    <div aria-label="Withdrawal review summary" className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+      {[{ label: "Needs action", value: total, detail: "Requests in this queue" }, { label: "Pending payout value", value: formatRM(visiblePayoutValue), detail: "Visible page total" }, { label: "High risk", value: visibleHighRisk, detail: "Visible page total" }, { label: "Dual approval", value: visibleDualApproval, detail: "Waiting for second approver" }, { label: "Overdue", value: visibleOverdue, detail: oldestRequest ? `Oldest request ${formatAge(oldestRequest.createdAt)}` : "No overdue requests" }].map((metric) => <div key={metric.label} className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_10px_rgba(1,0,102,0.06)]"><p className="text-sm font-semibold text-muted-foreground">{metric.label}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{metric.value}</p><p className="mt-1 text-xs font-medium text-muted-foreground">{metric.detail}</p></div>)}
     </div>
-    <div className="rounded-2xl bg-card border border-border p-4 mb-5 flex flex-wrap gap-3 items-center">
+    <div className="rounded-2xl bg-card border border-border p-4 flex flex-wrap gap-3 items-center">
       <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder="Search customer or email" className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm" /></div>
       <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All statuses</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
       <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">All risk levels</option><option value="low">Low</option><option value="review">Review</option><option value="high">High</option></select>
@@ -315,11 +364,13 @@ export default function AdminWithdrawalsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-bold text-foreground">Review queue ({total})</h2><p className="mt-1 text-xs text-muted-foreground">Open a row when the review priority or evidence needs a closer look.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{oldestRequest ? `Oldest request ${formatAge(oldestRequest.createdAt)}` : "No open requests"}</span></div>
       <div className="overflow-x-auto">
         <div className="min-w-[980px]">
-          <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>Customer</span><span>Amount</span><span>Risk / priority</span><span>Approval progress</span><span>Age / SLA</span><span>Status</span><span aria-hidden="true" /></div>
-          {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> : items.length === 0 ? <EmptyState title="No withdrawal requests" /> : <div className="divide-y divide-border">{items.map((item) => { const priority = getReviewPriority(item); const PriorityIcon = priority.icon; return <button key={item.id} type="button" onClick={() => void openDetail(item.id)} aria-label={`${item.customerDisplayName}, ${formatRM(item.amountSen)}, ${priority.label}`} className="group grid w-full grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 px-5 py-4 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{item.customerDisplayName.slice(0, 1).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{item.customerDisplayName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")} · {item.userId.slice(0, 8)}…</p></div></div><div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatRM(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? "RM500+ threshold" : "Standard review"}</p></div><div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{priority.label}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">Risk: {item.riskLevel}</p>}</div><div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? `${Math.min(item.approvalCount, 2)}/2 approvals` : "1/1 approval"}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? "Waiting for second approver" : "Approval path ready"}</p></div><div><p className={`text-sm font-semibold ${item.status === "overdue" ? "text-red-700" : "text-foreground"}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === "overdue" ? "Overdue" : "Within review window"}</p></div><div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === "high" && <ShieldAlert size={15} aria-label="High risk" className="text-red-600" />}</div><ArrowUpRight size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></button>; })}</div>}
+          <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-5 py-3 text-xs"><input type="checkbox" aria-label="Select all visible withdrawals" checked={items.length > 0 && items.every((item) => selectedIds.has(item.id))} onChange={(event) => setSelectedIds(event.target.checked ? new Set(items.map((item) => item.id)) : new Set())} /><span className="text-muted-foreground">Select all on this page</span></div>
+          <AdminBatchActionBar selectedCount={selectedItems.length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as Action)} actions={batchActions.map((action) => ({ value: action, label: DECISION_COPY[action].label }))} busy={batchBusy} message={selectedItems.length > 0 && batchActions.length === 0 ? 'No single action is valid for every selected withdrawal.' : undefined} />
+          <div className="grid grid-cols-[36px_minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span /><span>Customer</span><span>Amount</span><span>Risk / priority</span><span>Approval progress</span><span>Age / SLA</span><span>Status</span><span aria-hidden="true" /></div>
+          {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> : items.length === 0 ? <EmptyState title="No withdrawal requests" /> : <div className="divide-y divide-border">{items.map((item) => { const priority = getReviewPriority(item); const PriorityIcon = priority.icon; return <button key={item.id} type="button" onClick={() => void openDetail(item.id)} aria-label={`${item.customerDisplayName}, ${formatRM(item.amountSen)}, ${priority.label}`} className="group grid w-full grid-cols-[36px_minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 px-5 py-4 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"><input type="checkbox" aria-label={`Select withdrawal for ${item.customerDisplayName}`} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(item.id) : next.delete(item.id); return next; })} /><div className="flex min-w-0 items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{item.customerDisplayName.slice(0, 1).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{item.customerDisplayName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")} · {item.userId.slice(0, 8)}…</p></div></div><div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatRM(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? "RM500+ threshold" : "Standard review"}</p></div><div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{priority.label}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">Risk: {item.riskLevel}</p>}</div><div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? `${Math.min(item.approvalCount, 2)}/2 approvals` : "1/1 approval"}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? "Waiting for second approver" : "Approval path ready"}</p></div><div><p className={`text-sm font-semibold ${item.status === "overdue" ? "text-red-700" : "text-foreground"}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === "overdue" ? "Overdue" : "Within review window"}</p></div><div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === "high" && <ShieldAlert size={15} aria-label="High risk" className="text-red-600" />}</div><ArrowUpRight size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></button>; })}</div>}
         </div>
       </div>
-      <div className="px-5 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground"><span>Page {page} of {Math.max(totalPages, 1)}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div></div>
+      <div className="px-5 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground"><span>Page {page} of {Math.max(totalPages, 1)}</span>{totalPages > 1 && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>}</div>
     </div>
     {detail && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={`${detail.customer.displayName} withdrawal review`} onClick={() => setDetail(null)}><aside className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6" onClick={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-start"><div><p className="text-xs uppercase tracking-wider text-muted-foreground">Withdrawal review</p><h2 className="text-xl font-bold">{detail.customer.displayName}</h2><p className="text-sm text-muted-foreground">{detail.customer.email}</p></div><button type="button" onClick={() => setDetail(null)} aria-label="Close"><X size={20} /></button></div>

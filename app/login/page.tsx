@@ -56,11 +56,15 @@ export default function LoginPage() {
 
   function resetFeedback() { setError(null); setMessage(null); }
 
+  function requestedNext() {
+    return postLoginPath(new URLSearchParams(window.location.search).get("next"));
+  }
+
   async function pick(user: User) {
     resetFeedback();
     try {
       const signedInUser = await switchUser(user.id, user);
-      const next = postLoginPath(new URLSearchParams(window.location.search).get("next"));
+      const next = requestedNext();
       router.push(next ?? HOME_BY_ROLE[signedInUser?.role ?? user.role]);
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
@@ -78,7 +82,7 @@ export default function LoginPage() {
       startResendCooldown();
       return;
     }
-    router.push(postLoginPath(new URLSearchParams(window.location.search).get("next")) ?? "/"); router.refresh();
+    router.push(requestedNext() ?? "/"); router.refresh();
   }
 
   async function enterGuestMode() {
@@ -97,14 +101,15 @@ export default function LoginPage() {
     const validation = validatePassword(password);
     if (!validation.ok) { setError(validation.message); return; }
     if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+    const next = requestedNext() ?? "/customer/explore";
     setBusy(true);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(), password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/customer/explore` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     setBusy(false);
     if (signUpError) { setError(GENERIC_ERROR); return; }
-    if (data.session && data.user?.email_confirmed_at) { router.push("/customer/explore"); router.refresh(); return; }
+    if (data.session && data.user?.email_confirmed_at) { router.push(next); router.refresh(); return; }
     setMode("verify"); startResendCooldown();
     setMessage("If this address can be registered, a 6-digit verification code has been sent.");
   }
@@ -116,7 +121,7 @@ export default function LoginPage() {
     const { error: verifyError } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp, type: "signup" });
     setBusy(false);
     if (verifyError) { setError(GENERIC_ERROR); return; }
-    router.push("/customer/explore"); router.refresh();
+    router.push(requestedNext() ?? "/customer/explore"); router.refresh();
   }
 
   async function resendOtp() {
@@ -140,9 +145,10 @@ export default function LoginPage() {
 
   async function continueWithGoogle() {
     resetFeedback(); setBusy(true);
+    const next = requestedNext() ?? "/customer/explore";
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/customer/explore` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     if (oauthError) { setBusy(false); setError(GENERIC_ERROR); }
   }

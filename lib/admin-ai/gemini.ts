@@ -25,6 +25,13 @@ interface GeminiGenerateResponse {
 export interface CallGeminiOptions {
   temperature?: number;
   maxOutputTokens?: number;
+  images?: GeminiInlineImage[];
+}
+
+export interface GeminiInlineImage {
+  id: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  data: string;
 }
 
 /**
@@ -40,12 +47,25 @@ export async function callGemini(systemPrompt: string, userText: string, options
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
   const { clean } = redactPII(userText);
+  const parts = [
+    { text: clean },
+    ...(options.images ?? []).flatMap((image) => [
+      { text: `Photo ID: ${image.id}` },
+      { inlineData: { mimeType: image.mimeType, data: image.data } },
+    ]),
+  ];
 
   // CLAUDE-ADMIN-AI.md Part 2 acceptance: "No raw customer row is ever in a
   // Gemini request payload (verify by logging the outgoing payload in
   // dev)." Dev-only — this is the redacted payload, post-boundary.
   if (process.env.NODE_ENV !== 'production') {
-    console.log('[admin-ai] outgoing Gemini payload (post-redaction):', JSON.stringify({ systemPrompt, userText: clean }).slice(0, 2000));
+    console.log('[admin-ai] outgoing Gemini payload metadata:', JSON.stringify({
+      systemPrompt,
+      userText: clean,
+      imageCount: options.images?.length ?? 0,
+      imageIds: options.images?.map((image) => image.id) ?? [],
+      imageMimeTypes: options.images?.map((image) => image.mimeType) ?? [],
+    }).slice(0, 2000));
   }
 
   const controller = new AbortController();
@@ -57,7 +77,7 @@ export async function callGemini(systemPrompt: string, userText: string, options
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: clean }] }],
+        contents: [{ role: 'user', parts }],
         generationConfig: {
           temperature: options.temperature ?? 0.3,
           maxOutputTokens: options.maxOutputTokens ?? 500,
