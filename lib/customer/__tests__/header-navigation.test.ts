@@ -10,15 +10,17 @@ import {
 describe("customer header navigation", () => {
   it("keeps every customer destination discoverable", () => {
     expect(CUSTOMER_NAV.map((item) => item.href)).toEqual([
-      "/customer/search",
+      "/customer",
       "/customer/explore",
-      "/customer/map",
-      "/customer/chat",
+      "/customer/partners",
+      "/customer/trip",
       "/customer/activity?tab=itinerary",
-      "/customer/wishlist",
+      "/customer/saved",
     ]);
-    expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer/search", label: "Partners" });
+    expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer", label: "Home" });
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/for-you")).toBe(false);
+    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/chat")).toBe(false);
+    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/map")).toBe(false);
 
     expect(getAllAccountRoutes()).toEqual([
       "/customer/profile",
@@ -50,5 +52,12 @@ describe("customer header navigation", () => {
     expect(isCustomerNavActive("/customer/activity", "/customer/activity?tab=itinerary")).toBe(true);
     expect(isCustomerNavActive("/customer/activity/details", "/customer/activity?tab=itinerary")).toBe(true);
     expect(isCustomerNavActive("/customer/explore", "/customer/for-you")).toBe(false);
+  });
+
+  it("activates Home only on exactly /customer, not on sub-routes", () => {
+    expect(isCustomerNavActive("/customer", "/customer")).toBe(true);
+    expect(isCustomerNavActive("/customer/explore", "/customer")).toBe(false);
+    expect(isCustomerNavActive("/customer/partners", "/customer")).toBe(false);
+    expect(isCustomerNavActive("/customer/trip", "/customer")).toBe(false);
   });
 });

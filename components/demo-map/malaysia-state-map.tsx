@@ -9,12 +9,8 @@ import { featureToPath, geometryBounds, projectPoint, type GeoBounds, type GeoJs
 // regions are framed independently so both landmasses are immediately legible.
 const WIDTH = 1600;
 const HEIGHT = 1060;
-const REGION_CANVASES = {
-  peninsular: { x: 120, y: 195, width: 540, height: 760, padding: 18 },
-  borneo: { x: 800, y: 255, width: 640, height: 560, padding: 18 },
-} as const;
-
-type StateRegion = keyof typeof REGION_CANVASES;
+const SINGLE_CANVAS = { x: 0, y: 0, width: WIDTH, height: HEIGHT, padding: 40 };
+type StateRegion = "peninsular" | "borneo";
 type StateLabelPlacement = {
   region: StateRegion;
   x: number;
@@ -57,8 +53,7 @@ export type StateCounts = Record<string, { category: string; count: number }[]>;
 const stateFeatures = (geoJson as { features: StateFeature[] }).features;
 const peninsularFeatures = stateFeatures.filter((feature) => DEMO_STATES.find((state) => state.id === feature.properties.id)?.region === "Peninsular");
 const borneoFeatures = stateFeatures.filter((feature) => DEMO_STATES.find((state) => state.id === feature.properties.id)?.region === "Borneo");
-const WEST_MAP_BOUNDS = geometryBounds(peninsularFeatures.map((feature) => feature.geometry));
-const BORNEO_MAP_BOUNDS = geometryBounds(borneoFeatures.map((feature) => feature.geometry));
+const ALL_MAP_BOUNDS = geometryBounds(stateFeatures.map((feature) => feature.geometry));
 
 function stateColor(stateId: string, selected: boolean): string {
   if (selected) return "#c7d2fe";
@@ -70,11 +65,11 @@ function regionForState(stateId: string): StateRegion {
 }
 
 function boundsForRegion(region: StateRegion): GeoBounds {
-  return region === "borneo" ? BORNEO_MAP_BOUNDS : WEST_MAP_BOUNDS;
+  return ALL_MAP_BOUNDS;
 }
 
 function canvasForRegion(region: StateRegion) {
-  return REGION_CANVASES[region];
+  return SINGLE_CANVAS;
 }
 
 function projected(place: { lat: number; lng: number }, region: StateRegion) {
@@ -172,7 +167,7 @@ export function MalaysiaStateMap({
           <div>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#91a4b5] 2xl:text-[11px]">Malaysia</p>
             <h2 className="mt-1 font-[family-name:var(--font-display)] text-[22px] font-bold leading-tight text-[#1d2b3a] lg:text-[22px] 2xl:text-[32px]">All states and federal territories</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">West and East Malaysia scaled independently to fill the plate — not true relative scale.</p>
+            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">West and East Malaysia unified to a true relative scale.</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
             <p className="font-bold text-[#1d2b3a]">16 regions · 64 places</p>

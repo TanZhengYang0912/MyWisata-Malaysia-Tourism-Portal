@@ -7,7 +7,7 @@ export interface PromotionSpotlightItem {
   eyebrow: string;
   title: string;
   description: string;
-  image: string;
+  image: string | null;
   href: string;
   ctaLabel: string;
   accent: "yellow" | "teal" | "coral";

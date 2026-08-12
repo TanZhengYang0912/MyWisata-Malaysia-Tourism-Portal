@@ -1,137 +1,24 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
-import { getOutletProductIds } from '@/backend/domains/catalogue';
-import { buildPublicOutletProfile, selectFullOutletMenu } from '@/lib/customer/outlet-shop';
-import { OutletPageRenderer } from '@/components/outlet/outlet-page-renderer';
-import { ShareButton } from '@/components/shared/share-button';
-import { OutletChatButton } from '@/components/customer/outlet-chat-button';
 
 export const dynamic = 'force-dynamic';
 
-async function getPublicOutletPage(outletId: string) {
-  const db = await createClient();
-  const [{ data: outlet }, { data: page }] = await Promise.all([
-    db.from('outlets').select('id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(name)').eq('id', outletId).eq('status', 'active').maybeSingle(),
-    db.from('public_outlet_pages').select('*').eq('outlet_id', outletId).maybeSingle(),
-  ]);
-  return { outlet, page };
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ outletId: string }> }): Promise<Metadata> {
-  const { outlet, page } = await getPublicOutletPage((await params).outletId);
-  if (!outlet) return { title: 'Outlet not found' };
-  const document = selectPublicDocument(page || {});
-  return {
-    title: document.seoTitle || outlet.name || 'MyWisata outlet',
-    description: document.seoDescription || `Explore products and experiences at ${outlet.name}.`,
-    openGraph: {
-      title: document.seoTitle || outlet.name,
-      description: document.seoDescription || `Explore products and experiences at ${outlet.name}.`,
-      images: document.hero.imageUrl ? [{ url: document.hero.imageUrl }] : undefined,
-    },
-  };
-}
-
-export default async function OutletShopPage({ params }: { params: Promise<{ outletId: string }> }) {
+export default async function OutletRedirectPage({ params }: { params: Promise<{ outletId: string }> }) {
   const { outletId } = await params;
-  const { outlet, page } = await getPublicOutletPage(outletId);
-  if (!outlet) notFound();
-
-  const document = selectPublicDocument(page || {});
-  const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
-  const profile = buildPublicOutletProfile({
-    outletName: outlet.name,
-    vendorName: vendor?.name,
-    address: outlet.address,
-    city: outlet.city,
-    state: outlet.state,
-    country: outlet.country,
-    phone: outlet.phone,
-    email: outlet.email,
-    operatingHours: outlet.operating_hours,
-  });
-  const publicOutlet = {
-    ...outlet,
-    vendorName: vendor?.name ?? null,
-    address: profile.address,
-    city: profile.city,
-    state: profile.state,
-    country: profile.country,
-    phone: profile.phone,
-    email: profile.email,
-    operating_hours: profile.operatingHours,
-  };
-  const publicDocument = {
-    ...document,
-    hero: {
-      ...document.hero,
-      title: document.hero.title === 'Discover this outlet' || !document.hero.title.trim()
-        ? 'Your local day starts here'
-        : document.hero.title,
-      body: document.hero.body === 'Discover local food, culture and experiences from this outlet.'
-        ? profile.introBody
-        : document.hero.body,
-    },
-    blocks: document.blocks.map((block) => block.type === 'intro'
-      ? { ...block, title: block.title === 'Welcome to this outlet' ? profile.introTitle : block.title, body: block.body || profile.introBody }
-      : block),
-  };
-
-  // A featured product may be a shared vendor product (outlet_id = NULL) that
-  // this outlet sells through an offer. The public page keeps those featured
-  // picks, then renders the full outlet menu below them.
   const db = await createClient();
-  const sellable = await getOutletProductIds(db, outletId);
-  const sellableIds = [...sellable];
-  const sellableSet = new Set(sellableIds);
-  const featuredIds = publicDocument.featuredIds.filter((id) => sellableSet.has(id));
-  const [{ data: products }, { data: offers }, { data: slots }, { data: reviewMetrics }] = sellableIds.length
-    ? await Promise.all([
-      db.from('products').select('id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,categories(name),product_variants(id,name,inventory(quantity,reserved))').eq('status', 'active').eq('review_status', 'approved').in('id', sellableIds),
-      db.from('outlet_offers').select('product_id,price').eq('outlet_id', outletId).eq('status', 'active').in('product_id', sellableIds),
-      db.from('booking_slots').select('id,product_id,starts_at,status').in('product_id', sellableIds).eq('status', 'available').gt('starts_at', new Date().toISOString()).order('starts_at'),
-      db.from('product_review_metrics').select('product_id,rating,reviews').in('product_id', sellableIds),
-    ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
-  const offerPriceByProduct = new Map((offers || []).map((offer) => [offer.product_id, Number(offer.price)]));
-  const firstSlotByProduct = new Map<string, string>();
-  for (const slot of slots || []) if (!firstSlotByProduct.has(slot.product_id)) firstSlotByProduct.set(slot.product_id, slot.id);
-  const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
-  const menuProducts = selectFullOutletMenu((products || []).map((product) => {
-    const variants = product.product_variants || [];
-    const inventoryRows = variants.flatMap((variant) => variant.inventory || []);
-    const availableStock = inventoryRows.length > 0
-      ? inventoryRows.reduce((total, inventory) => total + Math.max(0, Number(inventory.quantity) - Number(inventory.reserved)), 0)
-      : undefined;
-    const metric = metricByProduct.get(product.id) || { rating: 0, reviews: 0 };
-    return {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      base_price: offerPriceByProduct.get(product.id) ?? Number(product.base_price),
-      category: product.categories?.[0]?.name ?? null,
-      product_type: product.product_type,
-      requires_booking: product.requires_booking,
-      cover_url: product.cover_url,
-      outlet_id: outletId,
-      variant_id: variants[0]?.id ?? null,
-      variant_label: variants[0]?.name ?? null,
-      first_available_slot_id: firstSlotByProduct.get(product.id) ?? null,
-      available_stock: availableStock,
-      rating: metric.rating,
-      reviews: metric.reviews,
-    };
-  }), featuredIds);
-  const jsonLd = { '@context': 'https://schema.org', '@type': 'LocalBusiness', name: outlet.name, description: publicDocument.seoDescription || profile.introBody, telephone: profile.phone, email: profile.email, address: { '@type': 'PostalAddress', streetAddress: profile.address, addressLocality: profile.city, addressRegion: profile.state, addressCountry: profile.country === 'Malaysia' ? 'MY' : profile.country }, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/outlet/${outlet.id}` };
+  
+  // Find the vendor for this outlet
+  const { data: outlet } = await db
+    .from('outlets')
+    .select('vendor_id')
+    .eq('id', outletId)
+    .eq('status', 'active')
+    .maybeSingle();
 
-  return <main className="min-h-screen bg-[#f8fafc] text-slate-900">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-    <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 pt-6">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Verified MyWisata outlet</p><p className="mt-1 text-sm font-semibold text-slate-600">{outlet.name}</p></div>
-      <div className="flex items-center gap-2"><ShareButton shareType="outlet" contentId={outlet.id} title={outlet.name} /><OutletChatButton outletId={outlet.id} /></div>
-    </div>
-    <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />
-  </main>;
+  if (!outlet || !outlet.vendor_id) {
+    notFound();
+  }
+
+  // Redirect to the new canonical nested route
+  redirect(`/customer/vendor/${outlet.vendor_id}/outlet/${outletId}`);
 }

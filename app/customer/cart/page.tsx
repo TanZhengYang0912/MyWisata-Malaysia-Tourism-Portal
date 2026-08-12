@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { CalendarClock, Check, ChevronDown, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, ImageOff, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
 import { getActivities, getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
@@ -339,8 +339,14 @@ export default function CartPage() {
                 aria-label={available ? `Select ${activity.name}` : `${activity.name} is unavailable`}
                 className="mt-1 h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={activity.image} alt={activity.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+              {activity.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activity.image} alt={activity.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                  <ImageOff size={20} strokeWidth={1.5} aria-hidden="true" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{activity.name}</p>
                 <p className="text-xs text-muted-foreground">{outlet?.name} · {variant?.label}</p>

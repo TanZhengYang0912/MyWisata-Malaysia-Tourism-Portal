@@ -1,9 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
-import { searchActivities } from "@/backend/domains/catalogue";
-import { MapClient } from "./map-client";
+import { redirect } from "next/navigation";
 
-export default async function MapPage() {
-  const db = await createClient();
-  const activities = await searchActivities({ category: null, sort: "recommended" }, db);
-  return <MapClient initialActivities={activities} />;
+// /customer/map is now /customer/trip per the restructure plan.
+// Keep this redirect for backward compatibility with any existing bookmarks or links.
+export default function MapRedirectPage() {
+  redirect("/customer/trip");
 }

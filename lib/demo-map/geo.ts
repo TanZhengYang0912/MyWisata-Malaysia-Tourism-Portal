@@ -21,8 +21,23 @@ export function projectPoint(
 ): ProjectedPoint {
   const usableWidth = canvas.width - canvas.padding * 2;
   const usableHeight = canvas.height - canvas.padding * 2;
-  const x = canvas.padding + ((point[0] - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * usableWidth;
-  const y = canvas.height - canvas.padding - ((point[1] - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * usableHeight;
+  
+  const spanLng = bounds.maxLng - bounds.minLng;
+  const spanLat = bounds.maxLat - bounds.minLat;
+  
+  // Use the same scale for X and Y to prevent distortion
+  const scale = Math.min(usableWidth / spanLng, usableHeight / spanLat);
+  
+  const projectedWidth = spanLng * scale;
+  const projectedHeight = spanLat * scale;
+  
+  // Center it within the usable area
+  const xOffset = canvas.padding + (usableWidth - projectedWidth) / 2;
+  const yOffset = canvas.padding + (usableHeight - projectedHeight) / 2;
+  
+  const x = xOffset + ((point[0] - bounds.minLng) * scale);
+  const y = yOffset + projectedHeight - ((point[1] - bounds.minLat) * scale);
+  
   return { x, y };
 }
 

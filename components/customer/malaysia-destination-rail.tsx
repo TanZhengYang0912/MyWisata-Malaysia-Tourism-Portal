@@ -91,7 +91,7 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
             <img src={active.image} alt={`${active.attraction}, ${active.state}`} className="absolute inset-0 h-full w-full object-cover saturate-[1.35] contrast-[1.08] brightness-[1.05] transition-transform duration-700" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.06),rgba(2,6,23,0.84))]" />
             <div className="relative flex h-full flex-col justify-end p-6 sm:p-8">
-              <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent"><MapPin size={13} /> {active.region}</p>
+              <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent"><MapPin size={13} /> {active.zone}</p>
               <h1 className="max-w-md font-[family-name:var(--font-display)] text-4xl font-bold leading-[0.98] tracking-tight sm:text-6xl">{active.state}</h1>
               <p className="mt-3 text-lg font-semibold text-white/95">{active.attraction}</p>
               <p className="mt-2 max-w-md text-sm leading-6 text-white/70">{active.tagline}</p>
