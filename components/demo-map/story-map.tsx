@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Bookmark, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
@@ -218,8 +218,14 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
               <div className="relative z-20 mx-auto mt-3 w-[calc(100%-1.5rem)] max-w-2xl lg:absolute lg:bottom-4 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2">
             <article className="rounded-[1.5rem] border border-border bg-card p-4 shadow-[0_18px_40px_rgba(1,0,102,0.18)] sm:p-5">
               <div className="flex items-start gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element -- catalogue image, not an optimizable static asset */}
-                <img src={selectedActivity.image} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" />
+                {selectedActivity.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- catalogue image, not an optimizable static asset
+                  <img src={selectedActivity.image} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" />
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
+                    <ImageOff size={22} strokeWidth={1.5} aria-hidden="true" />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
@@ -286,8 +292,14 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                       className={`group min-h-[56px] rounded-xl border bg-background p-1.5 text-left shadow-[0_5px_16px_rgba(1,0,102,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(1,0,102,0.1)] sm:p-2 2xl:min-h-[64px] 2xl:p-3 ${activity.id === selectedPlaceId ? "border-cta-orange bg-orange-50/50" : "border-border"}`}
                      >
                       <div className="flex items-center gap-2 2xl:gap-3">
-                         {/* eslint-disable-next-line @next/next/no-img-element -- catalogue image, not an optimizable static asset */}
-                        <img src={activity.image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover 2xl:h-12 2xl:w-12" />
+                         {activity.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- catalogue image, not an optimizable static asset
+                          <img src={activity.image} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover 2xl:h-12 2xl:w-12" />
+                        ) : (
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground 2xl:h-12 2xl:w-12">
+                            <ImageOff size={16} strokeWidth={1.5} aria-hidden="true" />
+                          </div>
+                        )}
                          <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {activity.category}</p>

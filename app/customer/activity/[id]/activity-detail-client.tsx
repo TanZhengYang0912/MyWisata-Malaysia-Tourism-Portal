@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, CheckCircle, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -171,8 +171,14 @@ export function ActivityDetailClient({
       <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
       <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
       <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={placeBound ? getPlaceActivityImage(activity) : activity.image} alt={activity.name} className="w-full h-full object-cover" />
+        {placeBound || activity.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={placeBound ? getPlaceActivityImage(activity) : activity.image!} alt={activity.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-secondary text-muted-foreground">
+            <ImageOff size={32} strokeWidth={1.5} aria-hidden="true" />
+          </div>
+        )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
         {activity.isHiddenGem && (
           <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>

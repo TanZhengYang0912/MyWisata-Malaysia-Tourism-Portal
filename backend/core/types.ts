@@ -124,7 +124,7 @@ export interface Activity {
   name: string;
   category: string;
   description: string;
-  image: string;
+  image: string | null;
   price: number; // RM base price
   rating: number;
   reviews: number;
@@ -168,6 +168,38 @@ export interface ProductReview {
   createdAt: string;
   authorName: string;
   verifiedPurchase: boolean;
+}
+
+// ─── Places domain (Penang place-first navigation) ─────────────────────────
+// See docs/plans/2026-08-12-2152-penang-place-model-and-data-reset.md.
+// Independent of vendors/outlets/products — places and vendors are two trees
+// joined by geography, not a parent/child hierarchy (plan §2 D1).
+export type PlaceLevel = "state" | "region" | "poi";
+export type PlaceRelation = "admission" | "guide_service" | "addon";
+
+export interface Place {
+  id: string;
+  parentId: string | null;
+  level: PlaceLevel;
+  name: string;
+  slug: string;
+  tagline: string | null;
+  intro: string | null;
+  imageUrl: string | null;
+  state: string;
+  district: string | null;
+  lat: number;
+  lng: number;
+  entryFee: number | null; // null = n/a, 0 = free, >0 = RM
+  managedByVendorId: string | null;
+  detail: { difficulty?: string; duration?: string; bestTime?: string; gettingThere?: string } | null;
+}
+
+/** One vendor's product available at a place, with how it relates to the place. */
+export interface PlaceProduct {
+  product: Activity;
+  vendor: VendorSummary;
+  relation: PlaceRelation;
 }
 
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────

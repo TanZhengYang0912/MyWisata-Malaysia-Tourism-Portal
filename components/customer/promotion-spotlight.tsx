@@ -29,7 +29,9 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
   return (
     <section aria-labelledby="promotion-spotlight-title" className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
       <div className="relative isolate overflow-hidden rounded-[2rem] bg-[#010066] shadow-[0_18px_50px_rgba(1,0,102,0.18)]">
-        <img src={active.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-35" />
+        {active.image && (
+          <img src={active.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-35" />
+        )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#010066] via-[#010066]/90 to-[#1D2A8A]/60" />
         <div className="grid min-h-[250px] gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_auto] lg:items-end lg:p-12">
           <div className="max-w-2xl text-white">

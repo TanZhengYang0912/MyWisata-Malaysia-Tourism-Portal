@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { getPlaceBySlug } from "@/backend/domains/places";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,13 @@ export default async function DestinationPage({ params }: Props) {
 
   const { destination, outlets, products } = result;
 
+  // D7: a state renders the new place-first page only once it has places rows;
+  // every other state falls through to this page unchanged. No flag day.
+  const stateSlug = stateToSlug(destination.state);
+  if (await getPlaceBySlug(stateSlug)) {
+    redirect(`/customer/place/${stateSlug}`);
+  }
+
   return (
     <main className="min-h-screen bg-background">
       {/* Hero */}
@@ -109,7 +117,7 @@ export default async function DestinationPage({ params }: Props) {
             Back to Explore
           </Link>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
-            {destination.region}
+            {destination.zone}
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-black text-white sm:text-6xl">
             {destination.state}

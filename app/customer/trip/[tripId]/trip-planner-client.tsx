@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Expand, Eye, EyeOff, GripVertical, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
+import { Expand, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { useCart } from "@/components/providers/cart";
@@ -743,8 +743,14 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
                           onClick={() => focusPin({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `RM ${a.price} · ${a.outlet.city}`, href: `/customer/activity/${a.id}` })}
                           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={a.image} alt={a.name} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                          {a.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={a.image} alt={a.name} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+                          ) : (
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                              <ImageOff size={14} strokeWidth={1.5} aria-hidden="true" />
+                            </div>
+                          )}
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[13px] font-bold text-foreground">{a.name}</span>
                             <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">

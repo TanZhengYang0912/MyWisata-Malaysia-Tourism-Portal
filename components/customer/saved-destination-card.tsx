@@ -17,7 +17,7 @@ export function SavedDestinationCard({ destination, savedAt }: { destination: Ma
           <Image src={destination.image} alt={`${destination.attraction}, ${destination.state}`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/85 via-[#00004d]/15 to-transparent" />
           <div className="absolute inset-x-4 bottom-4 text-white">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]">{destination.region}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]">{destination.zone}</p>
             <h3 className="mt-1 text-xl font-bold">{destination.state}</h3>
             <p className="mt-1 flex items-center gap-1 text-xs text-white/80"><MapPin size={12} /> {destination.attraction}</p>
           </div>

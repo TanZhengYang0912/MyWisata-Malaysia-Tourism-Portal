@@ -14,7 +14,7 @@ import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 
 type ExploreTab = "destinations" | "experiences";
 
-const REGION_ORDER = [
+const ZONE_ORDER = [
   "Northern Malaysia",
   "Central Malaysia",
   "Southern Malaysia",
@@ -23,7 +23,15 @@ const REGION_ORDER = [
   "Federal Territory",
 ];
 
-export function ExploreClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+export function ExploreClient({
+  initialActivities,
+  statesWithPlaces = [],
+  placeCountByState = {},
+}: {
+  initialActivities: ComputedActivity[];
+  statesWithPlaces?: string[];
+  placeCountByState?: Record<string, number>;
+}) {
   const [tab, setTab] = useState<ExploreTab>("destinations");
   const [category, setCategory] = useState<string | null>(null);
   const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
@@ -99,38 +107,48 @@ export function ExploreClient({ initialActivities }: { initialActivities: Comput
               </div>
             </div>
             <div className="space-y-12">
-              {REGION_ORDER.map((region) => {
-                const regionDestinations = MALAYSIA_DESTINATIONS.filter((d) => d.region === region);
-                if (regionDestinations.length === 0) return null;
+              {ZONE_ORDER.map((zone) => {
+                const zoneDestinations = MALAYSIA_DESTINATIONS.filter((d) => d.zone === zone);
+                if (zoneDestinations.length === 0) return null;
 
                 return (
-                  <div key={region}>
-                    <h3 className="mb-4 text-xl font-bold text-foreground">{region}</h3>
+                  <div key={zone}>
+                    <h3 className="mb-4 text-xl font-bold text-foreground">{zone}</h3>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
-                      {regionDestinations.map((dest) => (
-                        <Link
-                  key={dest.state}
-                  href={`/customer/destination/${encodeURIComponent(dest.state.toLowerCase().replace(/\s+/g, "-"))}`}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <div className="relative aspect-[0.9] overflow-hidden">
-                    <Image
-                      src={dest.image}
-                      alt={dest.state}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                    <div className="absolute inset-x-3 bottom-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground/70">
-                        {dest.region}
-                      </p>
-                      <p className="mt-0.5 text-sm font-bold text-white">{dest.state}</p>
-                    </div>
-                  </div>
-                </Link>
-                      ))}
+                      {zoneDestinations.map((dest) => {
+                        const stateSlug = dest.state.toLowerCase().replace(/\s+/g, "-");
+                        const hasPlaces = statesWithPlaces.includes(dest.state);
+                        const placeCount = placeCountByState[dest.state] ?? 0;
+                        return (
+                          <Link
+                            key={dest.state}
+                            href={hasPlaces ? `/customer/place/${stateSlug}` : `/customer/destination/${encodeURIComponent(stateSlug)}`}
+                            className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="relative aspect-[0.9] overflow-hidden">
+                              <Image
+                                src={dest.image}
+                                alt={dest.state}
+                                fill
+                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                                className="object-cover transition duration-500 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                              <div className="absolute inset-x-3 bottom-3">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground/70">
+                                  {dest.zone}
+                                </p>
+                                <p className="mt-0.5 text-sm font-bold text-white">{dest.state}</p>
+                                {hasPlaces && placeCount > 0 && (
+                                  <p className="mt-0.5 text-[10px] font-semibold text-white/80">
+                                    {placeCount} {placeCount === 1 ? "place" : "places"} to visit
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 );
