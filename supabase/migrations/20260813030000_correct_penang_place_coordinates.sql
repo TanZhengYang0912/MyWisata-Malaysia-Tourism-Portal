@@ -33,12 +33,14 @@ UPDATE places SET entry_fee = 16.00 WHERE slug = 'penang-hill';
 UPDATE places SET entry_fee = 20.00 WHERE slug = 'pinang-peranakan-mansion';
 
 DO $$
-DECLARE v_stale integer;
+DECLARE v_uncorrected integer;
 BEGIN
-  SELECT count(*) INTO v_stale FROM places
-  WHERE slug IN ('penang-hill', 'penang-botanic-gardens', 'meromictic-lake', 'monkey-beach-trail')
-    AND lat < 5.35;
-  IF v_stale > 0 THEN
-    RAISE EXCEPTION 'coordinate correction did not apply to % rows', v_stale;
+  SELECT count(*) INTO v_uncorrected FROM places
+  WHERE (slug = 'penang-hill' AND (lat, lng) IS DISTINCT FROM (5.424576, 100.268983))
+     OR (slug = 'penang-botanic-gardens' AND (lat, lng) IS DISTINCT FROM (5.438148, 100.291010))
+     OR (slug = 'meromictic-lake' AND (lat, lng) IS DISTINCT FROM (5.452479, 100.185263))
+     OR (slug = 'monkey-beach-trail' AND (lat, lng) IS DISTINCT FROM (5.471075, 100.187059));
+  IF v_uncorrected > 0 THEN
+    RAISE EXCEPTION 'coordinate correction did not apply to % rows', v_uncorrected;
   END IF;
 END $$;
