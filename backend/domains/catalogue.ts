@@ -51,11 +51,44 @@ type OutletRow = {
   status: string;
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
-  vendors: { name: string | null; status: string } | null;
-  products: { categories: { name: string; slug: string | null } | null }[] | null;
+  vendors: {
+    name: string | null;
+    status: string;
+    products: { categories: { name: string; slug: string | null } | null }[] | null;
+  } | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status),products(categories(name,slug))";
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status,products(categories(name,slug)))";
+
+// An outlet's category belongs to its vendor, not to whichever product happens
+// to be pinned to that one outlet. Vendor-wide products carry outlet_id NULL, so
+// the old outlet-level embed left every branch without an exclusive item
+// uncategorised. Most-common wins; ties break by DISCOVERY_CATEGORIES order so
+// the result never changes between requests (PostgREST embeds are unordered).
+export function resolveVendorCategory(
+  products: { categories: { name: string; slug: string | null } | null }[] | null | undefined,
+): string {
+  const counts = new Map<string, number>();
+  for (const product of products ?? []) {
+    const slug = product.categories?.slug;
+    if (!slug) continue;
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+  if (counts.size === 0) return "";
+
+  // Annotated string[] deliberately: DISCOVERY_CATEGORIES is `as const`, so an
+  // inferred literal-union array rejects indexOf(someString).
+  const order: string[] = DISCOVERY_CATEGORIES.map((c) => c.slug);
+  const rank = (slug: string) => {
+    const index = order.indexOf(canonicalCategorySlug(slug) ?? slug);
+    return index === -1 ? order.length : index;
+  };
+  const winner = [...counts.entries()].sort(
+    (a, b) => b[1] - a[1] || rank(a[0]) - rank(b[0]),
+  )[0][0];
+
+  return canonicalCategorySlug(winner) ? getDiscoveryCategoryLabel(winner) : winner;
+}
 
 function mapOutlet(row: OutletRow): Outlet {
   return {
@@ -63,9 +96,7 @@ function mapOutlet(row: OutletRow): Outlet {
     vendorId: row.vendor_id,
     vendorName: row.vendors?.name ?? undefined,
     name: row.name,
-    category: row.products?.[0]?.categories?.slug
-      ? getDiscoveryCategoryLabel(row.products[0].categories.slug)
-      : row.products?.[0]?.categories?.name ?? "",
+    category: resolveVendorCategory(row.vendors?.products),
     state: row.state ?? "",
     city: row.city ?? "",
     address: row.address ?? "",
