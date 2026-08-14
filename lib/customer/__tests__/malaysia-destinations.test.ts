@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   getVisibleDestinationQueue,
@@ -11,8 +9,11 @@ describe("MALAYSIA_DESTINATIONS", () => {
   it("keeps one unique destination per Malaysian state in the 16-item source of truth", () => {
     expect(MALAYSIA_DESTINATIONS).toHaveLength(16);
     expect(new Set(MALAYSIA_DESTINATIONS.map((destination) => destination.state)).size).toBe(16);
-    expect(MALAYSIA_DESTINATIONS.every((destination) => destination.image.startsWith("/assets/customer/malaysia/"))).toBe(true);
-    expect(MALAYSIA_DESTINATIONS.every((destination) => existsSync(resolve(process.cwd(), "public", destination.image.slice(1))))).toBe(true);
+    expect(
+      MALAYSIA_DESTINATIONS.every((destination) =>
+        destination.image.includes("/storage/v1/object/public/place-images/malaysia/"),
+      ),
+    ).toBe(true);
   });
 
   it("gives every destination a concise introduction and three highlights", () => {
