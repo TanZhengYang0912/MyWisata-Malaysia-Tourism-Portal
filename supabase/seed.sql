@@ -3,6 +3,13 @@
 -- Run after: supabase db push (which applies migrations)
 -- ============================================================
 
+-- WARNING: this file encodes the older all-vendors-share-3-owners demo
+-- model, which conflicts with the per-vendor-owner model established in
+-- supabase/migrations/20260815010000_per_vendor_owner_accounts.sql and
+-- 20260815011000_demo_outlet_manager_accounts.sql. Running it against a
+-- project with those migrations applied will reintroduce non-deterministic
+-- vendor-dashboard behavior for the shared demo accounts.
+
 -- ── Roles ──────────────────────────────────────────────────
 INSERT INTO roles (name, description) VALUES
   ('super_admin',    'Full platform access'),

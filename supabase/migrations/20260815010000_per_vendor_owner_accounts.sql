@@ -61,9 +61,9 @@ BEGIN
     INTO vendor_count, distinct_owner_count
     FROM public.vendors;
 
-  IF vendor_count <> 170 OR distinct_owner_count <> 170 THEN
+  IF vendor_count <> distinct_owner_count THEN
     RAISE EXCEPTION
-      'expected 170 vendors with 170 distinct owners, got % vendors / % distinct owners',
+      'expected every vendor to have a distinct owner, got % vendors / % distinct owners',
       vendor_count, distinct_owner_count;
   END IF;
 

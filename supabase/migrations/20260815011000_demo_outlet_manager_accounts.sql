@@ -60,7 +60,8 @@ WHERE o.slug IN (
 UNION ALL
 SELECT 'aaaaaaaa-0000-0000-0000-000000000004'::uuid, o.id
 FROM public.outlets o
-WHERE o.slug = 'chendul-keng-kwee';
+WHERE o.slug = 'chendul-keng-kwee'
+ON CONFLICT (outlet_id) DO NOTHING;
 
 -- user_roles: role_id = 4 (outlet_manager) for all 18 outlets.
 INSERT INTO public.user_roles (user_id, role_id, vendor_id, outlet_id)
@@ -88,7 +89,8 @@ WHERE o.slug IN (
 UNION ALL
 SELECT 'aaaaaaaa-0000-0000-0000-000000000004'::uuid, 4, NULL::uuid, o.id
 FROM public.outlets o
-WHERE o.slug = 'chendul-keng-kwee';
+WHERE o.slug = 'chendul-keng-kwee'
+ON CONFLICT (user_id, role_id) WHERE outlet_id IS NOT NULL DO NOTHING;
 
 DO $$
 DECLARE
@@ -97,9 +99,31 @@ DECLARE
   v_bad_vendor_count int;
   v_keng_kwee_manager uuid;
 BEGIN
-  SELECT count(*) INTO v_outlet_managers_count FROM public.outlet_managers;
+  SELECT count(*) INTO v_outlet_managers_count
+  FROM public.outlet_managers om
+  JOIN public.outlets o ON o.id = om.outlet_id
+  WHERE o.slug IN (
+    'chendul-gurney-plaza',
+    'chendul-queensbay',
+    'chendul-sunway-carnival',
+    'ghee-hiang-beach',
+    'ghee-hiang-burma',
+    'ghee-hiang-macalister',
+    'ghee-hiang-sunshine-central',
+    'blue-mansion-leith',
+    'op-penang-hill',
+    'op-river-cruise-jetty',
+    'op-river-cruise-tun-ali',
+    'retail-kooya-hang-jebat',
+    'retail-kooya-tukang-emas',
+    'accom-hotel-puri',
+    'guide-atlas-travel',
+    'accom-heritage-hotel-cameron',
+    'op-skyway-station',
+    'chendul-keng-kwee'
+  );
   IF v_outlet_managers_count <> 18 THEN
-    RAISE EXCEPTION 'Expected 18 outlet_managers rows, found %', v_outlet_managers_count;
+    RAISE EXCEPTION 'Expected 18 outlet_managers rows for the demo outlets, found %', v_outlet_managers_count;
   END IF;
 
   SELECT count(*) INTO v_user_roles_count FROM public.user_roles WHERE role_id = 4;

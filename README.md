@@ -80,6 +80,8 @@ Shared password for all 28 accounts: **`demo123456`**
 | Heritage Hotel Cameron Highlands (Pahang) | owner.heritage-hotel-cameron-highlands@demo.local | Heritage Hotel | manager.accom-heritage-hotel-cameron@demo.local |
 | Highlands Skyway Operations (Pahang) | owner.highlands-skyway-operations@demo.local | Skyway Station | manager.op-skyway-station@demo.local |
 
+**Note:** `vendor.owner.siti@demo.local` and `vendor.owner.raj@demo.local` — legacy accounts that used to cycle-own many vendors under the old shared-owner model — now own zero vendors and manage zero outlets. All 170 vendors were moved to dedicated owners. Signing in as either account will show an empty/broken vendor dashboard; this is expected, not a bug.
+
 ## Production readiness checklist
 
 Before enabling the live verification and payout paths, configure and verify these items in the deployment environments. Secret values must stay in Vercel/Supabase settings and must never be committed to this repository.
