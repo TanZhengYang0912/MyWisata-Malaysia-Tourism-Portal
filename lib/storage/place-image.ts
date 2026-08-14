@@ -1,10 +1,10 @@
 const BUCKET = "place-images";
 
-// Transitional shim: rows written before
-// 20260815101000_place_images_rewrite_urls.sql still carry this prefix.
-// Keeping it means Task 4 and Task 5 can land in either order and a
-// migration rollback does not break rendering. Safe to delete once the
-// rewrite migration is confirmed applied in every environment.
+// Transitional shim: the 14+ per-state seed migrations under
+// supabase/migrations/*_place_images.sql still write this old prefix when
+// replayed from scratch (e.g. `supabase db reset`). Keeps those working
+// until the places_image_url_relative CHECK constraint makes the new
+// bucket-relative convention permanent, at which point this can be dropped.
 const LEGACY_PREFIX = "/assets/customer/";
 
 /**

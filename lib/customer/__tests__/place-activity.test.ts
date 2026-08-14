@@ -16,11 +16,11 @@ function makeActivity(overrides: Partial<ComputedActivity> = {}): ComputedActivi
 
 describe("getPlaceActivityImage", () => {
   it("uses the curated local image for a hiking activity instead of its generic product image", () => {
-    expect(getPlaceActivityImage(makeActivity())).toBe("/assets/customer/malaysia/perak-kellies-castle.webp");
+    expect(getPlaceActivityImage(makeActivity())).toContain("/place-images/malaysia/perak-kellies-castle.webp");
   });
 
   it("uses the destination image for a place whose route has no special image mapping", () => {
     expect(getPlaceActivityImage(makeActivity({ name: "Heritage route", outlet: { ...makeActivity().outlet, state: "Melaka", city: "Melaka" } })))
-      .toBe("/assets/customer/malaysia/melaka-a-famosa.webp");
+      .toContain("/place-images/malaysia/melaka-a-famosa.webp");
   });
 });

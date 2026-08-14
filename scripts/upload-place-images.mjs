@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+// No-op/recovery tool only: public/assets/customer/ was deleted after this
+// script's initial seed run. To use this again, restore images to that path
+// from ~/mywisata-image-backup/ first (see the rollback section of
+// docs/plans/2026-08-14-2200-place-images-to-supabase-storage.md).
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';

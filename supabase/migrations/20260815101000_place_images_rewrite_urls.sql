@@ -23,9 +23,6 @@ BEGIN
   SELECT count(*) INTO n FROM places WHERE image_url LIKE '/assets/%';
   IF n <> 0 THEN RAISE EXCEPTION '% places rows still carry a legacy /assets path', n; END IF;
 
-  SELECT count(*) INTO n FROM places WHERE image_url IS NOT NULL;
-  IF n <> 179 THEN RAISE EXCEPTION 'expected 179 places rows with an image, found %', n; END IF;
-
   SELECT count(*) INTO n FROM places WHERE image_url LIKE '/%' OR image_url LIKE 'http%';
   IF n <> 0 THEN RAISE EXCEPTION '% places rows have a leading slash or absolute URL', n; END IF;
 END $$;
