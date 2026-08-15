@@ -6,7 +6,7 @@ import type {
   OutletPageBlock,
   OutletPageBlockType,
 } from "@/lib/vendor/outlet-page-schema";
-import { BLOCK_MIN_SIZE } from "@/lib/vendor/outlet-page-schema";
+import { canResizeBlockTo } from "@/lib/vendor/outlet-page-schema";
 import { GRID_SIZE_PRESETS } from "@/lib/vendor/outlet-grid";
 import ProductMediaUploader from "@/components/vendor/product-media-uploader";
 import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
@@ -23,6 +23,7 @@ interface ProductOption {
 interface Props {
   vendorId: string;
   block?: OutletPageBlock | null;
+  blocks: OutletPageBlock[];
   hero?: {
     title: string;
     body: string;
@@ -127,6 +128,7 @@ const OVERRIDE_FIELDS: Partial<Record<OutletPageBlockType, { key: keyof OutletBl
 export default function OutletBuilderInspector({
   vendorId,
   block,
+  blocks,
   hero,
   gallery,
   products,
@@ -470,9 +472,8 @@ export default function OutletBuilderInspector({
           "Size on the page",
           <div className="mt-1 grid grid-cols-4 gap-1">
             {GRID_SIZE_PRESETS.map(([w, h]) => {
-              const [minW, minH] = BLOCK_MIN_SIZE[block.type];
               const active = block.w === w && block.h === h;
-              const allowed = w >= minW && h >= minH;
+              const allowed = canResizeBlockTo(blocks, block, w, h);
               return <button
                 key={`${w}x${h}`}
                 type="button"

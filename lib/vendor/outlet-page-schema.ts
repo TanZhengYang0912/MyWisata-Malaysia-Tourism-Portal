@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GRID_COLS } from '@/lib/vendor/outlet-grid';
+import { GRID_COLS, fits, gridRowCount } from '@/lib/vendor/outlet-grid';
 
 const optionalUrl = z.string().url().max(2000).optional().or(z.literal(''));
 
@@ -30,8 +30,8 @@ export const BLOCK_DEFAULT_SIZE: Record<OutletPageBlockType, [number, number]> =
   gallery: [4, 2],
   hours: [2, 2],
   contact: [2, 2],
-  voucher_banner: [4, 1],
-  cta: [3, 1],
+  voucher_banner: [4, 2],
+  cta: [3, 2],
   review_highlight: [2, 2],
   social_proof: [2, 1],
 };
@@ -46,11 +46,25 @@ export const BLOCK_MIN_SIZE: Record<OutletPageBlockType, [number, number]> = {
   gallery: [2, 2],
   hours: [2, 1],
   contact: [2, 1],
-  voucher_banner: [2, 1],
-  cta: [2, 1],
+  voucher_banner: [2, 2],
+  cta: [2, 2],
   review_highlight: [2, 1],
   social_proof: [1, 1],
 };
+
+/**
+ * May `block` become `w × h` without running off the grid or overlapping a
+ * sibling? The one check both the canvas's resize menu and the inspector's
+ * size control must agree on — a block the schema would reject on save must
+ * never be selectable in either UI.
+ */
+export function canResizeBlockTo(blocks: OutletPageBlock[], block: OutletPageBlock, w: number, h: number): boolean {
+  const [minW, minH] = BLOCK_MIN_SIZE[block.type];
+  if (w < minW || h < minH) return false;
+  if (block.w === w && block.h === h) return true;
+  const candidate = { x: block.x, y: block.y, w, h };
+  return fits(blocks, candidate, GRID_COLS, gridRowCount([...blocks, candidate]), block.id);
+}
 
 /**
  * Vendor-typed values that replace live outlet data for one block. A key that
@@ -245,12 +259,12 @@ export function createDefaultOutletPageDocument(outletName: string): OutletPageD
       imagePosition: 'center',
     },
     blocks: [
-      stableDefaultBlock('intro', 'Welcome to this outlet', 0, 0, 4, 2),
-      stableDefaultBlock('product_grid', 'Featured experiences', 4, 0, 4, 3),
+      stableDefaultBlock('intro', 'Welcome to this outlet', 0, 0, 8, 2),
       stableDefaultBlock('gallery', 'A glimpse of the place', 0, 2, 4, 2),
-      stableDefaultBlock('cta', 'Ready to explore?', 4, 3, 4, 1),
-      stableDefaultBlock('hours', 'Opening hours', 0, 4, 2, 2),
-      stableDefaultBlock('contact', 'Find this outlet', 2, 4, 2, 2),
+      stableDefaultBlock('cta', 'Ready to explore?', 4, 2, 4, 2),
+      stableDefaultBlock('hours', 'Opening hours', 0, 4, 4, 2),
+      stableDefaultBlock('contact', 'Find this outlet', 4, 4, 4, 2),
+      stableDefaultBlock('product_grid', 'Featured experiences', 0, 6, 8, 3),
     ],
     gallery: [],
     brandColour: '#00004D',

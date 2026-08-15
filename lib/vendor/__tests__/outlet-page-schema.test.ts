@@ -25,11 +25,11 @@ describe('outlet page document schema', () => {
     expect(document.hero.title).toBe('City Square');
     expect(document.blocks.map((block) => block.type)).toEqual([
       'intro',
-      'product_grid',
       'gallery',
       'cta',
       'hours',
       'contact',
+      'product_grid',
     ]);
     expect(new Set(document.blocks.map((block) => block.id)).size).toBe(document.blocks.length);
   });
@@ -113,6 +113,23 @@ describe('outlet page document schema', () => {
     if (result.success) {
       const contact = result.data.blocks.find((block) => block.type === 'contact');
       expect(contact?.overrides).toEqual({ phone: '+60 4-261 0000' });
+    }
+  });
+
+  it('leaves no gap in the public projection when product_grid is filtered out', () => {
+    const document = createDefaultOutletPageDocument('City Square');
+    const publicBlocks = document.blocks.filter((block) => block.type !== 'product_grid');
+    const lastPublicRow = Math.max(...publicBlocks.map((block) => block.y + block.h));
+
+    // Every cell from row 0 up to the last public block's bottom edge must be
+    // covered by exactly one public block — no gap sandwiched between content.
+    for (let y = 0; y < lastPublicRow; y += 1) {
+      for (let x = 0; x < 8; x += 1) {
+        const covering = publicBlocks.filter(
+          (block) => x >= block.x && x < block.x + block.w && y >= block.y && y < block.y + block.h,
+        );
+        expect(covering.length).toBe(1);
+      }
     }
   });
 });

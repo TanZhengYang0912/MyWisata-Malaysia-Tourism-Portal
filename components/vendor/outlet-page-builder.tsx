@@ -58,6 +58,10 @@ interface Props {
   vendorId: string;
   outletId: string;
   outletName: string;
+  outletAddress?: string | null;
+  outletCity?: string | null;
+  outletState?: string | null;
+  outletPhone?: string | null;
   onClose: () => void;
 }
 interface Product {
@@ -71,12 +75,25 @@ export default function OutletPageBuilder({
   vendorId,
   outletId,
   outletName,
+  outletAddress,
+  outletCity,
+  outletState,
+  outletPhone,
   onClose,
 }: Props) {
   const historyRef = useRef<History<OutletPageDocument> | null>(null);
   const [document, setDocument] = useState<OutletPageDocument>(() =>
     createDefaultOutletPageDocument(outletName),
   );
+  // operating_hours intentionally omitted — not in the outlets list API response; hours placeholder stays generic until that's added.
+  const outletContext = {
+    id: outletId,
+    name: outletName,
+    address: outletAddress,
+    city: outletCity,
+    state: outletState,
+    phone: outletPhone,
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [heroAiDraft, setHeroAiDraft] = useState<{ title: string; body: string; cta?: string } | null>(null);
   const [heroAiBusy, setHeroAiBusy] = useState(false);
@@ -723,7 +740,7 @@ export default function OutletPageBuilder({
                 ) : (
                   <OutletPageRenderer
                     document={previewMode === "draft" ? document : publishedDocument!}
-                    outlet={{ id: outletId, name: outletName }}
+                    outlet={outletContext}
                     products={products}
                     mode="public"
                   />
@@ -860,7 +877,7 @@ export default function OutletPageBuilder({
               <OutletBuilderCanvas
                 vendorId={vendorId}
                 document={document}
-                outlet={{ id: outletId, name: outletName }}
+                outlet={outletContext}
                 products={products}
                 view={view}
                 selectedBlockId={selectedBlockId}
@@ -889,8 +906,9 @@ export default function OutletPageBuilder({
           </main>
           <OutletBuilderInspector
             vendorId={vendorId}
-            outlet={{ id: outletId, name: outletName }}
+            outlet={outletContext}
             block={selectedBlock}
+            blocks={document.blocks}
             hero={selectedBlockId === document.hero.id ? document.hero : null}
             gallery={document.gallery}
             products={products}

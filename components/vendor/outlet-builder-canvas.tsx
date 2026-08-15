@@ -21,8 +21,9 @@ import {
   cellFromPointer,
   fits,
   gridRowCount,
+  readingOrder,
 } from '@/lib/vendor/outlet-grid';
-import { BLOCK_MIN_SIZE } from '@/lib/vendor/outlet-page-schema';
+import { canResizeBlockTo } from '@/lib/vendor/outlet-page-schema';
 import type { OutletPageBlock, OutletPageDocument, OutletPageBlockType } from '@/lib/vendor/outlet-page-schema';
 
 interface Props {
@@ -146,77 +147,131 @@ export default function OutletBuilderCanvas({
                 </div>
               )}
             </div>
-            <div
-              ref={gridRef}
-              className="relative"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
-                gridTemplateRows: `repeat(${rows}, ${GRID_ROW_PX}px)`,
-                gap: 0,
-                backgroundImage: 'linear-gradient(to right, rgba(1,0,102,.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(1,0,102,.08) 1px, transparent 1px)',
-                backgroundSize: `calc(100% / ${GRID_COLS}) ${GRID_ROW_PX}px`,
-              }}
-              onDragOver={handleGridDragOver}
-              onDrop={handleGridDrop}
-            >
-              {ghost && <div
-                className={`pointer-events-none z-30 m-1 rounded-xl border-2 border-dashed ${ghost.ok ? 'border-amber-400 bg-amber-100/40' : 'border-red-400 bg-red-100/40'}`}
-                style={{ gridColumn: `${ghost.x + 1} / span ${ghost.w}`, gridRow: `${ghost.y + 1} / span ${ghost.h}` }}
-              />}
-              {document.blocks.map((block) => {
-                const selected = selectedBlockId === block.id;
-                const blockLabel = block.title || block.type.replace('_', ' ');
-                return <div
-                  key={block.id}
-                  ref={(element) => { blockRefs.current[block.id] = element; }}
-                  className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id ? 'opacity-30' : ''}`}
-                  style={{ gridColumn: `${block.x + 1} / span ${block.w}`, gridRow: `${block.y + 1} / span ${block.h}` }}
-                >
-                  <div
-                    className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
-                    onClick={(event) => event.stopPropagation()}
+            {view === 'desktop' ? (
+              <div
+                ref={gridRef}
+                className="relative"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${rows}, ${GRID_ROW_PX}px)`,
+                  gap: 0,
+                  backgroundImage: 'linear-gradient(to right, rgba(1,0,102,.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(1,0,102,.08) 1px, transparent 1px)',
+                  backgroundSize: `calc(100% / ${GRID_COLS}) ${GRID_ROW_PX}px`,
+                }}
+                onDragOver={handleGridDragOver}
+                onDrop={handleGridDrop}
+              >
+                {ghost && <div
+                  className={`pointer-events-none z-30 m-1 rounded-xl border-2 border-dashed ${ghost.ok ? 'border-amber-400 bg-amber-100/40' : 'border-red-400 bg-red-100/40'}`}
+                  style={{ gridColumn: `${ghost.x + 1} / span ${ghost.w}`, gridRow: `${ghost.y + 1} / span ${ghost.h}` }}
+                />}
+                {document.blocks.map((block) => {
+                  const selected = selectedBlockId === block.id;
+                  const blockLabel = block.title || block.type.replace('_', ' ');
+                  return <div
+                    key={block.id}
+                    ref={(element) => { blockRefs.current[block.id] = element; }}
+                    className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id ? 'opacity-30' : ''}`}
+                    style={{ gridColumn: `${block.x + 1} / span ${block.w}`, gridRow: `${block.y + 1} / span ${block.h}` }}
                   >
                     <div
-                      draggable
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('outlet-block-id', block.id);
-                        setDragId(block.id);
-                      }}
-                      onDragEnd={() => { setDragId(null); setGhost(null); }}
-                      className="flex h-8 cursor-grab items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-primary/70 hover:bg-secondary active:cursor-grabbing"
-                      aria-label={`Drag ${blockLabel}`}
-                      title={`Drag ${blockLabel}`}
+                      className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+                      onClick={(event) => event.stopPropagation()}
                     >
-                      <GripVertical size={15} />
-                    </div>
-                    <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title="Resize"><Maximize2 size={14} /></button>
-                    <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title="Duplicate"><Copy size={14} /></button>
-                    <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title="Delete"><Trash2 size={14} /></button>
-                  </div>
-
-                  {sizeMenuId === block.id && <>
-                    <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />
-                    <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-white p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
-                      <div className="grid grid-cols-2 gap-1">
-                        {GRID_SIZE_PRESETS.map(([w, h]) => {
-                          const [minW, minH] = BLOCK_MIN_SIZE[block.type];
-                          const active = block.w === w && block.h === h;
-                          const allowed = w >= minW && h >= minH
-                            && (active || fits(document.blocks, { x: block.x, y: block.y, w, h }, GRID_COLS, gridRowCount([...document.blocks, { x: block.x, y: block.y, w, h }]), block.id));
-                          return <button
-                            key={`${w}x${h}`}
-                            type="button"
-                            disabled={!allowed}
-                            onClick={() => { onResize(block.id, w, h); setSizeMenuId(null); }}
-                            className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${active ? 'bg-primary text-white' : allowed ? 'text-gray-700 hover:bg-secondary' : 'cursor-not-allowed text-gray-300'}`}
-                          >{w}×{h}</button>;
-                        })}
+                      <div
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData('outlet-block-id', block.id);
+                          setDragId(block.id);
+                        }}
+                        onDragEnd={() => { setDragId(null); setGhost(null); }}
+                        className="flex h-8 cursor-grab items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-primary/70 hover:bg-secondary active:cursor-grabbing"
+                        aria-label={`Drag ${blockLabel}`}
+                        title={`Drag ${blockLabel}`}
+                      >
+                        <GripVertical size={15} />
                       </div>
+                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title="Resize"><Maximize2 size={14} /></button>
+                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title="Duplicate"><Copy size={14} /></button>
+                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title="Delete"><Trash2 size={14} /></button>
                     </div>
-                  </>}
 
-                  <div className="h-full min-h-0 overflow-hidden">
+                    {sizeMenuId === block.id && <>
+                      <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />
+                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-white p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+                        <div className="grid grid-cols-2 gap-1">
+                          {GRID_SIZE_PRESETS.map(([w, h]) => {
+                            const active = block.w === w && block.h === h;
+                            const allowed = canResizeBlockTo(document.blocks, block, w, h);
+                            return <button
+                              key={`${w}x${h}`}
+                              type="button"
+                              disabled={!allowed}
+                              onClick={() => { onResize(block.id, w, h); setSizeMenuId(null); }}
+                              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${active ? 'bg-primary text-white' : allowed ? 'text-gray-700 hover:bg-secondary' : 'cursor-not-allowed text-gray-300'}`}
+                            >{w}×{h}</button>;
+                          })}
+                        </div>
+                      </div>
+                    </>}
+
+                    <div className="h-full min-h-0 overflow-hidden">
+                      <OutletBlockRenderer
+                        block={block}
+                        outlet={outlet}
+                        products={products}
+                        gallery={document.gallery}
+                        featuredIds={document.featuredIds}
+                        w={block.w}
+                        h={block.h}
+                        mode="editor"
+                        selected={selected}
+                        onSelect={onSelect}
+                        onEditBlock={(updates) => { onSelect(block.id); onEditBlock(block.id, updates); }}
+                        onEditEnd={onEndInlineEdit}
+                      />
+                    </div>
+                  </div>;
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 p-4">
+                {readingOrder(document.blocks).map((block) => {
+                  const selected = selectedBlockId === block.id;
+                  const blockLabel = block.title || block.type.replace('_', ' ');
+                  return <div
+                    key={block.id}
+                    className={`group relative rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''}`}
+                  >
+                    <div
+                      className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title="Resize"><Maximize2 size={14} /></button>
+                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title="Duplicate"><Copy size={14} /></button>
+                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title="Delete"><Trash2 size={14} /></button>
+                    </div>
+
+                    {sizeMenuId === block.id && <>
+                      <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />
+                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-white p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+                        <div className="grid grid-cols-2 gap-1">
+                          {GRID_SIZE_PRESETS.map(([w, h]) => {
+                            const active = block.w === w && block.h === h;
+                            const allowed = canResizeBlockTo(document.blocks, block, w, h);
+                            return <button
+                              key={`${w}x${h}`}
+                              type="button"
+                              disabled={!allowed}
+                              onClick={() => { onResize(block.id, w, h); setSizeMenuId(null); }}
+                              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${active ? 'bg-primary text-white' : allowed ? 'text-gray-700 hover:bg-secondary' : 'cursor-not-allowed text-gray-300'}`}
+                            >{w}×{h}</button>;
+                          })}
+                        </div>
+                      </div>
+                    </>}
+
                     <OutletBlockRenderer
                       block={block}
                       outlet={outlet}
@@ -231,10 +286,10 @@ export default function OutletBuilderCanvas({
                       onEditBlock={(updates) => { onSelect(block.id); onEditBlock(block.id, updates); }}
                       onEditEnd={onEndInlineEdit}
                     />
-                  </div>
-                </div>;
-              })}
-            </div>
+                  </div>;
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
