@@ -233,15 +233,137 @@ export function CustomerHomeClient({
       </div>
 
       {previewDestination && (
-        <DestinationPreviewModal 
-          destination={previewDestination} 
+        <DestinationPreviewModal
+          destination={previewDestination}
           onExplore={() => {
             setPreviewDestination(null);
             window.location.href = `/customer/explore?state=${encodeURIComponent(previewDestination.state)}`;
           }}
-          onClose={() => setPreviewDestination(null)} 
+          onClose={() => setPreviewDestination(null)}
         />
       )}
+
+      {/* Hero motion. The markup above was copied from the design-demo prototype
+          without this block, so every atlas-* class below had no rule and the hero
+          sat still. Restored from app/customer/design-demo/design-demo-client.tsx,
+          trimmed to the classes this page actually uses. */}
+      <style jsx>{`
+        :global(:root) {
+          --atlas-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+          --atlas-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+        }
+
+        .atlas-enter {
+          animation: atlas-enter 900ms var(--atlas-ease-out) both;
+        }
+
+        .atlas-delay-1 { animation-delay: 80ms; }
+        .atlas-delay-2 { animation-delay: 150ms; }
+        .atlas-delay-3 { animation-delay: 230ms; }
+        .atlas-delay-4 { animation-delay: 330ms; }
+        .atlas-delay-5 { animation-delay: 430ms; }
+
+        .atlas-ambient {
+          animation: atlas-orbit 18s var(--atlas-ease-in-out) infinite alternate;
+          transform-origin: 50% 50%;
+        }
+
+        .atlas-ambient-delayed { animation-delay: -7s; animation-direction: alternate-reverse; }
+
+        .atlas-depth-card { animation: atlas-depth-drift 8s var(--atlas-ease-in-out) infinite alternate; }
+
+        .atlas-note { animation: atlas-note-float 6s ease-in-out infinite; }
+
+        .atlas-active-card { animation: atlas-card-in 720ms var(--atlas-ease-out) both; }
+
+        /* :global because styled-jsx only adds its scoping class to plain DOM
+           elements, never to an imported component like next/image — a scoped
+           rule here would never match the <Image> and the zoom would not run. */
+        :global(.atlas-active-image) { animation: atlas-photo-breathe 16s var(--atlas-ease-in-out) infinite alternate; }
+
+        .atlas-press {
+          transition-property: transform, background-color, border-color, color, box-shadow;
+          transition-duration: 160ms;
+          transition-timing-function: var(--atlas-ease-out);
+        }
+
+        .atlas-press:active { transform: scale(0.97); }
+
+        .atlas-shimmer {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          transform: translateZ(0);
+        }
+
+        .atlas-shimmer::after {
+          position: absolute;
+          inset: 0 auto 0 -45%;
+          width: 36%;
+          content: "";
+          background: linear-gradient(105deg, transparent, rgba(255,255,255,0.54), transparent);
+          transform: skewX(-18deg);
+          animation: atlas-sheen 4.8s var(--atlas-ease-in-out) infinite;
+          pointer-events: none;
+        }
+
+        .atlas-shimmer > :global(*) { position: relative; z-index: 1; }
+
+        @keyframes atlas-enter {
+          from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        @keyframes atlas-orbit {
+          from { transform: rotate(-9deg) scale(0.96); opacity: 0.55; }
+          to { transform: rotate(8deg) scale(1.05); opacity: 1; }
+        }
+
+        @keyframes atlas-depth-drift {
+          from { transform: translate3d(0, 0, 0) rotate(5deg); }
+          to { transform: translate3d(-12px, -10px, 0) rotate(8deg); }
+        }
+
+        @keyframes atlas-note-float {
+          0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); }
+          50% { transform: translate3d(0, -9px, 0) rotate(-1deg); }
+        }
+
+        @keyframes atlas-card-in {
+          from { opacity: 0; transform: translate3d(0, 26px, 0) scale(0.97); filter: blur(3px); }
+          to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+        }
+
+        @keyframes atlas-photo-breathe {
+          from { transform: scale(1.02); }
+          to { transform: scale(1.09); }
+        }
+
+        @keyframes atlas-sheen {
+          0%, 35% { transform: translateX(0) skewX(-18deg); opacity: 0; }
+          50% { opacity: 1; }
+          75%, 100% { transform: translateX(420%) skewX(-18deg); opacity: 0; }
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+          .atlas-shimmer:hover::after { animation-duration: 1.6s; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .atlas-enter,
+          .atlas-ambient,
+          .atlas-depth-card,
+          .atlas-note,
+          .atlas-active-card,
+          .atlas-shimmer::after {
+            animation: none;
+          }
+
+          :global(.atlas-active-image) { animation: none; transform: none; }
+
+          .atlas-press:active { transform: none; }
+        }
+      `}</style>
     </div>
   );
 }
