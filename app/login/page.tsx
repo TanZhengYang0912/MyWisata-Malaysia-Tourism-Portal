@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
+import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
   const [users, setUsers] = useState<DemoUser[]>([]);
+  const [roleFilter, setRoleFilter] = useState<Role | null>(null);
   const [mode, setMode] = useState<AuthMode>("signin");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -154,6 +156,8 @@ export default function LoginPage() {
   }
 
   const title = mode === "signup" ? "Create your account" : mode === "verify" ? "Verify your email" : mode === "forgot" ? "Reset your password" : "Welcome back";
+  const roleCategories = demoAccountRoleCategories(users);
+  const visibleUsers = filterDemoAccountsByRole(users, roleFilter);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: "var(--background)" }}>
@@ -196,7 +200,13 @@ export default function LoginPage() {
 
           <button type="button" onClick={enterGuestMode} disabled={busy} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-70"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-white">G</div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">Guest Mode</p><p className="text-xs text-muted-foreground">Browse vendors and listings without signing in</p></div><Badge variant="secondary" className="shrink-0">Guest</Badge></button>
           <div className="mt-5 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seeded demo accounts</p><span className="text-[11px] text-muted-foreground">Quick entry</span></div>
-          <div className="mt-2 space-y-2">{users.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{ROLE_LABEL[user.role]}</Badge></button>)}</div>
+          {roleCategories.length > 1 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setRoleFilter(null)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === null ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>All</button>
+              {roleCategories.map((role) => <button key={role} type="button" onClick={() => setRoleFilter(role)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === role ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{ROLE_LABEL[role]}</button>)}
+            </div>
+          )}
+          <div className="mt-2 space-y-2">{visibleUsers.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{ROLE_LABEL[user.role]}</Badge></button>)}</div>
         </CardContent></Card>
         <p className="mt-4 text-center text-xs text-muted-foreground">Demo records are stored in Supabase. The browser is not used as the database.</p>
       </div>
