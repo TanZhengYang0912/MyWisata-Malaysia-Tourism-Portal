@@ -35,6 +35,7 @@ import {
   getOutletBuilderMediaUrls,
 } from "@/components/vendor/outlet-builder-editing";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { GRID_COLS, firstFreeSlot, fits, gridRowCount } from "@/lib/vendor/outlet-grid";
 import {
   createDefaultOutletPageDocument,
   createOutletPageBlock,
@@ -234,32 +235,39 @@ export default function OutletPageBuilder({
     commit(updater(document), coalesceKey);
   }
 
-  function addBlock(type: OutletPageBlockType, index = document.blocks.length) {
-    const block = createOutletPageBlock(type);
-    updateDocument((current) => ({
-      ...current,
-      blocks: [
-        ...current.blocks.slice(0, index),
-        block,
-        ...current.blocks.slice(index),
-      ],
-    }));
+  function addBlock(type: OutletPageBlockType, position?: { x: number; y: number }) {
+    const created = createOutletPageBlock(type);
+    // Search one screen deeper than the current grid so a full page still
+    // finds room — gridRowCount already keeps spare rows below the lowest block.
+    const rows = gridRowCount(document.blocks) + created.h;
+    // A dropped position was measured against a provisional 4×2 ghost, so it
+    // may not fit this type's real size — fall back to the first free slot.
+    const dropped =
+      position && fits(document.blocks, { ...position, w: created.w, h: created.h }, GRID_COLS, rows)
+        ? position
+        : null;
+    const slot = dropped || firstFreeSlot(document.blocks, created.w, created.h, GRID_COLS, rows);
+    if (!slot) {
+      setError("No room left on the page. Remove or resize a section first.");
+      return;
+    }
+    const block = { ...created, x: slot.x, y: slot.y };
+    updateDocument((current) => ({ ...current, blocks: [...current.blocks, block] }));
     setSelectedBlockId(block.id);
   }
 
-  function moveBlock(blockId: string, targetIndex: number) {
-    updateDocument((current) => {
-      const sourceIndex = current.blocks.findIndex(
-        (block) => block.id === blockId,
-      );
-      if (sourceIndex < 0) return current;
-      const next = [...current.blocks];
-      const [moved] = next.splice(sourceIndex, 1);
-      const adjustedIndex =
-        sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-      next.splice(Math.max(0, Math.min(adjustedIndex, next.length)), 0, moved);
-      return { ...current, blocks: next };
-    });
+  function placeBlock(blockId: string, x: number, y: number) {
+    updateDocument((current) => ({
+      ...current,
+      blocks: current.blocks.map((block) => (block.id === blockId ? { ...block, x, y } : block)),
+    }));
+  }
+
+  function resizeBlock(blockId: string, w: number, h: number) {
+    updateDocument((current) => ({
+      ...current,
+      blocks: current.blocks.map((block) => (block.id === blockId ? { ...block, w, h } : block)),
+    }));
   }
 
   function deleteBlock(blockId: string) {
@@ -275,15 +283,22 @@ export default function OutletPageBuilder({
     const source = document.blocks[sourceIndex];
     if (!source || sourceIndex < 0) return;
     const nextBlock = duplicateOutletPageBlock(source);
+    const rows = gridRowCount(document.blocks) + nextBlock.h;
+    const slot = firstFreeSlot(document.blocks, nextBlock.w, nextBlock.h, GRID_COLS, rows);
+    if (!slot) {
+      setError("No room left on the page. Remove or resize a section first.");
+      return;
+    }
+    const placed = { ...nextBlock, x: slot.x, y: slot.y };
     updateDocument((current) => ({
       ...current,
       blocks: [
         ...current.blocks.slice(0, sourceIndex + 1),
-        nextBlock,
+        placed,
         ...current.blocks.slice(sourceIndex + 1),
       ],
     }));
-    setSelectedBlockId(nextBlock.id);
+    setSelectedBlockId(placed.id);
   }
 
   function updateBlockById(
@@ -851,7 +866,8 @@ export default function OutletPageBuilder({
                 selectedBlockId={selectedBlockId}
                 onSelect={setSelectedBlockId}
                 onInsert={addBlock}
-                onMove={moveBlock}
+                onPlace={placeBlock}
+                onResize={resizeBlock}
                 onDelete={deleteBlock}
                 onDuplicate={duplicateBlock}
                 onEditHero={(updates) =>

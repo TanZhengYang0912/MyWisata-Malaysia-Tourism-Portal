@@ -3,8 +3,6 @@ import {
   duplicateOutletPageBlock,
   getBuilderConfirmationCopy,
   getBuilderBlockLabel,
-  getBlockActionState,
-  getBlockMoveTargetIndex,
   getBuilderPreviewLabel,
   getBuilderViewportConfig,
   getPublishedOutletFeedback,
@@ -21,21 +19,6 @@ describe("outlet builder UI rules", () => {
     expect(getBuilderViewportConfig("tablet").width).toBe(768);
     expect(getBuilderViewportConfig("mobile").width).toBe(390);
     expect(getBuilderViewportConfig("mobile").label).toBe("Mobile 390px");
-  });
-
-  it("disables block movement at the relevant list edges", () => {
-    expect(getBlockActionState(0, 3)).toEqual({
-      canMoveUp: false,
-      canMoveDown: true,
-    });
-    expect(getBlockActionState(1, 3)).toEqual({
-      canMoveUp: true,
-      canMoveDown: true,
-    });
-    expect(getBlockActionState(2, 3)).toEqual({
-      canMoveUp: true,
-      canMoveDown: false,
-    });
   });
 
   it("duplicates a block with a fresh id while retaining its content", () => {
@@ -58,11 +41,6 @@ describe("outlet builder UI rules", () => {
       body: "A local experience.",
     });
     expect(duplicate.id).not.toBe(source.id);
-  });
-
-  it("calculates a real reorder target for up and down actions", () => {
-    expect(getBlockMoveTargetIndex(1, "up")).toBe(0);
-    expect(getBlockMoveTargetIndex(1, "down")).toBe(3);
   });
 
   it("labels draft and published previews clearly", () => {
