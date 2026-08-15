@@ -148,7 +148,7 @@ export default function OutletBuilderCanvas({
             </div>
             <div
               ref={gridRef}
-              className="relative p-4"
+              className="relative"
               style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
@@ -170,7 +170,7 @@ export default function OutletBuilderCanvas({
                 return <div
                   key={block.id}
                   ref={(element) => { blockRefs.current[block.id] = element; }}
-                  className={`group relative z-10 m-1 min-h-0 overflow-hidden rounded-[18px] transition ${selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id ? 'opacity-30' : ''}`}
+                  className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id ? 'opacity-30' : ''}`}
                   style={{ gridColumn: `${block.x + 1} / span ${block.w}`, gridRow: `${block.y + 1} / span ${block.h}` }}
                 >
                   <div
@@ -179,7 +179,10 @@ export default function OutletBuilderCanvas({
                   >
                     <div
                       draggable
-                      onDragStart={() => setDragId(block.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData('outlet-block-id', block.id);
+                        setDragId(block.id);
+                      }}
                       onDragEnd={() => { setDragId(null); setGhost(null); }}
                       className="flex h-8 cursor-grab items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-primary/70 hover:bg-secondary active:cursor-grabbing"
                       aria-label={`Drag ${blockLabel}`}
