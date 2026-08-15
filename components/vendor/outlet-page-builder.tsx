@@ -889,6 +889,7 @@ export default function OutletPageBuilder({
           </main>
           <OutletBuilderInspector
             vendorId={vendorId}
+            outlet={{ id: outletId, name: outletName }}
             block={selectedBlock}
             hero={selectedBlockId === document.hero.id ? document.hero : null}
             gallery={document.gallery}

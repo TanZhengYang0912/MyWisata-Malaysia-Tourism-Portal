@@ -2,12 +2,17 @@
 
 import type {
   GalleryItem,
+  OutletBlockOverrides,
   OutletPageBlock,
   OutletPageBlockType,
 } from "@/lib/vendor/outlet-page-schema";
+import { BLOCK_MIN_SIZE } from "@/lib/vendor/outlet-page-schema";
+import { GRID_SIZE_PRESETS } from "@/lib/vendor/outlet-grid";
 import ProductMediaUploader from "@/components/vendor/product-media-uploader";
 import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
+import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
+import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";
 
 interface ProductOption {
   id: string;
@@ -40,6 +45,7 @@ interface Props {
   onGenerateHeroAi?: () => void;
   onApplyHeroAi?: () => void;
   onDiscardHeroAi?: () => void;
+  outlet: OutletRendererOutlet;
 }
 
 function MediaLibrary({
@@ -92,6 +98,32 @@ function fieldLabel(label: string, children: React.ReactNode) {
   );
 }
 
+/**
+ * Next overrides object after editing one field. A blank value deletes the
+ * key so the block falls back to live outlet data; when nothing is left the
+ * whole object is dropped rather than stored empty.
+ */
+export function overrideUpdate(
+  current: OutletBlockOverrides | undefined,
+  key: keyof OutletBlockOverrides,
+  value: string,
+): OutletBlockOverrides | undefined {
+  const next = { ...current };
+  if (value.trim()) next[key] = value;
+  else delete next[key];
+  return Object.keys(next).length ? next : undefined;
+}
+
+/** Which live values each block type lets a vendor override. */
+const OVERRIDE_FIELDS: Partial<Record<OutletPageBlockType, { key: keyof OutletBlockOverrides; label: string }[]>> = {
+  hours: [{ key: "hours", label: "Opening hours" }],
+  contact: [
+    { key: "address", label: "Address" },
+    { key: "phone", label: "Phone" },
+  ],
+  review_highlight: [{ key: "review", label: "Review quote" }],
+};
+
 export default function OutletBuilderInspector({
   vendorId,
   block,
@@ -108,6 +140,7 @@ export default function OutletBuilderInspector({
   onGenerateHeroAi,
   onApplyHeroAi,
   onDiscardHeroAi,
+  outlet,
 }: Props) {
   const panelClassName =
     "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
@@ -433,6 +466,50 @@ export default function OutletBuilderInspector({
             <p className="mt-2 text-[10px] text-gray-400">Maximum 50 images.</p>
           </div>
         )}
+        {fieldLabel(
+          "Size on the page",
+          <div className="mt-1 grid grid-cols-4 gap-1">
+            {GRID_SIZE_PRESETS.map(([w, h]) => {
+              const [minW, minH] = BLOCK_MIN_SIZE[block.type];
+              const active = block.w === w && block.h === h;
+              const allowed = w >= minW && h >= minH;
+              return <button
+                key={`${w}x${h}`}
+                type="button"
+                disabled={!allowed}
+                onClick={() => onUpdateBlock({ w, h })}
+                className={`rounded-lg px-2 py-1.5 text-[11px] font-bold ${active ? "bg-primary text-white" : allowed ? "border border-gray-200 text-gray-700 hover:bg-secondary" : "cursor-not-allowed text-gray-300"}`}
+              >{w}×{h}</button>;
+            })}
+          </div>,
+        )}
+
+        {OVERRIDE_FIELDS[block.type]?.map(({ key, label }) => {
+          const live = resolveBlockContent({}, outlet)[key];
+          const custom = Boolean(block.overrides?.[key]);
+          return <div key={key}>
+            {fieldLabel(
+              label,
+              <input
+                value={block.overrides?.[key] || ""}
+                placeholder={live || "Not set on this outlet"}
+                onChange={(event) =>
+                  onUpdateBlock({ overrides: overrideUpdate(block.overrides, key, event.target.value) })
+                }
+                className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
+              />,
+            )}
+            <p className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
+              {custom ? "Custom" : "Using outlet data"}
+              {custom && <button
+                type="button"
+                onClick={() => onUpdateBlock({ overrides: overrideUpdate(block.overrides, key, "") })}
+                className="font-semibold text-primary hover:underline"
+              >Reset to outlet</button>}
+            </p>
+          </div>;
+        })}
+
         {fieldLabel(
           "Background colour",
           <input
