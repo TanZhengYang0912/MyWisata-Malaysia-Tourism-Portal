@@ -44,6 +44,10 @@ describe("outlet builder UI rules", () => {
       type: "text" as const,
       title: "Our story",
       body: "A local experience.",
+      x: 0,
+      y: 0,
+      w: 3,
+      h: 2,
     };
 
     const duplicate = duplicateOutletPageBlock(source);
