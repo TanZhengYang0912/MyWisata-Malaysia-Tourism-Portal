@@ -1,6 +1,6 @@
 # Shared Customer and Guest Experience Design
 
-Status: Approved design, pending written-spec review
+Status: Approved, implementation pending
 
 ## Context
 
