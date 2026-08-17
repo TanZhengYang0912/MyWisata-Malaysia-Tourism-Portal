@@ -232,6 +232,7 @@ export class TestDocument extends TestNode {
   readonly documentElement: TestElement;
   readonly head: TestElement;
   readonly body: TestElement;
+  oninput: ((event: TestEvent) => void) | null = null;
 
   constructor() {
     super(9, undefined as unknown as TestDocument, "#document");

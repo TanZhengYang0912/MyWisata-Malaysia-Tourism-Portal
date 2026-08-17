@@ -19,7 +19,7 @@ vi.mock("@/components/utils", () => ({ cn: (...values: unknown[]) => values.filt
 
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
-import { createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
+import { ChatbotWidget, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { StatusBadge } from "@/components/shared/status-badge";
 
@@ -31,9 +31,11 @@ const translations: Record<string, string> = {
   "common:chatbot.closeChat": "Close translated chat",
   "common:chatbot.emptyPrompt": "Ask a translated question",
   "common:chatbot.inputPlaceholder": "Translated question",
+  "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
   "common:chatbot.somethingWrong": "Translated network fallback",
+  "common:chatbot.title": "Translated support title",
   "common:chatbot.wantTicket": "Translated ticket offer",
   "common:chatbot.yes": "Yes translated",
   "common:filters.filter": "Translated filter",
@@ -71,6 +73,12 @@ let container: TestElement;
 
 function findButton(text: string) {
   return findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes(text));
+}
+
+function setInputValue(input: TestElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new TestEvent("input", { bubbles: true }));
 }
 
 async function render(element: React.ReactElement) {
@@ -169,6 +177,47 @@ describe("Task 5 shared runtime behavior", () => {
     expect(message.feedbackStage).toBe("awaiting_ticket");
     expect(resolveTicketSubject(message.question, "Translated support request")).toBe("Need help with my wallet");
     expect(resolveTicketSubject(undefined, "Translated support request")).toBe("Translated support request");
+  });
+
+  it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
+    const question = "Why is my wallet withdrawal still pending?";
+    const answer = "API answer [zh]: withdrawals can take two business days.";
+    let askPayload: { question?: string } | undefined;
+    let ticketPayload: { sessionKey?: string; subject?: string; body?: string } | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chatbot/ask") {
+        askPayload = JSON.parse(String(init?.body)) as { question?: string };
+        return response({
+          data: { sessionKey: "chat-session-1", answer, botAnswered: false, messageId: "message-zh-1", language: "zh" },
+          error: null,
+        });
+      }
+      if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
+      if (url === "/api/support/tickets") {
+        ticketPayload = JSON.parse(String(init?.body)) as { sessionKey?: string; subject?: string; body?: string };
+        return response({ data: { id: "ticket-zh-1", category: "support" }, error: null });
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<ChatbotWidget />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+
+    const input = findOne(container, (element) => element.tagName === "INPUT");
+    expect(input.getAttribute("placeholder")).toBe("Translated question");
+    setInputValue(input, question);
+    const send = findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message");
+    expect(send.disabled).toBe(false);
+    await click(send);
+
+    expect(askPayload).toEqual({ question });
+    expect(container.textContent).toContain(answer);
+    expect(container.textContent).toContain("Translated support title");
+    expect(container.textContent).not.toContain("Translated answer");
+    expect(container.textContent).toContain("Translated ticket offer");
+
+    await click(findButton("Yes translated"));
+    expect(ticketPayload).toEqual({ sessionKey: "chat-session-1", subject: question, body: question });
   });
 
   it("keeps translated segmented-filter and confirmation-dialog labels connected to their original handlers", async () => {
