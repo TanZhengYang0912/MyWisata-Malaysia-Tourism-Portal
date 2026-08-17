@@ -1,1 +1,30 @@
-{}
+{
+  "navigation": {
+    "Partners": "合作伙伴",
+    "Explore": "探索",
+    "Map": "地图",
+    "Chat": "聊天",
+    "My Activity": "我的活动",
+    "Saved": "已保存"
+  },
+  "accountGroups": {
+    "Account": "账户",
+    "Payments & verification": "付款与验证",
+    "Help": "帮助",
+    "More": "更多"
+  },
+  "accountItems": {
+    "Profile": { "label": "个人资料", "description": "您的个人信息" },
+    "Notifications": { "label": "通知", "description": "预订、钱包和账户更新" },
+    "Preferences": { "label": "偏好设置", "description": "调整您的推荐内容" },
+    "Wallet": { "label": "钱包", "description": "余额和提现" },
+    "Verification": { "label": "验证", "description": "验证您的身份" },
+    "Support": { "label": "客服支持", "description": "获取行程帮助" },
+    "Earn & Share": { "label": "赚取与分享", "description": "管理联盟活动" },
+    "Become a Vendor": { "label": "成为商家", "description": "申请发布您的业务" },
+    "Recommend a Vendor": { "label": "推荐商家", "description": "分享本地发现" }
+  },
+  "profile": {
+    "languageDescription": "选择 MyWisata 使用的语言。"
+  }
+}

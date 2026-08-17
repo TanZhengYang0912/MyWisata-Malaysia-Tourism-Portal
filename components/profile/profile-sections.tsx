@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { Camera, CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
@@ -13,6 +14,7 @@ import { InternationalPhoneInput } from "@/components/profile/international-phon
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
@@ -31,6 +33,8 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
 export function ProfileSections({ shellClassName, showHeader = true }: { shellClassName?: string; showHeader?: boolean } = {}) {
   const { currentUser, refreshUser } = useAuth();
   const { setOpen: setSupportChatOpen } = useSupportChat();
+  const { t: tCommon } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -192,6 +196,10 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
           {summary.survey && <p className="text-muted-foreground">{summary.survey.travelStyle || "Travel style not set"} · {summary.survey.budgetRange || "Budget not set"} · {summary.survey.mobilityNeeds || "Mobility not set"}</p>}
           <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>Manage preferences <ChevronRight size={14} /></Button>
         </div>
+      </SectionCard>
+
+      <SectionCard id="language-region" title={tCommon("language.andRegion")} description={tCustomer("profile.languageDescription")}>
+        <LanguageSwitcher />
       </SectionCard>
 
       <SectionCard title="Support" description="Get help from our team through the chat widget.">

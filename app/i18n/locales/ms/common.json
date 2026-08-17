@@ -4,7 +4,10 @@
     "andRegion": "Bahasa dan rantau",
     "english": "English",
     "simplifiedChinese": "简体中文",
-    "bahasaMelayu": "Bahasa Melayu"
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "Menyimpan pilihan bahasa…",
+    "saved": "Pilihan bahasa telah disimpan.",
+    "saveError": "Tidak dapat menyimpan pilihan bahasa. Sila cuba lagi."
   },
   "actions": {
     "save": "Simpan",
@@ -19,6 +22,7 @@
   },
   "states": {
     "loading": "Memuatkan",
+    "loadingEllipsis": "Memuatkan…",
     "noResults": "Tiada hasil ditemui"
   },
   "pagination": {
@@ -38,5 +42,19 @@
   "errors": {
     "generic": "Sesuatu tidak kena. Sila cuba lagi.",
     "network": "Tidak dapat disambungkan. Sila cuba lagi."
+  },
+  "account": {
+    "menu": "Menu akaun",
+    "guestMenu": "Menu akaun tetamu",
+    "openMenuFor": "Buka menu akaun {{name}}",
+    "guestSyncHint": "Log masuk untuk melihat dan menyegerakkan akaun anda",
+    "signIn": "Log masuk",
+    "createAccount": "Cipta akaun",
+    "switchAccount": "Tukar akaun"
+  },
+  "cart": {
+    "label": "Troli beli-belah",
+    "itemCount": "Troli beli-belah, {{count}} item",
+    "itemCountPlural": "Troli beli-belah, {{count}} item"
   }
 }

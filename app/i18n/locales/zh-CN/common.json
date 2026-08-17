@@ -4,7 +4,10 @@
     "andRegion": "语言和地区",
     "english": "English",
     "simplifiedChinese": "简体中文",
-    "bahasaMelayu": "Bahasa Melayu"
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "正在保存语言偏好…",
+    "saved": "语言偏好已保存。",
+    "saveError": "无法保存语言偏好，请重试。"
   },
   "actions": {
     "save": "保存",
@@ -19,6 +22,7 @@
   },
   "states": {
     "loading": "加载中",
+    "loadingEllipsis": "加载中…",
     "noResults": "未找到结果"
   },
   "pagination": {
@@ -38,5 +42,19 @@
   "errors": {
     "generic": "出错了，请重试。",
     "network": "无法连接，请重试。"
+  },
+  "account": {
+    "menu": "账户菜单",
+    "guestMenu": "游客账户菜单",
+    "openMenuFor": "打开 {{name}} 的账户菜单",
+    "guestSyncHint": "登录以查看并同步您的账户",
+    "signIn": "登录",
+    "createAccount": "创建账户",
+    "switchAccount": "切换账户"
+  },
+  "cart": {
+    "label": "购物车",
+    "itemCount": "购物车，{{count}} 件商品",
+    "itemCountPlural": "购物车，{{count}} 件商品"
   }
 }

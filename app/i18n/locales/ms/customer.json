@@ -1,1 +1,30 @@
-{}
+{
+  "navigation": {
+    "Partners": "Rakan kongsi",
+    "Explore": "Terokai",
+    "Map": "Peta",
+    "Chat": "Sembang",
+    "My Activity": "Aktiviti saya",
+    "Saved": "Disimpan"
+  },
+  "accountGroups": {
+    "Account": "Akaun",
+    "Payments & verification": "Pembayaran & pengesahan",
+    "Help": "Bantuan",
+    "More": "Lagi"
+  },
+  "accountItems": {
+    "Profile": { "label": "Profil", "description": "Butiran peribadi anda" },
+    "Notifications": { "label": "Pemberitahuan", "description": "Kemas kini tempahan, dompet dan akaun" },
+    "Preferences": { "label": "Keutamaan", "description": "Laraskan suapan cadangan anda" },
+    "Wallet": { "label": "Dompet", "description": "Baki dan pembayaran keluar" },
+    "Verification": { "label": "Pengesahan", "description": "Sahkan identiti anda" },
+    "Support": { "label": "Sokongan", "description": "Dapatkan bantuan perjalanan" },
+    "Earn & Share": { "label": "Dapat & Kongsi", "description": "Urus aktiviti afiliasi" },
+    "Become a Vendor": { "label": "Jadi Vendor", "description": "Mohon untuk menyenaraikan perniagaan anda" },
+    "Recommend a Vendor": { "label": "Cadangkan Vendor", "description": "Kongsi penemuan tempatan" }
+  },
+  "profile": {
+    "languageDescription": "Pilih bahasa yang digunakan di seluruh MyWisata."
+  }
+}

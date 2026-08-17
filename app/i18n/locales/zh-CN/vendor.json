@@ -1,1 +1,22 @@
-{}
+{
+  "shell": {
+    "portal": "商家门户",
+    "brand": "马来西亚旅游",
+    "outletOperations": "门店运营"
+  },
+  "navigation": {
+    "Dashboard": "仪表板",
+    "Outlets": "门店",
+    "Business profile": "商家资料",
+    "Products": "产品",
+    "Bookings": "预订",
+    "Vouchers": "优惠券",
+    "Orders": "订单",
+    "Wallet": "钱包",
+    "Inbox": "收件箱",
+    "Notifications": "通知",
+    "Analytics": "分析",
+    "Operations": "运营",
+    "Shop page": "店铺页面"
+  }
+}

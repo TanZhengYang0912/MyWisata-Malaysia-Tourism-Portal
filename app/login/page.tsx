@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
@@ -12,6 +13,7 @@ import { postLoginDestination } from "@/lib/auth/post-login-destination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
@@ -26,6 +28,7 @@ const EMAIL_SIGN_IN_ERROR = "Unable to sign in. Check your email and password. I
 
 export default function LoginPage() {
   const { switchUser } = useAuth();
+  const { t: tAuth } = useTranslation("auth");
   const router = useRouter();
   const supabase = createClient();
   const [users, setUsers] = useState<DemoUser[]>([]);
@@ -165,6 +168,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: "var(--background)" }}>
       <div className="w-full max-w-md">
         <div className="mb-8 flex items-center justify-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary"><Globe size={18} className="text-white" /></div><span className="font-[family-name:var(--font-display)] text-xl font-bold text-foreground">MyWisata</span></div>
+        <div className="mb-3 flex items-center justify-end gap-3"><span className="text-xs text-muted-foreground">{tAuth("language.description")}</span><LanguageSwitcher compact /></div>
         <Card className="p-2"><CardContent className="px-4 pt-2">
           <h1 className="mb-1 text-lg font-bold text-foreground">{title}</h1>
           <p className="mb-4 text-sm text-muted-foreground">Use your email address or continue with Google. Demo accounts remain available below.</p>

@@ -4,7 +4,10 @@
     "andRegion": "Language & region",
     "english": "English",
     "simplifiedChinese": "简体中文",
-    "bahasaMelayu": "Bahasa Melayu"
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "Saving language preference…",
+    "saved": "Language preference saved.",
+    "saveError": "Unable to save language preference. Please try again."
   },
   "actions": {
     "save": "Save",
@@ -19,6 +22,7 @@
   },
   "states": {
     "loading": "Loading",
+    "loadingEllipsis": "Loading…",
     "noResults": "No results found"
   },
   "pagination": {
@@ -38,5 +42,19 @@
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "network": "Unable to connect. Please try again."
+  },
+  "account": {
+    "menu": "Account menu",
+    "guestMenu": "Guest account menu",
+    "openMenuFor": "Open {{name}} account menu",
+    "guestSyncHint": "Sign in to view and sync your account",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "switchAccount": "Switch account"
+  },
+  "cart": {
+    "label": "Shopping cart",
+    "itemCount": "Shopping cart, {{count}} item",
+    "itemCountPlural": "Shopping cart, {{count}} items"
   }
 }
