@@ -52,6 +52,9 @@
     "createAccount": "Cipta akaun",
     "switchAccount": "Tukar akaun"
   },
+  "guest": {
+    "mode": "Mod tetamu"
+  },
   "cart": {
     "label": "Troli beli-belah",
     "itemCount": "Troli beli-belah, {{count}} item",

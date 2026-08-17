@@ -1,11 +1,11 @@
 {
   "navigation": {
-    "Partners": "Partners",
-    "Explore": "Explore",
-    "Map": "Map",
-    "Chat": "Chat",
-    "My Activity": "My Activity",
-    "Saved": "Saved"
+    "search": "Partners",
+    "explore": "Explore",
+    "map": "Map",
+    "chat": "Chat",
+    "activity": "My Activity",
+    "wishlist": "Saved"
   },
   "accountGroups": {
     "Account": "Account",

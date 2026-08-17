@@ -1,11 +1,11 @@
 {
   "navigation": {
-    "Partners": "合作伙伴",
-    "Explore": "探索",
-    "Map": "地图",
-    "Chat": "聊天",
-    "My Activity": "我的活动",
-    "Saved": "已保存"
+    "search": "合作伙伴",
+    "explore": "探索",
+    "map": "地图",
+    "chat": "聊天",
+    "activity": "我的活动",
+    "wishlist": "已保存"
   },
   "accountGroups": {
     "Account": "账户",

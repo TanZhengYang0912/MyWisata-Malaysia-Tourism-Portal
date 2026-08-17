@@ -21,6 +21,10 @@ import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNa
 
 const UNREAD_POLL_MS = 30_000;
 
+function customerNavigationKey(href: string) {
+  return href.split("?")[0].replace("/customer/", "");
+}
+
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
     <TripProvider>
@@ -178,7 +182,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
-                <span>{tCustomer(`navigation.${item.label}`, { defaultValue: item.label })}</span>
+                <span>{tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}</span>
                 {item.href === "/customer/trip" && tripCount > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
                 )}
@@ -311,7 +315,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
-              <item.icon size={13} /> {tCustomer(`navigation.${item.label}`, { defaultValue: item.label })}
+              <item.icon size={13} /> {tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}
               {item.href === "/customer/trip" && tripCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
               )}

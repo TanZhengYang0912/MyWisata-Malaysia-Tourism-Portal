@@ -145,7 +145,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </span>
               )}
               {item.href === "/admin/recommendations" && currentUser.role === "super_admin" && unreadRecommendations > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={`${unreadRecommendations} unread recommendations`}>
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}>
                   {unreadRecommendations}
                 </span>
               )}

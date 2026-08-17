@@ -52,6 +52,9 @@
     "createAccount": "Create account",
     "switchAccount": "Switch account"
   },
+  "guest": {
+    "mode": "Guest Mode"
+  },
   "cart": {
     "label": "Shopping cart",
     "itemCount": "Shopping cart, {{count}} item",
