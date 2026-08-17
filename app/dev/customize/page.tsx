@@ -12,6 +12,7 @@
 // placement math and widgets.tsx for the per-type editable bodies.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { GripVertical, Maximize2, Plus, X } from "lucide-react";
 import { cellFromPointer, fits, firstFreeSlot, type Rect } from "./grid";
 import { WIDGET_CATALOG, WIDGET_ORDER, WidgetEditor, defaultContent, type WidgetType } from "./widgets";
@@ -52,6 +53,7 @@ function newId() {
 }
 
 export default function DevCustomizePage() {
+  const { t } = useTranslation("auth");
   const [widgets, setWidgets] = useState<Placed[]>(() => seedLayout());
   const [mounted, setMounted] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -88,11 +90,15 @@ export default function DevCustomizePage() {
 
   const placedTypes = new Set(widgets.map((w) => w.type));
 
+  function widgetLabel(type: WidgetType) {
+    return t(`dev.customize.widgetLabels.${type}`);
+  }
+
   function addWidget(type: WidgetType) {
     const [w, h] = WIDGET_CATALOG[type].defaultSize;
     const slot = firstFreeSlot(widgets, w, h, COLS, ROWS);
     if (!slot) {
-      setNotice(`No room left for “${WIDGET_CATALOG[type].label}” — remove or resize something first.`);
+      setNotice(t("dev.customize.noRoom", { widget: widgetLabel(type) }));
       return;
     }
     setWidgets((cur) => [...cur, { id: newId(), type, x: slot.x, y: slot.y, w, h, content: defaultContent(type) }]);
@@ -128,24 +134,23 @@ export default function DevCustomizePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-4 rounded-xl border border-dashed border-cta-orange/50 bg-cta-orange/10 px-4 py-2.5 text-[12px] font-semibold text-cta-orange">
-        Prototype sandbox — layout &amp; content are saved in your browser only, not to any live vendor page. Uploaded
-        photo previews (not pasted URLs) don&apos;t survive a reload.
+        {t("dev.customize.notice")}
       </div>
 
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">Page widgets</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Drag anywhere it fits. Hover a widget for size &amp; remove. Edit every field directly.</p>
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("dev.customize.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("dev.customize.description")}</p>
         </div>
         <button type="button" onClick={() => setWidgets(seedLayout())} className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted">
-          Reset layout
+          {t("dev.customize.reset")}
         </button>
       </div>
 
       {/* Add-widget palette — each type usable once; placed types are disabled. */}
       <div className="mb-3 flex flex-wrap gap-2">
         {WIDGET_ORDER.map((type) => {
-          const { label, icon: Icon } = WIDGET_CATALOG[type];
+          const { icon: Icon } = WIDGET_CATALOG[type];
           const used = placedTypes.has(type);
           return (
             <button
@@ -155,7 +160,7 @@ export default function DevCustomizePage() {
               onClick={() => addWidget(type)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold shadow-sm ${used ? "cursor-not-allowed border-border bg-muted text-muted-foreground/60" : "border-border bg-card text-foreground hover:border-primary hover:text-primary"}`}
             >
-              {used ? <Icon size={13} /> : <Plus size={13} />} {!used && <Icon size={13} />} {label}
+              {used ? <Icon size={13} /> : <Plus size={13} />} {!used && <Icon size={13} />} {widgetLabel(type)}
             </button>
           );
         })}
@@ -199,7 +204,7 @@ export default function DevCustomizePage() {
                   type="button"
                   onClick={() => setSizeMenuId((cur) => (cur === widget.id ? null : widget.id))}
                   className="pointer-events-auto grid h-6 w-6 place-items-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm hover:text-primary"
-                  aria-label="Change size"
+                  aria-label={t("dev.customize.changeSize")}
                 >
                   <Maximize2 size={12} />
                 </button>
@@ -207,7 +212,7 @@ export default function DevCustomizePage() {
                   type="button"
                   onClick={() => removeWidget(widget.id)}
                   className="pointer-events-auto grid h-6 w-6 place-items-center rounded-lg border border-border bg-card/95 text-muted-foreground shadow-sm hover:text-destructive"
-                  aria-label="Remove widget"
+                  aria-label={t("dev.customize.removeWidget")}
                 >
                   <X size={13} />
                 </button>
@@ -223,7 +228,7 @@ export default function DevCustomizePage() {
                 className="flex shrink-0 cursor-grab items-center gap-1.5 border-b border-border/60 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary active:cursor-grabbing"
               >
                 <GripVertical size={12} className="text-muted-foreground" />
-                <Icon size={12} /> {WIDGET_CATALOG[widget.type].label}
+                <Icon size={12} /> {widgetLabel(widget.type)}
               </div>
 
               {sizeMenuId === widget.id && (

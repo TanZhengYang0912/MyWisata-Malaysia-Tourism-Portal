@@ -6,6 +6,7 @@
 // customer role guard.
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { getActivities } from "@/backend/domains/catalogue";
 import { useAuth } from "@/components/providers/auth";
@@ -14,6 +15,7 @@ import type { Activity } from "@/backend/core/types";
 
 export default function DevPage() {
   const { currentUser, loading } = useAuth();
+  const { t } = useTranslation("auth");
   const [activities, setActivities] = useState<Activity[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
@@ -40,26 +42,26 @@ export default function DevPage() {
         ...r,
         [productId]:
           res.ok && body.data
-            ? `Order ${body.data.orderId.slice(0, 8)}… created (demo).`
-            : (body.error?.message ?? "Simulation failed."),
+            ? t("dev.simulate.orderCreated", { orderId: body.data.orderId.slice(0, 8) })
+            : (body.error?.message ?? t("dev.simulate.failed")),
       }));
     } catch {
-      setResults((r) => ({ ...r, [productId]: "Simulation failed." }));
+      setResults((r) => ({ ...r, [productId]: t("dev.simulate.failed") }));
     } finally {
       setBusyId(null);
     }
   }
 
   if (loading) {
-    return <div className="max-w-2xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+    return <div className="max-w-2xl mx-auto px-6 py-16 text-sm text-muted-foreground">{t("dev.loading")}</div>;
   }
 
   if (!currentUser) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-16 text-center">
-        <p className="text-sm text-muted-foreground mb-4">Sign in first to simulate a purchase.</p>
+        <p className="text-sm text-muted-foreground mb-4">{t("dev.simulate.signInRequired")}</p>
         <Link href="/login" className="text-sm font-semibold text-primary underline">
-          Go to login
+          {t("dev.goToLogin")}
         </Link>
       </div>
     );
@@ -67,14 +69,13 @@ export default function DevPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-xl font-bold text-foreground mb-1">Dev: Simulate purchase</h1>
+      <h1 className="text-xl font-bold text-foreground mb-1">{t("dev.simulate.title")}</h1>
       <p className="text-xs text-muted-foreground mb-6">
-        Simulated purchase (demo only) — fakes the checkout → order.paid trigger so the affiliate
-        commission flow can be tested without a real checkout. Signed in as {currentUser.name}.
+        {t("dev.simulate.description", { name: currentUser.name })}
       </p>
 
-      {activities === null && <p className="text-sm text-muted-foreground">Loading activities…</p>}
-      {activities?.length === 0 && <p className="text-sm text-muted-foreground">No activities found.</p>}
+      {activities === null && <p className="text-sm text-muted-foreground">{t("dev.simulate.loadingActivities")}</p>}
+      {activities?.length === 0 && <p className="text-sm text-muted-foreground">{t("dev.simulate.noActivities")}</p>}
 
       <div className="space-y-3">
         {activities?.map((a) => (
@@ -85,7 +86,7 @@ export default function DevPage() {
             </div>
             <div className="text-right">
               <Button size="sm" disabled={busyId === a.id} onClick={() => simulate(a.id)}>
-                {busyId === a.id ? "Simulating…" : "Simulate purchase (demo only)"}
+                {busyId === a.id ? t("dev.simulate.simulating") : t("dev.simulate.action")}
               </Button>
               {results[a.id] && <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">{results[a.id]}</p>}
             </div>

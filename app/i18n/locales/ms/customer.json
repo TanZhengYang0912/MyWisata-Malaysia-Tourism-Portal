@@ -78,5 +78,33 @@
   },
   "profile": {
     "languageDescription": "Pilih bahasa yang digunakan di seluruh MyWisata."
+  },
+  "accountLifecycle": {
+    "restore": {
+      "title": "Pulihkan akaun anda",
+      "closedSuffix": "telah ditutup.",
+      "closed": "Akaun ini telah ditutup.",
+      "keepHistory": "Pulihkannya untuk mengekalkan pesanan dan sejarah dompet sedia ada.",
+      "reverification": "Untuk keselamatan, pengesahan Telefon, Profil dan KYC perlu dilengkapkan semula.",
+      "restoring": "Memulihkan…",
+      "action": "Pulihkan akaun",
+      "error": "Tidak dapat memulihkan akaun"
+    },
+    "suspended": {
+      "title": "Akaun digantung",
+      "statusSuffix": "sedang digantung.",
+      "status": "Akaun ini sedang digantung.",
+      "contact": "Hubungi sokongan jika anda percaya ini satu kesilapan.",
+      "minimumAppeal": "Berikan sekurang-kurangnya 10 aksara supaya Sokongan boleh menyemak rayuan anda.",
+      "submitError": "Tidak dapat menghantar rayuan",
+      "appealSubmitted": "Rayuan dihantar",
+      "ticket": "Tiket sokongan: {{ticketId}}",
+      "viewTicket": "Lihat tiket",
+      "appealLabel": "Mesej rayuan",
+      "appealPlaceholder": "Terangkan mengapa anda percaya penggantungan ini perlu disemak…",
+      "submitting": "Menghantar…",
+      "submit": "Hantar rayuan",
+      "viewTickets": "Lihat tiket sokongan"
+    }
   }
 }
