@@ -10,6 +10,11 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 export type NotificationCenterProps = Omit<NotificationBellProps, "allHref"> & { pageSize?: number };
 type ApiBody = { data?: { items: Notification[]; totalPages: number }; error?: { message?: string } };
 
+function apiErrorMessage(body: ApiBody): string | null {
+  const message = body.error?.message;
+  return typeof message === "string" && message.trim() ? message : null;
+}
+
 const DEFAULT_CATEGORIES = [
   { value: "all", label: "All" },
   { value: "unread", label: "Unread" },
@@ -52,7 +57,10 @@ export function NotificationCenter({ scope = "customer", vendorId = null, catego
         else if (filter !== "all") params.set("category", filter);
         const response = await fetch(`/api/notifications?${params}`, { signal: controller.signal });
         const body = await response.json() as ApiBody;
-        if (!response.ok || !body.data) { setError(t("notifications.loadError", { defaultValue: "Unable to load notifications." })); return; }
+        if (!response.ok || !body.data) {
+          setError(apiErrorMessage(body) ?? t("notifications.loadError", { defaultValue: "Unable to load notifications." }));
+          return;
+        }
         setItems(body.data.items); setTotalPages(body.data.totalPages); setError(null);
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") setError(t("notifications.loadError", { defaultValue: "Unable to load notifications." }));

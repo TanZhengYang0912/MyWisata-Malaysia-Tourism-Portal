@@ -50,6 +50,25 @@ interface ChatMessage {
   ticketError?: string;
 }
 
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language"> & {
+  botAnswered: boolean;
+};
+
+export function createBotMessage(data: ChatbotAnswerData, question: string): ChatMessage {
+  return {
+    role: "bot",
+    text: data.text,
+    messageId: data.messageId,
+    question,
+    language: data.language,
+    feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
+  };
+}
+
+export function resolveTicketSubject(question: string | undefined, fallback: string): string {
+  return question ?? fallback;
+}
+
 const SESSION_STORAGE_KEY = "mw_chatbot_session";
 
 async function postFeedback(payload: Record<string, unknown>) {
@@ -116,10 +135,7 @@ export function ChatbotWidget() {
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
 
-      setMessages((m) => [
-        ...m,
-        { role: "bot", text: answer, messageId, question, language, feedbackStage: botAnswered ? "awaiting_helpful" : "awaiting_ticket" },
-      ]);
+      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, botAnswered }, question)]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -155,7 +171,7 @@ export function ChatbotWidget() {
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
 
     try {
-      const subject = msg.question ?? t("chatbot.supportRequest", { defaultValue: "Support request" });
+      const subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest", { defaultValue: "Support request" }));
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
