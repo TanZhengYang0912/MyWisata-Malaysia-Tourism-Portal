@@ -1,11 +1,11 @@
 {
   "navigation": {
-    "Partners": "Rakan kongsi",
-    "Explore": "Terokai",
-    "Map": "Peta",
-    "Chat": "Sembang",
-    "My Activity": "Aktiviti saya",
-    "Saved": "Disimpan"
+    "search": "Rakan kongsi",
+    "explore": "Terokai",
+    "map": "Peta",
+    "chat": "Sembang",
+    "activity": "Aktiviti saya",
+    "wishlist": "Disimpan"
   },
   "accountGroups": {
     "Account": "Akaun",

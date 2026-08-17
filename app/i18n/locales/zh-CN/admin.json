@@ -24,5 +24,8 @@
     "Affiliate": "联盟",
     "Chatbot": "聊天机器人",
     "AI Assistant": "AI 助手"
+  },
+  "accessibility": {
+    "unreadRecommendations": "{{count}} 条推荐未读"
   }
 }

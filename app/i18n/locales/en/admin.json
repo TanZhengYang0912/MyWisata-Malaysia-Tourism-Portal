@@ -24,5 +24,8 @@
     "Affiliate": "Affiliate",
     "Chatbot": "Chatbot",
     "AI Assistant": "AI Assistant"
+  },
+  "accessibility": {
+    "unreadRecommendations": "{{count}} unread recommendations"
   }
 }

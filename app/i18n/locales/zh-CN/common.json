@@ -52,6 +52,9 @@
     "createAccount": "创建账户",
     "switchAccount": "切换账户"
   },
+  "guest": {
+    "mode": "游客模式"
+  },
   "cart": {
     "label": "购物车",
     "itemCount": "购物车，{{count}} 件商品",

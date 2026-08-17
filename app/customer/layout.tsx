@@ -19,6 +19,10 @@ import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNa
 
 const UNREAD_POLL_MS = 30_000;
 
+function customerNavigationKey(href: string) {
+  return href.split("?")[0].replace("/customer/", "");
+}
+
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
     <TripProvider>
@@ -154,7 +158,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
-                {tCustomer(`navigation.${item.label}`, { defaultValue: item.label })}
+                {tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}
                 {item.href === "/customer/chat" && unreadChats > 0 && (
                   <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-primary" />
                 )}
@@ -279,7 +283,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
-              <item.icon size={13} /> {tCustomer(`navigation.${item.label}`, { defaultValue: item.label })}
+              <item.icon size={13} /> {tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}
               {item.href === "/customer/chat" && unreadChats > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               )}
