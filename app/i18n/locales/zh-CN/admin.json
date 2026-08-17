@@ -1,1 +1,28 @@
-{}
+{
+  "shell": {
+    "panel": "管理面板",
+    "signedInAs": "登录身份"
+  },
+  "roles": {
+    "admin": "管理员",
+    "approver": "审批员",
+    "super_admin": "超级管理员"
+  },
+  "navigation": {
+    "Overview": "概览",
+    "Vendor Approvals": "商家审批",
+    "Catalogue Review": "目录审核",
+    "User Management": "用户管理",
+    "KYC Review": "KYC 审核",
+    "Withdrawals": "提现",
+    "Refunds": "退款",
+    "Wallet Settings": "钱包设置",
+    "Payout Reports": "提现报告",
+    "Recommendations": "推荐",
+    "Support Tickets": "支持工单",
+    "Chat Reports": "聊天举报",
+    "Affiliate": "联盟",
+    "Chatbot": "聊天机器人",
+    "AI Assistant": "AI 助手"
+  }
+}

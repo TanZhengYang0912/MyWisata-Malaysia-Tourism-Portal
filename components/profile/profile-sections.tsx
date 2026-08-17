@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { Camera, CheckCircle2, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
@@ -12,6 +13,7 @@ import { InternationalPhoneInput } from "@/components/profile/international-phon
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
@@ -29,6 +31,8 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
 
 export function ProfileSections({ shellClassName, showHeader = true }: { shellClassName?: string; showHeader?: boolean } = {}) {
   const { currentUser, refreshUser } = useAuth();
+  const { t: tCommon } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -188,6 +192,10 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
           {summary.survey && <p className="text-muted-foreground">{summary.survey.travelStyle || "Travel style not set"} · {summary.survey.budgetRange || "Budget not set"} · {summary.survey.mobilityNeeds || "Mobility not set"}</p>}
           <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>Manage preferences <ChevronRight size={14} /></Button>
         </div>
+      </SectionCard>
+
+      <SectionCard id="language-region" title={tCommon("language.andRegion")} description={tCustomer("profile.languageDescription")}>
+        <LanguageSwitcher />
       </SectionCard>
 
       <section className="rounded-2xl border border-destructive/25 bg-destructive/[0.03] p-5 sm:p-6"><div className="flex items-center gap-2"><Trash2 size={17} className="text-destructive" /><h2 className="font-bold text-foreground">Danger Zone</h2></div><p className="mt-2 text-sm text-muted-foreground">Closing your account signs you out and hides your profile. Orders, wallet history and KYC audit records are retained.</p><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE to confirm" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><Button variant="destructive" onClick={closeAccount} disabled={busy || deleteConfirm !== "DELETE"}>Close account</Button></div></section>

@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { Globe } from "lucide-react";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
   return (
+    <>
+      <div className="fixed right-4 top-4 z-40">
+        <LanguageSwitcher compact />
+      </div>
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
@@ -18,5 +23,6 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
       </header>
       {children}
     </div>
+    </>
   );
 }

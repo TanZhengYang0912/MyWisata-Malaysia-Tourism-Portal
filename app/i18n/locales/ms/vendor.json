@@ -1,1 +1,22 @@
-{}
+{
+  "shell": {
+    "portal": "Portal Vendor",
+    "brand": "Pelancongan Malaysia",
+    "outletOperations": "Operasi outlet"
+  },
+  "navigation": {
+    "Dashboard": "Papan pemuka",
+    "Outlets": "Outlet",
+    "Business profile": "Profil perniagaan",
+    "Products": "Produk",
+    "Bookings": "Tempahan",
+    "Vouchers": "Baucar",
+    "Orders": "Pesanan",
+    "Wallet": "Dompet",
+    "Inbox": "Peti masuk",
+    "Notifications": "Pemberitahuan",
+    "Analytics": "Analitik",
+    "Operations": "Operasi",
+    "Shop page": "Halaman kedai"
+  }
+}

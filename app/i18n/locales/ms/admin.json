@@ -1,1 +1,28 @@
-{}
+{
+  "shell": {
+    "panel": "Panel Admin",
+    "signedInAs": "Log masuk sebagai"
+  },
+  "roles": {
+    "admin": "Admin",
+    "approver": "Pelulus",
+    "super_admin": "Super Admin"
+  },
+  "navigation": {
+    "Overview": "Gambaran keseluruhan",
+    "Vendor Approvals": "Kelulusan Vendor",
+    "Catalogue Review": "Semakan katalog",
+    "User Management": "Pengurusan pengguna",
+    "KYC Review": "Semakan KYC",
+    "Withdrawals": "Pengeluaran",
+    "Refunds": "Bayaran balik",
+    "Wallet Settings": "Tetapan dompet",
+    "Payout Reports": "Laporan pembayaran",
+    "Recommendations": "Cadangan",
+    "Support Tickets": "Tiket sokongan",
+    "Chat Reports": "Laporan sembang",
+    "Affiliate": "Afiliasi",
+    "Chatbot": "Chatbot",
+    "AI Assistant": "Pembantu AI"
+  }
+}

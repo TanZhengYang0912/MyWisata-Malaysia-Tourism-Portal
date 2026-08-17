@@ -1,1 +1,28 @@
-{}
+{
+  "shell": {
+    "panel": "Admin Panel",
+    "signedInAs": "Signed in as"
+  },
+  "roles": {
+    "admin": "Admin",
+    "approver": "Approver",
+    "super_admin": "Super Admin"
+  },
+  "navigation": {
+    "Overview": "Overview",
+    "Vendor Approvals": "Vendor Approvals",
+    "Catalogue Review": "Catalogue Review",
+    "User Management": "User Management",
+    "KYC Review": "KYC Review",
+    "Withdrawals": "Withdrawals",
+    "Refunds": "Refunds",
+    "Wallet Settings": "Wallet Settings",
+    "Payout Reports": "Payout Reports",
+    "Recommendations": "Recommendations",
+    "Support Tickets": "Support Tickets",
+    "Chat Reports": "Chat Reports",
+    "Affiliate": "Affiliate",
+    "Chatbot": "Chatbot",
+    "AI Assistant": "AI Assistant"
+  }
+}

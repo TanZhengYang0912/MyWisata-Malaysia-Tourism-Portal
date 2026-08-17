@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UsersRound, Settings2, FileBarChart2 } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -30,6 +32,8 @@ const NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["admin", "approver", "super_admin"]);
+  const { t: tAdmin } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
 
   const pathname = usePathname();
   const router = useRouter();
@@ -99,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [currentUser?.role]);
 
   if (loading || !currentUser) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis", { defaultValue: "Loading…" })}</div>;
   }
 
   return (
@@ -111,14 +115,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div>
             <span className="font-bold text-white text-sm font-[family-name:var(--font-display)]">MyWisata</span>
-            <p className="text-[10px] text-white/35">Admin Panel</p>
+            <p className="text-[10px] text-white/35">{tAdmin("shell.panel", { defaultValue: "Admin Panel" })}</p>
           </div>
         </div>
         <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[10px] uppercase tracking-wider mb-1 text-white/35">Signed in as</p>
+          <p className="text-[10px] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs", { defaultValue: "Signed in as" })}</p>
           <p className="text-sm font-bold text-white">{currentUser.name}</p>
           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-800 text-gray-300">
-            <Shield size={9} /> {currentUser.role.replace("_", " ")}
+            <Shield size={9} /> {tAdmin(`roles.${currentUser.role}`, { defaultValue: currentUser.role.replace("_", " ") })}
           </div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
@@ -128,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               href={item.href}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
-              <item.icon size={15} /> {item.label}
+              <item.icon size={15} /> {tAdmin(`navigation.${item.label}`, { defaultValue: item.label })}
               {item.href === "/admin/support" && unreadTickets > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
                   {unreadTickets}
@@ -143,8 +147,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
         <div className="shrink-0 border-t border-white/10 p-3">
+          <LanguageSwitcher compact className="mb-2" />
           <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-white/55 transition-colors hover:bg-gray-800 hover:text-white">
-            <LogOut size={15} /> Sign out
+            <LogOut size={15} /> {tCommon("actions.signOut", { defaultValue: "Sign out" })}
           </button>
         </div>
       </aside>

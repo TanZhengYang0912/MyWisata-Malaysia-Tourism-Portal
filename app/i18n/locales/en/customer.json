@@ -1,1 +1,30 @@
-{}
+{
+  "navigation": {
+    "Partners": "Partners",
+    "Explore": "Explore",
+    "Map": "Map",
+    "Chat": "Chat",
+    "My Activity": "My Activity",
+    "Saved": "Saved"
+  },
+  "accountGroups": {
+    "Account": "Account",
+    "Payments & verification": "Payments & verification",
+    "Help": "Help",
+    "More": "More"
+  },
+  "accountItems": {
+    "Profile": { "label": "Profile", "description": "Your personal details" },
+    "Notifications": { "label": "Notifications", "description": "Bookings, wallet and account updates" },
+    "Preferences": { "label": "Preferences", "description": "Tune your recommendation feed" },
+    "Wallet": { "label": "Wallet", "description": "Balance and payouts" },
+    "Verification": { "label": "Verification", "description": "Verify your identity" },
+    "Support": { "label": "Support", "description": "Get help with your trip" },
+    "Earn & Share": { "label": "Earn & Share", "description": "Manage affiliate activity" },
+    "Become a Vendor": { "label": "Become a Vendor", "description": "Apply to list your business" },
+    "Recommend a Vendor": { "label": "Recommend a Vendor", "description": "Share local discoveries" }
+  },
+  "profile": {
+    "languageDescription": "Choose the language used throughout MyWisata."
+  }
+}

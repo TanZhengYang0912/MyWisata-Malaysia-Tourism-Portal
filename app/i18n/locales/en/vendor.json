@@ -1,1 +1,22 @@
-{}
+{
+  "shell": {
+    "portal": "Vendor Portal",
+    "brand": "Malaysia Tourism",
+    "outletOperations": "Outlet operations"
+  },
+  "navigation": {
+    "Dashboard": "Dashboard",
+    "Outlets": "Outlets",
+    "Business profile": "Business profile",
+    "Products": "Products",
+    "Bookings": "Bookings",
+    "Vouchers": "Vouchers",
+    "Orders": "Orders",
+    "Wallet": "Wallet",
+    "Inbox": "Inbox",
+    "Notifications": "Notifications",
+    "Analytics": "Analytics",
+    "Operations": "Operations",
+    "Shop page": "Shop page"
+  }
+}
