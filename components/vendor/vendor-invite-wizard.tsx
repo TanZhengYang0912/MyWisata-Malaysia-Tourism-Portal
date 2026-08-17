@@ -143,7 +143,7 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
       }
       const failure = await readApiFailure(response);
       const recovery = mapClaimError(failure);
-      const recoveryMessage = t(`invite.errors.claim.${recovery.target}`);
+      const recoveryMessage = t(recovery.message);
       if (recovery.target === 'inactive') {
         setInactive(true);
       } else if (recovery.target === 'account' || recovery.target === 'details' || recovery.target === 'verify') {
@@ -158,7 +158,7 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
         setClaimError(recoveryMessage);
       }
     } catch {
-      setClaimError(t('invite.errors.claim.retry'));
+      setClaimError(t('invite.errors.claim.retry.generic'));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);

@@ -45,11 +45,27 @@
       "phoneVerifyFallback": "We couldn’t verify that code. Request a new code and try again.",
       "phoneSendFallback": "We couldn’t send a code. Check the mobile number and try again.",
       "claim": {
-        "details": "That category is no longer available. Choose another category.",
-        "account": "Sign in with the email address that received this invitation.",
-        "verify": "Verify your personal mobile before submitting the application.",
-        "inactive": "This vendor invitation is no longer active.",
-        "retry": "We couldn’t submit the application. Your progress is saved; please try again."
+        "details": {
+          "categoryInactive": "That category is no longer available. Choose another category.",
+          "categoryInvalid": "Choose an available Vendor category and try again.",
+          "required": "Complete the required Vendor and outlet details before submitting.",
+          "format": "Check the Vendor and outlet details and try again."
+        },
+        "account": {
+          "emailMismatch": "Sign in with the email address that received this invitation.",
+          "unauthorized": "Sign in before submitting this Vendor application."
+        },
+        "verify": {
+          "required": "Verify your personal mobile before submitting the application.",
+          "authorizationRequired": "Confirm that you are authorized to represent this business before submitting."
+        },
+        "inactive": {
+          "invitation": "This vendor invitation is no longer active."
+        },
+        "retry": {
+          "generic": "We couldn’t submit the application. Your progress is saved; please try again.",
+          "ownerAlreadyHasVendor": "This account already owns a Vendor. Review the saved application or try again."
+        }
       }
     },
     "codes": {
@@ -176,6 +192,57 @@
       "failed": "Failed to register",
       "network": "Network error — please try again",
       "retry": "Vendor registration failed. Please try again."
+    },
+    "validation": {
+      "name": {
+        "required": "Business name is required.",
+        "invalid": "Enter a valid business name.",
+        "min": "Business name must be at least 2 characters.",
+        "max": "Business name must be 255 characters or fewer."
+      },
+      "description": {
+        "invalid": "Enter a valid description.",
+        "max": "Description must be 2,000 characters or fewer."
+      },
+      "businessType": {
+        "invalid": "Enter a valid business type.",
+        "max": "Business type must be 50 characters or fewer."
+      },
+      "legalBusinessName": {
+        "invalid": "Enter a valid legal business name.",
+        "max": "Legal business name must be 255 characters or fewer."
+      },
+      "registrationNumber": {
+        "invalid": "Enter a valid registration number.",
+        "max": "Registration number must be 120 characters or fewer."
+      },
+      "contactName": {
+        "invalid": "Enter a valid contact name.",
+        "max": "Contact name must be 255 characters or fewer."
+      },
+      "contactEmail": {
+        "invalid": "Enter a valid business email.",
+        "format": "Enter a valid business email address.",
+        "max": "Business email must be 255 characters or fewer."
+      },
+      "contactPhone": {
+        "invalid": "Enter a valid contact phone number.",
+        "max": "Contact phone must be 50 characters or fewer."
+      },
+      "businessAddress": {
+        "invalid": "Enter a valid business address.",
+        "max": "Business address must be 500 characters or fewer."
+      },
+      "logoUrl": {
+        "invalid": "Enter a valid logo URL.",
+        "format": "Logo URL must be a valid URL.",
+        "max": "Logo URL must be 2,000 characters or fewer."
+      },
+      "coverUrl": {
+        "invalid": "Enter a valid cover image URL.",
+        "format": "Cover image URL must be a valid URL.",
+        "max": "Cover image URL must be 2,000 characters or fewer."
+      }
     },
     "fields": {
       "businessName": "Business Name",

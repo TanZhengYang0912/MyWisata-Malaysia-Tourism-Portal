@@ -226,11 +226,39 @@ describe('vendor invite phone and claim executable state', () => {
 
     expect(recovery).toEqual({
       target: 'details',
-      message: 'Choose an available Vendor category and try again.',
+      message: 'invite.errors.claim.details.categoryInvalid',
       clearDraft: false,
     });
     expect(recovery.message).not.toContain('categoryId');
     expect(recovery.message).not.toContain('Invalid input');
+  });
+
+  it('keeps claim recovery categories distinct while preserving targets and draft state', () => {
+    expect(mapClaimError({ code: 'CATEGORY_NOT_ACTIVE', status: 409 })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.categoryInactive',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'VALIDATION_FAILED', status: 422, fields: ['businessName'] })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.required',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'VALIDATION_FAILED', status: 422, fields: ['contactEmail'] })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.format',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'INVITE_EMAIL_MISMATCH', status: 409 })).toMatchObject({
+      target: 'account',
+      message: 'invite.errors.claim.account.emailMismatch',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'PHONE_VERIFICATION_REQUIRED', status: 403 })).toMatchObject({
+      target: 'verify',
+      message: 'invite.errors.claim.verify.required',
+      clearDraft: false,
+    });
   });
 
   it('reloads stale account and phone status for routed claim recovery', () => {

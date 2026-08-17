@@ -17,8 +17,15 @@ const CODE_FILES = [
   "components/vendor/register-vendor-form.tsx",
   "app/dev/page.tsx",
   "app/dev/customize/page.tsx",
+  "app/dev/customize/widgets.tsx",
   "app/dev/explore/page.tsx",
+  "app/dev/explore/dev-explore-client.tsx",
   "app/dev/listings/page.tsx",
+] as const;
+
+const DIRECT_CHILDREN = [
+  ["app/dev/customize/page.tsx", "./widgets"],
+  ["app/dev/explore/page.tsx", "./dev-explore-client"],
 ] as const;
 
 function source(path: string) {
@@ -35,6 +42,18 @@ describe("authentication, invitation, lifecycle, and development i18n contract",
 
       expect(hasRuntime || rendersTranslatedChild, `${path} must use or render translated UI`).toBe(true);
     }
+  });
+
+  it("keeps direct rendered dev children in the translation inventory", () => {
+    for (const [parent, childImport] of DIRECT_CHILDREN) {
+      expect(source(parent), `${parent} must keep its direct child import`).toContain(childImport);
+    }
+  });
+
+  it("renders recognized vendor registration validation keys through the shared runtime", () => {
+    const registration = source("components/vendor/register-vendor-form.tsx");
+    expect(registration).toContain("isVendorRegisterValidationKey");
+    expect(registration).toContain("validationMessage");
   });
 
   it("does not leave the previous fixed auth and lifecycle copy in route markup", () => {
@@ -83,6 +102,27 @@ describe("authentication, invitation, lifecycle, and development i18n contract",
       "Simulation failed.",
       "Simulate purchase (demo only)",
       "No activities found.",
+      "Prototype · not linked from the app",
+      "District & discovery map",
+      "Couldn’t load the catalogue.",
+      "No available outlets or activities in",
+      "Cover / hero banner",
+      "Operating hours",
+      "Replace",
+      "…or paste an image URL",
+      "Button label",
+      "Closed",
+      "Remove photo",
+      "Add photo",
+      "Product name",
+      "Remove product",
+      "Add product",
+      "Promo title",
+      "Remove review",
+      "Add review",
+      "Announcement text",
+      "Remove link",
+      "Add link",
     ];
 
     for (const path of CODE_FILES) {

@@ -137,21 +137,36 @@ export function mapClaimError({ code, fields = [] }: ApiFailure): {
   clearDraft: false;
 } {
   if (code === 'CATEGORY_NOT_ACTIVE') {
-    return { target: 'details', message: 'That category is no longer available. Choose another category.', clearDraft: false };
+    return { target: 'details', message: 'invite.errors.claim.details.categoryInactive', clearDraft: false };
   }
-  if (code === 'VALIDATION_FAILED' && fields.includes('categoryId')) {
-    return { target: 'details', message: 'Choose an available Vendor category and try again.', clearDraft: false };
+  if (code === 'VALIDATION_FAILED') {
+    if (fields.includes('categoryId')) {
+      return { target: 'details', message: 'invite.errors.claim.details.categoryInvalid', clearDraft: false };
+    }
+    if (fields.includes('authorizedToRepresent')) {
+      return { target: 'verify', message: 'invite.errors.claim.verify.authorizationRequired', clearDraft: false };
+    }
+    if (fields.includes('contactEmail')) {
+      return { target: 'details', message: 'invite.errors.claim.details.format', clearDraft: false };
+    }
+    return { target: 'details', message: 'invite.errors.claim.details.required', clearDraft: false };
   }
-  if (code === 'INVITE_EMAIL_MISMATCH' || code === 'UNAUTHORIZED') {
-    return { target: 'account', message: 'Sign in with the email address that received this invitation.', clearDraft: false };
+  if (code === 'INVITE_EMAIL_MISMATCH') {
+    return { target: 'account', message: 'invite.errors.claim.account.emailMismatch', clearDraft: false };
+  }
+  if (code === 'UNAUTHORIZED') {
+    return { target: 'account', message: 'invite.errors.claim.account.unauthorized', clearDraft: false };
   }
   if (code === 'PHONE_VERIFICATION_REQUIRED') {
-    return { target: 'verify', message: 'Verify your personal mobile before submitting the application.', clearDraft: false };
+    return { target: 'verify', message: 'invite.errors.claim.verify.required', clearDraft: false };
   }
   if (['INVITE_INVALID', 'INVITE_EXPIRED', 'INVITE_CANCELLED', 'INVITE_ALREADY_CLAIMED', 'RECOMMENDATION_NOT_CLAIMABLE'].includes(code)) {
-    return { target: 'inactive', message: 'This vendor invitation is no longer active.', clearDraft: false };
+    return { target: 'inactive', message: 'invite.errors.claim.inactive.invitation', clearDraft: false };
   }
-  return { target: 'retry', message: 'We couldn’t submit the application. Your progress is saved; please try again.', clearDraft: false };
+  if (code === 'OWNER_ALREADY_HAS_VENDOR') {
+    return { target: 'retry', message: 'invite.errors.claim.retry.ownerAlreadyHasVendor', clearDraft: false };
+  }
+  return { target: 'retry', message: 'invite.errors.claim.retry.generic', clearDraft: false };
 }
 
 export function recoveryRequiresPreviewReload(target: ClaimErrorTarget) {

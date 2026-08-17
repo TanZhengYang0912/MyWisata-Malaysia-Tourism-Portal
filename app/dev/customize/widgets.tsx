@@ -8,6 +8,7 @@
 // becomes <ProductMediaUploader> unchanged.
 
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Clock, FileUp, ImageIcon, MapPin, Megaphone, Plus, ShoppingBag, Star, Tag, Trash2, User } from "lucide-react";
 
 export type WidgetType = "cover" | "about" | "hours" | "gallery" | "contact" | "products" | "promo" | "reviews" | "announcement" | "social";
@@ -23,6 +24,7 @@ export interface PromoContent { title: string; code: string }
 export interface ReviewsContent { items: { text: string; rating: number }[] }
 export interface AnnouncementContent { text: string }
 export interface SocialContent { links: { platform: string; url: string }[] }
+export type WidgetTranslate = (key: string) => string;
 
 export type ContentFor<T extends WidgetType> = T extends "cover" ? CoverContent
   : T extends "about" ? AboutContent
@@ -35,33 +37,33 @@ export type ContentFor<T extends WidgetType> = T extends "cover" ? CoverContent
   : T extends "announcement" ? AnnouncementContent
   : SocialContent;
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
-export const WIDGET_CATALOG: Record<WidgetType, { label: string; icon: typeof Clock; defaultSize: [number, number] }> = {
-  cover: { label: "Cover / hero banner", icon: ImageIcon, defaultSize: [4, 2] },
-  about: { label: "About / story", icon: User, defaultSize: [2, 1] },
-  hours: { label: "Operating hours", icon: Clock, defaultSize: [2, 3] },
-  gallery: { label: "Photo gallery", icon: ImageIcon, defaultSize: [3, 2] },
-  contact: { label: "Map & contact", icon: MapPin, defaultSize: [2, 2] },
-  products: { label: "Featured products", icon: ShoppingBag, defaultSize: [3, 2] },
-  promo: { label: "Promo / voucher", icon: Tag, defaultSize: [2, 1] },
-  reviews: { label: "Reviews", icon: Star, defaultSize: [2, 2] },
-  announcement: { label: "Announcement", icon: Megaphone, defaultSize: [4, 1] },
-  social: { label: "Social links", icon: User, defaultSize: [2, 1] },
+export const WIDGET_CATALOG: Record<WidgetType, { icon: typeof Clock; defaultSize: [number, number] }> = {
+  cover: { icon: ImageIcon, defaultSize: [4, 2] },
+  about: { icon: User, defaultSize: [2, 1] },
+  hours: { icon: Clock, defaultSize: [2, 3] },
+  gallery: { icon: ImageIcon, defaultSize: [3, 2] },
+  contact: { icon: MapPin, defaultSize: [2, 2] },
+  products: { icon: ShoppingBag, defaultSize: [3, 2] },
+  promo: { icon: Tag, defaultSize: [2, 1] },
+  reviews: { icon: Star, defaultSize: [2, 2] },
+  announcement: { icon: Megaphone, defaultSize: [4, 1] },
+  social: { icon: User, defaultSize: [2, 1] },
 };
 export const WIDGET_ORDER = Object.keys(WIDGET_CATALOG) as WidgetType[];
 
-export function defaultContent(type: WidgetType): unknown {
+export function defaultContent(type: WidgetType, t: WidgetTranslate): unknown {
   switch (type) {
-    case "cover": return { title: "Rasa Malaysia Kitchen", subtitle: "Heritage recipes since 1998", imageUrl: "", buttonLabel: "View menu" } satisfies CoverContent;
-    case "about": return { title: "About us", body: "A family-run kitchen serving heritage Malaysian recipes." } satisfies AboutContent;
-    case "hours": return { days: DAY_LABELS.map((_, i) => ({ open: "09:00", close: "18:00", closed: i === 6 })) } satisfies HoursContent;
+    case "cover": return { title: t("dev.customize.defaults.coverTitle"), subtitle: t("dev.customize.defaults.coverSubtitle"), imageUrl: "", buttonLabel: t("dev.customize.defaults.coverButton") } satisfies CoverContent;
+    case "about": return { title: t("dev.customize.defaults.aboutTitle"), body: t("dev.customize.defaults.aboutBody") } satisfies AboutContent;
+    case "hours": return { days: DAY_KEYS.map((_, i) => ({ open: "09:00", close: "18:00", closed: i === 6 })) } satisfies HoursContent;
     case "gallery": return { images: [{ url: "" }, { url: "" }, { url: "" }] } satisfies GalleryContent;
-    case "contact": return { address: "12 Jalan Alor, Kuala Lumpur", phone: "+60 3-5555 0199" } satisfies ContactContent;
-    case "products": return { items: [{ name: "Signature Laksa", price: "18" }, { name: "Nyonya Set", price: "42" }] } satisfies ProductsContent;
-    case "promo": return { title: "20% off first order", code: "MYWISATA20" } satisfies PromoContent;
-    case "reviews": return { items: [{ text: "Best laksa in KL, hands down.", rating: 5 }] } satisfies ReviewsContent;
-    case "announcement": return { text: "Closed for Raya, 15–17 Apr." } satisfies AnnouncementContent;
+    case "contact": return { address: t("dev.customize.defaults.contactAddress"), phone: t("dev.customize.defaults.contactPhone") } satisfies ContactContent;
+    case "products": return { items: [{ name: t("dev.customize.defaults.productOne"), price: "18" }, { name: t("dev.customize.defaults.productTwo"), price: "42" }] } satisfies ProductsContent;
+    case "promo": return { title: t("dev.customize.defaults.promoTitle"), code: "MYWISATA20" } satisfies PromoContent;
+    case "reviews": return { items: [{ text: t("dev.customize.defaults.reviewText"), rating: 5 }] } satisfies ReviewsContent;
+    case "announcement": return { text: t("dev.customize.defaults.announcementText") } satisfies AnnouncementContent;
     case "social": return { links: [{ platform: "Instagram", url: "" }, { platform: "WhatsApp", url: "" }] } satisfies SocialContent;
   }
 }
@@ -74,6 +76,7 @@ function stop(e: React.SyntheticEvent) {
 }
 
 function ImagePicker({ value, onChange, label }: { value: string; onChange: (url: string) => void; label: string }) {
+  const { t } = useTranslation("auth");
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex items-center gap-2" onPointerDown={stop}>
@@ -97,13 +100,13 @@ function ImagePicker({ value, onChange, label }: { value: string; onChange: (url
           }}
         />
         <button type="button" onClick={() => inputRef.current?.click()} className="rounded-md border border-border px-2 py-1 text-[11px] font-semibold text-foreground hover:border-primary hover:text-primary">
-          {value ? "Replace" : "Upload"} {label}
+          {value ? t("dev.customize.image.replace") : t("dev.customize.image.upload")} {label}
         </button>
         <input
           type="text"
           value={value.startsWith("blob:") ? "" : value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="…or paste an image URL"
+          placeholder={t("dev.customize.image.pasteUrl")}
           className="block w-full rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary"
         />
       </div>
@@ -112,16 +115,17 @@ function ImagePicker({ value, onChange, label }: { value: string; onChange: (url
 }
 
 export function WidgetEditor({ type, content, onChange }: { type: WidgetType; content: unknown; onChange: (next: unknown) => void }) {
+  const { t } = useTranslation("auth");
   switch (type) {
     case "cover": {
       const c = content as CoverContent;
       const set = (patch: Partial<CoverContent>) => onChange({ ...c, ...patch });
       return (
         <div className="flex h-full flex-col gap-1.5" onPointerDown={stop}>
-          <ImagePicker value={c.imageUrl} onChange={(imageUrl) => set({ imageUrl })} label="cover image" />
-          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[13px] font-bold text-foreground outline-none focus:border-primary" />
-          <input value={c.subtitle} onChange={(e) => set({ subtitle: e.target.value })} placeholder="Subtitle" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
-          <input value={c.buttonLabel} onChange={(e) => set({ buttonLabel: e.target.value })} placeholder="Button label" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+          <ImagePicker value={c.imageUrl} onChange={(imageUrl) => set({ imageUrl })} label={t("dev.customize.image.cover")} />
+          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder={t("dev.customize.fields.title")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[13px] font-bold text-foreground outline-none focus:border-primary" />
+          <input value={c.subtitle} onChange={(e) => set({ subtitle: e.target.value })} placeholder={t("dev.customize.fields.subtitle")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+          <input value={c.buttonLabel} onChange={(e) => set({ buttonLabel: e.target.value })} placeholder={t("dev.customize.fields.buttonLabel")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
         </div>
       );
     }
@@ -130,8 +134,8 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
       const set = (patch: Partial<AboutContent>) => onChange({ ...c, ...patch });
       return (
         <div className="flex h-full flex-col gap-1.5" onPointerDown={stop}>
-          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder="Title" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[13px] font-bold text-foreground outline-none focus:border-primary" />
-          <textarea value={c.body} onChange={(e) => set({ body: e.target.value })} placeholder="Tell your story…" rows={3} className="w-full flex-1 resize-none rounded-md border border-border bg-card px-2 py-1 text-[12px] leading-5 text-foreground outline-none focus:border-primary" />
+          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder={t("dev.customize.fields.title")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[13px] font-bold text-foreground outline-none focus:border-primary" />
+          <textarea value={c.body} onChange={(e) => set({ body: e.target.value })} placeholder={t("dev.customize.fields.story")} rows={3} className="w-full flex-1 resize-none rounded-md border border-border bg-card px-2 py-1 text-[12px] leading-5 text-foreground outline-none focus:border-primary" />
         </div>
       );
     }
@@ -144,10 +148,10 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
       return (
         <div className="flex h-full flex-col gap-1 overflow-y-auto" onPointerDown={stop}>
           {c.days.map((d, i) => (
-            <div key={DAY_LABELS[i]} className="flex items-center gap-1.5 text-[11px]">
-              <span className="w-8 shrink-0 font-semibold text-foreground">{DAY_LABELS[i]}</span>
+            <div key={DAY_KEYS[i]} className="flex items-center gap-1.5 text-[11px]">
+              <span className="w-8 shrink-0 font-semibold text-foreground">{t(`dev.customize.weekdays.${DAY_KEYS[i]}`)}</span>
               {d.closed ? (
-                <span className="flex-1 text-muted-foreground">Closed</span>
+                <span className="flex-1 text-muted-foreground">{t("dev.customize.actions.closed")}</span>
               ) : (
                 <>
                   <input type="time" value={d.open} onChange={(e) => setDay(i, { open: e.target.value })} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1 py-0.5 text-[11px] text-foreground outline-none focus:border-primary" />
@@ -156,7 +160,7 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
                 </>
               )}
               <label className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
-                <input type="checkbox" checked={d.closed} onChange={(e) => setDay(i, { closed: e.target.checked })} className="h-3 w-3 accent-primary" /> Closed
+                <input type="checkbox" checked={d.closed} onChange={(e) => setDay(i, { closed: e.target.checked })} className="h-3 w-3 accent-primary" /> {t("dev.customize.actions.closed")}
               </label>
             </div>
           ))}
@@ -172,11 +176,11 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
         <div className="flex h-full flex-col gap-1.5 overflow-y-auto" onPointerDown={stop}>
           {c.images.map((im, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <div className="flex-1"><ImagePicker value={im.url} onChange={(url) => setImg(i, url)} label={`photo ${i + 1}`} /></div>
-              <button type="button" onClick={() => removeImg(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label="Remove photo"><Trash2 size={13} /></button>
+              <div className="flex-1"><ImagePicker value={im.url} onChange={(url) => setImg(i, url)} label={t("dev.customize.image.photo", { index: i + 1 })} /></div>
+              <button type="button" onClick={() => removeImg(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label={t("dev.customize.actions.removePhoto")}><Trash2 size={13} /></button>
             </div>
           ))}
-          <button type="button" onClick={addImg} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> Add photo</button>
+          <button type="button" onClick={addImg} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> {t("dev.customize.actions.addPhoto")}</button>
         </div>
       );
     }
@@ -186,8 +190,8 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
       return (
         <div className="flex h-full flex-col gap-1.5" onPointerDown={stop}>
           <div className="min-h-[40px] flex-1 rounded-lg bg-[repeating-linear-gradient(45deg,#eef2ff,#eef2ff_10px,#e0e7ff_10px,#e0e7ff_20px)]" />
-          <input value={c.address} onChange={(e) => set({ address: e.target.value })} placeholder="Address" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
-          <input value={c.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="Phone" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+          <input value={c.address} onChange={(e) => set({ address: e.target.value })} placeholder={t("dev.customize.fields.address")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+          <input value={c.phone} onChange={(e) => set({ phone: e.target.value })} placeholder={t("dev.customize.fields.phone")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
         </div>
       );
     }
@@ -200,12 +204,12 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
         <div className="flex h-full flex-col gap-1.5 overflow-y-auto" onPointerDown={stop}>
           {c.items.map((it, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder="Product name" className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
-              <input value={it.price} onChange={(e) => setItem(i, { price: e.target.value })} placeholder="RM" className="w-14 shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
-              <button type="button" onClick={() => removeItem(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label="Remove product"><Trash2 size={13} /></button>
+              <input value={it.name} onChange={(e) => setItem(i, { name: e.target.value })} placeholder={t("dev.customize.fields.productName")} className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+              <input value={it.price} onChange={(e) => setItem(i, { price: e.target.value })} placeholder={t("dev.customize.fields.price")} className="w-14 shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+              <button type="button" onClick={() => removeItem(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label={t("dev.customize.actions.removeProduct")}><Trash2 size={13} /></button>
             </div>
           ))}
-          <button type="button" onClick={addItem} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> Add product</button>
+          <button type="button" onClick={addItem} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> {t("dev.customize.actions.addProduct")}</button>
         </div>
       );
     }
@@ -214,8 +218,8 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
       const set = (patch: Partial<PromoContent>) => onChange({ ...c, ...patch });
       return (
         <div className="flex h-full flex-col justify-center gap-1.5" onPointerDown={stop}>
-          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder="Promo title" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] font-bold text-foreground outline-none focus:border-primary" />
-          <input value={c.code} onChange={(e) => set({ code: e.target.value })} placeholder="Code" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
+          <input value={c.title} onChange={(e) => set({ title: e.target.value })} placeholder={t("dev.customize.fields.promoTitle")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] font-bold text-foreground outline-none focus:border-primary" />
+          <input value={c.code} onChange={(e) => set({ code: e.target.value })} placeholder={t("dev.customize.fields.code")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary" />
         </div>
       );
     }
@@ -232,12 +236,12 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
                 <select value={it.rating} onChange={(e) => setItem(i, { rating: Number(e.target.value) })} className="rounded-md border border-border bg-card px-1 py-0.5 text-[11px] text-foreground outline-none focus:border-primary">
                   {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}★</option>)}
                 </select>
-                <button type="button" onClick={() => removeItem(i)} className="ml-auto shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label="Remove review"><Trash2 size={12} /></button>
+                <button type="button" onClick={() => removeItem(i)} className="ml-auto shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label={t("dev.customize.actions.removeReview")}><Trash2 size={12} /></button>
               </div>
-              <textarea value={it.text} onChange={(e) => setItem(i, { text: e.target.value })} placeholder="Review text" rows={2} className="w-full resize-none rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
+              <textarea value={it.text} onChange={(e) => setItem(i, { text: e.target.value })} placeholder={t("dev.customize.fields.reviewText")} rows={2} className="w-full resize-none rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
             </div>
           ))}
-          <button type="button" onClick={addItem} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> Add review</button>
+          <button type="button" onClick={addItem} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> {t("dev.customize.actions.addReview")}</button>
         </div>
       );
     }
@@ -245,7 +249,7 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
       const c = content as AnnouncementContent;
       return (
         <div className="flex h-full items-center" onPointerDown={stop}>
-          <input value={c.text} onChange={(e) => onChange({ text: e.target.value })} placeholder="Announcement text" className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] font-semibold text-foreground outline-none focus:border-primary" />
+          <input value={c.text} onChange={(e) => onChange({ text: e.target.value })} placeholder={t("dev.customize.fields.announcement")} className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] font-semibold text-foreground outline-none focus:border-primary" />
         </div>
       );
     }
@@ -258,12 +262,12 @@ export function WidgetEditor({ type, content, onChange }: { type: WidgetType; co
         <div className="flex h-full flex-col gap-1.5 overflow-y-auto" onPointerDown={stop}>
           {c.links.map((l, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <input value={l.platform} onChange={(e) => setLink(i, { platform: e.target.value })} placeholder="Platform" className="w-20 shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
-              <input value={l.url} onChange={(e) => setLink(i, { url: e.target.value })} placeholder="URL" className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
-              <button type="button" onClick={() => removeLink(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label="Remove link"><Trash2 size={13} /></button>
+              <input value={l.platform} onChange={(e) => setLink(i, { platform: e.target.value })} placeholder={t("dev.customize.fields.platform")} className="w-20 shrink-0 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
+              <input value={l.url} onChange={(e) => setLink(i, { url: e.target.value })} placeholder={t("dev.customize.fields.url")} className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary" />
+              <button type="button" onClick={() => removeLink(i)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label={t("dev.customize.actions.removeLink")}><Trash2 size={13} /></button>
             </div>
           ))}
-          <button type="button" onClick={addLink} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> Add link</button>
+          <button type="button" onClick={addLink} className="inline-flex items-center gap-1 self-start rounded-md border border-dashed border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={12} /> {t("dev.customize.actions.addLink")}</button>
         </div>
       );
     }
