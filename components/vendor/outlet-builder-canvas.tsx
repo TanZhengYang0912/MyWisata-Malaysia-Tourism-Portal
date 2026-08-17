@@ -18,6 +18,7 @@ import {
   type BuilderViewport,
 } from '@/components/vendor/outlet-builder-ui';
 import type { OutletPageBlock, OutletPageDocument, OutletPageBlockType } from '@/lib/vendor/outlet-page-schema';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   vendorId: string;
@@ -39,9 +40,11 @@ interface Props {
 function DropZone({
   index,
   onDrop,
+  label,
 }: {
   index: number;
   onDrop: (event: React.DragEvent<HTMLDivElement>, index: number) => void;
+  label: string;
 }) {
   return (
     <div
@@ -58,7 +61,7 @@ function DropZone({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`Drop section at position ${index + 1}`}
+      aria-label={`${label} ${index + 1}`}
     >
       <div className="mx-auto mt-2 h-1 w-14 rounded-full bg-transparent transition group-hover:w-28 group-hover:bg-amber-400" />
     </div>
@@ -81,6 +84,7 @@ export default function OutletBuilderCanvas({
   onEditBlock,
   onEndInlineEdit,
 }: Props) {
+  const { t } = useTranslation('vendor');
   const viewport = getBuilderViewportConfig(view);
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -104,11 +108,11 @@ export default function OutletBuilderCanvas({
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Shop canvas</p>
-            <p className="mt-1 text-sm text-gray-500">Drag a section, select it, then edit it from the panel that stays in view.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('builder.canvasTitle')}</p>
+            <p className="mt-1 text-sm text-gray-500">{t('builder.canvasHint')}</p>
           </div>
           <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary shadow-sm">
-            {document.blocks.length + 1} sections
+            {t('builder.sectionCount', { count: document.blocks.length + 1 })}
           </span>
         </div>
 
@@ -137,7 +141,7 @@ export default function OutletBuilderCanvas({
                   onClick={(event) => event.stopPropagation()}
                 >
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/70">
-                    Quick hero image upload
+                    {t('builder.quickHeroUpload')}
                   </p>
                   <ProductMediaUploader
                     vendorId={vendorId}
@@ -148,11 +152,11 @@ export default function OutletBuilderCanvas({
               )}
             </div>
             <div className="space-y-1 p-4">
-              <DropZone index={0} onDrop={handleDrop} />
+              <DropZone index={0} onDrop={handleDrop} label={t('builder.dropSection')} />
               {document.blocks.map((block, index) => {
                 const selected = selectedBlockId === block.id;
                 const { canMoveUp, canMoveDown } = getBlockActionState(index, document.blocks.length);
-                const blockLabel = block.title || block.type.replace('_', ' ');
+                const blockLabel = block.title || t(`builder.blockTypes.${block.type}`, { defaultValue: block.type.replace('_', ' ') });
                 return (
                   <div
                     key={block.id}
@@ -171,11 +175,11 @@ export default function OutletBuilderCanvas({
                           event.dataTransfer.setData('outlet-block-id', block.id);
                         }}
                         className="flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-primary/70 hover:bg-secondary"
-                        aria-label={`Drag ${blockLabel}`}
-                        title={`Drag ${blockLabel}`}
+                        aria-label={t('builder.dragBlock', { label: blockLabel })}
+                        title={t('builder.dragBlock', { label: blockLabel })}
                       >
                         <GripVertical size={15} />
-                        <span className="hidden md:inline">Drag</span>
+                        <span className="hidden md:inline">{t('builder.drag')}</span>
                       </div>
                       <span className="h-5 w-px bg-gray-200" aria-hidden="true" />
                       <button
@@ -183,38 +187,38 @@ export default function OutletBuilderCanvas({
                         disabled={!canMoveUp}
                         onClick={() => onMove(block.id, getBlockMoveTargetIndex(index, 'up'))}
                         className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label={`Move ${blockLabel} up`}
-                        title="Move up"
+                        aria-label={t('builder.moveUpLabel', { label: blockLabel })}
+                        title={t('builder.moveUp')}
                       >
-                        <ArrowUp size={14} /> <span className="hidden md:inline">Up</span>
+                        <ArrowUp size={14} /> <span className="hidden md:inline">{t('builder.up')}</span>
                       </button>
                       <button
                         type="button"
                         disabled={!canMoveDown}
                         onClick={() => onMove(block.id, getBlockMoveTargetIndex(index, 'down'))}
                         className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label={`Move ${blockLabel} down`}
-                        title="Move down"
+                        aria-label={t('builder.moveDownLabel', { label: blockLabel })}
+                        title={t('builder.moveDown')}
                       >
-                        <ArrowDown size={14} /> <span className="hidden md:inline">Down</span>
+                        <ArrowDown size={14} /> <span className="hidden md:inline">{t('builder.down')}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => onDuplicate(block.id)}
                         className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold hover:bg-secondary"
-                        aria-label={`Duplicate ${blockLabel}`}
-                        title="Duplicate"
+                        aria-label={t('builder.duplicateLabel', { label: blockLabel })}
+                        title={t('builder.duplicate')}
                       >
-                        <Copy size={14} /> <span className="hidden md:inline">Copy</span>
+                        <Copy size={14} /> <span className="hidden md:inline">{t('builder.copy')}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => onDelete(block.id)}
                         className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-red-600 hover:bg-red-50"
-                        aria-label={`Delete ${blockLabel}`}
-                        title="Delete"
+                        aria-label={t('builder.deleteLabel', { label: blockLabel })}
+                        title={t('builder.delete')}
                       >
-                        <Trash2 size={14} /> <span className="hidden md:inline">Delete</span>
+                        <Trash2 size={14} /> <span className="hidden md:inline">{t('builder.delete')}</span>
                       </button>
                     </div>
                     <OutletBlockRenderer
@@ -238,7 +242,7 @@ export default function OutletBuilderCanvas({
                         onClick={(event) => event.stopPropagation()}
                       >
                         <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/70">
-                          Quick image upload
+                          {t('builder.quickImageUpload')}
                         </p>
                         <ProductMediaUploader
                           vendorId={vendorId}
@@ -255,7 +259,7 @@ export default function OutletBuilderCanvas({
                   </div>
                 );
               })}
-              <DropZone index={document.blocks.length} onDrop={handleDrop} />
+              <DropZone index={document.blocks.length} onDrop={handleDrop} label={t('builder.dropSection')} />
             </div>
           </div>
         </div>

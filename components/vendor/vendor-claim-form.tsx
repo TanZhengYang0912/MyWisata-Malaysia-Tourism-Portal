@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 export type VendorClaimValues = {
   businessName: string;
@@ -34,6 +35,7 @@ export default function VendorClaimForm({
   phoneVerified = true,
 }: VendorClaimFormProps) {
   const router = useRouter();
+  const { t } = useTranslation('vendor');
   const [form, setForm] = useState<VendorClaimValues>(initialValues);
   const [dirtyFields, setDirtyFields] = useState<Array<keyof VendorClaimValues>>([]);
   const [restored, setRestored] = useState(false);
@@ -97,11 +99,11 @@ export default function VendorClaimForm({
       return;
     }
     if (!emailMatched) {
-      setError('Sign in with the email address that received this invitation.');
+      setError(t('claim.errors.emailMismatch'));
       return;
     }
     if (!phoneVerified) {
-      setError('Verify your phone number first, then return to claim this vendor.');
+      setError(t('claim.errors.phoneVerificationRequired'));
       return;
     }
     setBusy(true);
@@ -114,15 +116,15 @@ export default function VendorClaimForm({
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         setError(body?.error?.code === 'PHONE_VERIFICATION_REQUIRED'
-          ? 'Verify your phone number first, then return to claim this vendor.'
-          : body?.error?.message ?? 'Unable to submit vendor onboarding.');
+          ? t('claim.errors.phoneVerificationRequired')
+          : body?.error?.message ?? t('claim.errors.submitFailed'));
         return;
       }
       window.sessionStorage.removeItem(STORAGE_KEY);
       setSubmitted(true);
       router.refresh();
     } catch {
-      setError('Network error — please try again.');
+      setError(t('claim.errors.network'));
     } finally {
       setBusy(false);
     }
@@ -131,8 +133,8 @@ export default function VendorClaimForm({
   if (submitted) {
     return (
       <div className="rounded-2xl border border-primary/20 bg-primary/[0.05] p-6">
-        <h2 className="text-lg font-bold text-foreground">Vendor application submitted</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Your business setup is saved as a private Draft and is pending Admin review.</p>
+        <h2 className="text-lg font-bold text-foreground">{t('claim.submitted.title')}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t('claim.submitted.description')}</p>
       </div>
     );
   }
@@ -140,23 +142,23 @@ export default function VendorClaimForm({
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Recommendation invitation</p>
-        <h2 className="mt-2 text-2xl font-bold text-foreground">Set up your vendor profile</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Complete the business draft. It stays private until Admin approves your Vendor application.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('claim.invitation')}</p>
+        <h2 className="mt-2 text-2xl font-bold text-foreground">{t('claim.title')}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t('claim.description')}</p>
       </div>
 
-      <label className="block text-sm font-semibold text-foreground">Business name *<input required value={form.businessName} onChange={(event) => update('businessName', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
-      <label className="block text-sm font-semibold text-foreground">Legal business name *<input required value={form.legalBusinessName} onChange={(event) => update('legalBusinessName', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
-      <label className="block text-sm font-semibold text-foreground">Business type *<input required value={form.businessType} onChange={(event) => update('businessType', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+      <label className="block text-sm font-semibold text-foreground">{t('claim.fields.businessName')} *<input required value={form.businessName} onChange={(event) => update('businessName', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+      <label className="block text-sm font-semibold text-foreground">{t('claim.fields.legalBusinessName')} *<input required value={form.legalBusinessName} onChange={(event) => update('legalBusinessName', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+      <label className="block text-sm font-semibold text-foreground">{t('claim.fields.businessType')} *<input required value={form.businessType} onChange={(event) => update('businessType', event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-semibold text-foreground">Contact email *<input required type="email" value={form.contactEmail} onChange={(event) => update('contactEmail', event.target.value)} placeholder={authenticated && emailMatched ? 'vendor@example.com' : 'Available after sign in'} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
-        <label className="block text-sm font-semibold text-foreground">Contact phone *<input required value={form.contactPhone} onChange={(event) => update('contactPhone', event.target.value)} placeholder={authenticated && emailMatched ? '+60…' : 'Available after sign in'} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-semibold text-foreground">{t('claim.fields.contactEmail')} *<input required type="email" value={form.contactEmail} onChange={(event) => update('contactEmail', event.target.value)} placeholder={authenticated && emailMatched ? 'vendor@example.com' : t('claim.availableAfterSignIn')} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-semibold text-foreground">{t('claim.fields.contactPhone')} *<input required value={form.contactPhone} onChange={(event) => update('contactPhone', event.target.value)} placeholder={authenticated && emailMatched ? '+60…' : t('claim.availableAfterSignIn')} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
       </div>
-      <label className="block text-sm font-semibold text-foreground">Business address *<textarea required value={form.businessAddress} onChange={(event) => update('businessAddress', event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
+      <label className="block text-sm font-semibold text-foreground">{t('claim.fields.businessAddress')} *<textarea required value={form.businessAddress} onChange={(event) => update('businessAddress', event.target.value)} rows={3} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-normal" /></label>
 
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={busy} className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
-        {busy ? 'Saving Draft…' : authenticated ? 'Submit vendor application' : 'Sign in to continue'}
+        {busy ? t('claim.savingDraft') : authenticated ? t('claim.submit') : t('claim.signInToContinue')}
       </button>
     </form>
   );

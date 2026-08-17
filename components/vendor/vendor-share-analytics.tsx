@@ -16,23 +16,24 @@
 
 import { useEffect, useState } from 'react';
 import { Share2, MousePointerClick, ShoppingBag, ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { VendorShareStats, ListingShareStat } from '@/lib/affiliate/vendor-share-stats';
 
 type SortKey = 'shares' | 'clicks' | 'orders';
 
-const PLATFORM_LABEL: Record<string, string> = {
-  native: 'Share sheet',
-  copy_link: 'Copied link',
-  whatsapp: 'WhatsApp',
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  image_share: 'Shared image',
-  image_download: 'Downloaded image',
-  unknown: 'Unknown',
+const PLATFORM_KEY: Record<string, string> = {
+  native: 'share.platforms.shareSheet',
+  copy_link: 'share.platforms.copiedLink',
+  whatsapp: 'share.platforms.whatsapp',
+  facebook: 'share.platforms.facebook',
+  instagram: 'share.platforms.instagram',
+  image_share: 'share.platforms.sharedImage',
+  image_download: 'share.platforms.downloadedImage',
+  unknown: 'share.platforms.unknown',
 };
 
-function platformLabel(platform: string): string {
-  return PLATFORM_LABEL[platform] ?? platform;
+function platformLabel(platform: string, translate: (key: string) => string): string {
+  return PLATFORM_KEY[platform] ? translate(PLATFORM_KEY[platform]) : platform;
 }
 
 interface VendorShareAnalyticsProps {
@@ -42,6 +43,7 @@ interface VendorShareAnalyticsProps {
 }
 
 export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
+  const { t } = useTranslation('vendor');
   const [stats, setStats] = useState<VendorShareStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,22 +59,22 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
         const res = await fetch(url);
         const body = (await res.json()) as { data: VendorShareStats | null; error: { message: string } | null };
         if (!res.ok || !body.data) {
-          setError(body.error?.message ?? 'Unable to load share analytics.');
+          setError(body.error?.message ?? t('share.loadFailed'));
           return;
         }
         setStats(body.data);
       } catch {
-        setError('Unable to load share analytics.');
+      setError(t('share.loadFailed'));
       } finally {
         setLoading(false);
       }
     })();
-  }, [vendorId]);
+  }, [t, vendorId]);
 
   if (loading) {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <p className="text-sm text-gray-400">Loading share analytics…</p>
+        <p className="text-sm text-gray-400">{t('share.loading')}</p>
       </div>
     );
   }
@@ -92,18 +94,18 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={Share2} label="Total shares" value={stats.totals.shares} tone="teal" />
-        <StatCard icon={MousePointerClick} label="Clicks from shares" value={stats.totals.clicks} tone="blue" />
-        <StatCard icon={ShoppingBag} label="Orders from shares" value={stats.totals.orders} tone="amber" />
+        <StatCard icon={Share2} label={t('share.totalShares')} value={stats.totals.shares} tone="teal" />
+        <StatCard icon={MousePointerClick} label={t('share.clicksFromShares')} value={stats.totals.clicks} tone="blue" />
+        <StatCard icon={ShoppingBag} label={t('share.ordersFromShares')} value={stats.totals.orders} tone="amber" />
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              <Share2 size={14} /> Share performance
+              <Share2 size={14} /> {t('share.performance')}
             </div>
-            <h3 className="text-lg font-bold text-gray-950">By listing</h3>
+            <h3 className="text-lg font-bold text-gray-950">{t('share.byListing')}</h3>
           </div>
           <div className="flex gap-1 rounded-lg bg-gray-50 p-1 text-xs font-semibold">
             {(['shares', 'clicks', 'orders'] as SortKey[]).map((key) => (
@@ -113,24 +115,24 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
                 onClick={() => setSortKey(key)}
                 className={`rounded-md px-3 py-1.5 capitalize ${sortKey === key ? 'bg-white text-primary shadow-sm' : 'text-gray-500'}`}
               >
-                {key}
+                {t(`share.sort.${key}`)}
               </button>
             ))}
           </div>
         </div>
 
         {listings.length === 0 ? (
-          <p className="px-6 py-14 text-center text-sm text-gray-400">No shares yet for your listings.</p>
+          <p className="px-6 py-14 text-center text-sm text-gray-400">{t('share.empty')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-gray-100">
                 <tr className="text-gray-500">
-                  <th className="px-6 py-4 font-medium">Listing</th>
-                  <th className="px-6 py-4 text-right font-medium">Shares</th>
-                  <th className="px-6 py-4 font-medium">Top platform</th>
-                  <th className="px-6 py-4 text-right font-medium">Clicks</th>
-                  <th className="px-6 py-4 text-right font-medium">Orders</th>
+                  <th className="px-6 py-4 font-medium">{t('share.listing')}</th>
+                  <th className="px-6 py-4 text-right font-medium">{t('share.shares')}</th>
+                  <th className="px-6 py-4 font-medium">{t('share.topPlatform')}</th>
+                  <th className="px-6 py-4 text-right font-medium">{t('share.clicks')}</th>
+                  <th className="px-6 py-4 text-right font-medium">{t('share.orders')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -140,6 +142,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
                     listing={listing}
                     expanded={expanded === listing.listingId}
                     onToggle={() => setExpanded(expanded === listing.listingId ? null : listing.listingId)}
+                    translate={t}
                   />
                 ))}
               </tbody>
@@ -149,8 +152,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 
         {!stats.sourceTrackingActive && listings.length > 0 && (
           <p className="border-t border-gray-100 bg-gray-50 px-6 py-3 text-xs text-gray-500">
-            Clicks and orders are real totals per listing. Per-platform click/order attribution isn&apos;t shown — that
-            needs click-source tagging, which only applies going forward.
+            {t('share.trackingNotice')}
           </p>
         )}
       </div>
@@ -173,7 +175,7 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Share2; lab
   );
 }
 
-function ListingRow({ listing, expanded, onToggle }: { listing: ListingShareStat; expanded: boolean; onToggle: () => void }) {
+function ListingRow({ listing, expanded, onToggle, translate }: { listing: ListingShareStat; expanded: boolean; onToggle: () => void; translate: (key: string) => string }) {
   const hasBreakdown = listing.platformBreakdown.length > 0;
   return (
     <>
@@ -195,7 +197,7 @@ function ListingRow({ listing, expanded, onToggle }: { listing: ListingShareStat
           <p className="mt-0.5 pl-[22px] text-xs text-gray-400 capitalize">{listing.listingType}</p>
         </td>
         <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.shares}</td>
-        <td className="px-6 py-4 text-gray-700">{listing.topPlatform ? platformLabel(listing.topPlatform) : '—'}</td>
+        <td className="px-6 py-4 text-gray-700">{listing.topPlatform ? platformLabel(listing.topPlatform, translate) : '—'}</td>
         <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.clicks}</td>
         <td className="px-6 py-4 text-right font-mono text-gray-900">{listing.orders}</td>
       </tr>
@@ -205,7 +207,7 @@ function ListingRow({ listing, expanded, onToggle }: { listing: ListingShareStat
             <ul className="space-y-1.5">
               {listing.platformBreakdown.map((p) => (
                 <li key={p.platform} className="flex items-center gap-3 text-xs">
-                  <span className="w-28 shrink-0 text-gray-500">{platformLabel(p.platform)}</span>
+                  <span className="w-28 shrink-0 text-gray-500">{platformLabel(p.platform, translate)}</span>
                   <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
                     <span
                       className="block h-full rounded-full bg-primary"

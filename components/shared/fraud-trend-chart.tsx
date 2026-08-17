@@ -5,6 +5,9 @@
 // hex) so it matches dark mode on the admin dashboard.
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { FraudFlagsByDay } from "@/lib/affiliate/fraud-analytics";
 
 interface FraudTrendChartProps {
@@ -12,12 +15,14 @@ interface FraudTrendChartProps {
 }
 
 export function FraudTrendChart({ data }: FraudTrendChartProps) {
+  const { t, i18n } = useTranslation("vendor");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const hasFlags = data.some((d) => d.count > 0);
 
   if (!hasFlags) {
     return (
       <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-        No fraud flags in this range.
+        {t("fraud.noFlags")}
       </div>
     );
   }
@@ -46,8 +51,8 @@ export function FraudTrendChart({ data }: FraudTrendChartProps) {
           tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
         />
         <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
-        <Tooltip formatter={(value) => [value, "Flags"]} labelFormatter={(label) => `Day ${label}`} />
-        <Area type="monotone" dataKey="count" name="Flags" stroke="var(--destructive)" strokeWidth={2.5} fill="url(#fraudTrendFill)" />
+        <Tooltip formatter={(value) => [formatNumber(Number(value), locale), t("fraud.flags")]} labelFormatter={(label) => t("fraud.day", { day: label })} />
+        <Area type="monotone" dataKey="count" name={t("fraud.flags")} stroke="var(--destructive)" strokeWidth={2.5} fill="url(#fraudTrendFill)" />
       </AreaChart>
     </ResponsiveContainer>
   );
