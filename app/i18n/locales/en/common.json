@@ -1,0 +1,42 @@
+{
+  "language": {
+    "label": "Language",
+    "andRegion": "Language & region",
+    "english": "English",
+    "simplifiedChinese": "简体中文",
+    "bahasaMelayu": "Bahasa Melayu"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "search": "Search",
+    "clear": "Clear",
+    "previous": "Previous",
+    "next": "Next",
+    "signOut": "Sign out"
+  },
+  "states": {
+    "loading": "Loading",
+    "noResults": "No results found"
+  },
+  "pagination": {
+    "page": "Page {{current}} of {{total}}",
+    "items": "{{count}} items"
+  },
+  "statuses": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "failed": "Failed"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Unable to connect. Please try again."
+  }
+}

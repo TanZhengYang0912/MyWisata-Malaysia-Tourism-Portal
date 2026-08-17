@@ -1,0 +1,42 @@
+{
+  "language": {
+    "label": "Bahasa",
+    "andRegion": "Bahasa dan rantau",
+    "english": "English",
+    "simplifiedChinese": "简体中文",
+    "bahasaMelayu": "Bahasa Melayu"
+  },
+  "actions": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "close": "Tutup",
+    "confirm": "Sahkan",
+    "search": "Cari",
+    "clear": "Kosongkan",
+    "previous": "Sebelumnya",
+    "next": "Seterusnya",
+    "signOut": "Log keluar"
+  },
+  "states": {
+    "loading": "Memuatkan",
+    "noResults": "Tiada hasil ditemui"
+  },
+  "pagination": {
+    "page": "Halaman {{current}} daripada {{total}}",
+    "items": "{{count}} item"
+  },
+  "statuses": {
+    "active": "Aktif",
+    "inactive": "Tidak aktif",
+    "pending": "Menunggu",
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "completed": "Selesai",
+    "cancelled": "Dibatalkan",
+    "failed": "Gagal"
+  },
+  "errors": {
+    "generic": "Sesuatu tidak kena. Sila cuba lagi.",
+    "network": "Tidak dapat disambungkan. Sila cuba lagi."
+  }
+}
