@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved direction; awaiting written-spec review before implementation planning.
+Approved on 17 Aug 2026; implementation plan created.
 
 ## Context
 
