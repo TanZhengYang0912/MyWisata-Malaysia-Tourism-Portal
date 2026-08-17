@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { Expand, Eye, EyeOff, GripVertical, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
@@ -34,6 +35,7 @@ function fmtShort(min: number): string {
 }
 
 export function MapClient({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+  const { t: tCustomer } = useTranslation("customer");
   const trip = useTrip();
   const [category, setCategory] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
@@ -274,8 +276,8 @@ export function MapClient({ initialActivities }: { initialActivities: ComputedAc
   function locationSuggestions() {
     return (
       <div className="mt-1.5">
-        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
-        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
+        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
+        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noMatches")}</p>}
         {suggestions.length > 0 && (
           <ul className="overflow-hidden rounded-lg border border-border bg-card">
             {suggestions.map((s, i) => (

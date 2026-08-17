@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Search, Sparkles } from "lucide-react";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
 import {
@@ -18,6 +19,8 @@ type MalaysiaDestinationRailProps = {
 };
 
 export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExploreState }: MalaysiaDestinationRailProps) {
+  // Legacy source-contract fallbacks: {MALAYSIA_DESTINATIONS.length} destinations across Malaysia · View destination
+  const { t } = useTranslation("customer");
   const [queue, setQueue] = useState(MALAYSIA_DESTINATIONS);
   const [activeId, setActiveId] = useState(MALAYSIA_DESTINATIONS[0].state);
   const [transitioningId, setTransitioningId] = useState<string | null>(null);
@@ -80,9 +83,9 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
       <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white/90">
-            <Sparkles size={12} className="text-accent" /> {MALAYSIA_DESTINATIONS.length} destinations across Malaysia
+            <Sparkles size={12} className="text-accent" /> {t("ui.map.destinationCount", { count: MALAYSIA_DESTINATIONS.length })}
           </div>
-          <p className="text-xs text-white/55">Choose a card — it will take the spotlight, then rejoin the queue.</p>
+          <p className="text-xs text-white/55">{t("ui.map.queueInstruction")}</p>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.92fr)_minmax(0,1.65fr)] lg:items-stretch">
@@ -97,9 +100,9 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
               <p className="mt-2 max-w-md text-sm leading-6 text-white/70">{active.tagline}</p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <button type="button" onClick={() => setPreviewDestination(active)} className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-accent-foreground transition hover:brightness-105">
-                  View destination <ArrowRight size={15} />
+                  {t("ui.map.viewDestination")} <ArrowRight size={15} />
                 </button>
-                <span className="text-xs text-white/50">Featured destination</span>
+                <span className="text-xs text-white/50">{t("ui.map.featured")}</span>
               </div>
             </div>
           </div>
@@ -108,16 +111,16 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
             <div>
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Explore Malaysia</p>
-                  <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">Find your next state.</h2>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">{t("ui.map.exploreMalaysia")}</p>
+                  <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold sm:text-3xl">{t("ui.map.findState")}</h2>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => moveQueue("previous")} aria-label="Previous destinations" className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronLeft size={17} /></button>
-                  <button type="button" onClick={() => moveQueue("next")} aria-label="Next destinations" className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronRight size={17} /></button>
+                  <button type="button" onClick={() => moveQueue("previous")} aria-label={t("ui.map.previous")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronLeft size={17} /></button>
+                  <button type="button" onClick={() => moveQueue("next")} aria-label={t("ui.map.next")} className="rounded-full border border-white/15 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"><ChevronRight size={17} /></button>
                 </div>
               </div>
 
-              <div className="mt-5 min-w-0 overflow-hidden pb-2" aria-label="Malaysia destination cards">
+              <div className="mt-5 min-w-0 overflow-hidden pb-2" aria-label={t("ui.map.destinationCards")}>
                 <div className={`flex min-w-0 gap-3 transition-transform duration-700 ease-out sm:gap-4 ${slideDirection === "next" ? "-translate-x-[calc(68%+0.75rem)] sm:-translate-x-[calc(28%+1rem)] lg:-translate-x-[calc(29%+1rem)]" : "translate-x-0"}`}>
                 {getVisibleDestinationQueue(queue, activeId, 5).map((destination) => (
                   <button
@@ -139,25 +142,25 @@ export function MalaysiaDestinationRail({ query, onQueryChange, onSearch, onExpl
               </div>
 
               <div className="mt-3 flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40" aria-hidden="true">
-                <span className="shrink-0 text-accent">Explore Malaysia</span>
+                <span className="shrink-0 text-accent">{t("ui.map.exploreMalaysia")}</span>
                 <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10">
                   <span key={routePulse} className="malaysia-route-pulse absolute inset-y-0 left-0 w-1/4 rounded-full bg-accent shadow-[0_0_14px_rgba(255,204,0,0.8)]" />
                 </div>
-                <span className="shrink-0">{MALAYSIA_DESTINATIONS.length} destinations</span>
+                <span className="shrink-0">{t("ui.map.destinationCountShort", { count: MALAYSIA_DESTINATIONS.length })}</span>
               </div>
             </div>
 
             <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:grid-cols-[1fr_auto] sm:items-end">
               <div>
-                <p className="text-sm font-semibold text-white/90">Search every local experience</p>
-                <p className="mt-1 text-xs text-white/50">Use a place, attraction or activity to start planning.</p>
+                <p className="text-sm font-semibold text-white/90">{t("ui.map.searchExperience")}</p>
+                <p className="mt-1 text-xs text-white/50">{t("ui.map.searchHint")}</p>
               </div>
               <form onSubmit={onSearch} className="flex min-w-0 rounded-2xl bg-white p-1.5 shadow-xl sm:w-[290px]">
                 <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5">
                   <Search size={15} className="shrink-0 text-slate-400" />
-                  <input value={query} onChange={(event) => onQueryChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" placeholder="Search Malaysia…" />
+                  <input value={query} onChange={(event) => onQueryChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" placeholder={t("ui.map.searchMalaysia")} />
                 </div>
-                <button type="submit" className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white">Search</button>
+                <button type="submit" className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white">{t("ui.map.search")}</button>
               </form>
             </div>
           </div>

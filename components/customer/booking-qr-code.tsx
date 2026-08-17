@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import { buildBookingQrPayload } from "@/lib/customer/booking-qr";
 
@@ -10,6 +11,7 @@ interface BookingQrCodeProps {
 }
 
 export function BookingQrCode({ bookingId, size = 144 }: BookingQrCodeProps) {
+  const { t } = useTranslation("customer");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState(false);
 
@@ -35,8 +37,8 @@ export function BookingQrCode({ bookingId, size = 144 }: BookingQrCodeProps) {
   }, [bookingId, size]);
 
   if (error) {
-    return <div className="flex h-full min-h-24 w-full items-center justify-center rounded-xl bg-secondary px-3 text-center text-xs font-semibold text-destructive">QR unavailable</div>;
+    return <div className="flex h-full min-h-24 w-full items-center justify-center rounded-xl bg-secondary px-3 text-center text-xs font-semibold text-destructive">{t("ui.booking.qrUnavailable")}</div>;
   }
 
-  return <canvas ref={canvasRef} aria-label="Booking QR code" className="max-w-full rounded-xl bg-white" />;
+  return <canvas ref={canvasRef} aria-label={t("ui.booking.qrCodeLabel")} className="max-w-full rounded-xl bg-white" />;
 }

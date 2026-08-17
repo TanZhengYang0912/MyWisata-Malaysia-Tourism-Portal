@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, MapPin, X } from "lucide-react";
 import type { MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 
@@ -11,6 +12,7 @@ export type DestinationPreviewModalProps = {
 };
 
 export function DestinationPreviewModal({ destination, onClose, onExplore }: DestinationPreviewModalProps) {
+  const { t } = useTranslation("customer");
   useEffect(() => {
     if (!destination) return;
 
@@ -57,7 +59,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close destination preview"
+            aria-label={t("actions.close", { ns: "common" })}
             autoFocus
             className="absolute right-4 top-4 rounded-full bg-white/90 p-2 text-slate-800 shadow-lg transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
@@ -76,7 +78,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
           </div>
 
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <button type="button" onClick={onClose} className="rounded-full px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">Close</button>
+            <button type="button" onClick={onClose} className="rounded-full px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">{t("actions.close", { ns: "common" })}</button>
             <button type="button" onClick={() => onExplore(destination.state)} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#101b66] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
               <span>Explore {destination.state}</span>
               <ArrowRight size={15} />

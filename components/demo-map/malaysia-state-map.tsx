@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
@@ -155,6 +156,7 @@ export function MalaysiaStateMap({
   onSelectState: (stateId: string | null) => void;
   onDismissPlace?: () => void;
 }) {
+  const { t } = useTranslation("customer");
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const activeStateId = hoveredStateId ?? selectedStateId;
 
@@ -170,9 +172,9 @@ export function MalaysiaStateMap({
       <div className="pointer-events-none absolute left-6 right-6 top-5 z-10 border-b border-[#b7c6d4] pb-3 sm:left-8 sm:right-8 sm:pb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#91a4b5] 2xl:text-[11px]">Malaysia</p>
-            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[22px] font-bold leading-tight text-[#1d2b3a] lg:text-[22px] 2xl:text-[32px]">All states and federal territories</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">West and East Malaysia scaled independently to fill the plate — not true relative scale.</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#91a4b5] 2xl:text-[11px]">{t("ui.labels.malaysia")}</p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[22px] font-bold leading-tight text-[#1d2b3a] lg:text-[22px] 2xl:text-[32px]">{t("ui.map.allStatesTerritories")}</h2>
+            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">{t("ui.map.independentScaleNote")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
             <p className="font-bold text-[#1d2b3a]">16 regions · 64 places</p>

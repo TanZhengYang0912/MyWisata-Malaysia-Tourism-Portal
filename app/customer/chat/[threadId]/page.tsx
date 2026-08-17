@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
@@ -12,6 +13,7 @@ import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
 
 export default function ChatThreadPage() {
+  const { t: tCustomer } = useTranslation("customer");
   const params = useParams<{ threadId: string }>();
   const { currentUser } = useAuth();
   const [thread, setThread] = useState<ChatThread | null | undefined>(undefined);
@@ -94,10 +96,10 @@ export default function ChatThreadPage() {
   }, [thread]);
 
   if (thread === undefined || !currentUser) {
-    return <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-muted-foreground">Loading conversation…</div>;
+    return <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.chat.loadingConversation")}</div>;
   }
   if (thread === null) {
-    return <EmptyState title="Conversation not found" description="This chat thread doesn't exist." />;
+    return <EmptyState title={tCustomer("ui.chat.conversationNotFound")} description={tCustomer("ui.chat.conversationMissing")} />;
   }
 
   return (
@@ -108,9 +110,9 @@ export default function ChatThreadPage() {
           messages={messages}
           currentUserId={currentUser.id}
           counterpart={{
-            name: outlet?.name ?? "Vendor conversation",
-            subtitle: `${outlet?.city || "Malaysia"}${outlet?.state ? `, ${outlet.state}` : ""}`,
-            badge: "Vendor",
+            name: outlet?.name ?? tCustomer("ui.chat.vendorConversation"),
+            subtitle: `${outlet?.city || tCustomer("ui.labels.malaysia")}${outlet?.state ? `, ${outlet.state}` : ""}`,
+            badge: tCustomer("ui.chat.vendor"),
             online: vendorOnline,
           }}
           onSend={(text) => sendMessage(thread.id, currentUser.id, "customer", text)}

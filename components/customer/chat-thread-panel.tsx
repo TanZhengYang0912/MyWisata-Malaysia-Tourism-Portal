@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
@@ -48,6 +49,7 @@ export function ChatThreadPanel({
   aiReply,
   readOnly = false,
 }: ChatThreadPanelProps) {
+  const { t } = useTranslation("customer");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -200,7 +202,7 @@ export function ChatThreadPanel({
             <Link
               href={backHref}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:hidden"
-              aria-label="Back to conversations"
+              aria-label={t("actions.back", { ns: "common" })}
             >
               <ArrowLeft size={17} />
             </Link>
@@ -237,10 +239,10 @@ export function ChatThreadPanel({
             {reportOpen && (
               <div className="absolute right-0 top-11 z-10 w-64 rounded-2xl border border-border bg-card p-4 shadow-lg">
                 {reportState === "sent" ? (
-                  <p className="text-sm font-medium text-foreground">Report submitted. Thank you.</p>
+                  <p className="text-sm font-medium text-foreground">{t("ui.chat.reportSubmitted")}</p>
                 ) : (
                   <>
-                    <p className="mb-2 text-sm font-semibold text-foreground">Report this conversation</p>
+                    <p className="mb-2 text-sm font-semibold text-foreground">{t("ui.chat.reportConversation")}</p>
                     <select
                       value={reportReason}
                       onChange={(event) => setReportReason(event.target.value)}
@@ -278,9 +280,9 @@ export function ChatThreadPanel({
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary">
               <MessageCircle size={21} />
             </div>
-            <p className="text-sm font-semibold text-foreground">Start the conversation</p>
+            <p className="text-sm font-semibold text-foreground">{t("ui.chat.startConversation")}</p>
             <p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
-              Ask about availability, accessibility, or anything you need for your trip.
+              {t("ui.chat.startConversationHint")}
             </p>
           </div>
         ) : (
@@ -447,7 +449,7 @@ export function ChatThreadPanel({
               type="submit"
               disabled={sending || uploading || (!text.trim() && !pendingFile)}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Send message"
+              aria-label={t("ui.actions.send")}
             >
               <Send size={16} />
             </button>

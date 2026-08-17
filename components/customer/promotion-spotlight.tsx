@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -13,6 +14,7 @@ const ACCENT_STYLES = {
 } as const;
 
 export function PromotionSpotlight({ activities }: { activities: ComputedActivity[] }) {
+  const { t } = useTranslation("customer");
   const promotions = useMemo(() => buildPromotionSpotlight(activities), [activities]);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -35,7 +37,7 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
           <div className="max-w-2xl text-white">
             <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#FFCC00]">
               <Sparkles size={15} />
-              Promotion spotlight
+              {t("ui.labels.trending")}
             </div>
             <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[0.16em] ${accent.badge}`}>
               {active.eyebrow}
@@ -55,7 +57,7 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
                 <button
                   key={promotion.activityId}
                   type="button"
-                  aria-label={`Show promotion ${index + 1}`}
+                  aria-label={`${t("ui.actions.viewDetails")} ${index + 1}`}
                   aria-current={index === selectedIndex ? "true" : undefined}
                   onClick={() => setActiveIndex(index)}
                   className={`h-2 rounded-full transition-all ${index === activeIndex ? "w-8 bg-[#FFCC00]" : "w-2 bg-white/50 hover:bg-white"}`}
@@ -64,8 +66,8 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
             </div>
             {promotions.length > 1 && (
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => move(-1)} aria-label="Previous promotion" className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronLeft size={17} /></button>
-                <button type="button" onClick={() => move(1)} aria-label="Next promotion" className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronRight size={17} /></button>
+                <button type="button" onClick={() => move(-1)} aria-label={t("ui.promotion.previous")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronLeft size={17} /></button>
+                <button type="button" onClick={() => move(1)} aria-label={t("ui.promotion.next")} className="rounded-full border border-white/25 p-2 text-white transition hover:bg-white/10"><ChevronRight size={17} /></button>
               </div>
             )}
           </div>

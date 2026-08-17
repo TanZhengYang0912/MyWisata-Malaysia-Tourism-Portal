@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
@@ -155,6 +156,7 @@ export function MalaysiaDistrictMap({
   selectedMarkerId?: string | null;
   onSelectMarker?: (id: string) => void;
 }) {
+  const { t } = useTranslation("customer");
   const [hovered, setHovered] = useState<string | null>(null);
 
   const feature = stateId ? stateFeatures.find((item) => item.properties.id === stateId) : undefined;
@@ -627,9 +629,9 @@ export function MalaysiaDistrictMap({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="var(--highlight-yellow, #D97706)" stroke="#ffffff" strokeWidth="1.4" transform="rotate(45 6 6)" /></svg>
-              Activity place
+              {t("ui.map.activityPlace")}
             </span>
-            <span className="ml-auto">Every daerah is labelled; pins open a preview.</span>
+            <span className="ml-auto">{t("ui.map.everyDistrictLabelled")}</span>
           </>
         ) : (
           <>
@@ -639,9 +641,9 @@ export function MalaysiaDistrictMap({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" rx="2" fill={LAND_QUIET} /></svg>
-              None yet
+              {t("ui.map.noneYet")}
             </span>
-            <span className="ml-auto">Tap a card, dot, or state to open its daerah.</span>
+            <span className="ml-auto">{t("ui.map.openDistrictPrompt")}</span>
           </>
         )}
       </div>
