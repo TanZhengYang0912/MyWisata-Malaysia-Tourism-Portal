@@ -24,11 +24,11 @@ const ROLE_LABEL: Record<Role, string> = {
   admin: "Admin", approver: "Approver", super_admin: "Super Admin",
 };
 const GENERIC_ERROR = "Unable to complete that request. Check your details and try again.";
-const EMAIL_SIGN_IN_ERROR = "Unable to sign in. Check your email and password. If you originally used Google, select Continue with Google or reset your password.";
 
 export default function LoginPage() {
   const { switchUser } = useAuth();
   const { t: tAuth } = useTranslation("auth");
+  const { t: tCommon } = useTranslation("common");
   const router = useRouter();
   const supabase = createClient();
   const [users, setUsers] = useState<DemoUser[]>([]);
@@ -81,7 +81,7 @@ export default function LoginPage() {
     event.preventDefault(); resetFeedback(); setBusy(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
-    if (signInError) { setError(EMAIL_SIGN_IN_ERROR); return; }
+    if (signInError) { setError(tAuth("signIn.error")); return; }
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session?.user.email_confirmed_at) {
       setMode("verify");
@@ -99,7 +99,7 @@ export default function LoginPage() {
       ? await supabase.auth.signOut({ scope: "local" })
       : { error: null };
     setBusy(false);
-    if (signOutError) { setError("Unable to start Guest Mode. Please try again."); return; }
+    if (signOutError) { setError(tCommon("guest.startError")); return; }
     router.replace(GUEST_EXPLORE_PATH); router.refresh();
   }
 
@@ -191,12 +191,12 @@ export default function LoginPage() {
             </form>
           ) : (
             <>
-              <div className="mb-3 grid grid-cols-2 rounded-lg bg-secondary/50 p-1"><button type="button" onClick={() => { resetFeedback(); setMode("signin"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signin" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>Sign in</button><button type="button" onClick={() => { resetFeedback(); setMode("signup"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signup" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>Create account</button></div>
+              <div className="mb-3 grid grid-cols-2 rounded-lg bg-secondary/50 p-1"><button type="button" onClick={() => { resetFeedback(); setMode("signin"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signin" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{tCommon("account.signIn")}</button><button type="button" onClick={() => { resetFeedback(); setMode("signup"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signup" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>Create account</button></div>
               <form onSubmit={mode === "signup" ? signUp : signIn} className="space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
                 <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
                 <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
                 {mode === "signup" && <><input type="password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm password" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" /><p className="px-1 text-[11px] text-muted-foreground">10+ characters, uppercase, lowercase, and number.</p></>}
-                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}</Button>
+                <Button type="submit" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Create account" : tCommon("account.signIn")}</Button>
                 {mode === "signin" && <button type="button" onClick={() => { resetFeedback(); setMode("forgot"); }} className="w-full text-sm font-semibold text-primary">Forgot password?</button>}
               </form>
               <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
@@ -204,7 +204,7 @@ export default function LoginPage() {
             </>
           )}
 
-          <button type="button" onClick={enterGuestMode} disabled={busy} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-70"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-white">G</div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">Guest Mode</p><p className="text-xs text-muted-foreground">Browse vendors and listings without signing in</p></div><Badge variant="secondary" className="shrink-0">Guest</Badge></button>
+          <button type="button" onClick={enterGuestMode} disabled={busy} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-70"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-white">G</div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{tCommon("guest.mode")}</p><p className="text-xs text-muted-foreground">Browse vendors and listings without signing in</p></div><Badge variant="secondary" className="shrink-0">Guest</Badge></button>
           <div className="mt-5 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seeded demo accounts</p><span className="text-[11px] text-muted-foreground">Quick entry</span></div>
           {roleCategories.length > 1 && (
             <div className="mt-2 flex flex-wrap gap-1.5">

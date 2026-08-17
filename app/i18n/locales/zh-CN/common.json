@@ -53,7 +53,8 @@
     "switchAccount": "切换账户"
   },
   "guest": {
-    "mode": "游客模式"
+    "mode": "游客模式",
+    "startError": "无法启动游客模式，请重试。"
   },
   "cart": {
     "label": "购物车",
