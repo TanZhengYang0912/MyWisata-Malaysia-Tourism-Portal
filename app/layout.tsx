@@ -4,7 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth";
 import { CartProvider } from "@/components/providers/cart";
 import { ActionFeedbackProvider } from "@/components/providers/action-feedback";
-import { AppI18nProvider } from "@/components/providers/i18n-provider";
+import { AppI18nProvider, type AppI18nResources } from "@/components/providers/i18n-provider";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { loadLocaleResources } from "@/lib/i18n/resources";
 
@@ -20,6 +20,11 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getRequestLocale();
   const resources = await loadLocaleResources(locale);
+  const englishResources = locale === "en" ? resources : await loadLocaleResources("en");
+  const resourcesByLocale: AppI18nResources = {
+    en: englishResources,
+    [locale]: resources,
+  };
 
   return (
     <html
@@ -28,7 +33,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       className={`${fraunces.variable} ${plusJakartaSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AppI18nProvider locale={locale} resources={resources}>
+        <AppI18nProvider locale={locale} resources={resourcesByLocale}>
           <ActionFeedbackProvider>
             <AuthProvider>
               <CartProvider>{children}</CartProvider>
