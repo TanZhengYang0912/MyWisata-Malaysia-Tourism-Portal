@@ -53,7 +53,8 @@
     "switchAccount": "Switch account"
   },
   "guest": {
-    "mode": "Guest Mode"
+    "mode": "Guest Mode",
+    "startError": "Unable to start Guest Mode. Please try again."
   },
   "cart": {
     "label": "Shopping cart",

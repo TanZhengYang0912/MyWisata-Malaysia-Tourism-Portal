@@ -78,4 +78,16 @@ describe("shared language entry points", () => {
     expect(admin).toContain('aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}');
     expect(admin).not.toContain("unread recommendations`}");
   });
+
+  it("translates fixed login entry-point copy through auth and common resources", () => {
+    const login = source("app/login/page.tsx");
+    expect(login).not.toMatch(/>Sign in</);
+    expect(login).not.toContain("Guest Mode");
+    expect(login).not.toContain("Unable to sign in. Check your email and password.");
+    expect(login).not.toContain("Unable to start Guest Mode. Please try again.");
+    expect(login).toContain('tCommon("account.signIn")');
+    expect(login).toContain('tCommon("guest.mode")');
+    expect(login).toContain('tAuth("signIn.error")');
+    expect(login).toContain('tCommon("guest.startError")');
+  });
 });
