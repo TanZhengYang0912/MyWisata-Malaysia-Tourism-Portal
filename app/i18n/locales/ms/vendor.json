@@ -45,11 +45,27 @@
       "phoneVerifyFallback": "Kami tidak dapat mengesahkan kod itu. Minta kod baharu dan cuba lagi.",
       "phoneSendFallback": "Kami tidak dapat menghantar kod. Semak nombor mudah alih dan cuba lagi.",
       "claim": {
-        "details": "Kategori itu tidak lagi tersedia. Pilih kategori lain.",
-        "account": "Log masuk dengan alamat e-mel yang menerima jemputan ini.",
-        "verify": "Sahkan telefon mudah alih peribadi anda sebelum menghantar permohonan.",
-        "inactive": "Jemputan vendor ini tidak lagi aktif.",
-        "retry": "Kami tidak dapat menghantar permohonan. Kemajuan anda disimpan; sila cuba lagi."
+        "details": {
+          "categoryInactive": "Kategori itu tidak lagi tersedia. Pilih kategori lain.",
+          "categoryInvalid": "Pilih kategori Vendor yang tersedia dan cuba lagi.",
+          "required": "Lengkapkan butiran Vendor dan outlet yang diperlukan sebelum menghantar.",
+          "format": "Semak butiran Vendor dan outlet kemudian cuba lagi."
+        },
+        "account": {
+          "emailMismatch": "Log masuk dengan alamat e-mel yang menerima jemputan ini.",
+          "unauthorized": "Log masuk sebelum menghantar permohonan Vendor ini."
+        },
+        "verify": {
+          "required": "Sahkan telefon mudah alih peribadi anda sebelum menghantar permohonan.",
+          "authorizationRequired": "Sahkan bahawa anda diberi kuasa mewakili perniagaan ini sebelum menghantar."
+        },
+        "inactive": {
+          "invitation": "Jemputan Vendor ini tidak lagi aktif."
+        },
+        "retry": {
+          "generic": "Kami tidak dapat menghantar permohonan. Kemajuan anda disimpan; sila cuba lagi.",
+          "ownerAlreadyHasVendor": "Akaun ini sudah memiliki Vendor. Semak permohonan yang disimpan atau cuba lagi."
+        }
       }
     },
     "codes": {
@@ -176,6 +192,57 @@
       "failed": "Pendaftaran gagal",
       "network": "Ralat rangkaian — sila cuba lagi",
       "retry": "Pendaftaran vendor gagal. Sila cuba lagi."
+    },
+    "validation": {
+      "name": {
+        "required": "Nama perniagaan diperlukan.",
+        "invalid": "Masukkan nama perniagaan yang sah.",
+        "min": "Nama perniagaan mestilah sekurang-kurangnya 2 aksara.",
+        "max": "Nama perniagaan mestilah 255 aksara atau kurang."
+      },
+      "description": {
+        "invalid": "Masukkan penerangan yang sah.",
+        "max": "Penerangan mestilah 2,000 aksara atau kurang."
+      },
+      "businessType": {
+        "invalid": "Masukkan jenis perniagaan yang sah.",
+        "max": "Jenis perniagaan mestilah 50 aksara atau kurang."
+      },
+      "legalBusinessName": {
+        "invalid": "Masukkan nama perniagaan sah yang betul.",
+        "max": "Nama perniagaan sah mestilah 255 aksara atau kurang."
+      },
+      "registrationNumber": {
+        "invalid": "Masukkan nombor pendaftaran yang sah.",
+        "max": "Nombor pendaftaran mestilah 120 aksara atau kurang."
+      },
+      "contactName": {
+        "invalid": "Masukkan nama untuk dihubungi yang sah.",
+        "max": "Nama untuk dihubungi mestilah 255 aksara atau kurang."
+      },
+      "contactEmail": {
+        "invalid": "Masukkan e-mel perniagaan yang sah.",
+        "format": "Masukkan alamat e-mel perniagaan yang sah.",
+        "max": "E-mel perniagaan mestilah 255 aksara atau kurang."
+      },
+      "contactPhone": {
+        "invalid": "Masukkan nombor telefon untuk dihubungi yang sah.",
+        "max": "Telefon untuk dihubungi mestilah 50 aksara atau kurang."
+      },
+      "businessAddress": {
+        "invalid": "Masukkan alamat perniagaan yang sah.",
+        "max": "Alamat perniagaan mestilah 500 aksara atau kurang."
+      },
+      "logoUrl": {
+        "invalid": "Masukkan URL logo yang sah.",
+        "format": "URL logo mestilah URL yang sah.",
+        "max": "URL logo mestilah 2,000 aksara atau kurang."
+      },
+      "coverUrl": {
+        "invalid": "Masukkan URL imej muka depan yang sah.",
+        "format": "URL imej muka depan mestilah URL yang sah.",
+        "max": "URL imej muka depan mestilah 2,000 aksara atau kurang."
+      }
     },
     "fields": {
       "businessName": "Nama Perniagaan",

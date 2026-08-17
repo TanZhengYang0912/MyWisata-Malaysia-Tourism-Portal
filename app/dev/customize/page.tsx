@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GripVertical, Maximize2, Plus, X } from "lucide-react";
 import { cellFromPointer, fits, firstFreeSlot, type Rect } from "./grid";
-import { WIDGET_CATALOG, WIDGET_ORDER, WidgetEditor, defaultContent, type WidgetType } from "./widgets";
+import { WIDGET_CATALOG, WIDGET_ORDER, WidgetEditor, defaultContent, type WidgetTranslate, type WidgetType } from "./widgets";
 
 const COLS = 8;
 const ROWS = 10;
@@ -30,7 +30,7 @@ interface Placed extends Rect {
   content: unknown;
 }
 
-function seedLayout(): Placed[] {
+function seedLayout(t: WidgetTranslate): Placed[] {
   const seed: [WidgetType, number, number, number, number][] = [
     ["cover", 0, 0, 4, 2],
     ["about", 4, 0, 2, 1],
@@ -43,7 +43,7 @@ function seedLayout(): Placed[] {
     ["reviews", 6, 4, 2, 2],
     ["social", 0, 6, 2, 1],
   ];
-  return seed.map(([type, x, y, w, h]) => ({ id: `seed-${type}`, type, x, y, w, h, content: defaultContent(type) }));
+  return seed.map(([type, x, y, w, h]) => ({ id: `seed-${type}`, type, x, y, w, h, content: defaultContent(type, t) }));
 }
 
 let idCounter = 0;
@@ -54,7 +54,7 @@ function newId() {
 
 export default function DevCustomizePage() {
   const { t } = useTranslation("auth");
-  const [widgets, setWidgets] = useState<Placed[]>(() => seedLayout());
+  const [widgets, setWidgets] = useState<Placed[]>(() => seedLayout(t));
   const [mounted, setMounted] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number; w: number; h: number; ok: boolean } | null>(null);
@@ -100,7 +100,7 @@ export default function DevCustomizePage() {
       setNotice(t("dev.customize.noRoom", { widget: widgetLabel(type) }));
       return;
     }
-    setWidgets((cur) => [...cur, { id: newId(), type, x: slot.x, y: slot.y, w, h, content: defaultContent(type) }]);
+    setWidgets((cur) => [...cur, { id: newId(), type, x: slot.x, y: slot.y, w, h, content: defaultContent(type, t) }]);
   }
   function removeWidget(id: string) {
     setWidgets((cur) => cur.filter((x) => x.id !== id));
@@ -141,7 +141,7 @@ export default function DevCustomizePage() {
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("dev.customize.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("dev.customize.description")}</p>
         </div>
-        <button type="button" onClick={() => setWidgets(seedLayout())} className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted">
+        <button type="button" onClick={() => setWidgets(seedLayout(t))} className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted">
           {t("dev.customize.reset")}
         </button>
       </div>

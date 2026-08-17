@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { vendorRegisterSchema, type VendorRegister } from '@/lib/validation/vendor-schemas';
+import { isVendorRegisterValidationKey, vendorRegisterSchema, type VendorRegister } from '@/lib/validation/vendor-schemas';
 
 interface Props {
   onClose?: () => void;
@@ -26,6 +26,10 @@ export default function RegisterVendorForm({ onClose }: Props) {
   } = useForm<VendorRegister>({
     resolver: zodResolver(vendorRegisterSchema),
   });
+
+  function validationMessage(message: string | undefined) {
+    return isVendorRegisterValidationKey(message) ? t(message) : message;
+  }
 
   async function onSubmit(data: VendorRegister) {
     setServerError(null);
@@ -71,7 +75,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           placeholder={t('registration.placeholders.businessName')}
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+        {errors.name && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.name.message)}</p>}
       </div>
 
       {/* Description */}
@@ -83,7 +87,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           placeholder={t('registration.placeholders.description')}
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>}
+        {errors.description && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.description.message)}</p>}
       </div>
 
       {/* Business Type */}
@@ -105,8 +109,8 @@ export default function RegisterVendorForm({ onClose }: Props) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.legalBusinessName')}</label><input {...register('legalBusinessName')} placeholder={t('registration.placeholders.legalBusinessName')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.legalBusinessName && <p className="mt-1 text-xs text-destructive">{errors.legalBusinessName.message}</p>}</div>
-        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.registrationNumber')}</label><input {...register('registrationNumber')} placeholder={t('registration.placeholders.registrationNumber')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.registrationNumber && <p className="mt-1 text-xs text-destructive">{errors.registrationNumber.message}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.legalBusinessName')}</label><input {...register('legalBusinessName')} placeholder={t('registration.placeholders.legalBusinessName')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.legalBusinessName && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.legalBusinessName.message)}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.registrationNumber')}</label><input {...register('registrationNumber')} placeholder={t('registration.placeholders.registrationNumber')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.registrationNumber && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.registrationNumber.message)}</p>}</div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -114,7 +118,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
         <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.contactPhone')}</label><input {...register('contactPhone')} placeholder={t('registration.placeholders.contactPhone')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
       </div>
 
-      <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessEmail')}</label><input {...register('contactEmail')} type="email" placeholder={t('registration.placeholders.businessEmail')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.contactEmail && <p className="mt-1 text-xs text-destructive">{errors.contactEmail.message}</p>}</div>
+      <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessEmail')}</label><input {...register('contactEmail')} type="email" placeholder={t('registration.placeholders.businessEmail')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.contactEmail && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.contactEmail.message)}</p>}</div>
       <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessAddress')}</label><textarea {...register('businessAddress')} rows={2} placeholder={t('registration.placeholders.businessAddress')} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
 
       {/* Logo URL */}
@@ -125,7 +129,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           placeholder="https://..."
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.logoUrl && <p className="mt-1 text-xs text-destructive">{errors.logoUrl.message}</p>}
+        {errors.logoUrl && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.logoUrl.message)}</p>}
       </div>
 
       {/* Cover URL */}
@@ -136,7 +140,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           placeholder="https://..."
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
-        {errors.coverUrl && <p className="mt-1 text-xs text-destructive">{errors.coverUrl.message}</p>}
+        {errors.coverUrl && <p className="mt-1 text-xs text-destructive">{validationMessage(errors.coverUrl.message)}</p>}
       </div>
 
       {/* Actions */}

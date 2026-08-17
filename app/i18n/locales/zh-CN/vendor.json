@@ -45,11 +45,27 @@
       "phoneVerifyFallback": "无法验证该验证码。请申请新验证码后重试。",
       "phoneSendFallback": "无法发送验证码。请检查手机号码后重试。",
       "claim": {
-        "details": "该类别已不可用。请选择其他类别。",
-        "account": "请使用收到此邀请的邮箱地址登录。",
-        "verify": "提交申请前请验证您的个人手机。",
-        "inactive": "此商家邀请已不再有效。",
-        "retry": "无法提交申请。您的进度已保存，请重试。"
+        "details": {
+          "categoryInactive": "该类别已不可用。请选择其他类别。",
+          "categoryInvalid": "请选择可用的商家类别，然后重试。",
+          "required": "提交前请填写必填的商家和门店信息。",
+          "format": "请检查商家和门店信息后重试。"
+        },
+        "account": {
+          "emailMismatch": "请使用收到此邀请的邮箱地址登录。",
+          "unauthorized": "请先登录，然后提交此商家申请。"
+        },
+        "verify": {
+          "required": "提交申请前请验证您的个人手机。",
+          "authorizationRequired": "提交前请确认您获授权代表此商家。"
+        },
+        "inactive": {
+          "invitation": "此商家邀请已不再有效。"
+        },
+        "retry": {
+          "generic": "无法提交申请。您的进度已保存，请重试。",
+          "ownerAlreadyHasVendor": "此账户已经拥有商家。请检查已保存的申请或重试。"
+        }
       }
     },
     "codes": {
@@ -176,6 +192,57 @@
       "failed": "注册失败",
       "network": "网络错误——请重试",
       "retry": "商家注册失败。请重试。"
+    },
+    "validation": {
+      "name": {
+        "required": "请输入商家名称。",
+        "invalid": "请输入有效的商家名称。",
+        "min": "商家名称至少需要 2 个字符。",
+        "max": "商家名称不能超过 255 个字符。"
+      },
+      "description": {
+        "invalid": "请输入有效的描述。",
+        "max": "描述不能超过 2,000 个字符。"
+      },
+      "businessType": {
+        "invalid": "请输入有效的商家类型。",
+        "max": "商家类型不能超过 50 个字符。"
+      },
+      "legalBusinessName": {
+        "invalid": "请输入有效的法定商家名称。",
+        "max": "法定商家名称不能超过 255 个字符。"
+      },
+      "registrationNumber": {
+        "invalid": "请输入有效的注册号码。",
+        "max": "注册号码不能超过 120 个字符。"
+      },
+      "contactName": {
+        "invalid": "请输入有效的联系人姓名。",
+        "max": "联系人姓名不能超过 255 个字符。"
+      },
+      "contactEmail": {
+        "invalid": "请输入有效的商家邮箱。",
+        "format": "请输入有效的商家邮箱地址。",
+        "max": "商家邮箱不能超过 255 个字符。"
+      },
+      "contactPhone": {
+        "invalid": "请输入有效的联系电话。",
+        "max": "联系电话不能超过 50 个字符。"
+      },
+      "businessAddress": {
+        "invalid": "请输入有效的商家地址。",
+        "max": "商家地址不能超过 500 个字符。"
+      },
+      "logoUrl": {
+        "invalid": "请输入有效的标志 URL。",
+        "format": "标志 URL 必须是有效的 URL。",
+        "max": "标志 URL 不能超过 2,000 个字符。"
+      },
+      "coverUrl": {
+        "invalid": "请输入有效的封面图片 URL。",
+        "format": "封面图片 URL 必须是有效的 URL。",
+        "max": "封面图片 URL 不能超过 2,000 个字符。"
+      }
     },
     "fields": {
       "businessName": "商家名称",

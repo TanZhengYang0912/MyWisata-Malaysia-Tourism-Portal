@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contentReviewSchema, voucherCreateSchema, voucherValidateSchema } from '@/lib/validation/vendor-schemas';
+import { contentReviewSchema, vendorRegisterSchema, voucherCreateSchema, voucherValidateSchema } from '@/lib/validation/vendor-schemas';
 
 const validId = '11111111-1111-4111-8111-111111111111';
 
@@ -25,6 +25,29 @@ describe('contentReviewSchema', () => {
       });
 
       expect(result.success).toBe(false);
+    }
+  });
+});
+
+describe('vendorRegisterSchema', () => {
+  it('emits stable translation keys for client-side field validation', () => {
+    const required = vendorRegisterSchema.safeParse({});
+    expect(required.success).toBe(false);
+    if (!required.success) {
+      expect(required.error.issues.find((issue) => issue.path[0] === 'name')?.message).toBe('registration.validation.name.required');
+    }
+
+    const invalidFormats = vendorRegisterSchema.safeParse({
+      name: 'Valid Vendor',
+      contactEmail: 'not-an-email',
+      logoUrl: 'not-a-url',
+      coverUrl: 'also-not-a-url',
+    });
+    expect(invalidFormats.success).toBe(false);
+    if (!invalidFormats.success) {
+      expect(invalidFormats.error.issues.find((issue) => issue.path[0] === 'contactEmail')?.message).toBe('registration.validation.contactEmail.format');
+      expect(invalidFormats.error.issues.find((issue) => issue.path[0] === 'logoUrl')?.message).toBe('registration.validation.logoUrl.format');
+      expect(invalidFormats.error.issues.find((issue) => issue.path[0] === 'coverUrl')?.message).toBe('registration.validation.coverUrl.format');
     }
   });
 });

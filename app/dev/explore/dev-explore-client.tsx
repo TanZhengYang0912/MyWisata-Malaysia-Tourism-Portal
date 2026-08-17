@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import { MalaysiaDistrictMap, type MapMarker } from "@/components/demo-map/malaysia-district-map";
 import { DiscoveryPinPreview } from "@/components/demo-map/discovery-pin-preview";
@@ -26,6 +27,7 @@ function pinToMarker(pin: DiscoveryPin): MapMarker {
 const CLUSTER_PREFIX = "cluster:";
 
 export function DevExploreClient({ mapData, error }: { mapData: DiscoveryMapData | null; error: string | null }) {
+  const { t } = useTranslation("auth");
   const [stateId, setStateId] = useState<string | null>(null);
   const [districtId, setDistrictId] = useState<string | null>(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
@@ -47,11 +49,11 @@ export function DevExploreClient({ mapData, error }: { mapData: DiscoveryMapData
         built.push(pinToMarker(group[0]));
       } else {
         const [lat, lng] = pinCoord(group[0]);
-        built.push({ id: `${CLUSTER_PREFIX}${key}`, kind: "cluster", lat, lng, name: `${group.length} places`, count: group.length });
+        built.push({ id: `${CLUSTER_PREFIX}${key}`, kind: "cluster", lat, lng, name: t("dev.explore.clusterPlaces", { count: group.length }), count: group.length });
       }
     }
     return { markers: built, groups: byCoord };
-  }, [mapData, stateId, districtId]);
+  }, [mapData, stateId, districtId, t]);
 
   const selectedPins: DiscoveryPin[] = useMemo(() => {
     if (!selectedMarkerId) return [];
@@ -66,14 +68,12 @@ export function DevExploreClient({ mapData, error }: { mapData: DiscoveryMapData
 
   return (
     <main className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Prototype · not linked from the app</p>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t("dev.explore.prototype")}</p>
       <h1 className="mt-1 text-3xl font-bold text-foreground font-[family-name:var(--font-display)]">
-        District &amp; discovery map
+        {t("dev.explore.title")}
       </h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-        Tap a state to see every outlet and place-bound activity in it — pins link straight through
-        to the real outlet and activity pages. District dots are always plotted; tap one to jump
-        straight into that state and district together.
+        {t("dev.explore.description")}
       </p>
 
       {mapData && mapData.omittedPlaceProducts.length > 0 && (
@@ -82,14 +82,17 @@ export function DevExploreClient({ mapData, error }: { mapData: DiscoveryMapData
           <p>
             {/* Template string, not adjacent JSX text nodes: SWC drops the space
                 around a mid-sentence expression otherwise. */}
-            {`${mapData.omittedPlaceProducts.length} place-bound product${mapData.omittedPlaceProducts.length === 1 ? "" : "s"} skipped — no verified destination coordinate, so it isn't plotted rather than guessed: ${mapData.omittedPlaceProducts.map((p) => p.name).join(", ")}.`}
+            {t(mapData.omittedPlaceProducts.length === 1 ? "dev.explore.omittedProduct" : "dev.explore.omittedProducts", {
+              count: mapData.omittedPlaceProducts.length,
+              products: mapData.omittedPlaceProducts.map((p) => p.name).join(", "),
+            })}
           </p>
         </div>
       )}
 
       {error ? (
         <div className="mt-6 rounded-2xl border border-red-300 bg-red-50 px-4 py-6 text-sm text-red-900">
-          <p className="font-bold">Couldn&apos;t load the catalogue.</p>
+          <p className="font-bold">{t("dev.explore.loadErrorTitle")}</p>
           <p className="mt-1 text-xs">{error}</p>
         </div>
       ) : !mapData ? null : (
@@ -107,7 +110,7 @@ export function DevExploreClient({ mapData, error }: { mapData: DiscoveryMapData
 
           {stateId && markers.length === 0 && (
             <p className="mt-3 rounded-xl bg-muted px-3 py-2.5 text-xs leading-5 text-muted-foreground">
-              No available outlets or activities in {districtId ? "this district" : activeState?.name ?? "this state"} yet.
+              {t("dev.explore.noAvailable", { location: districtId ? t("dev.explore.thisDistrict") : activeState?.name ?? t("dev.explore.thisState") })}
             </p>
           )}
 

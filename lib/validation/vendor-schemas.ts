@@ -16,19 +16,59 @@ const productMediaSchema = z.object({
 
 // ── Vendor ─────────────────────────────────────────────────
 
+export const VENDOR_REGISTER_VALIDATION_KEYS = [
+  'registration.validation.name.required',
+  'registration.validation.name.invalid',
+  'registration.validation.name.min',
+  'registration.validation.name.max',
+  'registration.validation.description.invalid',
+  'registration.validation.description.max',
+  'registration.validation.businessType.invalid',
+  'registration.validation.businessType.max',
+  'registration.validation.legalBusinessName.invalid',
+  'registration.validation.legalBusinessName.max',
+  'registration.validation.registrationNumber.invalid',
+  'registration.validation.registrationNumber.max',
+  'registration.validation.contactName.invalid',
+  'registration.validation.contactName.max',
+  'registration.validation.contactEmail.invalid',
+  'registration.validation.contactEmail.format',
+  'registration.validation.contactEmail.max',
+  'registration.validation.contactPhone.invalid',
+  'registration.validation.contactPhone.max',
+  'registration.validation.businessAddress.invalid',
+  'registration.validation.businessAddress.max',
+  'registration.validation.logoUrl.invalid',
+  'registration.validation.logoUrl.format',
+  'registration.validation.logoUrl.max',
+  'registration.validation.coverUrl.invalid',
+  'registration.validation.coverUrl.format',
+  'registration.validation.coverUrl.max',
+] as const;
+
+export type VendorRegisterValidationKey = typeof VENDOR_REGISTER_VALIDATION_KEYS[number];
+
+const vendorRegisterValidationKeySet = new Set<string>(VENDOR_REGISTER_VALIDATION_KEYS);
+
+export function isVendorRegisterValidationKey(message: unknown): message is VendorRegisterValidationKey {
+  return typeof message === 'string' && vendorRegisterValidationKeySet.has(message);
+}
+
+const vendorRegisterKey = (field: string, rule: string) => `registration.validation.${field}.${rule}`;
+
 export const vendorRegisterSchema = z.object({
-  name: z.string().trim().min(2).max(255),
+  name: z.string({ error: vendorRegisterKey('name', 'required') }).trim().min(2, { error: vendorRegisterKey('name', 'min') }).max(255, { error: vendorRegisterKey('name', 'max') }),
   slug: slug.optional(), // auto-generated from name if not provided
-  description: z.string().trim().max(2000).optional(),
-  businessType: z.string().max(50).optional(),
-  legalBusinessName: z.string().trim().max(255).optional(),
-  registrationNumber: z.string().trim().max(120).optional(),
-  contactName: z.string().trim().max(255).optional(),
-  contactEmail: z.string().email().max(255).optional().or(z.literal('')),
-  contactPhone: z.string().max(50).optional(),
-  businessAddress: z.string().trim().max(500).optional(),
-  logoUrl: z.string().url().max(2000).optional().or(z.literal('')),
-  coverUrl: z.string().url().max(2000).optional().or(z.literal('')),
+  description: z.string({ error: vendorRegisterKey('description', 'invalid') }).trim().max(2000, { error: vendorRegisterKey('description', 'max') }).optional(),
+  businessType: z.string({ error: vendorRegisterKey('businessType', 'invalid') }).max(50, { error: vendorRegisterKey('businessType', 'max') }).optional(),
+  legalBusinessName: z.string({ error: vendorRegisterKey('legalBusinessName', 'invalid') }).trim().max(255, { error: vendorRegisterKey('legalBusinessName', 'max') }).optional(),
+  registrationNumber: z.string({ error: vendorRegisterKey('registrationNumber', 'invalid') }).trim().max(120, { error: vendorRegisterKey('registrationNumber', 'max') }).optional(),
+  contactName: z.string({ error: vendorRegisterKey('contactName', 'invalid') }).trim().max(255, { error: vendorRegisterKey('contactName', 'max') }).optional(),
+  contactEmail: z.string({ error: vendorRegisterKey('contactEmail', 'invalid') }).email({ error: vendorRegisterKey('contactEmail', 'format') }).max(255, { error: vendorRegisterKey('contactEmail', 'max') }).optional().or(z.literal('')),
+  contactPhone: z.string({ error: vendorRegisterKey('contactPhone', 'invalid') }).max(50, { error: vendorRegisterKey('contactPhone', 'max') }).optional(),
+  businessAddress: z.string({ error: vendorRegisterKey('businessAddress', 'invalid') }).trim().max(500, { error: vendorRegisterKey('businessAddress', 'max') }).optional(),
+  logoUrl: z.string({ error: vendorRegisterKey('logoUrl', 'invalid') }).url({ error: vendorRegisterKey('logoUrl', 'format') }).max(2000, { error: vendorRegisterKey('logoUrl', 'max') }).optional().or(z.literal('')),
+  coverUrl: z.string({ error: vendorRegisterKey('coverUrl', 'invalid') }).url({ error: vendorRegisterKey('coverUrl', 'format') }).max(2000, { error: vendorRegisterKey('coverUrl', 'max') }).optional().or(z.literal('')),
 }).strict();
 
 export const vendorUpdateSchema = vendorRegisterSchema.partial();
