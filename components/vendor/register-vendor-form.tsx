@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function RegisterVendorForm({ onClose }: Props) {
+  const { t } = useTranslation('vendor');
   const { showFeedback } = useActionFeedback();
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -36,24 +38,24 @@ export default function RegisterVendorForm({ onClose }: Props) {
       const result = await res.json();
 
       if (!res.ok) {
-        setServerError(result.error?.message ?? 'Failed to register');
-        showFeedback('error', result.error?.message ?? 'Failed to register');
+        setServerError(result.error?.message ?? t('registration.errors.failed'));
+        showFeedback('error', result.error?.message ?? t('registration.errors.failed'));
         return;
       }
 
-      showFeedback('success', 'Vendor application submitted for admin review.');
+      showFeedback('success', t('registration.success'));
       router.refresh();
       onClose?.();
     } catch {
-      setServerError('Network error — please try again');
-      showFeedback('error', 'Vendor registration failed. Please try again.');
+      setServerError(t('registration.errors.network'));
+      showFeedback('error', t('registration.errors.retry'));
     }
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <h2 className="text-lg font-semibold">Register as Vendor</h2>
-      <p className="text-sm text-muted-foreground">Submit the basic business profile first. After approval, you can add the outlet, products, photos and time slots from the vendor dashboard.</p>
+      <h2 className="text-lg font-semibold">{t('registration.title')}</h2>
+      <p className="text-sm text-muted-foreground">{t('registration.description')}</p>
 
       {serverError && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -63,10 +65,10 @@ export default function RegisterVendorForm({ onClose }: Props) {
 
       {/* Name */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Business Name *</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessName')} *</label>
         <input
           {...register('name')}
-          placeholder="e.g. Rasa Malaysia Kitchen"
+          placeholder={t('registration.placeholders.businessName')}
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
@@ -74,11 +76,11 @@ export default function RegisterVendorForm({ onClose }: Props) {
 
       {/* Description */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Description</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.description')}</label>
         <textarea
           {...register('description')}
           rows={3}
-          placeholder="Describe your business..."
+          placeholder={t('registration.placeholders.description')}
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
         {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>}
@@ -86,38 +88,38 @@ export default function RegisterVendorForm({ onClose }: Props) {
 
       {/* Business Type */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Business Type</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessType')}</label>
         <select
           {...register('businessType')}
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
         >
-          <option value="">Select type...</option>
-          <option value="restaurant">Restaurant / Food & Beverage</option>
-          <option value="tour_operator">Tour Operator</option>
-          <option value="accommodation">Accommodation</option>
-          <option value="retail">Retail / Shopping</option>
-          <option value="wellness">Wellness & Spa</option>
-          <option value="adventure">Adventure & Sports</option>
-          <option value="other">Other</option>
+          <option value="">{t('registration.options.selectType')}</option>
+          <option value="restaurant">{t('registration.options.restaurant')}</option>
+          <option value="tour_operator">{t('registration.options.tourOperator')}</option>
+          <option value="accommodation">{t('registration.options.accommodation')}</option>
+          <option value="retail">{t('registration.options.retail')}</option>
+          <option value="wellness">{t('registration.options.wellness')}</option>
+          <option value="adventure">{t('registration.options.adventure')}</option>
+          <option value="other">{t('registration.options.other')}</option>
         </select>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="mb-1 block text-sm font-medium text-foreground">Legal Business Name</label><input {...register('legalBusinessName')} placeholder="Registered business name" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.legalBusinessName && <p className="mt-1 text-xs text-destructive">{errors.legalBusinessName.message}</p>}</div>
-        <div><label className="mb-1 block text-sm font-medium text-foreground">Registration Number</label><input {...register('registrationNumber')} placeholder="Optional for sole proprietors" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.registrationNumber && <p className="mt-1 text-xs text-destructive">{errors.registrationNumber.message}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.legalBusinessName')}</label><input {...register('legalBusinessName')} placeholder={t('registration.placeholders.legalBusinessName')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.legalBusinessName && <p className="mt-1 text-xs text-destructive">{errors.legalBusinessName.message}</p>}</div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.registrationNumber')}</label><input {...register('registrationNumber')} placeholder={t('registration.placeholders.registrationNumber')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.registrationNumber && <p className="mt-1 text-xs text-destructive">{errors.registrationNumber.message}</p>}</div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><label className="mb-1 block text-sm font-medium text-foreground">Contact Person</label><input {...register('contactName')} placeholder="Owner or authorised person" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
-        <div><label className="mb-1 block text-sm font-medium text-foreground">Contact Phone</label><input {...register('contactPhone')} placeholder="+60..." className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.contactPerson')}</label><input {...register('contactName')} placeholder={t('registration.placeholders.contactPerson')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
+        <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.contactPhone')}</label><input {...register('contactPhone')} placeholder={t('registration.placeholders.contactPhone')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
       </div>
 
-      <div><label className="mb-1 block text-sm font-medium text-foreground">Business Email</label><input {...register('contactEmail')} type="email" placeholder="business@example.com" className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.contactEmail && <p className="mt-1 text-xs text-destructive">{errors.contactEmail.message}</p>}</div>
-      <div><label className="mb-1 block text-sm font-medium text-foreground">Business Address</label><textarea {...register('businessAddress')} rows={2} placeholder="Registered business address" className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
+      <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessEmail')}</label><input {...register('contactEmail')} type="email" placeholder={t('registration.placeholders.businessEmail')} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />{errors.contactEmail && <p className="mt-1 text-xs text-destructive">{errors.contactEmail.message}</p>}</div>
+      <div><label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.businessAddress')}</label><textarea {...register('businessAddress')} rows={2} placeholder={t('registration.placeholders.businessAddress')} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" /></div>
 
       {/* Logo URL */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Logo URL</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.logoUrl')}</label>
         <input
           {...register('logoUrl')}
           placeholder="https://..."
@@ -128,7 +130,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
 
       {/* Cover URL */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">Cover Image URL</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">{t('registration.fields.coverUrl')}</label>
         <input
           {...register('coverUrl')}
           placeholder="https://..."
@@ -144,7 +146,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           disabled={isSubmitting}
           className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Application'}
+          {isSubmitting ? t('registration.submitting') : t('registration.submit')}
         </button>
         {onClose && (
           <button
@@ -152,7 +154,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
             onClick={onClose}
             className="rounded-xl border border-border px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
-            Cancel
+            {t('registration.cancel')}
           </button>
         )}
       </div>

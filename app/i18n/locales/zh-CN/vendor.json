@@ -26,5 +26,189 @@
   "pagination": {
     "showing": "显示第 {{first}}–{{last}} 项，共 {{total}} 项",
     "page": "第 {{current}} 页，共 {{total}} 页"
+  },
+  "invite": {
+    "loading": "正在加载邀请…",
+    "title": "商家邀请",
+    "errors": {
+      "sendCode": "无法发送登录验证码。请重试。",
+      "invalidCode": "请输入 6 位验证码。",
+      "expiredCode": "验证码无效或已过期。",
+      "google": "无法继续使用 Google。请重试。",
+      "switchAccount": "无法切换账户。请重试。",
+      "load": "无法加载此邀请。请重试或申请新的邀请。",
+      "phoneAlreadyClaimed": "此手机号码已关联其他 MyWisata 账户。请使用其他号码。",
+      "phoneRateLimited": "请求验证码次数过多。请 1 小时后重试。",
+      "phoneInvalidCode": "验证码无效或已过期。请申请新验证码后重试。",
+      "phoneInvalidNumber": "请输入有效的手机号码。",
+      "phoneUnavailable": "手机验证暂时不可用。请稍后重试。",
+      "phoneVerifyFallback": "无法验证该验证码。请申请新验证码后重试。",
+      "phoneSendFallback": "无法发送验证码。请检查手机号码后重试。",
+      "claim": {
+        "details": "该类别已不可用。请选择其他类别。",
+        "account": "请使用收到此邀请的邮箱地址登录。",
+        "verify": "提交申请前请验证您的个人手机。",
+        "inactive": "此商家邀请已不再有效。",
+        "retry": "无法提交申请。您的进度已保存，请重试。"
+      }
+    },
+    "codes": {
+      "INVITE_INVALID": "此邀请链接无效。",
+      "INVITE_EXPIRED": "此商家邀请已过期。请向 MyWisata 申请新的邀请。",
+      "INVITE_CANCELLED": "此商家邀请已取消。",
+      "INVITE_ALREADY_CLAIMED": "此商家邀请已被领取。",
+      "RECOMMENDATION_NOT_READY": "此推荐尚未准备好供商家领取。"
+    },
+    "actions": {
+      "continue": "继续",
+      "continueWithGoogle": "继续使用 Google",
+      "back": "返回",
+      "retry": "重试",
+      "requestNew": "申请新的邀请",
+      "contactSupport": "联系 MyWisata 客服"
+    },
+    "account": {
+      "useInvitedAccount": "使用受邀账户",
+      "mismatch": "此邀请发送至 {{email}}。请切换账户继续；邮箱匹配前，邀请预填信息将保持锁定。",
+      "switching": "切换中…",
+      "switch": "切换账户",
+      "checkEmail": "检查您的邮箱",
+      "codeDescription": "请输入发送至此邀请邮箱地址的 6 位验证码。",
+      "emailCodeLabel": "6 位邮箱验证码",
+      "verifying": "验证中…",
+      "verifyEmailCode": "验证邮箱验证码",
+      "sendNewCode": "发送新验证码",
+      "emailConfirmed": "邮箱已确认",
+      "emailMatchedDescription": "此账户与邀请匹配。继续查看商家和首个门店详情。",
+      "confirmAccount": "确认您的账户",
+      "confirmDescription": "使用收到此邀请的邮箱地址。无需密码。",
+      "sending": "发送中…",
+      "sendCode": "发送 6 位邮箱验证码",
+      "or": "或"
+    },
+    "details": {
+      "vendorProfile": "商家资料",
+      "vendorBrand": "商家品牌",
+      "vendorDescription": "这些信息用于描述商家申请，不会改变原始推荐。",
+      "location": "位置",
+      "firstOutlet": "首个门店",
+      "firstOutletDescription": "这是您商家品牌的第一个地点。"
+    },
+    "fields": {
+      "businessName": "商家名称",
+      "legalBusinessName": "法定商家名称",
+      "vendorDescription": "商家描述",
+      "category": "类别",
+      "firstOutletName": "首个门店名称",
+      "businessAddress": "商家地址",
+      "contactEmail": "联系邮箱",
+      "businessPhoneOptional": "商家电话（可选）",
+      "business": "商家",
+      "description": "描述",
+      "contact": "联系信息",
+      "googleLocation": "Google 位置"
+    },
+    "phone": {
+      "categoryUnavailable": "类别不可用",
+      "accountSecurity": "账户安全",
+      "verifyMobile": "验证您的个人手机",
+      "mobileDescription": "此号码会保持私密，用于验证您的用户身份，并与门店联系电话分开。",
+      "personalMobile": "个人手机号码",
+      "useAsOutletContact": "将此手机作为门店联系电话",
+      "outletContactDescription": "只有当顾客可以通过此号码联系门店时才选择此项。",
+      "enterCode": "请输入 6 位验证码",
+      "verifyOtp": "验证手机 OTP",
+      "resendOtp": "重新发送手机 OTP",
+      "resendIn": "{{minutes}}:{{seconds}} 后重新发送",
+      "sendOtp": "发送手机 OTP",
+      "finalReview": "最终审核",
+      "reviewApplication": "审核您的申请",
+      "reviewDescription": "发送给 MyWisata 审核前，请确认这些信息。",
+      "ownerAccount": "所有者和账户",
+      "signedInInvitationEmail": "使用邀请邮箱登录",
+      "mobileVerified": "手机已验证",
+      "vendor": "商家",
+      "firstOutlet": "首个门店",
+      "applicationStatus": "申请状态",
+      "pendingReview": "等待 MyWisata 审核。商家和门店在批准前保持私密。",
+      "authorization": "我确认我获授权代表此商家并提交此商家申请。",
+      "submitting": "提交中…",
+      "submitApplication": "提交申请",
+      "codeLabel": "手机验证码",
+      "otpDigit": "OTP 第 {{index}} 位"
+    },
+    "recommendation": {
+      "eyebrow": "推荐邀请",
+      "title": "您受邀加入 MyWisata",
+      "description": "一位 MyWisata 会员推荐了此商家。",
+      "details": "推荐详情",
+      "why": "推荐原因",
+      "photoAlt": "{{business}} 推荐照片 {{index}}",
+      "photoNotice": "推荐照片仅供参考，不会复制到您的商家资料中。",
+      "prefillNotice": "信息由顾客推荐预填。请检查并编辑不正确的内容。"
+    },
+    "notProvided": "未提供",
+    "notProvidedEmail": "未提供邮箱",
+    "notProvidedPhone": "未提供电话",
+    "support": {
+      "newInvitationSubject": "申请新的商家邀请",
+      "subject": "商家邀请支持"
+    },
+    "submitted": {
+      "title": "商家申请已提交",
+      "description": "MyWisata 审核期间，您的商家和首个门店保持私密。"
+    },
+    "inactive": {
+      "title": "商家邀请已失效",
+      "description": "此商家邀请已不再有效。如需帮助，请联系 MyWisata 客服。"
+    },
+    "setupLabel": "商家邀请设置",
+    "step": "第 {{current}} 步，共 {{total}} 步"
+  },
+  "registration": {
+    "title": "注册成为商家",
+    "description": "请先提交基本商家资料。批准后，您可以从商家控制台添加门店、产品、照片和时间段。",
+    "success": "商家申请已提交，等待管理员审核。",
+    "submitting": "提交中…",
+    "submit": "提交申请",
+    "cancel": "取消",
+    "errors": {
+      "failed": "注册失败",
+      "network": "网络错误——请重试",
+      "retry": "商家注册失败。请重试。"
+    },
+    "fields": {
+      "businessName": "商家名称",
+      "description": "描述",
+      "businessType": "商家类型",
+      "legalBusinessName": "法定商家名称",
+      "registrationNumber": "注册编号",
+      "contactPerson": "联系人",
+      "contactPhone": "联系电话",
+      "businessEmail": "商家邮箱",
+      "businessAddress": "商家地址",
+      "logoUrl": "标志 URL",
+      "coverUrl": "封面图片 URL"
+    },
+    "placeholders": {
+      "businessName": "例如：Rasa Malaysia Kitchen",
+      "description": "描述您的商家……",
+      "legalBusinessName": "注册商家名称",
+      "registrationNumber": "个体经营者可选",
+      "contactPerson": "所有者或授权人员",
+      "contactPhone": "+60…",
+      "businessEmail": "business@example.com",
+      "businessAddress": "注册商家地址"
+    },
+    "options": {
+      "selectType": "选择类型……",
+      "restaurant": "餐厅 / 餐饮",
+      "tourOperator": "旅游运营商",
+      "accommodation": "住宿",
+      "retail": "零售 / 购物",
+      "wellness": "康体与水疗",
+      "adventure": "探险与运动",
+      "other": "其他"
+    }
   }
 }

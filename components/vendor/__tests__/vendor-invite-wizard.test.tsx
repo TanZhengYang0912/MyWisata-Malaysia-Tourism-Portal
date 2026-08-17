@@ -11,9 +11,9 @@ describe('VendorInviteWizard contract', () => {
     const source = `${wizardSource()}\n${accountSource()}\n${stateSource()}`;
 
     expect(source).toContain("'account' | 'details' | 'verify'");
-    expect(source).toContain('Step {stepNumber} of 3');
-    expect(source).toContain('Send 6-digit email code');
-    expect(source).toContain('Continue with Google');
+    expect(source).toContain("t('invite.step'");
+    expect(source).toContain("t('invite.account.sendCode')");
+    expect(source).toContain("t('invite.actions.continueWithGoogle')");
     expect(source).toContain('/api/vendor-invite/auth/email/send');
     expect(source).toContain('/api/vendor-invite/auth/email/verify');
     expect(source).toContain("provider: 'google'");
@@ -25,10 +25,10 @@ describe('VendorInviteWizard contract', () => {
     const source = `${wizardSource()}\n${detailsSource()}`;
 
     expect(source).toContain("activeStep === 'details'");
-    expect(source).toContain('Vendor brand');
-    expect(source).toContain('First outlet');
-    expect(source).toContain('First outlet name');
-    expect(source).toContain('Business phone (optional)');
+    expect(source).toContain("t('invite.details.vendorBrand')");
+    expect(source).toContain("t('invite.details.firstOutlet')");
+    expect(source).toContain("t('invite.fields.firstOutletName')");
+    expect(source).toContain("t('invite.fields.businessPhoneOptional')");
     expect(source).toContain('type="radio"');
     expect(source).toContain("name=\"category\"");
     expect(source).toContain("update('categoryId', category.id)");
@@ -54,8 +54,8 @@ describe('VendorInviteWizard contract', () => {
     expect(source).toContain('submitGuidedVendorClaim');
     expect(source).toContain('submittingRef.current');
     expect(source).toContain('window.sessionStorage.removeItem');
-    expect(source).toContain('Vendor application submitted');
-    expect(source).toContain('private while MyWisata reviews the application');
-    expect(source).toContain('Vendor invitation inactive');
+    expect(source).toContain("t('invite.submitted.title')");
+    expect(source).toContain("t('invite.submitted.description')");
+    expect(source).toContain("t('invite.inactive.title')");
   });
 });

@@ -78,5 +78,33 @@
   },
   "profile": {
     "languageDescription": "选择 MyWisata 使用的语言。"
+  },
+  "accountLifecycle": {
+    "restore": {
+      "title": "恢复您的账户",
+      "closedSuffix": "已关闭。",
+      "closed": "此账户已关闭。",
+      "keepHistory": "恢复账户以保留现有订单和钱包记录。",
+      "reverification": "为确保安全，需要重新完成手机、个人资料和 KYC 验证。",
+      "restoring": "恢复中…",
+      "action": "恢复账户",
+      "error": "无法恢复账户"
+    },
+    "suspended": {
+      "title": "账户已暂停",
+      "statusSuffix": "当前已暂停。",
+      "status": "此账户当前已暂停。",
+      "contact": "如果您认为这是错误，请联系客服。",
+      "minimumAppeal": "请提供至少 10 个字符，以便客服审核您的申诉。",
+      "submitError": "无法提交申诉",
+      "appealSubmitted": "申诉已提交",
+      "ticket": "客服工单：{{ticketId}}",
+      "viewTicket": "查看工单",
+      "appealLabel": "申诉信息",
+      "appealPlaceholder": "请说明您认为应审核此暂停的原因……",
+      "submitting": "提交中…",
+      "submit": "提交申诉",
+      "viewTickets": "查看客服工单"
+    }
   }
 }

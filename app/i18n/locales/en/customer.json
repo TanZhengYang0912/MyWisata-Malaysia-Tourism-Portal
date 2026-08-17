@@ -78,5 +78,33 @@
   },
   "profile": {
     "languageDescription": "Choose the language used throughout MyWisata."
+  },
+  "accountLifecycle": {
+    "restore": {
+      "title": "Restore your account",
+      "closedSuffix": "was closed.",
+      "closed": "This account was closed.",
+      "keepHistory": "Restore it to keep your existing orders and wallet history.",
+      "reverification": "For safety, Phone, Profile and KYC verification will need to be completed again.",
+      "restoring": "Restoring…",
+      "action": "Restore account",
+      "error": "Unable to restore account"
+    },
+    "suspended": {
+      "title": "Account suspended",
+      "statusSuffix": "is currently suspended.",
+      "status": "This account is currently suspended.",
+      "contact": "Contact support if you believe this is a mistake.",
+      "minimumAppeal": "Please provide at least 10 characters so Support can review your appeal.",
+      "submitError": "Unable to submit appeal",
+      "appealSubmitted": "Appeal submitted",
+      "ticket": "Support ticket: {{ticketId}}",
+      "viewTicket": "View ticket",
+      "appealLabel": "Appeal message",
+      "appealPlaceholder": "Explain why you believe this suspension should be reviewed…",
+      "submitting": "Submitting…",
+      "submit": "Submit appeal",
+      "viewTickets": "View support tickets"
+    }
   }
 }

@@ -26,5 +26,189 @@
   "pagination": {
     "showing": "Showing {{first}}–{{last}} of {{total}}",
     "page": "Page {{current}} of {{total}}"
+  },
+  "invite": {
+    "loading": "Loading invitation…",
+    "title": "Vendor invitation",
+    "errors": {
+      "sendCode": "Unable to send a sign-in code. Please try again.",
+      "invalidCode": "Enter the 6-digit code.",
+      "expiredCode": "That code is invalid or has expired.",
+      "google": "Unable to continue with Google. Please try again.",
+      "switchAccount": "Unable to switch accounts. Please try again.",
+      "load": "We couldn’t load this invitation. Please retry or request a new invitation.",
+      "phoneAlreadyClaimed": "This mobile number is already linked to another MyWisata account. Use a different number.",
+      "phoneRateLimited": "Too many codes requested. Try again in 1 hour.",
+      "phoneInvalidCode": "That code is invalid or has expired. Request a new code and try again.",
+      "phoneInvalidNumber": "Enter a valid mobile number.",
+      "phoneUnavailable": "Mobile verification is temporarily unavailable. Try again later.",
+      "phoneVerifyFallback": "We couldn’t verify that code. Request a new code and try again.",
+      "phoneSendFallback": "We couldn’t send a code. Check the mobile number and try again.",
+      "claim": {
+        "details": "That category is no longer available. Choose another category.",
+        "account": "Sign in with the email address that received this invitation.",
+        "verify": "Verify your personal mobile before submitting the application.",
+        "inactive": "This vendor invitation is no longer active.",
+        "retry": "We couldn’t submit the application. Your progress is saved; please try again."
+      }
+    },
+    "codes": {
+      "INVITE_INVALID": "This invitation link is invalid.",
+      "INVITE_EXPIRED": "This vendor invitation has expired. Request a new invitation from MyWisata.",
+      "INVITE_CANCELLED": "This vendor invitation was cancelled.",
+      "INVITE_ALREADY_CLAIMED": "This vendor invitation has already been claimed.",
+      "RECOMMENDATION_NOT_READY": "This recommendation is not ready for vendor claim."
+    },
+    "actions": {
+      "continue": "Continue",
+      "continueWithGoogle": "Continue with Google",
+      "back": "Back",
+      "retry": "Retry",
+      "requestNew": "Request a new invitation",
+      "contactSupport": "Contact MyWisata support"
+    },
+    "account": {
+      "useInvitedAccount": "Use the invited account",
+      "mismatch": "This invitation was sent to {{email}}. Switch accounts to continue; private invitation prefill stays locked until the email matches.",
+      "switching": "Switching…",
+      "switch": "Switch account",
+      "checkEmail": "Check your email",
+      "codeDescription": "Enter the six-digit code sent to the email address on this invitation.",
+      "emailCodeLabel": "6-digit email code",
+      "verifying": "Verifying…",
+      "verifyEmailCode": "Verify email code",
+      "sendNewCode": "Send a new code",
+      "emailConfirmed": "Email confirmed",
+      "emailMatchedDescription": "This account matches the invitation. Continue to review the Vendor and first outlet details.",
+      "confirmAccount": "Confirm your account",
+      "confirmDescription": "Use the email address that received this invitation. No password is needed.",
+      "sending": "Sending…",
+      "sendCode": "Send 6-digit email code",
+      "or": "or"
+    },
+    "details": {
+      "vendorProfile": "Vendor profile",
+      "vendorBrand": "Vendor brand",
+      "vendorDescription": "These details describe the Vendor application. They do not change the original recommendation.",
+      "location": "Location",
+      "firstOutlet": "First outlet",
+      "firstOutletDescription": "This is the first location for your Vendor brand."
+    },
+    "fields": {
+      "businessName": "Business name",
+      "legalBusinessName": "Legal business name",
+      "vendorDescription": "Vendor description",
+      "category": "Category",
+      "firstOutletName": "First outlet name",
+      "businessAddress": "Business address",
+      "contactEmail": "Contact email",
+      "businessPhoneOptional": "Business phone (optional)",
+      "business": "Business",
+      "description": "Description",
+      "contact": "Contact",
+      "googleLocation": "Google location"
+    },
+    "phone": {
+      "categoryUnavailable": "Category unavailable",
+      "accountSecurity": "Account security",
+      "verifyMobile": "Verify your personal mobile",
+      "mobileDescription": "This number stays private. It verifies your User identity and is separate from the Outlet contact.",
+      "personalMobile": "Personal mobile number",
+      "useAsOutletContact": "Use this mobile as Outlet contact",
+      "outletContactDescription": "Only select this if customers may contact the Outlet on this number.",
+      "enterCode": "Enter the 6-digit code",
+      "verifyOtp": "Verify phone OTP",
+      "resendOtp": "Resend phone OTP",
+      "resendIn": "Resend in {{minutes}}:{{seconds}}",
+      "sendOtp": "Send phone OTP",
+      "finalReview": "Final review",
+      "reviewApplication": "Review your application",
+      "reviewDescription": "Confirm these details before sending them to MyWisata for review.",
+      "ownerAccount": "Owner and account",
+      "signedInInvitationEmail": "Signed in with the invitation email",
+      "mobileVerified": "Mobile verified",
+      "vendor": "Vendor",
+      "firstOutlet": "First Outlet",
+      "applicationStatus": "Application status",
+      "pendingReview": "Pending MyWisata review. The Vendor and Outlet stay private until approval.",
+      "authorization": "I confirm that I am authorized to represent this business and submit this Vendor application.",
+      "submitting": "Submitting…",
+      "submitApplication": "Submit application",
+      "codeLabel": "Phone verification code",
+      "otpDigit": "OTP digit {{index}}"
+    },
+    "recommendation": {
+      "eyebrow": "Recommendation invitation",
+      "title": "You’re invited to join MyWisata",
+      "description": "A MyWisata member recommended this business.",
+      "details": "Recommendation details",
+      "why": "Why it was recommended",
+      "photoAlt": "{{business}} recommendation photo {{index}}",
+      "photoNotice": "Recommendation photos are shown for reference and are not copied to your Vendor profile.",
+      "prefillNotice": "Pre-filled from a customer recommendation. Please review and edit any details that are incorrect."
+    },
+    "notProvided": "Not provided",
+    "notProvidedEmail": "Email not provided",
+    "notProvidedPhone": "Phone not provided",
+    "support": {
+      "newInvitationSubject": "Request a new vendor invitation",
+      "subject": "Vendor invitation support"
+    },
+    "submitted": {
+      "title": "Vendor application submitted",
+      "description": "Your Vendor and first Outlet are private while MyWisata reviews the application."
+    },
+    "inactive": {
+      "title": "Vendor invitation inactive",
+      "description": "This vendor invitation is no longer active. Contact MyWisata support if you need help."
+    },
+    "setupLabel": "Vendor invitation setup",
+    "step": "Step {{current}} of {{total}}"
+  },
+  "registration": {
+    "title": "Register as Vendor",
+    "description": "Submit the basic business profile first. After approval, you can add the outlet, products, photos and time slots from the vendor dashboard.",
+    "success": "Vendor application submitted for admin review.",
+    "submitting": "Submitting…",
+    "submit": "Submit Application",
+    "cancel": "Cancel",
+    "errors": {
+      "failed": "Failed to register",
+      "network": "Network error — please try again",
+      "retry": "Vendor registration failed. Please try again."
+    },
+    "fields": {
+      "businessName": "Business Name",
+      "description": "Description",
+      "businessType": "Business Type",
+      "legalBusinessName": "Legal Business Name",
+      "registrationNumber": "Registration Number",
+      "contactPerson": "Contact Person",
+      "contactPhone": "Contact Phone",
+      "businessEmail": "Business Email",
+      "businessAddress": "Business Address",
+      "logoUrl": "Logo URL",
+      "coverUrl": "Cover Image URL"
+    },
+    "placeholders": {
+      "businessName": "e.g. Rasa Malaysia Kitchen",
+      "description": "Describe your business...",
+      "legalBusinessName": "Registered business name",
+      "registrationNumber": "Optional for sole proprietors",
+      "contactPerson": "Owner or authorised person",
+      "contactPhone": "+60...",
+      "businessEmail": "business@example.com",
+      "businessAddress": "Registered business address"
+    },
+    "options": {
+      "selectType": "Select type...",
+      "restaurant": "Restaurant / Food & Beverage",
+      "tourOperator": "Tour Operator",
+      "accommodation": "Accommodation",
+      "retail": "Retail / Shopping",
+      "wellness": "Wellness & Spa",
+      "adventure": "Adventure & Sports",
+      "other": "Other"
+    }
   }
 }

@@ -26,5 +26,189 @@
   "pagination": {
     "showing": "Menunjukkan {{first}}–{{last}} daripada {{total}}",
     "page": "Halaman {{current}} daripada {{total}}"
+  },
+  "invite": {
+    "loading": "Memuatkan jemputan…",
+    "title": "Jemputan vendor",
+    "errors": {
+      "sendCode": "Tidak dapat menghantar kod log masuk. Cuba lagi.",
+      "invalidCode": "Masukkan kod 6 digit.",
+      "expiredCode": "Kod itu tidak sah atau telah tamat tempoh.",
+      "google": "Tidak dapat meneruskan dengan Google. Cuba lagi.",
+      "switchAccount": "Tidak dapat menukar akaun. Cuba lagi.",
+      "load": "Kami tidak dapat memuatkan jemputan ini. Cuba lagi atau minta jemputan baharu.",
+      "phoneAlreadyClaimed": "Nombor mudah alih ini telah dipautkan kepada akaun MyWisata lain. Gunakan nombor yang berbeza.",
+      "phoneRateLimited": "Terlalu banyak kod diminta. Cuba lagi dalam 1 jam.",
+      "phoneInvalidCode": "Kod itu tidak sah atau telah tamat tempoh. Minta kod baharu dan cuba lagi.",
+      "phoneInvalidNumber": "Masukkan nombor mudah alih yang sah.",
+      "phoneUnavailable": "Pengesahan mudah alih tidak tersedia buat sementara. Cuba lagi kemudian.",
+      "phoneVerifyFallback": "Kami tidak dapat mengesahkan kod itu. Minta kod baharu dan cuba lagi.",
+      "phoneSendFallback": "Kami tidak dapat menghantar kod. Semak nombor mudah alih dan cuba lagi.",
+      "claim": {
+        "details": "Kategori itu tidak lagi tersedia. Pilih kategori lain.",
+        "account": "Log masuk dengan alamat e-mel yang menerima jemputan ini.",
+        "verify": "Sahkan telefon mudah alih peribadi anda sebelum menghantar permohonan.",
+        "inactive": "Jemputan vendor ini tidak lagi aktif.",
+        "retry": "Kami tidak dapat menghantar permohonan. Kemajuan anda disimpan; sila cuba lagi."
+      }
+    },
+    "codes": {
+      "INVITE_INVALID": "Pautan jemputan ini tidak sah.",
+      "INVITE_EXPIRED": "Jemputan vendor ini telah tamat tempoh. Minta jemputan baharu daripada MyWisata.",
+      "INVITE_CANCELLED": "Jemputan vendor ini telah dibatalkan.",
+      "INVITE_ALREADY_CLAIMED": "Jemputan vendor ini telah dituntut.",
+      "RECOMMENDATION_NOT_READY": "Cadangan ini belum bersedia untuk tuntutan vendor."
+    },
+    "actions": {
+      "continue": "Teruskan",
+      "continueWithGoogle": "Teruskan dengan Google",
+      "back": "Kembali",
+      "retry": "Cuba lagi",
+      "requestNew": "Minta jemputan baharu",
+      "contactSupport": "Hubungi sokongan MyWisata"
+    },
+    "account": {
+      "useInvitedAccount": "Gunakan akaun yang dijemput",
+      "mismatch": "Jemputan ini dihantar ke {{email}}. Tukar akaun untuk meneruskan; pratetap jemputan peribadi kekal dikunci sehingga e-mel sepadan.",
+      "switching": "Menukar…",
+      "switch": "Tukar akaun",
+      "checkEmail": "Semak e-mel anda",
+      "codeDescription": "Masukkan kod enam digit yang dihantar ke alamat e-mel pada jemputan ini.",
+      "emailCodeLabel": "Kod e-mel 6 digit",
+      "verifying": "Mengesahkan…",
+      "verifyEmailCode": "Sahkan kod e-mel",
+      "sendNewCode": "Hantar kod baharu",
+      "emailConfirmed": "E-mel disahkan",
+      "emailMatchedDescription": "Akaun ini sepadan dengan jemputan. Teruskan untuk menyemak butiran Vendor dan outlet pertama.",
+      "confirmAccount": "Sahkan akaun anda",
+      "confirmDescription": "Gunakan alamat e-mel yang menerima jemputan ini. Kata laluan tidak diperlukan.",
+      "sending": "Menghantar…",
+      "sendCode": "Hantar kod e-mel 6 digit",
+      "or": "atau"
+    },
+    "details": {
+      "vendorProfile": "Profil vendor",
+      "vendorBrand": "Jenama vendor",
+      "vendorDescription": "Butiran ini menerangkan permohonan Vendor. Ia tidak mengubah cadangan asal.",
+      "location": "Lokasi",
+      "firstOutlet": "Outlet pertama",
+      "firstOutletDescription": "Ini ialah lokasi pertama untuk jenama Vendor anda."
+    },
+    "fields": {
+      "businessName": "Nama perniagaan",
+      "legalBusinessName": "Nama perniagaan sah",
+      "vendorDescription": "Penerangan vendor",
+      "category": "Kategori",
+      "firstOutletName": "Nama outlet pertama",
+      "businessAddress": "Alamat perniagaan",
+      "contactEmail": "E-mel hubungan",
+      "businessPhoneOptional": "Telefon perniagaan (pilihan)",
+      "business": "Perniagaan",
+      "description": "Penerangan",
+      "contact": "Hubungan",
+      "googleLocation": "Lokasi Google"
+    },
+    "phone": {
+      "categoryUnavailable": "Kategori tidak tersedia",
+      "accountSecurity": "Keselamatan akaun",
+      "verifyMobile": "Sahkan telefon mudah alih peribadi anda",
+      "mobileDescription": "Nombor ini kekal peribadi. Ia mengesahkan identiti Pengguna anda dan berasingan daripada hubungan Outlet.",
+      "personalMobile": "Nombor telefon mudah alih peribadi",
+      "useAsOutletContact": "Gunakan telefon ini sebagai hubungan Outlet",
+      "outletContactDescription": "Pilih ini hanya jika pelanggan boleh menghubungi Outlet melalui nombor ini.",
+      "enterCode": "Masukkan kod 6 digit",
+      "verifyOtp": "Sahkan OTP telefon",
+      "resendOtp": "Hantar semula OTP telefon",
+      "resendIn": "Hantar semula dalam {{minutes}}:{{seconds}}",
+      "sendOtp": "Hantar OTP telefon",
+      "finalReview": "Semakan akhir",
+      "reviewApplication": "Semak permohonan anda",
+      "reviewDescription": "Sahkan butiran ini sebelum menghantarnya kepada MyWisata untuk semakan.",
+      "ownerAccount": "Pemilik dan akaun",
+      "signedInInvitationEmail": "Log masuk dengan e-mel jemputan",
+      "mobileVerified": "Telefon mudah alih disahkan",
+      "vendor": "Vendor",
+      "firstOutlet": "Outlet pertama",
+      "applicationStatus": "Status permohonan",
+      "pendingReview": "Menunggu semakan MyWisata. Vendor dan Outlet kekal peribadi sehingga diluluskan.",
+      "authorization": "Saya mengesahkan bahawa saya diberi kuasa untuk mewakili perniagaan ini dan menghantar permohonan Vendor ini.",
+      "submitting": "Menghantar…",
+      "submitApplication": "Hantar permohonan",
+      "codeLabel": "Kod pengesahan telefon",
+      "otpDigit": "Digit OTP {{index}}"
+    },
+    "recommendation": {
+      "eyebrow": "Jemputan cadangan",
+      "title": "Anda dijemput menyertai MyWisata",
+      "description": "Ahli MyWisata telah mencadangkan perniagaan ini.",
+      "details": "Butiran cadangan",
+      "why": "Sebab ia dicadangkan",
+      "photoAlt": "Foto cadangan {{business}} {{index}}",
+      "photoNotice": "Foto cadangan ditunjukkan untuk rujukan dan tidak disalin ke profil Vendor anda.",
+      "prefillNotice": "Dipratetap daripada cadangan pelanggan. Semak dan edit butiran yang tidak betul."
+    },
+    "notProvided": "Tidak disediakan",
+    "notProvidedEmail": "E-mel tidak disediakan",
+    "notProvidedPhone": "Telefon tidak disediakan",
+    "support": {
+      "newInvitationSubject": "Minta jemputan vendor baharu",
+      "subject": "Sokongan jemputan vendor"
+    },
+    "submitted": {
+      "title": "Permohonan vendor dihantar",
+      "description": "Vendor dan Outlet pertama anda kekal peribadi sementara MyWisata menyemak permohonan."
+    },
+    "inactive": {
+      "title": "Jemputan vendor tidak aktif",
+      "description": "Jemputan vendor ini tidak lagi aktif. Hubungi sokongan MyWisata jika anda memerlukan bantuan."
+    },
+    "setupLabel": "Persediaan jemputan vendor",
+    "step": "Langkah {{current}} daripada {{total}}"
+  },
+  "registration": {
+    "title": "Daftar sebagai Vendor",
+    "description": "Hantar profil perniagaan asas dahulu. Selepas diluluskan, anda boleh menambah outlet, produk, foto dan slot masa daripada papan pemuka vendor.",
+    "success": "Permohonan vendor dihantar untuk semakan pentadbir.",
+    "submitting": "Menghantar…",
+    "submit": "Hantar permohonan",
+    "cancel": "Batal",
+    "errors": {
+      "failed": "Pendaftaran gagal",
+      "network": "Ralat rangkaian — sila cuba lagi",
+      "retry": "Pendaftaran vendor gagal. Sila cuba lagi."
+    },
+    "fields": {
+      "businessName": "Nama Perniagaan",
+      "description": "Penerangan",
+      "businessType": "Jenis Perniagaan",
+      "legalBusinessName": "Nama Perniagaan Sah",
+      "registrationNumber": "Nombor Pendaftaran",
+      "contactPerson": "Orang Hubungan",
+      "contactPhone": "Telefon Hubungan",
+      "businessEmail": "E-mel Perniagaan",
+      "businessAddress": "Alamat Perniagaan",
+      "logoUrl": "URL Logo",
+      "coverUrl": "URL Imej Muka Hadapan"
+    },
+    "placeholders": {
+      "businessName": "cth. Rasa Malaysia Kitchen",
+      "description": "Terangkan perniagaan anda...",
+      "legalBusinessName": "Nama perniagaan berdaftar",
+      "registrationNumber": "Pilihan untuk pemilik tunggal",
+      "contactPerson": "Pemilik atau orang yang diberi kuasa",
+      "contactPhone": "+60...",
+      "businessEmail": "business@example.com",
+      "businessAddress": "Alamat perniagaan berdaftar"
+    },
+    "options": {
+      "selectType": "Pilih jenis...",
+      "restaurant": "Restoran / Makanan & Minuman",
+      "tourOperator": "Pengendali Pelancongan",
+      "accommodation": "Penginapan",
+      "retail": "Runcit / Membeli-belah",
+      "wellness": "Kesihatan & Spa",
+      "adventure": "Pengembaraan & Sukan",
+      "other": "Lain-lain"
+    }
   }
 }

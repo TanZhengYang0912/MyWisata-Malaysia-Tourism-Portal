@@ -5,6 +5,7 @@
 // it isn't blocked by the customer role guard. Deleted at merge.
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { getActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
@@ -13,6 +14,7 @@ import type { Activity } from "@/backend/core/types";
 const CATEGORY_ORDER = Object.keys(CATEGORY_DETAILS);
 
 export default function DevListingsPage() {
+  const { t } = useTranslation("auth");
   const [activities, setActivities] = useState<Activity[] | null>(null);
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export default function DevListingsPage() {
   }, []);
 
   if (activities === null) {
-    return <div className="max-w-3xl mx-auto px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+    return <div className="max-w-3xl mx-auto px-6 py-16 text-sm text-muted-foreground">{t("dev.loading")}</div>;
   }
 
   const bySlug = new Map<string, Activity[]>();
@@ -33,9 +35,9 @@ export default function DevListingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-xl font-bold text-foreground mb-1">Dev: All listings by category</h1>
+      <h1 className="text-xl font-bold text-foreground mb-1">{t("dev.listings.title")}</h1>
       <p className="text-xs text-muted-foreground mb-6">
-        {activities.length} active listings across {bySlug.size} categories. Click a listing to open its detail page.
+        {t("dev.listings.description", { listings: activities.length, categories: bySlug.size })}
       </p>
 
       <div className="space-y-6">
