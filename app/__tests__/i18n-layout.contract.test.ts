@@ -10,6 +10,8 @@ describe("root locale hydration contract", () => {
     expect(layoutSource).toMatch(/export default async function RootLayout/);
     expect(layoutSource).toContain("const locale = await getRequestLocale();");
     expect(layoutSource).toContain("const resources = await loadLocaleResources(locale);");
+    expect(layoutSource).toContain('const englishResources = locale === "en" ? resources : await loadLocaleResources("en");');
+    expect(layoutSource).toContain("const resourcesByLocale: AppI18nResources = {");
     expect(layoutSource).toMatch(/<html[\s\S]*lang=\{locale\}/);
   });
 
