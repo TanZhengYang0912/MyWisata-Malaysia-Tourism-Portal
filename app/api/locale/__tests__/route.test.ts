@@ -87,6 +87,15 @@ describe("POST /api/locale", () => {
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
 
+  it("rejects a null top-level JSON body with 400", async () => {
+    const response = await POST(request(null));
+
+    expect(response.status).toBe(400);
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+
   it("does not change the cookie when the authenticated database update fails", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-123" } }, error: null });
     mocks.eq.mockResolvedValue({ error: { message: "database unavailable" } });

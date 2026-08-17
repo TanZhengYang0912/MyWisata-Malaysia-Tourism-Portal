@@ -9,14 +9,14 @@ type LocaleResponse = { data: { locale: AppLocale; persistedToAccount: boolean }
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 export async function POST(request: Request) {
-  let body: LocaleRequest;
+  let body: LocaleRequest | null;
   try {
-    body = await request.json() as LocaleRequest;
+    body = await request.json() as LocaleRequest | null;
   } catch {
     return NextResponse.json({ error: "Unsupported locale" }, { status: 400 });
   }
 
-  if (!isAppLocale(body.locale)) {
+  if (!body || typeof body !== "object" || !isAppLocale(body.locale)) {
     return NextResponse.json({ error: "Unsupported locale" }, { status: 400 });
   }
 
