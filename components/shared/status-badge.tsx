@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/components/utils";
+import { useTranslation } from "react-i18next";
 
 const STYLES: Record<string, string> = {
   DRAFT:           "bg-muted text-muted-foreground",
@@ -48,10 +51,37 @@ const LABELS: Record<string, string> = {
   hold:            "On Hold",
 };
 
+const LABEL_KEYS: Record<string, string> = {
+  DRAFT: "statuses.draft",
+  PENDING_PAYMENT: "statuses.pendingPayment",
+  PAID: "statuses.paid",
+  COMPLETED: "statuses.completed",
+  CANCELLED: "statuses.cancelled",
+  pending: "statuses.pending",
+  pending_review: "statuses.pendingReview",
+  change_requested: "statuses.changesRequested",
+  changes_requested: "statuses.changesRequested",
+  approved: "statuses.approved",
+  invited: "statuses.invited",
+  claimed: "statuses.claimed",
+  onboarding: "statuses.onboarding",
+  vendor_pending_review: "statuses.vendorPendingReview",
+  converted: "statuses.converted",
+  rejected: "statuses.rejected",
+  processing: "statuses.processing",
+  completed: "statuses.completed",
+  failed: "statuses.failed",
+  paid: "statuses.paid",
+  hold: "statuses.onHold",
+  overdue: "statuses.overdue",
+};
+
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
+  const { t } = useTranslation("common");
+  const labelKey = LABEL_KEYS[status];
   return (
     <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap", STYLES[status] ?? "bg-muted text-muted-foreground", className)}>
-      {LABELS[status] ?? status}
+      {labelKey ? t(labelKey, { defaultValue: LABELS[status] ?? status }) : status}
     </span>
   );
 }

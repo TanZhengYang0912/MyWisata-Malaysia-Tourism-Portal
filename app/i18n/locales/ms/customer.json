@@ -11,7 +11,11 @@
     "Account": "Akaun",
     "Payments & verification": "Pembayaran & pengesahan",
     "Help": "Bantuan",
-    "More": "Lagi"
+    "More": "Lagi",
+    "account": "Akaun",
+    "paymentsVerification": "Pembayaran & pengesahan",
+    "help": "Bantuan",
+    "more": "Lagi"
   },
   "accountItems": {
     "Profile": { "label": "Profil", "description": "Butiran peribadi anda" },
@@ -22,7 +26,55 @@
     "Support": { "label": "Sokongan", "description": "Dapatkan bantuan perjalanan" },
     "Earn & Share": { "label": "Dapat & Kongsi", "description": "Urus aktiviti afiliasi" },
     "Become a Vendor": { "label": "Jadi Vendor", "description": "Mohon untuk menyenaraikan perniagaan anda" },
-    "Recommend a Vendor": { "label": "Cadangkan Vendor", "description": "Kongsi penemuan tempatan" }
+    "Recommend a Vendor": { "label": "Cadangkan Vendor", "description": "Kongsi penemuan tempatan" },
+    "profile": { "label": "Profil", "description": "Butiran peribadi anda" },
+    "notifications": { "label": "Pemberitahuan", "description": "Kemas kini tempahan, dompet dan akaun" },
+    "preferences": { "label": "Keutamaan", "description": "Laraskan suapan cadangan anda" },
+    "wallet": { "label": "Dompet", "description": "Baki dan pembayaran keluar" },
+    "verification": { "label": "Pengesahan", "description": "Sahkan identiti anda" },
+    "support": { "label": "Sokongan", "description": "Dapatkan bantuan perjalanan" },
+    "earnShare": { "label": "Dapat & Kongsi", "description": "Urus aktiviti afiliasi" },
+    "becomeVendor": { "label": "Jadi Vendor", "description": "Mohon untuk menyenaraikan perniagaan anda" },
+    "recommendVendor": { "label": "Cadangkan Vendor", "description": "Kongsi penemuan tempatan" }
+  },
+  "categories": {
+    "food": "Makanan",
+    "activity": "Aktiviti",
+    "accommodation": "Penginapan",
+    "retail": "Runcit",
+    "hiddenGem": "Permata Tersembunyi"
+  },
+  "preferences": {
+    "travelStyles": {
+      "budget_backpacker": "Pengembara beg bajet",
+      "mid_range": "Penjelajah pertengahan",
+      "luxury": "Pengembara mewah",
+      "business": "Pengembara perniagaan",
+      "family_group": "Kumpulan keluarga"
+    },
+    "groupCompositions": {
+      "solo": "Solo",
+      "couple": "Pasangan",
+      "friends": "Kumpulan rakan",
+      "family": "Keluarga dengan kanak-kanak",
+      "senior": "Kumpulan warga emas"
+    },
+    "budgetRanges": {
+      "budget": "Bajet (< RM 100/hari)",
+      "mid_range": "Pertengahan (RM 100–500/hari)",
+      "luxury": "Mewah (> RM 500/hari)"
+    },
+    "mobilityNeeds": {
+      "none": "Tiada sekatan",
+      "limited": "Berjalan secara terhad",
+      "wheelchair": "Akses kerusi roda"
+    },
+    "distance": {
+      "within1Km": "Dalam 1 km",
+      "within5Km": "Dalam 5 km",
+      "within20Km": "Dalam 20 km",
+      "any": "Apa-apa jarak"
+    }
   },
   "profile": {
     "languageDescription": "Pilih bahasa yang digunakan di seluruh MyWisata."

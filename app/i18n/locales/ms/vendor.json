@@ -18,5 +18,13 @@
     "Analytics": "Analitik",
     "Operations": "Operasi",
     "Shop page": "Halaman kedai"
+  },
+  "filters": {
+    "searchByName": "Cari mengikut nama…",
+    "clear": "Kosongkan"
+  },
+  "pagination": {
+    "showing": "Menunjukkan {{first}}–{{last}} daripada {{total}}",
+    "page": "Halaman {{current}} daripada {{total}}"
   }
 }

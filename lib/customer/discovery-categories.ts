@@ -9,11 +9,11 @@ export const REAL_CATEGORY_SLUGS = ["food", "activity", "accommodation", "retail
 export type RealCategorySlug = (typeof REAL_CATEGORY_SLUGS)[number];
 
 export const DISCOVERY_CATEGORIES = [
-  { slug: "food", label: "Food", icon: "utensils", kind: "category" },
-  { slug: "activity", label: "Activity", icon: "compass", kind: "category" },
-  { slug: "accommodation", label: "Accommodation", icon: "bed-double", kind: "category" },
-  { slug: "retail", label: "Retail", icon: "shopping-bag", kind: "category" },
-  { slug: "hidden_gem", label: "Hidden Gem", icon: "gem", kind: "collection" },
+  { slug: "food", label: "Food", labelKey: "categories.food", icon: "utensils", kind: "category" },
+  { slug: "activity", label: "Activity", labelKey: "categories.activity", icon: "compass", kind: "category" },
+  { slug: "accommodation", label: "Accommodation", labelKey: "categories.accommodation", icon: "bed-double", kind: "category" },
+  { slug: "retail", label: "Retail", labelKey: "categories.retail", icon: "shopping-bag", kind: "category" },
+  { slug: "hidden_gem", label: "Hidden Gem", labelKey: "categories.hiddenGem", icon: "gem", kind: "collection" },
 ] as const;
 
 export type DiscoveryCategorySlug = (typeof DISCOVERY_CATEGORIES)[number]["slug"];
@@ -44,6 +44,11 @@ export function canonicalCategorySlug(slug: string | null | undefined): RealCate
 export function getDiscoveryCategoryLabel(slug: string | null | undefined): string {
   const canonical = canonicalCategorySlug(slug);
   return DISCOVERY_CATEGORIES.find((category) => category.slug === canonical)?.label ?? "Activity";
+}
+
+export function getDiscoveryCategoryLabelKey(slug: string | null | undefined): string {
+  const canonical = canonicalCategorySlug(slug);
+  return DISCOVERY_CATEGORIES.find((category) => category.slug === canonical)?.labelKey ?? "categories.activity";
 }
 
 export function isRealCategorySlug(slug: string | null | undefined): slug is RealCategorySlug {

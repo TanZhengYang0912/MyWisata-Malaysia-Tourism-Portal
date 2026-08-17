@@ -18,5 +18,13 @@
     "Analytics": "Analytics",
     "Operations": "Operations",
     "Shop page": "Shop page"
+  },
+  "filters": {
+    "searchByName": "Search by name…",
+    "clear": "Clear"
+  },
+  "pagination": {
+    "showing": "Showing {{first}}–{{last}} of {{total}}",
+    "page": "Page {{current}} of {{total}}"
   }
 }

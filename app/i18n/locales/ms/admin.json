@@ -27,5 +27,40 @@
   },
   "accessibility": {
     "unreadRecommendations": "{{count}} cadangan belum dibaca"
+  },
+  "filters": {
+    "all": "Semua",
+    "pending": "Menunggu",
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "open": "Terbuka",
+    "resolved": "Selesai",
+    "active": "Aktif",
+    "inactive": "Tidak aktif",
+    "filter": "Tapis"
+  },
+  "selection": {
+    "selected": "{{count}} dipilih",
+    "clear": "Kosongkan pilihan"
+  },
+  "batchActions": {
+    "approve": "Luluskan",
+    "reject": "Tolak",
+    "request_changes": "Minta perubahan",
+    "change_requested": "Minta perubahan",
+    "request_info": "Minta maklumat",
+    "suspend": "Gantung",
+    "unsuspend": "Nyahgantung",
+    "reactivate": "Aktifkan semula",
+    "hold": "Tahan",
+    "resume": "Sambung semula",
+    "fraud-override": "Atasi penipuan",
+    "resolved": "Selesaikan",
+    "dismissed": "Tolak",
+    "dismiss": "Tolak",
+    "confirm": "Sahkan & nyahaktifkan",
+    "activate": "Aktifkan",
+    "deactivate": "Nyahaktifkan",
+    "revoke": "Tarik balik"
   }
 }
