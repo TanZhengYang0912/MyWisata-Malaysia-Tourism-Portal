@@ -3,7 +3,17 @@ import type { AppLocale } from "./locale";
 type DateValue = Date | number | string;
 
 function asDate(value: DateValue): Date {
-  return value instanceof Date ? value : new Date(value);
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) throw new RangeError("Invalid date value");
+  return date;
+}
+
+function dateTimeOptions(
+  options: Intl.DateTimeFormatOptions,
+  defaults: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormatOptions {
+  if (options.dateStyle !== undefined || options.timeStyle !== undefined) return options;
+  return { ...defaults, ...options };
 }
 
 export function formatDate(
@@ -11,12 +21,11 @@ export function formatDate(
   locale: AppLocale,
   options: Intl.DateTimeFormatOptions = {},
 ): string {
-  return new Intl.DateTimeFormat(locale, {
+  return new Intl.DateTimeFormat(locale, dateTimeOptions(options, {
     day: "numeric",
     month: "short",
     year: "numeric",
-    ...options,
-  }).format(asDate(value));
+  })).format(asDate(value));
 }
 
 export function formatDateTime(
@@ -24,14 +33,13 @@ export function formatDateTime(
   locale: AppLocale,
   options: Intl.DateTimeFormatOptions = {},
 ): string {
-  return new Intl.DateTimeFormat(locale, {
+  return new Intl.DateTimeFormat(locale, dateTimeOptions(options, {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    ...options,
-  }).format(asDate(value));
+  })).format(asDate(value));
 }
 
 export function formatNumber(value: number, locale: AppLocale, options: Intl.NumberFormatOptions = {}): string {
