@@ -11,7 +11,11 @@
     "Account": "账户",
     "Payments & verification": "付款与验证",
     "Help": "帮助",
-    "More": "更多"
+    "More": "更多",
+    "account": "账户",
+    "paymentsVerification": "付款与验证",
+    "help": "帮助",
+    "more": "更多"
   },
   "accountItems": {
     "Profile": { "label": "个人资料", "description": "您的个人信息" },
@@ -22,7 +26,55 @@
     "Support": { "label": "客服支持", "description": "获取行程帮助" },
     "Earn & Share": { "label": "赚取与分享", "description": "管理联盟活动" },
     "Become a Vendor": { "label": "成为商家", "description": "申请发布您的业务" },
-    "Recommend a Vendor": { "label": "推荐商家", "description": "分享本地发现" }
+    "Recommend a Vendor": { "label": "推荐商家", "description": "分享本地发现" },
+    "profile": { "label": "个人资料", "description": "您的个人信息" },
+    "notifications": { "label": "通知", "description": "预订、钱包和账户更新" },
+    "preferences": { "label": "偏好设置", "description": "调整您的推荐内容" },
+    "wallet": { "label": "钱包", "description": "余额和提现" },
+    "verification": { "label": "验证", "description": "验证您的身份" },
+    "support": { "label": "客服支持", "description": "获取行程帮助" },
+    "earnShare": { "label": "赚取与分享", "description": "管理联盟活动" },
+    "becomeVendor": { "label": "成为商家", "description": "申请发布您的业务" },
+    "recommendVendor": { "label": "推荐商家", "description": "分享本地发现" }
+  },
+  "categories": {
+    "food": "美食",
+    "activity": "活动",
+    "accommodation": "住宿",
+    "retail": "零售",
+    "hiddenGem": "隐藏宝藏"
+  },
+  "preferences": {
+    "travelStyles": {
+      "budget_backpacker": "经济背包客",
+      "mid_range": "中档探索者",
+      "luxury": "豪华旅行者",
+      "business": "商务旅行者",
+      "family_group": "家庭团体"
+    },
+    "groupCompositions": {
+      "solo": "独自旅行",
+      "couple": "情侣",
+      "friends": "朋友团体",
+      "family": "带孩子的家庭",
+      "senior": "长者团体"
+    },
+    "budgetRanges": {
+      "budget": "经济型（每天低于 RM 100）",
+      "mid_range": "中档（每天 RM 100–500）",
+      "luxury": "豪华型（每天高于 RM 500）"
+    },
+    "mobilityNeeds": {
+      "none": "没有限制",
+      "limited": "步行有限",
+      "wheelchair": "轮椅通行"
+    },
+    "distance": {
+      "within1Km": "1 公里以内",
+      "within5Km": "5 公里以内",
+      "within20Km": "20 公里以内",
+      "any": "不限距离"
+    }
   },
   "profile": {
     "languageDescription": "选择 MyWisata 使用的语言。"

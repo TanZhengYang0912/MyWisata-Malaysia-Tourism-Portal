@@ -27,5 +27,40 @@
   },
   "accessibility": {
     "unreadRecommendations": "{{count}} 条推荐未读"
+  },
+  "filters": {
+    "all": "全部",
+    "pending": "待处理",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "open": "开放",
+    "resolved": "已解决",
+    "active": "启用",
+    "inactive": "未启用",
+    "filter": "筛选"
+  },
+  "selection": {
+    "selected": "已选择 {{count}} 项",
+    "clear": "清除选择"
+  },
+  "batchActions": {
+    "approve": "批准",
+    "reject": "拒绝",
+    "request_changes": "要求修改",
+    "change_requested": "要求修改",
+    "request_info": "请求信息",
+    "suspend": "暂停",
+    "unsuspend": "取消暂停",
+    "reactivate": "重新启用",
+    "hold": "暂缓",
+    "resume": "恢复",
+    "fraud-override": "欺诈覆盖",
+    "resolved": "解决",
+    "dismissed": "忽略",
+    "dismiss": "忽略",
+    "confirm": "确认并停用",
+    "activate": "启用",
+    "deactivate": "停用",
+    "revoke": "撤销"
   }
 }

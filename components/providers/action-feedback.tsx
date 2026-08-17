@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useReducer } from 'react';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   createFeedbackNotice,
   feedbackReducer,
@@ -16,6 +17,7 @@ interface ActionFeedbackContextValue {
 const ActionFeedbackContext = createContext<ActionFeedbackContextValue | null>(null);
 
 function FeedbackToast({ notice, onDismiss }: { notice: FeedbackNotice; onDismiss: () => void }) {
+  const { t } = useTranslation('common');
   useEffect(() => {
     const timer = window.setTimeout(onDismiss, notice.duration);
     return () => window.clearTimeout(timer);
@@ -31,7 +33,7 @@ function FeedbackToast({ notice, onDismiss }: { notice: FeedbackNotice; onDismis
     <div role={notice.role} className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${styles.container}`}>
       <span className="mt-0.5 shrink-0">{styles.icon}</span>
       <p className="min-w-0 flex-1 leading-5">{notice.message}</p>
-      <button type="button" onClick={onDismiss} aria-label="Dismiss notification" className="shrink-0 rounded-md p-0.5 opacity-60 transition hover:bg-black/5 hover:opacity-100">
+      <button type="button" onClick={onDismiss} aria-label={t('accessibility.dismissNotification', { defaultValue: 'Dismiss notification' })} className="shrink-0 rounded-md p-0.5 opacity-60 transition hover:bg-black/5 hover:opacity-100">
         <X size={16} />
       </button>
     </div>

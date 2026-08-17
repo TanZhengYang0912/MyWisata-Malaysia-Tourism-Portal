@@ -27,5 +27,40 @@
   },
   "accessibility": {
     "unreadRecommendations": "{{count}} unread recommendations"
+  },
+  "filters": {
+    "all": "All",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "open": "Open",
+    "resolved": "Resolved",
+    "active": "Active",
+    "inactive": "Inactive",
+    "filter": "Filter"
+  },
+  "selection": {
+    "selected": "{{count}} selected",
+    "clear": "Clear selection"
+  },
+  "batchActions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "request_changes": "Request changes",
+    "change_requested": "Request changes",
+    "request_info": "Request info",
+    "suspend": "Suspend",
+    "unsuspend": "Unsuspend",
+    "reactivate": "Reactivate",
+    "hold": "Hold",
+    "resume": "Resume",
+    "fraud-override": "Fraud override",
+    "resolved": "Resolve",
+    "dismissed": "Dismiss",
+    "dismiss": "Dismiss",
+    "confirm": "Confirm & disable",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "revoke": "Revoke"
   }
 }

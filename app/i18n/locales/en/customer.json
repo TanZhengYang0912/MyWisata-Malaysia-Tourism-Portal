@@ -11,7 +11,11 @@
     "Account": "Account",
     "Payments & verification": "Payments & verification",
     "Help": "Help",
-    "More": "More"
+    "More": "More",
+    "account": "Account",
+    "paymentsVerification": "Payments & verification",
+    "help": "Help",
+    "more": "More"
   },
   "accountItems": {
     "Profile": { "label": "Profile", "description": "Your personal details" },
@@ -22,7 +26,55 @@
     "Support": { "label": "Support", "description": "Get help with your trip" },
     "Earn & Share": { "label": "Earn & Share", "description": "Manage affiliate activity" },
     "Become a Vendor": { "label": "Become a Vendor", "description": "Apply to list your business" },
-    "Recommend a Vendor": { "label": "Recommend a Vendor", "description": "Share local discoveries" }
+    "Recommend a Vendor": { "label": "Recommend a Vendor", "description": "Share local discoveries" },
+    "profile": { "label": "Profile", "description": "Your personal details" },
+    "notifications": { "label": "Notifications", "description": "Bookings, wallet and account updates" },
+    "preferences": { "label": "Preferences", "description": "Tune your recommendation feed" },
+    "wallet": { "label": "Wallet", "description": "Balance and payouts" },
+    "verification": { "label": "Verification", "description": "Verify your identity" },
+    "support": { "label": "Support", "description": "Get help with your trip" },
+    "earnShare": { "label": "Earn & Share", "description": "Manage affiliate activity" },
+    "becomeVendor": { "label": "Become a Vendor", "description": "Apply to list your business" },
+    "recommendVendor": { "label": "Recommend a Vendor", "description": "Share local discoveries" }
+  },
+  "categories": {
+    "food": "Food",
+    "activity": "Activity",
+    "accommodation": "Accommodation",
+    "retail": "Retail",
+    "hiddenGem": "Hidden Gem"
+  },
+  "preferences": {
+    "travelStyles": {
+      "budget_backpacker": "Budget Backpacker",
+      "mid_range": "Mid-Range Explorer",
+      "luxury": "Luxury Traveller",
+      "business": "Business Traveller",
+      "family_group": "Family Group"
+    },
+    "groupCompositions": {
+      "solo": "Solo",
+      "couple": "Couple",
+      "friends": "Friends Group",
+      "family": "Family with Kids",
+      "senior": "Senior Group"
+    },
+    "budgetRanges": {
+      "budget": "Budget (< RM 100/day)",
+      "mid_range": "Mid-range (RM 100–500/day)",
+      "luxury": "Luxury (> RM 500/day)"
+    },
+    "mobilityNeeds": {
+      "none": "No restrictions",
+      "limited": "Limited walking",
+      "wheelchair": "Wheelchair access"
+    },
+    "distance": {
+      "within1Km": "Within 1 km",
+      "within5Km": "Within 5 km",
+      "within20Km": "Within 20 km",
+      "any": "Any distance"
+    }
   },
   "profile": {
     "languageDescription": "Choose the language used throughout MyWisata."

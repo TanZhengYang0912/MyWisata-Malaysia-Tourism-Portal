@@ -18,5 +18,13 @@
     "Analytics": "分析",
     "Operations": "运营",
     "Shop page": "店铺页面"
+  },
+  "filters": {
+    "searchByName": "按名称搜索…",
+    "clear": "清除"
+  },
+  "pagination": {
+    "showing": "显示第 {{first}}–{{last}} 项，共 {{total}} 项",
+    "page": "第 {{current}} 页，共 {{total}} 页"
   }
 }
