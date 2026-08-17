@@ -1,3 +1,5 @@
+import type { AppLocale } from "@/lib/i18n/locale";
+
 // Shared domain types — the integration contract every member's code imports.
 // Ownership: each seed/repo file below is owned by one member (see README).
 // Read the type, not the DB shape, when consuming another domain.
@@ -18,6 +20,7 @@ export interface User {
   avatarInitial: string;
   city?: string;
   country?: string;
+  preferredLocale?: AppLocale;
   phone?: string;
   status?: "active" | "suspended" | "deleted";
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
