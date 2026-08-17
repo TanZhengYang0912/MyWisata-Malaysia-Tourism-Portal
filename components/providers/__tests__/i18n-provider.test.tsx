@@ -161,9 +161,13 @@ class FakeDocument extends FakeNode {
 
 type TestResources = Record<string, Record<string, Record<string, string>>>;
 
-const resources: TestResources = {
+const initialResources: TestResources = {
   en: { common: { greeting: "Hello", fallback: "English fallback" } },
   "zh-CN": { common: { greeting: "你好" } },
+};
+
+const hydratedResources: TestResources = {
+  ...initialResources,
   ms: { common: { greeting: "Hai" } },
 };
 
@@ -218,14 +222,14 @@ describe("AppI18nProvider runtime resource hydration", () => {
     container.textContent = "";
   });
 
-  it("renders English fallback text initially and merges resources before a locale prop change", async () => {
+  it("renders English fallback text initially and hydrates a previously absent locale", async () => {
     root = createRoot(container as unknown as Element);
 
     await act(async () => {
       root?.render(
         React.createElement(
           AppI18nProvider,
-          { locale: "zh-CN", resources },
+          { locale: "zh-CN", resources: initialResources },
           React.createElement(TranslationProbe),
         ),
       );
@@ -237,7 +241,7 @@ describe("AppI18nProvider runtime resource hydration", () => {
       root?.render(
         React.createElement(
           AppI18nProvider,
-          { locale: "ms", resources },
+          { locale: "ms", resources: hydratedResources },
           React.createElement(TranslationProbe),
         ),
       );
