@@ -16,6 +16,7 @@ import { useActionFeedback } from '@/components/providers/action-feedback';
 import AiWritingAssistant from '@/components/vendor/ai-writing-assistant';
 import type { ListingSuggestion } from '@/lib/ai/listing-suggestions';
 import { canonicalCategorySlug, normalizeCategoryRows, type CanonicalCategoryOption } from '@/lib/customer/discovery-categories';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   vendorId: string;
@@ -26,6 +27,8 @@ interface Props {
 }
 
 export default function ProductForm({ vendorId, outletIds, initialData, onSuccess, onClose }: Props) {
+  const { t } = useTranslation('vendor');
+  const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
   const [outlets, setOutlets] = useState<{ id: string; name: string; city?: string | null; state?: string | null }[]>([]);
@@ -87,13 +90,13 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'AI suggestions are not available yet.');
+      if (!response.ok) throw new Error(payload.error?.message || t('productForm.aiUnavailable'));
       const suggestion = payload.data?.suggestion;
-      if (!suggestion) throw new Error('AI did not return a usable suggestion.');
+      if (!suggestion) throw new Error(t('productForm.aiNoSuggestion'));
       setSuggestionDraft(suggestion);
-      setSuggestionMessage('Draft ready. Review it before applying.');
+      setSuggestionMessage(t('productForm.draftReady'));
     } catch (error) {
-      setSuggestionMessage(error instanceof Error ? error.message : 'AI suggestions are deferred.');
+      setSuggestionMessage(error instanceof Error ? error.message : t('productForm.aiDeferred'));
     } finally {
       setSuggesting(false);
     }
@@ -108,12 +111,12 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     const matchedCategory = categories.find((category) => category.slug === suggestedSlug || category.name.toLowerCase() === suggestionDraft.category.toLowerCase());
     if (matchedCategory) setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     setSuggestionDraft(null);
-    setSuggestionMessage('Draft applied. Please review every field before saving.');
+    setSuggestionMessage(t('productForm.draftApplied'));
   }
 
   function onInvalid(formErrors: FieldErrors) {
     const firstError = Object.values(formErrors)[0] as { message?: string } | undefined;
-    setServerError(firstError?.message || 'Please check the highlighted fields before saving.');
+    setServerError(firstError?.message || t('productForm.checkFields'));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -170,16 +173,16 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       if (!res.ok) {
         const detail = result?.error?.details?.fieldErrors;
         const fieldMessage = detail && Object.values(detail).flat().find(Boolean);
-        setServerError(String(fieldMessage || result?.error?.message || 'Failed to save product'));
-        showFeedback('error', String(fieldMessage || result?.error?.message || 'Failed to save product'));
+        setServerError(String(fieldMessage || result?.error?.message || t('productForm.saveFailed')));
+        showFeedback('error', String(fieldMessage || result?.error?.message || t('productForm.saveFailed')));
         return;
       }
-      showFeedback('success', initialData?.id ? 'Product updated successfully.' : intent === 'draft' ? 'Product saved as draft.' : 'Product submitted for review.');
+      showFeedback('success', initialData?.id ? t('productForm.updated') : intent === 'draft' ? t('productForm.savedDraft') : t('productForm.submitted'));
       onSuccess?.();
     } catch (error) {
       console.error('Product save failed', error);
-      setServerError('Network error. Please try again.');
-      showFeedback('error', 'Product could not be saved. Please try again.');
+      setServerError(tCommon('errors.network'));
+      showFeedback('error', t('productForm.saveNetworkError'));
     }
   }
 
@@ -192,7 +195,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   return (
     <form onSubmit={(event) => { event.preventDefault(); submitForm('review'); }} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">{initialData?.id ? 'Edit Product' : 'Add Product'}</h2>
+        <h2 className="text-xl font-semibold">{initialData?.id ? t('productForm.editTitle') : t('productForm.addTitle')}</h2>
         {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
       </div>
 
@@ -203,10 +206,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       )}
 
       <AiWritingAssistant
-        label="AI listing assistant"
-        buttonLabel="Suggest listing"
+        label={t('assistant.listingLabel')}
+        buttonLabel={t('assistant.suggestListing')}
         busy={suggesting}
-        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500">Tags: {suggestionDraft.tags.join(', ')}</p></div>}
+        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500">{t('productForm.tags')}: {suggestionDraft.tags.join(', ')}</p></div>}
         onGenerate={() => void suggestListing()}
         onApply={suggestionDraft ? applySuggestion : undefined}
         onDiscard={suggestionDraft ? () => setSuggestionDraft(null) : undefined}
@@ -215,44 +218,44 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-          <Input {...register('name')} placeholder="e.g. Guided City Tour" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.nameRequired')}</label>
+          <Input {...register('name')} placeholder={t('productForm.namePlaceholder')} />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {errors.name && <p className="text-red-500 text-xs mt-1">{(errors.name as any)?.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.description')}</label>
           <textarea
             {...register('description')}
             rows={3}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Product details..."
+            placeholder={t('productForm.descriptionPlaceholder')}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.typeRequired')}</label>
             <select {...register('productType')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="product">Physical Product</option>
-              <option value="activity">Activity</option>
-              <option value="experience">Experience</option>
-              <option value="food">Food & Beverage</option>
-              <option value="digital">Digital</option>
-              <option value="service">Service</option>
+              <option value="product">{t('productForm.types.product')}</option>
+              <option value="activity">{t('productForm.types.activity')}</option>
+              <option value="experience">{t('productForm.types.experience')}</option>
+              <option value="food">{t('productForm.types.food')}</option>
+              <option value="digital">{t('productForm.types.digital')}</option>
+              <option value="service">{t('productForm.types.service')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (RM) *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.basePrice')}</label>
             <Input {...register('basePrice', { valueAsNumber: true })} type="number" step="0.01" />
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {errors.basePrice && <p className="text-red-500 text-xs mt-1">{(errors.basePrice as any)?.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.category')}</label>
             <select {...register('categoryId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Select category...</option>
+              <option value="">{t('productForm.selectCategory')}</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -261,8 +264,8 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-          <Input {...register('tags')} placeholder="food, heritage, family-friendly" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.tags')}</label>
+          <Input {...register('tags')} placeholder={t('productForm.tagsPlaceholder')} />
           <div className="mt-2 flex flex-wrap gap-2">
             {tags.map((tag) => (
               <button
@@ -270,21 +273,21 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
                 type="button"
                 onClick={() => setValue('tags', tags.filter((item) => item !== tag).join(', '), { shouldDirty: true })}
                 className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-primary hover:bg-secondary/80"
-                title={'Remove ' + tag}
+                title={t('productForm.removeTag', { tag })}
               >
                 {tag} <Trash2 size={12} />
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-gray-400">Separate tags with commas. Duplicate tags are removed when saved.</p>
+          <p className="mt-1 text-xs text-gray-400">{t('productForm.tagsHint')}</p>
         </div>
 
         <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4">
           <div className="mb-3 flex items-center gap-2">
             <ImagePlus size={17} className="text-primary" />
             <div>
-              <p className="text-sm font-semibold text-gray-900">Media</p>
-              <p className="text-xs text-gray-500">Cover image is required before review submission.</p>
+              <p className="text-sm font-semibold text-gray-900">{t('productForm.media')}</p>
+              <p className="text-xs text-gray-500">{t('productForm.coverRequired')}</p>
             </div>
           </div>
           <ProductMediaUploader
@@ -294,15 +297,15 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             onUploaded={(media) => setValue('coverUrl', media.url, { shouldDirty: true, shouldValidate: true })}
             onError={(message) => setServerError(message || null)}
           />
-          <Input {...register('coverUrl')} placeholder="Or paste an image URL" className="mt-2" />
+          <Input {...register('coverUrl')} placeholder={t('productForm.imageUrlPlaceholder')} className="mt-2" />
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {errors.coverUrl && <p className="mt-1 text-xs text-red-600">{(errors.coverUrl as any)?.message}</p>}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2"><img src={watch('coverUrl')} alt="Product cover preview" className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500">{watch('coverUrl')}</span></div>}
+          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500">{watch('coverUrl')}</span></div>}
           <div className="mt-4 border-t border-gray-200 pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Gallery</p>
-              <span className="text-[11px] text-gray-400">{gallery.length}/8 images</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('productForm.gallery')}</p>
+              <span className="text-[11px] text-gray-400">{gallery.length}/8 {t('productForm.images')}</span>
             </div>
             {gallery.length < 8 && (
               <ProductMediaUploader
@@ -320,16 +323,16 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Outlet *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.outletRequired')}</label>
             {initialData?.id ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                {outlets.find((outlet) => outlet.id === initialData.outletId)?.name || 'Loading outlet…'}
-                <p className="mt-1 text-xs text-gray-400">Outlet cannot be changed while editing.</p>
+                {outlets.find((outlet) => outlet.id === initialData.outletId)?.name || t('productForm.loadingOutlet')}
+                <p className="mt-1 text-xs text-gray-400">{t('productForm.outletLocked')}</p>
               </div>
             ) : (
               <>
                 <select {...register('outletId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">Select outlet...</option>
+                  <option value="">{t('productForm.selectOutlet')}</option>
                   {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -340,7 +343,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           <div className="flex items-center pt-6">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
               <input type="checkbox" {...register('requiresBooking')} className="rounded border-gray-300 text-primary focus:ring-primary/20" />
-              Requires Booking (Timeslots)
+              {t('productForm.requiresBooking')}
             </label>
           </div>
         </div>
@@ -348,37 +351,37 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-gray-900">Availability</p>
-              <p className="mt-1 text-xs text-gray-500">This section changes based on the product type.</p>
+              <p className="text-sm font-semibold text-gray-900">{t('productForm.availability')}</p>
+              <p className="mt-1 text-xs text-gray-500">{t('productForm.availabilityHint')}</p>
             </div>
             <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">{productType}</span>
           </div>
           {['product', 'food'].includes(productType) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Initial stock *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.initialStock')}</label>
                 <Input {...register('availableStock', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="0" />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {errors.availableStock && <p className="mt-1 text-xs text-red-600">{(errors.availableStock as any)?.message}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Low-stock alert at</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.lowStockAlert')}</label>
                 <Input {...register('lowStockThreshold', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="0" step="1" placeholder="5" />
               </div>
             </div>
           )}
           {['activity', 'experience', 'service'].includes(productType) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default booking capacity *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.defaultCapacity')}</label>
               <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder="e.g. 12" />
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {errors.defaultCapacity && <p className="mt-1 text-xs text-red-600">{(errors.defaultCapacity as any)?.message}</p>}
-              <p className="mt-1 text-xs text-gray-500">Create exact time slots from the Bookings page after saving.</p>
+              <p className="mt-1 text-xs text-gray-500">{t('productForm.capacityHint')}</p>
             </div>
           )}
           {productType === 'digital' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Download URL *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.downloadUrl')}</label>
               <ProductMediaUploader
                 vendorId={vendorId}
                 productId={initialData?.id}
@@ -392,10 +395,10 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
                 }}
                 onError={(message) => setServerError(message || null)}
               />
-              <Input {...register('digitalAssetUrl')} placeholder="Or paste a download URL" className="mt-2" />
+              <Input {...register('digitalAssetUrl')} placeholder={t('productForm.downloadUrlPlaceholder')} className="mt-2" />
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {errors.digitalAssetUrl && <p className="mt-1 text-xs text-red-600">{(errors.digitalAssetUrl as any)?.message}</p>}
-              <p className="mt-1 text-xs text-gray-500">Upload a PDF or ZIP asset before review submission.</p>
+              <p className="mt-1 text-xs text-gray-500">{t('productForm.digitalAssetHint')}</p>
             </div>
           )}
         </div>
@@ -403,13 +406,13 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
         {onClose && (
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{tCommon('actions.cancel')}</Button>
         )}
         <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => submitForm('draft')}>
-          {isSubmitting && submitIntent === 'draft' ? 'Saving draft...' : 'Save Draft'}
+          {isSubmitting && submitIntent === 'draft' ? t('productForm.savingDraft') : t('productForm.saveDraft')}
         </Button>
         <Button type="button" disabled={isSubmitting} onClick={() => submitForm('review')}>
-          {isSubmitting && submitIntent === 'review' ? 'Submitting...' : <><Check size={15} /> Submit for Review</>}
+          {isSubmitting && submitIntent === 'review' ? t('productForm.submitting') : <><Check size={15} /> {t('productForm.submitReview')}</>}
         </Button>
       </div>
     </form>

@@ -13,6 +13,7 @@ import { getBuilderBlockLabel } from "@/components/vendor/outlet-builder-ui";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
 import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";
+import { useTranslation } from "react-i18next";
 
 interface ProductOption {
   id: string;
@@ -56,15 +57,16 @@ function MediaLibrary({
   urls: string[];
   onUse: (url: string) => void;
 }) {
+  const { t } = useTranslation("vendor");
   if (!urls.length) return null;
 
   return (
     <div className="rounded-2xl border border-primary/10 bg-secondary/40 p-3">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">
-        Outlet media
+        {t("builder.inspector.outletMedia")}
       </p>
       <p className="mt-1 text-[10px] text-gray-500">
-        Reuse an image already uploaded to this page.
+        {t("builder.inspector.reuseMedia")}
       </p>
       <div className="mt-2 grid grid-cols-3 gap-2">
         {urls.map((url) => (
@@ -73,7 +75,7 @@ function MediaLibrary({
             type="button"
             onClick={() => onUse(url)}
             className="group overflow-hidden rounded-lg border border-white bg-white text-left shadow-sm hover:border-primary"
-            title="Use this image"
+            title={t("builder.inspector.useImage")}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -82,7 +84,7 @@ function MediaLibrary({
               className="aspect-square w-full object-cover transition group-hover:scale-105"
             />
             <span className="block truncate px-1 py-1 text-[9px] font-semibold text-primary">
-              Use image
+              {t("builder.inspector.useImage")}
             </span>
           </button>
         ))}
@@ -145,21 +147,22 @@ export default function OutletBuilderInspector({
   onDiscardHeroAi,
   outlet,
 }: Props) {
+  const { t } = useTranslation("vendor");
   const panelClassName =
     "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
 
   if (hero)
     return (
-      <aside className={panelClassName} aria-label="Edit selected section">
+      <aside className={panelClassName} aria-label={t("builder.inspector.editSelected")}>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-          Editing · Hero banner
+          {t("builder.inspector.editingHero")}
         </p>
         <div className="mt-4 space-y-3">
           {onGenerateHeroAi && <AiWritingAssistant
             compact
-            label="AI hero copy"
-            buttonLabel="Generate"
-            draft={heroAiDraft && <div><p className="font-semibold">{heroAiDraft.title}</p><p className="mt-1">{heroAiDraft.body}</p>{heroAiDraft.cta && <p className="mt-2 text-xs text-gray-500">Button: {heroAiDraft.cta}</p>}</div>}
+            label={t("assistant.heroLabel")}
+            buttonLabel={t("assistant.generate")}
+            draft={heroAiDraft && <div><p className="font-semibold">{heroAiDraft.title}</p><p className="mt-1">{heroAiDraft.body}</p>{heroAiDraft.cta && <p className="mt-2 text-xs text-gray-500">{t("builder.inspector.buttonValue", { value: heroAiDraft.cta })}</p>}</div>}
             busy={heroAiBusy}
             error={heroAiError}
             onGenerate={onGenerateHeroAi}
@@ -167,7 +170,7 @@ export default function OutletBuilderInspector({
             onDiscard={onDiscardHeroAi}
           />}
           {fieldLabel(
-            "Title",
+            t("builder.inspector.title"),
             <input
               value={hero.title}
               onChange={(event) => onUpdateHero({ title: event.target.value })}
@@ -179,7 +182,7 @@ export default function OutletBuilderInspector({
             onUse={(url) => onUpdateHero({ imageUrl: url })}
           />
           {fieldLabel(
-            "Supporting copy",
+            t("builder.inspector.supportingCopy"),
             <textarea
               value={hero.body}
               onChange={(event) => onUpdateHero({ body: event.target.value })}
@@ -188,7 +191,7 @@ export default function OutletBuilderInspector({
             />,
           )}
           <div>
-            <p className="text-xs font-semibold text-gray-600">Hero image</p>
+            <p className="text-xs font-semibold text-gray-600">{t("builder.inspector.heroImage")}</p>
             <div className="mt-1">
               <ProductMediaUploader
                 vendorId={vendorId}
@@ -198,19 +201,19 @@ export default function OutletBuilderInspector({
             </div>
           </div>
           {fieldLabel(
-            "Image URL",
+            t("builder.inspector.imageUrl"),
             <input
               value={hero.imageUrl || ""}
               onChange={(event) =>
                 onUpdateHero({ imageUrl: event.target.value })
               }
-              placeholder="Upload or paste image URL"
+              placeholder={t("builder.inspector.imageUrlPlaceholder")}
               className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
             />,
           )}
           <div className="grid grid-cols-2 gap-3">
             {fieldLabel(
-              "Text alignment",
+              t("builder.inspector.textAlignment"),
               <select
                 value={hero.textAlign || "left"}
                 onChange={(event) =>
@@ -218,13 +221,13 @@ export default function OutletBuilderInspector({
                 }
                 className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
               >
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
+                <option value="left">{t("builder.inspector.left")}</option>
+                <option value="center">{t("builder.inspector.center")}</option>
+                <option value="right">{t("builder.inspector.right")}</option>
               </select>,
             )}
             {fieldLabel(
-              "Image position",
+              t("builder.inspector.imagePosition"),
               <select
                 value={hero.imagePosition || "center"}
                 onChange={(event) =>
@@ -232,18 +235,18 @@ export default function OutletBuilderInspector({
                 }
                 className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
               >
-                <option value="center">Center</option>
-                <option value="top">Top</option>
-                <option value="bottom">Bottom</option>
+                <option value="center">{t("builder.inspector.center")}</option>
+                <option value="top">{t("builder.inspector.top")}</option>
+                <option value="bottom">{t("builder.inspector.bottom")}</option>
               </select>,
             )}
           </div>
           {fieldLabel(
-            "Button label",
+            t("builder.inspector.buttonLabel"),
             <input
               value={hero.cta || ""}
               onChange={(event) => onUpdateHero({ cta: event.target.value })}
-              placeholder="Explore now"
+              placeholder={t("builder.inspector.explorePlaceholder")}
               className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
             />,
           )}
@@ -264,12 +267,12 @@ export default function OutletBuilderInspector({
 
   if (!block)
     return (
-      <aside className={panelClassName} aria-label="Edit selected section">
+      <aside className={panelClassName} aria-label={t("builder.inspector.editSelected")}>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-          Edit element
+          {t("builder.inspector.editElement")}
         </p>
         <div className="mt-5 rounded-2xl border border-dashed border-gray-200 px-4 py-8 text-center text-xs leading-5 text-gray-400">
-          Select an element in the canvas to edit it.
+          {t("builder.inspector.selectElement")}
         </div>
       </aside>
     );
@@ -280,15 +283,15 @@ export default function OutletBuilderInspector({
   const isPhotoStory = block.type === "image_text";
 
   return (
-    <aside className={panelClassName} aria-label="Edit selected section">
+    <aside className={panelClassName} aria-label={t("builder.inspector.editSelected")}>
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-        Editing · {getBuilderBlockLabel(block.type)}
+        {t("builder.inspector.editing", { label: t(`builder.blockTypes.${block.type}`, { defaultValue: getBuilderBlockLabel(block.type) }) })}
       </p>
       <div className="mt-4 space-y-3">
         {isPhoto && fieldLabel(
-          "Photo layout",
+          t("builder.inspector.photoLayout"),
           <select
-            aria-label="Photo layout"
+            aria-label={t("builder.inspector.photoLayout")}
             value={block.type}
             onChange={(event) =>
               onUpdateBlock({
@@ -297,12 +300,12 @@ export default function OutletBuilderInspector({
             }
             className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-sm"
           >
-            <option value="image">Image only</option>
-            <option value="image_text">Image + story</option>
+            <option value="image">{t("builder.inspector.imageOnly")}</option>
+            <option value="image_text">{t("builder.inspector.imageStory")}</option>
           </select>,
         )}
         {(!isPhoto || isPhotoStory) && fieldLabel(
-          "Title",
+          t("builder.inspector.title"),
           <input
             value={block.title || ""}
             onChange={(event) => update("title", event.target.value)}
@@ -310,7 +313,7 @@ export default function OutletBuilderInspector({
           />,
         )}
         {(!isPhoto || isPhotoStory) && fieldLabel(
-          "Supporting copy",
+          t("builder.inspector.supportingCopy"),
           <textarea
             value={block.body || ""}
             onChange={(event) => update("body", event.target.value)}
@@ -321,7 +324,7 @@ export default function OutletBuilderInspector({
         {isPhoto && (
           <>
             <div>
-              <p className="text-xs font-semibold text-gray-600">Image</p>
+              <p className="text-xs font-semibold text-gray-600">{t("builder.inspector.image")}</p>
               <div className="mt-1">
                 <ProductMediaUploader
                   vendorId={vendorId}
@@ -333,7 +336,7 @@ export default function OutletBuilderInspector({
               </div>
             </div>
             {fieldLabel(
-              "Image URL",
+              t("builder.inspector.imageUrl"),
               <input
                 value={block.imageUrl || block.image || ""}
                 onChange={(event) =>
@@ -342,7 +345,7 @@ export default function OutletBuilderInspector({
                     image: event.target.value,
                   })
                 }
-                placeholder="Or paste an image URL"
+                placeholder={t("builder.inspector.imageUrlPaste")}
                 className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
               />,
             )}
@@ -354,18 +357,18 @@ export default function OutletBuilderInspector({
         )}
         {["cta", "voucher_banner"].includes(block.type) &&
           fieldLabel(
-            "Button label",
+            t("builder.inspector.buttonLabel"),
             <input
               value={block.cta || ""}
               onChange={(event) => update("cta", event.target.value)}
-              placeholder="Explore now"
+              placeholder={t("builder.inspector.explorePlaceholder")}
               className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
             />,
           )}
         {block.type === "product_grid" && (
           <div>
             <p className="text-xs font-semibold text-gray-600">
-              Products from this outlet
+              {t("builder.inspector.productsFromOutlet")}
             </p>
             <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-2">
               {products.map((product) => (
@@ -399,11 +402,10 @@ export default function OutletBuilderInspector({
         {block.type === "gallery" && (
           <div>
             <p className="text-xs font-semibold text-gray-600">
-              Gallery images
+              {t("builder.inspector.galleryImages")}
             </p>
             <p className="mt-1 text-[11px] font-normal text-gray-400">
-              Upload images directly. They will appear in this Gallery block on
-              the public shop.
+              {t("builder.inspector.galleryHint")}
             </p>
             <div className="mt-2 space-y-3">
               {gallery.map((item, index) => (
@@ -425,7 +427,7 @@ export default function OutletBuilderInspector({
                     }
                   />
                   {fieldLabel(
-                    "Image URL",
+                    t("builder.inspector.imageUrl"),
                     <input
                       value={item.url}
                       onChange={(event) =>
@@ -451,7 +453,7 @@ export default function OutletBuilderInspector({
                     }
                     className="mt-2 text-xs font-semibold text-red-600 hover:underline"
                   >
-                    Remove image
+                    {t("builder.inspector.removeImage")}
                   </button>
                 </div>
               ))}
@@ -466,11 +468,11 @@ export default function OutletBuilderInspector({
                 />
               )}
             </div>
-            <p className="mt-2 text-[10px] text-gray-400">Maximum 50 images.</p>
+            <p className="mt-2 text-[10px] text-gray-400">{t("builder.inspector.maxImages", { count: 50 })}</p>
           </div>
         )}
         {fieldLabel(
-          "Size on the page",
+          t("builder.inspector.sizeOnPage"),
           <div className="mt-1 grid grid-cols-4 gap-1">
             {GRID_SIZE_PRESETS.map(([w, h]) => {
               const active = block.w === w && block.h === h;
@@ -494,7 +496,7 @@ export default function OutletBuilderInspector({
               label,
               <input
                 value={block.overrides?.[key] || ""}
-                placeholder={live || "Not set on this outlet"}
+                placeholder={live || t("builder.inspector.notSetOnOutlet")}
                 onChange={(event) =>
                   onUpdateBlock({ overrides: overrideUpdate(block.overrides, key, event.target.value) })
                 }
@@ -502,18 +504,18 @@ export default function OutletBuilderInspector({
               />,
             )}
             <p className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
-              {custom ? "Custom" : "Using outlet data"}
+              {custom ? t("builder.inspector.custom") : t("builder.inspector.usingOutletData")}
               {custom && <button
                 type="button"
                 onClick={() => onUpdateBlock({ overrides: overrideUpdate(block.overrides, key, "") })}
                 className="font-semibold text-primary hover:underline"
-              >Reset to outlet</button>}
+              >{t("builder.inspector.resetToOutlet")}</button>}
             </p>
           </div>;
         })}
 
         {fieldLabel(
-          "Background colour",
+          t("builder.inspector.backgroundColour"),
           <input
             type="color"
             value={block.style?.backgroundColor || "#ffffff"}

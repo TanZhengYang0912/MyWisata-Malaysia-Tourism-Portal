@@ -7,8 +7,8 @@ describe('AI writing assistant integration', () => {
   it('provides a consistent generate, preview, apply, and discard contract', () => {
     const source = read('components/vendor/ai-writing-assistant.tsx');
     expect(source).toContain('Generate with AI');
-    expect(source).toContain('Apply draft');
-    expect(source).toContain('Discard');
+    expect(source).toContain('assistant.applyDraft');
+    expect(source).toContain('assistant.discard');
   });
 
   it('is wired into all four approved first-phase surfaces', () => {

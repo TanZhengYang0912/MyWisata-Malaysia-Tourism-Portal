@@ -25,6 +25,7 @@ import {
 } from '@/lib/vendor/outlet-grid';
 import { canResizeBlockTo } from '@/lib/vendor/outlet-page-schema';
 import type { OutletPageBlock, OutletPageDocument, OutletPageBlockType } from '@/lib/vendor/outlet-page-schema';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   vendorId: string;
@@ -61,6 +62,7 @@ export default function OutletBuilderCanvas({
   onEditBlock,
   onEndInlineEdit,
 }: Props) {
+  const { t } = useTranslation('vendor');
   const viewport = getBuilderViewportConfig(view);
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const gridRef = useRef<HTMLDivElement>(null);
@@ -104,11 +106,11 @@ export default function OutletBuilderCanvas({
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">Shop canvas</p>
-            <p className="mt-1 text-sm text-gray-500">Drag a section, select it, then edit it from the panel that stays in view.</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('builder.canvasTitle')}</p>
+            <p className="mt-1 text-sm text-gray-500">{t('builder.canvasHint')}</p>
           </div>
           <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary shadow-sm">
-            {document.blocks.length + 1} sections
+            {t('builder.sectionCount', { count: document.blocks.length + 1 })}
           </span>
         </div>
 
@@ -137,7 +139,7 @@ export default function OutletBuilderCanvas({
                   onClick={(event) => event.stopPropagation()}
                 >
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/70">
-                    Quick hero image upload
+                    {t('builder.quickHeroUpload')}
                   </p>
                   <ProductMediaUploader
                     vendorId={vendorId}
@@ -168,7 +170,7 @@ export default function OutletBuilderCanvas({
                 />}
                 {document.blocks.map((block) => {
                   const selected = selectedBlockId === block.id;
-                  const blockLabel = block.title || block.type.replace('_', ' ');
+                  const blockLabel = block.title || t(`builder.blockTypes.${block.type}`, { defaultValue: block.type.replace('_', ' ') });
                   return <div
                     key={block.id}
                     ref={(element) => { blockRefs.current[block.id] = element; }}
@@ -187,14 +189,14 @@ export default function OutletBuilderCanvas({
                         }}
                         onDragEnd={() => { setDragId(null); setGhost(null); }}
                         className="flex h-8 cursor-grab items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-primary/70 hover:bg-secondary active:cursor-grabbing"
-                        aria-label={`Drag ${blockLabel}`}
-                        title={`Drag ${blockLabel}`}
+                        aria-label={t('builder.dragBlock', { label: blockLabel })}
+                        title={t('builder.dragBlock', { label: blockLabel })}
                       >
                         <GripVertical size={15} />
                       </div>
-                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title="Resize"><Maximize2 size={14} /></button>
-                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title="Duplicate"><Copy size={14} /></button>
-                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title="Delete"><Trash2 size={14} /></button>
+                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={t('builder.resizeLabel', { label: blockLabel })} title={t('builder.resize')}><Maximize2 size={14} /></button>
+                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={t('builder.duplicateLabel', { label: blockLabel })} title={t('builder.duplicate')}><Copy size={14} /></button>
+                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={t('builder.deleteLabel', { label: blockLabel })} title={t('builder.delete')}><Trash2 size={14} /></button>
                     </div>
 
                     {sizeMenuId === block.id && <>
