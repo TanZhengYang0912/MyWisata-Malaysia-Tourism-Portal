@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 // P4 — Member 4: user affiliate dashboard. See CLAUDE.md Step 6, rebuilt per
 // CLAUDE-FIXES.md Fix 3. Now reachable from the main customer nav
 // (app/customer/layout.tsx's "Earn & Share" entry) — Fix 3a.
@@ -37,6 +38,7 @@ interface StatsResponse {
 type SortKey = "shares" | "clicks" | "referrals" | "earnings";
 
 export default function AffiliateDashboardPage() {
+  const { t: tCustomer } = useTranslation("customer");
   const { currentUser, loading: authLoading } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<StatsResponse | null | undefined>(undefined); // undefined = loading
@@ -141,7 +143,7 @@ export default function AffiliateDashboardPage() {
   }
 
   if (authLoading || stats === undefined) {
-    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">Loading…</div></CustomerPageShell>;
+    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">{tCustomer("ui.affiliate.loadingDashboard")}</div></CustomerPageShell>;
   }
 
   if (!currentUser) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Filter, MapPin, ReceiptText, Search, X } from "lucide-react";
@@ -29,6 +30,7 @@ function statusLabel(status: BookingItineraryGroup["status"]) { return status ==
 function statusClass(status: BookingItineraryGroup["status"]) { return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary"; }
 
 export default function CustomerCalendarPage({ initialScope = "upcoming" }: { initialScope?: BookingScope } = {}) {
+  const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
@@ -119,7 +121,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
   function selectCalendarMonth(month: number) { setSelectedDayKey(null); setMonthStart(new Date(monthStart!.getFullYear(), month, 1)); }
   function selectCalendarYear(year: number) { setSelectedDayKey(null); setMonthStart(new Date(year, monthStart!.getMonth(), 1)); }
 
-  if (bookings === null || monthStart === null) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground">Loading your calendar…</div>;
+  if (bookings === null || monthStart === null) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground">{tCustomer("ui.calendar.loading")}</div>;
 
   return (
     <div className="min-h-full bg-background">

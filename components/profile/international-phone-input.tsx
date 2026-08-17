@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   defaultCountries,
   FlagImage,
@@ -24,6 +25,7 @@ export function InternationalPhoneInput({
   disabled,
   error,
 }: InternationalPhoneInputProps) {
+  const { t } = useTranslation("customer");
   const [countrySearch, setCountrySearch] = useState("");
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const countries = useMemo(() => defaultCountries.map(parseCountry), []);
@@ -56,7 +58,7 @@ export function InternationalPhoneInput({
         className="flex shrink-0 items-center gap-2 border-r border-border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
         onClick={() => setCountryMenuOpen((open) => !open)}
         disabled={disabled}
-        aria-label="Select phone country or territory"
+        aria-label={t("ui.phone.selectCountry")}
         aria-expanded={countryMenuOpen}
       >
         <FlagImage iso2={country.iso2} size="18px" />
@@ -79,12 +81,12 @@ export function InternationalPhoneInput({
             <input
               value={countrySearch}
               onChange={(event) => setCountrySearch(event.target.value)}
-              placeholder="Search country or dial code"
+              placeholder={t("ui.phone.searchCountry")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
               autoFocus
             />
           </div>
-          <ul className="max-h-64 overflow-y-auto py-1" aria-label="Countries and territories">
+          <ul className="max-h-64 overflow-y-auto py-1" aria-label={t("ui.phone.countries")}>
             {matchingCountries.map((candidate) => (
               <li key={`${candidate.iso2}-${candidate.dialCode}`}>
                 <button
@@ -103,7 +105,7 @@ export function InternationalPhoneInput({
               </li>
             ))}
             {matchingCountries.length === 0 && (
-              <li className="px-3 py-4 text-center text-sm text-muted-foreground">No matching country or territory</li>
+              <li className="px-3 py-4 text-center text-sm text-muted-foreground">{t("ui.phone.noMatch")}</li>
             )}
           </ul>
         </div>

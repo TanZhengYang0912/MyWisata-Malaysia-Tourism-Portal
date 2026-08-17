@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
@@ -174,6 +175,7 @@ export function MalaysiaStateMap({
   onSelectState: (stateId: string | null) => void;
   onDismissPlace?: () => void;
 }) {
+  const { t } = useTranslation("customer");
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const activeStateId = hoveredStateId ?? selectedStateId;
   const activeState = DEMO_STATES.find((state) => state.id === activeStateId);
@@ -206,9 +208,9 @@ export function MalaysiaStateMap({
       <div className="pointer-events-none absolute left-5 right-5 top-4 z-10 border-b border-border pb-3 sm:left-7 sm:right-7 sm:pb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary 2xl:text-[11px]">Malaysia</p>
-            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-foreground sm:text-[24px] 2xl:text-[30px]">All states and federal territories</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">Choose one state to reveal its places.</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary 2xl:text-[11px]">{t("ui.labels.malaysia")}</p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-foreground sm:text-[24px] 2xl:text-[30px]">{t("ui.map.allStatesTerritories")}</h2>
+            <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">{t("ui.map.chooseState")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-muted-foreground lg:block 2xl:text-xs">
             <p className="font-bold text-foreground">16 regions · 64 places</p>

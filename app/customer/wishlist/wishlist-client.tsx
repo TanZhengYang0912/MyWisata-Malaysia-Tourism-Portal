@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useState } from "react";
 import { Bookmark, Compass, Heart, MapPin, PackageOpen } from "lucide-react";
@@ -13,11 +14,12 @@ type SavedDestinationRow = { state: string; savedAt: string };
 type SavedTab = "all" | "places" | "experiences";
 
 function EmptySavedState({ tab }: { tab: SavedTab }) {
+  const { t } = useTranslation("customer");
   const copy = tab === "places"
-    ? { title: "No saved places yet", description: "Save a destination from the atlas and keep it close for your next trip." }
+    ? { title: t("ui.wishlist.noPlaces"), description: t("ui.wishlist.savePlaces") }
     : tab === "experiences"
-      ? { title: "No saved experiences yet", description: "Tap the heart on an experience to build your travel shortlist." }
-      : { title: "Your saved list is empty", description: "Save destinations and experiences while you explore Malaysia." };
+      ? { title: t("ui.wishlist.noExperiences"), description: t("ui.wishlist.saveExperiences") }
+      : { title: t("ui.wishlist.empty"), description: t("ui.wishlist.saveBoth") };
 
   return (
     <div className="rounded-3xl border border-dashed border-border bg-card px-6 py-14 text-center">
@@ -30,6 +32,7 @@ function EmptySavedState({ tab }: { tab: SavedTab }) {
 }
 
 export function SavedHubClient({ activities, destinations }: { activities: ComputedActivity[]; destinations: SavedDestinationRow[] }) {
+  const { t: tCustomer } = useTranslation("customer");
   const { savedStates, savedAt, loading } = useSavedDestinations();
   const [tab, setTab] = useState<SavedTab>("all");
   const initialStates = new Set(destinations.map((destination) => destination.state));

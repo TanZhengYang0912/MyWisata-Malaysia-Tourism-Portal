@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -44,9 +45,10 @@ const RESULTS_PER_PAGE = 8;
 const PLACE_ACTIVITIES_PER_PAGE = 8;
 
 function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSummary; categories: string[]; index: number }) {
+  const { t } = useTranslation("customer");
   const visual = getVendorVisual(vendor);
   const outlet = vendor.outlets[0];
-  const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || "Malaysia";
+  const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
@@ -55,13 +57,13 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={visual.coverUrl} alt={`${vendor.name} business cover`} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+            <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           </> : <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)] text-white">
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>
-            <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Local partner</span>
+            <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{t("ui.search.localPartner")}</span>
           </div>}
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground"><ShieldCheck size={12} className="text-primary" /> Verified vendor</span>
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground"><ShieldCheck size={12} className="text-primary" /> {t("ui.labels.verifiedVendor")}</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
@@ -69,7 +71,7 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
-            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">Verified local partner with active outlets across Malaysia.</p>
+            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{t("ui.search.verifiedPartnerDescription")}</p>
           </div>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]">
             {visual.logoUrl ? <>
@@ -78,18 +80,19 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
             </> : visual.initials}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {vendor.outlets.length} outlet{vendor.outlets.length === 1 ? "" : "s"}</span><span className="truncate">{categories.length ? categories.join(" · ") : "Local partner"}</span></div>
-        <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">Explore vendor <ArrowRight size={13} /></Link>
+        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="truncate">{categories.length ? categories.join(" · ") : t("ui.search.localPartner")}</span></div>
+        <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">{t("ui.actions.exploreVendor")} <ArrowRight size={13} /></Link>
       </div>
-      <span className="sr-only">Vendor card {index + 1}</span>
+      <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>
     </article>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; index: number }) {
-  const location = [activity.outlet.city, activity.outlet.state].filter(Boolean).join(", ") || "Malaysia";
-  const typeLabel = activity.typeSlugs?.[0]?.replace(/-/g, " ") || "Outdoor experience";
+  const { t } = useTranslation("customer");
+  const location = [activity.outlet.city, activity.outlet.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
+  const typeLabel = activity.typeSlugs?.[0]?.replace(/-/g, " ") || t("ui.search.outdoorExperience");
   const provider = activity.outlet.vendorName;
   const vendorBacked = getActivityCommerceMode(activity) === "vendor";
   const image = getPlaceActivityImage(activity);
@@ -101,7 +104,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071923]/80 via-[#071923]/5 to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">Place-based experience</span>
+          <span className="absolute left-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">{t("ui.labels.placeBasedExperience")}</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
@@ -109,23 +112,24 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <Link href={`/customer/activity/${activity.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="line-clamp-2 text-sm font-bold leading-5 text-[#122b3a]">{activity.name}</h3></Link>
-            <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? "Guided & bookable" : vendorBacked ? "Vendor experience" : "Public place"}</p>
+            <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? t("ui.search.guidedBookable") : vendorBacked ? t("ui.search.vendorExperience") : t("ui.labels.publicPlace")}</p>
           </div>
-          <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? `RM ${activity.price}` : "Free to explore"}</span>
+          <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? `RM ${activity.price}` : t("ui.labels.freeToExplore")}</span>
         </div>
         <p className="line-clamp-2 text-xs leading-5 text-[#6d7e83]">{activity.description}</p>
         <div className="flex items-center justify-between gap-3 text-[11px] text-[#6d7e83]">
-          <span className="truncate">{vendorBacked ? `Provided by: ${provider}` : "No vendor required"}</span>
-          <Link href={`/customer/activity/${activity.id}`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">View details <ArrowRight size={13} /></Link>
+          <span className="truncate">{vendorBacked ? t("ui.search.providedBy", { vendor: provider }) : t("ui.search.noVendorRequired")}</span>
+          <Link href={`/customer/activity/${activity.id}`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">{t("ui.actions.viewDetails")} <ArrowRight size={13} /></Link>
         </div>
       </div>
-      <span className="sr-only">Place activity card {index + 1}</span>
+      <span className="sr-only">{t("ui.search.placeCard", { index: index + 1 })}</span>
     </article>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, recommendationPersonalized }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; recommendationPersonalized: boolean }) {
+  const { t } = useTranslation("customer");
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
@@ -172,12 +176,12 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       {/* Header */}
       <section className="border-b border-border bg-background">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Our Partners</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.search.verifiedPartners")}</p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-            Meet the people behind your next good stop.
+            {t("ui.search.title")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Browse verified local partners, vendors and businesses across Malaysia.
+            {t("ui.search.description")}
           </p>
 
           {/* Search Tools & Filters */}
@@ -186,14 +190,14 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               <DiscoverySearchField 
                 value={query} 
                 onChange={(v) => { setQuery(v); setCurrentPage(1); }} 
-                placeholder="Search vendors..." 
+                placeholder={t("ui.search.searchVendors")}
               />
               <select 
                 value={state ?? ""} 
                 onChange={(e) => { setState(e.target.value || null); setCurrentPage(1); }} 
                 className="flex min-h-14 w-full shrink-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 text-sm font-semibold text-foreground outline-none focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 sm:w-[200px]"
               >
-                <option value="">All Malaysia</option>
+                <option value="">{t("ui.search.allMalaysia")}</option>
                 {STATES_MY.filter(s => s !== "All Malaysia").map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -215,7 +219,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       {!query && filteredRecommendedVendors.length > 0 && (
         <section className="border-b border-border">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">Featured Local Partners</h2>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">{t("ui.search.recommendFeatured")}</h2>
             <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {filteredRecommendedVendors.slice(0, 4).map((vendor, index) => (
                 <VendorDirectoryCard key={vendor.id} vendor={vendor} categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]} index={index} />
@@ -228,7 +232,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       {/* All Vendors */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">
-          {query || category || state ? "Search Results" : "All Partners"}
+          {query || category || state ? t("ui.search.searchResults") : t("ui.search.allPartners")}
         </h2>
         
         {visibleVendors.length ? (
@@ -239,20 +243,20 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
           </div>
         ) : (
           <div className="rounded-[24px] border border-dashed border-border bg-secondary/50 p-12 text-center">
-            <p className="font-bold text-lg">No vendors found.</p>
-            <p className="mt-2 text-sm text-muted-foreground">Try adjusting your search or filters.</p>
+            <p className="font-bold text-lg">{t("ui.search.noVendors")}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("ui.search.tryFilters")}</p>
           </div>
         )}
 
         {filteredVendors.length > 0 && totalPages > 1 && (
-          <nav className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <nav aria-label={t("ui.search.vendorPages")} className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              Showing <span className="font-bold text-foreground">{pageStart + 1}–{Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length)}</span> of <span className="font-bold text-foreground">{filteredVendors.length}</span> partners
+              {t("ui.search.showing", { start: pageStart + 1, end: Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length), total: filteredVendors.length, items: t("ui.search.vendors") })}
             </p>
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
+              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} aria-label={t("ui.search.previousVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
               {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-primary text-white border-primary" : "border border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}
-              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
+              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} aria-label={t("ui.search.nextVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
             </div>
           </nav>
         )}

@@ -1,10 +1,12 @@
 "use client";
 
 import { BookingPanel } from "./booking-panel";
+import { useTranslation } from "react-i18next";
 import type { DetailBody, DetailBodyProps } from "./types";
 
 function ActivityOptions(props: DetailBodyProps) {
-  return <BookingPanel {...props} label="Choose a date and time" />;
+  const { t } = useTranslation("customer");
+  return <BookingPanel {...props} label={t("ui.booking.chooseDateTime")} />;
 }
 
 export const activityBody: DetailBody = {

@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { Store, MapPin, X } from "lucide-react";
 import type { DiscoveryPin } from "@/lib/demo-map/discovery-pins";
@@ -9,15 +12,16 @@ import type { DiscoveryPin } from "@/lib/demo-map/discovery-pins";
  * boundary list, docs/plans/2026-08-03-0237-dev-explore-discovery-map.md).
  */
 export function DiscoveryPinPreview({ pins, onClose }: { pins: DiscoveryPin[]; onClose: () => void }) {
+  const { t } = useTranslation("customer");
   if (pins.length === 0) return null;
 
   return (
     <aside className="rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="text-sm font-bold text-foreground">
-          {pins.length > 1 ? `${pins.length} places here` : pins[0].kind === "outlet" ? "Outlet" : "Activity place"}
+          {pins.length > 1 ? `${pins.length} ${t("ui.labels.places")}` : pins[0].kind === "outlet" ? t("ui.labels.mywisataOutlet") : t("ui.labels.placeBasedExperience")}
         </h3>
-        <button type="button" onClick={onClose} aria-label="Close preview" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+        <button type="button" onClick={onClose} aria-label={t("actions.close", { ns: "common" })} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
           <X size={16} />
         </button>
       </div>
@@ -29,15 +33,16 @@ export function DiscoveryPinPreview({ pins, onClose }: { pins: DiscoveryPin[]; o
 }
 
 function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> }) {
+  const { t } = useTranslation("customer");
   return (
     <div className="p-4">
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-        <Store size={12} /> Outlet
+        <Store size={12} /> {t("ui.labels.mywisataOutlet")}
       </div>
       <Link href={`/customer/outlet/${pin.outlet.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
         {pin.outlet.name}
       </Link>
-      <p className="text-xs text-muted-foreground">{pin.outlet.vendorName ?? "Local vendor"}</p>
+      <p className="text-xs text-muted-foreground">{pin.outlet.vendorName ?? t("ui.labels.localVendor")}</p>
       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin size={11} /> {pin.outlet.city}, {pin.outlet.state}
       </p>
@@ -56,16 +61,17 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
 }
 
 function ActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity" }> }) {
+  const { t } = useTranslation("customer");
   return (
     <div className="p-4">
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-        <MapPin size={12} /> Activity place
+        <MapPin size={12} /> {t("ui.labels.placeBasedExperience")}
       </div>
       <Link href={`/customer/activity/${pin.activity.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
         {pin.activity.name}
       </Link>
       <p className="text-xs text-muted-foreground">
-        {pin.activity.typeSlugs?.join(", ") ?? pin.activity.category} · {pin.providerOutlet?.vendorName ?? pin.providerOutlet?.name ?? "Local provider"}
+        {pin.activity.typeSlugs?.join(", ") ?? pin.activity.category} · {pin.providerOutlet?.vendorName ?? pin.providerOutlet?.name ?? t("ui.labels.localVendor")}
       </p>
       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin size={11} /> {pin.activity.place?.district ? `${pin.activity.place.district}, ${pin.activity.place.state}` : pin.activity.place?.state}

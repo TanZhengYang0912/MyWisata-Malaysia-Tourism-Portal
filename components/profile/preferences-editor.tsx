@@ -7,6 +7,7 @@
 // onboarding criteria are met).
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,8 @@ type SurveyResponse = {
 
 const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
-export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }: { onSaved?: () => void; submitLabel?: string }) {
+export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => void; submitLabel?: string }) {
+  const { t } = useTranslation("customer");
   const [interests, setInterests] = useState<string[]>([]);
   const [travelStyle, setTravelStyle] = useState("mid_range");
   const [budgetRange, setBudgetRange] = useState("mid_range");
@@ -97,7 +99,7 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
     }
   }
 
-  if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading preferences…</p>;
+  if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">{t("ui.preferencesEditor.loading")}</p>;
 
   const topLearned = Object.entries(learned).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
@@ -106,7 +108,7 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
       {topLearned.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles size={13} /> Based on your activity</p>
-          <p className="mt-1 text-xs text-muted-foreground">You seem drawn to {topLearned.map(([slug]) => interestLabel(slug)).join(", ")}. We factor this into your feed automatically.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("ui.preferencesEditor.learnedHint", { interests: topLearned.map(([slug]) => interestLabel(slug)).join(", ") })}</p>
         </div>
       )}
 
@@ -168,16 +170,16 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
           onChange={(e) => setNotes(e.target.value)}
           maxLength={500}
           rows={3}
-          placeholder="e.g. I love street food, avoid crowded malls, always travel with my dog…"
+          placeholder={t("ui.preferencesEditor.notesPlaceholder")}
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
         />
       </Field>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {saved && <p className="text-xs text-primary">Preferences saved.</p>}
+      {saved && <p className="text-xs text-primary">{t("ui.preferencesEditor.saved")}</p>}
       <Button onClick={save} disabled={busy || interests.length === 0} className="w-full">
         {busy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
-        {busy ? "Saving…" : submitLabel}
+        {busy ? t("ui.preferencesEditor.saving") : (submitLabel ?? t("ui.preferencesEditor.save"))}
       </Button>
     </div>
   );
