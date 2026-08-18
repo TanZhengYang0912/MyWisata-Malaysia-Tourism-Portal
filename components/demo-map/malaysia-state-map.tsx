@@ -178,11 +178,11 @@ export function MalaysiaStateMap({
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
             <p className="font-bold text-[#1d2b3a]">16 regions · 64 places</p>
-            <p className="mt-1">Select a region to explore</p>
+            <p className="mt-1">{t("ui.map.openDistrictPrompt")}</p>
           </div>
         </div>
       </div>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label="Interactive map of Malaysia showing all states and federal territories" className="relative block h-full w-full">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={t("ui.map.allStatesTerritories")} className="relative block h-full w-full">
         <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="transparent" onClick={() => onDismissPlace?.()} />
         <g opacity={0.42} stroke="#ffffff" strokeWidth="1">
           {Array.from({ length: 9 }, (_, index) => <path key={`lat-${index}`} d={`M 40 ${225 + index * 94} H ${WIDTH - 40}`} />)}
@@ -217,7 +217,7 @@ export function MalaysiaStateMap({
         </g>
       </svg>
 
-      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label="Malaysia state labels">
+      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label={t("ui.map.allStatesTerritories")}>
         {DEMO_STATES.map((state) => {
           const region = regionForState(state.id);
           const point = projected({ lat: state.label[1], lng: state.label[0] }, region);
@@ -231,7 +231,7 @@ export function MalaysiaStateMap({
               key={`label-${state.id}`}
               type="button"
               data-state-label={state.id}
-              aria-label={`Select ${state.name}`}
+              aria-label={`${t("ui.map.viewDestination")} ${state.name}`}
               aria-pressed={state.id === selectedStateId}
               onMouseEnter={() => setHoveredStateId(state.id)}
               onMouseLeave={() => setHoveredStateId((current) => (current === state.id ? null : current))}
@@ -241,7 +241,7 @@ export function MalaysiaStateMap({
             >
               <span className="block truncate text-[10px] font-bold leading-none lg:text-[11px] 2xl:text-base">{state.name}</span>
               <span className={`mt-0.5 block truncate text-[8px] leading-none lg:text-[9px] 2xl:text-xs ${active ? "text-white/70" : "text-[#718395]"}`}>
-                {places} {places === 1 ? "place" : "places"}
+                {places} {t(places === 1 ? "ui.labels.place" : "ui.labels.places")}
               </span>
             </button>
           );

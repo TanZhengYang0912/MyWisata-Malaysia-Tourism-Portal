@@ -211,4 +211,26 @@ describe("customer and guest sitewide i18n contract", () => {
       expect(read(file), file).toMatch(/(?:useTranslation|getServerTranslation)\(["'](?:customer|common)["']/);
     }
   });
+
+  it("keeps corrected high-risk surfaces free of their previous fixed English copy", () => {
+    const correctedCopy = [
+      ["components/profile/profile-sections.tsx", [">Danger Zone<", ">Send OTP<", 'placeholder="Type DELETE to confirm"']],
+      ["app/customer/wallet/page.tsx", ['title="My Wallet"', ">Top Up via Card<", ">Transaction History<"]],
+      ["app/customer/wishlist/wishlist-client.tsx", ["Your travel shortlist", "Saved places & experiences", 'aria-label="Saved content"']],
+      ["app/customer/wishlist/page.tsx", ["Saved experiences unavailable", "Please try again in a moment."]],
+      ["app/customer/orders/page.tsx", ['placeholder="Search order ID, product or outlet"', "No orders match these filters", ">Newest first<"]],
+      ["app/customer/calendar/page.tsx", ['placeholder="Search bookings"', 'aria-label="Calendar actions"', ">No bookings match the selected filters.<"]],
+      ["app/customer/kyc/page.tsx", ['<option value="passport">Passport</option>', "KYC documents submitted for review."]],
+      ["app/customer/recommendations/page.tsx", ['placeholder="Phone"', 'placeholder="Email"', 'placeholder="Website"']],
+      ["components/outlet/outlet-menu.tsx", [">Photo coming soon<", ">Featured<", ">From<"]],
+      ["components/demo-map/malaysia-state-map.tsx", ["Select a region to explore", 'aria-label="Interactive map of Malaysia showing all states and federal territories"']],
+      ["components/demo-map/malaysia-district-map.tsx", ['?? "All states and federal territories"', "> All Malaysia<"]],
+      ["components/demo-map/story-map.tsx", [">Good for<", ">Malaysia experiences<", "> Hidden Gem<"]],
+    ] as const;
+
+    for (const [file, oldCopies] of correctedCopy) {
+      const source = read(file);
+      for (const oldCopy of oldCopies) expect(source, `${file}: ${oldCopy}`).not.toContain(oldCopy);
+    }
+  });
 });
