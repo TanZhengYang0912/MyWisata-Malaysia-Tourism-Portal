@@ -14,7 +14,8 @@
     "seed:chat-volume": "CHAT_VOLUME_SEED=1 node scripts/seed-chat-volume.mjs",
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
-    "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs"
+    "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
+    "verify:i18n": "node scripts/verify-i18n-coverage.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

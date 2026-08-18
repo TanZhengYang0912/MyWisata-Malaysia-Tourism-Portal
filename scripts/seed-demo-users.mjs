@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Creates the 8 demo auth users with specific UUIDs so seed.sql lines up.
+ * Creates the core demo auth users with specific UUIDs so seed.sql lines up.
  *
  * Requires:
  *   NEXT_PUBLIC_SUPABASE_URL     — from Supabase Dashboard → Settings → API
@@ -61,6 +61,7 @@ const users = [
   { id: 'aaaaaaaa-0000-0000-0000-000000000006', email: 'customer2@demo.local',       label: 'Customer Bob' },
   { id: 'aaaaaaaa-0000-0000-0000-000000000007', email: 'customer3@demo.local',       label: 'Customer Carol' },
   { id: 'aaaaaaaa-0000-0000-0000-000000000008', email: 'customer4@demo.local',       label: 'Customer Dave' },
+  { id: 'aaaaaaaa-0000-0000-0000-000000000014', email: 'moderator@demo.local',       label: 'Platform Admin' },
 ];
 
 let created = 0;
