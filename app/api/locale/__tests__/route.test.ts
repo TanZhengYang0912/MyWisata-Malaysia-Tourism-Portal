@@ -2,22 +2,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LOCALE_COOKIE } from "@/lib/i18n/locale";
 
 const mocks = vi.hoisted(() => ({
+  createClient: vi.fn(),
   getUser: vi.fn(),
   from: vi.fn(),
   update: vi.fn(),
   eq: vi.fn(),
+  cookieGetAll: vi.fn(),
   cookieSet: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: { getUser: mocks.getUser },
-    from: mocks.from,
-  }),
+  createClient: mocks.createClient,
+}));
+
+mocks.createClient.mockImplementation(async () => ({
+  auth: { getUser: mocks.getUser },
+  from: mocks.from,
 }));
 
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ set: mocks.cookieSet }),
+  cookies: async () => ({ getAll: mocks.cookieGetAll, set: mocks.cookieSet }),
 }));
 
 const { POST } = await import("../route");
@@ -33,6 +37,7 @@ function request(body: unknown) {
 describe("POST /api/locale", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.cookieGetAll.mockReturnValue([]);
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     mocks.from.mockReturnValue({ update: mocks.update });
     mocks.update.mockReturnValue({ eq: mocks.eq });
@@ -46,6 +51,8 @@ describe("POST /api/locale", () => {
     expect(await response.json()).toEqual({
       data: { locale: "ms", persistedToAccount: false },
     });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(mocks.getUser).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.cookieSet).toHaveBeenCalledWith(
       LOCALE_COOKIE,
@@ -61,6 +68,9 @@ describe("POST /api/locale", () => {
 
   it("updates only the authenticated user's preferred_locale before writing the cookie", async () => {
     const user = { id: "user-123" };
+    mocks.cookieGetAll.mockReturnValue([
+      { name: "sb-project-auth-token", value: "session" },
+    ]);
     mocks.getUser.mockResolvedValue({ data: { user }, error: null });
 
     const response = await POST(request({ locale: "zh-CN" }));
@@ -97,6 +107,9 @@ describe("POST /api/locale", () => {
   });
 
   it("does not change the cookie when the authenticated database update fails", async () => {
+    mocks.cookieGetAll.mockReturnValue([
+      { name: "sb-project-auth-token.0", value: "session-part" },
+    ]);
     mocks.getUser.mockResolvedValue({ data: { user: { id: "user-123" } }, error: null });
     mocks.eq.mockResolvedValue({ error: { message: "database unavailable" } });
 
