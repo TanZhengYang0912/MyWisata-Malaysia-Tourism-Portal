@@ -6,7 +6,7 @@ describe('admin recommendation detail workflow', () => {
     const source = readFileSync('app/admin/recommendations/page.tsx', 'utf8');
 
     expect(source).toContain('/admin/recommendations/${r.id}');
-    expect(source).toContain('View details');
+    expect(source).toContain('t("ui.actions.viewDetails")');
     expect(source).not.toContain('ApproveRejectBar');
     expect(source).toContain('AdminBatchActionBar');
     expect(source).toContain('/api/admin/recommendations/review');
@@ -15,10 +15,10 @@ describe('admin recommendation detail workflow', () => {
   it('shows the complete evidence and keeps actions on the detail view', () => {
     const source = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
 
-    expect(source).toContain('Why this place is recommended');
-    expect(source).toContain('Contact methods');
-    expect(source).toContain('Submission photos');
-    expect(source).toContain('Review decision');
+    expect(source).toContain('t("recommendation.detail.fields.whyRecommended")');
+    expect(source).toContain('t("recommendation.detail.contactMethods")');
+    expect(source).toContain('t("recommendation.detail.submissionPhotos")');
+    expect(source).toContain('t("recommendation.detail.reviewDecision")');
     expect(source).toContain('/api/admin/recommendations/review');
     expect(source).toContain('request_changes');
   });
@@ -27,11 +27,11 @@ describe('admin recommendation detail workflow', () => {
     const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
     const detail = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
 
-    expect(panel).toContain('Suggested decision');
-    expect(panel).toContain('Needs attention');
-    expect(panel).toContain('Passed checks');
-    expect(panel).toContain('exact normalized-name');
-    expect(panel).toContain('Use this reason');
+    expect(panel).toContain('t("recommendation.aiReview.suggestedDecision")');
+    expect(panel).toContain('t("recommendation.aiReview.needsAttention")');
+    expect(panel).toContain('t("recommendation.aiReview.passedChecks")');
+    expect(panel).toContain('"recommendation.aiReview.fields.exactNameMatches"');
+    expect(panel).toContain('t("recommendation.aiReview.useReason")');
     expect(panel).toContain('onUseReason');
     expect(detail).toContain('handleAiReason');
     expect(detail).toContain('setAction(suggestedAction)');
@@ -42,9 +42,9 @@ describe('admin recommendation detail workflow', () => {
   it('renders every photo assessment and complete finding details with a deduplicated issue count', () => {
     const panel = readFileSync('components/admin/recommendation-ai-review-panel.tsx', 'utf8');
 
-    expect(panel).toContain('Photo assessments');
+    expect(panel).toContain('t("recommendation.aiReview.photoAssessments")');
     expect(panel).toContain('photoAssessments.map((photo, index)');
-    expect(panel).toContain('Photo {index + 1}');
+    expect(panel).toContain('t("recommendation.aiReview.photoLabel", { number: index + 1 })');
     expect(panel).toContain('PHOTO_STATUS_LABELS[photo.status]');
     expect(panel).toContain('{photo.message}');
     expect(panel).toContain('FIELD_LABELS[finding.field]');
@@ -53,7 +53,7 @@ describe('admin recommendation detail workflow', () => {
     expect(panel).toContain('{finding.message}');
     expect(panel).toContain('{finding.evidenceSummary}');
     expect(panel).toContain('finding.evidenceSummary && (');
-    expect(panel).toContain('Unique issue count');
+    expect(panel).toContain('t("recommendation.aiReview.uniqueIssueCount")');
     expect(panel).toContain('new Set(');
     expect(panel).toContain('issueKey(check.field, check.message)');
     expect(panel).toContain('issueKey(finding.field, finding.message)');

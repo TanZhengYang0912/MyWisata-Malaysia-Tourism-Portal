@@ -11,9 +11,9 @@ describe('support ticket pagination', () => {
   it('limits the visible queue and exposes previous/next navigation', () => {
     expect(pageSource).toContain('const TICKETS_PER_PAGE = 10;');
     expect(pageSource).toContain('const visibleTickets = sortedTickets.slice(');
-    expect(pageSource).toContain('aria-label="Support ticket pagination"');
-    expect(pageSource).toContain('aria-label="Previous ticket page"');
-    expect(pageSource).toContain('aria-label="Next ticket page"');
+    expect(pageSource).toContain('aria-label={t("ui.support.pagination")}');
+    expect(pageSource).toContain('aria-label={t("ui.pagination.previousPage")}');
+    expect(pageSource).toContain('aria-label={t("ui.pagination.nextPage")}');
   });
 
   it('resets to the first page when queue filters or sorting change', () => {
