@@ -18,7 +18,8 @@
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
     "upload:place-images": "PLACE_IMAGES_UPLOAD=1 node scripts/upload-place-images.mjs",
     "upload:vendor-images": "VENDOR_IMAGES_UPLOAD=1 node scripts/upload-vendor-images.mjs",
-    "upload:product-images": "node scripts/upload-product-images.mjs"
+    "upload:product-images": "node scripts/upload-product-images.mjs",
+    "verify:i18n": "node scripts/verify-i18n-coverage.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

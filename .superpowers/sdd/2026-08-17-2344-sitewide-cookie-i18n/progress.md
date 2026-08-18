@@ -36,3 +36,9 @@ Task 9: implementation complete pending focused review (admin contract 11/11, re
 Task 9: fix round 1/1 (missing chatbot result keys, untranslated locale values, locale-aware date/amount/age formatting, translated withdrawal enums, and wallet save label addressed; 0 open must-fix findings)
 Task 9: complete pending commit (1,364/1,364 locale keys, contract/resources 14/14, admin regressions 48/48, TypeScript pass, ESLint 0 errors)
 Task 9: focused repair re-review clean (6/6 confirmed findings closed, 0 open must-fix findings)
+Task 10: implementation in progress (coverage CLI/unit test and 10-case Playwright suite added; anonymous locale auth lookup fixed in e2cc132)
+Task 10: focused verification (verify:i18n pass; 179/179 focused Vitest tests pass; TypeScript pass; unauthenticated Playwright remains unstable on dev-server navigations)
+Task 10: database prerequisite open (connected Supabase is missing users.preferred_locale, error 42703; migration 20260817234400 must be deployed before authenticated persistence E2E)
+Task 10: role coverage repaired in seed sources (ordinary admin demo added; remote seed has not been executed)
+Task 10: must-fix remains (confirmed fixed English is still rendered on parts of customer vendor detail, wallet, orders, calendar, KYC, maps, and profile; all-pages claim is not yet valid)
+Task 10: luna final review attempted as a BLOCKING 10-minute pass and interrupted after failing to return; bounded namespace workers then produced verified Admin/Vendor fixes and partial Customer fixes
