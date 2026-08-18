@@ -14,6 +14,7 @@
 // uses for its own share actions.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import { Download, QrCode as QrCodeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ function fileNameFor(label: string): string {
 }
 
 export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: AffiliateQrCodeProps) {
+  const { t } = useTranslation("admin");
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +53,16 @@ export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: Affilia
     try {
       setUrl(await resolveUrl());
     } catch {
-      setError("Couldn't generate a QR code right now.");
+      setError(t("affiliate.qr.errors.generate"));
     }
   }
 
   useEffect(() => {
     if (!open || !url || !canvasRef.current) return;
     QRCode.toCanvas(canvasRef.current, url, { width: 240, margin: 2 }).catch(() => {
-      setError("Couldn't render the QR code.");
+      setError(t("affiliate.qr.errors.render"));
     });
-  }, [open, url]);
+  }, [open, t, url]);
 
   function download() {
     const canvas = canvasRef.current;
@@ -77,8 +79,8 @@ export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: Affilia
         <button
           type="button"
           onClick={handleOpen}
-          aria-label={`Show QR code for ${label}`}
-          title="Show QR code"
+          aria-label={t("affiliate.qr.showFor", { label })}
+          title={t("affiliate.qr.show")}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition"
         >
           <QrCodeIcon size={14} stroke="#334155" />
@@ -90,32 +92,32 @@ export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: Affilia
           size="icon"
           className="w-12 h-12 rounded-full border-2"
           onClick={handleOpen}
-          title="Show QR code"
-          aria-label={`Show QR code for ${label}`}
+          title={t("affiliate.qr.show")}
+          aria-label={t("affiliate.qr.showFor", { label })}
         >
           <QrCodeIcon size={18} />
         </Button>
       )}
       {variant === "text" && (
         <Button variant="outline" size="sm" onClick={handleOpen}>
-          <QrCodeIcon size={14} /> Show QR
+          <QrCodeIcon size={14} /> {t("affiliate.qr.showShort")}
         </Button>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Scan to open</DialogTitle>
+            <DialogTitle>{t("affiliate.qr.scanToOpen")}</DialogTitle>
             <DialogDescription>{label}</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col items-center gap-3 py-2">
             {error && <p className="text-sm text-destructive">{error}</p>}
-            {!error && !url && <p className="text-sm text-muted-foreground py-10">Generating…</p>}
+            {!error && !url && <p className="text-sm text-muted-foreground py-10">{t("affiliate.qr.generating")}</p>}
             <canvas ref={canvasRef} className={url ? "rounded-lg border border-border" : "hidden"} />
             {url && <p className="max-w-full break-all text-center text-xs text-muted-foreground">{url}</p>}
             <Button onClick={download} disabled={!url} className="w-full">
-              <Download size={14} /> Download PNG
+              <Download size={14} /> {t("affiliate.qr.downloadPng")}
             </Button>
           </div>
         </DialogContent>

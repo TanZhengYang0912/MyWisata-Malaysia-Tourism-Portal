@@ -7,6 +7,7 @@
 // share_events logging) — only what it points at changed.
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Share2, ImageDown } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -82,6 +83,7 @@ const SHARE_IMAGE_TYPES: Partial<Record<ShareType, "product" | "vendor" | "outle
 };
 
 export function ShareButton({ shareType, contentId, title, slug, compact = false, plainOnly = false }: ShareButtonProps) {
+  const { t } = useTranslation("admin");
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [status, setStatus] = useState<ShareStatus>("idle");
@@ -161,7 +163,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
       try {
         await navigator.share({ title, url: withSrc(url, "native") });
         setStatus("shared");
-        if (compact) showFeedback("success", "Shared");
+        if (compact) showFeedback("success", t("share.actions.shared"));
         await logShare("native");
         setTimeout(() => setStatus("idle"), 2000);
         return;
@@ -177,11 +179,11 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
     try {
       await navigator.clipboard.writeText(withSrc(url, "copy_link"));
       setStatus("copied");
-      if (compact) showFeedback("success", "Link copied");
+      if (compact) showFeedback("success", t("share.actions.linkCopied"));
       await logShare("copy_link");
     } catch {
       setStatus("error");
-      if (compact) showFeedback("error", "Couldn't copy link");
+      if (compact) showFeedback("error", t("share.actions.copyFailed"));
     }
     setTimeout(() => setStatus("idle"), 2000);
   }
@@ -209,7 +211,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
         try {
           await navigator.share({ files: [file], title, text: `${title} — ${withSrc(url, "image_share")}` });
           setImageStatus("shared");
-          showFeedback("success", isVerified ? "Shared — your referral link is in the caption" : "Shared");
+          showFeedback("success", isVerified ? t("share.actions.imageSharedWithReferral") : t("share.actions.shared"));
           await logShare("image_share");
           setTimeout(() => setImageStatus("idle"), 2500);
           return;
@@ -236,16 +238,16 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
         await navigator.clipboard.writeText(withSrc(url, "image_download"));
         showFeedback(
           "success",
-          isVerified ? "Image ready — your referral link is copied, paste it in your caption." : "Image downloaded — link copied"
+          isVerified ? t("share.actions.imageReadyWithReferral") : t("share.actions.imageDownloadedWithLink")
         );
       } catch {
-        showFeedback("success", "Image downloaded");
+        showFeedback("success", t("share.actions.imageDownloaded"));
       }
       setImageStatus("downloaded");
       await logShare("image_download");
     } catch {
       setImageStatus("error");
-      showFeedback("error", "Couldn't create the image");
+      showFeedback("error", t("share.actions.imageCreateFailed"));
     }
     setTimeout(() => setImageStatus("idle"), 2500);
   }
@@ -256,8 +258,8 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
         type="button"
         onClick={handleShare}
         disabled={status === "working"}
-        aria-label={`Share ${title}`}
-        title="Share"
+        aria-label={t("share.actions.shareTitle", { title })}
+        title={t("share.actions.share")}
         className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition disabled:cursor-wait disabled:opacity-70"
       >
         <Share2 size={14} stroke="#334155" />
@@ -274,7 +276,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
           className="w-12 h-12 rounded-full border-2"
           onClick={handleShare}
           disabled={status === "working"}
-          title="Share"
+          title={t("share.actions.share")}
         >
           <Share2 size={18} />
         </Button>
@@ -285,8 +287,8 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
             className="w-12 h-12 rounded-full border-2"
             onClick={handleShareImage}
             disabled={imageStatus === "working"}
-            title="Share as image"
-            aria-label={`Share ${title} as an image`}
+            title={t("share.actions.shareAsImage")}
+            aria-label={t("share.actions.shareImageTitle", { title })}
           >
             <ImageDown size={18} />
           </Button>
@@ -297,11 +299,11 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
             exactly like the share button already does. */}
         <AffiliateQrCode resolveUrl={buildShareUrl} label={title} variant="icon" />
       </div>
-      {status === "shared" && <p className="text-xs text-primary">Shared</p>}
-      {status === "copied" && <p className="text-xs text-primary">Link copied</p>}
-      {status === "error" && <p className="text-xs text-destructive">Couldn&apos;t copy link</p>}
+      {status === "shared" && <p className="text-xs text-primary">{t("share.actions.shared")}</p>}
+      {status === "copied" && <p className="text-xs text-primary">{t("share.actions.linkCopied")}</p>}
+      {status === "error" && <p className="text-xs text-destructive">{t("share.actions.copyFailed")}</p>}
       {!isVerified && (status === "idle" || status === "working") && (
-        <p className="text-[10px] text-muted-foreground text-center max-w-20">Verify to earn</p>
+        <p className="text-[10px] text-muted-foreground text-center max-w-20">{t("share.actions.verifyToEarn")}</p>
       )}
     </div>
   );
