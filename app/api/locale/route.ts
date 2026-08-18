@@ -8,6 +8,12 @@ type LocaleResponse = { data: { locale: AppLocale; persistedToAccount: boolean }
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
+function hasSupabaseAuthCookie(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return cookieStore.getAll().some(({ name }) => (
+    name.startsWith("sb-") && name.includes("-auth-token")
+  ));
+}
+
 export async function POST(request: Request) {
   let body: LocaleRequest | null;
   try {
@@ -21,24 +27,30 @@ export async function POST(request: Request) {
   }
 
   const locale = body.locale;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
   let persistedToAccount = false;
 
-  if (user) {
-    const { error } = await supabase
-      .from("users")
-      .update({ preferred_locale: locale })
-      .eq("id", user.id);
+  // Anonymous visitors have no account preference to update. Avoid an
+  // unnecessary network auth lookup so their language cookie is saved even
+  // when the authentication service is unavailable.
+  if (hasSupabaseAuthCookie(cookieStore)) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (user) {
+      const { error } = await supabase
+        .from("users")
+        .update({ preferred_locale: locale })
+        .eq("id", user.id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      persistedToAccount = true;
     }
-
-    persistedToAccount = true;
   }
 
-  const cookieStore = await cookies();
   cookieStore.set(LOCALE_COOKIE, locale, {
     path: "/",
     sameSite: "lax",
