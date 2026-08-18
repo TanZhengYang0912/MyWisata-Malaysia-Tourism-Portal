@@ -13,9 +13,9 @@ describe('public vendor invitation page contract', () => {
 
   it('shows safe recommendation evidence without recommender identity', () => {
     const source = clientSource();
-    expect(source).toContain('Recommendation details');
-    expect(source).toContain('A MyWisata member recommended this business.');
-    expect(source).toContain('Pre-filled from a customer recommendation');
+    expect(source).toContain("t('invite.recommendation.details')");
+    expect(source).toContain("t('invite.recommendation.description')");
+    expect(source).toContain("t('invite.recommendation.prefillNotice')");
     expect(source).toContain('/api/vendor-invite/preview');
     expect(source).toContain('AbortController');
     expect(source).not.toContain('recommender.email');
@@ -28,7 +28,7 @@ describe('public vendor invitation page contract', () => {
     expect(source).toContain('VendorInviteWizard');
     expect(source).toContain('<VendorInviteWizard token={token} preview={preview} onReload={loadPreview} />');
     expect(source).not.toContain('VendorClaimForm');
-    expect(source).toContain('Request a new invitation');
-    expect(source).toContain('Contact MyWisata support');
+    expect(source).toContain("t('invite.actions.requestNew')");
+    expect(source).toContain("t('invite.actions.contactSupport')");
   });
 });
