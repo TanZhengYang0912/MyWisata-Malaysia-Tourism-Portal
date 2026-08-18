@@ -258,7 +258,7 @@ export function MalaysiaDistrictMap({
           <h2
             className={`mt-0.5 font-bold text-foreground font-[family-name:var(--font-display)] ${stateId ? "text-xl" : "text-3xl"}`}
           >
-            {activeState?.name ?? "All states and federal territories"}
+            {activeState?.name ?? t("ui.map.allStatesTerritories")}
           </h2>
           {!stateId && (
             <p className="mt-0.5 text-[13px] text-muted-foreground">
@@ -282,7 +282,7 @@ export function MalaysiaDistrictMap({
               onClick={() => { onSelectState(null); onSelectDistrict(null); }}
               className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-[13px] font-bold text-foreground transition hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              <ArrowLeft size={12} /> All Malaysia
+              <ArrowLeft size={12} /> {t("ui.search.allMalaysia")}
             </button>
           )}
         </div>
@@ -295,10 +295,10 @@ export function MalaysiaDistrictMap({
         viewBox={`0 0 ${canvas.width} ${canvas.height}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label={stateId ? `Districts of ${activeState?.name}` : "Malaysia — select a state to see its districts"}
+        aria-label={stateId ? `${t("ui.labels.location")}: ${activeState?.name}` : t("ui.map.openDistrictPrompt")}
         className="block h-[85vh] min-h-[560px] w-full"
       >
-        <title>{stateId ? `Daerah of ${activeState?.name}` : "Malaysia state and district map"}</title>
+        <title>{stateId ? `${t("ui.labels.location")}: ${activeState?.name}` : t("ui.map.allStatesTerritories")}</title>
         <rect width={canvas.width} height={canvas.height} fill={SEA} onClick={() => onSelectDistrict(null)} />
 
         {!stateId && (

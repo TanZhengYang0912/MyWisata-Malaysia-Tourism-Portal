@@ -214,7 +214,7 @@ export function MalaysiaStateMap({
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-muted-foreground lg:block 2xl:text-xs">
             <p className="font-bold text-foreground">16 regions · 64 places</p>
-            <p className="mt-1">Hover or select a region</p>
+            <p className="mt-1">{t("ui.map.openDistrictPrompt")}</p>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ export function MalaysiaStateMap({
         viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label="Interactive map of Malaysia showing all states and federal territories"
+        aria-label={t("ui.map.allStatesTerritories")}
         className="relative block h-full w-full"
         onClick={(event) => {
           if (event.target === event.currentTarget) onDismissPlace?.();
@@ -255,7 +255,7 @@ export function MalaysiaStateMap({
         </g>
       </svg>
 
-      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label="Malaysia state labels">
+      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label={t("ui.map.allStatesTerritories")}>
         <p className="sr-only">Select a state to explore.</p>
         {visibleStates.map((state) => {
           const region = regionForState(state.id);
@@ -269,7 +269,7 @@ export function MalaysiaStateMap({
               key={`label-${state.id}`}
               type="button"
               data-state-label={state.id}
-              aria-label={`Select ${state.name}`}
+              aria-label={`${t("ui.map.viewDestination")} ${state.name}`}
               aria-pressed={state.id === selectedStateId}
               onMouseEnter={() => setHoveredStateId(state.id)}
               onMouseLeave={() => setHoveredStateId((current) => (current === state.id ? null : current))}
@@ -279,7 +279,7 @@ export function MalaysiaStateMap({
             >
               <span className="block truncate text-xs font-bold leading-none 2xl:text-sm">{state.name}</span>
               <span className="mt-1 block truncate text-[10px] leading-none text-white/70">
-                {places} {places === 1 ? "place" : "places"}
+                {places} {t(places === 1 ? "ui.labels.place" : "ui.labels.places")}
               </span>
             </button>
           );
