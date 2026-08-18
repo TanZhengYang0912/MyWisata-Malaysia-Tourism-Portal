@@ -251,7 +251,7 @@ export default function OutletBuilderInspector({
             />,
           )}
           {fieldLabel(
-            "Button link",
+            t("builder.inspector.buttonLink"),
             <input
               value={hero.buttonLink || ""}
               onChange={(event) =>

@@ -79,6 +79,7 @@
       "flagCount": "{{count}} flags",
       "flagsOverTime": "Flags over time",
       "noFlags": "No flags in this range.",
+      "openPercentage": "{{percent}}% open",
       "openVsReviewed": "Open vs reviewed",
       "selfReferrals": "Self-referrals blocked",
       "topFlagged": "Top flagged affiliates",
@@ -175,6 +176,8 @@
     },
     "status": {
       "confirmed": "Confirmed",
+      "dismissed": "Dismissed",
+      "open": "Open",
       "pending": "Pending",
       "reversed": "Reversed",
       "reviewed": "Reviewed"
@@ -238,6 +241,7 @@
   },
   "catalogue": {
     "accessibility": {
+      "itemType": "Catalogue item type",
       "selectAll": "Select all visible catalogue items",
       "selectItem": "Select {{item}}"
     },
@@ -288,10 +292,10 @@
       "pendingReview": "Pending review"
     },
     "success": {
-      "approve": "Item approved.",
+      "approve": "{{entity}} approved.",
       "batchProcessed": "{{count}} catalogue items processed.",
-      "change_requested": "Item returned for changes.",
-      "reject": "Item rejected."
+      "change_requested": "{{entity}} returned for changes.",
+      "reject": "{{entity}} rejected."
     },
     "title": "Catalogue review",
     "waiting": "Waiting",
@@ -387,6 +391,7 @@
   },
   "chatReports": {
     "accessibility": {
+      "selectReport": "Select chat report {{id}}",
       "selectAll": "Select all visible chat reports",
       "status": "Chat report status"
     },
@@ -474,6 +479,11 @@
     "roles": {
       "customer": "customer",
       "vendor": "vendor"
+    },
+    "status": {
+      "dismissed": "Dismissed",
+      "open": "Open",
+      "resolved": "Resolved"
     },
     "saving": "Saving…",
     "searchPlaceholder": "Search outlet, reporter, details…",
@@ -650,7 +660,13 @@
       "expiryDate": "Expiry date: {{date}}",
       "extractedName": "Extracted name: {{name}}",
       "mismatch": "Mismatch: {{fields}}",
-      "noMismatch": "No OCR mismatch detected"
+      "noMismatch": "No OCR mismatch detected",
+      "status": {
+        "matched": "Matched",
+        "mismatch": "Mismatch",
+        "unavailable": "Unavailable",
+        "unreadable": "Unreadable"
+      }
     },
     "prompts": {
       "otherDetail": "Add at least 10 characters of detail:",
@@ -1270,6 +1286,10 @@
     }
   },
   "moderation": {
+    "flagTypes": {
+      "slur": "Slur content",
+      "unknown": "Unknown flag"
+    },
     "sources": {
       "chatbotMessage": "Chatbot message",
       "ticket": "Ticket",
@@ -1434,6 +1454,20 @@
       "suspended": "Suspended",
       "deleted": "Deleted",
       "unknown": "Unknown"
+    },
+    "roles": {
+      "customer": "Customer",
+      "outletManager": "Outlet manager",
+      "unknown": "Unknown role",
+      "vendorOwner": "Vendor owner"
+    },
+    "auditActions": {
+      "clearBioRestriction": "Clear Bio restriction",
+      "restore": "Restore account",
+      "softDelete": "Soft delete account",
+      "suspend": "Suspend account",
+      "unknown": "Unknown action",
+      "unsuspend": "Unsuspend account"
     },
     "errors": {
       "loadFailed": "Unable to load user",
@@ -1846,6 +1880,7 @@
       "label": "Sandbox / Simulated:"
     },
     "status": {
+      "processed": "Processed",
       "simulated": "SIMULATED"
     }
   }

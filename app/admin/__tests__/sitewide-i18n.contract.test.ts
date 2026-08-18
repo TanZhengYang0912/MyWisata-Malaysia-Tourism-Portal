@@ -230,4 +230,39 @@ describe("admin component sitewide i18n contract", () => {
       expect(read(file), `${file} must not force English-Malaysia formatting`).not.toContain('"en-MY"');
     }
   });
+
+  it("keeps high-risk admin prompts, statuses, and accessibility copy semantic", () => {
+    const catalogue = read("app/admin/catalogue/page.tsx");
+    expect(catalogue).toContain('ariaLabel="catalogue.accessibility.itemType"');
+    expect(catalogue).not.toContain('ariaLabel="Catalogue item type"');
+    expect(catalogue).not.toContain("action === 'reject' ? 'Reject' : 'Request changes'");
+
+    const chatReports = read("app/admin/chat-reports/page.tsx");
+    expect(chatReports).toContain('chatReports.accessibility.selectReport');
+    expect(chatReports).toContain('chatReports.status');
+    expect(chatReports).not.toContain("Select chat report ${r.id}");
+    expect(chatReports).not.toContain('RESOLUTION_REASONS.map((reason) => reason.value).join(", ")');
+
+    const kyc = read("app/admin/kyc/page.tsx");
+    expect(kyc).toContain('kyc.ocr.status.${submission.ocr.status}');
+    expect(kyc).toContain('kyc.reasons.${code}');
+    expect(kyc).not.toContain('KYC_REVIEW_REASON_CODES.join(", ")');
+
+    const affiliate = read("app/admin/affiliate/page.tsx");
+    expect(affiliate).toContain('affiliate.flagTypes.${key}');
+    expect(affiliate).toContain('affiliate.analytics.openPercentage');
+    expect(affiliate).toContain('affiliate.status.${f.status}');
+    expect(affiliate).toContain('affiliate.status.${r.status}');
+
+    const vendors = read("app/admin/vendors/page.tsx");
+    expect(vendors).toContain("ui.users.status.${owner.kyc_status ?? 'unverified'}");
+    expect(vendors).toContain("ui.vendors.status.suspended");
+
+    const refunds = read("app/admin/refunds/page.tsx");
+    expect(refunds).toContain('refunds.status.processed');
+
+    const withdrawals = read("app/admin/withdrawals/page.tsx");
+    expect(withdrawals).toContain('decisionReason(reasonAction, category)');
+    expect(withdrawals).not.toContain('allowedReasons.join(", ")');
+  });
 });

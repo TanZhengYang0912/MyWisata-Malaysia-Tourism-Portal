@@ -283,7 +283,7 @@ export default function VoucherCsvBuilder({
         <div className="min-w-0 flex flex-wrap items-center gap-2 border-t border-gray-100 bg-white px-6 py-4">
           <Button type="button" variant="outline" onClick={closeBuilder}>{t('actions.back')}</Button>
           {draftId && <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={saving} onClick={() => void discardDraft()}>{t('voucher.csv.discardDraft')}</Button>}
-            <span className="ml-auto text-xs text-gray-500">{saving ? <><Loader2 size={13} className="mr-1 inline animate-spin" />{t('actions.saving')}</> : dirty ? t('voucher.csv.autosaveNotice', { defaultValue: 'Changes save after 8 seconds of inactivity' }) : formatSavedAt(savedAt, locale, t)}</span>
+            <span className="ml-auto text-xs text-gray-500">{saving ? <><Loader2 size={13} className="mr-1 inline animate-spin" />{t('actions.saving')}</> : dirty ? t('voucher.csv.autosaveNotice') : formatSavedAt(savedAt, locale, t)}</span>
           <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft()}><Save size={15} /> {saving ? t('actions.saving') : t('actions.saveDraft')}</Button>
           <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft(true)}>{t('actions.saveAndExit')}</Button>
           <Button type="button" onClick={requestPreview} disabled={saving || loadingDraft}><Eye size={15} /> {t('actions.previewUpload')}</Button>

@@ -79,6 +79,7 @@
       "flagCount": "{{count}} 个标记",
       "flagsOverTime": "一段时间内的标记",
       "noFlags": "此范围内没有标记。",
+      "openPercentage": "{{percent}}% 开放",
       "openVsReviewed": "开放与已审核",
       "selfReferrals": "已阻止自我推荐",
       "topFlagged": "被标记最多的联盟",
@@ -175,6 +176,8 @@
     },
     "status": {
       "confirmed": "已确认",
+      "dismissed": "已忽略",
+      "open": "开放",
       "pending": "待处理",
       "reversed": "已冲销",
       "reviewed": "已审核"
@@ -238,6 +241,7 @@
   },
   "catalogue": {
     "accessibility": {
+      "itemType": "目录项目类型",
       "selectAll": "全选可见的目录项目",
       "selectItem": "选择 {{item}}"
     },
@@ -288,10 +292,10 @@
       "pendingReview": "待审核"
     },
     "success": {
-      "approve": "项目已批准。",
+      "approve": "{{entity}}已批准。",
       "batchProcessed": "{{count}} 个目录项目已处理。",
-      "change_requested": "项目已退回修改。",
-      "reject": "项目已拒绝。"
+      "change_requested": "{{entity}}已退回修改。",
+      "reject": "{{entity}}已拒绝。"
     },
     "title": "目录审核",
     "waiting": "等待中",
@@ -387,6 +391,7 @@
   },
   "chatReports": {
     "accessibility": {
+      "selectReport": "选择聊天举报 {{id}}",
       "selectAll": "全选可见的聊天举报",
       "status": "聊天举报状态"
     },
@@ -474,6 +479,11 @@
     "roles": {
       "customer": "客户",
       "vendor": "商家"
+    },
+    "status": {
+      "dismissed": "已忽略",
+      "open": "开放",
+      "resolved": "已解决"
     },
     "saving": "保存中…",
     "searchPlaceholder": "搜索门店、举报人、详情…",
@@ -650,7 +660,13 @@
       "expiryDate": "到期日：{{date}}",
       "extractedName": "提取的姓名：{{name}}",
       "mismatch": "不匹配：{{fields}}",
-      "noMismatch": "未检测到 OCR 不匹配"
+      "noMismatch": "未检测到 OCR 不匹配",
+      "status": {
+        "matched": "匹配",
+        "mismatch": "不匹配",
+        "unavailable": "不可用",
+        "unreadable": "无法读取"
+      }
     },
     "prompts": {
       "otherDetail": "至少添加 10 个字符的详细说明：",
@@ -1270,6 +1286,10 @@
     }
   },
   "moderation": {
+    "flagTypes": {
+      "slur": "辱骂内容",
+      "unknown": "未知标记"
+    },
     "sources": {
       "chatbotMessage": "聊天机器人消息",
       "ticket": "工单",
@@ -1434,6 +1454,20 @@
       "suspended": "已暂停",
       "deleted": "已删除",
       "unknown": "未知"
+    },
+    "roles": {
+      "customer": "客户",
+      "outletManager": "门店经理",
+      "unknown": "未知角色",
+      "vendorOwner": "商家所有者"
+    },
+    "auditActions": {
+      "clearBioRestriction": "清除个人简介限制",
+      "restore": "恢复账户",
+      "softDelete": "软删除账户",
+      "suspend": "暂停账户",
+      "unknown": "未知操作",
+      "unsuspend": "取消暂停账户"
     },
     "errors": {
       "loadFailed": "无法加载用户",
@@ -1846,6 +1880,7 @@
       "label": "沙盒 / 模拟："
     },
     "status": {
+      "processed": "已处理",
       "simulated": "模拟"
     }
   }

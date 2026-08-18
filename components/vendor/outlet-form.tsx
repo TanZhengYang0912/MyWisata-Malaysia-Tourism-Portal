@@ -124,7 +124,7 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.email')}</label>
-            <Input {...register('email')} type="email" placeholder="branch@example.com" />
+            <Input {...register('email')} type="email" placeholder={t('outletForm.emailPlaceholder')} />
           </div>
         </div>
 

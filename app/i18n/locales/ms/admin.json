@@ -79,6 +79,7 @@
       "flagCount": "{{count}} bendera",
       "flagsOverTime": "Bendera mengikut masa",
       "noFlags": "Tiada bendera dalam julat ini.",
+      "openPercentage": "{{percent}}% terbuka",
       "openVsReviewed": "Terbuka berbanding disemak",
       "selfReferrals": "Rujukan kendiri disekat",
       "topFlagged": "Afiliasi paling banyak ditandai",
@@ -175,6 +176,8 @@
     },
     "status": {
       "confirmed": "Disahkan",
+      "dismissed": "Diabaikan",
+      "open": "Terbuka",
       "pending": "Menunggu",
       "reversed": "Diterbalikkan",
       "reviewed": "Disemak"
@@ -238,6 +241,7 @@
   },
   "catalogue": {
     "accessibility": {
+      "itemType": "Jenis item katalog",
       "selectAll": "Pilih semua item katalog yang kelihatan",
       "selectItem": "Pilih {{item}}"
     },
@@ -288,10 +292,10 @@
       "pendingReview": "Menunggu semakan"
     },
     "success": {
-      "approve": "Item diluluskan.",
+      "approve": "{{entity}} diluluskan.",
       "batchProcessed": "{{count}} item katalog diproses.",
-      "change_requested": "Item dikembalikan untuk perubahan.",
-      "reject": "Item ditolak."
+      "change_requested": "{{entity}} dikembalikan untuk perubahan.",
+      "reject": "{{entity}} ditolak."
     },
     "title": "Semakan katalog",
     "waiting": "Menunggu",
@@ -387,6 +391,7 @@
   },
   "chatReports": {
     "accessibility": {
+      "selectReport": "Pilih laporan sembang {{id}}",
       "selectAll": "Pilih semua laporan sembang yang kelihatan",
       "status": "Status laporan sembang"
     },
@@ -474,6 +479,11 @@
     "roles": {
       "customer": "pelanggan",
       "vendor": "vendor"
+    },
+    "status": {
+      "dismissed": "Diabaikan",
+      "open": "Terbuka",
+      "resolved": "Diselesaikan"
     },
     "saving": "Menyimpan…",
     "searchPlaceholder": "Cari outlet, pelapor, butiran…",
@@ -650,7 +660,13 @@
       "expiryDate": "Tarikh luput: {{date}}",
       "extractedName": "Nama diekstrak: {{name}}",
       "mismatch": "Tidak sepadan: {{fields}}",
-      "noMismatch": "Tiada ketidakpadanan OCR dikesan"
+      "noMismatch": "Tiada ketidakpadanan OCR dikesan",
+      "status": {
+        "matched": "Sepadan",
+        "mismatch": "Tidak sepadan",
+        "unavailable": "Tidak tersedia",
+        "unreadable": "Tidak boleh dibaca"
+      }
     },
     "prompts": {
       "otherDetail": "Tambah butiran sekurang-kurangnya 10 aksara:",
@@ -1270,6 +1286,10 @@
     }
   },
   "moderation": {
+    "flagTypes": {
+      "slur": "Kandungan penghinaan",
+      "unknown": "Bendera tidak diketahui"
+    },
     "sources": {
       "chatbotMessage": "Mesej chatbot",
       "ticket": "Tiket",
@@ -1434,6 +1454,20 @@
       "suspended": "Digantung",
       "deleted": "Dipadam",
       "unknown": "Tidak diketahui"
+    },
+    "roles": {
+      "customer": "Pelanggan",
+      "outletManager": "Pengurus outlet",
+      "unknown": "Peranan tidak diketahui",
+      "vendorOwner": "Pemilik vendor"
+    },
+    "auditActions": {
+      "clearBioRestriction": "Kosongkan sekatan Bio",
+      "restore": "Pulihkan akaun",
+      "softDelete": "Padam lembut akaun",
+      "suspend": "Gantung akaun",
+      "unknown": "Tindakan tidak diketahui",
+      "unsuspend": "Nyahgantung akaun"
     },
     "errors": {
       "loadFailed": "Tidak dapat memuatkan pengguna",
@@ -1846,6 +1880,7 @@
       "label": "Sandbox / Simulasi:"
     },
     "status": {
+      "processed": "Diproses",
       "simulated": "SIMULASI"
     }
   }

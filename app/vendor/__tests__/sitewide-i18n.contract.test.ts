@@ -247,4 +247,107 @@ describe("vendor and outlet sitewide i18n contract", () => {
       }
     }
   });
+
+  it("removes confirmed fixed English fallbacks from corrected vendor surfaces", () => {
+    const expectations: Record<string, { keys: string[]; oldCopy: string[] }> = {
+      "app/vendor/products/page.tsx": {
+        keys: ["ui.products.loadFailed", "ui.products.archiveConfirm", "ui.products.archiveFailed", "ui.products.archived", "ui.products.batchSummarySkipped", "ui.products.batchSummary"],
+        oldCopy: [
+          "Could not load products",
+          "Archive this listing? It will no longer be visible to customers.",
+          "Could not archive listing",
+          "Product archived successfully.",
+          "Could not archive listing. Please try again.",
+          " updated, ",
+          " skipped by status.",
+          " listings updated.",
+        ],
+      },
+      "app/vendor/outlets/page.tsx": {
+        keys: ["ui.outlets.loadFailed", "ui.outlets.selectOutlet"],
+        oldCopy: ["Could not load outlets", "Select "],
+      },
+      "app/vendor/vouchers/page.tsx": {
+        keys: [
+          "ui.vouchers.loadFailed",
+          "ui.vouchers.updateFailed",
+          "ui.vouchers.activated",
+          "ui.vouchers.copyFailed",
+          "ui.vouchers.uploadFailed",
+          "ui.vouchers.batchTryAgain",
+        ],
+        oldCopy: [
+          "Could not load vouchers",
+          "Could not load voucher analytics",
+          "Could not update voucher",
+          "Voucher deactivated.",
+          "Voucher activated.",
+          "Could not copy the voucher code.",
+          "Could not load saved CSV drafts",
+          "Could not save CSV draft",
+          "Could not discard CSV draft",
+          "CSV upload failed",
+          "Voucher upload succeeded, but the saved draft could not be cleared.",
+          "Batch action failed. Please try again.",
+        ],
+      },
+      "app/vendor/profile/page.tsx": {
+        keys: ["ui.profile.loadFailed", "ui.profile.aiUnavailable", "ui.profile.saved", "ui.profile.saveFailed", "ui.profile.profileLinkCopied"],
+        oldCopy: [
+          "Unable to load vendor profile",
+          "AI writing is unavailable.",
+          "Saved just now",
+          "Unable to save vendor profile",
+          "Public profile link copied",
+        ],
+      },
+      "app/vendor/inbox/page.tsx": {
+        keys: ["ui.inbox.filter.needs_reply"],
+        oldCopy: ["Needs your reply"],
+      },
+      "components/vendor/product-form.tsx": {
+        keys: ["productForm.categoryInvalid", "productForm.capacityPlaceholder", "productForm.galleryImageAlt", "productForm.removeGalleryImage"],
+        oldCopy: ["Please choose a valid category.", "e.g. 12", "Gallery image ", "Remove gallery image "],
+      },
+      "components/vendor/outlet-manager-panel.tsx": {
+        keys: ["outletManager.emailPlaceholder"],
+        oldCopy: ["manager@example.com"],
+      },
+      "components/vendor/outlet-form.tsx": {
+        keys: ["outletForm.emailPlaceholder"],
+        oldCopy: ["branch@example.com"],
+      },
+      "components/vendor/voucher-csv-builder.tsx": {
+        keys: ["voucher.csv.autosaveNotice"],
+        oldCopy: ["Changes save after 8 seconds of inactivity"],
+      },
+      "components/vendor/outlet-builder-inspector.tsx": {
+        keys: ["builder.inspector.buttonLink"],
+        oldCopy: ["Button link"],
+      },
+    };
+
+    for (const [file, expectation] of Object.entries(expectations)) {
+      const source = read(file);
+      for (const key of expectation.keys) {
+        expect(source, `${file} must call ${key}`).toContain(key);
+      }
+      for (const oldCopy of expectation.oldCopy) {
+        expect(source, `${file} still contains fixed English: ${oldCopy}`).not.toContain(oldCopy);
+      }
+    }
+
+    const resources = {
+      en: JSON.parse(read("app/i18n/locales/en/vendor.json")),
+      "zh-CN": JSON.parse(read("app/i18n/locales/zh-CN/vendor.json")),
+      ms: JSON.parse(read("app/i18n/locales/ms/vendor.json")),
+    } as const;
+    const requiredKeys = Object.values(expectations).flatMap(({ keys }) => keys);
+
+    for (const [locale, resource] of Object.entries(resources)) {
+      for (const key of requiredKeys) {
+        expect(resourceValue(resource, key), `${locale}:${key}`).toEqual(expect.any(String));
+      }
+    }
+  });
 });

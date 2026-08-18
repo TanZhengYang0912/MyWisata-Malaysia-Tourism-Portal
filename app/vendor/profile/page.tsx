@@ -79,14 +79,14 @@ export default function VendorProfilePage() {
     if (!vendorId) return;
     fetch(`/api/vendors/${vendorId}`, { cache: 'no-store' }).then(async (response) => {
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Unable to load vendor profile');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.profile.loadFailed'));
       const data = payload.data as VendorProfile;
       const nextForm = formFromProfile(data);
       setProfile(data);
       setForm(nextForm);
       setSavedForm(nextForm);
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load vendor profile')).finally(() => setLoading(false));
-  }, [vendorId]);
+    }).catch((reason) => setError(reason instanceof Error ? reason.message : t('ui.profile.loadFailed'))).finally(() => setLoading(false));
+  }, [t, vendorId]);
 
   function updateField<K extends keyof ProfileForm>(field: K, value: ProfileForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -104,10 +104,10 @@ export default function VendorProfilePage() {
         body: JSON.stringify({ surface: 'business_profile', name: form.name, businessType: form.businessType, description: form.description }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error?.message || 'AI writing is unavailable.');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.profile.aiUnavailable'));
       setAiDraft(payload.data?.draft || null);
     } catch (reason) {
-      setAiError(reason instanceof Error ? reason.message : 'AI writing is unavailable.');
+      setAiError(reason instanceof Error ? reason.message : t('ui.profile.aiUnavailable'));
     } finally { setAiBusy(false); }
   }
 
@@ -118,22 +118,22 @@ export default function VendorProfilePage() {
     try {
       const response = await fetch(`/api/vendors/${vendorId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Unable to save vendor profile');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.profile.saveFailed'));
       const nextProfile = payload.data as VendorProfile;
       const nextForm = formFromProfile(nextProfile);
       setProfile(nextProfile);
       setForm(nextForm);
       setSavedForm(nextForm);
-      setMessage('Saved just now');
+      setMessage(t('ui.profile.saved'));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save vendor profile');
+      setError(reason instanceof Error ? reason.message : t('ui.profile.saveFailed'));
     } finally { setSaving(false); }
   }
 
   async function copyPublicLink() {
     if (!vendorId || !navigator.clipboard) return;
     await navigator.clipboard.writeText(`${window.location.origin}${publicProfileHref}`);
-    setMessage('Public profile link copied');
+    setMessage(t('ui.profile.profileLinkCopied'));
   }
 
   if (loading) return <div className="rounded-2xl bg-white p-8 text-sm text-gray-500">{t('ui.profile.loading')}</div>;
