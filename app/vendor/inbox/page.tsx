@@ -30,10 +30,10 @@ const STATUS_CHIP_STYLES: Record<string, string> = {
 };
 
 type InboxFilter = 'all' | 'unread' | 'needs_reply';
-const FILTERS: { value: InboxFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'unread', label: 'Unread' },
-  { value: 'needs_reply', label: 'Needs your reply' },
+const FILTERS: { value: InboxFilter; translationKey: string }[] = [
+  { value: 'all', translationKey: 'ui.inbox.filter.all' },
+  { value: 'unread', translationKey: 'ui.inbox.filter.unread' },
+  { value: 'needs_reply', translationKey: 'ui.inbox.filter.needs_reply' },
 ];
 
 function toChatMessages(thread: Thread): ChatMessage[] {
@@ -70,7 +70,7 @@ export default function VendorInboxPage() {
   const [aiReplyError, setAiReplyError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InboxFilter>('all');
-  const filters = FILTERS.map((option) => ({ ...option, label: t(`ui.inbox.filter.${option.value}`) }));
+  const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
 
   const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);

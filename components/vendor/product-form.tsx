@@ -251,7 +251,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
               <option value="">{t('productForm.selectCategory')}</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
-            {errors.categoryId && <p className="text-red-500 text-xs mt-1">{(errors.categoryId as any)?.message || 'Please choose a valid category.'}</p>}
+            {errors.categoryId && <p className="text-red-500 text-xs mt-1">{(errors.categoryId as any)?.message || t('productForm.categoryInvalid')}</p>}
           </div>
         </div>
 
@@ -306,7 +306,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
                 onError={(message) => setServerError(message || null)}
               />
             )}
-            {gallery.length > 0 && <div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((media, index) => <div key={media.url} className="group relative overflow-hidden rounded-lg border border-gray-200"><img src={media.url} alt={media.alt || ('Gallery image ' + (index + 1))} className="h-16 w-full object-cover" /><button type="button" onClick={() => setValue('gallery', gallery.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="absolute right-1 top-1 rounded-md bg-gray-950/70 p-1 text-white opacity-0 transition group-hover:opacity-100" aria-label={'Remove gallery image ' + (index + 1)}><Trash2 size={12} /></button></div>)}</div>}
+            {gallery.length > 0 && <div className="mt-3 grid grid-cols-4 gap-2">{gallery.map((media, index) => <div key={media.url} className="group relative overflow-hidden rounded-lg border border-gray-200"><img src={media.url} alt={media.alt || t('productForm.galleryImageAlt', { count: index + 1 })} className="h-16 w-full object-cover" /><button type="button" onClick={() => setValue('gallery', gallery.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="absolute right-1 top-1 rounded-md bg-gray-950/70 p-1 text-white opacity-0 transition group-hover:opacity-100" aria-label={t('productForm.removeGalleryImage', { count: index + 1 })}><Trash2 size={12} /></button></div>)}</div>}
           </div>
         </div>
 
@@ -360,7 +360,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           {['activity', 'experience', 'service'].includes(productType) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('productForm.defaultCapacity')}</label>
-              <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder="e.g. 12" />
+              <Input {...register('defaultCapacity', { setValueAs: (value) => value === '' ? undefined : Number(value) })} type="number" min="1" step="1" placeholder={t('productForm.capacityPlaceholder')} />
               {errors.defaultCapacity && <p className="mt-1 text-xs text-red-600">{(errors.defaultCapacity as any)?.message}</p>}
               <p className="mt-1 text-xs text-gray-500">{t('productForm.capacityHint')}</p>
             </div>

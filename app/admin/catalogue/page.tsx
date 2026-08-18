@@ -58,14 +58,14 @@ export default function CatalogueReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void load(); }, [load]);
 
   async function performReview(item: ReviewItem, action: 'approve' | 'change_requested' | 'reject', note?: string) {
     const trimmedNote = note?.trim();
     if (action !== 'approve' && (!trimmedNote || trimmedNote.length < 10)) {
-      const message = t('catalogue.errors.reasonLength', { defaultValue: `${action === 'reject' ? 'Reject' : 'Request changes'} requires a reason of at least 10 characters.` });
+      const message = t('catalogue.errors.reasonLength');
       setError(message);
       showFeedback('error', message);
       return;
@@ -79,7 +79,7 @@ export default function CatalogueReviewPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t('catalogue.errors.actionFailed', { defaultValue: 'Review action failed' }));
-      showFeedback('success', t(`catalogue.success.${action}`, { defaultValue: `${t(labelKeys[item.entityType], { defaultValue: labels[item.entityType] })} ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'returned for changes'}.` }));
+      showFeedback('success', t(`catalogue.success.${action}`, { entity: t(labelKeys[item.entityType], { defaultValue: labels[item.entityType] }) }));
       setActive(null);
       await load();
     } catch (reason) {
@@ -104,7 +104,7 @@ export default function CatalogueReviewPage() {
     if (action !== 'approve' && note === null) return;
     const trimmedNote = note?.trim();
     if (action !== 'approve' && (!trimmedNote || trimmedNote.length < 10)) {
-      const message = t('catalogue.errors.reasonLength', { defaultValue: `${action === 'reject' ? 'Reject' : 'Request changes'} requires a reason of at least 10 characters.` });
+      const message = t('catalogue.errors.reasonLength');
       setError(message);
       showFeedback('error', message);
       return;
@@ -156,7 +156,7 @@ export default function CatalogueReviewPage() {
 
         <AdminSegmentedFilter
           value={filter}
-          ariaLabel="Catalogue item type"
+          ariaLabel="catalogue.accessibility.itemType"
           items={(['all', 'outlet', 'product', 'voucher'] as const).map((value) => ({ value, label: value === 'all' ? t('catalogue.filters.allItems', { defaultValue: 'All items' }) : t(labelKeys[value], { defaultValue: labels[value] }), count: counts[value] }))}
           onChange={(value) => setFilter(value as 'all' | ReviewItem['entityType'])}
         />

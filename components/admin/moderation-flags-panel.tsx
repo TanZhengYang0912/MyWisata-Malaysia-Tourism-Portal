@@ -33,6 +33,10 @@ const SOURCE_LABEL: Record<ModerationFlag["sourceType"], string> = {
   ticket_reply: "moderation.sources.ticketReply",
 };
 
+const FLAG_TYPE_LABEL: Record<string, string> = {
+  slur: "moderation.flagTypes.slur",
+};
+
 export function ModerationFlagsPanel() {
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -99,7 +103,7 @@ export function ModerationFlagsPanel() {
               <p className="text-foreground">
                 <span className="font-semibold">{f.userName}</span>{" "}
                 <span className="capitalize text-muted-foreground font-normal">
-                  · {t(SOURCE_LABEL[f.sourceType])} · {f.flagType}
+                  · {t(SOURCE_LABEL[f.sourceType])} · {t(FLAG_TYPE_LABEL[f.flagType] ?? "moderation.flagTypes.unknown", { defaultValue: f.flagType })}
                 </span>
               </p>
               {f.originalExcerpt && (

@@ -95,11 +95,11 @@ export default function VendorVouchersPage() {
       const params = new URLSearchParams({ page: String(page), pageSize: '10', q, status });
       const response = await fetch(`/api/vendors/${vendorId}/vouchers?${params}`, { cache: 'no-store' });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Could not load vouchers');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.vouchers.loadFailed'));
       setVouchers(payload.data?.items || []); setPagination(payload.data?.pagination || { page, pageSize: 10, total: 0, totalPages: 1 }); setStats(payload.data?.stats || {});
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Could not load vouchers'); }
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : t('ui.vouchers.loadFailed')); }
     finally { setLoading(false); }
-  }, [q, status, vendorId]);
+  }, [q, status, t, vendorId]);
 
   useEffect(() => { loadVouchers(1); }, [loadVouchers]);
   useEffect(() => {
@@ -110,13 +110,13 @@ export default function VendorVouchersPage() {
     ])
       .then(async ([outletResponse, productResponse]) => {
         const [outletPayload, productPayload] = await Promise.all([outletResponse.json(), productResponse.json()]);
-        if (!outletResponse.ok) throw new Error(outletPayload.error?.message || 'Could not load outlets');
-        if (!productResponse.ok) throw new Error(productPayload.error?.message || 'Could not load products');
+        if (!outletResponse.ok) throw new Error(outletPayload.error?.message || t('ui.vouchers.loadOutletsFailed'));
+        if (!productResponse.ok) throw new Error(productPayload.error?.message || t('ui.vouchers.loadProductsFailed'));
         setOutlets((outletPayload.data?.items || []).map((outlet: OutletOption) => ({ id: outlet.id, name: outlet.name })));
         setProducts((productPayload.data?.items || []).map((product: ProductOption) => ({ id: product.id, name: product.name })));
       })
-      .catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'Could not load voucher options'));
-  }, [vendorId]);
+      .catch((requestError) => setError(requestError instanceof Error ? requestError.message : t('ui.vouchers.loadOptionsFailed')));
+  }, [t, vendorId]);
   const loadAnalytics = useCallback(async () => {
     if (!vendorId) return;
     const params = new URLSearchParams();
@@ -131,24 +131,24 @@ export default function VendorVouchersPage() {
     try {
       const response = await fetch(`/api/vendors/${vendorId}/vouchers/analytics?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Could not load voucher analytics');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.vouchers.loadAnalyticsFailed'));
       setAnalytics(payload.data || []);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not load voucher analytics');
+      setError(requestError instanceof Error ? requestError.message : t('ui.vouchers.loadAnalyticsFailed'));
     }
-  }, [analyticsFrom, analyticsOutlet, analyticsRange, analyticsTo, vendorId]);
+  }, [analyticsFrom, analyticsOutlet, analyticsRange, analyticsTo, t, vendorId]);
   useEffect(() => { void loadAnalytics(); }, [loadAnalytics]);
 
   async function toggleActive(voucher: VoucherData) {
     if (!vendorId) return false;
     try {
       const response = await fetch(`/api/vendors/${vendorId}/vouchers/${voucher.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !voucher.is_active }) });
-      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not update voucher'; setError(message); showFeedback('error', message); return false; }
-      showFeedback('success', voucher.is_active ? 'Voucher deactivated.' : 'Voucher activated.');
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || t('ui.vouchers.updateFailed'); setError(message); showFeedback('error', message); return false; }
+      showFeedback('success', voucher.is_active ? t('ui.vouchers.deactivated') : t('ui.vouchers.activated'));
       setSelectedVoucher(null);
       await Promise.all([loadVouchers(pagination.page), loadAnalytics()]);
       return true;
-    } catch { setError('Could not update voucher.'); showFeedback('error', 'Could not update voucher. Please try again.'); return false; }
+    } catch { setError(t('ui.vouchers.updateFailed')); showFeedback('error', t('ui.vouchers.updateTryAgain')); return false; }
   }
 
   function requestToggle(voucher: VoucherData) {
@@ -173,10 +173,10 @@ export default function VendorVouchersPage() {
       }
       setCopiedCode(code);
       window.setTimeout(() => setCopiedCode((current) => current === code ? null : current), 1600);
-      showFeedback('success', `${code} copied to clipboard.`);
+      showFeedback('success', t('ui.vouchers.codeCopied', { code }));
     } catch {
-      setError('Could not copy the voucher code. Please select and copy it manually.');
-      showFeedback('error', 'Could not copy the voucher code.');
+      setError(t('ui.vouchers.copyManual'));
+      showFeedback('error', t('ui.vouchers.copyFailed'));
     }
   }
 
@@ -222,10 +222,10 @@ export default function VendorVouchersPage() {
     try {
       const response = await fetch(`/api/vendors/${vendorId}/vouchers/drafts`, { cache: 'no-store' });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Could not load saved CSV drafts');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.vouchers.draftsLoadFailed'));
       setCsvDrafts(payload.data || []);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not load saved CSV drafts');
+      setError(requestError instanceof Error ? requestError.message : t('ui.vouchers.draftsLoadFailed'));
     }
   }
 
@@ -233,7 +233,7 @@ export default function VendorVouchersPage() {
     if (!vendorId) return null;
     const response = await fetch(`/api/vendors/${vendorId}/vouchers/drafts?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message || 'Could not load saved CSV draft');
+    if (!response.ok) throw new Error(payload.error?.message || t('ui.vouchers.draftLoadFailed'));
     const loaded = payload.data as VoucherCsvDraftRecord;
     setCsvDraft(loaded);
     return loaded;
@@ -243,7 +243,7 @@ export default function VendorVouchersPage() {
     if (!vendorId) return null;
     const response = await fetch(`/api/vendors/${vendorId}/vouchers/drafts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error?.message || 'Could not save CSV draft');
+    if (!response.ok) throw new Error(payload.error?.message || t('ui.vouchers.draftSaveFailed'));
     const saved = payload.data as VoucherCsvDraftRecord;
     setCsvDraft(saved);
     setCsvDrafts((current) => [saved, ...current.filter((draft) => draft.id !== saved.id)]);
@@ -255,7 +255,7 @@ export default function VendorVouchersPage() {
     const response = await fetch(`/api/vendors/${vendorId}/vouchers/drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     const payload = await response.json();
     if (!response.ok) {
-      showFeedback('error', payload.error?.message || 'Could not discard CSV draft');
+      showFeedback('error', payload.error?.message || t('ui.vouchers.draftDiscardFailed'));
       return false;
     }
     setCsvDrafts((current) => current.filter((draft) => draft.id !== id));
@@ -274,7 +274,7 @@ export default function VendorVouchersPage() {
       const codeColumn = headers.indexOf('code');
       const hasBlankCodes = codeColumn < 0 || rows.some((row) => !(row[codeColumn] || '').trim());
       if (autoGenerate && hasBlankCodes && prefix.length < 2) {
-        setBulkMessage('Add a 2–20 character prefix because this file contains blank code cells.');
+        setBulkMessage(t('ui.vouchers.addCodePrefix'));
         return false;
       }
       const codePrefix = autoGenerate && prefix.length >= 2 ? prefix : undefined;
@@ -282,28 +282,30 @@ export default function VendorVouchersPage() {
       const payload = await response.json();
       if (!response.ok) {
         const failed = payload.error?.details?.failed as { row: number; errors: string[] }[] | undefined;
-        const message = `${payload.error?.message || 'CSV upload failed'}${failed?.length ? ` Failed rows: ${failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ')}` : ''}`;
+        const failedRows = failed?.length ? t('ui.vouchers.failedRows', { details: failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ') }) : '';
+        const message = [payload.error?.message || t('ui.vouchers.uploadFailed'), failedRows].filter(Boolean).join(' ');
         setBulkMessage(message);
-        showFeedback('error', payload.error?.message || 'CSV upload failed');
+        showFeedback('error', payload.error?.message || t('ui.vouchers.uploadFailed'));
         return false;
       }
       const failed = payload.data?.failed as { row: number; errors: string[] }[] | undefined;
-      const generated = payload.data?.generated ? ` ${payload.data.generated} codes generated with prefix ${codePrefix}.` : '';
-      setBulkMessage(`${payload.data?.inserted || 0} vouchers uploaded for admin review.${generated}${failed?.length ? ` Failed rows: ${failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ')}` : ''}`);
-      showFeedback('success', `${payload.data?.inserted || 0} vouchers uploaded.`);
+      const generated = payload.data?.generated ? t('ui.vouchers.generatedCodes', { count: payload.data.generated, prefix: codePrefix }) : '';
+      const failedRows = failed?.length ? t('ui.vouchers.failedRows', { details: failed.map((item) => `#${item.row} ${item.errors.join(', ')}`).join(' · ') }) : '';
+      setBulkMessage([t('ui.vouchers.uploadedForReview', { count: payload.data?.inserted || 0 }), generated, failedRows].filter(Boolean).join(' '));
+      showFeedback('success', t('ui.vouchers.uploaded', { count: payload.data?.inserted || 0 }));
       setUploadOpen(false);
       setUploadFile(null);
       setGeneratedCsv(null);
       if (importDraftId) {
         const draftCleared = await deleteCsvDraft(importDraftId);
-        if (!draftCleared) showFeedback('error', 'Voucher upload succeeded, but the saved draft could not be cleared.');
+        if (!draftCleared) showFeedback('error', t('ui.vouchers.draftClearFailed'));
         setImportDraftId(undefined);
       }
       await Promise.all([loadVouchers(1), loadAnalytics()]);
       return true;
     } catch {
-      setBulkMessage('CSV upload failed. Please check the file and try again.');
-      showFeedback('error', 'CSV upload failed. Please try again.');
+      setBulkMessage(t('ui.vouchers.uploadCheckFailed'));
+      showFeedback('error', t('ui.vouchers.uploadTryAgain'));
       return false;
     } finally {
       setUploadBusy(false);
@@ -323,15 +325,15 @@ export default function VendorVouchersPage() {
     try {
       const response = await fetch('/api/vendors/' + vendorId + '/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'vouchers', action, ids: selectedIds, selectAllFiltered: allFilteredSelected, filters: { q, status } }) });
       const payload = await response.json();
-      if (!response.ok) { const message = payload.error?.message || 'Batch action failed'; setError(message); showFeedback('error', message); return false; }
-      setBatchMessage(payload.data?.skipped ? payload.data.updated + ' updated, ' + payload.data.skipped + ' skipped.' : payload.data?.updated + ' vouchers updated.');
+      if (!response.ok) { const message = payload.error?.message || t('ui.vouchers.batchFailed'); setError(message); showFeedback('error', message); return false; }
+      setBatchMessage(payload.data?.skipped ? t('ui.vouchers.batchUpdatedSkipped', { updated: payload.data.updated, skipped: payload.data.skipped }) : t('ui.vouchers.batchUpdated', { count: payload.data?.updated || 0 }));
       setSelectedIds([]); setAllFilteredSelected(false);
       await Promise.all([loadVouchers(1), loadAnalytics()]);
-      showFeedback('success', `${payload.data?.updated || 0} vouchers ${action === 'activate' ? 'activated' : 'deactivated'}.`);
+      showFeedback('success', action === 'activate' ? t('ui.vouchers.batchActivated', { count: payload.data?.updated || 0 }) : t('ui.vouchers.batchDeactivated', { count: payload.data?.updated || 0 }));
       return true;
     } catch {
-      setError('Batch action failed. Please try again.');
-      showFeedback('error', 'Batch action failed. Please try again.');
+      setError(t('ui.vouchers.batchFailed'));
+      showFeedback('error', t('ui.vouchers.batchTryAgain'));
       return false;
     } finally {
       setBatchBusy(false);

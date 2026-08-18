@@ -46,10 +46,13 @@ interface ProductData {
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 
 const TYPE_OPTIONS = [
-  { value: 'food', label: 'Food & dining' }, { value: 'activity', label: 'Activities' }, { value: 'experience', label: 'Experiences' }, { value: 'product', label: 'Products' }, { value: 'digital', label: 'Digital products' }, { value: 'service', label: 'Services' },
+  { value: 'food', label: 'productForm.types.food' }, { value: 'activity', label: 'productForm.types.activity' }, { value: 'experience', label: 'productForm.types.experience' }, { value: 'product', label: 'productForm.types.product' }, { value: 'digital', label: 'productForm.types.digital' }, { value: 'service', label: 'productForm.types.service' },
 ];
 
-function typeLabel(value: string) { return TYPE_OPTIONS.find((option) => option.value === value)?.label || value; }
+function typeLabel(value: string, translate: (key: string) => string) {
+  const option = TYPE_OPTIONS.find((item) => item.value === value);
+  return option ? translate(option.label) : value;
+}
 function imageKind(value: string): 'food' | 'experience' | 'product' { return value === 'food' ? 'food' : value === 'activity' || value === 'experience' ? 'experience' : 'product'; }
 
 export default function VendorProductsPage() {
@@ -80,9 +83,9 @@ export default function VendorProductsPage() {
     ? 'md:grid-cols-[32px_minmax(280px,2fr)_minmax(160px,1fr)_120px_110px_112px]'
     : 'md:grid-cols-[minmax(300px,2fr)_minmax(180px,1.1fr)_120px_110px_112px]';
   const filterSelects = [
-    { value: filters.productType, placeholder: 'All types', options: TYPE_OPTIONS, onChange: (value: string) => setFilters((current) => ({ ...current, productType: value })) },
-    { value: filters.status, placeholder: 'All statuses', options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'archived', label: 'Archived' }], onChange: (value: string) => setFilters((current) => ({ ...current, status: value })) },
-    ...(isOwner ? [{ value: filters.outletId, placeholder: 'All outlets', options: outlets.map((outlet) => ({ value: outlet.id, label: `${outletShortName(outlet.name)} · ${outlet.city || outlet.state || 'Malaysia'}` })), onChange: (value: string) => setFilters((current) => ({ ...current, outletId: value })) }] : []),
+    { value: filters.productType, placeholder: 'ui.products.allTypes', options: TYPE_OPTIONS, onChange: (value: string) => setFilters((current) => ({ ...current, productType: value })) },
+    { value: filters.status, placeholder: 'ui.products.allStatuses', options: [{ value: 'active', label: 'ui.status.active' }, { value: 'inactive', label: 'ui.status.inactive' }, { value: 'archived', label: 'ui.status.archived' }], onChange: (value: string) => setFilters((current) => ({ ...current, status: value })) },
+    ...(isOwner ? [{ value: filters.outletId, placeholder: 'ui.products.allOutlets', options: outlets.map((outlet) => ({ value: outlet.id, label: `${outletShortName(outlet.name)} · ${outlet.city || outlet.state || 'Malaysia'}` })), onChange: (value: string) => setFilters((current) => ({ ...current, outletId: value })) }] : []),
   ];
 
   const loadProducts = useCallback(async (requestedPage = pagination.page) => {
@@ -91,9 +94,9 @@ export default function VendorProductsPage() {
     const params = new URLSearchParams({ page: String(requestedPage), pageSize: '10', q: filters.q, product_type: filters.productType, status: filters.status, outlet_id: filters.outletId });
     const response = await fetch(`/api/vendors/${vendorId}/products?${params}`, { cache: 'no-store' });
     const payload = await response.json();
-    if (!response.ok) { setError(payload.error?.message || 'Could not load products'); setLoading(false); return; }
+    if (!response.ok) { setError(payload.error?.message || t('ui.products.loadFailed')); setLoading(false); return; }
     setProducts(payload.data?.items || []); setPagination(payload.data?.pagination || { page: requestedPage, pageSize: 10, total: 0, totalPages: 1 }); setLoading(false);
-  }, [filters, pagination.page, vendorId]);
+  }, [filters, pagination.page, t, vendorId]);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -112,13 +115,13 @@ export default function VendorProductsPage() {
   }, [vendorId, supabase, loadProducts, pagination.page]);
 
   async function handleDelete(productId: string) {
-    if (!vendorId || !confirm('Archive this listing? It will no longer be visible to customers.')) return;
+    if (!vendorId || !confirm(t('ui.products.archiveConfirm'))) return;
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}`, { method: 'DELETE' });
-      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || 'Could not archive listing'; setError(message); showFeedback('error', message); return; }
-      showFeedback('success', 'Product archived successfully.');
+      if (!response.ok) { const payload = await response.json(); const message = payload.error?.message || t('ui.products.archiveFailed'); setError(message); showFeedback('error', message); return; }
+      showFeedback('success', t('ui.products.archived'));
       setSelectedProduct(null); loadProducts(pagination.page);
-    } catch { setError('Could not archive listing.'); showFeedback('error', 'Could not archive listing. Please try again.'); }
+    } catch { setError(t('ui.products.archiveFailed')); showFeedback('error', t('ui.products.archiveTryAgain')); }
   }
 
   async function handleRestore(productId: string) {
@@ -153,7 +156,9 @@ export default function VendorProductsPage() {
     const payload = await response.json();
     setBatchBusy(false);
     if (!response.ok) { setError(payload.error?.message || t('ui.common.batchFailed')); return; }
-    setBatchMessage(payload.data?.skipped ? payload.data.updated + ' updated, ' + payload.data.skipped + ' skipped by status.' : payload.data?.updated + ' listings updated.');
+    setBatchMessage(payload.data?.skipped
+      ? t('ui.products.batchSummarySkipped', { updated: payload.data.updated, skipped: payload.data.skipped })
+      : t('ui.products.batchSummary', { count: payload.data?.updated || 0 }));
     setSelectedIds([]); setAllFilteredSelected(false); loadProducts(1);
   }
 
@@ -165,7 +170,7 @@ export default function VendorProductsPage() {
         product={selectedProduct}
         vendorId={vendorId || ''}
         canManageOutlet={canManageOutlet}
-        productTypeLabel={typeLabel(selectedProduct.product_type)}
+        productTypeLabel={typeLabel(selectedProduct.product_type, t)}
         productImageKind={imageKind(selectedProduct.product_type)}
         outletFallback={scopedOutlet}
         productOptions={products.filter((product) => product.id !== selectedProduct.id && product.outlet_id === selectedProduct.outlet_id).map((product) => ({ id: product.id, name: product.name, base_price: Number(product.base_price) }))}
@@ -185,7 +190,7 @@ export default function VendorProductsPage() {
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">{t('ui.products.noMatches')}</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button></div> : <>
           {canManageOutlet && <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs text-gray-500"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> {t('ui.products.selectCurrentPage')}</label></div>}<div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 md:grid`}>{isOwner && <span></span>}<span>{t('ui.products.listingColumn')}</span><span>{isOwner ? t('ui.products.outletColumn') : t('ui.products.assignedOutlet')}</span><span>{t('ui.products.priceColumn')}</span><span>{t('ui.products.statusColumn')}</span><span className="text-right">{t('ui.products.actionColumn')}</span></div>
-          <div className="divide-y divide-gray-100">{products.map((product) => <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} md:items-center md:gap-4 md:px-5`}>{isOwner && <div><input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} aria-label={t('ui.products.selectListing', { name: product.name })} /></div>}<div className="flex min-w-0 items-center gap-3"><CompactThumbnail src={product.cover_url} alt={product.name} kind={imageKind(product.product_type)} /><div className="min-w-0"><button type="button" onClick={() => setSelectedProduct(product)} className="block max-w-full text-left font-semibold leading-5 text-gray-900 hover:text-primary line-clamp-2">{product.name}</button>                  <p className="mt-1 truncate text-xs text-gray-500">{typeLabel(product.product_type)} {product.requires_booking ? t('ui.products.bookingRequired') : ''}</p>
+           <div className="divide-y divide-gray-100">{products.map((product) => <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} md:items-center md:gap-4 md:px-5`}>{isOwner && <div><input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} aria-label={t('ui.products.selectListing', { name: product.name })} /></div>}<div className="flex min-w-0 items-center gap-3"><CompactThumbnail src={product.cover_url} alt={product.name} kind={imageKind(product.product_type)} /><div className="min-w-0"><button type="button" onClick={() => setSelectedProduct(product)} className="block max-w-full text-left font-semibold leading-5 text-gray-900 hover:text-primary line-clamp-2">{product.name}</button>                  <p className="mt-1 truncate text-xs text-gray-500">{typeLabel(product.product_type, t)} {product.requires_booking ? t('ui.products.bookingRequired') : ''}</p>
                   <button
                     type="button"
                     onClick={(e) => {

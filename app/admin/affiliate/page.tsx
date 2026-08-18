@@ -15,6 +15,7 @@ import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { FraudAnalytics, FraudAnalyticsRange } from "@/lib/affiliate/fraud-analytics";
 import { useTranslation } from "react-i18next";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 interface AdminTier {
   id: string;
@@ -100,7 +101,8 @@ function formatRatePercent(rate: number): string {
 }
 
 export default function AdminAffiliatePage() {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<AdminAffiliateStats | null | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -600,7 +602,7 @@ export default function AdminAffiliatePage() {
               {
                 label: t("affiliate.analytics.openVsReviewed", { defaultValue: "Open vs reviewed" }),
                 value: fraudAnalytics.headline.totalFlags
-                  ? `${Math.round((fraudAnalytics.headline.openFlags / fraudAnalytics.headline.totalFlags) * 100)}% open`
+                  ? t("affiliate.analytics.openPercentage", { percent: Math.round((fraudAnalytics.headline.openFlags / fraudAnalytics.headline.totalFlags) * 100) })
                   : "—",
               },
             ].map((card) => (
@@ -662,7 +664,7 @@ export default function AdminAffiliatePage() {
             <option value="all">{t("affiliate.filters.allTypes", { defaultValue: "All types" })}</option>
             {Object.entries(FLAG_TYPE_LABEL).map(([key, label]) => (
               <option key={key} value={key}>
-                {label}
+                {t(`affiliate.flagTypes.${key}`, { defaultValue: label })}
               </option>
             ))}
           </select>
@@ -735,8 +737,8 @@ export default function AdminAffiliatePage() {
                   <td className="px-4 py-2.5 text-muted-foreground text-xs max-w-[240px]">
                     {f.detail ? Object.entries(f.detail).map(([k, v]) => `${k}: ${v}`).join(" · ") : "—"}
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{new Date(f.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-2.5 text-foreground capitalize">{f.status}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{new Date(f.createdAt).toLocaleDateString(locale)}</td>
+                  <td className="px-4 py-2.5 text-foreground capitalize">{t(`affiliate.status.${f.status}`, { defaultValue: f.status })}</td>
                   <td className="px-4 py-2.5 text-right">
                     {f.status === "open" && (
                       <div className="flex justify-end gap-1.5">
@@ -822,8 +824,8 @@ export default function AdminAffiliatePage() {
                 <tr key={r.id} className="border-t border-border">
                   <td className="px-4 py-2.5 text-foreground">{r.userName}</td>
                   <td className="px-4 py-2.5 text-foreground">{r.productName ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-2.5 text-foreground capitalize">{r.status}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{new Date(r.createdAt).toLocaleDateString(locale)}</td>
+                  <td className="px-4 py-2.5 text-foreground capitalize">{t(`affiliate.status.${r.status}`, { defaultValue: r.status })}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
                     RM {r.commissionAmount.toFixed(2)}
                   </td>

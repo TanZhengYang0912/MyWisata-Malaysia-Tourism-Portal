@@ -16,6 +16,7 @@ import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { getMessages } from "@/backend/domains/identity";
 import type { ChatMessage } from "@/backend/core/types";
 import { useTranslation } from "react-i18next";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 interface ChatReport {
   id: string;
@@ -57,9 +58,11 @@ type SortKey = "newest" | "oldest" | "reason";
 export default function AdminChatReportsPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const reasonLabel = (value: string, fallback: string) => t(`chatReports.reasons.${value}`, { defaultValue: fallback });
   const resolutionLabel = (value: string, fallback: string) => t(`chatReports.resolutions.${value}`, { defaultValue: fallback });
+  const reportStatusLabel = (value: string) => t(`chatReports.status.${value}`, { defaultValue: value });
   const [reports, setReports] = useState<ChatReport[] | null>(null);
   const [statusTab, setStatusTab] = useState<StatusTab>("open");
   const [closedStatusFilter, setClosedStatusFilter] = useState<ClosedStatusFilter>("all");
@@ -202,7 +205,8 @@ export default function AdminChatReportsPage() {
     if (batchBusy) return;
     const selected = filtered.filter((report) => selectedIds.has(report.id) && report.status === "open");
     if (!selected.length) return;
-    const enteredReason = window.prompt(t("chatReports.prompts.resolutionReason", { reasons: RESOLUTION_REASONS.map((reason) => reason.value).join(", ") }), RESOLUTION_REASONS[0].value)?.trim();
+    const reasonOptions = RESOLUTION_REASONS.map((reason) => `${reason.value}: ${resolutionLabel(reason.value, reason.label)}`).join(", ");
+    const enteredReason = window.prompt(t("chatReports.prompts.resolutionReason", { reasons: reasonOptions }), RESOLUTION_REASONS[0].value)?.trim();
     if (!enteredReason || !RESOLUTION_REASONS.some((reason) => reason.value === enteredReason)) {
       showFeedback("error", t("chatReports.errors.invalidReason", { defaultValue: "Choose a valid resolution reason." }));
       return;
@@ -305,7 +309,7 @@ export default function AdminChatReportsPage() {
       <div className="mb-4">
         <AdminSegmentedFilter
           value={statusTab}
-          ariaLabel={t("chatReports.accessibility.status", { defaultValue: "Chat report status" })}
+          ariaLabel="chatReports.accessibility.status"
           items={[{ value: "open", label: t("chatReports.tabs.pending", { defaultValue: "Pending" }), count: openCount }, { value: "closed", label: t("chatReports.tabs.resolved", { defaultValue: "Resolved" }), count: closedCount }]}
           onChange={(value) => setStatusTab(value as StatusTab)}
         />
@@ -371,17 +375,17 @@ export default function AdminChatReportsPage() {
               const isRepeatFalseReporter = r.reporterStats.total >= 3 && r.reporterStats.dismissed / r.reporterStats.total >= 0.5;
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                  {r.status === "open" && <input type="checkbox" aria-label={`Select chat report ${r.id}`} checked={selectedIds.has(r.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(r.id) : next.delete(r.id); return next; })} />}
+                  {r.status === "open" && <input type="checkbox" aria-label={t("chatReports.accessibility.selectReport", { id: r.id })} checked={selectedIds.has(r.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(r.id) : next.delete(r.id); return next; })} />}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground flex items-center gap-2 flex-wrap">
                       {reasonLabel(r.reason, REASON_LABEL[r.reason] ?? r.reason)} · {outletName}
-                      <StatusBadge status={r.status} />
+                      <StatusBadge status={reportStatusLabel(r.status)} />
                       {r.sameThreadReportCount > 1 && (
                         <Badge variant="outline" className="text-[10px]">{t("chatReports.threadReportCount", { defaultValue: "{{count}} reports on this thread", count: r.sameThreadReportCount })}</Badge>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("chatReports.reportedBy", { defaultValue: "Reported by {{name}} · {{date}}", name: reporterName, date: new Date(r.created_at).toLocaleDateString() })}
+                      {t("chatReports.reportedBy", { defaultValue: "Reported by {{name}} · {{date}}", name: reporterName, date: new Date(r.created_at).toLocaleDateString(locale) })}
                       {isRepeatFalseReporter && (
                         <span className="ml-1.5 text-destructive font-medium">
                           · {t("chatReports.dismissedHistory", { defaultValue: "{{dismissed}}/{{total}} of their reports dismissed", dismissed: r.reporterStats.dismissed, total: r.reporterStats.total })}
@@ -414,7 +418,7 @@ export default function AdminChatReportsPage() {
               <div className="shrink-0 space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div><p className="text-muted-foreground">{t("chatReports.fields.reason", { defaultValue: "Reason" })}</p><p className="font-semibold text-foreground">{reasonLabel(viewReport.reason, REASON_LABEL[viewReport.reason] ?? viewReport.reason)}</p></div>
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.status", { defaultValue: "Status" })}</p><StatusBadge status={viewReport.status} /></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.status", { defaultValue: "Status" })}</p><StatusBadge status={reportStatusLabel(viewReport.status)} /></div>
                   <div>
                     <p className="text-muted-foreground">{t("chatReports.fields.reportedBy", { defaultValue: "Reported by" })}</p>
                     <p className="font-semibold text-foreground">
@@ -432,13 +436,13 @@ export default function AdminChatReportsPage() {
                       {viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet", { defaultValue: "Outlet" })}
                     </p>
                   </div>
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.started", { defaultValue: "Conversation started" })}</p><p className="text-foreground">{viewReport.chat_threads?.created_at ? new Date(viewReport.chat_threads.created_at).toLocaleDateString() : "—"}</p></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.started", { defaultValue: "Conversation started" })}</p><p className="text-foreground">{viewReport.chat_threads?.created_at ? new Date(viewReport.chat_threads.created_at).toLocaleDateString(locale) : "—"}</p></div>
                   <div><p className="text-muted-foreground">{t("chatReports.fields.reporterHistory", { defaultValue: "Reporter history" })}</p><p className="text-foreground">{t("chatReports.reporterHistory", { defaultValue: "{{reports}} reports, {{dismissed}} dismissed", reports: viewReport.reporterStats.total, dismissed: viewReport.reporterStats.dismissed })}</p></div>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary p-2 text-xs">
                   {viewReport.reporterBannedUntil ? (
                     <>
-                      <span className="text-foreground">{t("chatReports.blockedUntil", { defaultValue: "Reporter blocked from reporting until {{date}}", date: new Date(viewReport.reporterBannedUntil).toLocaleDateString() })}</span>
+                      <span className="text-foreground">{t("chatReports.blockedUntil", { defaultValue: "Reporter blocked from reporting until {{date}}", date: new Date(viewReport.reporterBannedUntil).toLocaleDateString(locale) })}</span>
                       <Button
                         size="sm"
                         variant="outline"
