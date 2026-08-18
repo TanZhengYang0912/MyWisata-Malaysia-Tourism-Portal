@@ -51,6 +51,26 @@ const INTENTIONAL_IDENTICAL_VALUES = {
   ]),
 } as const;
 
+export const ADMIN_ROUTE_I18N_FILES = [
+  "app/admin/affiliate/page.tsx",
+  "app/admin/ai-assistant/page.tsx",
+  "app/admin/catalogue/page.tsx",
+  "app/admin/chat-reports/page.tsx",
+  "app/admin/chatbot/page.tsx",
+  "app/admin/dashboard/page.tsx",
+  "app/admin/kyc/page.tsx",
+  "app/admin/recommendations/[id]/page.tsx",
+  "app/admin/recommendations/page.tsx",
+  "app/admin/refunds/page.tsx",
+  "app/admin/reports/payouts/page.tsx",
+  "app/admin/rewards/page.tsx",
+  "app/admin/support/page.tsx",
+  "app/admin/users/page.tsx",
+  "app/admin/vendors/page.tsx",
+  "app/admin/wallet/settings/page.tsx",
+  "app/admin/withdrawals/page.tsx",
+] as const;
+
 /** The exclusive Task 9 component scope for this worker. */
 export const ADMIN_I18N_FILES = [
   "components/admin/ai-draft-email-modal.tsx",
@@ -126,6 +146,18 @@ function callsBoundTranslator(source: string): boolean {
 }
 
 describe("admin component sitewide i18n contract", () => {
+  it("keeps the exact Task 9 route inventory available to the whole-site audit", () => {
+    for (const file of ADMIN_ROUTE_I18N_FILES) {
+      const source = read(file);
+      if (file === "app/admin/recommendations/[id]/page.tsx") {
+        expect(source).toContain("<RecommendationDetailView");
+      } else {
+        expect(hasAdminTranslationBinding(source), `${file} must bind admin translations`).toBe(true);
+        expect(callsBoundTranslator(source), `${file} must call its bound translator`).toBe(true);
+      }
+    }
+  });
+
   it("keeps the exact exclusive inventory and explicit prior-task boundary", () => {
     expect(componentInventory()).toEqual(expectedComponentInventory);
     for (const file of [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES]) {
