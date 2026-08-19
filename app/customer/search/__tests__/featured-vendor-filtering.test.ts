@@ -6,8 +6,8 @@ const source = readFileSync(resolve(process.cwd(), "app/customer/search/search-c
 
 describe("featured vendor filtering contract", () => {
   it("only shows featured vendors when no search filters are active", () => {
-    expect(source).toContain("!query && !category && !state && recommendedVendors.length > 0");
-    expect(source).toContain("recommendedVendors.slice(0, 4).map");
+    expect(source).toContain("!query && filteredRecommendedVendors.length > 0");
+    expect(source).toContain("filteredRecommendedVendors.slice(0, 4).map");
     expect(source).not.toContain("const featuredVendors = useMemo");
   });
 });

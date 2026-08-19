@@ -39,7 +39,7 @@ describe("customer discovery filter contract", () => {
 
   it("keeps the Explore mode switch on the right with the voucher navy active state", () => {
     expect(exploreSource).toContain("self-end md:self-auto");
-    expect(exploreSource).toContain("rounded-2xl border border-border bg-white p-2 shadow-sm");
+    expect(exploreSource).toContain("rounded-2xl border border-border bg-card p-2 shadow-sm");
     expect(exploreSource).toContain("bg-primary text-white shadow-sm");
   });
 });

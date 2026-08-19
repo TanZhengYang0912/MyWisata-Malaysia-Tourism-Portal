@@ -131,9 +131,8 @@ describe('public outlet shop content', () => {
       variantId: 'variant-1',
     });
     expect(getOutletProductAction({ requiresBooking: true, variantId: 'variant-1', firstAvailableSlotId: 'slot-1' })).toEqual({
-      kind: 'cart',
-      variantId: 'variant-1',
-      slotId: 'slot-1',
+      kind: 'details',
+      reason: 'slot_required',
     });
     expect(getOutletProductAction({ requiresBooking: true, variantId: 'variant-1' })).toEqual({
       kind: 'details',
