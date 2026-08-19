@@ -16,7 +16,7 @@ import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { computeProfileCompletion } from "@/lib/verification/eligibility";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
@@ -39,14 +39,6 @@ function ProfileCompletionCard({ percentage, missing, t }: { percentage: number;
       </div>
       {missing.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{t("ui.profileWizard.stillNeeded", { items: missing.map((item) => t(`ui.profileWizard.fields.${item}`)).join(", ") })}</p>}
     </section>
-  );
-}
-
-function ProfilePageTitle({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10">
-      <CustomerPageHeader eyebrow={eyebrow} title={title} description={description} />
-    </div>
   );
 }
 
@@ -286,7 +278,7 @@ export default function ProfilePage() {
 
   if (isDone) return (
     <>
-      <ProfilePageTitle
+      <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.profileWizard.title")}
         description={tCustomer("ui.profileWizard.description")}
@@ -308,7 +300,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <ProfilePageTitle
+      <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.profileWizard.completeTitle")}
         description={tCustomer("ui.profileWizard.completeDescription")}

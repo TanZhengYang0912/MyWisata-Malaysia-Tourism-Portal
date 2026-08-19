@@ -4,11 +4,31 @@ import { cn } from "@/components/utils";
 const CUSTOMER_PAGE_SHELL_CLASS =
   "mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8";
 
+const CUSTOMER_PAGE_TITLE_CLASS =
+  "mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10";
+
 const CUSTOMER_PANEL_CLASS =
   "rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6";
 
 export function CustomerPageShell({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn(CUSTOMER_PAGE_SHELL_CLASS, className)}>{children}</div>;
+}
+
+type CustomerPageHeaderProps = {
+  eyebrow: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  icon?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+};
+
+export function CustomerPageTitle(props: CustomerPageHeaderProps) {
+  return (
+    <div className={CUSTOMER_PAGE_TITLE_CLASS}>
+      <CustomerPageHeader {...props} />
+    </div>
+  );
 }
 
 export function CustomerPageHeader({
@@ -18,14 +38,7 @@ export function CustomerPageHeader({
   icon,
   actions,
   className,
-}: {
-  eyebrow: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  icon?: ReactNode;
-  actions?: ReactNode;
-  className?: string;
-}) {
+}: CustomerPageHeaderProps) {
   return (
     <header className={cn("mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between", className)}>
       <div className="min-w-0">
