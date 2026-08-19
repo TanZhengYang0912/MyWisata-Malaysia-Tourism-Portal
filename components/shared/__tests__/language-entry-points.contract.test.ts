@@ -37,10 +37,10 @@ describe("shared language entry points", () => {
     expect(guest).not.toContain("fixed right-4 top-4");
 
     const vendor = source("components/layout/vendor-sidebar.tsx");
-    expect(vendor).toMatch(/<div className="border-t border-gray-700 px-5 py-3">\s*<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
+    expect(vendor).toMatch(/<div className="border-t border-gray-700 px-2 py-2">\s*<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
 
     const admin = source("app/admin/layout.tsx");
-    expect(admin).toMatch(/<div className="shrink-0 border-t border-white\/10 p-3">\s*<LanguageSwitcher compact className="mb-2" \/>[\s\S]*?actions\.signOut/);
+    expect(admin).toMatch(/<div className="shrink-0 border-t border-white\/10 p-3 space-y-0\.5">\s*<LanguageSwitcher compact className="mb-2" \/>[\s\S]*?actions\.signOut/);
   });
 
   it("renders the profile language switcher inside exactly one language section", () => {

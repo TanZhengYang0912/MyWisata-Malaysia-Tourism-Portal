@@ -22,6 +22,7 @@ import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { ChatbotWidget, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { SupportChatProvider } from "@/components/providers/support-chat";
 
 type TranslationOptions = { defaultValue?: string; count?: number };
 
@@ -200,7 +201,7 @@ describe("Task 5 shared runtime behavior", () => {
       throw new Error(`Unexpected chatbot request: ${url}`);
     });
 
-    await render(<ChatbotWidget />);
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
 
     const input = findOne(container, (element) => element.tagName === "INPUT");
