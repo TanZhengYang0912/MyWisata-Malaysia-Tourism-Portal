@@ -1,4 +1,5 @@
 import {
+  backfillPlacement,
   createDefaultOutletPageDocument,
   normalizeOutletPageDocument,
   type LegacyOutletPageFields,
@@ -44,8 +45,10 @@ function defaultIntroBody(context: OutletPageContentContext) {
   return `${partner} welcomes you to ${context.outletName} in ${localArea(context)}. Explore ${description} designed around this place.`;
 }
 
+// Coordinates are intentionally omitted here — backfillPlacement stacks these
+// below whatever is already on the page once all default blocks are added.
 function defaultBlock(type: OutletPageBlock['type'], title: string, body?: string): OutletPageBlock {
-  return { id: `default-${type}`, type, title, ...(body ? { body } : {}) };
+  return { id: `default-${type}`, type, title, ...(body ? { body } : {}) } as OutletPageBlock;
 }
 
 export function buildCompleteOutletPageDocument(
@@ -92,7 +95,7 @@ export function buildCompleteOutletPageDocument(
       body: hasCustomHeroBody ? document.hero.body : defaultIntroBody(context),
       imageUrl: document.hero.imageUrl || context.heroUrl || undefined,
     },
-    blocks,
+    blocks: backfillPlacement(blocks),
     featuredIds,
     gallery: document.gallery.length > 0
       ? document.gallery

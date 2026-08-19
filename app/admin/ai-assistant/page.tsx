@@ -13,7 +13,6 @@ import { Bot, Send, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { StaffConductPanel } from "@/components/admin/staff-conduct-panel";
 import { useTranslation } from "react-i18next";
 
 interface ChatMessage {
@@ -272,7 +271,6 @@ export default function AdminAiAssistantPage() {
         <AskPanel />
         <DraftPanel />
       </div>
-      <StaffConductPanel />
     </div>
   );
 }

@@ -5,9 +5,9 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
 import { Compass, Map } from "lucide-react";
-import { searchActivities, CATEGORIES } from "@/backend/domains/catalogue";
+import { searchActivities } from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { CategoryIcon } from "@/components/customer/category-icon";
+import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -35,6 +35,7 @@ export function ExploreClient({
 }) {
   const { t } = useTranslation("customer");
   const [tab, setTab] = useState<ExploreTab>("destinations");
+  const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
   const firstRender = useRef(true);
@@ -44,8 +45,18 @@ export function ExploreClient({
       firstRender.current = false;
       return;
     }
-    searchActivities({ ...getDiscoverySearchFilter(category) }).then(setActivities);
-  }, [category]);
+    const timeout = window.setTimeout(() => {
+      searchActivities({ q: query.trim() || undefined, ...getDiscoverySearchFilter(category) }).then(setActivities);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [category, query]);
+
+  const hasActiveFilters = Boolean(query.trim() || category);
+
+  const clearFilters = () => {
+    setQuery("");
+    setCategory(null);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,14 +75,14 @@ export function ExploreClient({
             </div>
 
             {/* Tab switch */}
-            <div className="inline-flex shrink-0 rounded-2xl border border-border bg-secondary p-1">
+            <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-white p-2 shadow-sm">
               <button
                 type="button"
                 onClick={() => setTab("destinations")}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
                   tab === "destinations"
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <Map size={15} />
@@ -82,8 +93,8 @@ export function ExploreClient({
                 onClick={() => setTab("experiences")}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
                   tab === "experiences"
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
                 <Compass size={15} />
@@ -163,49 +174,14 @@ export function ExploreClient({
       {/* Experiences tab */}
       {tab === "experiences" && (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          {/* Category filters */}
-          <section className="mb-8">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-foreground">{t("ui.explore.filterByCategory")}</h2>
-              {category && (
-                <button
-                  type="button"
-                  onClick={() => setCategory(null)}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  {t("ui.explore.clear")}
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(category === cat.id ? null : cat.id)}
-                  aria-pressed={category === cat.id}
-                  className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all hover:-translate-y-0.5 ${
-                    category === cat.id
-                      ? "border-primary bg-primary/10"
-                      : "border-transparent bg-card shadow-sm"
-                  }`}
-                >
-                  <span
-                    className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-                      category === cat.id ? "bg-primary text-white" : "bg-secondary text-primary"
-                    }`}
-                  >
-                    <CategoryIcon category={cat.id} size={22} strokeWidth={1.8} />
-                  </span>
-                  <p
-                    className="text-[10px] font-bold leading-tight"
-                    style={{ color: category === cat.id ? "var(--primary)" : "var(--foreground)" }}
-                  >
-                    {t(cat.id === "hidden_gem" ? "categories.hiddenGem" : `categories.${cat.id}`, { defaultValue: cat.label })}
-                  </p>
-                </button>
-              ))}
-            </div>
+          <section className="mb-8 space-y-6">
+            <DiscoverySearchField value={query} onChange={setQuery} placeholder={t("ui.map.searchExperience")} />
+            <DiscoveryCategoryFilter
+              category={category}
+              hasActiveFilters={hasActiveFilters}
+              onCategoryChange={setCategory}
+              onClear={clearFilters}
+            />
           </section>
 
           {/* Experience cards */}
@@ -213,8 +189,10 @@ export function ExploreClient({
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  {category
-                    ? t("ui.explore.categoryExperiences", { category: t(category === "hidden_gem" ? "categories.hiddenGem" : `categories.${category}`, { defaultValue: CATEGORIES.find((c) => c.id === category)?.label ?? "" }) })
+                  {query
+                    ? t("ui.explore.allExperiences")
+                    : category
+                    ? t("ui.explore.categoryExperiences", { category })
                     : t("ui.explore.allExperiences")}
                 </h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: activities.length })}</p>

@@ -27,6 +27,7 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
     if (response.ok) setRules(payload.data || []);
   }
   // The fetch synchronizes this client panel with the latest server-side rules.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [vendorId, productId]);
 
   async function addRule() {

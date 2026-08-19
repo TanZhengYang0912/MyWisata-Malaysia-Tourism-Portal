@@ -7,6 +7,8 @@ import { ActionFeedbackProvider } from "@/components/providers/action-feedback";
 import { AppI18nProvider, type AppI18nResources } from "@/components/providers/i18n-provider";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { loadLocaleResources } from "@/lib/i18n/resources";
+import { ThemeProvider } from "@/components/providers/theme";
+import { FontSizeProvider, FontSizeScript } from "@/components/providers/font-size";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"] });
@@ -33,12 +35,17 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       className={`${fraunces.variable} ${plusJakartaSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <FontSizeScript />
         <AppI18nProvider locale={locale} resources={resourcesByLocale}>
-          <ActionFeedbackProvider>
-            <AuthProvider>
-              <CartProvider>{children}</CartProvider>
-            </AuthProvider>
-          </ActionFeedbackProvider>
+          <ThemeProvider>
+            <FontSizeProvider>
+              <ActionFeedbackProvider>
+                <AuthProvider>
+                  <CartProvider>{children}</CartProvider>
+                </AuthProvider>
+              </ActionFeedbackProvider>
+            </FontSizeProvider>
+          </ThemeProvider>
         </AppI18nProvider>
       </body>
     </html>

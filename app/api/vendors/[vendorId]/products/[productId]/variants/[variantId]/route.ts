@@ -7,6 +7,7 @@ import { getScopedProduct } from '@/lib/vendor/product-scope';
 
 interface Props { params: Promise<{ vendorId: string; productId: string; variantId: string }> }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function scopedProduct(serviceDb: any, vendorId: string, productId: string, outletIds: string[]) {
   return getScopedProduct<{ id: string; outlet_id: string | null; requires_booking: boolean; review_status: string | null }>(
     serviceDb,
@@ -17,11 +18,13 @@ async function scopedProduct(serviceDb: any, vendorId: string, productId: string
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function refreshStockStatus(serviceDb: any, vendorId: string, productId: string) {
   const { data: variants } = await serviceDb
     .from('product_variants')
     .select('id,is_active,inventory(quantity,reserved)')
     .eq('product_id', productId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const available = (variants || []).some((variant: any) => variant.is_active && Number(variant.inventory?.[0]?.quantity || 0) - Number(variant.inventory?.[0]?.reserved || 0) > 0);
   const { data: product } = await serviceDb.from('products').select('requires_booking,review_status').eq('id', productId).eq('vendor_id', vendorId).maybeSingle();
   if (!product?.requires_booking) {

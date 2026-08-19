@@ -3,6 +3,13 @@
 -- Run after: supabase db push (which applies migrations)
 -- ============================================================
 
+-- WARNING: this file encodes the older all-vendors-share-3-owners demo
+-- model, which conflicts with the per-vendor-owner model established in
+-- supabase/migrations/20260815010000_per_vendor_owner_accounts.sql and
+-- 20260815011000_demo_outlet_manager_accounts.sql. Running it against a
+-- project with those migrations applied will reintroduce non-deterministic
+-- vendor-dashboard behavior for the shared demo accounts.
+
 -- ── Roles ──────────────────────────────────────────────────
 INSERT INTO roles (name, description) VALUES
   ('super_admin',    'Full platform access'),
@@ -201,6 +208,18 @@ INSERT INTO product_variants (id, product_id, name, price_offset, is_default) VA
   ('eeeeeeee-0000-0000-0000-000000000008','dddddddd-0000-0000-0000-000000000005','Child',  -15, FALSE)
 ON CONFLICT DO NOTHING;
 
+-- Every booking product must have a checkout variant, even when it only has a
+-- single standard ticket. Keep this idempotent for repeated demo resets.
+INSERT INTO product_variants (product_id, name, price_offset, is_default, is_active, sort_order)
+SELECT p.id, 'Standard', 0, TRUE, TRUE, 0
+FROM products p
+WHERE p.status = 'active'
+  AND p.requires_booking = TRUE
+  AND NOT EXISTS (
+    SELECT 1 FROM product_variants v
+    WHERE v.product_id = p.id AND v.is_active = TRUE
+  );
+
 -- ── Inventory ────────────────────────────────────────────────
 INSERT INTO inventory (variant_id, quantity) VALUES
   ('eeeeeeee-0000-0000-0000-000000000001', 999),
@@ -218,6 +237,37 @@ INSERT INTO booking_slots (id, product_id, outlet_id, starts_at, ends_at, capaci
   ('ffffffff-0000-0000-0000-000000000004','dddddddd-0000-0000-0000-000000000005','cccccccc-0000-0000-0000-000000000005',
    NOW() + INTERVAL '1 day' + TIME '20:00', NOW() + INTERVAL '1 day' + TIME '21:30', 20, 5, 'available')
 ON CONFLICT DO NOTHING;
+
+-- Keep two canonical future available dates per booking product after a reset.
+WITH eligible_products AS (
+  SELECT p.id AS product_id, p.outlet_id
+  FROM products p
+  WHERE p.status = 'active'
+    AND p.requires_booking = TRUE
+    AND p.outlet_id IS NOT NULL
+), slot_plan AS (
+  SELECT e.product_id,
+         e.outlet_id,
+         date_trunc('day', CURRENT_TIMESTAMP)
+           + ((slot_number * 7) + 1) * INTERVAL '1 day'
+           + INTERVAL '10 hours' AS starts_at
+  FROM eligible_products e
+  CROSS JOIN generate_series(1, 2) AS slot_number
+)
+INSERT INTO booking_slots (product_id, outlet_id, starts_at, ends_at, capacity, booked, status)
+SELECT product_id,
+       outlet_id,
+       starts_at,
+       starts_at + INTERVAL '2 hours',
+       20, 0, 'available'
+FROM slot_plan
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM booking_slots existing
+  WHERE existing.product_id = slot_plan.product_id
+    AND existing.outlet_id = slot_plan.outlet_id
+    AND existing.starts_at = slot_plan.starts_at
+);
 
 -- ── Vouchers ─────────────────────────────────────────────────
 INSERT INTO vouchers (vendor_id, code, name, voucher_type, discount_value, min_spend, max_uses, valid_until) VALUES
@@ -275,6 +325,29 @@ ON CONFLICT DO NOTHING;
 INSERT INTO affiliate_links (user_id, affiliate_code) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000005', 'AF-ALICE1'),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'AF-BOB001')
+ON CONFLICT DO NOTHING;
+
+-- ── Customer/vendor chat demo ────────────────────────────────
+-- Keep one inbox conversation per seeded customer for fresh local resets.
+-- The remote catalogue restore uses scripts/restore-chat-demo.mjs because its
+-- outlet UUIDs are supplied by the current live dataset.
+INSERT INTO chat_threads (id, customer_id, outlet_id, vendor_id, status, last_message_at)
+VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000005', 'cccccccc-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000001', 'open', NOW() - INTERVAL '2 days'),
+  ('d1000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000006', 'cccccccc-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000001', 'open', NOW() - INTERVAL '3 days'),
+  ('d1000000-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000007', 'cccccccc-0000-0000-0000-000000000003', 'bbbbbbbb-0000-0000-0000-000000000002', 'open', NOW() - INTERVAL '4 days'),
+  ('d1000000-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000008', 'cccccccc-0000-0000-0000-000000000004', 'bbbbbbbb-0000-0000-0000-000000000002', 'open', NOW() - INTERVAL '5 days')
+ON CONFLICT (customer_id, outlet_id) DO NOTHING;
+
+INSERT INTO chat_messages (id, thread_id, sender_id, body, created_at) VALUES
+  ('e1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000005', 'Hi, could you share more details about the experience?', NOW() - INTERVAL '2 days'),
+  ('e1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000003', 'Thanks for reaching out — our local team will be happy to help with your trip.', NOW() - INTERVAL '2 days' + INTERVAL '5 minutes'),
+  ('e1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000006', 'Hi, could you share more details about the experience?', NOW() - INTERVAL '3 days'),
+  ('e1000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000003', 'Thanks for reaching out — our local team will be happy to help with your trip.', NOW() - INTERVAL '3 days' + INTERVAL '5 minutes'),
+  ('e1000000-0000-0000-0000-000000000005', 'd1000000-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000007', 'Hi, could you share more details about the experience?', NOW() - INTERVAL '4 days'),
+  ('e1000000-0000-0000-0000-000000000006', 'd1000000-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000003', 'Thanks for reaching out — our local team will be happy to help with your trip.', NOW() - INTERVAL '4 days' + INTERVAL '5 minutes'),
+  ('e1000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000008', 'Hi, could you share more details about the experience?', NOW() - INTERVAL '5 days'),
+  ('e1000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000003', 'Thanks for reaching out — our local team will be happy to help with your trip.', NOW() - INTERVAL '5 days' + INTERVAL '5 minutes')
 ON CONFLICT DO NOTHING;
 
 -- ── FAQ Knowledge Base ───────────────────────────────────────

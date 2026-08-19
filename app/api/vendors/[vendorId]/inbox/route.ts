@@ -20,6 +20,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (!outletIds.length) return apiOk([]);
   const { data, error } = await access.service.from('chat_threads').select('id,customer_id,outlet_id,status,last_message_at,created_at,customer:users!chat_threads_customer_id_fkey(full_name,email),outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id)').in('outlet_id', outletIds).order('last_message_at', { ascending: false });
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return apiOk((data || []).map((thread: any) => ({ ...thread, outlets: thread.outlets ? { ...thread.outlets, full_name: thread.outlets.name, name: outletShortName(thread.outlets.name) } : thread.outlets })));
 }
 

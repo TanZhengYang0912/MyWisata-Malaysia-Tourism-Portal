@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
@@ -34,6 +34,9 @@ interface ChatThreadPanelProps {
   aiReply?: { draft: string | null; busy: boolean; error: string | null; onGenerate: () => void; onDiscard: () => void };
   /** Admin moderation view: hides the composer and report action. */
   readOnly?: boolean;
+  /** CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2 — current user's own mute state for this thread. Omit both to hide the toggle entirely (e.g. readOnly admin view). */
+  isMuted?: boolean;
+  onToggleMute?: () => void;
 }
 
 export function ChatThreadPanel({
@@ -48,6 +51,8 @@ export function ChatThreadPanel({
   deliveredByOthers,
   aiReply,
   readOnly = false,
+  isMuted,
+  onToggleMute,
 }: ChatThreadPanelProps) {
   const { t } = useTranslation("customer");
   const [text, setText] = useState("");
@@ -73,6 +78,7 @@ export function ChatThreadPanel({
 
   useEffect(() => {
     if (!pendingFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPendingPreviewUrl(null);
       return;
     }
@@ -213,6 +219,11 @@ export function ChatThreadPanel({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-bold text-foreground">{counterpart.name}</h2>
+              {isMuted && (
+                <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title="Notifications muted for you">
+                  <BellOff size={10} /> Muted
+                </span>
+              )}
               {counterpart.badge && (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
                   {counterpart.badge}
@@ -227,6 +238,17 @@ export function ChatThreadPanel({
               </p>
             ) : counterpart.subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{counterpart.subtitle}</p>}
           </div>
+          {onToggleMute && (
+            <button
+              type="button"
+              onClick={onToggleMute}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label={isMuted ? "Unmute conversation" : "Mute conversation"}
+              title={isMuted ? "Unmute" : "Mute notifications"}
+            >
+              {isMuted ? <BellOff size={15} /> : <Bell size={15} />}
+            </button>
+          )}
           <div className="relative">
             <button
               type="button"

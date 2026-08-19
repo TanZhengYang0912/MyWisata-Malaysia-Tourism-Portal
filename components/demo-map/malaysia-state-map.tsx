@@ -10,6 +10,9 @@ import { featureToPath, geometryBounds, projectPoint, type GeoBounds, type GeoJs
 // regions are framed independently so both landmasses are immediately legible.
 const WIDTH = 1600;
 const HEIGHT = 1060;
+const MAP_VIEWBOX_TOP = 100;
+const MAP_VIEWBOX_HEIGHT = 860;
+const MAP_VIEWBOX_BOTTOM = MAP_VIEWBOX_TOP + MAP_VIEWBOX_HEIGHT;
 const SINGLE_CANVAS = { x: 0, y: 0, width: WIDTH, height: HEIGHT, padding: 40 };
 type StateRegion = "peninsular" | "borneo";
 type StateLabelPlacement = {
@@ -65,10 +68,12 @@ function regionForState(stateId: string): StateRegion {
   return DEMO_STATES.find((state) => state.id === stateId)?.region === "Borneo" ? "borneo" : "peninsular";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function boundsForRegion(region: StateRegion): GeoBounds {
   return ALL_MAP_BOUNDS;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function canvasForRegion(region: StateRegion) {
   return SINGLE_CANVAS;
 }
@@ -96,6 +101,13 @@ function statePlacesCount(stateCounts: StateCounts, stateId: string): number {
 
 function stateLabelWidth(name: string): number {
   return Math.max(150, Math.min(250, name.length * 11.5 + 54));
+}
+
+function visibleStateLabelPlacement(placement: StateLabelPlacement): StateLabelPlacement {
+  return {
+    ...placement,
+    y: Math.min(MAP_VIEWBOX_BOTTOM - 36, Math.max(MAP_VIEWBOX_TOP + 36, placement.y)),
+  };
 }
 
 function renderRegionFeatures(
@@ -126,14 +138,26 @@ function renderRegionFeatures(
               fill={stateColor(state.id, selected)}
               stroke={selected ? "#010066" : "#aab8df"}
               strokeWidth={selected ? 2.4 : 1.25}
-              className="cursor-pointer transition-colors"
+              className="transition-colors"
+              aria-hidden="true"
+            />
+            <path
+              d={featureToPath(feature.geometry, bounds, canvas)}
+              data-state-hit-area={state.id}
+              fill="#ffffff"
+              fillOpacity={0}
+              stroke="#010066"
+              strokeOpacity={0}
+              strokeWidth={18}
+              pointerEvents="all"
+              vectorEffect="non-scaling-stroke"
+              className="cursor-pointer"
               role="button"
               tabIndex={0}
               aria-label={selectStateLabel(state.name)}
               onClick={() => onSelectState(selected ? null : state.id)}
               onKeyDown={(event) => handleKeyDown(event, () => onSelectState(selected ? null : state.id))}
-            >
-            </path>
+            />
           </g>
         );
       })}
@@ -155,6 +179,23 @@ export function MalaysiaStateMap({
   const { t } = useTranslation("customer");
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const activeStateId = hoveredStateId ?? selectedStateId;
+  const activeState = DEMO_STATES.find((state) => state.id === activeStateId);
+  const visibleStates = activeState ? [activeState] : [];
+  const activeStatePresentation = activeState
+    ? (() => {
+        const region = regionForState(activeState.id);
+        const point = projected({ lat: activeState.label[1], lng: activeState.label[0] }, region);
+        const placement = visibleStateLabelPlacement(STATE_LABEL_LAYOUT[activeState.id] ?? { region, x: point.x, y: point.y, side: "right" as const, elbowX: point.x });
+        const width = stateLabelWidth(activeState.name);
+        return { point, placement, width };
+      })()
+    : null;
+  const activeCalloutPath = activeStateId ? buildStateCalloutPath(
+    activeStatePresentation?.point ?? { x: 0, y: 0 },
+    activeStatePresentation?.placement ?? { region: "peninsular", x: 0, y: 0, side: "right", elbowX: 0 },
+    activeStatePresentation?.width ?? 0,
+  )
+    : null;
 
   function handleKeyDown(event: React.KeyboardEvent<SVGGElement>, action: () => void) {
     if (event.key === "Enter" || event.key === " ") {
@@ -164,13 +205,13 @@ export function MalaysiaStateMap({
   }
 
   return (
-    <div className="relative aspect-[1600/1060] min-h-[620px] overflow-hidden rounded-[1.8rem] border border-[#c5cfee] bg-[#eef2ff] shadow-none sm:min-h-[760px] lg:h-full lg:aspect-auto lg:min-h-0">
-      <div className="pointer-events-none absolute left-6 right-6 top-5 z-10 border-b border-[#b7c6d4] pb-3 sm:left-8 sm:right-8 sm:pb-4">
+    <div className="relative w-full max-w-full aspect-[1600/1060] min-h-[440px] overflow-hidden rounded-[1.8rem] border border-[#c5cfee] bg-[#eef2ff] shadow-none sm:min-h-[500px] lg:h-[620px] lg:aspect-auto lg:min-h-0">
+      <div className="pointer-events-none absolute left-5 right-5 top-4 z-10 border-b border-[#b7c6d4] pb-3 sm:left-7 sm:right-7 sm:pb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#91a4b5] 2xl:text-[11px]">{t("ui.labels.malaysia")}</p>
-            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[22px] font-bold leading-tight text-[#1d2b3a] lg:text-[22px] 2xl:text-[32px]">{t("ui.map.allStatesTerritories")}</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">{t("ui.map.independentScaleNote")}</p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-[#1d2b3a] sm:text-[24px] 2xl:text-[30px]">{t("ui.map.allStatesTerritories")}</h2>
+            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] 2xl:text-sm">{t("ui.map.independentScaleNote")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
             <p className="font-bold text-[#1d2b3a]">{t("ui.map.regionPlaceCount", { regions: 16, places: 64 })}</p>
@@ -178,9 +219,18 @@ export function MalaysiaStateMap({
           </div>
         </div>
       </div>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={t("ui.map.mapRegion")} className="relative block h-full w-full">
-        <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="transparent" onClick={() => onDismissPlace?.()} />
-        <g opacity={0.42} stroke="#ffffff" strokeWidth="1">
+      <svg
+        viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={t("ui.map.mapRegion")}
+        className="relative block h-full w-full"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onDismissPlace?.();
+        }}
+      >
+        <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="transparent" pointerEvents="none" onClick={() => onDismissPlace?.()} />
+        <g opacity={0.18} stroke="#ffffff" strokeWidth="1">
           {Array.from({ length: 9 }, (_, index) => <path key={`lat-${index}`} d={`M 40 ${225 + index * 94} H ${WIDTH - 40}`} />)}
           {Array.from({ length: 12 }, (_, index) => <path key={`lng-${index}`} d={`M ${120 + index * 122} 225 V 990`} />)}
         </g>
@@ -189,36 +239,29 @@ export function MalaysiaStateMap({
         {renderRegionFeatures(borneoFeatures, "borneo", selectedStateId, onSelectState, setHoveredStateId, handleKeyDown, (name) => t("ui.map.selectState", { name }))}
 
         <g aria-hidden="true">
-          {DEMO_STATES.map((state) => {
-            const region = regionForState(state.id);
-            const point = projected({ lat: state.label[1], lng: state.label[0] }, region);
-            const placement = STATE_LABEL_LAYOUT[state.id] ?? { region, x: point.x, y: point.y, side: "right" as const, elbowX: point.x };
-            const active = state.id === activeStateId;
-            const width = stateLabelWidth(state.name);
-            return (
-              <g key={`callout-${state.id}`}>
-                <path
-                  d={buildStateCalloutPath(point, placement, width)}
-                  fill="none"
-                  stroke={active ? "#010066" : "#9eafbf"}
-                  strokeWidth={active ? 2 : 1.35}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <circle cx={point.x} cy={point.y} r={active ? 5 : 4} fill={active ? "#010066" : "#f59e0b"} stroke="#f8fafc" strokeWidth="2" />
-              </g>
-            );
-          })}
+          {activeStatePresentation && activeCalloutPath && (
+            <g>
+              <path
+                d={activeCalloutPath}
+                fill="none"
+                stroke="#010066"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx={activeStatePresentation.point.x} cy={activeStatePresentation.point.y} r={5} fill="#010066" stroke="#f8fafc" strokeWidth="2" />
+            </g>
+          )}
         </g>
       </svg>
 
       <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label={t("ui.map.allStatesTerritories")}>
-        {DEMO_STATES.map((state) => {
+        <p className="sr-only">{t("ui.map.findState")}</p>
+        {visibleStates.map((state) => {
           const region = regionForState(state.id);
           const point = projected({ lat: state.label[1], lng: state.label[0] }, region);
-          const placement = STATE_LABEL_LAYOUT[state.id] ?? { region, x: point.x, y: point.y, side: "right" as const, elbowX: point.x };
-          const active = state.id === activeStateId;
+          const placement = visibleStateLabelPlacement(STATE_LABEL_LAYOUT[state.id] ?? { region, x: point.x, y: point.y, side: "right" as const, elbowX: point.x });
           const width = stateLabelWidth(state.name);
           const boxX = placement.side === "left" ? placement.x : placement.x - width;
           const places = statePlacesCount(stateCounts, state.id);
@@ -232,11 +275,11 @@ export function MalaysiaStateMap({
               onMouseEnter={() => setHoveredStateId(state.id)}
               onMouseLeave={() => setHoveredStateId((current) => (current === state.id ? null : current))}
               onClick={() => onSelectState(state.id === selectedStateId ? null : state.id)}
-              className={`pointer-events-auto absolute -translate-y-1/2 h-[22px] min-h-0 overflow-hidden rounded-lg border px-1 py-0 text-left shadow-[0_3px_10px_rgba(1,0,102,0.06)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066] focus-visible:ring-offset-1 lg:h-[22px] lg:px-1.5 2xl:h-auto 2xl:min-h-[44px] 2xl:rounded-xl 2xl:px-3.5 2xl:py-2 ${active ? "border-[#010066] bg-[#010066] text-white shadow-[0_6px_18px_rgba(1,0,102,0.18)]" : "border-[#aebdcb] bg-white/95 text-[#24313a] hover:border-[#010066]"}`}
-              style={{ left: `${(boxX / WIDTH) * 100}%`, top: `${(placement.y / HEIGHT) * 100}%`, width: `clamp(112px, ${(width / WIDTH) * 100}%, 250px)` }}
+              className="pointer-events-auto absolute -translate-y-1/2 overflow-hidden rounded-xl border border-[#010066] bg-[#010066] px-3 py-2 text-left text-white shadow-[0_8px_22px_rgba(1,0,102,0.2)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066] focus-visible:ring-offset-1"
+              style={{ left: `${(boxX / WIDTH) * 100}%`, top: `${((placement.y - MAP_VIEWBOX_TOP) / MAP_VIEWBOX_HEIGHT) * 100}%`, width: `clamp(128px, ${(width / WIDTH) * 100}%, 240px)` }}
             >
-              <span className="block truncate text-[10px] font-bold leading-none lg:text-[11px] 2xl:text-base">{state.name}</span>
-              <span className={`mt-0.5 block truncate text-[8px] leading-none lg:text-[9px] 2xl:text-xs ${active ? "text-white/70" : "text-[#718395]"}`}>
+              <span className="block truncate text-xs font-bold leading-none 2xl:text-sm">{state.name}</span>
+              <span className="mt-1 block truncate text-[10px] leading-none text-white/70">
                 {t("ui.map.placesHere", { count: places })}
               </span>
             </button>

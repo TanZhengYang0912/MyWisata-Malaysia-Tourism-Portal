@@ -10,8 +10,8 @@ describe("customer purchase flow", () => {
   it("lets customers leave the cart for discovery and continue to checkout", () => {
     const source = read("app/customer/cart/page.tsx");
     expect(source).toContain('href="/customer"');
-    expect(source).toContain("Continue shopping");
-    expect(source).toContain("Proceed to Checkout");
+    expect(source).toContain('tCustomer("ui.cart.continueShopping")');
+    expect(source).toContain('tCustomer("ui.cart.proceedCheckout")');
     expect(source).toContain('href={appliedVoucher ? `/customer/checkout');
   });
 
@@ -24,14 +24,14 @@ describe("customer purchase flow", () => {
   it("lets customers return from checkout when they need to change the cart", () => {
     const source = read("app/customer/checkout/page.tsx");
     expect(source).toContain('href="/customer/cart"');
-    expect(source).toContain("Back to cart");
-    expect(source).toContain("Nothing to check out");
+    expect(source).toContain('tCustomer("ui.actions.backToCart"');
+    expect(source).toContain('tCustomer("ui.checkout.nothing"');
   });
 
   it("offers both history and discovery after an order is confirmed", () => {
     const source = read("app/customer/orders/[id]/page.tsx");
-    expect(source).toContain("Back to Order History");
+    expect(source).toContain('tCustomer("ui.order.backToHistory")');
     expect(source).toContain('href="/customer"');
-    expect(source).toContain("Continue exploring");
+    expect(source).toContain('tCustomer("ui.actions.continueExploring"');
   });
 });

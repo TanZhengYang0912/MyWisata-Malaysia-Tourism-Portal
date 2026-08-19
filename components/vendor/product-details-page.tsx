@@ -11,6 +11,7 @@ import { getProductDetailsLayoutClasses } from '@/lib/vendor/product-details-lay
 import { useTranslation } from 'react-i18next';
 import { isAppLocale } from '@/lib/i18n/locale';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
+import { productImageUrl } from '@/lib/storage/product-image';
 
 interface ProductVariantData {
   id: string;
@@ -57,7 +58,7 @@ function ProductImage({ product, kind }: { product: ProductDetailsData; kind: Pr
   if (product.cover_url) {
     // External and Supabase URLs are not statically enumerable for next/image.
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={product.cover_url} alt={product.name} className="h-full w-full object-cover" />;
+    return <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover" />;
   }
   return <div className="flex h-full w-full items-center justify-center"><CompactThumbnail src={null} alt={product.name} kind={kind} size="md" /></div>;
 }

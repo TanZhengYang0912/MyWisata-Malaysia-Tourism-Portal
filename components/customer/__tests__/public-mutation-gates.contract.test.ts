@@ -7,7 +7,7 @@ describe("public customer mutation gates", () => {
   it.each([
     ["activity-card.tsx", "async function handleSave", "ACCOUNT_MUTATION", "await toggleSaved"],
     ["saved-destination-card.tsx", "async function removeSavedDestination", "ACCOUNT_MUTATION", "await toggleSaved"],
-    ["outlet-chat-button.tsx", "async function handleChat", "ACCOUNT_MUTATION", "await getOrCreateThread"],
+    ["outlet-chat-button.tsx", "async function handleChat", "ACCOUNT_MUTATION", 'await fetch("/api/customer/chat"'],
   ])("guards %s before its mutation", (name, handlerName, capability, mutation) => {
     const source = read(name);
     const handler = source.slice(source.indexOf(handlerName));

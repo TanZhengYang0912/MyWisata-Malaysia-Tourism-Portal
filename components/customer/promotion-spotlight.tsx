@@ -32,6 +32,7 @@ export function PromotionSpotlight({ activities }: { activities: ComputedActivit
     <section aria-labelledby="promotion-spotlight-title" className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
       <div className="relative isolate overflow-hidden rounded-[2rem] bg-[#010066] shadow-[0_18px_50px_rgba(1,0,102,0.18)]">
         {active.image && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={active.image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-35" />
         )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#010066] via-[#010066]/90 to-[#1D2A8A]/60" />

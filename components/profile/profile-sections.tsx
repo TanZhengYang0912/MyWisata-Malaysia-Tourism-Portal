@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Camera, CheckCircle2, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
+import { useSupportChat } from "@/components/providers/support-chat";
 import type { ProfileSummary } from "@/backend/core/types";
+import { safeKycReasonCopy } from "@/lib/kyc/customer-submission";
 import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
@@ -32,6 +34,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
   const { currentUser, refreshUser } = useAuth();
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
+  const { setOpen: setSupportChatOpen } = useSupportChat();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -65,6 +68,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     finally { setLoading(false); }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadProfile(); }, []);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
@@ -169,6 +173,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
       <SectionCard title={tCustomer("ui.profileWizard.identity")} description={tCustomer("ui.profileWizard.description")}>
         <div className="flex items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           {avatarPreview || summary.avatarUrl ? <img src={avatarPreview || summary.avatarUrl || ""} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary"><Camera size={23} /></div>}
           <div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (!file) return; if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { setError(tCustomer("ui.profileWizard.photoTypeValidation")); return; } if (file.size > 2 * 1024 * 1024) { setError(tCustomer("ui.profileWizard.photoSizeValidation")); return; } setError(null); setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); }} /><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>{tCustomer("ui.profileWizard.choosePhoto")}</Button>{avatarFile && <Button size="sm" className="ml-2" onClick={uploadAvatar} disabled={busy}>{tCustomer("ui.profileWizard.savePhoto")}</Button>}</div>
         </div>
@@ -181,7 +186,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
       <SectionCard title={tCustomer("ui.kyc.verified")} description={tCustomer("ui.kyc.description")}>
         <div className="grid gap-2 sm:grid-cols-2"><StatusBadge label={tCustomer("ui.profileSections.emailStatus", { status: tCustomer(summary.emailVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.emailVerified} /><StatusBadge label={tCustomer("ui.profileSections.phoneStatus", { status: tCustomer(summary.phoneVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.phoneVerified} /><StatusBadge label={tCustomer("ui.profileSections.profileStatus", { status: tCustomer(summary.profileComplete ? "ui.profileSections.complete" : "ui.profileSections.incomplete") })} good={summary.profileComplete} /><StatusBadge label={tCustomer("ui.profileSections.kycStatus", { status: tCustomer(`ui.profileSections.kycStatuses.${summary.kycStatus}`) })} good={summary.kycStatus === "approved"} /></div>
-        {summary.kycStatus === "rejected" && <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">{tCustomer("ui.kyc.rejected")}</p><p className="mt-1 text-sm text-muted-foreground">{tCustomer(`ui.kyc.reviewReasons.${summary.latestKycReview?.reasonCode ?? "default"}`)}</p>{summary.latestKycReview?.reasonDetail && <p className="mt-2 text-sm text-foreground">{summary.latestKycReview.reasonDetail}</p>}<Button className="mt-3" size="sm" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.newSubmission")} <ChevronRight size={14} /></Button></div>}
+        {summary.kycStatus === "rejected" && <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">{tCustomer("ui.kyc.rejected")}</p><p className="mt-1 text-sm text-muted-foreground">{tCustomer(`ui.kyc.reviewReasons.${summary.latestKycReview?.reasonCode ?? "default"}`, { defaultValue: safeKycReasonCopy(summary.latestKycReview?.reasonCode) })}</p>{summary.latestKycReview?.reasonDetail && <p className="mt-2 text-sm text-foreground">{summary.latestKycReview.reasonDetail}</p>}<Button className="mt-3" size="sm" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.newSubmission")} <ChevronRight size={14} /></Button></div>}
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.submitDocuments")} <ChevronRight size={14} /></Button>}
       </SectionCard>
 
@@ -195,6 +200,12 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
       <SectionCard id="language-region" title={tCommon("language.andRegion")} description={tCustomer("profile.languageDescription")}>
         <LanguageSwitcher />
+      </SectionCard>
+
+      <SectionCard title={tCustomer("accountItems.support.label")} description={tCustomer("accountItems.support.description")}>
+        <Button variant="outline" size="sm" onClick={() => setSupportChatOpen(true)}>
+          <MessageCircle size={14} className="mr-1.5" /> {tCommon("chatbot.openChat", { defaultValue: "Contact Support" })}
+        </Button>
       </SectionCard>
 
       <section className="rounded-2xl border border-destructive/25 bg-destructive/[0.03] p-5 sm:p-6"><div className="flex items-center gap-2"><Trash2 size={17} className="text-destructive" /><h2 className="font-bold text-foreground">{tCustomer("ui.profileSections.dangerZone")}</h2></div><p className="mt-2 text-sm text-muted-foreground">{tCustomer("ui.profileSections.closeWarning")}</p><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder={tCustomer("ui.profileSections.deletePlaceholder")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><Button variant="destructive" onClick={closeAccount} disabled={busy || deleteConfirm !== "DELETE"}>{tCustomer("ui.profileSections.closeAccount")}</Button></div></section>

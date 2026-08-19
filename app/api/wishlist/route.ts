@@ -3,8 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { recordInteraction } from "@/lib/interactions";
 
+const postgresUuid = z.string().regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  "Invalid UUID",
+);
+
 const wishlistSchema = z.object({
-  productId: z.string().uuid(),
+  productId: postgresUuid,
 }).strict();
 
 export async function GET() {

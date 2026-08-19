@@ -26,7 +26,9 @@ import Link from "next/link";
 import { MessageCircle, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import type { ChatLanguage } from "@/lib/chatbot/language";
+import { detectLanguage, type ChatLanguage } from "@/lib/chatbot/language";
+import { CHAT_STRINGS } from "@/lib/chatbot/strings";
+import { useSupportChat } from "@/components/providers/support-chat";
 
 type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
@@ -84,7 +86,22 @@ async function postFeedback(payload: Record<string, unknown>) {
 
 export function ChatbotWidget() {
   const { t } = useTranslation("common");
-  const [open, setOpen] = useState(false);
+  // Lifted to context (CLAUDE-SUPPORT-MUTE-REPORT.md Feature 1) so other
+  // entry points — e.g. the profile page's "Contact Support" button — can
+  // open this same widget instance instead of building a second chat surface.
+  // Keep a local fallback for isolated embeds/tests that do not mount the
+  // customer layout provider; production uses the shared context instance.
+  let sharedChat: ReturnType<typeof useSupportChat> | null = null;
+  try {
+    // Standalone embeds intentionally omit SupportChatProvider.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    sharedChat = useSupportChat();
+  } catch {
+    sharedChat = null;
+  }
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = sharedChat?.open ?? localOpen;
+  const setOpen = sharedChat?.setOpen ?? setLocalOpen;
   // Lazy initializer, not an effect: reading localStorage here is
   // synchronous and doesn't need a render cycle. Guarded for SSR, where
   // `window` doesn't exist — sessionKey is never rendered into JSX, so a
@@ -105,6 +122,7 @@ export function ChatbotWidget() {
   async function sendMessage() {
     const question = input.trim();
     if (!question || sending) return;
+    const localLanguage = detectLanguage(question);
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
     setInput("");
@@ -120,7 +138,7 @@ export function ChatbotWidget() {
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
-        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: "Sorry, something went wrong. Please try again." }) }]);
+        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: CHAT_STRINGS[localLanguage].somethingWrong }) }]);
         return;
       }
       const { answer, botAnswered, messageId, language } = body.data;
@@ -143,7 +161,7 @@ export function ChatbotWidget() {
         postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
       }
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: "Sorry, something went wrong. Please try again." }) }]);
+      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: CHAT_STRINGS[localLanguage].somethingWrong }) }]);
     } finally {
       setSending(false);
     }
@@ -174,7 +192,7 @@ export function ChatbotWidget() {
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
       });
       const result = (await res.json()) as { data: { id: string; category: string } | null };
-      const ticketErrorText = t("chatbot.ticketError", { defaultValue: "Couldn't create a ticket right now. Please try again." });
+      const ticketErrorText = t("chatbot.ticketError", { defaultValue: CHAT_STRINGS[msg.language ?? "en"].ticketErrorText });
       if (res.ok && result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id } : m)));
         postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, openedTicket: true });
@@ -182,7 +200,7 @@ export function ChatbotWidget() {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: ticketErrorText } : m)));
       }
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError", { defaultValue: "Couldn't create a ticket right now. Please try again." }) } : m)));
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError", { defaultValue: CHAT_STRINGS[msg.language ?? "en"].ticketErrorText }) } : m)));
     } finally {
       setCreatingTicketFor(null);
     }
@@ -198,7 +216,7 @@ export function ChatbotWidget() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary text-white">
             <span className="text-sm font-semibold">{t("chatbot.title", { defaultValue: "MyWisata Support" })}</span>
             <div className="flex items-center gap-3">
-              <Link href="/customer/support" className="text-[11px] underline opacity-90 hover:opacity-100">
+              <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
                 {t("chatbot.myTickets", { defaultValue: "My Tickets" })}
               </Link>
               <button onClick={() => setOpen(false)} aria-label={t("chatbot.closeChat", { defaultValue: "Close chat" })}>
@@ -214,6 +232,7 @@ export function ChatbotWidget() {
               </p>
             )}
             {messages.map((m, i) => {
+              const fallbackStrings = CHAT_STRINGS[m.language ?? "en"];
               return (
               <div key={i}>
                 <div
@@ -225,20 +244,20 @@ export function ChatbotWidget() {
                   <div className="mt-1.5 max-w-[85%]">
                     {m.feedbackStage === "awaiting_helpful" && (
                       <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
-                        <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful", { defaultValue: "Was this helpful?" })}</span>
+                        <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful", { defaultValue: fallbackStrings.wasThisHelpful })}</span>
                         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
-                          {t("chatbot.yes", { defaultValue: "Yes" })}
+                          {t("chatbot.yes", { defaultValue: fallbackStrings.yes })}
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
-                          {t("chatbot.no", { defaultValue: "No" })}
+                          {t("chatbot.no", { defaultValue: fallbackStrings.no })}
                         </Button>
                       </div>
                     )}
-                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp", { defaultValue: "Glad I could help." })}</p>}
+                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp", { defaultValue: fallbackStrings.gladToHelp })}</p>}
                     {m.feedbackStage === "awaiting_ticket" && (
                       <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket", { defaultValue: "Want to open a support ticket?" })}</span>
+                          <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket", { defaultValue: fallbackStrings.wantTicket })}</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -246,7 +265,7 @@ export function ChatbotWidget() {
                             onClick={() => createTicket(i)}
                             disabled={creatingTicketFor === m.messageId}
                           >
-                            {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket", { defaultValue: "Creating…" }) : t("chatbot.yes", { defaultValue: "Yes" })}
+                            {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket", { defaultValue: fallbackStrings.creatingTicket }) : t("chatbot.yes", { defaultValue: fallbackStrings.yes })}
                           </Button>
                           <Button
                             size="sm"
@@ -255,22 +274,22 @@ export function ChatbotWidget() {
                             onClick={() => declineTicket(i)}
                             disabled={creatingTicketFor === m.messageId}
                           >
-                            {t("chatbot.no", { defaultValue: "No" })}
+                            {t("chatbot.no", { defaultValue: fallbackStrings.no })}
                           </Button>
                         </div>
-                        {m.ticketError && <p className="text-[11px] text-destructive mt-1">{m.ticketError}</p>}
+                        {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
                       </div>
                     )}
-                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem", { defaultValue: "No problem. Ask me anything else." })}</p>}
+                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem", { defaultValue: fallbackStrings.noProblem })}</p>}
                     {m.feedbackStage === "ticket_created" && (
                       <div className="px-1">
                         <p className="text-xs text-muted-foreground">
-                          {t("chatbot.ticketCreatedPrefix", { defaultValue: "Done — ticket #" })}
+                          {t("chatbot.ticketCreatedPrefix", { defaultValue: fallbackStrings.ticketCreatedPrefix })}
                           {m.ticketId?.slice(0, 8).toUpperCase()}
-                          {t("chatbot.ticketCreatedSuffix", { defaultValue: " created. Our team will reply; you'll see it under My Tickets." })}
+                          {t("chatbot.ticketCreatedSuffix", { defaultValue: fallbackStrings.ticketCreatedSuffix })}
                         </p>
                         <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
-                          {t("chatbot.viewMyTickets", { defaultValue: "View my tickets" })}
+                          {t("chatbot.viewMyTickets", { defaultValue: fallbackStrings.viewMyTickets })}
                         </Link>
                       </div>
                     )}

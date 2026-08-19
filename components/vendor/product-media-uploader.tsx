@@ -66,6 +66,7 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
       <div className="flex items-center gap-3">
         {value ? (
           kind === 'image'
+            // eslint-disable-next-line @next/next/no-img-element
             ? <img src={value} alt={t('media.uploadedPreview')} className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
             : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">{t('media.fileReady')}</div>
         ) : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400"><FileUp size={20} /></div>}

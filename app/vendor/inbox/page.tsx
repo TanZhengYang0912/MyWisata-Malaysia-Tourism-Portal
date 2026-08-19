@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound } from 'lucide-react';
+import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ChatThreadPanel } from '@/components/customer/chat-thread-panel';
@@ -71,13 +71,15 @@ export default function VendorInboxPage() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InboxFilter>('all');
   const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
+  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
+  const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
 
   const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
 
-  const loadThreads = useCallback(async () => {
+  const loadThreads = useCallback(async (showLoading = true) => {
     if (!user?.activeVendorId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     setLoadError(null);
     try {
       const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
@@ -88,13 +90,52 @@ export default function VendorInboxPage() {
       setThreads([]);
       setLoadError(t('ui.inbox.loadFailed'));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [t, user]);
 
-  useEffect(() => { loadThreads(); }, [loadThreads]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadThreads();
+    const timer = window.setInterval(() => void loadThreads(false), 3000);
+    return () => window.clearInterval(timer);
+  }, [loadThreads]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/chat/mutes');
+        const body = res.ok ? await res.json() : { data: [] };
+        setMutedThreadIds(new Set((body.data ?? []) as string[]));
+      } catch {
+        // best-effort — mute icons just stay unset until the next load
+      }
+    })();
+  }, [user?.id]);
+
+  async function toggleMute(threadId: string) {
+    const currentlyMuted = mutedThreadIds.has(threadId);
+    setMutedThreadIds((previous) => {
+      const next = new Set(previous);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      currentlyMuted ? next.delete(threadId) : next.add(threadId);
+      return next;
+    });
+    try {
+      await fetch(`/api/chat/threads/${threadId}/mute`, { method: currentlyMuted ? 'DELETE' : 'POST' });
+    } catch {
+      setMutedThreadIds((previous) => {
+        const next = new Set(previous);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        currentlyMuted ? next.add(threadId) : next.delete(threadId);
+        return next;
+      });
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAiReplyDraft(null);
     setAiReplyError(null);
   }, [active]);
@@ -322,7 +363,10 @@ export default function VendorInboxPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-2">
-                        <span className={`truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>{name}</span>
+                        <span className={`flex min-w-0 items-center gap-1 truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>
+                          <span className="truncate">{name}</span>
+                          {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-gray-400" aria-label={t('ui.inbox.muted', { defaultValue: 'Muted' })} />}
+                        </span>
                         <span className="shrink-0 text-[11px] text-gray-400">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : t('ui.inbox.newConversation')}</span>
                       </span>
                       <span className="mt-0.5 flex items-center gap-1.5">
@@ -373,6 +417,8 @@ export default function VendorInboxPage() {
               readByOthers={readByOthersIds}
               deliveredByOthers={deliveredByOthersIds}
               aiReply={{ draft: aiReplyDraft, busy: aiReplyBusy, error: aiReplyError, onGenerate: () => void generateAiReply(), onDiscard: () => setAiReplyDraft(null) }}
+              isMuted={mutedThreadIds.has(selected.id)}
+              onToggleMute={() => void toggleMute(selected.id)}
             />
           )}
         </div>

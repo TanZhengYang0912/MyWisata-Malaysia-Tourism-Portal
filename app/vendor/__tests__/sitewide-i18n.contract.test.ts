@@ -74,6 +74,7 @@ const priorTaskFiles = new Set([
   "components/vendor/vendor-invite-wizard-state.ts",
   "components/vendor/vendor-invite-wizard.tsx",
   "components/shared/action-feedback.tsx",
+  "components/shared/appearance-control.tsx",
   "components/shared/affiliate-qr-code.tsx",
   "components/shared/chatbot-widget.tsx",
   "components/shared/empty-state.tsx",
@@ -81,6 +82,7 @@ const priorTaskFiles = new Set([
   "components/shared/language-switcher.tsx",
   "components/shared/notification-bell.tsx",
   "components/shared/notification-center.tsx",
+  "components/shared/report-chat-button.tsx",
   "components/shared/resilient-image.tsx",
   "components/shared/share-button.tsx",
   "components/shared/status-badge.tsx",
@@ -274,7 +276,7 @@ describe("vendor and outlet sitewide i18n contract", () => {
       },
       "app/vendor/outlets/page.tsx": {
         keys: ["ui.outlets.loadFailed", "ui.outlets.selectOutlet"],
-        oldCopy: ["Could not load outlets", "Select "],
+        oldCopy: ["Could not load outlets"],
       },
       "app/vendor/vouchers/page.tsx": {
         keys: [

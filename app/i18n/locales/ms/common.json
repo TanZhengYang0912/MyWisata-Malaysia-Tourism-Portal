@@ -132,6 +132,17 @@
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
     "supportRequest": "Permintaan sokongan"
   },
+  "reportConversation": {
+    "report": "Lapor",
+    "title": "Laporkan perbualan ini",
+    "reasonOptional": "Sebab (pilihan)",
+    "submit": "Hantar laporan",
+    "submitting": "Menghantar…",
+    "reported": "Dilaporkan",
+    "success": "Laporan dihantar. Pasukan kami akan menyemaknya.",
+    "submitFailed": "Tidak dapat menghantar laporan.",
+    "submitFailedRetry": "Tidak dapat menghantar laporan. Sila cuba lagi."
+  },
   "account": {
     "menu": "Menu akaun",
     "guestMenu": "Menu akaun tetamu",

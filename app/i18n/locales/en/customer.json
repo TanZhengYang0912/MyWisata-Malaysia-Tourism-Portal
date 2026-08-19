@@ -7,7 +7,8 @@
     "trip": "Trip",
     "chat": "Chat",
     "activity": "My Activity",
-    "wishlist": "Saved"
+    "wishlist": "Saved",
+    "vouchers": "My Vouchers"
   },
   "accountGroups": {
     "Account": "Account",
@@ -32,6 +33,7 @@
     "profile": { "label": "Profile", "description": "Your personal details" },
     "notifications": { "label": "Notifications", "description": "Bookings, wallet and account updates" },
     "preferences": { "label": "Preferences", "description": "Tune your recommendation feed" },
+    "vouchers": { "label": "My Vouchers", "description": "Claimed partner deals" },
     "wallet": { "label": "Wallet", "description": "Balance and payouts" },
     "verification": { "label": "Verification", "description": "Verify your identity" },
     "support": { "label": "Support", "description": "Get help with your trip" },
@@ -119,6 +121,7 @@
       "continueShopping": "Continue shopping",
       "proceedCheckout": "Proceed to Checkout",
       "backToCart": "Back to cart",
+      "backToWallet": "Back to wallet",
       "addToCart": "Add to Cart",
       "addBookingToCart": "Add Booking to Cart",
       "bookNow": "Book Now",
@@ -145,6 +148,102 @@
       "exploreVendor": "Explore vendor",
       "tunePreferences": "Tune my preferences",
       "cancel": "Cancel"
+    },
+    "order": {
+      "backToHistory": "Back to Order History"
+    },
+    "discovery": {
+      "searchLabel": "Search destinations and experiences",
+      "filterByCategory": "Filter by Category"
+    },
+    "placeActivity": {
+      "eyebrow": "Plan your visit",
+      "title": "Things to do here",
+      "summary": "{{experiences}} experiences from {{providers}} providers",
+      "filterLabel": "Filter experiences by type",
+      "filters": {
+        "all": "All experiences",
+        "admission": "Entry tickets",
+        "guideService": "Guided",
+        "addon": "Add-ons"
+      },
+      "relations": {
+        "admission": "Entry ticket",
+        "guide_service": "Guided",
+        "addon": "Add-on"
+      },
+      "empty": "No experiences in this category yet.",
+      "showAll": "Show all experiences",
+      "free": "Free",
+      "price": "RM {{value}}",
+      "fallbackDescription": "Explore this experience at the destination.",
+      "reserveSpot": "Reserve your spot",
+      "availablePurchase": "Available to purchase",
+      "bookNow": "Book now",
+      "viewDetails": "View details"
+    },
+    "voucherHub": {
+      "eyebrow": "Exclusive partner deals",
+      "dealsTitle": "Claim vouchers from our verified partners",
+      "mineTitle": "Your claimed vouchers",
+      "dealsDescription": "Claim now, save it to My Vouchers, then use it online at checkout when you are ready.",
+      "mineDescription": "Your vouchers stay here until you use them or they expire.",
+      "viewsLabel": "Voucher views",
+      "browseDeals": "Browse Deals",
+      "myVouchers": "My Vouchers",
+      "howItWorks": "How it works",
+      "helpTitle": "Use your voucher in three steps",
+      "helpStep1": "Claim a deal and save it to My Vouchers.",
+      "helpStep2": "Check the expiry date and minimum spend.",
+      "helpStep3": "Use eligible items according to the offer's redemption method.",
+      "filterLabel": "Voucher type filters",
+      "filters": {
+        "all": "All deals",
+        "percent": "Percentage off",
+        "fixed": "Fixed amount",
+        "bogo": "Buy one, get one"
+      },
+      "searchLabel": "Search vouchers",
+      "searchPlaceholder": "Search deals or partners",
+      "tryAgain": "Try again",
+      "emptyMineTitle": "No claimed vouchers yet",
+      "emptyDealsTitle": "No approved partner vouchers available",
+      "emptyMineDescription": "Browse partner deals and claim your first voucher.",
+      "emptyDealsDescription": "Approved live vendor offers will appear here when a partner publishes an online voucher.",
+      "loadFailed": "Unable to load vouchers",
+      "claimFailed": "Unable to claim voucher",
+      "claimSuccess": "Voucher claimed. It is now in My Vouchers.",
+      "outletImageAlt": "{{name}} outlet",
+      "vendorLogoAlt": "{{name}} logo",
+      "percentOff": "{{value}}% off",
+      "fixedOff": "RM {{value}} off",
+      "ends": "Ends {{date}}",
+      "noExpiry": "No expiry listed",
+      "limitedTime": "Limited-time deal",
+      "remaining": "{{count}} left",
+      "malaysia": "Malaysia",
+      "outletVoucher": "Outlet voucher",
+      "freebie": "Freebie",
+      "partnerVoucher": "Partner voucher",
+      "allEligibleProducts": "Applies to all eligible products at this outlet",
+      "productsAvailable": "{{count}} products available",
+      "moreProducts": "+{{count}} more",
+      "minSpend": "Min. spend: RM {{value}}",
+      "eligibleProduct": "Eligible product: {{name}}",
+      "saved": "Saved to My Vouchers",
+      "claimLater": "Claim now, use later",
+      "useNow": "Use now",
+      "redemption": {
+        "both": "Online or in-store",
+        "in_store": "In-store redemption",
+        "online": "Online checkout"
+      },
+      "actions": {
+        "claim": "Claim",
+        "redeemed": "Redeemed",
+        "expired": "Expired",
+        "claimed": "Claimed"
+      }
     },
     "labels": {
       "hiddenGem": "Hidden Gem",
@@ -213,6 +312,16 @@
       "preparingPayment": "Preparing secure payment…",
       "addedToCart": "Added to Cart ✓",
       "couldNotLoad": "Couldn't load this item"
+    },
+    "receipt": {
+      "issuer": "MyWisata",
+      "title": "Withdrawal receipt",
+      "createdAt": "Requested at",
+      "updatedAt": "Last updated",
+      "payoutDestination": "Payout destination",
+      "payoutReference": "Payout reference: {{reference}}",
+      "reviewNote": "Review note",
+      "settlementNote": "This receipt shows the withdrawal request recorded by MyWisata. Settlement timing depends on the selected payout provider ({{provider}})."
     },
     "checkout": {
       "title": "Checkout",

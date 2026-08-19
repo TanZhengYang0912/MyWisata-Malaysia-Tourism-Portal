@@ -7,7 +7,8 @@
     "trip": "行程",
     "chat": "聊天",
     "activity": "我的活动",
-    "wishlist": "已保存"
+    "wishlist": "已保存",
+    "vouchers": "我的优惠券"
   },
   "accountGroups": {
     "Account": "账户",
@@ -32,6 +33,7 @@
     "profile": { "label": "个人资料", "description": "您的个人信息" },
     "notifications": { "label": "通知", "description": "预订、钱包和账户更新" },
     "preferences": { "label": "偏好设置", "description": "调整您的推荐内容" },
+    "vouchers": { "label": "我的优惠券", "description": "已领取的合作伙伴优惠" },
     "wallet": { "label": "钱包", "description": "余额和提现" },
     "verification": { "label": "验证", "description": "验证您的身份" },
     "support": { "label": "客服支持", "description": "获取行程帮助" },
@@ -119,6 +121,7 @@
       "continueShopping": "继续购物",
       "proceedCheckout": "前往结账",
       "backToCart": "返回购物车",
+      "backToWallet": "返回钱包",
       "addToCart": "加入购物车",
       "addBookingToCart": "将预订加入购物车",
       "bookNow": "立即预订",
@@ -145,6 +148,102 @@
       "exploreVendor": "探索商家",
       "tunePreferences": "调整我的偏好",
       "cancel": "取消"
+    },
+    "order": {
+      "backToHistory": "返回订单记录"
+    },
+    "discovery": {
+      "searchLabel": "搜索目的地和体验",
+      "filterByCategory": "按类别筛选"
+    },
+    "placeActivity": {
+      "eyebrow": "规划您的行程",
+      "title": "这里的体验活动",
+      "summary": "{{experiences}} 个体验，来自 {{providers}} 个服务商",
+      "filterLabel": "按类型筛选体验",
+      "filters": {
+        "all": "所有体验",
+        "admission": "入场门票",
+        "guideService": "导览服务",
+        "addon": "附加项目"
+      },
+      "relations": {
+        "admission": "入场门票",
+        "guide_service": "导览服务",
+        "addon": "附加项目"
+      },
+      "empty": "此类别目前没有体验。",
+      "showAll": "显示所有体验",
+      "free": "免费",
+      "price": "RM {{value}}",
+      "fallbackDescription": "在这个目的地探索此体验。",
+      "reserveSpot": "预订您的名额",
+      "availablePurchase": "可购买",
+      "bookNow": "立即预订",
+      "viewDetails": "查看详情"
+    },
+    "voucherHub": {
+      "eyebrow": "合作伙伴专属优惠",
+      "dealsTitle": "领取认证合作伙伴的优惠券",
+      "mineTitle": "您已领取的优惠券",
+      "dealsDescription": "立即领取并保存到“我的优惠券”，准备好后即可在结账时使用。",
+      "mineDescription": "优惠券会保留在这里，直到使用或过期。",
+      "viewsLabel": "优惠券视图",
+      "browseDeals": "浏览优惠",
+      "myVouchers": "我的优惠券",
+      "howItWorks": "使用方式",
+      "helpTitle": "三个步骤使用优惠券",
+      "helpStep1": "领取优惠并保存到“我的优惠券”。",
+      "helpStep2": "查看到期日和最低消费。",
+      "helpStep3": "按照优惠的兑换方式使用符合条件的商品。",
+      "filterLabel": "优惠券类型筛选",
+      "filters": {
+        "all": "全部优惠",
+        "percent": "百分比折扣",
+        "fixed": "固定金额",
+        "bogo": "买一送一"
+      },
+      "searchLabel": "搜索优惠券",
+      "searchPlaceholder": "搜索优惠或合作伙伴",
+      "tryAgain": "重试",
+      "emptyMineTitle": "尚未领取优惠券",
+      "emptyDealsTitle": "目前没有已批准的合作伙伴优惠券",
+      "emptyMineDescription": "浏览合作伙伴优惠并领取您的第一张优惠券。",
+      "emptyDealsDescription": "合作伙伴发布线上优惠券后，已批准的有效优惠将显示在这里。",
+      "loadFailed": "无法加载优惠券",
+      "claimFailed": "无法领取优惠券",
+      "claimSuccess": "优惠券已领取，并已保存到“我的优惠券”。",
+      "outletImageAlt": "{{name}} 门店",
+      "vendorLogoAlt": "{{name}} 标志",
+      "percentOff": "{{value}}% 折扣",
+      "fixedOff": "立减 RM {{value}}",
+      "ends": "截止于 {{date}}",
+      "noExpiry": "未列出到期日",
+      "limitedTime": "限时优惠",
+      "remaining": "剩余 {{count}}",
+      "malaysia": "马来西亚",
+      "outletVoucher": "门店优惠券",
+      "freebie": "赠品",
+      "partnerVoucher": "合作伙伴优惠券",
+      "allEligibleProducts": "适用于此门店的所有符合条件商品",
+      "productsAvailable": "有 {{count}} 件商品可用",
+      "moreProducts": "另有 {{count}} 件",
+      "minSpend": "最低消费：RM {{value}}",
+      "eligibleProduct": "适用商品：{{name}}",
+      "saved": "已保存到“我的优惠券”",
+      "claimLater": "现在领取，稍后使用",
+      "useNow": "立即使用",
+      "redemption": {
+        "both": "线上或门店使用",
+        "in_store": "门店兑换",
+        "online": "线上结账"
+      },
+      "actions": {
+        "claim": "领取",
+        "redeemed": "已兑换",
+        "expired": "已过期",
+        "claimed": "已领取"
+      }
     },
     "labels": {
       "hiddenGem": "隐藏宝藏",
@@ -213,6 +312,16 @@
       "preparingPayment": "正在准备安全付款…",
       "addedToCart": "已加入购物车 ✓",
       "couldNotLoad": "无法加载此项目"
+    },
+    "receipt": {
+      "issuer": "MyWisata",
+      "title": "提现收据",
+      "createdAt": "申请时间",
+      "updatedAt": "最后更新",
+      "payoutDestination": "收款账户",
+      "payoutReference": "付款参考编号：{{reference}}",
+      "reviewNote": "审核备注",
+      "settlementNote": "此收据显示 MyWisata 记录的提现申请。到账时间取决于所选的付款服务商（{{provider}}）。"
     },
     "checkout": {
       "title": "结账",

@@ -191,6 +191,8 @@ export const voucherCreateSchema = z.object({
   perCustomerLimit: z.number().int().min(1).max(100_000).nullable().optional(),
   validFrom: z.string().datetime().optional(),
   validUntil: z.string().datetime().optional(),
+  redemptionMode: z.enum(['online', 'in_store', 'both']).default('online'),
+  isClaimable: z.boolean().default(true),
   outletId: uuid.optional(), // null = all outlets under this vendor
   productId: optionalUuid,
   buyQuantity: z.number().int().min(1).max(999).optional(),
@@ -219,6 +221,9 @@ export const voucherUpdateSchema = z.object({
   perCustomerLimit: z.number().int().min(1).max(100_000).nullable().optional(),
   validFrom: z.string().datetime().nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
+  redemptionMode: z.enum(['online', 'in_store', 'both']).optional(),
+  isClaimable: z.boolean().optional(),
+  outletId: uuid.nullable().optional(),
   productId: optionalUuid.nullable().optional(),
   buyQuantity: z.number().int().min(1).max(999).nullable().optional(),
   freeQuantity: z.number().int().min(1).max(999).nullable().optional(),

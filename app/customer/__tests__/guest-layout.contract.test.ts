@@ -14,7 +14,7 @@ describe("customer layout guest contract", () => {
 
   it("keeps account destinations discoverable for guests", () => {
     expect(layout).toContain("ACCOUNT_MENU_GROUPS");
-    expect(layout).toContain("Guest account menu");
+    expect(layout).toContain('aria-label={`Open ${customerDisplayName} account menu`}');
     expect(layout).toContain("guestLoginHref");
   });
 });

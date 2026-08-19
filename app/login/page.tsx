@@ -7,7 +7,9 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
-import { GUEST_EXPLORE_PATH, postLoginDestination, postLoginPath } from "@/lib/auth/guest-mode";
+import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
+import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
+import { postLoginDestination } from "@/lib/auth/post-login-destination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
   const [users, setUsers] = useState<DemoUser[]>([]);
+  const [roleFilter, setRoleFilter] = useState<Role | null>(null);
   const [mode, setMode] = useState<AuthMode>("signin");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,7 +45,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get("error")) setError(GENERIC_ERROR);
+    const queryError = searchParams.get("error");
+    if (queryError === "oauth") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(tAuth("errors.oauth", { defaultValue: "Google sign-in could not be completed. Try email/password or a demo account." }));
+    } else if (queryError) {
+      setError(GENERIC_ERROR);
+    }
     if (searchParams.get("mode") === "signup") setMode("signup");
     fetch("/api/auth/demo-users")
       .then(async (response) => { if (!response.ok) throw new Error(tAuth("errors.demoLoad")); return response.json() as Promise<DemoUser[]>; })
@@ -62,7 +71,7 @@ export default function LoginPage() {
       const signedInUser = await switchUser(user.id, user);
       if (!signedInUser) return;
       const role = signedInUser.role;
-      router.push(postLoginDestination(requestedNext(role), role));
+      router.push(postLoginDestination(role, requestedNext(role)));
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }
@@ -82,7 +91,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await refreshUser();
       if (!signedInUser) { router.push("/"); router.refresh(); return; }
-      router.push(postLoginDestination(requestedNext(signedInUser.role), signedInUser.role));
+      router.push(postLoginDestination(signedInUser.role, requestedNext(signedInUser.role)));
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }
@@ -115,7 +124,7 @@ export default function LoginPage() {
       try {
         const signedInUser = await refreshUser();
         if (!signedInUser) { router.push("/"); router.refresh(); return; }
-        router.push(postLoginDestination(next, signedInUser.role));
+        router.push(postLoginDestination(signedInUser.role, next));
         router.refresh();
       } catch { setError(GENERIC_ERROR); }
       return;
@@ -134,7 +143,7 @@ export default function LoginPage() {
     try {
       const signedInUser = await refreshUser();
       if (!signedInUser) { router.push("/"); router.refresh(); return; }
-      router.push(postLoginDestination(requestedNext("customer"), signedInUser.role));
+      router.push(postLoginDestination(signedInUser.role, requestedNext("customer")));
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }
@@ -169,6 +178,8 @@ export default function LoginPage() {
   }
 
   const title = mode === "signup" ? tAuth("titles.createAccount") : mode === "verify" ? tAuth("titles.verifyEmail") : mode === "forgot" ? tAuth("titles.resetPassword") : tAuth("titles.welcomeBack");
+  const roleCategories = demoAccountRoleCategories(users);
+  const visibleUsers = filterDemoAccountsByRole(users, roleFilter);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: "var(--background)" }}>
@@ -212,7 +223,13 @@ export default function LoginPage() {
 
           <button type="button" onClick={enterGuestMode} disabled={busy} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-70"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-white">G</div><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{tCommon("guest.mode")}</p><p className="text-xs text-muted-foreground">{tAuth("guest.description")}</p></div><Badge variant="secondary" className="shrink-0">{tAuth("guest.label")}</Badge></button>
           <div className="mt-5 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tAuth("demo.title")}</p><span className="text-[11px] text-muted-foreground">{tAuth("demo.quickEntry")}</span></div>
-          <div className="mt-2 space-y-2">{users.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{tAuth(`roles.${user.role}`)}</Badge></button>)}</div>
+          {roleCategories.length > 1 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setRoleFilter(null)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === null ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tCommon("filters.all", { defaultValue: "All" })}</button>
+              {roleCategories.map((role) => <button key={role} type="button" onClick={() => setRoleFilter(role)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === role ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tAuth(`roles.${role}`)}</button>)}
+            </div>
+          )}
+          <div className="mt-2 space-y-2">{visibleUsers.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{tAuth(`roles.${user.role}`)}</Badge></button>)}</div>
         </CardContent></Card>
         <p className="mt-4 text-center text-xs text-muted-foreground">{tAuth("demo.disclaimer")}</p>
       </div>

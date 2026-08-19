@@ -95,7 +95,7 @@ export default function CustomerBookingDetailsPage() {
     <main className="min-h-full bg-background">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
         <Link href="/customer/activity?tab=itinerary" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> Back to calendar
+          <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("ui.actions.backToCalendar")}
         </Link>
 
         <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

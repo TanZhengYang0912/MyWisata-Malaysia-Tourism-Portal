@@ -88,6 +88,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",
   "components/admin/segmented-filter.tsx",
+  "components/admin/staff-conduct-panel.tsx",
 ] as const;
 
 /** Non-rendering code is inventory-visible but does not need a translation hook. */

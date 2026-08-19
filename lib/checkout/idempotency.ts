@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 export type CheckoutRequest = {
   selectedKeys?: string[];
   voucherCode?: string | null;
+  claimId?: string | null;
   paymentMethod: string;
   paymentProvider?: string | null;
 };
@@ -10,6 +11,7 @@ export type CheckoutRequest = {
 export type NormalizedCheckoutRequest = {
   selectedKeys: string[] | null;
   voucherCode: string | null;
+  claimId: string | null;
   paymentMethod: string;
   paymentProvider: string | null;
 };
@@ -22,6 +24,7 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
   return {
     selectedKeys,
     voucherCode: input.voucherCode?.trim().toUpperCase() || null,
+    claimId: input.claimId?.trim() || null,
     paymentMethod: input.paymentMethod.trim().toLowerCase(),
     paymentProvider: input.paymentProvider?.trim().toLowerCase() || null,
   };

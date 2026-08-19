@@ -92,7 +92,7 @@ export function FraudSeverityDonut({ data }: FraudSeverityDonutProps) {
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-lg font-bold text-foreground leading-tight">{formatNumber(total, locale)}</span>
-          <span className="text-[10px] text-muted-foreground">{t("fraud.total")}</span>
+          <span className="text-[0.625rem] text-muted-foreground">{t("fraud.total")}</span>
         </div>
       </div>
       <div className="space-y-1.5">

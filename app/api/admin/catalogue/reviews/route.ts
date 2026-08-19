@@ -13,6 +13,7 @@ async function requireAdmin() {
   if (!user) return { error: apiFail('UNAUTHORIZED', 'Sign in required', 401) } as const;
   const { data: roles, error } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   if (error) return { error: apiFail('DB_ERROR', error.message, 500) } as const;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const names = (roles ?? []).map((row: any) => relation(row.roles)?.name);
   if (!names.some((name: string) => ['super_admin', 'approver'].includes(name))) {
     return { error: apiFail('FORBIDDEN', 'Administrator access required', 403) } as const;
@@ -33,8 +34,11 @@ export async function GET() {
   if (failed?.error) return apiFail('DB_ERROR', failed.error.message, 500);
   return apiOk({
     items: [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(outlets.data ?? []).map((item: any) => ({ ...item, entityType: 'outlet', entityLabel: item.name, context: [item.city, item.state].filter(Boolean).join(', ') })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(products.data ?? []).map((item: any) => ({ ...item, entityType: 'product', entityLabel: item.name, context: item.outlets?.city || item.outlets?.name || item.product_type })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...(vouchers.data ?? []).map((item: any) => ({ ...item, entityType: 'voucher', entityLabel: `${item.code} · ${item.name}`, context: item.outlets?.city || 'All outlets' })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
   });

@@ -28,4 +28,16 @@ describe('public outlet menu', () => {
     expect(source).toContain('aspect-[4/3]');
     expect(source).toContain('Available at this outlet');
   });
+
+  it('uses one detail link when a product is not ready for direct purchase', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
+    expect(source).toContain('getOutletDetailActionLabel(action.reason)');
+    expect(source).not.toContain('disabled={Boolean(working) || action.kind !== "cart"}');
+  });
+
+  it('shows the current outlet position when the vendor has multiple outlets', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
+    expect(source).toContain('Location {outletNavigation.currentPosition} of {outletNavigation.total}');
+    expect(source).toContain('View all {outletNavigation.total} outlets');
+  });
 });

@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
+import { AppearanceControl } from '@/components/shared/appearance-control';
 
 type VendorNavItem = { href: string; activeHref?: string; label: string; icon: LucideIcon };
 
@@ -97,15 +98,18 @@ export default function VendorSidebar() {
             <Icon size={17} />
             {tVendor(`navigation.${label}`, { defaultValue: label })}
             {href === '/vendor/inbox' && unreadChats > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-white">
                 {unreadChats}
               </span>
             )}
           </Link>
         ))}
       </nav>
-      <div className="border-t border-gray-700 px-5 py-3">
+      <div className="border-t border-gray-700 px-2 py-2">
+        <AppearanceControl variant="sidebar-dark" />
+        <div className="mt-2 px-3">
         <LanguageSwitcher compact />
+        </div>
       </div>
       <button
         onClick={signOut}

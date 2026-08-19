@@ -50,7 +50,7 @@ const REGION_ROW = {
 };
 const POI_ROW = {
   id: "poi-1", parent_id: "region-1", level: "poi", name: "Armenian Street Murals", slug: "armenian-street-murals",
-  tagline: null, intro: null, image_url: null, state: "Penang", district: "George Town",
+  tagline: null, intro: null, image_url: "penang/chew-jetty.webp", state: "Penang", district: "George Town",
   lat: "5.4173", lng: "100.3390", entry_fee: "0.00", managed_by_vendor_id: null, detail: null, status: "active",
 };
 
@@ -87,6 +87,14 @@ describe("getPlaceBySlug", () => {
     expect(place?.entryFee).toBe(0);
     expect(typeof place?.lat).toBe("number");
     expect(typeof place?.entryFee).toBe("number");
+  });
+
+  it("resolves a bucket-relative image_url to a Storage public URL", async () => {
+    const db = makeDb({ places: [POI_ROW] });
+
+    const place = await getPlaceBySlug("armenian-street-murals", db);
+
+    expect(place?.imageUrl).toContain("/place-images/penang/chew-jetty.webp");
   });
 
   it("returns null for an unknown slug", async () => {

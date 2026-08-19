@@ -35,10 +35,10 @@ describe('vendor storefront presentation', () => {
   });
 
   it('keeps the vendor page as a fixed storefront information architecture', () => {
-    expect(pageSource).toContain('Featured experiences');
-    expect(pageSource).toContain('Find us across Malaysia');
-    expect(pageSource).toContain('About the vendor');
-    expect(pageSource).toContain('Policies & support');
+    expect(pageSource).toContain("t('ui.vendor.featuredExperiences')");
+    expect(pageSource).toContain("t('ui.vendor.findAcrossMalaysia')");
+    expect(pageSource).toContain("t('ui.vendor.about')");
+    expect(pageSource).toContain("t('ui.vendor.policiesSupport')");
     expect(pageSource).toContain('id="experiences"');
     expect(pageSource).toContain('id="locations"');
   });

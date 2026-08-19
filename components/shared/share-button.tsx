@@ -303,7 +303,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
       {status === "copied" && <p className="text-xs text-primary">{t("share.actions.linkCopied")}</p>}
       {status === "error" && <p className="text-xs text-destructive">{t("share.actions.copyFailed")}</p>}
       {!isVerified && (status === "idle" || status === "working") && (
-        <p className="text-[10px] text-muted-foreground text-center max-w-20">{t("share.actions.verifyToEarn")}</p>
+        <p className="text-[0.625rem] text-muted-foreground text-center max-w-20">{t("share.actions.verifyToEarn")}</p>
       )}
     </div>
   );

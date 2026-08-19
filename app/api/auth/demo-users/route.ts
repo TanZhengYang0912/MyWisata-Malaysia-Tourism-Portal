@@ -25,22 +25,37 @@ type DemoUserRow = {
  * seeded demo identity/role projection; the service key stays server-side.
  * The anon role can enumerate users but cannot read user_roles after RLS is
  * enabled, which would make every account appear to be a customer.
+ * Also filters to accounts with a real auth.users login — most of the 170
+ * seeded vendor-owner rows are data-only and cannot sign in.
  */
 export async function GET() {
   try {
     const db = createServiceClient();
-    const { data, error } = await db
-      .from('users')
-      .select('id,email,full_name,city,tier,user_roles(vendor_id,outlet_id,roles(name),vendors(name),outlets(name))')
-      .like('email', '%@demo.local')
-      .order('email');
+    const [{ data, error }, { data: authData, error: authError }] = await Promise.all([
+      db
+        .from('users')
+        .select('id,email,full_name,city,tier,user_roles(vendor_id,outlet_id,roles(name),vendors(name),outlets(name))')
+        .like('email', '%@demo.local')
+        .order('email'),
+      db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
 
     if (error) throw error;
+    if (authError) throw authError;
 
-    const users = ((data || []) as DemoUserRow[]).map((row) => {
+    // Only accounts with a real auth.users row can actually sign in — the
+    // per-vendor-owner seed migration gives every vendor a data-only
+    // public.users row for consistency, but most were never wired up with a
+    // password. This route must never offer one of those in the picker.
+    const loginableIds = new Set(authData.users.map((authUser) => authUser.id));
+
+    const users = ((data || []) as DemoUserRow[])
+      .filter((row) => loginableIds.has(row.id))
+      .map((row) => {
       const assignments = row.user_roles || [];
       const role = pickDemoRole(assignments);
       const assignment = pickDemoAssignment(assignments);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
       const name = row.full_name || row.email;
       const vendor = Array.isArray(assignment?.vendors) ? assignment?.vendors[0] : assignment?.vendors;

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GRID_COLS, fits, gridRowCount } from '@/lib/vendor/outlet-grid';
 
 const optionalUrl = z.string().url().max(2000).optional().or(z.literal(''));
 
@@ -19,6 +20,64 @@ export const outletPageBlockTypes = [
 
 export type OutletPageBlockType = typeof outletPageBlockTypes[number];
 
+/** Size a block gets when first added, in grid cells. */
+export const BLOCK_DEFAULT_SIZE: Record<OutletPageBlockType, [number, number]> = {
+  intro: [4, 2],
+  text: [3, 2],
+  image: [3, 2],
+  image_text: [4, 2],
+  product_grid: [4, 3],
+  gallery: [4, 2],
+  hours: [2, 2],
+  contact: [2, 2],
+  voucher_banner: [4, 2],
+  cta: [3, 2],
+  review_highlight: [2, 2],
+  social_proof: [2, 1],
+};
+
+/** Smallest size a block may be resized to before its content stops reading. */
+export const BLOCK_MIN_SIZE: Record<OutletPageBlockType, [number, number]> = {
+  intro: [2, 1],
+  text: [2, 1],
+  image: [2, 1],
+  image_text: [2, 2],
+  product_grid: [2, 2],
+  gallery: [2, 2],
+  hours: [2, 1],
+  contact: [2, 1],
+  voucher_banner: [2, 2],
+  cta: [2, 2],
+  review_highlight: [2, 1],
+  social_proof: [1, 1],
+};
+
+/**
+ * May `block` become `w × h` without running off the grid or overlapping a
+ * sibling? The one check both the canvas's resize menu and the inspector's
+ * size control must agree on — a block the schema would reject on save must
+ * never be selectable in either UI.
+ */
+export function canResizeBlockTo(blocks: OutletPageBlock[], block: OutletPageBlock, w: number, h: number): boolean {
+  const [minW, minH] = BLOCK_MIN_SIZE[block.type];
+  if (w < minW || h < minH) return false;
+  if (block.w === w && block.h === h) return true;
+  const candidate = { x: block.x, y: block.y, w, h };
+  return fits(blocks, candidate, GRID_COLS, gridRowCount([...blocks, candidate]), block.id);
+}
+
+/**
+ * Vendor-typed values that replace live outlet data for one block. A key that
+ * is absent means "use the outlet's own data" — an empty string is never
+ * stored, the key is deleted instead.
+ */
+export interface OutletBlockOverrides {
+  hours?: string;
+  address?: string;
+  phone?: string;
+  review?: string;
+}
+
 export interface OutletPageBlock {
   id: string;
   type: OutletPageBlockType;
@@ -34,6 +93,11 @@ export interface OutletPageBlock {
     textAlign?: 'left' | 'center' | 'right';
     spacing?: 'compact' | 'medium' | 'large';
   };
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  overrides?: OutletBlockOverrides;
 }
 
 export interface HeroBlock {
@@ -83,6 +147,13 @@ const styleSchema = z.object({
   spacing: z.enum(['compact', 'medium', 'large']).optional(),
 }).strict().optional();
 
+const overridesSchema = z.object({
+  hours: z.string().max(500).optional(),
+  address: z.string().max(500).optional(),
+  phone: z.string().max(80).optional(),
+  review: z.string().max(1000).optional(),
+}).strict().optional();
+
 const blockSchema = z.object({
   id: z.string().min(1).max(120),
   type: z.enum(outletPageBlockTypes),
@@ -94,7 +165,20 @@ const blockSchema = z.object({
   buttonLink: z.string().max(500).optional(),
   productIds: z.array(z.string().uuid()).max(12).optional(),
   style: styleSchema,
-}).strict();
+  x: z.number().int().min(0).max(GRID_COLS - 1),
+  y: z.number().int().min(0),
+  w: z.number().int().min(1).max(GRID_COLS),
+  h: z.number().int().min(1),
+  overrides: overridesSchema,
+}).strict().superRefine((block, ctx) => {
+  if (block.x + block.w > GRID_COLS) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Block runs past the right edge of the ${GRID_COLS}-column grid`,
+      path: ['w'],
+    });
+  }
+});
 
 const heroSchema = z.object({
   id: z.string().min(1).max(120),
@@ -131,8 +215,15 @@ function arrayValue<T>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : [];
 }
 
-function stableDefaultBlock(type: OutletPageBlockType, title: string): OutletPageBlock {
-  return { id: `default-${type}`, type, title };
+function stableDefaultBlock(
+  type: OutletPageBlockType,
+  title: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): OutletPageBlock {
+  return { id: `default-${type}`, type, title, x, y, w, h };
 }
 
 export function createOutletPageBlock(type: OutletPageBlockType, seed = Date.now()): OutletPageBlock {
@@ -150,7 +241,9 @@ export function createOutletPageBlock(type: OutletPageBlockType, seed = Date.now
     review_highlight: 'What guests say',
     social_proof: 'Trusted by travellers',
   };
-  return { id: `${type}-${seed}-${Math.random().toString(36).slice(2, 6)}`, type, title: titles[type] };
+  const [w, h] = BLOCK_DEFAULT_SIZE[type];
+  // x/y are placeholders — the builder places the block with firstFreeSlot.
+  return { id: `${type}-${seed}-${Math.random().toString(36).slice(2, 6)}`, type, title: titles[type], x: 0, y: 0, w, h };
 }
 
 export function createDefaultOutletPageDocument(outletName: string): OutletPageDocument {
@@ -166,12 +259,12 @@ export function createDefaultOutletPageDocument(outletName: string): OutletPageD
       imagePosition: 'center',
     },
     blocks: [
-      stableDefaultBlock('intro', 'Welcome to this outlet'),
-      stableDefaultBlock('product_grid', 'Featured experiences'),
-      stableDefaultBlock('gallery', 'A glimpse of the place'),
-      stableDefaultBlock('hours', 'Opening hours'),
-      stableDefaultBlock('contact', 'Find this outlet'),
-      stableDefaultBlock('cta', 'Ready to explore?'),
+      stableDefaultBlock('intro', 'Welcome to this outlet', 0, 0, 8, 2),
+      stableDefaultBlock('gallery', 'A glimpse of the place', 0, 2, 4, 2),
+      stableDefaultBlock('cta', 'Ready to explore?', 4, 2, 4, 2),
+      stableDefaultBlock('hours', 'Opening hours', 0, 4, 4, 2),
+      stableDefaultBlock('contact', 'Find this outlet', 4, 4, 4, 2),
+      stableDefaultBlock('product_grid', 'Featured experiences', 0, 6, 8, 3),
     ],
     gallery: [],
     brandColour: '#00004D',
@@ -187,16 +280,45 @@ function normalizeBlock(value: unknown, index: number): OutletPageBlock | null {
   const source = value as Record<string, unknown>;
   const type = stringValue(source.type);
   if (type === 'hero' || !outletPageBlockTypes.includes(type as OutletPageBlockType)) return null;
-  const block: OutletPageBlock = {
+  const block = {
     id: stringValue(source.id, `block-${index + 1}`),
     type: type as OutletPageBlockType,
-  };
+  } as OutletPageBlock;
   for (const key of ['title', 'body', 'image', 'imageUrl', 'cta', 'buttonLink'] as const) {
     if (typeof source[key] === 'string' && source[key]) block[key] = source[key] as string;
   }
   if (Array.isArray(source.productIds)) block.productIds = source.productIds.filter((id): id is string => typeof id === 'string').slice(0, 12);
   if (source.style && typeof source.style === 'object') block.style = source.style as OutletPageBlock['style'];
+  for (const key of ['x', 'y', 'w', 'h'] as const) {
+    const value = source[key];
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 0) block[key] = value;
+  }
+  if (source.overrides && typeof source.overrides === 'object') {
+    block.overrides = source.overrides as OutletBlockOverrides;
+  }
   return block;
+}
+
+export function hasPlacement(block: OutletPageBlock): boolean {
+  return [block.x, block.y, block.w, block.h].every((value) => typeof value === 'number')
+    && block.w >= 1
+    && block.h >= 1;
+}
+
+/**
+ * Documents written before the grid have no coordinates. Stack those blocks
+ * full-width in their stored order, below anything already placed — so an old
+ * draft opens looking exactly like the vertical layout it was authored as.
+ */
+export function backfillPlacement(blocks: OutletPageBlock[]): OutletPageBlock[] {
+  let nextY = blocks.reduce((low, block) => (hasPlacement(block) ? Math.max(low, block.y + block.h) : low), 0);
+  return blocks.map((block) => {
+    if (hasPlacement(block)) return block;
+    const h = BLOCK_DEFAULT_SIZE[block.type][1];
+    const placed = { ...block, x: 0, y: nextY, w: GRID_COLS, h };
+    nextY += h;
+    return placed;
+  });
 }
 
 export function normalizeOutletPageDocument(value: unknown, legacy?: LegacyOutletPageFields): OutletPageDocument {
@@ -215,7 +337,9 @@ export function normalizeOutletPageDocument(value: unknown, legacy?: LegacyOutle
     cta: stringValue((source.hero as Record<string, unknown> | undefined)?.cta ?? legacyHero?.cta) || undefined,
     buttonLink: stringValue((source.hero as Record<string, unknown> | undefined)?.buttonLink) || undefined,
   };
-  const blocks = sourceBlocks.map(normalizeBlock).filter((block): block is OutletPageBlock => Boolean(block));
+  const blocks = backfillPlacement(
+    sourceBlocks.map(normalizeBlock).filter((block): block is OutletPageBlock => Boolean(block)),
+  );
   const gallerySource = arrayValue<unknown>(source.gallery ?? fallback.gallery);
   const gallery = gallerySource.map((item) => {
     if (typeof item === 'string') return { url: item };

@@ -10,6 +10,7 @@ import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Outlet, Place, PlaceLevel, PlaceProduct, PlaceRelation } from "@/backend/core/types";
 import { getActivities, getOutlets, getVendors } from "@/backend/domains/catalogue";
+import { placeImageUrl } from "@/lib/storage/place-image";
 
 type PlaceRow = {
   id: string;
@@ -43,7 +44,7 @@ function mapPlace(row: PlaceRow): Place {
     slug: row.slug,
     tagline: row.tagline,
     intro: row.intro,
-    imageUrl: row.image_url,
+    imageUrl: placeImageUrl(row.image_url),
     state: row.state,
     district: row.district,
     lat: Number(row.lat),

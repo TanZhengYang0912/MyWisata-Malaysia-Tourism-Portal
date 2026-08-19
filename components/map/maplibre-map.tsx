@@ -111,6 +111,7 @@ export function MaplibreMap({
   const selectedPin = pins.find((p) => p.id === selectedId) ?? null;
   const radiusGeoJSON = useMemo(
     () => (radiusCenter && radiusKm ? circlePolygon(radiusCenter, radiusKm) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [radiusCenter?.[0], radiusCenter?.[1], radiusKm],
   );
   const interactiveLayerIds = cluster ? [CLUSTER_LAYER_ID, POINT_LAYER_ID] : [POINT_LAYER_ID];

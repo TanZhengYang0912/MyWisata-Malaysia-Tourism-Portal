@@ -14,14 +14,14 @@ describe("customer booking details", () => {
     expect(pageSource).toContain("booking.activityName");
     expect(pageSource).toContain("booking.slotStartsAt");
     expect(pageSource).toContain("BookingQrCode");
-    expect(pageSource).toContain("Request refund");
-    expect(pageSource).toContain("Print receipt");
+    expect(pageSource).toContain('tCustomer("ui.actions.requestRefund")');
+    expect(pageSource).toContain('tCustomer("ui.actions.printReceipt")');
     expect(pageSource).toContain("/api/orders/${booking.orderId}/refund");
     expect(pageSource).toContain("window.print()");
     expect(pageSource).toContain("showFullReceipt");
-    expect(pageSource).toContain("View full receipt");
+    expect(pageSource).toContain('tCustomer("ui.actions.viewDetails")');
     expect(pageSource).toContain("/customer/orders/${booking.orderId}");
-    expect(pageSource.match(/Back to calendar/g)).toHaveLength(1);
+    expect(pageSource.match(/ui\.actions\.backToCalendar/g)).toHaveLength(1);
     expect(pageSource).not.toContain("booking.qrCode");
     expect(pageSource).not.toContain("DEMO-QR");
   });

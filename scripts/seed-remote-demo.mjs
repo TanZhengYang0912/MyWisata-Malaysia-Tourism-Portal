@@ -11,6 +11,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
+// WARNING: this script encodes the older all-vendors-share-3-owners demo
+// model, which conflicts with the per-vendor-owner model established in
+// supabase/migrations/20260815010000_per_vendor_owner_accounts.sql and
+// 20260815011000_demo_outlet_manager_accounts.sql. Running it against a
+// project with those migrations applied will reintroduce non-deterministic
+// vendor-dashboard behavior for the shared demo accounts.
+
 function loadEnv() {
   for (const filename of ['.env.local', '.env']) {
     const filepath = path.resolve(process.cwd(), filename);

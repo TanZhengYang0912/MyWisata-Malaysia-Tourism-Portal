@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
-import { buildPublicOutletProfile, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
+import { buildPublicOutletProfile, getOutletNavigationModel, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
@@ -17,7 +18,7 @@ interface Props {
 
 async function getPublicOutletPage(outletId: string, vendorId: string) {
   const db = await createClient();
-  const [{ data: outlet }, { data: page }] = await Promise.all([
+  const [{ data: outlet }, { data: page }, { data: outlets }] = await Promise.all([
     db
       .from("outlets")
       .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(id,name)")
@@ -26,8 +27,9 @@ async function getPublicOutletPage(outletId: string, vendorId: string) {
       .eq("status", "active")
       .maybeSingle(),
     db.from("public_outlet_pages").select("*").eq("outlet_id", outletId).maybeSingle(),
+    db.from("outlets").select("id,name").eq("vendor_id", vendorId).eq("status", "active").order("name"),
   ]);
-  return { outlet, page };
+  return { outlet, page, outlets: outlets || [] };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -50,9 +52,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VendorOutletPage({ params }: Props) {
   const { outletId, vendorId } = await params;
-  const { outlet, page } = await getPublicOutletPage(outletId, vendorId);
+  const { outlet, page, outlets } = await getPublicOutletPage(outletId, vendorId);
   if (!outlet) notFound();
   const { t } = await getServerTranslation("customer");
+
+  const outletNavigation = getOutletNavigationModel(outlets, outlet.id);
 
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
@@ -177,6 +181,15 @@ export default async function VendorOutletPage({ params }: Props) {
           <OutletChatButton outletId={outlet.id} />
         </div>
       </div>
+      {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Outlet navigation</p>
+            <p className="mt-1 text-sm font-semibold text-slate-950">Location {outletNavigation.currentPosition} of {outletNavigation.total} · {outlet.name}</p>
+          </div>
+          <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">View all {outletNavigation.total} outlets <ArrowRight size={15} /></a>
+        </div>
+      </div>}
       <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />
     </main>
   );

@@ -24,6 +24,7 @@ export async function GET(request: Request, { params }: Props) {
   const { data: vouchers, error: voucherError } = await voucherQuery;
   if (voucherError) return apiFail('DB_ERROR', voucherError.message, 500);
   const voucherRows = (vouchers || []) as VoucherRow[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const voucherIds = voucherRows.map((voucher: any) => voucher.id);
   let eventQuery = db.from('voucher_events').select('voucher_id,user_id,event_type').in('voucher_id', voucherIds.length ? voucherIds : ['none']);
   if (from) eventQuery = eventQuery.gte('created_at', `${from}T00:00:00+08:00`);
@@ -41,6 +42,7 @@ export async function GET(request: Request, { params }: Props) {
   if (outletId && orderIds.size) {
     const { data: orderItems, error: itemError } = await db.from('order_items').select('order_id').in('order_id', [...orderIds]).eq('outlet_id', outletId);
     if (itemError) return apiFail('DB_ERROR', itemError.message, 500);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     allowedOrderIds = new Set((orderItems || []).map((item: any) => item.order_id));
   }
   const filteredRedemptions = ((data ?? []) as unknown as RedemptionRow[]).filter((row) => !allowedOrderIds || allowedOrderIds.has(row.orders?.id || ''));

@@ -38,11 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq("id", authUserId)
       .maybeSingle();
     if (requestVersion !== profileLoadVersion.current) return null;
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Unable to load your account profile");
 
     const assignments = row?.user_roles ?? [];
     const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
     const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
     const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
     const name = row?.full_name ?? row?.email ?? "User";
@@ -126,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const destination = gate === "restore" ? "/account-restore" : gate === "suspended" ? "/account-suspended" : null;
     const suspendedSupportPath = gate === "suspended" && canSuspendedAccessPath(pathname);
     if (destination && pathname !== destination && !suspendedSupportPath) router.replace(destination);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.status, loading, pathname, router]);
 
   const switchUser = useCallback(async (id: string, selectedUser?: User) => {
@@ -149,11 +151,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Demo sign-in did not return a session');
     }
 
-    const { error: sessionError } = await supabase.auth.setSession({
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
       access_token: result.session.access_token,
       refresh_token: result.session.refresh_token,
     });
     if (sessionError) throw sessionError;
+    if (sessionData.user?.id !== id) {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error("Demo sign-in returned a session for a different account");
+    }
     if (switchAttempt !== switchAttemptVersion.current) return null;
 
     const requestVersion = ++profileLoadVersion.current;
@@ -205,6 +211,7 @@ export function useRequireRole(allowed: Role[]): AuthContextValue {
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
       router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.loading, auth.currentUser?.role, pathname]);
 
   return auth;

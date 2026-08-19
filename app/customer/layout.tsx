@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Globe, LogIn, ShoppingCart, UserPlus } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Globe, LogIn, ShoppingCart, Tag, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -11,9 +11,11 @@ import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { AppearanceControl } from "@/components/shared/appearance-control";
 import { WishlistProvider } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider } from "@/components/providers/saved-destinations";
 import { TripProvider, useTrip } from "@/components/providers/trip";
+import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { guestLoginHref } from "@/lib/auth/guest-mode";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
@@ -25,7 +27,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     <TripProvider>
       <WishlistProvider>
         <SavedDestinationsProvider>
-          <CustomerLayoutInner>{children}</CustomerLayoutInner>
+          <SupportChatProvider>
+            <CustomerLayoutInner>{children}</CustomerLayoutInner>
+          </SupportChatProvider>
         </SavedDestinationsProvider>
       </WishlistProvider>
     </TripProvider>
@@ -169,16 +173,17 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               >
                 {tCustomer(item.labelKey, { defaultValue: item.label })}
                 {item.href === "/customer/trip" && tripCount > 0 && (
-                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
+                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{tripCount}</span>
                 )}
                 {item.href === "/customer/chat" && unreadChats > 0 && (
-                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
                 )}
               </Link>
             ))}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
+            <AppearanceControl />
             <NotificationBell enabled={Boolean(currentUser)} />
             <Link
               href="/customer/cart"
@@ -187,10 +192,13 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             >
               <ShoppingCart size={18} className="text-foreground" />
               {count > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-bold leading-4 text-white">
+                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">
                   {count > 99 ? "99+" : count}
                 </span>
               )}
+            </Link>
+            <Link href="/customer/vouchers" aria-label={tCustomer("navigation.vouchers", { defaultValue: "My Vouchers" })} className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary lg:inline-flex">
+              <Tag size={16} className="text-primary" /> {tCustomer("navigation.vouchers", { defaultValue: "My Vouchers" })}
             </Link>
           </div>
 
@@ -201,7 +209,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-expanded={accountMenuOpen}
               aria-haspopup="menu"
               aria-label={`Open ${customerDisplayName} account menu`}
-              className="flex items-center gap-2 rounded-full border border-border bg-white/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
+              className="flex items-center gap-2 rounded-full border border-border bg-card/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
                 {currentUser?.avatarInitial ?? "G"}
@@ -223,7 +231,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               <div
                 role="menu"
                 aria-label="Account menu"
-                className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-white p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
                 style={{ maxHeight: "calc(100vh - 5.75rem)" }}
               >
                 <div className="border-b border-border px-3 pb-3 pt-2">
@@ -233,7 +241,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 <div className="pt-2">
                   {ACCOUNT_MENU_GROUPS.map((group) => (
                     <div key={group.label} className="not-first:mt-2">
-                      <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{group.label}</p>
+                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(group.labelKey, { defaultValue: group.label })}</p>
                       {group.items.map((item) => {
                         const active = isCustomerNavActive(pathname, item.href);
                         return (
@@ -250,10 +258,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                             </span>
                             <span className="min-w-0">
                               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                {item.label}
+                                {tCustomer(`${item.labelKey}.label`, { defaultValue: item.label })}
                                 {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                               </span>
-                              <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
+                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`, { defaultValue: item.description })}</span>
                             </span>
                           </Link>
                         );
@@ -291,6 +299,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Mobile bottom-ish secondary row for the rest of nav */}
         <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar md:hidden">
+          <Link href="/customer/vouchers" className="flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap" aria-current={isCustomerNavActive(pathname, "/customer/vouchers") ? "page" : undefined} style={{ color: isCustomerNavActive(pathname, "/customer/vouchers") ? "var(--primary)" : "var(--muted-foreground)" }}><Tag size={13} /> {tCustomer("navigation.vouchers", { defaultValue: "My Vouchers" })}</Link>
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}
@@ -301,10 +310,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             >
               <item.icon size={13} /> {tCustomer(item.labelKey, { defaultValue: item.label })}
               {item.href === "/customer/trip" && tripCount > 0 && (
-                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{tripCount}</span>
+                <span className="rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{tripCount}</span>
               )}
               {item.href === "/customer/chat" && unreadChats > 0 && (
-                <span className="rounded-full bg-primary px-1 text-[9px] font-bold leading-[14px] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+                <span className="rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
               )}
             </Link>
           ))}

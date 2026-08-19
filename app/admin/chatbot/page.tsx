@@ -297,7 +297,7 @@ export default function AdminChatbotPage() {
           <Button size="sm" variant="outline" onClick={runReindex} disabled={reindexing}>
             <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? t("chatbot.reindexing", { defaultValue: "Reindexing…" }) : t("chatbot.reindex", { defaultValue: "Reindex KB" })}
           </Button>
-          {reindexResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
+          {reindexResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
         </div>
       </div>
 
@@ -313,7 +313,7 @@ export default function AdminChatbotPage() {
         <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.escalationRate", { defaultValue: "Escalation rate" })}</p>
           <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{t("chatbot.metrics.escalationNote", { defaultValue: "of failed answers became a ticket" })}</p>
+          <p className="text-[0.625rem] text-muted-foreground mt-0.5">{t("chatbot.metrics.escalationNote", { defaultValue: "of failed answers became a ticket" })}</p>
         </div>
       </div>
 
@@ -321,7 +321,7 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.topUnanswered.title", { defaultValue: "Top unanswered questions" })}
         </p>
-        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">{t("chatbot.topUnanswered.description", { defaultValue: "No KB doc covers these at all." })}</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topUnanswered.description", { defaultValue: "No KB doc covers these at all." })}</p>
         {stats.topUnanswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("chatbot.topUnanswered.empty", { defaultValue: "Nothing unanswered yet — the KB is covering everything asked so far." })}</p>
         ) : (
@@ -333,7 +333,7 @@ export default function AdminChatbotPage() {
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
                     <span className="truncate">{q.question}</span>
                   </span>
-                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
                     {t("chatbot.questionMeta", { defaultValue: "×{{count}} · last asked {{date}}", count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
@@ -355,7 +355,7 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.notHelpful.title", { defaultValue: "Answered, but not helpful" })}
         </p>
-        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">{t("chatbot.notHelpful.description", { defaultValue: "A KB doc matched, but customers said it didn’t help — the doc needs improving, not creating." })}</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.notHelpful.description", { defaultValue: "A KB doc matched, but customers said it didn’t help — the doc needs improving, not creating." })}</p>
         {stats.notHelpfulAnswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("chatbot.notHelpful.empty", { defaultValue: "No thumbs-down yet on an answered question." })}</p>
         ) : (
@@ -367,7 +367,7 @@ export default function AdminChatbotPage() {
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
                     <span className="truncate">{q.question}</span>
                   </span>
-                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
                     {t("chatbot.questionMeta", { defaultValue: "×{{count}} · last asked {{date}}", count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
@@ -444,7 +444,7 @@ export default function AdminChatbotPage() {
               {t("chatbot.form.active", { defaultValue: "Active" })}
             </label>
           </div>
-          {formError && <p className="text-[11px] text-destructive">{formError}</p>}
+          {formError && <p className="text-[0.6875rem] text-destructive">{formError}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={saveDoc} disabled={saving || !form.title.trim() || !form.body.trim()}>
               {saving ? t("chatbot.saving", { defaultValue: "Saving…" }) : t("common.actions.save", { defaultValue: "Save" })}
@@ -465,6 +465,7 @@ export default function AdminChatbotPage() {
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
+                {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                 <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { defaultValue: "Select knowledge document {{title}}", title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">

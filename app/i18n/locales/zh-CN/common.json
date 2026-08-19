@@ -132,6 +132,17 @@
     "somethingWrong": "抱歉，出了点问题，请重试。",
     "supportRequest": "支持请求"
   },
+  "reportConversation": {
+    "report": "举报",
+    "title": "举报此对话",
+    "reasonOptional": "原因（可选）",
+    "submit": "提交举报",
+    "submitting": "提交中…",
+    "reported": "已举报",
+    "success": "举报已提交，我们的团队将进行审核。",
+    "submitFailed": "无法提交举报。",
+    "submitFailedRetry": "无法提交举报，请重试。"
+  },
   "account": {
     "menu": "账户菜单",
     "guestMenu": "游客账户菜单",

@@ -141,6 +141,33 @@ own Sandbox keys and verified webhook; Wallet checkout does not use a simulator.
 
 ## Demo accounts
 
+**Warning:** These are demo-only credentials for local/staging development, never to be used in a production environment. The shared password is a known limitation tracked in `docs/qa-report-2026-07-31.md:78-98`.
+
+Shared password for all 28 accounts: **`demo123456`**
+
+| Vendor (state) | Owner email | Outlet | Manager email |
+|---|---|---|---|
+| Penang Road Famous Teochew Chendul (Penang) | vendor.owner@demo.local *(pre-existing demo account)* | Gurney Plaza | manager.chendul-gurney-plaza@demo.local |
+| | | Lebuh Keng Kwee | outlet.manager@demo.local *(pre-existing demo account)* |
+| | | Queensbay Mall | manager.chendul-queensbay@demo.local |
+| | | Sunway Carnival | manager.chendul-sunway-carnival@demo.local |
+| Ghee Hiang (Penang) | owner.ghee-hiang@demo.local | Lebuh Pantai | manager.ghee-hiang-beach@demo.local |
+| | | Jalan Burma | manager.ghee-hiang-burma@demo.local |
+| | | Jalan Macalister | manager.ghee-hiang-macalister@demo.local |
+| | | Sunshine Central | manager.ghee-hiang-sunshine-central@demo.local |
+| Cheong Fatt Tze — The Blue Mansion (Penang) | owner.cheong-fatt-tze-blue-mansion@demo.local | Leith Street | manager.blue-mansion-leith@demo.local |
+| Penang Hill Corporation (Penang) | owner.penang-hill-corporation@demo.local | Lower Station | manager.op-penang-hill@demo.local |
+| Melaka River Cruise (Melaka) | owner.melaka-river-cruise-vendor@demo.local | Spice Garden Jetty | manager.op-river-cruise-jetty@demo.local |
+| | | Jalan Tun Ali Jetty | manager.op-river-cruise-tun-ali@demo.local |
+| Kooya Handicraft (Melaka) | owner.kooya-handicraft@demo.local | Jalan Hang Jebat | manager.retail-kooya-hang-jebat@demo.local |
+| | | Jalan Tukang Emas | manager.retail-kooya-tukang-emas@demo.local |
+| Hotel Puri (Melaka) | owner.hotel-puri@demo.local | Hotel Puri | manager.accom-hotel-puri@demo.local |
+| Atlas Travel Services (Melaka) | owner.atlas-travel-services@demo.local | Atlas Travel Services | manager.guide-atlas-travel@demo.local |
+| Heritage Hotel Cameron Highlands (Pahang) | owner.heritage-hotel-cameron-highlands@demo.local | Heritage Hotel | manager.accom-heritage-hotel-cameron@demo.local |
+| Highlands Skyway Operations (Pahang) | owner.highlands-skyway-operations@demo.local | Skyway Station | manager.op-skyway-station@demo.local |
+
+**Note:** `vendor.owner.siti@demo.local` and `vendor.owner.raj@demo.local` — legacy accounts that used to cycle-own many vendors under the old shared-owner model — now own zero vendors and manage zero outlets. All 170 vendors were moved to dedicated owners. Signing in as either account will show an empty/broken vendor dashboard; this is expected, not a bug.
+
 ## Production readiness checklist
 
 Before enabling the live verification and payout paths, configure and verify these items in the deployment environments. Secret values must stay in Vercel/Supabase settings and must never be committed to this repository.

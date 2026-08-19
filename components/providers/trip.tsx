@@ -66,8 +66,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(`mywisata:trip:${currentUser.id}`);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredTrip> & { start?: unknown };
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStops(parsed.start === undefined && Array.isArray(parsed.stops) ? parsed.stops : []);
       } else {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStops([]);
       }
     } catch {

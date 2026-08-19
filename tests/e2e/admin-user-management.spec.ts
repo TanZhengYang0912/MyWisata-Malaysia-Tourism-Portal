@@ -28,6 +28,7 @@ const CUSTOMER_PASS  = 'demo123456';
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function signInViaForm(page: any, email: string, password: string) {
   await page.goto('/login');
   await page.locator('input[type="email"]').fill(email);
@@ -84,10 +85,12 @@ test.describe('5. Admin Soft Delete', () => {
     await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10_000 });
 
     // Search for a non-primary customer to avoid deleting CUSTOMER_EMAIL
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const searchInput = page.locator('input[placeholder*="Search"]');
     // Try to find a row that is NOT customer@demo.local
     const rows = page.locator('table tbody tr');
     const rowCount = await rows.count();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let targetRow: any = null;
     for (let i = 0; i < rowCount; i++) {
       const row = rows.nth(i);

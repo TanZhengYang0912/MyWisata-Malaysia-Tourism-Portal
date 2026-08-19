@@ -59,6 +59,7 @@ export default function CheckoutPage() {
   const gate = useCustomerCapabilityGate();
   const { selectedItems, selectedKeys, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
+  const [claimId, setClaimId] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [methodId, setMethodId] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
@@ -72,7 +73,10 @@ export default function CheckoutPage() {
   }, [checkoutAllowed, gate]);
 
   useEffect(() => {
-    setVoucherCode(new URLSearchParams(window.location.search).get("voucher"));
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVoucherCode(params.get("voucher"));
+    setClaimId(params.get("claim"));
   }, []);
 
   useEffect(() => {
@@ -99,6 +103,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !currentUser || !checkoutAllowed || selectedItems.length === 0 || paying) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
@@ -145,6 +150,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           selectedKeys: [...selectedKeys],
           voucherCode,
+          claimId,
           paymentMethod: selectedMethod.paymentMethod,
           paymentProvider: selectedMethod.paymentProvider,
           idempotencyKey,

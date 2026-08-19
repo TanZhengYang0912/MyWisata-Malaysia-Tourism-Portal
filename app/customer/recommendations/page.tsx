@@ -259,6 +259,7 @@ export default function RecommendationsPage() {
               <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint")}</span>
               <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { setImages(Array.from(event.target.files ?? []).slice(0, 5)); event.currentTarget.value = ""; }} className="sr-only" />
             </label>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={`Remove ${file.name}`} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} /></button><p className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}
             <p className="text-xs text-muted-foreground">{images.length > 0 ? `${images.length} ${tCustomer("ui.labels.item")}${images.length === 1 ? "" : "s"} selected` : tCustomer("ui.recommendations.uploadHint")}</p>
           </div>

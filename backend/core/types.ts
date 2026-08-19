@@ -236,6 +236,7 @@ export interface Voucher {
   productId?: string;
   buyQuantity?: number;
   freeQuantity?: number;
+  claimId?: string;
 }
 
 export interface OrderItem {

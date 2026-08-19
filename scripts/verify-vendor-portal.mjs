@@ -18,7 +18,7 @@ await page.waitForURL('**/vendor/dashboard');
 await page.waitForTimeout(1200);
 
 const dashboardText = await page.locator('body').innerText();
-if (!dashboardText.includes('Total revenue') || !dashboardText.includes('Sales performance') || !dashboardText.includes('Rasa Malaysia Kitchen')) {
+if (!dashboardText.includes('Total revenue') || !dashboardText.includes('Sales performance') || !dashboardText.includes('Penang Road Famous Teochew Chendul')) {
   throw new Error('Vendor dashboard did not render Supabase-backed content');
 }
 

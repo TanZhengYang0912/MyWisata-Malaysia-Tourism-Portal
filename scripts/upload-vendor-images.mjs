@@ -1,0 +1,97 @@
+#!/usr/bin/env node
+
+// No-op/recovery tool only: public/assets/customer/vendor-images was deleted after this
+// script's initial seed run.
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { createClient } from '@supabase/supabase-js';
+
+function loadEnv() {
+  for (const filename of ['.env.local', '.env']) {
+    const filepath = path.resolve(process.cwd(), filename);
+    if (!fs.existsSync(filepath)) continue;
+    for (const line of fs.readFileSync(filepath, 'utf8').split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const match = trimmed.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
+      if (match && !process.env[match[1]]) process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
+    }
+    break;
+  }
+}
+
+loadEnv();
+
+if (process.env.VENDOR_IMAGES_UPLOAD !== '1') {
+  console.error('Refusing to write to remote storage without VENDOR_IMAGES_UPLOAD=1.');
+  process.exit(1);
+}
+
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !serviceKey) {
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SERVICE_KEY.');
+  process.exit(1);
+}
+
+const BUCKET = 'vendor-images';
+const SOURCE_DIR = path.resolve(process.cwd(), 'public/assets/customer');
+
+if (!fs.existsSync(SOURCE_DIR)) {
+  console.error(`Source directory not found: ${SOURCE_DIR}`);
+  process.exit(1);
+}
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
+const files = [];
+
+// Upload from vendor-images folder
+const vendorImagesDir = path.join(SOURCE_DIR, 'vendor-images');
+if (fs.existsSync(vendorImagesDir)) {
+  for (const name of fs.readdirSync(vendorImagesDir).sort()) {
+    if (!name.match(/\.(jpe?g|png|webp)$/i)) continue;
+    files.push({ objectPath: `vendor-images/${name}`, absolutePath: path.join(vendorImagesDir, name) });
+  }
+}
+
+// Upload from penang folder (for the 6 verified penang vendor images)
+const penangDir = path.join(SOURCE_DIR, 'penang');
+if (fs.existsSync(penangDir)) {
+  for (const name of fs.readdirSync(penangDir).sort()) {
+    if (!name.match(/\.(jpe?g|png|webp)$/i)) continue;
+    files.push({ objectPath: `penang/${name}`, absolutePath: path.join(penangDir, name) });
+  }
+}
+
+console.log(`Found ${files.length} vendor assets under public/assets/customer/.`);
+
+let uploaded = 0;
+const failures = [];
+
+for (const file of files) {
+  const body = fs.readFileSync(file.absolutePath);
+  const ext = path.extname(file.absolutePath).toLowerCase();
+  const contentType = ext === '.webp' ? 'image/webp' : ext === '.png' ? 'image/png' : 'image/jpeg';
+  const { error } = await supabase.storage.from(BUCKET).upload(file.objectPath, body, {
+    contentType,
+    upsert: true,
+  });
+  if (error) {
+    failures.push(`${file.objectPath}: ${error.message}`);
+    console.error(`  FAIL ${file.objectPath} — ${error.message}`);
+  } else {
+    uploaded += 1;
+    console.log(`  ok   ${file.objectPath}`);
+  }
+}
+
+console.log(`\nUploaded ${uploaded}/${files.length} objects to ${BUCKET}.`);
+
+if (failures.length > 0) {
+  console.error(`\n${failures.length} failures:`);
+  for (const failure of failures) console.error(`  ${failure}`);
+  process.exit(1);
+}

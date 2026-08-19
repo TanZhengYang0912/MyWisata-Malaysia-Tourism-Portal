@@ -37,10 +37,10 @@ describe("shared language entry points", () => {
     expect(guest).not.toContain("fixed right-4 top-4");
 
     const vendor = source("components/layout/vendor-sidebar.tsx");
-    expect(vendor).toMatch(/<div className="border-t border-gray-700 px-5 py-3">\s*<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
+    expect(vendor).toMatch(/<div className="border-t border-gray-700 px-2 py-2">[\s\S]*?<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
 
     const admin = source("app/admin/layout.tsx");
-    expect(admin).toMatch(/<div className="shrink-0 border-t border-white\/10 p-3">\s*<LanguageSwitcher compact className="mb-2" \/>[\s\S]*?actions\.signOut/);
+    expect(admin).toMatch(/<div className="shrink-0 border-t border-white\/10 p-3 space-y-0\.5">\s*<LanguageSwitcher compact className="mb-2" \/>[\s\S]*?actions\.signOut/);
   });
 
   it("renders the profile language switcher inside exactly one language section", () => {
@@ -61,9 +61,10 @@ describe("shared language entry points", () => {
 
   it("derives customer navigation translations from stable route keys", () => {
     const customer = source("app/customer/layout.tsx");
-    expect(customer).toContain("function customerNavigationKey");
-    expect(customer).toContain('href.split("?")[0].replace("/customer/", "")');
-    expect(customer).toContain("customerNavigationKey(item.href)");
+    const navigation = source("lib/customer/header-navigation.ts");
+    expect(navigation).toContain("labelKey: string");
+    expect(navigation).toContain('labelKey: "navigation.home"');
+    expect(customer).toContain("tCustomer(item.labelKey");
     expect(customer).not.toContain("navigation.${item.label}");
   });
 

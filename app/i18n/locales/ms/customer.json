@@ -7,7 +7,8 @@
     "trip": "Perjalanan",
     "chat": "Sembang",
     "activity": "Aktiviti saya",
-    "wishlist": "Disimpan"
+    "wishlist": "Disimpan",
+    "vouchers": "Baucar saya"
   },
   "accountGroups": {
     "Account": "Akaun",
@@ -32,6 +33,7 @@
     "profile": { "label": "Profil", "description": "Butiran peribadi anda" },
     "notifications": { "label": "Pemberitahuan", "description": "Kemas kini tempahan, dompet dan akaun" },
     "preferences": { "label": "Keutamaan", "description": "Laraskan suapan cadangan anda" },
+    "vouchers": { "label": "Baucar saya", "description": "Tawaran rakan kongsi yang dituntut" },
     "wallet": { "label": "Dompet", "description": "Baki dan pembayaran keluar" },
     "verification": { "label": "Pengesahan", "description": "Sahkan identiti anda" },
     "support": { "label": "Sokongan", "description": "Dapatkan bantuan perjalanan" },
@@ -119,6 +121,7 @@
       "continueShopping": "Teruskan membeli-belah",
       "proceedCheckout": "Terus ke pembayaran",
       "backToCart": "Kembali ke troli",
+      "backToWallet": "Kembali ke dompet",
       "addToCart": "Tambah ke troli",
       "addBookingToCart": "Tambah tempahan ke troli",
       "bookNow": "Tempah sekarang",
@@ -145,6 +148,102 @@
       "exploreVendor": "Teroka vendor",
       "tunePreferences": "Laraskan pilihan saya",
       "cancel": "Batal"
+    },
+    "order": {
+      "backToHistory": "Kembali ke sejarah pesanan"
+    },
+    "discovery": {
+      "searchLabel": "Cari destinasi dan pengalaman",
+      "filterByCategory": "Tapis mengikut kategori"
+    },
+    "placeActivity": {
+      "eyebrow": "Rancang lawatan anda",
+      "title": "Aktiviti di sini",
+      "summary": "{{experiences}} pengalaman daripada {{providers}} penyedia",
+      "filterLabel": "Tapis pengalaman mengikut jenis",
+      "filters": {
+        "all": "Semua pengalaman",
+        "admission": "Tiket masuk",
+        "guideService": "Berpandu",
+        "addon": "Tambahan"
+      },
+      "relations": {
+        "admission": "Tiket masuk",
+        "guide_service": "Berpandu",
+        "addon": "Tambahan"
+      },
+      "empty": "Belum ada pengalaman dalam kategori ini.",
+      "showAll": "Tunjukkan semua pengalaman",
+      "free": "Percuma",
+      "price": "RM {{value}}",
+      "fallbackDescription": "Terokai pengalaman ini di destinasi tersebut.",
+      "reserveSpot": "Tempah tempat anda",
+      "availablePurchase": "Tersedia untuk dibeli",
+      "bookNow": "Tempah sekarang",
+      "viewDetails": "Lihat butiran"
+    },
+    "voucherHub": {
+      "eyebrow": "Tawaran eksklusif rakan kongsi",
+      "dealsTitle": "Tuntut baucar daripada rakan kongsi disahkan kami",
+      "mineTitle": "Baucar yang anda tuntut",
+      "dealsDescription": "Tuntut sekarang, simpan dalam Baucar Saya, kemudian gunakannya semasa pembayaran apabila anda bersedia.",
+      "mineDescription": "Baucar anda kekal di sini sehingga digunakan atau tamat tempoh.",
+      "viewsLabel": "Paparan baucar",
+      "browseDeals": "Lihat tawaran",
+      "myVouchers": "Baucar saya",
+      "howItWorks": "Cara ia berfungsi",
+      "helpTitle": "Gunakan baucar anda dalam tiga langkah",
+      "helpStep1": "Tuntut tawaran dan simpan dalam Baucar Saya.",
+      "helpStep2": "Semak tarikh tamat dan perbelanjaan minimum.",
+      "helpStep3": "Gunakan item yang layak mengikut kaedah penebusan tawaran.",
+      "filterLabel": "Penapis jenis baucar",
+      "filters": {
+        "all": "Semua tawaran",
+        "percent": "Diskaun peratus",
+        "fixed": "Amaun tetap",
+        "bogo": "Beli satu, percuma satu"
+      },
+      "searchLabel": "Cari baucar",
+      "searchPlaceholder": "Cari tawaran atau rakan kongsi",
+      "tryAgain": "Cuba lagi",
+      "emptyMineTitle": "Belum ada baucar dituntut",
+      "emptyDealsTitle": "Tiada baucar rakan kongsi diluluskan",
+      "emptyMineDescription": "Lihat tawaran rakan kongsi dan tuntut baucar pertama anda.",
+      "emptyDealsDescription": "Tawaran vendor yang diluluskan akan muncul apabila rakan kongsi menerbitkan baucar dalam talian.",
+      "loadFailed": "Tidak dapat memuatkan baucar",
+      "claimFailed": "Tidak dapat menuntut baucar",
+      "claimSuccess": "Baucar dituntut dan kini berada dalam Baucar Saya.",
+      "outletImageAlt": "Outlet {{name}}",
+      "vendorLogoAlt": "Logo {{name}}",
+      "percentOff": "Diskaun {{value}}%",
+      "fixedOff": "Diskaun RM {{value}}",
+      "ends": "Tamat {{date}}",
+      "noExpiry": "Tarikh tamat tidak disenaraikan",
+      "limitedTime": "Tawaran masa terhad",
+      "remaining": "Baki {{count}}",
+      "malaysia": "Malaysia",
+      "outletVoucher": "Baucar outlet",
+      "freebie": "Percuma",
+      "partnerVoucher": "Baucar rakan kongsi",
+      "allEligibleProducts": "Terpakai untuk semua produk yang layak di outlet ini",
+      "productsAvailable": "{{count}} produk tersedia",
+      "moreProducts": "+{{count}} lagi",
+      "minSpend": "Perbelanjaan minimum: RM {{value}}",
+      "eligibleProduct": "Produk layak: {{name}}",
+      "saved": "Disimpan dalam Baucar Saya",
+      "claimLater": "Tuntut sekarang, guna kemudian",
+      "useNow": "Guna sekarang",
+      "redemption": {
+        "both": "Dalam talian atau di kedai",
+        "in_store": "Penebusan di kedai",
+        "online": "Pembayaran dalam talian"
+      },
+      "actions": {
+        "claim": "Tuntut",
+        "redeemed": "Ditebus",
+        "expired": "Tamat tempoh",
+        "claimed": "Dituntut"
+      }
     },
     "labels": {
       "hiddenGem": "Permata Tersembunyi",
@@ -213,6 +312,16 @@
       "preparingPayment": "Menyediakan bayaran selamat…",
       "addedToCart": "Ditambah ke troli ✓",
       "couldNotLoad": "Tidak dapat memuatkan item ini"
+    },
+    "receipt": {
+      "issuer": "MyWisata",
+      "title": "Resit pengeluaran",
+      "createdAt": "Diminta pada",
+      "updatedAt": "Kemas kini terakhir",
+      "payoutDestination": "Destinasi pembayaran",
+      "payoutReference": "Rujukan pembayaran: {{reference}}",
+      "reviewNote": "Catatan semakan",
+      "settlementNote": "Resit ini menunjukkan permintaan pengeluaran yang direkodkan oleh MyWisata. Tempoh penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}})."
     },
     "checkout": {
       "title": "Pembayaran",

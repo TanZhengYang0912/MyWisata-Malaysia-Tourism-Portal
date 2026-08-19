@@ -8,7 +8,7 @@ import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
 import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
-import { getCheckoutErrorMessage } from '@/lib/checkout/errors';
+import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import {
   createSimulatorPaymentSession,
   isSimulatorCheckoutProvider,
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
     };
   });
 
-  const { data: prepared, error: prepareError } = await db.rpc('prepare_checkout', {
+  const checkoutArgs = {
     p_cart_id: cart.id,
     p_selected_item_ids: selectedRows.map((row) => row.id),
     p_idempotency_key: body.idempotencyKey,
@@ -192,35 +192,12 @@ export async function POST(request: Request) {
     p_total: totals.total,
     p_voucher_code: normalized.voucherCode,
     p_lines: lines,
-  });
+    ...(normalized.claimId ? { p_claim_id: normalized.claimId } : {}),
+  };
+  const { data: prepared, error: prepareError } = await db.rpc('prepare_checkout', checkoutArgs);
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
-    const errorText = rawMessage.toLowerCase();
-    const code = errorText.includes("booking_capacity_unavailable")
-      ? "BOOKING_CAPACITY_UNAVAILABLE"
-      : errorText.includes("booking_slot_invalid")
-        ? "BOOKING_SLOT_INVALID"
-        : errorText.includes("inventory_unavailable")
-          ? "INVENTORY_UNAVAILABLE"
-          : errorText.includes("voucher_not_available")
-            ? "VOUCHER_NOT_AVAILABLE"
-            : errorText.includes("voucher_not_started")
-              ? "VOUCHER_NOT_STARTED"
-              : errorText.includes("voucher_expired")
-                ? "VOUCHER_EXPIRED"
-                : errorText.includes("voucher_limit_reached")
-                  ? "VOUCHER_LIMIT_REACHED"
-                  : errorText.includes("voucher_minimum_spend")
-                    ? "VOUCHER_MINIMUM_SPEND"
-                    : errorText.includes("voucher_outlet_not_applicable")
-                      ? "VOUCHER_OUTLET_NOT_APPLICABLE"
-                      : errorText.includes("voucher_product_not_applicable")
-                        ? "VOUCHER_PRODUCT_NOT_APPLICABLE"
-                        : errorText.includes("voucher_customer_limit_reached")
-                          ? "VOUCHER_CUSTOMER_LIMIT_REACHED"
-                          : errorText.includes("voucher_discount_mismatch")
-                            ? "VOUCHER_DISCOUNT_MISMATCH"
-                            : "CHECKOUT_FAILED";
+    const code = getCheckoutErrorCode(rawMessage);
     return NextResponse.json(
       { error: { code, message: getCheckoutErrorMessage(code) } },
       { status: 409 },
@@ -264,6 +241,12 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     }).eq('id', checkoutSessionId);
     if (paymentUpdateError || sessionUpdateError) {
+      await service.rpc('finalize_checkout', {
+        p_checkout_session_id: checkoutSessionId,
+        p_outcome: 'failed',
+        p_provider_payment_id: simulatorSession.providerPaymentId,
+        p_provider_event_id: null,
+      });
       return NextResponse.json({
         data: null,
         error: {
@@ -280,24 +263,99 @@ export async function POST(request: Request) {
   if ((normalized.paymentMethod === 'stripe_card' || walletSplit) && prepared?.status !== 'paid' && externalAmountSen > 0) {
     const origin = request.headers.get('origin') ?? 'http://localhost:3000';
     const checkoutSessionId = String(prepared.checkout_session_id);
-    const stripeSession = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'myr',
-          unit_amount: externalAmountSen,
-          product_data: { name: `MyWisata order ${String(prepared.order_id).slice(0, 8)}` },
-        },
-        quantity: 1,
-      }],
-      metadata: { user_id: user.id, checkout_session_id: checkoutSessionId, order_id: String(prepared.order_id), payment_kind: 'order' },
-      success_url: `${origin}/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/customer/checkout?stripe_cancelled=1`,
-    });
     const service = createServiceClient();
-    await service.from('payments').update({ provider_payment_id: stripeSession.id, status: 'requires_action', updated_at: new Date().toISOString() }).eq('order_id', prepared.order_id);
-    await service.from('checkout_sessions').update({ status: 'requires_action', updated_at: new Date().toISOString() }).eq('id', checkoutSessionId);
+    const failPreparedCheckout = async (providerPaymentId: string | null) => {
+      const { data: finalized, error: finalizationError } = await service.rpc('finalize_checkout', {
+        p_checkout_session_id: checkoutSessionId,
+        p_outcome: 'failed',
+        p_provider_payment_id: providerPaymentId,
+        p_provider_event_id: null,
+      });
+      const finalizedStatus = finalized && typeof finalized === 'object' && !Array.isArray(finalized) && 'status' in finalized
+        ? String(finalized.status)
+        : null;
+      if (!finalizationError && ['failed', 'cancelled', 'expired'].includes(finalizedStatus ?? '')) return;
+
+      // If the transactional RPC is unavailable, quarantine the checkout first so an
+      // idempotency retry cannot expose an actionable prepared session. Reservations
+      // remain eligible for the normal expiry cleanup instead of risking a partial release.
+      const now = new Date().toISOString();
+      const { data: quarantined, error: quarantineError } = await service
+        .from('checkout_sessions')
+        .update({ status: 'failed', updated_at: now })
+        .eq('id', checkoutSessionId)
+        .in('status', ['prepared', 'requires_action'])
+        .select('status')
+        .maybeSingle();
+      if (quarantineError) throw new Error('checkout_compensation_failed');
+      if (!quarantined) {
+        const { data: current, error: currentError } = await service
+          .from('checkout_sessions')
+          .select('status')
+          .eq('id', checkoutSessionId)
+          .maybeSingle();
+        if (currentError || !current || !['paid', 'failed', 'cancelled', 'expired'].includes(String(current.status))) {
+          throw new Error('checkout_compensation_failed');
+        }
+        if (current.status === 'paid') return;
+      }
+
+      const [{ error: paymentFailureError }, { error: orderCancellationError }] = await Promise.all([
+        service.from('payments').update({
+          status: 'failed',
+          failure_reason: 'provider_prepare_failed',
+          updated_at: now,
+        }).eq('order_id', prepared.order_id),
+        service.from('orders').update({
+          status: 'cancelled',
+          cancelled_at: now,
+          updated_at: now,
+        }).eq('id', prepared.order_id).neq('status', 'paid'),
+      ]);
+      if (paymentFailureError || orderCancellationError) throw new Error('checkout_compensation_failed');
+    };
+    let stripeSession;
+    try {
+      stripeSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'myr',
+            unit_amount: externalAmountSen,
+            product_data: { name: `MyWisata order ${String(prepared.order_id).slice(0, 8)}` },
+          },
+          quantity: 1,
+        }],
+        metadata: { user_id: user.id, checkout_session_id: checkoutSessionId, order_id: String(prepared.order_id), payment_kind: 'order' },
+        success_url: `${origin}/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/customer/checkout?stripe_cancelled=1`,
+      });
+    } catch {
+      await failPreparedCheckout(null);
+      return NextResponse.json({
+        data: null,
+        error: { code: 'STRIPE_SESSION_CREATE_FAILED', message: 'The card payment session could not be prepared.' },
+      }, { status: 503 });
+    }
+    try {
+      const [{ error: paymentUpdateError }, { error: sessionUpdateError }] = await Promise.all([
+        service.from('payments').update({ provider_payment_id: stripeSession.id, status: 'requires_action', updated_at: new Date().toISOString() }).eq('order_id', prepared.order_id),
+        service.from('checkout_sessions').update({ status: 'requires_action', updated_at: new Date().toISOString() }).eq('id', checkoutSessionId),
+      ]);
+      if (paymentUpdateError || sessionUpdateError) throw new Error('stripe_session_persistence_failed');
+    } catch {
+      try {
+        await stripe.checkout.sessions.expire(stripeSession.id);
+      } catch {
+        // The checkout is still failed locally even if Stripe already closed the session.
+      }
+      await failPreparedCheckout(stripeSession.id);
+      return NextResponse.json({
+        data: null,
+        error: { code: 'STRIPE_SESSION_PERSIST_FAILED', message: 'The card payment session could not be saved.' },
+      }, { status: 503 });
+    }
     return NextResponse.json({ data: { ...response, stripeUrl: stripeSession.url }, error: null });
   }
   return NextResponse.json({ data: response, error: null });

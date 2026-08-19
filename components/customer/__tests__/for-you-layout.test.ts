@@ -16,4 +16,10 @@ describe("For You discovery layout contract", () => {
     expect(source).toContain("recommendationReason");
     expect(source).toContain("whyItFits");
   });
+
+  it("provides a visible route back to the customer home", () => {
+    expect(source).toContain('href="/customer"');
+    expect(source).toContain("tCustomer('ui.actions.backToResults')");
+    expect(source).toContain("ArrowLeft");
+  });
 });

@@ -58,6 +58,8 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/trip/trip-hub-client.tsx",
   "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx",
   "app/customer/vendor/[vendorId]/page.tsx",
+  "app/customer/vouchers/page.tsx",
+  "app/customer/vouchers/voucher-hub-client.tsx",
   "app/customer/wallet/page.tsx",
   "app/customer/wallet/withdrawals/[id]/page.tsx",
   "app/customer/wishlist/page.tsx",
@@ -78,6 +80,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/customer-orders-view.tsx",
   "components/customer/customer-page-shell.tsx",
   "components/customer/destination-preview-modal.tsx",
+  "components/customer/discovery-filters.tsx",
   "components/customer/directory-pagination.tsx",
   "components/customer/guest-account-empty-state.tsx",
   "components/customer/malaysia-destination-rail.tsx",
@@ -85,6 +88,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/outlet-chat-button.tsx",
   "components/customer/place-breadcrumb.tsx",
   "components/customer/place-card.tsx",
+  "components/customer/place-activity-section.tsx",
   "components/customer/place-list.tsx",
   "components/customer/promotion-spotlight.tsx",
   "components/customer/saved-destination-card.tsx",
@@ -178,6 +182,7 @@ const delegatingFiles = new Set([
   "components/customer/category-icon.tsx",
   "components/customer/customer-page-shell.tsx",
   "components/customer/use-customer-capability-gate.ts",
+  "app/customer/vouchers/page.tsx",
 ]);
 
 describe("customer and guest sitewide i18n contract", () => {

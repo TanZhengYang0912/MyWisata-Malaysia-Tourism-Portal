@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Globe } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { getServerTranslation } from "@/lib/i18n/server";
 
-export default function GuestLayout({ children }: { children: React.ReactNode }) {
+export default async function GuestLayout({ children }: { children: React.ReactNode }) {
+  const { t: tCommon } = await getServerTranslation("common");
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card">
@@ -13,8 +15,8 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
           </Link>
           <div className="flex items-center gap-3">
             <LanguageSwitcher compact />
-            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">Guest Mode</span>
-            <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Sign in</Link>
+            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">{tCommon("guest.mode")}</span>
+            <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{tCommon("account.signIn")}</Link>
           </div>
         </div>
       </header>

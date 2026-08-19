@@ -12,6 +12,7 @@ export default function CompactThumbnail({ src, alt, kind = 'product', size = 's
   return (
     <div className={`relative shrink-0 overflow-hidden rounded-xl ${sizeClass} ${kind === 'food' ? 'bg-amber-50 text-amber-700' : 'bg-secondary text-primary'}`}>
       {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={alt} className="h-full w-full object-cover" />
         ) : <div className="flex h-full w-full items-center justify-center"><Icon size={size === 'md' ? 24 : 19} /><span className="sr-only">{alt || t('media.thumbnail')}</span></div>}
     </div>

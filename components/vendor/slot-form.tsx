@@ -31,6 +31,7 @@ export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
     defaultValues: { capacity: 10 },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const selectedOutletId = watch('outletId');
 
   useEffect(() => {

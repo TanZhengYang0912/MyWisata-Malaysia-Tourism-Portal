@@ -422,13 +422,13 @@ export default function AdminAffiliatePage() {
             <Button size="sm" variant="outline" onClick={runClearing} disabled={clearing}>
               <RefreshCw size={13} className={clearing ? "animate-spin" : ""} /> {clearing ? t("affiliate.running", { defaultValue: "Running…" }) : t("affiliate.runClearing", { defaultValue: "Run clearing" })}
             </Button>
-            {clearingResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{clearingResult}</p>}
+            {clearingResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[220px]">{clearingResult}</p>}
           </div>
           <div>
             <Button size="sm" variant="outline" onClick={runFraudSweepAction} disabled={sweeping}>
               <AlertTriangle size={13} className={sweeping ? "animate-pulse" : ""} /> {sweeping ? t("affiliate.scanning", { defaultValue: "Scanning…" }) : t("affiliate.runFraudSweep", { defaultValue: "Run fraud sweep" })}
             </Button>
-            {sweepResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
+            {sweepResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
           </div>
         </div>
       </div>
@@ -477,7 +477,7 @@ export default function AdminAffiliatePage() {
             );
           })}
         </div>
-        {tierError && <p className="text-[11px] text-destructive mt-2">{tierError}</p>}
+        {tierError && <p className="text-[0.6875rem] text-destructive mt-2">{tierError}</p>}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -723,6 +723,7 @@ export default function AdminAffiliatePage() {
             ) : (
               filteredFraudFlags.map((f) => (
                 <tr key={f.id} className="border-t border-border align-top">
+                  {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                   <td className="px-4 py-2.5"><input type="checkbox" aria-label={t("affiliate.accessibility.selectFlag", { defaultValue: "Select fraud flag for {{name}}", name: f.userName })} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(f.id) : next.delete(f.id); return next; })} /></td>
                   <td className="px-4 py-2.5 text-foreground">
                     {f.userName}

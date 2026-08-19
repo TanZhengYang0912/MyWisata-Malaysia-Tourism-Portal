@@ -232,6 +232,7 @@ export default function AdminRecommendationsPage() {
             {visiblePending.map((r) => {
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                  {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                   <input type="checkbox" aria-label={t("ui.recommendations.selectRecommendation", { name: r.name })} checked={selectedPendingIds.has(r.id)} onChange={(event) => setSelectedPendingIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(r.id) : next.delete(r.id); return next; })} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

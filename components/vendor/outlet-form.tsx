@@ -28,6 +28,7 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
     resolver: zodResolver(outletCreateSchema),
     defaultValues: { country: 'Malaysia', welcomeEnabled: true, ...initialData },
   });
+  // eslint-disable-next-line react-hooks/incompatible-library
   const address = watch('address');
 
   function applyAddress(selection: AddressSelection) {

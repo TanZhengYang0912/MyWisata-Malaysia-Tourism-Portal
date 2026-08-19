@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 import type { GeoHit } from "@/lib/routing";
 

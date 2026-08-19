@@ -24,6 +24,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
   const activityHref = buildActivityPath(activity.id, returnTo);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImageFailed(false);
   }, [imageSrc]);
 

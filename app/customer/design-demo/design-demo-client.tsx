@@ -23,7 +23,7 @@ import {
 import type { ComputedActivity } from "@/backend/core/types";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
-import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
@@ -202,7 +202,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
   const destinationRailDestinations = MALAYSIA_DESTINATIONS.slice(destinationRailStart, destinationRailStart + DESTINATION_RAIL_SIZE);
   const destinationRailPageCount = Math.ceil(MALAYSIA_DESTINATIONS.length / DESTINATION_RAIL_SIZE);
   const destinationRailEnd = Math.min(destinationRailStart + DESTINATION_RAIL_SIZE, MALAYSIA_DESTINATIONS.length);
-  const stateDemoHref = `/customer?state=${encodeURIComponent(activeDestination.state)}`;
+  const stateDemoHref = destinationHref(activeDestination.state);
   const experiencePool = [...discoveryActivities, ...recommended.filter((activity) => !discoveryActivities.some((item) => item.id === activity.id))];
   const activeGuideDetail = CITY_GUIDES.find((item) => item.label === activeGuide) ?? CITY_GUIDES[0];
   const GuideIcon = activeGuideDetail.icon;
@@ -233,7 +233,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
 
   function exploreDestination(state: string) {
     setPreviewDestination(null);
-    router.push(`/customer?state=${encodeURIComponent(state)}`);
+    router.push(destinationHref(state));
   }
 
   async function saveActiveDestination() {

@@ -105,7 +105,7 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
       {cached && (
         <div>
           <p className="text-sm text-foreground leading-relaxed">{cached.insight}</p>
-          <p className="text-[10px] text-muted-foreground mt-2">
+          <p className="text-[0.625rem] text-muted-foreground mt-2">
             {cached.mode === "rule-based" ? t("affiliate.insight.ruleBased") : t("affiliate.insight.aiGenerated")} ·{" "}
             {formatDateTime(cached.generatedAt, locale)}
           </p>

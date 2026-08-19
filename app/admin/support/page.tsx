@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
 import { useTranslation } from "react-i18next";
@@ -122,6 +123,7 @@ function AdminSupportContent() {
     (async () => {
       await loadTickets();
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, statusFilter, assignedToMeFilter, unreadOnlyFilter]);
 
   // Default queue ordering: unanswered tickets first (oldest waiting first
@@ -170,6 +172,7 @@ function AdminSupportContent() {
   // there's no async operation here at all.
   useEffect(() => {
     const ticketId = searchParams.get("ticket");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (ticketId) setOpenTicketId(ticketId);
   }, [searchParams]);
 
@@ -363,6 +366,7 @@ function AdminSupportContent() {
           <div className="divide-y divide-border">
             {visibleTickets.map((ticket) => (
               <div key={ticket.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                 <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(ticket.id) : next.delete(ticket.id); return next; })} />
                 <button onClick={() => openTicket(ticket.id)} className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
@@ -372,7 +376,7 @@ function AdminSupportContent() {
                   <p className="text-xs text-muted-foreground">
                     {ticket.category}
                     {ticket.classificationMethod && (
-                      <span className="text-[9px] uppercase tracking-wide opacity-70"> ({ticket.classificationMethod})</span>
+                      <span className="text-[0.5625rem] uppercase tracking-wide opacity-70"> ({ticket.classificationMethod})</span>
                     )}
                     {" "}{t("ui.support.fromUser", { user: ticket.userName })} · {new Date(ticket.createdAt).toLocaleDateString()}
                     {ticket.unanswered && <span className="text-destructive font-medium"> · {t("ui.support.unansweredLower")}</span>}
@@ -445,16 +449,19 @@ function AdminSupportContent() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-3 pr-6">
               <DialogTitle>{detail?.subject}</DialogTitle>
-              {detail && detail.status !== "resolved" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={updatingId === openTicketId}
-                  onClick={() => openTicketId && updateStatus(openTicketId, "resolved")}
-                >
-                  {t("ui.support.markResolved")}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} />}
+                {detail && detail.status !== "resolved" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={updatingId === openTicketId}
+                    onClick={() => openTicketId && updateStatus(openTicketId, "resolved")}
+                  >
+                    {t("ui.support.markResolved")}
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogHeader>
 

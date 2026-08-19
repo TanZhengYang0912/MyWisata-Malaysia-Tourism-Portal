@@ -41,6 +41,7 @@ export default function AddressAutocomplete({ value = '', onChange, onSelect, pl
   useEffect(() => {
     const query = value.trim();
     if (query.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([]);
       setOpen(false);
       return;

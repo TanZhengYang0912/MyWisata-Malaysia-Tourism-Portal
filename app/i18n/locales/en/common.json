@@ -132,6 +132,17 @@
     "somethingWrong": "Sorry, something went wrong. Please try again.",
     "supportRequest": "Support request"
   },
+  "reportConversation": {
+    "report": "Report",
+    "title": "Report this conversation",
+    "reasonOptional": "Reason (optional)",
+    "submit": "Submit report",
+    "submitting": "Submitting…",
+    "reported": "Reported",
+    "success": "Reported. Our team will review it.",
+    "submitFailed": "Could not submit report.",
+    "submitFailedRetry": "Could not submit report. Please try again."
+  },
   "account": {
     "menu": "Account menu",
     "guestMenu": "Guest account menu",

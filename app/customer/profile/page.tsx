@@ -122,6 +122,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.sendOtp"));
       }
       setPhonePhase("verify");
@@ -148,6 +149,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.verifyOtp"));
       }
       await refreshUser();
@@ -176,6 +178,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.saveDetails"));
       }
       await refreshUser();
@@ -208,6 +211,7 @@ export default function ProfilePage() {
       const signRes = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
       if (!signRes.ok) {
         const b = await signRes.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.avatarUploadUrlError"));
       }
       const { data: { uploadUrl, path } } = await signRes.json() as { data: { uploadUrl: string; path: string } };
@@ -226,6 +230,7 @@ export default function ProfilePage() {
       });
       if (!confirmRes.ok) {
         const b = await confirmRes.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.avatarConfirmError"));
       }
       await refreshUser();
@@ -251,6 +256,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.saveDetails"));
       }
       setStep(4);
@@ -470,6 +476,7 @@ export default function ProfilePage() {
           >
             {avatarPreview ? (
               <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={avatarPreview} alt={tCustomer("ui.profileWizard.profilePhoto")} className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
                 <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.choosePhoto")}</p>
               </>

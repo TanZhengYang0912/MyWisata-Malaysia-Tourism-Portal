@@ -9,6 +9,7 @@ import { ResilientImage } from '@/components/shared/resilient-image';
 import { getVendorProductTypeLabel, selectFeaturedVendorProducts, summarizeVendorReviews } from '@/lib/customer/vendor-page';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { getServerTranslation } from '@/lib/i18n/server';
+import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,7 @@ type OutletRecord = {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  coverUrl: string | null;
 };
 
 type OutletOffer = { outlet_id: string; price: number; status: string };
@@ -54,12 +56,17 @@ async function getVendor(vendorId: string) {
   const { data: vendor } = await db.from('vendors').select('id,name,slug,description,logo_url,cover_url,business_type').eq('id', vendorId).eq('status', 'approved').maybeSingle();
   if (!vendor) return null;
 
-  const [{ data: outlets }, { data: products }] = await Promise.all([
-    db.from('outlets').select('id,name,city,state,address,lat,lng').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+  const [{ data: outlets }, { data: products }, { data: managedPlaces }] = await Promise.all([
+    db.from('outlets').select('id,name,city,state,address,lat,lng,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+    db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
   ]);
 
-  const outletRows = (outlets ?? []) as OutletRecord[];
+  const managedPlaceImages = (managedPlaces ?? []).map((place) => ({ name: place.name, imageUrl: place.image_url })) as ManagedPlaceImage[];
+  const outletRows = (outlets ?? []).map((outlet) => {
+    const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
+    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }) };
+  }) as OutletRecord[];
   const outletNames = new Map(outletRows.map((outlet) => [outlet.id, outlet.name]));
   const productRows = products ?? [];
   const metricRows = productRows.length
@@ -112,12 +119,13 @@ export async function generateMetadata({ params }: { params: Promise<{ vendorId:
   return { title: `${result.vendor.name} | MyWisata`, description: result.vendor.description ?? t('ui.vendor.metadataDescription', { vendor: result.vendor.name }), openGraph: { title: result.vendor.name, description: result.vendor.description ?? undefined, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
 }
 
-function vendorProductDetailHref(productId: string, vendorId: string) {
-  return `/customer/activity/${productId}?source=vendor&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
+function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
+  const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : '';
+  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
 }
 
 function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction<'customer'> }) {
-  return <Link href={vendorProductDetailHref(product.id, vendorId)} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
+  return <Link href={vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined)} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
     <div className="mw-card-media h-48 aspect-auto bg-gradient-to-br from-primary/15 via-secondary to-amber-50">
       <ResilientImage src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" fallbackClassName="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60" fallbackLabel={t('ui.vendor.photoComingSoon')} />
       <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`, { defaultValue: getVendorProductTypeLabel(product.productType) })}</span>
@@ -130,13 +138,42 @@ function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vend
   </Link>;
 }
 
-function LocationCard({ location, t }: { location: LocationSummary; t: TFunction<'customer'> }) {
+function LocationCard({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction<'customer'> }) {
   const visual = getVendorVisual({ name: location.name });
   const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
   const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
   return <article className="mw-card group min-w-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
-    <div className="mw-card-media flex h-36 aspect-auto items-center justify-center bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span><span className="absolute bottom-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
-    <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-slate-950" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-slate-100 pt-3 text-xs"><span className="font-semibold text-slate-500">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>{location.fromPrice !== null && <span className="font-semibold text-primary">{t('ui.vendor.fromPrice', { price: location.fromPrice.toFixed(2) })}</span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#030052]/75 via-transparent to-[#030052]/10" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span></div>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
+    <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-slate-950" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-slate-100 pt-3 text-xs"><span className="font-semibold text-slate-500">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>{location.fromPrice !== null && <span className="font-semibold text-primary">{t('ui.vendor.fromPrice', { price: location.fromPrice.toFixed(2) })}</span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
+  </article>;
+}
+
+function SingleLocationSummary({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction<'customer'> }) {
+  const visual = getVendorVisual({ name: location.name });
+  const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
+  const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
+
+  return <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <div className="flex items-start gap-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xl font-black text-white">{visual.initials}</div>}</div>
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('ui.vendor.outletIdentity')}</p>
+        <h3 className="mt-1 text-xl font-black text-slate-950" title={location.name}>{location.name}</h3>
+        <p className="mt-2 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p>
+      </div>
+    </div>
+    <div className="mt-5 flex flex-col gap-4 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-6 text-sm">
+        <span className="font-semibold text-slate-500">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>
+        {location.fromPrice !== null && <span className="font-semibold text-primary">{t('ui.vendor.fromPrice', { price: location.fromPrice.toFixed(2) })}</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        <Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 items-center justify-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link>
+        <a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a>
+      </div>
+    </div>
   </article>;
 }
 
@@ -148,6 +185,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });
   const heroImage = vendorVisual.coverUrl;
   const vendorType = formatBusinessType(vendor.business_type, t);
+  const hasMultipleLocations = locations.length > 1;
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
 
   return <main className="min-h-screen bg-[#f8fafc] text-slate-900">
@@ -166,7 +204,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
     <div className="mx-auto max-w-6xl space-y-16 px-6 py-16">
        <section id="experiences" aria-labelledby="experiences-heading"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p><h2 id="experiences-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.memorableDay')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{t('ui.vendor.experienceDescription')}</p></div><span className="text-sm font-semibold text-slate-500">{t('ui.vendor.publishedListingCount', { count: catalogue.length })}</span></div>{featuredProducts.length ? <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{featuredProducts.map((product) => <ProductCard key={product.id} product={product} vendorId={vendor.id} t={t} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">{t('ui.vendor.noExperiences')}</div>}</section>
 
-      <section id="locations" aria-labelledby="locations-heading"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.findAcrossMalaysia')}</p><h2 id="locations-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.chooseLocationTitle')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{t('ui.vendor.chooseLocationDescription')}</p></div><span className="text-sm font-semibold text-slate-500">{t('ui.vendor.activeOutletCount', { count: locations.length })}</span></div>{locations.length ? <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{locations.map((location) => <LocationCard key={location.id} location={location} t={t} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">{t('ui.vendor.noPublicOutlets')}</div>}</section>
+      <section id="locations" aria-labelledby="locations-heading"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.findAcrossMalaysia')}</p><h2 id="locations-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.chooseLocationTitle')}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{t('ui.vendor.chooseLocationDescription')}</p></div><span className="text-sm font-semibold text-slate-500">{t('ui.vendor.activeOutletCount', { count: locations.length })}</span></div>{locations.length ? hasMultipleLocations ? <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{locations.map((location) => <LocationCard key={location.id} location={location} vendorId={vendor.id} t={t} />)}</div> : <div className="mt-6"><SingleLocationSummary location={locations[0]} vendorId={vendor.id} t={t} /></div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">{t('ui.vendor.noPublicOutlets')}</div>}</section>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,.85fr)]" aria-label={t('ui.vendor.information')}><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.about')}</p><h2 className="mt-2 text-2xl font-black">{t('ui.vendor.localPartnerTitle')}</h2><p className="mt-4 text-sm leading-7 text-slate-600">{vendor.description || t('ui.vendor.fallbackDescription', { vendor: vendor.name })}</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{t('ui.vendor.verifiedBusiness')}</span><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{vendorType}</span><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{t('ui.vendor.bookThrough')}</span></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.policiesSupport')}</p><h2 className="mt-2 text-2xl font-black">{t('ui.vendor.planDetails')}</h2><div className="mt-5 space-y-4"><div className="flex gap-3"><Clock3 className="mt-0.5 shrink-0 text-primary" size={18} /><p className="text-sm leading-6 text-slate-600"><strong className="text-slate-900">{t('ui.vendor.hoursVary')}</strong> {t('ui.vendor.checkSchedule')}</p></div><div className="flex gap-3"><ShieldCheck className="mt-0.5 shrink-0 text-primary" size={18} /><p className="text-sm leading-6 text-slate-600"><strong className="text-slate-900">{t('ui.vendor.bookingDetailsClear')}</strong> {t('ui.vendor.productPageDetails')}</p></div></div><a href="#locations" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">{t('ui.labels.chooseOutlet')} <ArrowRight size={15} /></a></div></section>
 

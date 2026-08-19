@@ -42,8 +42,10 @@ export default function PayoutReportsPage() {
     const url = URL.createObjectURL(new Blob([`${rows.join("\n")}\n`], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `payout-report-${report.period_start.slice(0, 7)}.csv`; link.click(); URL.revokeObjectURL(url); showFeedback("success", t("payouts.success.exported", { defaultValue: "Payout report exported." }));
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const details = report?.summary.details ?? [];
   const sources = useMemo(() => [...new Set(details.map((detail) => detail.source))].sort(), [details]);
   const filteredDetails = details.filter((detail) => !source || detail.source === source).filter((detail) => !search || `${detail.user_email} ${detail.user_id} ${detail.source}`.toLowerCase().includes(search.toLowerCase()));

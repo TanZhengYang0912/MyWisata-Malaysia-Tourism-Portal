@@ -30,4 +30,16 @@ describe('wallet payout destination display contract', () => {
     expect(page).toContain('if (usesEnabledEwallet)');
     expect(page).toContain('setShowWithdraw((v) => !v)');
   });
+
+  it('ignores destination and withdrawal responses after the signed-in account changes', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+    const destinationHandler = page.slice(page.indexOf('async function handleAddTngDestination'), page.indexOf('async function handleWithdraw'));
+    const withdrawalHandler = page.slice(page.indexOf('async function handleWithdraw'), page.indexOf('async function handleTopUp'));
+
+    expect(page).toContain('currentUserIdRef.current = currentUser?.id ?? null');
+    expect(destinationHandler).toContain('requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId');
+    expect(destinationHandler.indexOf('currentUserIdRef.current !== userId')).toBeLessThan(destinationHandler.indexOf('setDestinations'));
+    expect(withdrawalHandler).toContain('requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId');
+    expect(withdrawalHandler.indexOf('currentUserIdRef.current !== userId')).toBeLessThan(withdrawalHandler.indexOf('setWithdrawals'));
+  });
 });

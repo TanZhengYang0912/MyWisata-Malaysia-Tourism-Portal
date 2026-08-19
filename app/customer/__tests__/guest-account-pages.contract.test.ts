@@ -7,7 +7,6 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8"
 describe("guest account page boundaries", () => {
   it.each([
     "app/customer/cart/page.tsx",
-    "app/customer/wishlist/page.tsx",
     "components/customer/customer-orders-view.tsx",
     "app/customer/orders/[id]/page.tsx",
     "components/customer/customer-calendar-view.tsx",
@@ -19,6 +18,13 @@ describe("guest account page boundaries", () => {
     "app/customer/support/[id]/page.tsx",
   ])("renders an intentional Guest state in %s", (path) => {
     expect(read(path)).toContain("GuestAccountEmptyState");
+  });
+
+  it("renders an intentional signed-out state on the canonical saved page", () => {
+    const source = read("app/customer/saved/page.tsx");
+    expect(source).toContain("if (!user)");
+    expect(source).toContain("ui.saved.signInTitle");
+    expect(source).toContain("<EmptyState");
   });
 
   it.each([
@@ -40,9 +46,9 @@ describe("guest account page boundaries", () => {
 
   it("does not load, subscribe, or join presence for a Guest chat thread", () => {
     const source = read("app/customer/chat/[threadId]/page.tsx");
-    expect(source).toContain("presenceThread");
-    expect(source).toContain("loadedThread.customerId !== currentUser.id");
-    expect(source).toContain("if (!currentUser || !thread)");
+    expect(source).toContain('useChatPresence(thread ? `chat-presence-vendor-${thread.vendorId}` : undefined, currentUser?.id');
+    expect(source).toContain("if (!currentUser || !params.threadId)");
+    expect(source).toContain("if (!currentUser || !thread) return");
   });
 
   it("guards support reads and mutations with the current identity", () => {

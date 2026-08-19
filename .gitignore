@@ -60,3 +60,8 @@ AGENTS.md
 # Lint / analysis output — never commit
 lint-results.json
 .superpowers/
+
+# Ignore local assets and temp files
+public/assets/
+supabase/.temp/
+scripts/__pycache__/

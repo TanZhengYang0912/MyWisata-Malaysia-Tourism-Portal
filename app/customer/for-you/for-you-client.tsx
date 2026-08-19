@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, MapPin } from 'lucide-react';
 import { ActivityCard } from '@/components/customer/activity-card';
 import type { ComputedActivity } from '@/backend/core/types';
 import { useAuth } from '@/components/providers/auth';
@@ -40,6 +40,7 @@ export default function ForYouClient({ initialPopular }: { initialPopular: Compu
     finally { setLoading(false); }
   }, [aiAllowed, initialPopular]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   function useMyLocation() {
@@ -55,6 +56,10 @@ export default function ForYouClient({ initialPopular }: { initialPopular: Compu
 
   const personalized = result?.mode === 'personalized';
   return <div className="mx-auto max-w-7xl px-5 py-10">
+    <Link href="/customer" className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/75 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+      <ArrowLeft size={16} aria-hidden="true" />
+      {tCustomer('ui.actions.backToResults')}
+    </Link>
     <p className="text-xs font-semibold tracking-[0.18em] text-primary">{personalized ? tCustomer('ui.labels.trending') : tCustomer('ui.labels.details')}</p>
     <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-foreground">{tCustomer('ui.map.searchMalaysia')}</h1><p className="mt-2 text-muted-foreground">{personalized ? tCustomer('ui.map.searchHint') : tCustomer('ui.labels.placeBasedExperience')}</p></div><button type="button" onClick={useMyLocation} disabled={locationBusy || loading} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"><MapPin size={16} />{locationBusy ? tCustomer('ui.states.loading') : tCustomer('ui.labels.location')}</button></div>
     {error && <p className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}

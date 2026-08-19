@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:kyc-db:replay": "node scripts/replay-kyc-security-db.mjs",
     "seed:remote-demo": "REMOTE_DEMO_SEED=1 node scripts/seed-remote-demo.mjs",
+    "seed:demo-vendor-accounts": "DEMO_VENDOR_ACCOUNTS=1 node scripts/seed-demo-vendor-accounts.mjs",
     "repair:demo-vendor-media": "REMOTE_DEMO_SEED=1 node scripts/repair-demo-vendor-media.mjs",
     "seed:chat-volume": "CHAT_VOLUME_SEED=1 node scripts/seed-chat-volume.mjs",
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
@@ -17,7 +18,10 @@
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
     "verify:i18n": "node scripts/verify-i18n-coverage.mjs",
     "verify:withdrawal-db": "node scripts/verify-provider-neutral-withdrawals.mjs",
-    "stripe:listen": "stripe listen --events checkout.session.completed,payment_intent.payment_failed,checkout.session.expired --forward-to http://localhost:3000/api/stripe/webhook"
+    "stripe:listen": "stripe listen --events checkout.session.completed,payment_intent.payment_failed,checkout.session.expired --forward-to http://localhost:3000/api/stripe/webhook",
+    "upload:place-images": "PLACE_IMAGES_UPLOAD=1 node scripts/upload-place-images.mjs",
+    "upload:vendor-images": "VENDOR_IMAGES_UPLOAD=1 node scripts/upload-vendor-images.mjs",
+    "upload:product-images": "node scripts/upload-product-images.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
@@ -45,6 +49,7 @@
     "maplibre-gl": "^5.24.0",
     "next": "16.2.10",
     "next-i18next": "^16.0.10",
+    "next-themes": "^0.4.6",
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
     "pg": "^8.22.0",

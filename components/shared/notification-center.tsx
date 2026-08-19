@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import type { Notification, NotificationBellProps } from "./notification-bell";
+import { CATEGORY_LABEL_KEYS, type Notification, type NotificationBellProps } from "./notification-bell";
+import { formatDateTime } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 export type NotificationCenterProps = Omit<NotificationBellProps, "allHref" | "enabled"> & {
   enabled?: boolean;
@@ -16,6 +19,8 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export function NotificationCenter({ enabled = true, scope = "customer", vendorId = null, categories = DEFAULT_CATEGORIES, pageSize = 15 }: NotificationCenterProps) {
+  const { t, i18n } = useTranslation("common");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [filter, setFilter] = useState("all");
   const [items, setItems] = useState<Notification[]>([]);
   const [page, setPage] = useState(1);
@@ -43,14 +48,14 @@ export function NotificationCenter({ enabled = true, scope = "customer", vendorI
         else if (filter !== "all") params.set("category", filter);
         const response = await fetch(`/api/notifications?${params}`, { signal: controller.signal });
         const body = await response.json() as ApiBody;
-        if (!response.ok || !body.data) { setError(body.error?.message ?? "Unable to load notifications"); return; }
+        if (!response.ok || !body.data) { setError(body.error?.message ?? t("notifications.loadError")); return; }
         setItems(body.data.items); setTotalPages(body.data.totalPages); setError(null);
       } catch (caught) {
-        if ((caught as Error).name !== "AbortError") setError("Unable to load notifications");
+        if ((caught as Error).name !== "AbortError") setError(t("notifications.loadError"));
       }
     })();
     return () => controller.abort();
-  }, [enabled, filter, page, safePageSize, scope, vendorId]);
+  }, [enabled, filter, page, safePageSize, scope, t, vendorId]);
 
   async function markRead(id: string) {
     if (!enabled) return;
@@ -66,9 +71,9 @@ export function NotificationCenter({ enabled = true, scope = "customer", vendorI
   }
 
   return <div>
-    <div className="mb-5 flex flex-wrap items-center gap-2"><span className="mr-2 text-sm font-semibold text-muted-foreground">Filter</span>{categoryOptions.map((option) => <button key={option.value} type="button" onClick={() => { setFilter(option.value); setPage(1); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === option.value ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{option.label}</button>)}<button type="button" onClick={() => { setFilter("unread"); setPage(1); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === "unread" ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>Unread</button><button type="button" onClick={() => void markAll()} className="ml-auto rounded-lg border border-border px-3 py-2 text-xs font-semibold text-primary">Mark all as read</button></div>
+    <div className="mb-5 flex flex-wrap items-center gap-2"><span className="mr-2 text-sm font-semibold text-muted-foreground">{t("filters.filter")}</span>{categoryOptions.map((option) => <button key={option.value} type="button" onClick={() => { setFilter(option.value); setPage(1); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === option.value ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(option.labelKey ?? CATEGORY_LABEL_KEYS[option.value] ?? option.label, { defaultValue: option.label })}</button>)}<button type="button" onClick={() => { setFilter("unread"); setPage(1); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${filter === "unread" ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t("notifications.unread")}</button><button type="button" onClick={() => void markAll()} className="ml-auto rounded-lg border border-border px-3 py-2 text-xs font-semibold text-primary">{t("notifications.markAllAsRead")}</button></div>
     {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</p>}
-    <div className="rounded-2xl border border-border bg-card">{items.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No notifications found.</p> : items.map((item) => <div key={item.id} className={`border-b border-border px-5 py-4 last:border-0 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="font-semibold">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.body}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("en-MY")}</p></button>{item.link && <Link className="mt-2 inline-block text-xs font-semibold text-primary" href={item.link}>Open</Link>}</div>)}</div>
-    <div className="mt-4 flex items-center justify-between text-sm"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">Previous</button><span aria-live="polite">Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">Next</button></div>
+    <div className="rounded-2xl border border-border bg-card">{items.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">{t("notifications.noNotificationsFound")}</p> : items.map((item) => <div key={item.id} className={`border-b border-border px-5 py-4 last:border-0 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="font-semibold">{item.title}</p><p className="mt-1 text-sm text-muted-foreground">{item.body}</p><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.createdAt, locale)}</p></button>{item.link && <Link className="mt-2 inline-block text-xs font-semibold text-primary" href={item.link}>{t("notifications.open")}</Link>}</div>)}</div>
+    <div className="mt-4 flex items-center justify-between text-sm"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">{t("actions.previous")}</button><span aria-live="polite">{t("pagination.page", { current: page, total: totalPages })}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">{t("actions.next")}</button></div>
   </div>;
 }

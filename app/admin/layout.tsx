@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UsersRound, Settings2, FileBarChart2, RotateCcw } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { AppearanceControl } from "@/components/shared/appearance-control";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -29,6 +30,11 @@ const NAV = [
   // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
   // this NAV (which admin/approver both see). Filtered in render below.
   { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
+  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: moved out of the AI Assistant
+  // page into its own nav entry — it's staff-conduct review, not an AI
+  // capability, and was only ever co-located there because that page was
+  // already super-admin-gated.
+  { href: "/admin/staff-conduct", label: "Staff Conduct", icon: UserX, superAdminOnly: true },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -116,13 +122,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div>
             <span className="font-bold text-white text-sm font-[family-name:var(--font-display)]">MyWisata</span>
-            <p className="text-[10px] text-white/35">{tAdmin("shell.panel", { defaultValue: "Admin Panel" })}</p>
+            <p className="text-[0.625rem] text-white/35">{tAdmin("shell.panel", { defaultValue: "Admin Panel" })}</p>
           </div>
         </div>
         <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[10px] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs", { defaultValue: "Signed in as" })}</p>
+          <p className="text-[0.625rem] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs", { defaultValue: "Signed in as" })}</p>
           <p className="text-sm font-bold text-white">{currentUser.name}</p>
-          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-800 text-gray-300">
+          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-bold bg-gray-800 text-gray-300">
             <Shield size={9} /> {tAdmin(`roles.${currentUser.role}`, { defaultValue: currentUser.role.replace("_", " ") })}
           </div>
         </div>
@@ -135,20 +141,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <item.icon size={15} /> {tAdmin(`navigation.${item.label}`, { defaultValue: item.label })}
               {item.href === "/admin/support" && unreadTickets > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
                   {unreadTickets}
                 </span>
               )}
               {item.href === "/admin/recommendations" && currentUser.role === "super_admin" && unreadRecommendations > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}>
+                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}>
                   {unreadRecommendations}
                 </span>
               )}
             </Link>
           ))}
         </nav>
-        <div className="shrink-0 border-t border-white/10 p-3">
+        <div className="shrink-0 border-t border-white/10 p-3 space-y-0.5">
           <LanguageSwitcher compact className="mb-2" />
+          <AppearanceControl variant="sidebar-dark" />
           <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-white/55 transition-colors hover:bg-gray-800 hover:text-white">
             <LogOut size={15} /> {tCommon("actions.signOut", { defaultValue: "Sign out" })}
           </button>

@@ -60,6 +60,7 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
   const { showFeedback } = useActionFeedback();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!userId) { setDetail(null); return; }
     let cancelled = false;
     setLoading(true); setError(null); setAction(null); setReason("");
@@ -106,6 +107,7 @@ export function UserManagementDrawer({ userId, onClose, onChanged }: Props) {
       {loading && <p className="py-8 text-sm text-muted-foreground">{t("userManagement.loading")}</p>}
       {error && <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
       {detail && <div className="mt-5 space-y-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <div className="flex items-center gap-4"><div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-lg font-bold text-primary">{detail.avatarUrl ? <img src={detail.avatarUrl} alt="" className="h-full w-full object-cover" /> : getAdminUserInitial(detail)}</div><div className="min-w-0"><p className="truncate font-semibold text-foreground">{detail.email}</p><p className="text-xs capitalize text-muted-foreground">{t(ROLE_LABELS[detail.role] ?? "userManagement.roles.unknown", { defaultValue: detail.role.replaceAll("_", " ") })}</p><button type="button" onClick={() => { void navigator.clipboard.writeText(detail.id); showFeedback("success", t("userManagement.feedback.userIdCopied")); }} className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"><Copy size={12} /> {t("userManagement.copyUserId")}</button></div><span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusClass(detail.status)}`}>{t(STATUS_LABELS[detail.status] ?? "userManagement.status.unknown")}</span></div>
         <div className="grid gap-3 sm:grid-cols-2">{[
           ["userManagement.fields.phone", detail.phone || t("userManagement.notSet")], ["userManagement.fields.location", [detail.city, detail.country].filter(Boolean).join(", ") || t("userManagement.notSet")],

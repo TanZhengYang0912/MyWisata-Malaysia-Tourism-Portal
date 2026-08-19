@@ -17,6 +17,21 @@ describe("nearby outlets section", () => {
     expect(nearbySource).toContain("getOutletShopHref");
     expect(nearbySource).toContain("href={getOutletShopHref(outlet.id)}");
   });
+
+  it("groups type and distance filters and defaults to a local radius", () => {
+    expect(nearbySource).toContain('aria-label="Filter nearby businesses by type"');
+    expect(nearbySource).toContain('aria-label="Filter nearby businesses by distance"');
+    expect(nearbySource).toContain("useState(Math.min(3, maxRadiusKm))");
+    expect(nearbySource).toContain('t("ui.nearbyOutlets.coordinateNote")');
+    expect(nearbySource).not.toContain("Computed from coordinates, not a foreign key");
+  });
+
+  it("keeps the distance controls fixed instead of deriving them from the server radius", () => {
+    expect(nearbySource).toContain("const RADIUS_OPTIONS_KM = [1, 3, 8] as const;");
+    expect(nearbySource).not.toContain("new Set([1, 3, 10, maxRadiusKm]");
+    expect(nearbySource).toContain("min-w-[64px]");
+    expect(nearbySource).toContain("lg:grid-cols-[minmax(0,1fr)_auto_minmax(120px,auto)]");
+  });
 });
 
 describe("nearby outlets pagination", () => {

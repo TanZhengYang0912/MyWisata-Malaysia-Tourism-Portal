@@ -13,6 +13,7 @@ export function buildProductFormDefaults(initialData?: ProductCreate & { id?: st
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id: _id, outletId: _outletId, ...editableFields } = initialData;
   return {
     ...editableFields,

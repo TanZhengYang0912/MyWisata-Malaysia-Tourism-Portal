@@ -103,20 +103,6 @@ export function getBuilderConfirmationCopy(action: BuilderConfirmationAction) {
       };
 }
 
-export function getBlockActionState(index: number, total: number) {
-  return {
-    canMoveUp: index > 0,
-    canMoveDown: index >= 0 && index < total - 1,
-  };
-}
-
-export function getBlockMoveTargetIndex(
-  index: number,
-  direction: "up" | "down",
-) {
-  return direction === "up" ? index - 1 : index + 2;
-}
-
 export function duplicateOutletPageBlock(block: OutletPageBlock): OutletPageBlock {
   const fresh = createOutletPageBlock(block.type);
   return { ...fresh, ...block, id: fresh.id };

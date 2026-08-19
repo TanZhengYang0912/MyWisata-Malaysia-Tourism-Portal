@@ -44,7 +44,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
 
   const { register, handleSubmit, watch, setValue, setError, formState: { errors, isSubmitting } } = useForm<VoucherFormInput, unknown, VoucherFormData>({
     resolver: zodResolver(voucherCreateSchema),
-    defaultValues: { voucherType: 'fixed', minSpend: 0 },
+    defaultValues: { voucherType: 'fixed', minSpend: 0, redemptionMode: 'online', isClaimable: true },
   });
 
   function fieldError(field: keyof VoucherFormInput) {
@@ -100,7 +100,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
         const message = result.error?.message ?? t('voucher.form.saveFailed');
         const fieldErrors = result.error?.details?.fieldErrors as Record<string, string[]> | undefined;
         Object.entries(fieldErrors ?? {}).forEach(([field, messages]) => {
-          if (field in errors || field in { code: true, name: true, voucherType: true, discountValue: true, minSpend: true, maxUses: true, perCustomerLimit: true, validFrom: true, validUntil: true, outletId: true, productId: true, buyQuantity: true, freeQuantity: true }) {
+          if (field in errors || field in { code: true, name: true, voucherType: true, discountValue: true, minSpend: true, maxUses: true, perCustomerLimit: true, validFrom: true, validUntil: true, redemptionMode: true, outletId: true, productId: true, buyQuantity: true, freeQuantity: true }) {
             setError(field as keyof VoucherFormInput, { type: 'server', message: messages[0] });
           }
         });
@@ -135,6 +135,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const maxUses = watch('maxUses');
   const perCustomerLimit = watch('perCustomerLimit');
   const selectedOutlet = watch('outletId');
+  const redemptionMode = watch('redemptionMode');
   const discountSummary = voucherType === 'bogo'
     ? t('voucher.form.buyXGetY')
     : voucherType === 'percent'
@@ -172,6 +173,16 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
             <Input {...register('name')} aria-invalid={Boolean(fieldError('name'))} className={inputClass('name')} placeholder={t('voucher.form.exampleName')} />
             <FieldError message={fieldError('name')} />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Redemption mode *</label>
+          <select {...register('redemptionMode')} aria-invalid={Boolean(fieldError('redemptionMode'))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <option value="online">Online checkout</option>
+            <option value="both">Online or in-store</option>
+            <option value="in_store">In-store only</option>
+          </select>
+          <FieldError message={fieldError('redemptionMode')} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -250,7 +261,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
 
       <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-600">
         <p className="font-semibold text-gray-900">{t('voucher.form.summary')}</p>
-        <p className="mt-1">{discountSummary} · {t('voucher.form.summaryMinSpend', { amount: formatMYR(Number(minSpend || 0), locale, { minimumFractionDigits: 2 }) })} · {maxUses ? t('voucher.form.totalUses', { count: formatNumber(Number(maxUses), locale) }) : t('voucher.form.unlimitedTotalUses')} · {perCustomerLimit ? t('voucher.form.perCustomer', { count: formatNumber(Number(perCustomerLimit), locale) }) : t('voucher.form.unlimitedPerCustomer')} · {selectedOutlet ? t('voucher.form.outletRestricted') : t('voucher.form.allOutlets')}</p>
+        <p className="mt-1">{discountSummary} · {redemptionMode === 'both' ? t('voucher.form.redemptionBoth', { defaultValue: 'Online or in-store' }) : redemptionMode === 'in_store' ? t('voucher.form.redemptionInStore', { defaultValue: 'In-store only' }) : t('voucher.form.redemptionOnline', { defaultValue: 'Online checkout' })} · {t('voucher.form.summaryMinSpend', { amount: formatMYR(Number(minSpend || 0), locale, { minimumFractionDigits: 2 }) })} · {maxUses ? t('voucher.form.totalUses', { count: formatNumber(Number(maxUses), locale) }) : t('voucher.form.unlimitedTotalUses')} · {perCustomerLimit ? t('voucher.form.perCustomer', { count: formatNumber(Number(perCustomerLimit), locale) }) : t('voucher.form.unlimitedPerCustomer')} · {selectedOutlet ? t('voucher.form.outletRestricted') : t('voucher.form.allOutlets')}</p>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

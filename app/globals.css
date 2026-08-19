@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Tailwind v4 defaults dark: to prefers-color-scheme. next-themes drives
+   theme via a .dark class on <html> instead (so light/dark/system can be
+   toggled independent of the OS setting), so dark: needs to key off that
+   class — this also activates every dark: class already written elsewhere
+   in the app (e.g. components/ui/badge.tsx's status colors), which until
+   now only ever responded to the OS scheme, never a manual toggle. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -51,6 +59,79 @@
   --travel-blue: #00004d;
   --travel-blue-surface: #e9e9f7;
   --malaysia-blue: #00004d;
+}
+
+/* CLAUDE-DARKMODE-A11Y.md: dark palette, same class-override mechanism as
+   .vendor-portal above (next-themes sets this class on <html>). Tuned for
+   WCAG AA contrast rather than a flat inversion — money/status/semantic
+   colors (nature-green, cta-orange, destructive, malaysia-yellow) are
+   re-picked for dark backgrounds, not just carried over. */
+.dark {
+  --background: #0b1120;
+  --foreground: #e8ecf5;
+  --card: #131b2e;
+  --card-foreground: #e8ecf5;
+  --popover: #131b2e;
+  --popover-foreground: #e8ecf5;
+  --primary: #7c8bff;
+  --primary-foreground: #0b1120;
+  --secondary: #1d2740;
+  --secondary-foreground: #c7d0ff;
+  --muted: #1a2236;
+  --muted-foreground: #94a1bd;
+  --accent: #ffd84d;
+  --accent-foreground: #1a1600;
+  --destructive: #ff6b6a;
+  --destructive-foreground: #2a0000;
+  --border: rgba(199, 208, 255, 0.16);
+  --input: transparent;
+  --input-background: #1a2236;
+  --ring: #7c8bff;
+  --teal: #7c8bff;
+  --travel-blue: #7c8bff;
+  --travel-blue-surface: #1d2740;
+  --malaysia-blue: #7c8bff;
+  --malaysia-red: #ff6b6a;
+  --malaysia-red-surface: #2a1414;
+  --malaysia-yellow: #ffd84d;
+  --malaysia-yellow-foreground: #1a1600;
+  --nature-green: #34d399;
+  --nature-green-ink: #eafff5;
+  --cta-orange: #fb923c;
+  --cta-orange-foreground: #1a0f00;
+  --highlight-yellow: #ffd84d;
+  --highlight-yellow-foreground: #1a1600;
+  --ai-purple: #a78bfa;
+  --ai-purple-surface: #241a3d;
+  --sidebar: #0b1120;
+  --sidebar-foreground: #e8ecf5;
+}
+
+/* .vendor-portal's blue-tinted overrides need their own dark variants —
+   without this, .vendor-portal.dark would fall back to the plain .dark
+   values above (same specificity, .dark wins on source order), losing the
+   vendor portal's distinct identity in dark mode. */
+.vendor-portal.dark {
+  --primary: #8f9dff;
+  --primary-foreground: #0b1120;
+  --secondary: #232c4a;
+  --secondary-foreground: #c7d0ff;
+  --ring: #8f9dff;
+  --travel-blue: #8f9dff;
+  --travel-blue-surface: #232c4a;
+  --malaysia-blue: #8f9dff;
+}
+
+/* Font-size accessibility control: next-themes' own no-flash script handles
+   the .dark class; this attribute is set the same way (a blocking inline
+   script in the <head>, before hydration) so root font-size never flashes
+   at its default either. rem-based Tailwind text utilities (text-sm etc.)
+   scale automatically off this; arbitrary px sizes do not. */
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+html[data-font-size="larger"] {
+  font-size: 20px;
 }
 
 @theme inline {
@@ -217,5 +298,34 @@ body {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Outlet page grid. Blocks carry their placement as custom properties; below
+   the lg breakpoint the placement is ignored and the DOM order (already
+   sorted into reading order by the renderer) becomes a single column. */
+.outlet-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .outlet-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-auto-rows: 92px;
+    gap: 0.75rem;
+  }
+
+  .outlet-grid__cell {
+    grid-column: var(--grid-x) / span var(--grid-w);
+    grid-row: var(--grid-y) / span var(--grid-h);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .outlet-grid__cell > * {
+    height: 100%;
   }
 }

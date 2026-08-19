@@ -4,11 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
+import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getMessages, getOtherReadMessageIds, getReadChatMessageIds, getThreadsForUser, sendMessage } from "@/backend/domains/identity";
-import { getOutlets } from "@/backend/domains/catalogue";
-import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
@@ -23,20 +20,76 @@ const FILTERS: { value: ChatFilter; label: string }[] = [
   { value: "needs_reply", label: "Needs your reply" },
 ];
 
+type ChatOutlet = Pick<Outlet, "id" | "name" | "city" | "state">;
+type RawChatMessage = {
+  id: string;
+  thread_id?: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  attachment_url?: string | null;
+  reply_to_message_id?: string | null;
+  context_product_id?: string | null;
+};
+type ApiThread = {
+  id: string;
+  customer_id: string;
+  outlet_id: string;
+  vendor_id: string;
+  last_message_at: string | null;
+  created_at: string;
+  outlets?: ChatOutlet | ChatOutlet[] | null;
+  chat_messages?: RawChatMessage[];
+};
+
+function toChatMessage(row: RawChatMessage, thread: ApiThread): ChatMessage {
+  return {
+    id: row.id,
+    threadId: thread.id,
+    senderId: row.sender_id,
+    senderRole: row.sender_id === thread.customer_id ? "customer" : "vendor",
+    text: row.body,
+    sentAt: row.created_at,
+    attachmentUrl: row.attachment_url ?? undefined,
+    replyToId: row.reply_to_message_id ?? undefined,
+    contextProductId: row.context_product_id ?? undefined,
+  };
+}
+
+function normalizeThread(row: ApiThread): { thread: ChatThread; outlet?: ChatOutlet; messages: ChatMessage[] } {
+  const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets ?? undefined;
+  return {
+    thread: {
+      id: row.id,
+      customerId: row.customer_id,
+      outletId: row.outlet_id,
+      vendorId: row.vendor_id,
+      lastMessageAt: row.last_message_at ?? row.created_at,
+    },
+    outlet,
+    messages: (row.chat_messages ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((message) => toChatMessage(message, row)),
+  };
+}
+
 export default function ChatListPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("thread");
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
-  const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
+  const [outlets, setOutlets] = useState<Map<string, ChatOutlet>>(new Map());
   const [messagesByThread, setMessagesByThread] = useState<Map<string, ChatMessage[]>>(new Map());
   const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
-  const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
+  const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
+  const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentUser) {
@@ -49,40 +102,67 @@ export default function ChatListPage() {
       setLoadedUserId(null);
       return;
     }
+    const userId = currentUser.id;
     let cancelled = false;
 
-    (async () => {
+    async function loadConversations() {
       try {
-        const [list, allOutlets] = await Promise.all([getThreadsForUser(currentUser.id), getOutlets()]);
-        const messages = await Promise.all(list.map((thread) => getMessages(thread.id)));
-        const allMessages = messages.flat();
-        const allMessageIds = allMessages.map((message) => message.id);
-        const [reads, readByOthers] = await Promise.all([
-          getReadChatMessageIds(currentUser.id, allMessageIds),
-          getOtherReadMessageIds(currentUser.id, allMessageIds),
-        ]);
+        const response = await fetch("/api/customer/chat", { cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error?.message || "Unable to load conversations");
+        const rawThreads = Array.isArray(payload.data?.threads) ? payload.data.threads : [];
+        const normalized: ReturnType<typeof normalizeThread>[] = rawThreads.map((row: ApiThread) => normalizeThread(row));
+
+        const mutesRes = await fetch("/api/chat/mutes").then((r) => (r.ok ? r.json() : { data: [] })).catch(() => ({ data: [] }));
+
         if (cancelled) return;
 
-        setThreads(list);
-        setOutlets(new Map(allOutlets.map((outlet) => [outlet.id, outlet])));
-        setMessagesByThread(new Map(list.map((thread, index) => [thread.id, messages[index]])));
-        setReadMessageIds(reads);
-        setReadByOthersIds(readByOthers);
+        setThreads(normalized.map(({ thread }) => thread));
+        setOutlets(new Map(normalized.flatMap(({ outlet }) => outlet ? [[outlet.id, outlet] as const] : [])));
+        setMessagesByThread(new Map(normalized.map(({ thread, messages }) => [thread.id, messages])));
+        setReadMessageIds(new Set(Array.isArray(payload.data?.readMessageIds) ? payload.data.readMessageIds : []));
+        setReadByOthersIds(new Set(Array.isArray(payload.data?.readByOthersIds) ? payload.data.readByOthersIds : []));
+        setMutedThreadIds(new Set((mutesRes.data ?? []) as string[]));
         setLoadError(null);
-        setLoadedUserId(currentUser.id);
+        setLoadedUserId(userId);
       } catch {
         if (!cancelled) {
           setThreads([]);
           setLoadError("We couldn't load your conversations. Please refresh and try again.");
-          setLoadedUserId(currentUser.id);
+          setLoadedUserId(userId);
         }
       }
-    })();
+    }
+
+    void loadConversations();
+    const timer = window.setInterval(() => void loadConversations(), 3000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, [currentUser]);
+
+  async function toggleMute(threadId: string) {
+    const currentlyMuted = mutedThreadIds.has(threadId);
+    setMutedThreadIds((previous) => {
+      const next = new Set(previous);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      currentlyMuted ? next.delete(threadId) : next.add(threadId);
+      return next;
+    });
+    try {
+      await fetch(`/api/chat/threads/${threadId}/mute`, { method: currentlyMuted ? "DELETE" : "POST" });
+    } catch {
+      // Best-effort revert — the mute is purely a notification preference, not worth a blocking error.
+      setMutedThreadIds((previous) => {
+        const next = new Set(previous);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        currentlyMuted ? next.add(threadId) : next.delete(threadId);
+        return next;
+      });
+    }
+  }
 
   const unreadByThread = useMemo(() => {
     const counts = new Map<string, number>();
@@ -145,40 +225,6 @@ export default function ChatListPage() {
       return next;
     });
   }
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const channel = supabase
-      .channel(`customer-chat-${currentUser.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        ({ new: row }: { new: { id: string; thread_id: string; sender_id: string; body: string; created_at: string; attachment_url: string | null; reply_to_message_id: string | null } }) => {
-          appendMessage({
-            id: row.id,
-            threadId: row.thread_id,
-            senderId: row.sender_id,
-            senderRole: row.sender_id === currentUser.id ? "customer" : "vendor",
-            text: row.body,
-            sentAt: row.created_at,
-            attachmentUrl: row.attachment_url ?? undefined,
-            replyToId: row.reply_to_message_id ?? undefined,
-          });
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_message_reads" },
-        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
-          if (row.user_id === currentUser.id) return;
-          setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [currentUser]);
 
   if (!currentUser) {
     return <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath="/customer/chat" value="0 messages" /></div>;
@@ -277,7 +323,10 @@ export default function ChatListPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>{name}</p>
+                          <p className={`flex min-w-0 items-center gap-1 truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                            <span className="truncate">{name}</span>
+                            {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-muted-foreground" aria-label="Muted" />}
+                          </p>
                           <span className="shrink-0 text-[11px] text-muted-foreground">{formatChatTimestamp(thread.lastMessageAt)}</span>
                         </div>
                         <p className={`mt-1 truncate text-xs ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>
@@ -313,10 +362,28 @@ export default function ChatListPage() {
                 subtitle: `${selectedOutlet?.city || "Malaysia"}${selectedOutlet?.state ? `, ${selectedOutlet.state}` : ""}`,
                 badge: "Vendor",
               }}
-              onSend={(text, replyToId) => sendMessage(selectedThread.id, currentUser.id, "customer", text, replyToId)}
+              onSend={async (text, replyToId) => {
+                const response = await fetch(`/api/customer/chat/${selectedThread.id}/messages`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ body: text, replyToId }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Unable to send message");
+                return toChatMessage({ ...payload.data, thread_id: selectedThread.id }, {
+                  id: selectedThread.id,
+                  customer_id: currentUser.id,
+                  outlet_id: selectedThread.outletId,
+                  vendor_id: selectedThread.vendorId,
+                  last_message_at: payload.data.created_at,
+                  created_at: payload.data.created_at,
+                });
+              }}
               onMessageSent={appendMessage}
               backHref="/customer/chat"
               readByOthers={readByOthersIds}
+              isMuted={mutedThreadIds.has(selectedThread.id)}
+              onToggleMute={() => void toggleMute(selectedThread.id)}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">

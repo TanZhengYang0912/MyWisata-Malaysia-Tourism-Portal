@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useCallback, useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -80,6 +80,9 @@ function WalletContent() {
   // Connect onboarding
   const [onboarding, setOnboarding] = useState(false);
   const [onboardError, setOnboardError] = useState("");
+  const walletRequestVersion = useRef(0);
+  const connectStatusRequestVersion = useRef(0);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const displayGroups = getWithdrawalDisplayGroups(withdrawals ?? [], buckets?.earnings ?? 0);
   const { pending, history, pendingTotal, availableEarnings } = displayGroups;
@@ -95,6 +98,7 @@ function WalletContent() {
 
   const refreshConnectStatus = useCallback(async (): Promise<ConnectStatus> => {
     if (!currentUser) return "idle";
+    const requestVersion = ++connectStatusRequestVersion.current;
     setConnectStatus("loading");
     setOnboardError("");
     try {
@@ -108,6 +112,7 @@ function WalletContent() {
         };
         error?: { message?: string } | string;
       };
+      if (requestVersion !== connectStatusRequestVersion.current) return "idle";
       if (!response.ok) {
         const message = typeof body.error === "string"
           ? body.error
@@ -126,6 +131,7 @@ function WalletContent() {
       setConnectStatus(nextStatus);
       return nextStatus;
     } catch {
+      if (requestVersion !== connectStatusRequestVersion.current) return "idle";
       setOnboardError(tCustomer("ui.wallet.verifyPayoutError"));
       setConnectStatus("status_error");
       return "status_error";
@@ -133,14 +139,24 @@ function WalletContent() {
   }, [currentUser, tCustomer]);
 
   useEffect(() => {
+    const requestVersion = ++walletRequestVersion.current;
+    ++connectStatusRequestVersion.current;
+    currentUserIdRef.current = currentUser?.id ?? null;
+    setBuckets(null);
+    setWithdrawals(null);
+    setDestinations([]);
+    setSelectedDestinationId("");
+    setConnectStatus("idle");
+    setOnboardError("");
+    setAddingTngDestination(false);
+    setWithdrawing(false);
+    setShowAddTngDestination(false);
+    setShowWithdraw(false);
     if (!currentUser) {
-      setBuckets(null);
-      setWithdrawals(null);
-      setDestinations([]);
-      setSelectedDestinationId("");
       return;
     }
     fetch('/api/wallet/summary').then((response) => response.json()).then((body) => {
+      if (requestVersion !== walletRequestVersion.current) return;
       const summary = body.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
       setBuckets(summary ? {
         topup: summary.topupSen / 100,
@@ -149,19 +165,35 @@ function WalletContent() {
         reservedEarnings: summary.reservedEarningsSen / 100,
         withdrawnEarnings: summary.withdrawnEarningsSen / 100,
       } : null);
+    }).catch(() => {
+      if (requestVersion === walletRequestVersion.current) setBuckets(null);
     });
-    getMyWithdrawals(currentUser.id).then(setWithdrawals);
+    getMyWithdrawals(currentUser.id).then((nextWithdrawals) => {
+      if (requestVersion === walletRequestVersion.current) setWithdrawals(nextWithdrawals);
+    }).catch(() => {
+      if (requestVersion === walletRequestVersion.current) setWithdrawals([]);
+    });
     fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
+      if (requestVersion !== walletRequestVersion.current) return;
       const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
       setDestinations(nextDestinations);
       if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
       setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
-    }).catch(() => setDestinations([]));
+    }).catch(() => {
+      if (requestVersion === walletRequestVersion.current) setDestinations([]);
+    });
+    return () => {
+      if (requestVersion === walletRequestVersion.current) {
+        ++walletRequestVersion.current;
+        ++connectStatusRequestVersion.current;
+      }
+    };
   }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return;
     if (!returningFromOnboarding && (!walletReady || resolvedAvailableEarnings < CUSTOMER_WITHDRAWAL_MINIMUM_RM)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshConnectStatus();
   }, [currentUser, refreshConnectStatus, resolvedAvailableEarnings, returningFromOnboarding, walletReady]);
 
@@ -230,6 +262,9 @@ function WalletContent() {
 
   async function handleAddTngDestination() {
     if (!gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
+    const userId = currentUser?.id;
+    if (!userId) return;
+    const requestVersion = walletRequestVersion.current;
     const phoneOrDuitNow = tngIdentifier.trim();
     setTngDestinationError("");
     const normalized = normalizeTngDestinationIdentifier(phoneOrDuitNow);
@@ -255,6 +290,7 @@ function WalletContent() {
           : body.error?.message ?? tCustomer("ui.wallet.verifyTngDetailsError");
         throw new Error(message);
       }
+      if (requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId) return;
 
       const destination = body.data.destination;
       setDestinations((current) => [destination, ...current.filter((item) => item.id !== destination.id)]);
@@ -262,17 +298,22 @@ function WalletContent() {
       setTngIdentifier("");
       setShowAddTngDestination(false);
     } catch (error) {
+      if (requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId) return;
       setTngDestinationError(error instanceof Error
         ? error.message
         : tCustomer("ui.wallet.verifyTngError"));
     } finally {
-      setAddingTngDestination(false);
+      if (requestVersion === walletRequestVersion.current && currentUserIdRef.current === userId) {
+        setAddingTngDestination(false);
+      }
     }
   }
 
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
+    const userId = currentUser.id;
+    const requestVersion = walletRequestVersion.current;
     setWithdrawError("");
     const amount    = parseFloat(withdrawAmount);
     const available = availableEarnings;
@@ -291,9 +332,10 @@ function WalletContent() {
         throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? tCustomer("ui.wallet.submitWithdrawalError"));
       }
       const [nextWithdrawals, nextBuckets] = await Promise.all([
-        getMyWithdrawals(currentUser.id),
+        getMyWithdrawals(userId),
         fetch('/api/wallet/summary').then((response) => response.json()),
       ]);
+      if (requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId) return;
       setWithdrawals(nextWithdrawals);
       const summary = nextBuckets.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
       if (summary) setBuckets({
@@ -306,9 +348,12 @@ function WalletContent() {
       setShowWithdraw(false);
       setWithdrawAmount("");
     } catch (err) {
+      if (requestVersion !== walletRequestVersion.current || currentUserIdRef.current !== userId) return;
       setWithdrawError(err instanceof Error ? err.message : tCustomer("ui.wallet.submitError"));
     } finally {
-      setWithdrawing(false);
+      if (requestVersion === walletRequestVersion.current && currentUserIdRef.current === userId) {
+        setWithdrawing(false);
+      }
     }
   }
 
