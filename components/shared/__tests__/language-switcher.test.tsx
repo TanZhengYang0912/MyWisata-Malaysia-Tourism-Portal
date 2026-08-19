@@ -394,6 +394,24 @@ describe("LanguageSwitcher", () => {
     expect(label.textContent).toBe("Language");
   });
 
+  it("keeps the visible selection synchronized with a provider locale change", async () => {
+    let resolvedLanguage = "en";
+    mocks.useTranslation.mockImplementation(() => ({
+      t: translate,
+      i18n: { resolvedLanguage },
+    }));
+
+    expect((await renderSwitcher()).value).toBe("en");
+
+    resolvedLanguage = "zh-CN";
+    await act(async () => {
+      root?.render(React.createElement(LanguageSwitcher));
+    });
+
+    const select = findOne(container, (element) => element.tagName === "SELECT");
+    expect(select.value).toBe("zh-CN");
+  });
+
   it("disables the real select while the locale request is pending", async () => {
     const request = deferred<Response>();
     mocks.fetch.mockReturnValue(request.promise);
@@ -415,7 +433,7 @@ describe("LanguageSwitcher", () => {
     });
   });
 
-  it("reports success through feedback and aria-live, refreshes, and never pushes", async () => {
+  it("reports success and waits for the provider locale before changing the visible selection", async () => {
     mocks.fetch.mockResolvedValue({ status: 200 } as Response);
     const select = await renderSwitcher();
 
@@ -426,7 +444,7 @@ describe("LanguageSwitcher", () => {
     });
 
     const liveRegion = findOne(container, (element) => element.getAttribute("aria-live") === "polite");
-    expect(select.value).toBe("zh-CN");
+    expect(select.value).toBe("en");
     expect(mocks.fetch).toHaveBeenCalledWith("/api/locale", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

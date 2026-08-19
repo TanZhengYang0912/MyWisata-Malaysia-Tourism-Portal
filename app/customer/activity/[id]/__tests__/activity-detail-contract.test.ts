@@ -10,6 +10,20 @@ describe("activity add-to-cart error handling", () => {
     expect(source).toContain("catch (error)");
     expect(source).toContain("Unable to add this item to your cart");
   });
+
+  it("gates cart and chat mutations before their writes", () => {
+    const addHandler = source.slice(source.indexOf("async function handleAddToCart"), source.indexOf("async function handleChat"));
+    const chatStart = source.indexOf("async function handleChat");
+    const chatHandler = source.slice(chatStart, source.indexOf("  return (", chatStart));
+    expect(addHandler.indexOf("CUSTOMER_CAPABILITY.CART_MUTATION"))
+      .toBeLessThan(addHandler.indexOf("await addItem"));
+    expect(chatHandler.indexOf("CUSTOMER_CAPABILITY.ACCOUNT_MUTATION"))
+      .toBeLessThan(chatHandler.indexOf("getOrCreateThread"));
+  });
+
+  it("uses the shared image-error fallback", () => {
+    expect(source).toContain("ResilientImage");
+  });
 });
 
 describe("place-bound activity presentation", () => {

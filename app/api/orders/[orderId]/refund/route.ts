@@ -20,6 +20,17 @@ export async function POST(request: Request, { params }: Props) {
   if (order.status !== 'paid' && order.status !== 'completed') return apiFail('INVALID_STATE', 'Only paid orders can be refunded', 409);
   const { data: payment } = await service.from('payments').select('id,status').eq('order_id', orderId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!payment || payment.status !== 'succeeded') return apiFail('INVALID_STATE', 'A successful payment is required', 409);
+  const { data: existingRefund, error: existingRefundError } = await service
+    .from('refunds')
+    .select('id,status')
+    .eq('payment_id', payment.id)
+    .in('status', ['pending', 'approved', 'processed'])
+    .limit(1)
+    .maybeSingle();
+  if (existingRefundError) return apiFail('DB_ERROR', 'Unable to verify refund state', 500);
+  if (existingRefund) {
+    return apiFail('REFUND_ALREADY_REQUESTED', 'A refund is already active or completed for this payment', 409);
+  }
   const { data, error } = await service.from('refunds').insert({ payment_id: payment.id, order_id: orderId, amount: order.total_amount, reason: parsed.data.reason, status: 'pending' }).select('id,status,amount,reason,created_at').single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
 

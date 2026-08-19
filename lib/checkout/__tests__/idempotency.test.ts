@@ -17,4 +17,21 @@ describe("checkout idempotency request", () => {
     expect(first).toEqual(second);
     expect(buildCheckoutRequestHash(first)).toBe(buildCheckoutRequestHash(second));
   });
+
+  it("binds an external simulator provider into the idempotency hash", () => {
+    const tng = normalizeCheckoutRequest({
+      selectedKeys: ["activity|variant||outlet"],
+      paymentMethod: "ewallet",
+      paymentProvider: "tng_ewallet_simulator",
+    });
+    const grab = normalizeCheckoutRequest({
+      selectedKeys: ["activity|variant||outlet"],
+      paymentMethod: "ewallet",
+      paymentProvider: "grabpay_simulator",
+    });
+
+    expect(tng.paymentProvider).toBe("tng_ewallet_simulator");
+    expect(grab.paymentProvider).toBe("grabpay_simulator");
+    expect(buildCheckoutRequestHash(tng)).not.toBe(buildCheckoutRequestHash(grab));
+  });
 });

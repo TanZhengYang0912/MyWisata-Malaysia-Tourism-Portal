@@ -3,8 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/customer/vendor/[vendorId]/page.tsx"), "utf8");
+const outletMenuSource = readFileSync(resolve(process.cwd(), "components/outlet/outlet-menu.tsx"), "utf8");
 
 describe("customer vendor profile image contract", () => {
+  it("uses the shared fallback for runtime media failures", () => {
+    expect(pageSource).toContain("ResilientImage");
+  });
   it("uses only the vendor cover for the vendor hero", () => {
     expect(pageSource).toContain("const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });");
     expect(pageSource).toContain("const heroImage = vendorVisual.coverUrl;");
@@ -32,7 +36,13 @@ describe("customer vendor commerce boundary", () => {
   it("keeps vendor product cards in discovery mode", () => {
     expect(pageSource).toContain("function vendorProductDetailHref");
     expect(pageSource).toContain("source=vendor");
-    expect(pageSource).toContain("View product details");
+    expect(pageSource).toContain("t('ui.vendor.viewProductDetails')");
     expect(pageSource).toContain("product.soldAt.length");
+  });
+
+  it("gates outlet add and buy before mutating the cart", () => {
+    expect(outletMenuSource).toContain("CUSTOMER_CAPABILITY.CART_MUTATION");
+    expect(outletMenuSource.indexOf("CUSTOMER_CAPABILITY.CART_MUTATION"))
+      .toBeLessThan(outletMenuSource.indexOf("await addItem"));
   });
 });

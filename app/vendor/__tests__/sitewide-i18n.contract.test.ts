@@ -151,6 +151,15 @@ describe("vendor and outlet sitewide i18n contract", () => {
     expect(callsBoundTranslator(source), `${file} must call its bound translator; a hook alone is insufficient`).toBe(true);
   });
 
+  it("marks every vendor module that calls useTranslation as a Client Component", () => {
+    for (const file of VENDOR_I18N_FILES) {
+      const source = read(file);
+      if (!source.includes("useTranslation(")) continue;
+      expect(source, `${file} calls a React hook and must declare the client boundary`)
+        .toMatch(/^['"]use client['"];?/);
+    }
+  });
+
   it("keeps representative vendor semantics dedicated and complete in all locales", () => {
     const resources = {
       en: JSON.parse(read("app/i18n/locales/en/vendor.json")),

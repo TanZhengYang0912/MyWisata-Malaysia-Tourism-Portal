@@ -56,6 +56,10 @@ export type WithdrawalReviewDetail = {
     occurredAt: string | null;
     retryable: boolean | null;
   };
+  payoutExecution: {
+    locked: boolean;
+    claimedAt: string | null;
+  };
 };
 
 export type WithdrawalReviewLedgerRow = {

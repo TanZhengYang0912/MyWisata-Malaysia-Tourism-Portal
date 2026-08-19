@@ -12,7 +12,7 @@ describe("Booking day drawer", () => {
     expect(drawerSource).toContain('role="dialog"');
     expect(drawerSource).toContain('aria-modal="true"');
     expect(drawerSource).toContain('aria-labelledby="booking-day-drawer-title"');
-    expect(drawerSource).toContain('aria-label="Close booking list"');
+    expect(drawerSource).toContain('aria-label={t("ui.calendar.closeBookingList")}');
     expect(drawerSource).toContain('href={`/customer/bookings/${booking.id}`}');
     expect(drawerSource).toContain("items-center justify-center");
     expect(drawerSource).toContain("max-h-[min(780px,calc(100vh-2rem))]");
@@ -31,16 +31,16 @@ describe("Booking day drawer", () => {
     expect(drawerSource).toContain("groups:");
     expect(drawerSource).toContain("group.bookings.map");
     expect(drawerSource).toContain("group.totalQty");
-    expect(drawerSource).toContain("guests across");
+    expect(drawerSource).toContain('t("ui.calendar.guestsAcrossBookings"');
   });
 
   it("keeps large booking groups scannable inside a bounded order list", () => {
-    expect(drawerSource).toContain("Bookings");
+    expect(drawerSource).toContain('t("ui.labels.bookings")');
     expect(drawerSource).toContain("max-h-56");
     expect(drawerSource).toContain("sm:grid-cols-2");
     expect(drawerSource).toContain("String(index + 1).padStart(2, \"0\")");
-    expect(drawerSource).toContain("View booking");
-    expect(drawerSource).toContain("Booking");
+    expect(drawerSource).toContain('t("ui.actions.viewBooking")');
+    expect(drawerSource).toContain('t("ui.labels.booking")');
     expect(drawerSource).not.toContain("Order #");
     expect(drawerSource).not.toContain("booking.orderId.slice(0, 8)");
     expect(drawerSource).not.toContain("items-center gap-x-3 gap-y-1 border-t");

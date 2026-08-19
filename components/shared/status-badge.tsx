@@ -9,6 +9,7 @@ const STYLES: Record<string, string> = {
   PAID:            "bg-primary/15 text-primary",
   COMPLETED:       "bg-primary/15 text-primary",
   CANCELLED:       "bg-destructive/12 text-destructive",
+  REFUNDED:        "bg-secondary text-muted-foreground",
   pending:         "bg-accent/25 text-[#B08020]",
   pending_review:  "bg-accent/25 text-[#B08020]",
   change_requested:"bg-orange-100 text-orange-700",
@@ -33,6 +34,7 @@ const LABELS: Record<string, string> = {
   PAID:            "Paid",
   COMPLETED:       "Completed",
   CANCELLED:       "Cancelled",
+  REFUNDED:        "Refunded",
   pending:         "Pending",
   pending_review:  "Pending review",
   change_requested:"Changes requested",
@@ -57,6 +59,7 @@ export const STATUS_LABEL_KEYS: Readonly<Record<string, string>> = {
   PAID: "statuses.paid",
   COMPLETED: "statuses.completed",
   CANCELLED: "statuses.cancelled",
+  REFUNDED: "statuses.refunded",
   pending: "statuses.pending",
   pending_review: "statuses.pendingReview",
   change_requested: "statuses.changesRequested",
@@ -79,7 +82,6 @@ export const STATUS_LABEL_KEYS: Readonly<Record<string, string>> = {
 function ownString(map: Readonly<Record<string, string>>, key: string): string | undefined {
   return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
 }
-
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
   const { t } = useTranslation("common");
   const labelKey = ownString(STATUS_LABEL_KEYS, status);

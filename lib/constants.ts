@@ -17,6 +17,7 @@ export type Tier = typeof TIER_ORDER[number];
 
 export const REQUIRED_TIER = {
   CHECKOUT:        'phone_verified',
+  BASIC_AI:        'phone_verified',
   RECOMMENDATION:  'profile_complete',
   AFFILIATE_BASIC: 'profile_complete',
   AFFILIATE_FULL:  'kyc_verified',

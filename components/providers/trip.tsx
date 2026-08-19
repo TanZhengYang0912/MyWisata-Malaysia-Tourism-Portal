@@ -2,8 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-
-const STORAGE_KEY = "mywisata:trip";
+import { useAuth } from "@/components/providers/auth";
 
 // One special stop id — there is at most one "location" (your origin point) in
 // the list, and it keeps this stable id so drag/reorder treats it like any other
@@ -50,33 +49,42 @@ const TripContext = createContext<TripContextValue | null>(null);
 export function TripProvider({ children }: { children: ReactNode }) {
   const [stops, setStops] = useState<TripStop[]>([]);
   const [mounted, setMounted] = useState(false);
+  const { currentUser } = useAuth();
 
   // A trip is throwaway planning state — localStorage only, no DB table. Only
   // the current { stops } shape is honoured; an old { start, stops } payload
   // (pre-unify) is discarded rather than migrated — this is pre-launch demo
   // data with no real users to preserve trips for.
   useEffect(() => {
+    setMounted(false);
+    if (!currentUser) {
+      setStops([]);
+      setMounted(true);
+      return;
+    }
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(`mywisata:trip:${currentUser.id}`);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredTrip> & { start?: unknown };
-        if (parsed.start === undefined && Array.isArray(parsed.stops)) setStops(parsed.stops);
+        setStops(parsed.start === undefined && Array.isArray(parsed.stops) ? parsed.stops : []);
+      } else {
+        setStops([]);
       }
     } catch {
-      // corrupt/unavailable storage — start fresh
+      setStops([]);
     }
     setMounted(true);
-  }, []);
+  }, [currentUser?.id]);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!currentUser || !mounted) return;
     const payload: StoredTrip = { stops };
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      window.localStorage.setItem(`mywisata:trip:${currentUser.id}`, JSON.stringify(payload));
     } catch {
       // storage full/unavailable — trip just won't persist this change
     }
-  }, [mounted, stops]);
+  }, [currentUser?.id, mounted, stops]);
 
   const has = useCallback((id: string) => stops.some((s) => s.id === id), [stops]);
 

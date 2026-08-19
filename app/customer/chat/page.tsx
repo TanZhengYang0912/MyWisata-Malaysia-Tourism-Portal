@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 
 type ChatFilter = "all" | "unread" | "needs_reply";
 
@@ -35,9 +36,19 @@ export default function ChatListPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setThreads([]);
+      setOutlets(new Map());
+      setMessagesByThread(new Map());
+      setReadMessageIds(new Set());
+      setReadByOthersIds(new Set());
+      setLoadError(null);
+      setLoadedUserId(null);
+      return;
+    }
     let cancelled = false;
 
     (async () => {
@@ -57,8 +68,14 @@ export default function ChatListPage() {
         setMessagesByThread(new Map(list.map((thread, index) => [thread.id, messages[index]])));
         setReadMessageIds(reads);
         setReadByOthersIds(readByOthers);
+        setLoadError(null);
+        setLoadedUserId(currentUser.id);
       } catch {
-        if (!cancelled) setLoadError("We couldn't load your conversations. Please refresh and try again.");
+        if (!cancelled) {
+          setThreads([]);
+          setLoadError("We couldn't load your conversations. Please refresh and try again.");
+          setLoadedUserId(currentUser.id);
+        }
       }
     })();
 
@@ -163,8 +180,12 @@ export default function ChatListPage() {
     };
   }, [currentUser]);
 
-  if (!currentUser || threads === null) {
-    return <div className="mx-auto max-w-7xl px-4 py-16 text-sm text-muted-foreground sm:px-6">Loading conversations…</div>;
+  if (!currentUser) {
+    return <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath="/customer/chat" value="0 messages" /></div>;
+  }
+
+  if (threads === null || loadedUserId !== currentUser.id) {
+    return <div className="mx-auto max-w-7xl px-4 py-16 text-sm text-muted-foreground sm:px-6">{tCustomer("ui.states.loading")}</div>;
   }
 
   if (loadError) {

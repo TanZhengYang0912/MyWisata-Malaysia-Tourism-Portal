@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
@@ -47,6 +48,7 @@ export function NearbyOutlets({
   outlets: { outlet: Outlet; km: number }[];
   maxRadiusKm: number;
 }) {
+  const { t } = useTranslation("customer");
   const radiusOptions = [...new Set([1, 3, maxRadiusKm].filter((km) => km <= maxRadiusKm))];
   const [radius, setRadius] = useState(maxRadiusKm);
   const [category, setCategory] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function NearbyOutlets({
   return (
     <section className="mt-8">
       <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-        Nearby businesses
+        {t("ui.nearbyOutlets.title")}
       </h2>
 
       {outlets.length > 0 && (
@@ -84,7 +86,7 @@ export function NearbyOutlets({
                 category === null ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
             >
-              All
+              {t("ui.nearbyOutlets.all")}
             </button>
             {categoriesPresent.map((label) => (
               <button
@@ -98,7 +100,7 @@ export function NearbyOutlets({
                   category === label ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {label}
+                {t(DISCOVERY_CATEGORIES.find((categoryOption) => categoryOption.label === label)?.labelKey ?? "categories.activity", { defaultValue: label })}
               </button>
             ))}
           </div>
@@ -116,7 +118,7 @@ export function NearbyOutlets({
                     radius === km ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {km} km
+                  {t("ui.nearbyOutlets.radius", { km })}
                 </button>
               ))}
             </div>
@@ -126,7 +128,7 @@ export function NearbyOutlets({
 
       {filtered.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No other outlets in range.
+          {t("ui.nearbyOutlets.empty")}
         </p>
       ) : (
         <>
@@ -136,9 +138,9 @@ export function NearbyOutlets({
             ))}
           </div>
           <DirectoryPagination
-            ariaLabel="Nearby business pages"
+            ariaLabel={t("ui.nearbyOutlets.paginationLabel")}
             currentPage={safePage}
-            itemLabel="businesses"
+            itemLabel={t("ui.nearbyOutlets.itemLabel")}
             onPageChange={setPage}
             pageSize={PAGE_SIZE}
             totalItems={filtered.length}
@@ -149,7 +151,7 @@ export function NearbyOutlets({
 
       <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-5 text-muted-foreground">
         <MapPin size={12} className="mt-0.5 shrink-0" />
-        Computed from coordinates, not a foreign key — it crosses district and state boundaries, which a parent/child lookup cannot.
+        {t("ui.nearbyOutlets.coordinateNote")}
       </p>
     </section>
   );

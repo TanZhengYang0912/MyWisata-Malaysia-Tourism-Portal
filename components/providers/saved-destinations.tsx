@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/components/providers/auth";
 
 type SavedDestinationRecord = {
   state: string;
@@ -21,9 +22,21 @@ export function SavedDestinationsProvider({ children }: { children: ReactNode })
   const [savedStates, setSavedStates] = useState<ReadonlySet<string>>(new Set());
   const [savedAt, setSavedAt] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
+  const activeUserIdRef = useRef<string | null>(currentUser?.id ?? null);
+  activeUserIdRef.current = currentUser?.id ?? null;
 
   useEffect(() => {
+    if (!currentUser) {
+      setSavedStates(new Set());
+      setSavedAt(new Map());
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
+    setSavedStates(new Set());
+    setSavedAt(new Map());
+    setLoading(true);
     fetch("/api/saved-destinations")
       .then(async (response) => {
         if (!response.ok) return;
@@ -43,9 +56,11 @@ export function SavedDestinationsProvider({ children }: { children: ReactNode })
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser?.id]);
 
   const toggleSaved = useCallback(async (destinationState: string) => {
+    if (!currentUser) return false;
+    const userId = currentUser.id;
     const wasSaved = savedStates.has(destinationState);
     const nextSaved = !wasSaved;
     const savedAtNow = new Date().toISOString();
@@ -72,6 +87,7 @@ export function SavedDestinationsProvider({ children }: { children: ReactNode })
       if (!response.ok) throw new Error("Saved destination update failed");
       return nextSaved;
     } catch {
+      if (activeUserIdRef.current !== userId) return false;
       setSavedStates((current) => {
         const next = new Set(current);
         if (wasSaved) next.add(destinationState);
@@ -86,7 +102,7 @@ export function SavedDestinationsProvider({ children }: { children: ReactNode })
       });
       return wasSaved;
     }
-  }, [savedAt, savedStates]);
+  }, [currentUser, savedAt, savedStates]);
 
   const value = useMemo(() => ({ savedStates, savedAt, loading, toggleSaved }), [savedStates, savedAt, loading, toggleSaved]);
   return <SavedDestinationsContext.Provider value={value}>{children}</SavedDestinationsContext.Provider>;

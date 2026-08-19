@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Accessibility, CheckCircle, Clock, Heart, ImageOff, MapPin, Star, Store } from "lucide-react";
 import { useWishlist } from "@/components/providers/wishlist";
 import { AiTag } from "./ai-tag";
@@ -9,11 +10,15 @@ import { ShareButton } from "@/components/shared/share-button";
 import type { ComputedActivity } from "@/backend/core/types";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 
 export function ActivityCard({ activity, recommendationReason, returnTo }: { activity: ComputedActivity; recommendationReason?: string; returnTo?: string }) {
+  const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const { savedIds, toggleSaved } = useWishlist();
+  const guard = useCustomerCapabilityGate();
   const saved = savedIds.has(activity.id);
   const imageSrc = activity.image?.trim();
   const activityHref = buildActivityPath(activity.id, returnTo);
@@ -26,6 +31,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
     event.preventDefault();
     event.stopPropagation();
     if (saving) return;
+    if (!guard(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, activityHref)) return;
     setSaving(true);
     await toggleSaved(activity.id);
     setSaving(false);
@@ -45,7 +51,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
             >
               <ImageOff size={30} strokeWidth={1.5} aria-hidden="true" />
               <span className="mt-2 text-xs font-bold">{activity.category || "Experience"}</span>
-              <span className="mt-0.5 text-[10px] text-slate-500">Image unavailable</span>
+              <span className="mt-0.5 text-[10px] text-slate-500">{t("ui.labels.imageUnavailable", { defaultValue: "Image unavailable" })}</span>
             </div>
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -58,10 +64,10 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
             />
           )}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.5) 0%, transparent 55%)" }} />
-          {activity.hot && <div className="absolute left-3 top-3 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">🔥 Trending</div>}
-          {activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} /> Verified</div>}
-          {activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title="Wheelchair accessible"><Accessibility size={9} /> Accessible</div>}
-          {!activity.outlet.open && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>Closed</div>}
+          {activity.hot && <div className="absolute left-3 top-3 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">🔥 {t("ui.labels.trending")}</div>}
+          {activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} /> {t("ui.labels.verified")}</div>}
+          {activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title={t("ui.labels.wheelchairAccessible")}><Accessibility size={9} /> {t("ui.labels.accessible")}</div>}
+          {!activity.outlet.open && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>{t("ui.labels.closed")}</div>}
         </Link>
         <button
           type="button"
@@ -93,7 +99,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
         {(activity.aiTag || recommendationReason) && <AiTag text={recommendationReason ?? activity.aiTag ?? ""} />}
         <div className="mw-card-footer pt-1">
           <div><span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {activity.price}</span><span className="ml-1 text-xs text-muted-foreground">/ person</span></div>
-          <Link href={activityHref} className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white">{activity.requiresBooking ? "Book Now" : "Buy Now"}</Link>
+          <Link href={activityHref} className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white">{activity.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow")}</Link>
         </div>
       </div>
     </article>

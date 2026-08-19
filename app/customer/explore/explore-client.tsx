@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Compass, Map } from "lucide-react";
+import { Compass, Map } from "lucide-react";
 import { searchActivities, CATEGORIES } from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { CategoryIcon } from "@/components/customer/category-icon";
@@ -32,6 +33,7 @@ export function ExploreClient({
   statesWithPlaces?: string[];
   placeCountByState?: Record<string, number>;
 }) {
+  const { t } = useTranslation("customer");
   const [tab, setTab] = useState<ExploreTab>("destinations");
   const [category, setCategory] = useState<string | null>(null);
   const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
@@ -52,12 +54,12 @@ export function ExploreClient({
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Explore Malaysia</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-                Where do you want to go?
+                {t("ui.explore.title")}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Find your next destination or discover the experience that fits your mood.
+                {t("ui.explore.description")}
               </p>
             </div>
 
@@ -73,7 +75,7 @@ export function ExploreClient({
                 }`}
               >
                 <Map size={15} />
-                Destinations
+                {t("ui.explore.destinations")}
               </button>
               <button
                 type="button"
@@ -85,7 +87,7 @@ export function ExploreClient({
                 }`}
               >
                 <Compass size={15} />
-                Experiences
+                {t("ui.explore.experiences")}
               </button>
             </div>
           </div>
@@ -102,8 +104,8 @@ export function ExploreClient({
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">States &amp; Cities</p>
-                <h2 className="mt-1 text-2xl font-bold text-foreground">Explore by Destination</h2>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.statesAndCities")}</p>
+                <h2 className="mt-1 text-2xl font-bold text-foreground">{t("ui.explore.exploreByDestination")}</h2>
               </div>
             </div>
             <div className="space-y-12">
@@ -141,7 +143,7 @@ export function ExploreClient({
                                 <p className="mt-0.5 text-sm font-bold text-white">{dest.state}</p>
                                 {hasPlaces && placeCount > 0 && (
                                   <p className="mt-0.5 text-[10px] font-semibold text-white/80">
-                                    {placeCount} {placeCount === 1 ? "place" : "places"} to visit
+                                    {t("ui.place.placesToVisit", { count: placeCount })}
                                   </p>
                                 )}
                               </div>
@@ -164,14 +166,14 @@ export function ExploreClient({
           {/* Category filters */}
           <section className="mb-8">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-foreground">Filter by Category</h2>
+              <h2 className="text-lg font-bold text-foreground">{t("ui.explore.filterByCategory")}</h2>
               {category && (
                 <button
                   type="button"
                   onClick={() => setCategory(null)}
                   className="text-xs font-bold text-primary hover:underline"
                 >
-                  Clear
+                  {t("ui.explore.clear")}
                 </button>
               )}
             </div>
@@ -199,7 +201,7 @@ export function ExploreClient({
                     className="text-[10px] font-bold leading-tight"
                     style={{ color: category === cat.id ? "var(--primary)" : "var(--foreground)" }}
                   >
-                    {cat.label}
+                    {t(cat.id === "hidden_gem" ? "categories.hiddenGem" : `categories.${cat.id}`, { defaultValue: cat.label })}
                   </p>
                 </button>
               ))}
@@ -212,15 +214,15 @@ export function ExploreClient({
               <div>
                 <h2 className="text-lg font-bold text-foreground">
                   {category
-                    ? `${CATEGORIES.find((c) => c.id === category)?.label ?? ""} Experiences`
-                    : "All Experiences"}
+                    ? t("ui.explore.categoryExperiences", { category: t(category === "hidden_gem" ? "categories.hiddenGem" : `categories.${category}`, { defaultValue: CATEGORIES.find((c) => c.id === category)?.label ?? "" }) })
+                    : t("ui.explore.allExperiences")}
                 </h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">{activities.length} results</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: activities.length })}</p>
               </div>
             </div>
             {activities.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                No experiences found for this category.
+                {t("ui.explore.noExperiences")}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">

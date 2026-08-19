@@ -12,13 +12,20 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password: 'demo123456',
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 401 });
+    if (!data.session) return NextResponse.json({ error: 'Demo sign-in did not create a session' }, { status: 500 });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to sign in' },

@@ -105,14 +105,17 @@ export const checkoutPrepareSchema = z.object({
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),
   paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card']),
+  paymentProvider: z.enum([
+    'tng_ewallet_simulator',
+    'grabpay_simulator',
+    'bank_transfer_simulator',
+  ]).nullable().optional(),
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();
 
 export const checkoutFinalizeSchema = z.object({
   checkoutSessionId: uuid,
   outcome: z.enum(['succeeded', 'failed', 'cancelled', 'expired']),
-  providerPaymentId: z.string().max(255).optional(),
-  providerEventId: z.string().max(255).optional(),
 }).strict();
 
 // ── Response envelope ──────────────────────────────────────

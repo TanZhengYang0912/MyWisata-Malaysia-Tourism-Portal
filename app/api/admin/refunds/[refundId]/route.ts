@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
+import { createHmac } from 'node:crypto';
+import { isSimulatorCheckoutProvider } from '@/lib/payments/providers';
+import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
 
 const schema = z.object({ action: z.enum(['approve', 'reject']), note: z.string().trim().max(500).optional() }).strict();
 interface Props { params: Promise<{ refundId: string }> }
@@ -37,6 +40,23 @@ export async function POST(request: Request, { params }: Props) {
     }
     return apiOk(data);
   }
+  if (payment?.provider && isSimulatorCheckoutProvider(payment.provider)) {
+    if (!isPaymentSimulatorEnabled()) {
+      return apiFail('PAYMENT_SIMULATOR_UNAVAILABLE', 'Simulated provider refunds are unavailable in this environment', 503);
+    }
+    const secret = process.env.PAYMENT_SIMULATOR_WEBHOOK_SECRET ?? '';
+    const providerRefundId = `sim_refund_${createHmac('sha256', secret)
+      .update(`${refundId}:${payment.provider}`)
+      .digest('hex')
+      .slice(0, 40)}`;
+    const { data, error } = await service.rpc('begin_simulated_refund', {
+      p_refund_id: refundId,
+      p_provider: payment.provider,
+      p_provider_refund_id: providerRefundId,
+    });
+    if (error) return apiFail('REFUND_FAILED', error.message, 409);
+    return apiOk(data);
+  }
   if (payment?.provider === 'stripe') {
     if (!payment.provider_payment_id) return apiFail('INVALID_STATE', 'Stripe payment reference is missing', 409);
     try {
@@ -44,7 +64,10 @@ export async function POST(request: Request, { params }: Props) {
       const session = await stripe.checkout.sessions.retrieve(payment.provider_payment_id, { expand: ['payment_intent'] });
       const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
       if (!paymentIntent) return apiFail('INVALID_STATE', 'Stripe payment intent is not available yet', 409);
-      await stripe.refunds.create({ payment_intent: paymentIntent, amount: Math.round(Number(refund.amount) * 100) });
+      await stripe.refunds.create(
+        { payment_intent: paymentIntent, amount: Math.round(Number(refund.amount) * 100) },
+        { idempotencyKey: `refund:${refundId}` },
+      );
     } catch (error) {
       return apiFail('REFUND_FAILED', error instanceof Error ? error.message : 'Stripe refund failed', 502);
     }

@@ -138,6 +138,40 @@ For normal implementation, use one focused final review after the code and
 tests are ready. Use additional review cycles only for a confirmed must-fix
 risk under the rules above.
 
+### Luna Worker Join Barrier
+
+When a `luna_worker` result is required before implementation or final
+verification can continue, mark the delegation as **BLOCKING**.
+
+For a **BLOCKING** delegation:
+
+1. Assign `luna_worker` one exclusive, bounded scope with explicit files,
+   responsibilities, output requirements, and a timebox.
+2. The main agent must not inspect, edit, test, implement, or independently
+   review the same scope while `luna_worker` is running.
+3. The main agent may continue only work that is explicitly disjoint from the
+   delegated scope.
+4. Before beginning dependent work or claiming completion, the main agent must
+   wait until `luna_worker` returns its final result.
+5. A timeout does not authorize a concurrent fallback. Request status once,
+   then either continue waiting or interrupt `luna_worker`.
+6. The main agent may take ownership of the delegated scope only after
+   `luna_worker` has been interrupted or has otherwise stopped.
+7. Never allow `luna_worker` and the main agent to execute the same task or
+   fallback concurrently.
+8. Unless explicitly authorized, `luna_worker` must perform one bounded pass,
+   must not spawn additional subagents, and must return confirmed findings,
+   affected files, verification performed, and blockers.
+
+For a non-blocking delegation, give `luna_worker` an independent scope and a
+clear handoff point. The main agent may work in parallel, but must still avoid
+duplicating that scope and must collect the result before any dependent final
+decision.
+
+Suggested timeboxes are 10 minutes for a focused read-only review and 20
+minutes for bounded test execution. Use a longer timebox only when the task
+itself clearly requires it, and state that reason before delegation.
+
 ---
 
 ## Documentation

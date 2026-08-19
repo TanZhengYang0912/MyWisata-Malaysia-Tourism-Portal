@@ -10,11 +10,11 @@ const chatSource = readFileSync(resolve(workspace, "components/shared/chatbot-wi
 const stateSource = readFileSync(resolve(workspace, "lib/demo-map/data.ts"), "utf8");
 
 describe("Malaysia state discovery map", () => {
-  it("renders a permanent English label layer for every state coordinate", () => {
+  it("renders a permanent localized label layer for every state coordinate", () => {
     expect(stateSource).toContain('name: "Perlis"');
     expect(stateSource).toContain('name: "Labuan"');
     expect(mapSource).toContain("STATE_LABEL_LAYOUT");
-    expect(mapSource).toContain('aria-label="Malaysia state labels"');
+    expect(mapSource).toContain('aria-label={t("ui.map.allStatesTerritories")}');
     expect(mapSource).toContain("DEMO_STATES.map((state)");
     expect(mapSource).toContain("{state.name}");
     expect(mapSource).toContain("statePlacesCount(stateCounts, state.id)");
@@ -26,7 +26,8 @@ describe("Malaysia state discovery map", () => {
   it("keeps the label layer tied to the matching independent regional projection", () => {
     expect(mapSource).toContain("const region = regionForState(state.id)");
     expect(mapSource).toContain("projected({ lat: state.label[1], lng: state.label[0] }, region)");
-    expect(mapSource).toContain("aria-label={`Select ${state.name}`}");
+    expect(mapSource).toContain('aria-label={selectStateLabel(state.name)}');
+    expect(mapSource).toContain('t("ui.map.selectState", { name })');
   });
 
   it("routes labels with orthogonal leader paths instead of diagonal lines", () => {
@@ -58,8 +59,8 @@ describe("Malaysia state discovery map", () => {
   });
 
   it("uses the reference map plate palette and independent region framing", () => {
-    expect(mapSource).toContain("All states and federal territories");
-    expect(mapSource).toContain("West and East Malaysia scaled independently");
+    expect(mapSource).toContain('t("ui.map.allStatesTerritories")');
+    expect(mapSource).toContain('t("ui.map.independentScaleNote")');
     expect(mapSource).toContain("#eef2ff");
     expect(mapSource).toContain("#dce4ff");
   });
@@ -106,7 +107,13 @@ describe("Malaysia state discovery map", () => {
     expect(storySource).toContain("aria-pressed={activity.id === selectedPlaceId}");
   });
 
+  it("never passes an empty catalogue image directly to an img src", () => {
+    expect(storySource).toContain('import { ResilientImage } from "@/components/shared/resilient-image";');
+    expect(storySource.match(/<ResilientImage/g)).toHaveLength(2);
+    expect(storySource).not.toMatch(/<img\s+src=\{(?:selectedActivity|activity)\.image\}/);
+  });
+
   it("gives the floating chat control an accessible name", () => {
-    expect(chatSource).toContain('aria-label="Open chat"');
+    expect(chatSource).toContain('aria-label={t("accessibility.openChat"');
   });
 });

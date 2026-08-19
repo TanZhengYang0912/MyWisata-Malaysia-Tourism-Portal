@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const ordersSource = readFileSync(resolve(process.cwd(), "app/customer/orders/page.tsx"), "utf8");
+const ordersSource = readFileSync(resolve(process.cwd(), "components/customer/customer-orders-view.tsx"), "utf8");
 
 describe("customer orders-first layout", () => {
   it("keeps order metrics compact instead of rendering three large cards", () => {

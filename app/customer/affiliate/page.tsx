@@ -1,12 +1,11 @@
 "use client";
-
-import { useTranslation } from "react-i18next";
 // P4 — Member 4: user affiliate dashboard. See CLAUDE.md Step 6, rebuilt per
 // CLAUDE-FIXES.md Fix 3. Now reachable from the main customer nav
 // (app/customer/layout.tsx's "Earn & Share" entry) — Fix 3a.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { Copy, Download, Gift, Link2, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { isAffiliateEligible } from "@/lib/affiliate/verification";
@@ -23,6 +22,9 @@ import type { AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } 
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY, resolveCustomerAccess } from "@/lib/auth/customer-capabilities";
 
 interface StatsResponse {
   affiliateCode: string | null;
@@ -40,6 +42,7 @@ type SortKey = "shares" | "clicks" | "referrals" | "earnings";
 export default function AffiliateDashboardPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, loading: authLoading } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<StatsResponse | null | undefined>(undefined); // undefined = loading
   const [generating, setGenerating] = useState(false);
@@ -50,9 +53,10 @@ export default function AffiliateDashboardPage() {
   // CLAUDE-P4-EXTRAS-2.md Extra 6.
   const [exportRange, setExportRange] = useState<EarningsExportRange>("all");
   const [exporting, setExporting] = useState(false);
+  const limitedAccess = resolveCustomerAccess(currentUser, CUSTOMER_CAPABILITY.AFFILIATE_LIMITED) === "allowed";
 
   async function downloadEarnings() {
-    if (exporting) return;
+    if (exporting || !gate(CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "/customer/affiliate")) return;
     setExporting(true);
     try {
       const res = await fetch(`/api/affiliate/earnings-export?range=${exportRange}`);
@@ -91,11 +95,14 @@ export default function AffiliateDashboardPage() {
   }
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !limitedAccess) {
+      setStats(undefined);
+      return;
+    }
     (async () => {
       await loadStats();
     })();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, limitedAccess]);
 
   const sortedProducts = useMemo(() => {
     if (!stats) return [];
@@ -115,7 +122,7 @@ export default function AffiliateDashboardPage() {
   }
 
   async function generateLink() {
-    if (generating) return;
+    if (generating || !gate(CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "/customer/affiliate")) return;
     setGenerating(true);
     try {
       const response = await fetch("/api/affiliate/link", { method: "POST" });
@@ -146,12 +153,12 @@ export default function AffiliateDashboardPage() {
   }
 
   if (!currentUser) {
-    return <CustomerPageShell><EmptyState title="Sign in required" description="Sign in to see your affiliate dashboard." /></CustomerPageShell>;
+    return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.noStats")} description={tCustomer("ui.profile.languageDescription")} nextPath="/customer/affiliate" value="RM 0.00" /></CustomerPageShell>;
   }
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —
   // this is how the feature recruits affiliates in the first place.
-  if (!isAffiliateEligible(currentUser)) {
+  if (!limitedAccess || !isAffiliateEligible(currentUser)) {
     return (
       <CustomerPageShell>
       <CustomerPageHeader
@@ -164,13 +171,15 @@ export default function AffiliateDashboardPage() {
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Gift size={24} className="text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground mb-6">Verify your account to unlock affiliate sharing and earnings.</p>
-        <Button asChild>
-          <Link href="/customer/kyc">Verify my account</Link>
-        </Button>
+        <p className="text-sm text-muted-foreground mb-6">{tCustomer("ui.profile.languageDescription")}</p>
+        <Button type="button" onClick={() => gate(CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "/customer/affiliate")}>{tCustomer("ui.actions.completeProfile")}</Button>
       </div>
       </CustomerPageShell>
     );
+  }
+
+  if (stats === undefined) {
+    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">{tCustomer("ui.affiliate.loadingDashboard")}</div></CustomerPageShell>;
   }
 
   if (stats === null) {

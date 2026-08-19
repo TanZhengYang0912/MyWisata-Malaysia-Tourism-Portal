@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getServerTranslation } from '@/lib/i18n/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Store } from 'lucide-react';
@@ -7,11 +8,12 @@ import { getVendorOnboardingStatus } from '@/lib/vendor/onboarding-status';
 import { CustomerPageHeader, CustomerPageShell, CustomerPanel } from '@/components/customer/customer-page-shell';
 
 export default async function RegisterVendorPage() {
+  const { t } = await getServerTranslation('customer');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login');
+    redirect('/login?next=%2Fcustomer%2Fprofile%2Fregister-vendor');
   }
 
   // Check if they already have a vendor account
@@ -27,12 +29,12 @@ export default async function RegisterVendorPage() {
       <CustomerPageShell>
         <CustomerPanel className="p-6 md:p-8">
           <Link href="/customer/profile" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <span>←</span> Back to Profile
+            <span>←</span> {t('ui.actions.backToResults')}
           </Link>
-          <CustomerPageHeader eyebrow="Vendor application" title={vendor.name} description={status.description} icon={<Store size={14} />} className="mb-6" />
+          <CustomerPageHeader eyebrow={t('ui.profile.contributorProfile')} title={vendor.name} description={status.description} icon={<Store size={14} />} className="mb-6" />
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{status.label}</span>
-            {vendor.status === 'approved' && <Link href="/vendor/dashboard" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">Open vendor dashboard</Link>}
+            {vendor.status === 'approved' && <Link href="/vendor/dashboard" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{t('ui.actions.viewDetails')}</Link>}
           </div>
         </CustomerPanel>
       </CustomerPageShell>
@@ -42,11 +44,11 @@ export default async function RegisterVendorPage() {
   return (
     <CustomerPageShell>
       <Link href="/customer/profile" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <span>←</span> Back to Profile
+        <span>←</span> {t('ui.actions.backToResults')}
       </Link>
       <CustomerPageHeader
-        eyebrow="Vendor application"
-        title="Become a Vendor"
+        eyebrow={t('ui.profile.contributorProfile')}
+        title={t('accountItems.becomeVendor.label')}
         description="Apply to list your tours, food, stays, or local experiences. Admin approval is required before anything is visible to travellers."
         icon={<Store size={14} />}
         className="mb-6"

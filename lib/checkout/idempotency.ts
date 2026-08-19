@@ -4,12 +4,14 @@ export type CheckoutRequest = {
   selectedKeys?: string[];
   voucherCode?: string | null;
   paymentMethod: string;
+  paymentProvider?: string | null;
 };
 
 export type NormalizedCheckoutRequest = {
   selectedKeys: string[] | null;
   voucherCode: string | null;
   paymentMethod: string;
+  paymentProvider: string | null;
 };
 
 export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedCheckoutRequest {
@@ -21,6 +23,7 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
     selectedKeys,
     voucherCode: input.voucherCode?.trim().toUpperCase() || null,
     paymentMethod: input.paymentMethod.trim().toLowerCase(),
+    paymentProvider: input.paymentProvider?.trim().toLowerCase() || null,
   };
 }
 

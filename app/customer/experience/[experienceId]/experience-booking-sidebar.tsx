@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { Check, Star, Minus, Plus } from "lucide-react";
 import { useCart } from "@/components/providers/cart";
 import { useTrip } from "@/components/providers/trip";
@@ -17,6 +17,7 @@ export function ExperienceBookingSidebar({
   slots: BookingSlot[];
   outletId: string;
 }) {
+  const { t } = useTranslation("customer");
   const { addItem } = useCart();
   const trip = useTrip();
   const [tripAdded, setTripAdded] = useState(false);
@@ -62,7 +63,7 @@ export function ExperienceBookingSidebar({
         <p className="text-3xl font-bold text-foreground">
           RM {unitPrice.toFixed(2)}
           <span className="ml-1 text-sm font-medium text-muted-foreground">
-            / person
+            {t("ui.experience.perPerson")}
           </span>
         </p>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -71,7 +72,7 @@ export function ExperienceBookingSidebar({
             {experience.rating > 0 ? experience.rating.toFixed(1) : "New"}
           </span>
           <span>·</span>
-          <span>{experience.reviews} reviews</span>
+          <span>{t("ui.experience.reviewCount", { count: experience.reviews })}</span>
         </div>
 
         <div className="mt-6 space-y-4">
@@ -79,7 +80,7 @@ export function ExperienceBookingSidebar({
           {experience.variants.length > 0 && (
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Package Option
+                {t("ui.experience.packageOption")}
               </label>
               <div className="space-y-2">
                 {experience.variants.map((v) => (
@@ -119,19 +120,19 @@ export function ExperienceBookingSidebar({
           {experience.requiresBooking && slots.length > 0 && (
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Availability
+                {t("ui.experience.availability")}
               </label>
               <select
                 value={slotId}
                 onChange={(e) => setSlotId(e.target.value)}
                 className="w-full appearance-none rounded-xl border border-border bg-transparent p-3 text-sm font-medium text-foreground outline-none transition hover:border-primary/30 focus:border-primary focus:ring-1 focus:ring-primary"
               >
-                <option value="" disabled>Select date and time</option>
+                <option value="" disabled>{t("ui.experience.selectDateTime")}</option>
                 {slots.map((s) => {
                   const available = s.capacity - s.booked;
                   return (
                     <option key={s.id} value={s.id} disabled={available <= 0}>
-                      {format(new Date(s.startsAt), "MMM d, yyyy · h:mm a")} ({available} left)
+                      {format(new Date(s.startsAt), "MMM d, yyyy · h:mm a")} ({t("ui.experience.slotsLeft", { count: available })})
                     </option>
                   );
                 })}
@@ -142,7 +143,7 @@ export function ExperienceBookingSidebar({
           {/* Traveller Count */}
           <div>
             <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Travellers
+              {t("ui.experience.travellers")}
             </label>
             <div className="flex items-center justify-between rounded-xl border border-border p-2">
               <button
@@ -174,7 +175,7 @@ export function ExperienceBookingSidebar({
             disabled={adding || (experience.requiresBooking && !slotId)}
             className="flex w-full items-center justify-center rounded-2xl bg-primary px-4 py-3.5 text-sm font-bold text-white transition hover:bg-primary/90 disabled:opacity-50"
           >
-            {added ? "Added!" : adding ? "Adding..." : "Book Now"}
+            {added ? t("ui.experience.added") : adding ? t("ui.experience.adding") : t("ui.experience.bookNow")}
           </button>
           <button
             type="button"
@@ -191,19 +192,19 @@ export function ExperienceBookingSidebar({
             disabled={tripAdded || trip.has(experience.id)}
             className="flex w-full items-center justify-center rounded-2xl border border-border px-4 py-3.5 text-sm font-bold text-foreground transition hover:border-primary/30 hover:text-primary disabled:opacity-50"
           >
-            {tripAdded || trip.has(experience.id) ? "Added to Trip!" : "+ Add to Trip"}
+            {tripAdded || trip.has(experience.id) ? t("ui.experience.addedToTrip") : t("ui.experience.addToTrip")}
           </button>
         </div>
 
         {qty > 0 && (
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm font-bold text-foreground">
-            <span>Total</span>
+            <span>{t("ui.experience.total")}</span>
             <span>RM {totalPrice.toFixed(2)}</span>
           </div>
         )}
         
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          No payment charged until booking is confirmed.
+          {t("ui.experience.noPaymentUntilConfirmed")}
         </p>
       </div>
     </aside>

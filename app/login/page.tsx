@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
-import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
+import { GUEST_EXPLORE_PATH, postLoginDestination, postLoginPath } from "@/lib/auth/guest-mode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,8 @@ import type { Role, User } from "@/backend/core/types";
 type DemoUser = User & { vendorName?: string; outletName?: string };
 type AuthMode = "signin" | "signup" | "verify" | "forgot";
 
-const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/customer", vendor_owner: "/vendor/dashboard", outlet_manager: "/vendor/dashboard",
-  admin: "/admin/dashboard", approver: "/admin/dashboard", super_admin: "/admin/dashboard",
-};
-
 export default function LoginPage() {
-  const { switchUser } = useAuth();
+  const { refreshUser, switchUser } = useAuth();
   const { t: tAuth } = useTranslation("auth");
   const { t: tCommon } = useTranslation("common");
   const GENERIC_ERROR = tAuth("errors.generic");
@@ -46,7 +41,9 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("error")) setError(GENERIC_ERROR);
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("error")) setError(GENERIC_ERROR);
+    if (searchParams.get("mode") === "signup") setMode("signup");
     fetch("/api/auth/demo-users")
       .then(async (response) => { if (!response.ok) throw new Error(tAuth("errors.demoLoad")); return response.json() as Promise<DemoUser[]>; })
       .then(setUsers)
@@ -55,16 +52,17 @@ export default function LoginPage() {
 
   function resetFeedback() { setError(null); setMessage(null); }
 
-  function requestedNext() {
-    return postLoginPath(new URLSearchParams(window.location.search).get("next"));
+  function requestedNext(role?: Role) {
+    return postLoginPath(new URLSearchParams(window.location.search).get("next"), role);
   }
 
   async function pick(user: User) {
     resetFeedback();
     try {
       const signedInUser = await switchUser(user.id, user);
-      const next = requestedNext();
-      router.push(next ?? HOME_BY_ROLE[signedInUser?.role ?? user.role]);
+      if (!signedInUser) return;
+      const role = signedInUser.role;
+      router.push(postLoginDestination(requestedNext(role), role));
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }
@@ -77,11 +75,16 @@ export default function LoginPage() {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session?.user.email_confirmed_at) {
       setMode("verify");
-       setMessage(tAuth("signIn.verifyEmailMessage"));
+      setMessage(tAuth("signIn.verifyEmailMessage"));
       startResendCooldown();
       return;
     }
-    router.push(requestedNext() ?? "/"); router.refresh();
+    try {
+      const signedInUser = await refreshUser();
+      if (!signedInUser) { router.push("/"); router.refresh(); return; }
+      router.push(postLoginDestination(requestedNext(signedInUser.role), signedInUser.role));
+      router.refresh();
+    } catch { setError(GENERIC_ERROR); }
   }
 
   async function enterGuestMode() {
@@ -100,15 +103,23 @@ export default function LoginPage() {
     const validation = validatePassword(password);
     if (!validation.ok) { setError(tAuth("errors.passwordPolicy")); return; }
     if (password !== confirmPassword) { setError(tAuth("errors.passwordMismatch")); return; }
-    const next = requestedNext() ?? "/customer/explore";
+    const next = requestedNext("customer") ?? "/customer/explore";
     setBusy(true);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(), password,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     setBusy(false);
-     if (signUpError) { setError(GENERIC_ERROR); return; }
-    if (data.session && data.user?.email_confirmed_at) { router.push(next); router.refresh(); return; }
+    if (signUpError) { setError(GENERIC_ERROR); return; }
+    if (data.session && data.user?.email_confirmed_at) {
+      try {
+        const signedInUser = await refreshUser();
+        if (!signedInUser) { router.push("/"); router.refresh(); return; }
+        router.push(postLoginDestination(next, signedInUser.role));
+        router.refresh();
+      } catch { setError(GENERIC_ERROR); }
+      return;
+    }
     setMode("verify"); startResendCooldown();
     setMessage(tAuth("signUp.verificationSent"));
   }
@@ -120,7 +131,12 @@ export default function LoginPage() {
     const { error: verifyError } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp, type: "signup" });
     setBusy(false);
     if (verifyError) { setError(GENERIC_ERROR); return; }
-    router.push(requestedNext() ?? "/customer/explore"); router.refresh();
+    try {
+      const signedInUser = await refreshUser();
+      if (!signedInUser) { router.push("/"); router.refresh(); return; }
+      router.push(postLoginDestination(requestedNext("customer"), signedInUser.role));
+      router.refresh();
+    } catch { setError(GENERIC_ERROR); }
   }
 
   async function resendOtp() {
@@ -181,16 +197,16 @@ export default function LoginPage() {
             </form>
           ) : (
             <>
-               <div className="mb-3 grid grid-cols-2 rounded-lg bg-secondary/50 p-1"><button type="button" onClick={() => { resetFeedback(); setMode("signin"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signin" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{tCommon("account.signIn")}</button><button type="button" onClick={() => { resetFeedback(); setMode("signup"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signup" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{tCommon("account.createAccount")}</button></div>
+              <div className="mb-3 grid grid-cols-2 rounded-lg bg-secondary/50 p-1"><button type="button" onClick={() => { resetFeedback(); setMode("signin"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signin" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{tCommon("account.signIn")}</button><button type="button" onClick={() => { resetFeedback(); setMode("signup"); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === "signup" ? "bg-background text-primary shadow-sm" : "text-muted-foreground"}`}>{tCommon("account.createAccount")}</button></div>
               <form onSubmit={mode === "signup" ? signUp : signIn} className="space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
-                 <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={tAuth("fields.email")} aria-label={tAuth("fields.email")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
-                 <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={tAuth("fields.password")} aria-label={tAuth("fields.password")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
-                 {mode === "signup" && <><input type="password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={tAuth("fields.confirmPassword")} aria-label={tAuth("fields.confirmPassword")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" /><p className="px-1 text-[11px] text-muted-foreground">{tAuth("passwordReset.requirements")}</p></>}
-                 <Button type="submit" className="w-full" disabled={busy}>{busy ? tCommon("states.processingEllipsis") : mode === "signup" ? tCommon("account.createAccount") : tCommon("account.signIn")}</Button>
-                 {mode === "signin" && <button type="button" onClick={() => { resetFeedback(); setMode("forgot"); }} className="w-full text-sm font-semibold text-primary">{tAuth("passwordReset.forgotPassword")}</button>}
+                <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder={tAuth("fields.email")} aria-label={tAuth("fields.email")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
+                <input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder={tAuth("fields.password")} aria-label={tAuth("fields.password")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" />
+                {mode === "signup" && <><input type="password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={tAuth("fields.confirmPassword")} aria-label={tAuth("fields.confirmPassword")} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm" /><p className="px-1 text-[11px] text-muted-foreground">{tAuth("passwordReset.requirements")}</p></>}
+                <Button type="submit" className="w-full" disabled={busy}>{busy ? tCommon("states.processingEllipsis") : mode === "signup" ? tCommon("account.createAccount") : tCommon("account.signIn")}</Button>
+                {mode === "signin" && <button type="button" onClick={() => { resetFeedback(); setMode("forgot"); }} className="w-full text-sm font-semibold text-primary">{tAuth("passwordReset.forgotPassword")}</button>}
               </form>
               <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" />{tAuth("actions.or")}<span className="h-px flex-1 bg-border" /></div>
-               <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>{tAuth("actions.continueWithGoogle")}</Button>
+              <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>{tAuth("actions.continueWithGoogle")}</Button>
             </>
           )}
 

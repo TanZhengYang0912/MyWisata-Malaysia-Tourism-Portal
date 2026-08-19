@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   accountsRetrieve:     vi.fn(),
   moderateWalletAction:  vi.fn(),
   enqueueWithdrawalEmail: vi.fn(),
+  createTngPayout:       vi.fn(),
+  tngIsConfigured:       vi.fn(),
+  executeApprovedWithdrawalPayout: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -35,6 +38,15 @@ vi.mock('@/lib/stripe', () => ({
 
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
 vi.mock('@/lib/email/events', () => ({ enqueueWithdrawalEmail: mocks.enqueueWithdrawalEmail }));
+vi.mock('@/lib/payouts/providers/tng-direct-credit', () => ({
+  createTngDirectCreditProvider: vi.fn(() => ({
+    isConfigured: mocks.tngIsConfigured,
+    createPayout: mocks.createTngPayout,
+  })),
+}));
+vi.mock('@/lib/payouts/execute-approved-withdrawal', () => ({
+  executeApprovedWithdrawalPayout: mocks.executeApprovedWithdrawalPayout,
+}));
 
 import { POST } from '../route';
 
@@ -65,6 +77,8 @@ function mockWithdrawal(overrides: Record<string, unknown> = {}) {
       amount: 100,
       stripe_transfer_id: null,
       stripe_payout_id: null,
+      payout_provider: 'stripe_connect',
+      destination_provider_reference: 'acct_test123',
       updated_at: new Date().toISOString(),
       requires_dual_approval: false,
       ...overrides,
@@ -72,16 +86,6 @@ function mockWithdrawal(overrides: Record<string, unknown> = {}) {
     error: null,
   });
   mocks.from.mockReturnValue({ select, eq, single });
-}
-
-function mockUserRow(connectId: string | null = 'acct_test123') {
-  const select = vi.fn().mockReturnThis();
-  const eq     = vi.fn().mockReturnThis();
-  const single = vi.fn().mockResolvedValue({
-    data: { stripe_connect_account_id: connectId },
-    error: null,
-  });
-  mocks.from.mockReturnValueOnce({ select, eq, single });
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -100,6 +104,16 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     });
     mocks.enqueueWithdrawalEmail.mockResolvedValue(undefined);
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
+    mocks.tngIsConfigured.mockReturnValue(true);
+    mocks.createTngPayout.mockResolvedValue({
+      status: 'processing',
+      providerEventId: 'tng_payout_0123456789abcdef0123456789abcdef',
+      failure: null,
+    });
+    mocks.executeApprovedWithdrawalPayout.mockResolvedValue({
+      ok: true,
+      data: { status: 'processing', provider: 'stripe_connect', transfer_id: 'tr_test', payout_id: 'po_test' },
+    });
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -148,6 +162,15 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(JSON.stringify(body)).toMatch(/DUPLICATE_APPROVAL|already_approved/i);
+    expect(body.error.message).toContain('another Approver or Super Admin');
+  });
+
+  it('tells an approver who must handle their own withdrawal', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'self_dealing' } });
+    const res = await POST(request(), params());
+    const body = await res.json();
+    expect(res.status).toBe(403);
+    expect(body.error.message).toContain('another Approver or Super Admin');
   });
 
   it('returns 409 HIGH_RISK_OVERRIDE_REQUIRED when risk is high and not overridden', async () => {
@@ -162,7 +185,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     expect(JSON.stringify(body)).toMatch(/HIGH_RISK_OVERRIDE_REQUIRED/);
   });
 
-  it('calls Stripe and returns processing when second distinct approver approves', async () => {
+  it('starts payout execution when second distinct approver approves', async () => {
     mockWithdrawal({ requires_dual_approval: true, status: 'pending_second_approval' });
     mocks.rpc.mockImplementation((name: string) => {
       if (name === 'approve_wallet_withdrawal') {
@@ -173,17 +196,54 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       }
       return Promise.resolve({ data: {}, error: null });
     });
-    mocks.accountsRetrieve.mockResolvedValue({ payouts_enabled: true });
-    mocks.transfersCreate.mockResolvedValue({ id: 'tr_test' });
-    mocks.payoutsCreate.mockResolvedValue({ id: 'po_test' });
-    mockUserRow('acct_test123');
+    const res = await POST(request(), params());
+    const body = await res.json();
+
+    expect(mocks.executeApprovedWithdrawalPayout).toHaveBeenCalledWith({
+      withdrawalId: W_ID,
+      userId: U_ID,
+      amountRm: 100,
+    });
+    expect((body.data?.status ?? body.status)).toBe('processing');
+  });
+
+  it('routes a ready withdrawal through the shared payout executor', async () => {
+    mockWithdrawal({
+      payout_provider: 'tng_direct_credit',
+      destination_provider_reference: 'tng_dest_0123456789abcdef0123456789abcdef',
+    });
+    mocks.rpc.mockImplementation((name: string) => {
+      if (name === 'approve_wallet_withdrawal') {
+        return Promise.resolve({
+          data: {
+            status: 'approved',
+            ready: true,
+            approval_count: 1,
+            required_approvals: 1,
+            risk_level: 'low',
+            user_id: U_ID,
+            amount_rm: 100,
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: {}, error: null });
+    });
+    mocks.executeApprovedWithdrawalPayout.mockResolvedValue({
+      ok: true,
+      data: { status: 'processing', provider: 'tng_direct_credit' },
+    });
 
     const res = await POST(request(), params());
     const body = await res.json();
 
-    expect(mocks.transfersCreate).toHaveBeenCalled();
-    expect(mocks.payoutsCreate).toHaveBeenCalled();
-    expect((body.data?.status ?? body.status)).toBe('processing');
+    expect(res.status).toBe(200);
+    expect(mocks.executeApprovedWithdrawalPayout).toHaveBeenCalledWith({
+      withdrawalId: W_ID,
+      userId: U_ID,
+      amountRm: 100,
+    });
+    expect(body.data).toMatchObject({ status: 'processing', provider: 'tng_direct_credit' });
   });
 
   it('returns 422 when approve note is present but under 10 characters', async () => {
@@ -198,20 +258,12 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       data: { status: 'approved', ready: true, approval_count: 1, required_approvals: 1, risk_level: 'low', user_id: U_ID, amount_rm: 100 },
       error: null,
     });
-    mocks.accountsRetrieve.mockResolvedValue({ payouts_enabled: true });
-    mocks.transfersCreate.mockResolvedValue({ id: 'tr_test' });
-    mocks.payoutsCreate.mockResolvedValue({ id: 'po_test' });
-    mockUserRow('acct_test123');
-
     const res = await POST(request({}), params());
     expect(res.status).toBe(422);
   });
 
   it('returns a retryable error when processing state cannot be persisted', async () => {
-    // Keep the request inside the idempotency window so the route reaches the
-    // final processing-state RPC instead of correctly rejecting an expired
-    // retry before contacting Stripe.
-    mockWithdrawal({ updated_at: new Date(Date.now() + 60_000).toISOString() });
+    mockWithdrawal();
     mocks.rpc.mockImplementation((name: string) => {
       if (name === 'approve_wallet_withdrawal') {
         return Promise.resolve({
@@ -219,16 +271,15 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
           error: null,
         });
       }
-      if (name === 'record_stripe_transfer') return Promise.resolve({ data: null, error: null });
-      if (name === 'mark_withdrawal_processing') {
-        return Promise.resolve({ data: null, error: { message: 'processing_stripe_id_conflict' } });
-      }
       return Promise.resolve({ data: null, error: null });
     });
-    mocks.accountsRetrieve.mockResolvedValue({ payouts_enabled: true });
-    mocks.transfersCreate.mockResolvedValue({ id: 'tr_test' });
-    mocks.payoutsCreate.mockResolvedValue({ id: 'po_test' });
-    mockUserRow('acct_test123');
+    mocks.executeApprovedWithdrawalPayout.mockResolvedValue({
+      ok: false,
+      response: new Response(JSON.stringify({ data: null, error: { code: 'PROCESSING_STATE_FAILED', details: { retryable: true } } }), {
+        status: 502,
+        headers: { 'content-type': 'application/json' },
+      }),
+    });
 
     const res = await POST(request(), params());
     const body = await res.json();

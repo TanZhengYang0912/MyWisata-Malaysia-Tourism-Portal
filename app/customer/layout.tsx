@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Globe, ShoppingCart } from "lucide-react";
-import { useRequireRole } from "@/components/providers/auth";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowRightLeft, ChevronDown, Globe, LogIn, ShoppingCart, UserPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { useTranslation } from "react-i18next";
 import { WishlistProvider } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider } from "@/components/providers/saved-destinations";
 import { TripProvider, useTrip } from "@/components/providers/trip";
 import { supabase } from "@/backend/supabase";
+import { guestLoginHref } from "@/lib/auth/guest-mode";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
 
 const UNREAD_POLL_MS = 30_000;
@@ -32,12 +33,15 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 }
 
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useRequireRole(["customer"]);
+  const { t: tCommon } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
+  const { currentUser, loading } = useAuth();
   const { count } = useCart();
   const { stops: tripStops } = useTrip();
   // Exclude the origin "location" stop — the badge counts trip waypoints.
   const tripCount = tripStops.filter((s) => s.source !== "location").length;
   const pathname = usePathname();
+  const router = useRouter();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
@@ -46,7 +50,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const [unreadTickets, setUnreadTickets] = useState(0);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setUnreadTickets(0);
+      return;
+    }
     let cancelled = false;
     async function poll() {
       try {
@@ -74,7 +81,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const [unreadChats, setUnreadChats] = useState(0);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setUnreadChats(0);
+      return;
+    }
     let cancelled = false;
     async function load() {
       try {
@@ -98,6 +108,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }, [currentUser]);
 
   useEffect(() => {
+    if (loading || !currentUser || currentUser.role === "customer") return;
+    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+  }, [currentUser, loading, pathname, router]);
+
+  useEffect(() => {
     if (!accountMenuOpen) return;
 
     function closeOnOutsideClick(event: PointerEvent) {
@@ -118,9 +133,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     };
   }, [accountMenuOpen]);
 
-  const { t: tCommon } = useTranslation("common");
-  const { t: tCustomer } = useTranslation("customer");
-
   async function switchAccount() {
     setAccountMenuOpen(false);
     const { error } = await supabase.auth.signOut();
@@ -128,11 +140,12 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     window.location.assign("/login");
   }
 
-  if (loading || !currentUser) {
+  if (loading || (currentUser && currentUser.role !== "customer")) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis", { defaultValue: "Loading…" })}</div>;
   }
 
-  const customerDisplayName = getCustomerDisplayName(currentUser);
+  const customerDisplayName = currentUser ? getCustomerDisplayName(currentUser) : "Guest";
+  const signInHref = guestLoginHref(pathname);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
@@ -166,12 +179,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
-            <NotificationBell />
+            <NotificationBell enabled={Boolean(currentUser)} />
             <Link
               href="/customer/cart"
-              aria-label={count > 0
-                ? tCommon(count === 1 ? "cart.itemCount" : "cart.itemCountPlural", { count })
-                : tCommon("cart.label", { defaultValue: "Shopping cart" })}
+              aria-label={count > 0 ? `Shopping cart, ${count} item${count === 1 ? "" : "s"}` : "Shopping cart"}
               className={HEADER_ICON_BUTTON_CLASS}
             >
               <ShoppingCart size={18} className="text-foreground" />
@@ -189,13 +200,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               onClick={() => setAccountMenuOpen((open) => !open)}
               aria-expanded={accountMenuOpen}
               aria-haspopup="menu"
-              aria-label={currentUser
-                ? tCommon("account.openMenuFor", { name: customerDisplayName })
-                : tCommon("account.guestMenu", { defaultValue: "Guest account menu" })}
+              aria-label={`Open ${customerDisplayName} account menu`}
               className="flex items-center gap-2 rounded-full border border-border bg-white/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                {currentUser.avatarInitial}
+                {currentUser?.avatarInitial ?? "G"}
               </span>
               <span className="hidden max-w-28 truncate text-xs font-semibold text-foreground lg:inline">{customerDisplayName}</span>
               <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
@@ -213,18 +222,18 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               // axes but allowed no scrolling at all) is gone.
               <div
                 role="menu"
-                aria-label={tCommon("account.menu", { defaultValue: "Account menu" })}
+                aria-label="Account menu"
                 className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-white p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
                 style={{ maxHeight: "calc(100vh - 5.75rem)" }}
               >
                 <div className="border-b border-border px-3 pb-3 pt-2">
                   <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser.email}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser?.email ?? tCommon("account.guestSyncHint", { defaultValue: "Sign in to view and sync your account" })}</p>
                 </div>
                 <div className="pt-2">
                   {ACCOUNT_MENU_GROUPS.map((group) => (
                     <div key={group.label} className="not-first:mt-2">
-                      <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(`accountGroups.${group.label}`, { defaultValue: group.label })}</p>
+                      <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{group.label}</p>
                       {group.items.map((item) => {
                         const active = isCustomerNavActive(pathname, item.href);
                         return (
@@ -241,10 +250,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                             </span>
                             <span className="min-w-0">
                               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                {tCustomer(`accountItems.${item.label}.label`, { defaultValue: item.label })}
+                                {item.label}
                                 {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                               </span>
-                              <span className="block truncate text-[11px] text-muted-foreground">{tCustomer(`accountItems.${item.label}.description`, { defaultValue: item.description })}</span>
+                              <span className="block truncate text-[11px] text-muted-foreground">{item.description}</span>
                             </span>
                           </Link>
                         );
@@ -254,15 +263,26 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="mt-2 border-t border-border pt-2">
                   <LanguageSwitcher compact className="px-1 py-1" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void switchAccount()}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
-                  >
-                    <ArrowRightLeft size={16} />
-                    {tCommon("account.switchAccount", { defaultValue: "Switch account" })}
-                  </button>
+                  {currentUser ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void switchAccount()}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                    >
+                      <ArrowRightLeft size={16} />
+                      {tCommon("account.switchAccount", { defaultValue: "Switch account" })}
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 p-1">
+                      <Link href={signInHref} role="menuitem" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white">
+                        <LogIn size={15} /> {tCommon("account.signIn", { defaultValue: "Sign in" })}
+                      </Link>
+                      <Link href={`${signInHref}&mode=signup`} role="menuitem" onClick={() => setAccountMenuOpen(false)} className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold text-primary">
+                        <UserPlus size={15} /> {tCommon("account.createAccount", { defaultValue: "Create account" })}
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

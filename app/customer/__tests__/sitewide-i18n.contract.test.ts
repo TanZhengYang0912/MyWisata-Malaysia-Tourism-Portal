@@ -21,31 +21,42 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/chat/page.tsx",
   "app/customer/checkout/page.tsx",
   "app/customer/checkout/simulator/[sessionId]/page.tsx",
+  "app/customer/customer-home-client.tsx",
   "app/customer/design-demo/design-demo-client.tsx",
-  "app/customer/design-demo/page.tsx",
+  "app/customer/destination/[destinationId]/page.tsx",
+  "app/customer/experience/[experienceId]/experience-booking-sidebar.tsx",
+  "app/customer/experience/[experienceId]/page.tsx",
+  "app/customer/explore/explore-client.tsx",
   "app/customer/explore/page.tsx",
   "app/customer/for-you/for-you-client.tsx",
   "app/customer/for-you/page.tsx",
   "app/customer/home-client.tsx",
   "app/customer/kyc/page.tsx",
   "app/customer/layout.tsx",
-  "app/customer/map/map-client.tsx",
   "app/customer/map/page.tsx",
   "app/customer/notifications/page.tsx",
   "app/customer/orders/[id]/page.tsx",
   "app/customer/orders/page.tsx",
   "app/customer/outlet/[outletId]/page.tsx",
   "app/customer/page.tsx",
+  "app/customer/partners/page.tsx",
+  "app/customer/place/[slug]/page.tsx",
   "app/customer/preferences/page.tsx",
   "app/customer/profile/[userId]/page.tsx",
   "app/customer/profile/page.tsx",
   "app/customer/profile/register-vendor/page.tsx",
   "app/customer/profile/wizard-progress.ts",
   "app/customer/recommendations/page.tsx",
+  "app/customer/saved/page.tsx",
   "app/customer/search/page.tsx",
   "app/customer/search/search-client.tsx",
   "app/customer/support/[id]/page.tsx",
   "app/customer/support/page.tsx",
+  "app/customer/trip/[tripId]/page.tsx",
+  "app/customer/trip/[tripId]/trip-planner-client.tsx",
+  "app/customer/trip/page.tsx",
+  "app/customer/trip/trip-hub-client.tsx",
+  "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx",
   "app/customer/vendor/[vendorId]/page.tsx",
   "app/customer/wallet/page.tsx",
   "app/customer/wallet/withdrawals/[id]/page.tsx",
@@ -63,26 +74,33 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/booking-qr-code.tsx",
   "components/customer/category-icon.tsx",
   "components/customer/chat-thread-panel.tsx",
+  "components/customer/customer-calendar-view.tsx",
+  "components/customer/customer-orders-view.tsx",
   "components/customer/customer-page-shell.tsx",
   "components/customer/destination-preview-modal.tsx",
+  "components/customer/directory-pagination.tsx",
   "components/customer/guest-account-empty-state.tsx",
   "components/customer/malaysia-destination-rail.tsx",
+  "components/customer/nearby-outlets.tsx",
   "components/customer/outlet-chat-button.tsx",
+  "components/customer/place-breadcrumb.tsx",
+  "components/customer/place-card.tsx",
+  "components/customer/place-list.tsx",
   "components/customer/promotion-spotlight.tsx",
   "components/customer/saved-destination-card.tsx",
   "components/customer/use-customer-capability-gate.ts",
-  "components/guest/guest-catalogue.tsx",
-  "components/map/map-view.tsx",
-  "components/map/maplibre-map.tsx",
   "components/demo-map/discovery-pin-preview.tsx",
   "components/demo-map/malaysia-district-map.tsx",
   "components/demo-map/malaysia-state-map.tsx",
   "components/demo-map/story-map.tsx",
+  "components/guest/guest-catalogue.tsx",
+  "components/map/map-view.tsx",
+  "components/map/maplibre-map.tsx",
   "components/outlet/outlet-block-renderer.tsx",
   "components/outlet/outlet-menu.tsx",
   "components/outlet/outlet-page-renderer.tsx",
-  "components/profile/preferences-editor.tsx",
   "components/profile/international-phone-input.tsx",
+  "components/profile/preferences-editor.tsx",
   "components/profile/profile-sections.tsx",
 ] as const;
 
@@ -101,6 +119,7 @@ const typeOnlyFiles = new Set([
   "app/customer/activity/[id]/bodies/index.ts",
   "app/customer/activity/[id]/bodies/types.ts",
   "components/outlet/outlet-block-types.ts",
+  "app/customer/trip/actions.ts",
 ]);
 
 function renderedInventory(): string[] {
@@ -138,12 +157,17 @@ const delegatingFiles = new Set([
   "app/customer/activity/[id]/bodies/retail-body.tsx",
   "app/customer/activity/[id]/page.tsx",
   "app/customer/activity/page.tsx",
-  "app/customer/design-demo/page.tsx",
+  "app/customer/calendar/page.tsx",
   "app/customer/explore/page.tsx",
   "app/customer/for-you/page.tsx",
   "app/customer/map/page.tsx",
+  "app/customer/partners/page.tsx",
   "app/customer/outlet/[outletId]/page.tsx",
+  "app/customer/orders/page.tsx",
   "app/customer/page.tsx",
+  "app/customer/trip/[tripId]/page.tsx",
+  "app/customer/trip/page.tsx",
+  "app/customer/wishlist/page.tsx",
   "app/customer/profile/wizard-progress.ts",
   "app/customer/search/page.tsx",
   "app/guest/activity/[id]/page.tsx",
@@ -205,7 +229,7 @@ describe("customer and guest sitewide i18n contract", () => {
       "app/customer/support/[id]/page.tsx",
       "app/customer/bookings/[id]/page.tsx",
       "app/customer/orders/[id]/page.tsx",
-      "app/customer/map/map-client.tsx",
+      "app/customer/trip/[tripId]/trip-planner-client.tsx",
       "app/customer/vendor/[vendorId]/page.tsx",
     ]) {
       expect(read(file), file).toMatch(/(?:useTranslation|getServerTranslation)\(["'](?:customer|common)["']/);
@@ -218,8 +242,8 @@ describe("customer and guest sitewide i18n contract", () => {
       ["app/customer/wallet/page.tsx", ['title="My Wallet"', ">Top Up via Card<", ">Transaction History<"]],
       ["app/customer/wishlist/wishlist-client.tsx", ["Your travel shortlist", "Saved places & experiences", 'aria-label="Saved content"']],
       ["app/customer/wishlist/page.tsx", ["Saved experiences unavailable", "Please try again in a moment."]],
-      ["app/customer/orders/page.tsx", ['placeholder="Search order ID, product or outlet"', "No orders match these filters", ">Newest first<"]],
-      ["app/customer/calendar/page.tsx", ['placeholder="Search bookings"', 'aria-label="Calendar actions"', ">No bookings match the selected filters.<"]],
+      ["components/customer/customer-orders-view.tsx", ['placeholder="Search order ID, product or outlet"', "No orders match these filters", ">Newest first<"]],
+      ["components/customer/customer-calendar-view.tsx", ['placeholder="Search bookings"', 'aria-label="Calendar actions"', ">No bookings match the selected filters.<"]],
       ["app/customer/kyc/page.tsx", ['<option value="passport">Passport</option>', "KYC documents submitted for review."]],
       ["app/customer/recommendations/page.tsx", ['placeholder="Phone"', 'placeholder="Email"', 'placeholder="Website"']],
       ["components/outlet/outlet-menu.tsx", [">Photo coming soon<", ">Featured<", ">From<"]],
@@ -231,6 +255,66 @@ describe("customer and guest sitewide i18n contract", () => {
     for (const [file, oldCopies] of correctedCopy) {
       const source = read(file);
       for (const oldCopy of oldCopies) expect(source, `${file}: ${oldCopy}`).not.toContain(oldCopy);
+    }
+  });
+
+  it("keeps the remaining customer localization gaps out of rendered source", () => {
+    const remainingFixedCopy = [
+      ["app/customer/vendor/[vendorId]/page.tsx", ["Partner profile", "Featured experiences", "Policies & support"]],
+      ["app/customer/wallet/page.tsx", ["Bank withdrawals enabled", "Add TNG eWallet", "Stripe verification in progress"]],
+      ["components/customer/customer-orders-view.tsx", ["Mixed order", "Stripe demo card", "Order history pagination"]],
+      ["components/customer/customer-calendar-view.tsx", ["Mixed status", "Checked in", "View itinerary details"]],
+      ["app/customer/kyc/page.tsx", ["IC / Passport number is required", "Email Verified", "Please consent to AI-assisted document reading before submitting."]],
+      ["app/customer/trip/[tripId]/trip-planner-client.tsx", ["Route options", "Nearby to add", "Get Directions in Google Maps"]],
+      ["app/customer/profile/page.tsx", ["Failed to get upload URL", "Upload to storage failed", "Failed to confirm avatar"]],
+    ] as const;
+
+    for (const [file, oldCopies] of remainingFixedCopy) {
+      const source = read(file);
+      for (const oldCopy of oldCopies) expect(source, `${file}: ${oldCopy}`).not.toContain(oldCopy);
+    }
+  });
+
+  it("provides representative completed customer copy in every locale", () => {
+    const resources = {
+      en: JSON.parse(read("app/i18n/locales/en/customer.json")),
+      "zh-CN": JSON.parse(read("app/i18n/locales/zh-CN/customer.json")),
+      ms: JSON.parse(read("app/i18n/locales/ms/customer.json")),
+    } as const;
+    const expected = {
+      en: {
+        "ui.vendor.partnerProfile": "Partner profile",
+        "ui.wallet.bankWithdrawalsEnabled": "Bank withdrawals enabled",
+        "ui.orders.mixedOrder": "Mixed order",
+        "ui.calendar.mixedStatus": "Mixed status",
+        "ui.kyc.myKadHint": "MyKad: 12 digits e.g. 900101-14-5678",
+        "ui.map.routeOptions": "Route options",
+        "ui.profileWizard.avatarUploadUrlError": "Failed to get upload URL",
+      },
+      "zh-CN": {
+        "ui.vendor.partnerProfile": "合作伙伴简介",
+        "ui.wallet.bankWithdrawalsEnabled": "银行提款已启用",
+        "ui.orders.mixedOrder": "混合订单",
+        "ui.calendar.mixedStatus": "混合状态",
+        "ui.kyc.myKadHint": "MyKad：12 位数字，例如 900101-14-5678",
+        "ui.map.routeOptions": "路线选项",
+        "ui.profileWizard.avatarUploadUrlError": "无法获取上传链接",
+      },
+      ms: {
+        "ui.vendor.partnerProfile": "Profil rakan",
+        "ui.wallet.bankWithdrawalsEnabled": "Pengeluaran bank diaktifkan",
+        "ui.orders.mixedOrder": "Pesanan campuran",
+        "ui.calendar.mixedStatus": "Status bercampur",
+        "ui.kyc.myKadHint": "MyKad: 12 digit, cth. 900101-14-5678",
+        "ui.map.routeOptions": "Pilihan laluan",
+        "ui.profileWizard.avatarUploadUrlError": "Gagal mendapatkan pautan muat naik",
+      },
+    } as const;
+
+    for (const [locale, values] of Object.entries(expected)) {
+      for (const [key, value] of Object.entries(values)) {
+        expect(resourceValue(resources[locale as keyof typeof resources], key), `${locale}:${key}`).toBe(value);
+      }
     }
   });
 });

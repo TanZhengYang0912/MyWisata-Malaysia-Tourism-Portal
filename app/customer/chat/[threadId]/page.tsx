@@ -1,8 +1,8 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { getMessages, getOtherDeliveredMessageIds, getOtherReadMessageIds, getThread, sendMessage } from "@/backend/domains/identity";
 import { getOutlet } from "@/backend/domains/catalogue";
@@ -11,6 +11,7 @@ import { useChatPresence } from "@/hooks/use-chat-presence";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 
 export default function ChatThreadPage() {
   const { t: tCustomer } = useTranslation("customer");
@@ -21,33 +22,61 @@ export default function ChatThreadPage() {
   const [outlet, setOutlet] = useState<Outlet | undefined>(undefined);
   const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
   const [deliveredByOthersIds, setDeliveredByOthersIds] = useState<Set<string>>(new Set());
-  const presence = useChatPresence(thread ? `chat-presence-vendor-${thread.vendorId}` : undefined, currentUser?.id, "customer");
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  const presenceThread = currentUser && thread?.customerId === currentUser.id ? thread : undefined;
+  const presence = useChatPresence(presenceThread ? `chat-presence-vendor-${presenceThread.vendorId}` : undefined, currentUser?.id, "customer");
   const vendorOnline = presence.some((p) => p.role === "vendor");
 
   useEffect(() => {
+    if (!currentUser || !params.threadId) {
+      setThread(undefined);
+      setMessages([]);
+      setOutlet(undefined);
+      setReadByOthersIds(new Set());
+      setDeliveredByOthersIds(new Set());
+      setLoadedUserId(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const [loadedMessages, loadedThread] = await Promise.all([getMessages(params.threadId), getThread(params.threadId)]);
+      const loadedThread = await getThread(params.threadId);
+      if (cancelled) return;
+      if (!loadedThread || loadedThread.customerId !== currentUser.id) {
+        setThread(null);
+        setMessages([]);
+        setOutlet(undefined);
+        setLoadedUserId(currentUser.id);
+        return;
+      }
+      const loadedMessages = await getMessages(params.threadId);
+      const [loadedOutlet, readIds, deliveredIds] = await Promise.all([
+        getOutlet(loadedThread.outletId),
+        getOtherReadMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)),
+        getOtherDeliveredMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)),
+      ]);
       if (cancelled) return;
       setMessages(loadedMessages);
-      setThread(loadedThread ?? null);
-      if (loadedThread) setOutlet(await getOutlet(loadedThread.outletId));
-      if (loadedThread) setReadByOthersIds(await getOtherReadMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)));
-      if (loadedThread) setDeliveredByOthersIds(await getOtherDeliveredMessageIds(loadedThread.customerId, loadedMessages.map((m) => m.id)));
+      setThread(loadedThread);
+      setOutlet(loadedOutlet);
+      setReadByOthersIds(readIds);
+      setDeliveredByOthersIds(deliveredIds);
+      setLoadedUserId(currentUser.id);
     })();
     return () => {
       cancelled = true;
     };
-  }, [params.threadId]);
+  }, [currentUser, params.threadId]);
 
   useEffect(() => {
     if (!currentUser || !thread) return;
+    if (thread.customerId !== currentUser.id) return;
     void fetch(`/api/chat/${thread.id}/read`, { method: "POST" });
     void fetch(`/api/chat/${thread.id}/delivered`, { method: "POST" });
   }, [currentUser, thread]);
 
   useEffect(() => {
-    if (!thread) return;
+    if (!currentUser || !thread) return;
+    if (thread.customerId !== currentUser.id) return;
     const channel = supabase
       .channel(`chat-thread-${thread.id}`)
       .on(
@@ -93,13 +122,16 @@ export default function ChatThreadPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [thread]);
+  }, [currentUser, thread]);
 
-  if (thread === undefined || !currentUser) {
+  if (!currentUser) {
+    return <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath={`/customer/chat/${params.threadId}`} /></div>;
+  }
+  if (thread === undefined || loadedUserId !== currentUser.id) {
     return <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.chat.loadingConversation")}</div>;
   }
   if (thread === null) {
-    return <EmptyState title={tCustomer("ui.chat.conversationNotFound")} description={tCustomer("ui.chat.conversationMissing")} />;
+    return <EmptyState title="Conversation not found" description="This chat thread doesn't exist." />;
   }
 
   return (
@@ -110,9 +142,9 @@ export default function ChatThreadPage() {
           messages={messages}
           currentUserId={currentUser.id}
           counterpart={{
-            name: outlet?.name ?? tCustomer("ui.chat.vendorConversation"),
-            subtitle: `${outlet?.city || tCustomer("ui.labels.malaysia")}${outlet?.state ? `, ${outlet.state}` : ""}`,
-            badge: tCustomer("ui.chat.vendor"),
+            name: outlet?.name ?? "Vendor conversation",
+            subtitle: `${outlet?.city || "Malaysia"}${outlet?.state ? `, ${outlet.state}` : ""}`,
+            badge: "Vendor",
             online: vendorOnline,
           }}
           onSend={(text) => sendMessage(thread.id, currentUser.id, "customer", text)}

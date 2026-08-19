@@ -56,6 +56,7 @@
     "rejected": "Ditolak",
     "completed": "Selesai",
     "cancelled": "Dibatalkan",
+    "refunded": "Dibayar balik",
     "failed": "Gagal"
   },
   "errors": {

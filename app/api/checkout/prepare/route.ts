@@ -9,6 +9,12 @@ import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
 import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
 import { getCheckoutErrorMessage } from '@/lib/checkout/errors';
+import {
+  createSimulatorPaymentSession,
+  isSimulatorCheckoutProvider,
+  resolveCheckoutProvider,
+} from '@/lib/payments/providers';
+import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -47,6 +53,28 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
   const normalized = normalizeCheckoutRequest(body);
+  let checkoutProvider;
+  try {
+    checkoutProvider = resolveCheckoutProvider(normalized.paymentMethod, normalized.paymentProvider ?? undefined);
+  } catch {
+    return NextResponse.json({
+      data: null,
+      error: {
+        code: 'PAYMENT_PROVIDER_MISMATCH',
+        message: 'The selected payment provider does not support this payment method.',
+      },
+    }, { status: 422 });
+  }
+  const simulatorProvider = isSimulatorCheckoutProvider(checkoutProvider) ? checkoutProvider : null;
+  if (simulatorProvider && !isPaymentSimulatorEnabled()) {
+    return NextResponse.json({
+      data: null,
+      error: {
+        code: 'PAYMENT_SIMULATOR_UNAVAILABLE',
+        message: 'This simulated payment method is unavailable in the current environment.',
+      },
+    }, { status: 503 });
+  }
   const walletSplit = normalized.paymentMethod === 'wallet_split';
   const requestHash = buildCheckoutRequestHash(normalized);
 
@@ -205,7 +233,7 @@ export async function POST(request: Request) {
       p_checkout_session_id: prepared.checkout_session_id,
     });
     if (splitError) {
-      await db.rpc('finalize_checkout', {
+      await createServiceClient().rpc('finalize_checkout', {
         p_checkout_session_id: prepared.checkout_session_id,
         p_outcome: 'failed',
         p_provider_payment_id: null,
@@ -216,6 +244,39 @@ export async function POST(request: Request) {
     response = { ...response, walletAmountSen: Number(split.wallet_amount_sen), externalAmountSen: Number(split.external_amount_sen) };
   }
   const externalAmountSen = walletSplit ? Number(response.externalAmountSen) : Math.round(totals.total * 100);
+  if (simulatorProvider && prepared?.status !== 'paid') {
+    const checkoutSessionId = String(prepared.checkout_session_id);
+    const simulatorSession = createSimulatorPaymentSession({
+      checkoutSessionId,
+      provider: simulatorProvider,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      secret: process.env.PAYMENT_SIMULATOR_WEBHOOK_SECRET ?? '',
+    });
+    const service = createServiceClient();
+    const { error: paymentUpdateError } = await service.from('payments').update({
+      provider: simulatorProvider,
+      provider_payment_id: simulatorSession.providerPaymentId,
+      status: 'requires_action',
+      updated_at: new Date().toISOString(),
+    }).eq('order_id', prepared.order_id);
+    const { error: sessionUpdateError } = await service.from('checkout_sessions').update({
+      status: 'requires_action',
+      updated_at: new Date().toISOString(),
+    }).eq('id', checkoutSessionId);
+    if (paymentUpdateError || sessionUpdateError) {
+      return NextResponse.json({
+        data: null,
+        error: {
+          code: 'PAYMENT_SIMULATOR_PREPARE_FAILED',
+          message: 'The simulated provider session could not be prepared.',
+        },
+      }, { status: 503 });
+    }
+    return NextResponse.json({
+      data: { ...response, simulatorUrl: simulatorSession.actionUrl },
+      error: null,
+    });
+  }
   if ((normalized.paymentMethod === 'stripe_card' || walletSplit) && prepared?.status !== 'paid' && externalAmountSen > 0) {
     const origin = request.headers.get('origin') ?? 'http://localhost:3000';
     const checkoutSessionId = String(prepared.checkout_session_id);

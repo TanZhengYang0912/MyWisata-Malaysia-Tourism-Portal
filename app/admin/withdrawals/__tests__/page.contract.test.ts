@@ -33,28 +33,29 @@ describe('withdrawal review action presentation', () => {
     expect(rejectClasses).toContain('bg-red-50');
   });
 
-  it('title-cases status values in the review summary', () => {
-    expect(pageSource).toContain('titleCaseStatus');
-    expect(pageSource).toContain('{titleCaseStatus(detail.customer.kycStatus)}');
-    expect(pageSource).toContain('{titleCaseStatus(detail.riskLevel)}');
+  it('localizes status values in the review summary', () => {
+    expect(pageSource).toContain('ENUM_VALUE_KEYS');
+    expect(pageSource).not.toContain('titleCaseStatus');
+    expect(pageSource).toContain('displayStatus(detail.customer.kycStatus)');
+    expect(pageSource).toContain('displayStatus(detail.riskLevel)');
   });
 
   it('renders complete read-only source and fraud review sections', () => {
-    expect(pageSource).toContain('Reward sources');
-    expect(pageSource).toContain('Affiliate sources');
-    expect(pageSource).toContain('Wallet transaction history');
-    expect(pageSource).toContain('Fraud flags');
+    expect(pageSource).toContain('t("withdrawals.evidence.rewardSources")');
+    expect(pageSource).toContain('t("withdrawals.evidence.affiliateSources")');
+    expect(pageSource).toContain('t("withdrawals.evidence.walletTransactions")');
+    expect(pageSource).toContain('t("withdrawals.evidence.fraudFlags")');
     expect(pageSource).toContain('detail.reviewSources');
     expect(pageSource).toContain('rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: []');
   });
 
   it('renders normalized payout failure details for approvers', () => {
-    expect(pageSource).toContain('Payout failure');
+    expect(pageSource).toContain('t("withdrawals.payoutFailure.title")');
     expect(pageSource).toContain('detail.payoutFailure');
   });
 
   it('shows decision-specific reason options only after a decision is selected', () => {
-    expect(pageSource).toContain('Reason for this decision');
+    expect(pageSource).toContain('t("withdrawals.decision.reasonLabel")');
     expect(pageSource).toContain('selectedDecision');
     expect(pageSource).toContain('DECISION_REASON_COPY');
     expect(pageSource).toContain('selectedDecision ?');
@@ -62,40 +63,55 @@ describe('withdrawal review action presentation', () => {
   });
 
   it('uses plain-language decision copy and consequences', () => {
-    expect(pageSource).toContain('Payout details are ready');
-    expect(pageSource).toContain('Additional risk review required');
-    expect(pageSource).toContain('Keep the reserved funds held');
-    expect(pageSource).toContain('Return the reserved amount to available balance');
+    expect(pageSource).toContain('"withdrawals.decisions.approve.description"');
+    expect(pageSource).toContain('"withdrawals.decisions.hold.description"');
+    expect(pageSource).toContain('"withdrawals.decisions.hold.consequence"');
+    expect(pageSource).toContain('"withdrawals.decisions.reject.consequence"');
   });
 
   it('warns administrators when review evidence is unavailable', () => {
-    expect(pageSource).toContain('Review data is currently unavailable');
-    expect(pageSource).toContain('Do not approve until the data is available');
-    expect(pageSource).toContain('No reward transactions were found');
+    expect(pageSource).toContain('t("withdrawals.evidence.unavailable")');
+    expect(pageSource).toContain('t("withdrawals.evidence.doNotApprove")');
+    expect(pageSource).toContain('t("withdrawals.evidence.noRewardTransactions")');
   });
 
   it('provides note examples and a confirmation summary before submission', () => {
-    expect(pageSource).toContain('Example: KYC, wallet balance and payout destination were reviewed and verified.');
-    expect(pageSource).toContain('Confirm withdrawal decision');
+    expect(pageSource).toContain('"withdrawals.decisions.approve.placeholder"');
+    expect(pageSource).toContain('t("withdrawals.confirmation.title")');
     expect(pageSource).toContain('detail.customer.displayName');
     expect(pageSource).toContain('detail.destinationLabel');
-    expect(pageSource).toContain('Confirm decision');
-    expect(pageSource).toContain('Cancel');
+    expect(pageSource).toContain('t("withdrawals.confirmation.confirm")');
+    expect(pageSource).toContain('t("withdrawals.confirmation.cancel")');
   });
 
   it('shows decision-ready context in the queue before opening a detail drawer', () => {
-    expect(pageSource).toContain('Pending payout value');
-    expect(pageSource).toContain('Approval progress');
-    expect(pageSource).toContain('Age / SLA');
-    expect(pageSource).toContain('Dual approval');
-    expect(pageSource).toContain('High risk');
-    expect(pageSource).toMatch(/oldest request/i);
+    expect(pageSource).toContain('"withdrawals.metrics.pendingPayoutValue"');
+    expect(pageSource).toContain('t("withdrawals.table.approvalProgress")');
+    expect(pageSource).toContain('t("withdrawals.table.ageSla")');
+    expect(pageSource).toContain('"withdrawals.metrics.dualApproval"');
+    expect(pageSource).toContain('"withdrawals.metrics.highRisk"');
+    expect(pageSource).toContain('t("withdrawals.queue.oldestRequest"');
   });
 
   it('keeps urgency readable without relying on colour alone', () => {
-    expect(pageSource).toContain('Needs action');
-    expect(pageSource).toContain('Overdue');
-    expect(pageSource).toContain('Waiting for second approver');
-    expect(pageSource).toContain('Review priority');
+    expect(pageSource).toContain('"withdrawals.priority.needsAction"');
+    expect(pageSource).toContain('"withdrawals.priority.overdue"');
+    expect(pageSource).toContain('"withdrawals.priority.waitingForSecondApprover"');
+    expect(pageSource).toContain('t("withdrawals.header.reviewPriority")');
+  });
+
+  it('offers provider retry only from an approved and safe checkpoint', () => {
+    expect(pageSource).toContain('"withdrawals.decisions.retryPayout.label"');
+    expect(pageSource).toContain('detail?.status === "approved"');
+    expect(pageSource).toContain('detail.payoutFailure.retryable !== false');
+    expect(pageSource).toContain('!detail.payoutExecution.locked');
+    expect(pageSource).toContain('retry-payout');
+  });
+
+  it('shows a plain-language next action and announces failures accessibly', () => {
+    expect(pageSource).toContain('t("withdrawals.payoutFailure.recommendedNextAction")');
+    expect(pageSource).toContain('role="alert"');
+    expect(pageSource).toContain('showFeedback("error"');
+    expect(pageSource).toContain('t("withdrawals.payoutExecution.locked")');
   });
 });

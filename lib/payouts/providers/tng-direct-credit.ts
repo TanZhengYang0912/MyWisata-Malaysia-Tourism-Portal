@@ -1,8 +1,13 @@
+import { createHmac } from 'node:crypto';
 import type { PayoutProvider, PayoutResult, ProviderFailure } from '../providers';
+import { isTngMockPayoutEnabled } from '../tng-config';
 
 export type TngDirectCreditConfig = {
   merchantId?: string;
   apiKey?: string;
+  mode?: string;
+  nodeEnv?: string;
+  webhookSecret?: string;
   verifyDestination?: (input: { phoneOrDuitNow: string }) => Promise<{
     status: 'verified' | 'pending' | 'rejected';
     providerReference: string | null;
@@ -15,6 +20,11 @@ export type TngDirectCreditConfig = {
     idempotencyKey: string;
   }) => Promise<PayoutResult>;
 };
+
+function opaqueMockReference(prefix: 'tng_dest' | 'tng_payout', value: string, secret: string): string {
+  const digest = createHmac('sha256', secret).update(value).digest('hex').slice(0, 32);
+  return `${prefix}_${digest}`;
+}
 
 export function maskTngReference(value: string): string {
   const normalized = value.trim();
@@ -32,30 +42,56 @@ function notConfiguredFailure(): ProviderFailure {
 }
 
 export function createTngDirectCreditProvider(overrides: TngDirectCreditConfig = {}): PayoutProvider {
-  const config: Required<Pick<TngDirectCreditConfig, 'merchantId' | 'apiKey'>> & Pick<TngDirectCreditConfig, 'verifyDestination' | 'createPayout'> = {
+  const config = {
     merchantId: overrides.merchantId ?? process.env.TNG_DIRECT_CREDIT_MERCHANT_ID ?? '',
     apiKey: overrides.apiKey ?? process.env.TNG_DIRECT_CREDIT_API_KEY ?? '',
+    mode: overrides.mode ?? process.env.TNG_PAYOUT_MODE ?? '',
+    nodeEnv: overrides.nodeEnv ?? process.env.NODE_ENV ?? '',
+    webhookSecret: overrides.webhookSecret ?? process.env.TNG_MOCK_WEBHOOK_SECRET ?? '',
     verifyDestination: overrides.verifyDestination,
     createPayout: overrides.createPayout,
   };
-
+  const mockEnabled = isTngMockPayoutEnabled({
+    NODE_ENV: config.nodeEnv,
+    TNG_PAYOUT_MODE: config.mode,
+    TNG_MOCK_WEBHOOK_SECRET: config.webhookSecret,
+  });
   return {
     name: 'tng_direct_credit',
     destinationType: 'e_wallet',
-    isConfigured: () => Boolean(config.merchantId && config.apiKey && config.verifyDestination && config.createPayout),
+    isConfigured: () => mockEnabled,
     async verifyDestination(input) {
       const maskedReference = maskTngReference(input.phoneOrDuitNow);
-      if (!config.merchantId || !config.apiKey || !config.verifyDestination || !config.createPayout) {
+      if (mockEnabled) {
+        const normalized = input.phoneOrDuitNow.trim();
+        return {
+          status: 'verified',
+          providerReference: opaqueMockReference('tng_dest', normalized, config.webhookSecret),
+          maskedReference,
+          reason: null,
+        };
+      }
+      if (!mockEnabled) {
         return { status: 'rejected', providerReference: null, maskedReference, reason: 'provider_not_configured' };
       }
-      const result = await config.verifyDestination(input);
-      return { ...result, maskedReference };
+      return { status: 'rejected', providerReference: null, maskedReference, reason: 'provider_not_configured' };
     },
     async createPayout(input) {
-      if (!config.merchantId || !config.apiKey || !config.verifyDestination || !config.createPayout) {
+      if (mockEnabled) {
+        return {
+          status: 'processing',
+          providerEventId: opaqueMockReference(
+            'tng_payout',
+            `${input.withdrawalId}:${input.idempotencyKey}`,
+            config.webhookSecret,
+          ),
+          failure: null,
+        };
+      }
+      if (!mockEnabled) {
         return { status: 'failed', providerEventId: null, failure: notConfiguredFailure() };
       }
-      return config.createPayout(input);
+      return { status: 'failed', providerEventId: null, failure: notConfiguredFailure() };
     },
   };
 }

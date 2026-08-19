@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "@/components/providers/auth";
 
 type WishlistContextValue = {
   savedIds: ReadonlySet<string>;
@@ -14,9 +15,19 @@ const WishlistContext = createContext<WishlistContextValue | null>(null);
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
+  const activeUserIdRef = useRef<string | null>(currentUser?.id ?? null);
+  activeUserIdRef.current = currentUser?.id ?? null;
 
   useEffect(() => {
+    if (!currentUser) {
+      setSavedIds(new Set());
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
+    setSavedIds(new Set());
+    setLoading(true);
     fetch("/api/wishlist")
       .then(async (response) => {
         if (!response.ok) return;
@@ -33,9 +44,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser?.id]);
 
   const toggleSaved = useCallback(async (productId: string) => {
+    if (!currentUser) return false;
+    const userId = currentUser.id;
     const wasSaved = savedIds.has(productId);
     const nextSaved = !wasSaved;
     setSavedIds((current) => {
@@ -54,6 +67,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (!response.ok) throw new Error("Wishlist update failed");
       return nextSaved;
     } catch {
+      if (activeUserIdRef.current !== userId) return false;
       setSavedIds((current) => {
         const next = new Set(current);
         if (wasSaved) next.add(productId);
@@ -62,7 +76,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       });
       return wasSaved;
     }
-  }, [savedIds]);
+  }, [currentUser, savedIds]);
 
   const value = useMemo(() => ({ savedIds, loading, toggleSaved }), [savedIds, loading, toggleSaved]);
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;

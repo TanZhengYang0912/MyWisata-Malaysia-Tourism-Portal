@@ -11,6 +11,7 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 export type NotificationScope = "customer" | "vendor";
 export type NotificationCategoryOption = { value: string; label: string; labelKey?: string };
 export type NotificationBellProps = {
+  enabled?: boolean;
   scope?: NotificationScope;
   vendorId?: string | null;
   allHref?: string;
@@ -62,7 +63,7 @@ function paramsFor(props: NotificationBellProps, category = "all", read = "all",
   return params;
 }
 
-export function NotificationBell({ scope = "customer", vendorId = null, allHref, categories }: NotificationBellProps) {
+export function NotificationBell({ enabled = true, scope = "customer", vendorId = null, allHref, categories }: NotificationBellProps) {
   const props = { scope, vendorId, allHref: allHref ?? "/customer/notifications", categories: categories ?? (scope === "vendor" ? VENDOR_CATEGORIES : CUSTOMER_CATEGORIES) };
   const { t, i18n } = useTranslation("common");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -72,32 +73,52 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
   const [category, setCategory] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
   const ref = useRef<HTMLDivElement>(null);
+  const requestGeneration = useRef(0);
 
-  async function load() {
+  async function load(generation: number) {
+    if (!enabled) return;
     try {
       const response = await fetch(`/api/notifications?${paramsFor(props, category, readFilter)}`);
       const body = await response.json() as ApiBody;
+      if (generation !== requestGeneration.current) return;
       if (response.ok && body.data) setItems(body.data.items);
       const unreadResponse = await fetch(`/api/notifications?${paramsFor(props, "all", "unread", 1)}`);
       const unreadBody = await unreadResponse.json() as ApiBody;
+      if (generation !== requestGeneration.current) return;
       if (unreadResponse.ok && unreadBody.data) setUnread(unreadBody.data.total);
     } catch {
       // Keep the last known notification state when the poll is temporarily unavailable.
     }
   }
-  useEffect(() => { void load(); const timer = setInterval(() => void load(), 30_000); return () => clearInterval(timer); }, [scope, vendorId, category, readFilter]);
+  useEffect(() => {
+    const generation = ++requestGeneration.current;
+    if (!enabled) {
+      setOpen(false);
+      setItems([]);
+      setUnread(0);
+      return;
+    }
+    void load(generation);
+    const timer = setInterval(() => void load(generation), 30_000);
+    return () => {
+      requestGeneration.current += 1;
+      clearInterval(timer);
+    };
+  }, [enabled, scope, vendorId, category, readFilter]);
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
     document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close);
   }, [open]);
   async function markRead(id: string) {
+    if (!enabled) return;
     const response = await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
     if (!response.ok) return;
     setItems((current) => current.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item));
     setUnread((current) => Math.max(0, current - 1));
   }
   async function markAll() {
+    if (!enabled) return;
     const markAllParams = new URLSearchParams();
     if (scope === "vendor") { markAllParams.set("scope", "vendor"); if (vendorId) markAllParams.set("vendorId", vendorId); }
     const response = await fetch(`/api/notifications/read-all${markAllParams.toString() ? `?${markAllParams}` : ""}`, { method: "POST" });

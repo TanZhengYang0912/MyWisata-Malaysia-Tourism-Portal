@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 // P4 — Member 4: customer "My Tickets" list. CLAUDE-FIXES.md Fix 2 — the
 // missing customer-facing half of the ticket system (admin could already
 // see tickets; customers had no way to see a reply).
@@ -9,6 +10,8 @@ import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { useAuth } from "@/components/providers/auth";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 
 interface TicketSummary {
   id: string;
@@ -35,6 +38,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function CustomerSupportPage() {
+  const { t: tCustomer } = useTranslation("customer");
+  const { currentUser } = useAuth();
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
   const [subject, setSubject] = useState("Withdrawal information");
@@ -44,20 +49,26 @@ export default function CustomerSupportPage() {
 
   useEffect(() => {
     setWithdrawalId(new URLSearchParams(window.location.search).get("withdrawal"));
+    if (!currentUser) {
+      setTickets([]);
+      return;
+    }
+    let active = true;
     (async () => {
       try {
         const res = await fetch("/api/support/tickets");
         const body = (await res.json()) as { data: TicketSummary[] | null };
-        setTickets(res.ok && body.data ? body.data : null);
+        if (active) setTickets(res.ok && body.data ? body.data : null);
       } catch {
-        setTickets(null);
+        if (active) setTickets(null);
       }
     })();
-  }, []);
+    return () => { active = false; };
+  }, [currentUser]);
 
   async function submitWithdrawalTicket(event: FormEvent) {
     event.preventDefault();
-    if (!withdrawalId || body.trim().length < 1) return;
+    if (!currentUser || !withdrawalId || body.trim().length < 1) return;
     setSending(true); setFormError("");
     try {
       const response = await fetch("/api/support/tickets", {
@@ -72,12 +83,15 @@ export default function CustomerSupportPage() {
     } finally { setSending(false); }
   }
 
+  if (!currentUser) {
+    return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.noTickets")} description={tCustomer("ui.guest.accountHint")} nextPath="/customer/support" value="0" /></CustomerPageShell>;
+  }
   if (tickets === undefined) {
-    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">Loading…</div></CustomerPageShell>;
+    return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div></CustomerPageShell>;
   }
   if (tickets === null) {
     return (
-      <CustomerPageShell><EmptyState title="Couldn't load your tickets" description="Something went wrong. Try refreshing the page." /></CustomerPageShell>
+      <CustomerPageShell><EmptyState title={tCustomer("ui.states.loadingError")} description={tCustomer("ui.states.loadingError")} /></CustomerPageShell>
     );
   }
 
@@ -85,24 +99,24 @@ export default function CustomerSupportPage() {
     <CustomerPageShell>
       <CustomerPageHeader
         eyebrow="Support"
-        title="My Tickets"
-        description="Track your questions and follow up with the MyWisata support team."
+        title={tCustomer("ui.support.myTickets")}
+        description={tCustomer("ui.support.description")}
         icon={<MessageSquare size={14} />}
       />
 
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
-        <p className="font-semibold text-foreground">Provide information for your held withdrawal</p>
+        <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>
         <p className="text-sm text-muted-foreground">Reference: {withdrawalId}</p>
-        <input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label="Ticket subject" />
-        <textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={2000} placeholder="Explain the requested payout information…" className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label="Ticket message" />
+        <input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
+        <textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
         {formError && <p className="text-sm text-red-600">{formError}</p>}
         <button type="submit" disabled={sending || !body.trim()} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? "Sending…" : "Send information"}</button>
       </form>}
 
       {tickets.length === 0 ? (
         <EmptyState
-          title="No support tickets yet"
-          description="If our chatbot can't answer your question, you can raise a ticket right from the chat — it'll show up here."
+          title={tCustomer("ui.states.noTickets")}
+          description={tCustomer("ui.support.startNew")}
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">

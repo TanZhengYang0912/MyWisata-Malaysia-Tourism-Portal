@@ -1,7 +1,7 @@
 "use client";
 
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { setCurrentUserId } from "@/backend/domains/current-user";
 import { isAppLocale } from "@/lib/i18n/locale";
@@ -17,7 +17,7 @@ interface AuthContextValue {
   activeOutletIds?: string[];
   loading: boolean;
   switchUser: (id: string, user?: User) => Promise<User | null>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,15 +26,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
+  const profileLoadVersion = useRef(0);
+  const switchAttemptVersion = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
 
-  const loadSupabaseUser = useCallback(async (authUserId: string) => {
+  const loadSupabaseUser = useCallback(async (authUserId: string, requestVersion: number) => {
     const { data: row, error } = await supabase
       .from("users")
       .select("id,email,full_name,city,country,preferred_locale,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
+    if (requestVersion !== profileLoadVersion.current) return null;
     if (error) throw error;
 
     const assignments = row?.user_roles ?? [];
@@ -65,38 +68,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const loadVersion = profileLoadVersion;
+    const initialRequestVersion = ++profileLoadVersion.current;
 
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!active) return;
-      if (!user) {
-        // Do not trust the old localStorage-only demo selection. Server pages
-        // authenticate through Supabase cookies, so both sides must agree.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!active || initialRequestVersion !== profileLoadVersion.current) return;
+        if (!user) {
+          // Do not trust the old localStorage-only demo selection. Server pages
+          // authenticate through Supabase cookies, so both sides must agree.
+          setCurrentUser(null);
+          setLoading(false);
+          return;
+        }
+        await loadSupabaseUser(user.id, initialRequestVersion);
+        if (active && initialRequestVersion === profileLoadVersion.current) setLoading(false);
+      } catch {
+        if (!active || initialRequestVersion !== profileLoadVersion.current) return;
         setCurrentUser(null);
         setLoading(false);
-        return;
       }
-      await loadSupabaseUser(user.id);
-      if (active) setLoading(false);
     }
 
-    load().catch(() => {
-      if (!active) return;
-      setCurrentUser(null);
-      setLoading(false);
-    });
+    void load();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const requestVersion = ++profileLoadVersion.current;
       if (!session?.user) {
+        ++switchAttemptVersion.current;
         setCurrentUser(null);
         setLoading(false);
         return;
       }
-      loadSupabaseUser(session.user.id).finally(() => setLoading(false));
+      setCurrentUser(null);
+      setLoading(true);
+      window.setTimeout(() => {
+        if (!active) return;
+        void loadSupabaseUser(session.user.id, requestVersion)
+          .catch(() => undefined)
+          .finally(() => {
+            if (active && requestVersion === profileLoadVersion.current) setLoading(false);
+          });
+      }, 0);
     });
 
     return () => {
       active = false;
+      ++loadVersion.current;
       subscription.unsubscribe();
     };
   }, [loadSupabaseUser, supabase]);
@@ -112,23 +131,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const switchUser = useCallback(async (id: string, selectedUser?: User) => {
     const user = selectedUser;
     if (!user || user.id !== id) throw new Error('Demo account is unavailable');
+    const switchAttempt = ++switchAttemptVersion.current;
+    ++profileLoadVersion.current;
 
     const response = await fetch('/api/auth/demo-signin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: user.email }),
     });
-    const result = await response.json() as { error?: string };
+    const result = await response.json() as {
+      error?: string;
+      session?: { access_token?: string; refresh_token?: string };
+    };
     if (!response.ok) throw new Error(result.error || 'Unable to sign in');
+    if (switchAttempt !== switchAttemptVersion.current) return null;
+    if (!result.session?.access_token || !result.session.refresh_token) {
+      throw new Error('Demo sign-in did not return a session');
+    }
 
-    const loadedUser = await loadSupabaseUser(id);
-    setLoading(false);
-    return loadedUser;
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token,
+    });
+    if (sessionError) throw sessionError;
+    if (switchAttempt !== switchAttemptVersion.current) return null;
+
+    const requestVersion = ++profileLoadVersion.current;
+    try {
+      return await loadSupabaseUser(id, requestVersion);
+    } finally {
+      if (requestVersion === profileLoadVersion.current) setLoading(false);
+    }
   }, [loadSupabaseUser]);
 
   const refreshUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await loadSupabaseUser(user.id);
+    const requestVersion = ++profileLoadVersion.current;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (requestVersion !== profileLoadVersion.current) return null;
+      return user ? await loadSupabaseUser(user.id, requestVersion) : null;
+    } finally {
+      if (requestVersion === profileLoadVersion.current) setLoading(false);
+    }
   }, [loadSupabaseUser, supabase]);
 
   const value: AuthContextValue = {

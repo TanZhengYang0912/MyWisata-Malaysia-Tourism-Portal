@@ -15,7 +15,9 @@
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
-    "verify:i18n": "node scripts/verify-i18n-coverage.mjs"
+    "verify:i18n": "node scripts/verify-i18n-coverage.mjs",
+    "verify:withdrawal-db": "node scripts/verify-provider-neutral-withdrawals.mjs",
+    "stripe:listen": "stripe listen --events checkout.session.completed,payment_intent.payment_failed,checkout.session.expired --forward-to http://localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

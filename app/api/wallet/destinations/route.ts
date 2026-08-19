@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { getPayoutDestinationCapabilities, type PayoutDestinationStatus, type PayoutDestinationType } from '@/lib/payouts/destinations';
+import { createServiceClient } from '@/lib/supabase/service';
+import { getPayoutDestinationCapabilities, normalizeTngDestinationIdentifier, type PayoutDestinationStatus, type PayoutDestinationType } from '@/lib/payouts/destinations';
 import { createTngDirectCreditProvider } from '@/lib/payouts/providers/tng-direct-credit';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { z } from 'zod';
@@ -73,28 +74,25 @@ export async function POST(request: Request) {
     if (!capabilities.e_wallet.enabled) return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'TNG eWallet payouts are not configured yet', 422);
     if (!phoneOrDuitNow) return apiFail('INVALID_PAYOUT_DESTINATION', 'Enter a TNG phone number or DuitNow account number', 422);
 
+    const normalized = normalizeTngDestinationIdentifier(phoneOrDuitNow);
+    if (!normalized.ok) return apiFail('INVALID_PAYOUT_DESTINATION', normalized.message, 422);
+
     const provider = createTngDirectCreditProvider();
-    const verification = await provider.verifyDestination({ phoneOrDuitNow });
+    const verification = await provider.verifyDestination({ phoneOrDuitNow: normalized.value });
     if (verification.status !== 'verified' || !verification.providerReference) {
       return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', verification.reason ?? 'TNG could not verify this destination', 422);
     }
 
-    const { data, error } = await db
-      .from('payout_destinations')
-      .insert({
-        user_id: user.id,
-        dest_type: 'ewallet',
-        provider: 'tng_direct_credit',
-        provider_reference: verification.providerReference,
-        label: label ?? 'TNG eWallet',
-        masked_ref: verification.maskedReference,
-        verification_status: 'verified',
-        verified_at: new Date().toISOString(),
-        is_default: false,
-      })
-      .select('id,dest_type,provider,label,masked_ref,verification_status,is_default,cooldown_until')
-      .single();
-    if (error || !data) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'Unable to save payout destination', 503);
+    const { data, error } = await createServiceClient().rpc('save_verified_payout_destination', {
+      p_user_id: user.id,
+      p_dest_type: 'ewallet',
+      p_provider: 'tng_direct_credit',
+      p_provider_reference: verification.providerReference,
+      p_label: label ?? 'TNG eWallet',
+      p_masked_ref: verification.maskedReference,
+      p_is_default: false,
+    });
+    if (error || !data) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'We could not save this payout destination. Your details were not added; please try again.', 503);
     return apiOk({ destination: mapDestination(data) }, { status: 201 });
   }
 
@@ -108,22 +106,15 @@ export async function POST(request: Request) {
     return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe bank payout setup before adding this destination', 403);
   }
 
-  const { data, error } = await db
-    .from('payout_destinations')
-    .upsert({
-      user_id: user.id,
-      dest_type: 'bank',
-      provider: 'stripe_connect',
-      provider_reference: profile.stripe_connect_account_id,
-      label: label ?? 'Stripe Connect bank account',
-      masked_ref: 'Bank account on file',
-      verification_status: 'verified',
-      verified_at: new Date().toISOString(),
-      is_default: true,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,provider,provider_reference' })
-    .select('id,dest_type,provider,label,masked_ref,verification_status,is_default,cooldown_until')
-    .single();
-  if (error || !data) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'Unable to save payout destination', 503);
+  const { data, error } = await createServiceClient().rpc('save_verified_payout_destination', {
+    p_user_id: user.id,
+    p_dest_type: 'bank',
+    p_provider: 'stripe_connect',
+    p_provider_reference: profile.stripe_connect_account_id,
+    p_label: label ?? 'Stripe Connect bank account',
+    p_masked_ref: 'Bank account on file',
+    p_is_default: true,
+  });
+  if (error || !data) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'We could not save this payout destination. Your details were not added; please try again.', 503);
   return apiOk({ destination: mapDestination(data) }, { status: 201 });
 }

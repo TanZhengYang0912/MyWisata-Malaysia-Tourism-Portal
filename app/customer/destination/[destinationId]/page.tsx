@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck, Star } from "lucide
 import { createClient } from "@/lib/supabase/server";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -66,15 +67,16 @@ async function getDestinationData(destinationId: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { destinationId } = await params;
   const result = await getDestinationData(destinationId);
-  if (!result) return { title: "Destination not found" };
+  const { t } = await getServerTranslation("customer");
+  if (!result) return { title: t("ui.destination.notFound") };
   const { destination } = result;
   return {
-    title: `${destination.state} — Explore Malaysia on MyWisata`,
+    title: t("ui.destination.metaTitle", { state: destination.state }),
     description:
       destination.intro ||
-      `Discover experiences, outlets and attractions in ${destination.state}, Malaysia.`,
+      t("ui.destination.metaDescription", { state: destination.state }),
     openGraph: {
-      title: `Explore ${destination.state} | MyWisata`,
+      title: t("ui.destination.metaExploreTitle", { state: destination.state }),
       description: destination.intro,
       images: destination.image ? [{ url: destination.image }] : undefined,
     },
@@ -87,6 +89,7 @@ export default async function DestinationPage({ params }: Props) {
   if (!result) notFound();
 
   const { destination, outlets, products } = result;
+  const { t } = await getServerTranslation("customer");
 
   // D7: a state renders the new place-first page only once it has places rows;
   // every other state falls through to this page unchanged. No flag day.
@@ -114,7 +117,7 @@ export default async function DestinationPage({ params }: Props) {
             className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white"
           >
             <ArrowLeft size={15} />
-            Back to Explore
+            {t("ui.destination.backToExplore")}
           </Link>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/60">
             {destination.zone}
@@ -139,14 +142,14 @@ export default async function DestinationPage({ params }: Props) {
               className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-primary shadow-sm transition hover:bg-white/90"
             >
               <MapPin size={15} />
-              View on Map
+              {t("ui.destination.viewOnMap")}
             </Link>
             <Link
               href={`/customer/partners?state=${encodeURIComponent(destination.state)}`}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
             >
               <Search size={15} />
-              Find Partners
+              {t("ui.destination.findPartners")}
             </Link>
           </div>
         </div>
@@ -158,22 +161,22 @@ export default async function DestinationPage({ params }: Props) {
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                Things to Do
+                {t("ui.destination.thingsToDo")}
               </p>
               <h2 className="mt-1 text-2xl font-bold text-foreground">
-                Popular Experiences in {destination.state}
+                {t("ui.destination.popularExperiences", { state: destination.state })}
               </h2>
             </div>
             <Link
               href={`/customer/explore`}
               className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0"
             >
-              View all <ArrowRight size={14} />
+              {t("ui.actions.viewAll")} <ArrowRight size={14} />
             </Link>
           </div>
           {products.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-              No experiences listed yet in {destination.state}.
+              {t("ui.destination.noExperiences", { state: destination.state })}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
@@ -221,25 +224,25 @@ export default async function DestinationPage({ params }: Props) {
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                Local Partners
+                {t("ui.destination.localPartners")}
               </p>
               <h2 className="mt-1 text-2xl font-bold text-foreground">
-                Outlets in {destination.state}
+                {t("ui.destination.outletsIn", { state: destination.state })}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Vendors with active outlets in this destination.
+                {t("ui.destination.vendorOutletsDescription")}
               </p>
             </div>
             <Link
               href={`/customer/partners?state=${encodeURIComponent(destination.state)}`}
               className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0"
             >
-              All partners <ArrowRight size={14} />
+              {t("ui.destination.allPartners")} <ArrowRight size={14} />
             </Link>
           </div>
           {outlets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-              No verified outlets in {destination.state} yet.
+              {t("ui.destination.noVerifiedOutlets", { state: destination.state })}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -267,7 +270,7 @@ export default async function DestinationPage({ params }: Props) {
                       {vendor?.status === "approved" && (
                         <p className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-primary">
                           <ShieldCheck size={10} />
-                          Verified
+                          {t("ui.destination.verified")}
                         </p>
                       )}
                     </div>
@@ -280,7 +283,7 @@ export default async function DestinationPage({ params }: Props) {
 
         {/* Other destinations */}
         <section>
-          <h2 className="mb-5 text-xl font-bold text-foreground">Explore More Destinations</h2>
+          <h2 className="mb-5 text-xl font-bold text-foreground">{t("ui.destination.exploreMore")}</h2>
           <div className="flex flex-wrap gap-2">
             {MALAYSIA_DESTINATIONS.filter((d) => d.state !== destination.state)
               .slice(0, 8)

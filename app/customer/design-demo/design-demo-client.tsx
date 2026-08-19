@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -26,6 +27,8 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 const DESTINATIONS_PER_PAGE = 6;
 const DESTINATION_RAIL_SIZE = 4;
@@ -127,6 +130,7 @@ function DemoVendorCard({ vendor, index }: { vendor: DemoVendor; index: number }
 }
 
 export function DesignDemoClient({ activities, recommended, vendors, initialState }: { activities: ComputedActivity[]; recommended: ComputedActivity[]; vendors: DemoVendor[]; initialState?: string }) {
+  const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
   const [activeState, setActiveState] = useState(() => (
     MALAYSIA_DESTINATIONS.some((destination) => destination.state === initialState) ? initialState! : MALAYSIA_DESTINATIONS[0].state
@@ -134,6 +138,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
   const [discoveryActivities, setDiscoveryActivities] = useState(activities);
   const [activeGuide, setActiveGuide] = useState(CITY_GUIDES[0].label);
   const { savedStates, toggleSaved } = useSavedDestinations();
+  const guard = useCustomerCapabilityGate();
   const [query, setQuery] = useState("");
   const [travelerCount, setTravelerCount] = useState("2 travellers");
   const [budgetRange, setBudgetRange] = useState("RM250–500/day");
@@ -231,6 +236,11 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
     router.push(`/customer?state=${encodeURIComponent(state)}`);
   }
 
+  async function saveActiveDestination() {
+    if (!guard(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, stateDemoHref)) return;
+    await toggleSaved(activeDestination.state);
+  }
+
   return (
     <div className="atlas-theme overflow-hidden bg-background text-foreground">
       <section className="relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white">
@@ -241,7 +251,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
         <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:px-8 lg:pb-8">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-7">
             <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> MyWisata / Atlas</div>
-            <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">View the full map <ArrowRight size={14} /></Link>
+            <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">{tCustomer("ui.map.viewDestination")} <ArrowRight size={14} /></Link>
           </div>
 
           <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-16">
@@ -280,7 +290,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
                   </div>
                   <div className="atlas-mobile-spotlight absolute right-5 top-5 z-30 rounded-2xl border border-white/20 bg-[#00004d]/90 px-3 py-2.5 text-right shadow-lg backdrop-blur lg:hidden"><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/45">Spotlight</p><p className="mt-1 text-xs font-bold text-white">{activeDestination.state}</p><p className="mt-1 hidden text-[10px] text-[#ffcc00] sm:block">{activeGuide} plan</p></div>
                   <div className="atlas-desktop-spotlight absolute right-5 top-5 z-30 hidden rounded-2xl border border-white/20 bg-[#00004d]/90 px-4 py-3 text-right shadow-lg backdrop-blur lg:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">In the spotlight</p><p className="mt-1 text-sm font-bold text-white">{activeDestination.state}</p><p className="mt-1 text-[11px] text-[#ffcc00]">{activeGuide} plan</p></div>
-                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><p className="mt-1 text-xs leading-5 text-white/60">{activeDestination.tagline}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">View destination <ArrowUpRight size={14} /></button><button type="button" onClick={() => void toggleSaved(activeDestination.state)} aria-pressed={savedStates.has(activeDestination.state)} className="atlas-press inline-flex items-center gap-2 rounded-full border border-white/30 bg-[#00004d]/35 px-3.5 py-2.5 text-xs font-bold text-white backdrop-blur transition hover:border-[#ffcc00] hover:bg-[#00004d]/55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><Bookmark size={14} fill={savedStates.has(activeDestination.state) ? "currentColor" : "none"} /> {savedStates.has(activeDestination.state) ? "Saved to your atlas" : "Save this feeling"}</button></div></div>
+                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><p className="mt-1 text-xs leading-5 text-white/60">{activeDestination.tagline}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">View destination <ArrowUpRight size={14} /></button><button type="button" onClick={() => void saveActiveDestination()} aria-pressed={savedStates.has(activeDestination.state)} className="atlas-press inline-flex items-center gap-2 rounded-full border border-white/30 bg-[#00004d]/35 px-3.5 py-2.5 text-xs font-bold text-white backdrop-blur transition hover:border-[#ffcc00] hover:bg-[#00004d]/55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><Bookmark size={14} fill={savedStates.has(activeDestination.state) ? "currentColor" : "none"} /> {savedStates.has(activeDestination.state) ? "Saved to your atlas" : "Save this feeling"}</button></div></div>
                 </div>
               </div>
             </div>

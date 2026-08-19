@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { isRealStripeAccountId } from '@/lib/stripe/account-id';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
-
-function isRealStripeAccountId(value: string | null): value is string {
-  return Boolean(value && /^acct_[A-Za-z0-9]+$/.test(value) && !value.startsWith('acct_demo_'));
-}
 
 function stripeFailure(error: unknown) {
   const details = error as {
@@ -112,12 +109,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 'verified', accountId });
     }
 
-    if (status.requiresDashboardAction) {
-      return apiFail(
-        'STRIPE_DASHBOARD_ACTION_REQUIRED',
-        'Complete your payout requirements in Stripe Dashboard.',
-        409,
-      );
+    if (status.payoutStatus === 'pending_verification' || status.payoutStatus === 'restricted') {
+      return NextResponse.json({ status: status.payoutStatus, accountId });
     }
   }
 
@@ -128,7 +121,6 @@ export async function POST(req: Request) {
         email: row.email ?? authUser.email ?? undefined,
         business_type: 'individual',
         capabilities: {
-          card_payments: { requested: true },
           transfers: { requested: true },
         },
         controller: {
@@ -166,6 +158,10 @@ export async function POST(req: Request) {
       refresh_url: `${origin}/customer/wallet?onboarding=refresh`,
       return_url: `${origin}/customer/wallet?onboarding=complete`,
       type: 'account_onboarding',
+      collection_options: {
+        fields: 'currently_due',
+        future_requirements: 'omit',
+      },
     });
 
     return NextResponse.json({ url: accountLink.url });

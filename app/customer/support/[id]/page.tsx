@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 // P4 — Member 4: customer ticket detail + reply thread. CLAUDE-FIXES.md Fix 2,
 // bubble rendering delegated to the shared <TicketThread> per CLAUDE-FIXES-2.md item 2.
 
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 
 interface TicketDetail {
   id: string;
@@ -36,6 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 const LOCKED_STATUSES = new Set(["resolved", "closed"]);
 
 export default function CustomerTicketDetailPage() {
+  const { t: tCustomer } = useTranslation("customer");
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
@@ -43,29 +46,41 @@ export default function CustomerTicketDetailPage() {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   async function loadTicket() {
+    if (!currentUser) return;
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const body = (await res.json()) as { data: TicketDetail | null };
       setTicket(res.ok && body.data ? body.data : null);
+      setLoadedUserId(currentUser.id);
     } catch {
       setTicket(null);
+      setLoadedUserId(currentUser.id);
     }
   }
 
   useEffect(() => {
+    if (!currentUser) {
+      setTicket(undefined);
+      setLoadedUserId(null);
+      return;
+    }
+    let active = true;
     (async () => {
       await loadTicket();
       // Marks read on actually opening the thread, not just when a list
       // row renders (CLAUDE-FIXES-2.md item 1's own instruction). Fire and
       // forget — the badge will just stay stale for one more poll cycle if
       // this happens to fail.
-      await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
+      if (active) await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
     })();
-  }, [id]);
+    return () => { active = false; };
+  }, [currentUser, id]);
 
   async function sendReply() {
+    if (!currentUser) return;
     const text = reply.trim();
     if (!text || sending) return;
     setSending(true);
@@ -87,6 +102,7 @@ export default function CustomerTicketDetailPage() {
   }
 
   async function reopenTicket() {
+    if (!currentUser) return;
     if (reopening) return;
     setReopening(true);
     try {
@@ -101,11 +117,14 @@ export default function CustomerTicketDetailPage() {
     }
   }
 
-  if (ticket === undefined || !currentUser) {
-    return <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+  if (!currentUser) {
+    return <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("ui.states.noTickets")} description={tCustomer("ui.guest.accountHint")} nextPath={`/customer/support/${id}`} /></div>;
+  }
+  if (ticket === undefined || loadedUserId !== currentUser.id) {
+    return <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   }
   if (ticket === null) {
-    return <EmptyState title="Couldn't load this ticket" description="It may not exist, or it's not yours." />;
+    return <EmptyState title={tCustomer("ui.states.loadingError")} description={tCustomer("ui.support.resolved")} />;
   }
 
   return (
@@ -155,7 +174,7 @@ export default function CustomerTicketDetailPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") sendReply();
             }}
-            placeholder="Reply to this ticket…"
+            placeholder={tCustomer("ui.support.reply")}
             className="flex-1 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
             disabled={sending}
           />

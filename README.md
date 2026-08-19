@@ -52,6 +52,92 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 | `npm run build` / `npm run start` | Production build / serve |
 | `npm test` | Run unit tests (money, voucher, distance, order-state helpers) |
 | `npm run lint` | Lint |
+| `npm run stripe:listen` | Forward Stripe Sandbox payment events to the local webhook |
+
+## Local Stripe Sandbox top-up testing
+
+Top-up balance changes are server-confirmed. Returning to
+`/customer/wallet?topup=success` does not credit Supabase by itself; a verified
+`checkout.session.completed` webhook calls `credit_topup` and writes the wallet
+ledger.
+
+Install and authenticate Stripe CLI once per development machine:
+
+```bash
+brew install stripe/stripe-cli/stripe
+stripe login
+```
+
+Use two terminals while testing:
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npm run stripe:listen
+```
+
+The listener prints a signing secret beginning with `whsec_`. Put that value in
+the local, uncommitted `.env.local` file and restart Terminal 1:
+
+```dotenv
+STRIPE_WEBHOOK_SECRET=whsec_replace_with_the_listener_secret
+```
+
+Keep the listener running, sign in as any phone-verified customer, and complete
+a Sandbox top-up using card `4242 4242 4242 4242`, any future `MM/YY`, and any
+three-digit CVC. A successful test shows an HTTP 200 delivery in Terminal 2,
+increments only that customer's `topup_sen`, and creates one
+`wallet_transactions` row for the Stripe event.
+
+The team development environment uses the shared Stripe Sandbox and shared
+development Supabase. Nominate one active listener at a time for that shared
+pair; multiple listeners receive duplicate events, which are safe to replay but
+make logs difficult to interpret. Developers who need simultaneous isolated
+testing should use separate Stripe Sandboxes and Supabase branches.
+
+Never commit `sk_...` or `whsec_...` values. Staging and Production must each
+use their own public HTTPS webhook destination, Supabase project, Stripe mode,
+API keys, and signing secrets. A Sandbox secret must never be copied into
+Production.
+
+## Payment provider engineering status
+
+| Flow | Status |
+|---|---|
+| Stripe Checkout / Top-up | Official Sandbox integration |
+| MyWisata Wallet checkout | Implemented |
+| TNG eWallet Checkout | Signed non-production simulator |
+| GrabPay Checkout | Signed non-production simulator |
+| Bank Transfer Checkout | Signed non-production simulator |
+| TNG Direct Credit Withdrawal | Signed non-production simulator |
+| Live TNG / GrabPay / Bank APIs | Not implemented; requires provider approval |
+
+The checkout simulators exercise the same engineering boundaries expected from
+a provider integration: server-owned amounts and references, signed asynchronous
+events, payload-bound idempotency, terminal-state conflict checks, atomic
+settlement, refunds, and audit records. They do not contact TNG, GrabPay, or a
+bank and never move real money.
+
+Enable payment simulators only on a local machine or an isolated shared staging
+deployment:
+
+```dotenv
+PAYMENT_SIMULATOR_MODE=enabled
+PAYMENT_SIMULATOR_WEBHOOK_SECRET=<random-server-only-test-secret>
+```
+
+Both settings are server-only. Do not expose the secret with a `NEXT_PUBLIC_`
+prefix or commit it. Simulator endpoints fail closed whenever
+`NODE_ENV=production`, even if these variables are present. Each environment
+must use a different secret.
+
+For a team staging environment, apply
+`supabase/migrations/20260817172900_provider_simulator_payment_engineering.sql`,
+set the two variables in the staging server, and use the Admin **Refunds** page
+to exercise asynchronous simulated refund outcomes. Stripe continues to use its
+own Sandbox keys and verified webhook; Wallet checkout does not use a simulator.
 
 ## Demo accounts
 
@@ -63,10 +149,48 @@ Before enabling the live verification and payout paths, configure and verify the
 - **Supabase Auth:** enable Confirm Email, configure `/auth/callback` in the allowed redirect URLs, and configure the Google OAuth provider. A Google identity with a trusted `email_verified` claim receives only Email Verified status; Phone Verification, Profile Completion, and KYC remain separate requirements.
 - **KYC OCR:** configure `GOOGLE_AI_KEY` and optionally `GEMINI_OCR_MODEL`. If the key is missing or the provider fails, the submission remains pending and the API marks `manualReviewRequired: true`; OCR must never approve KYC by itself.
 - **Stripe payouts:** configure the Stripe Connect account and both webhook secrets, then verify successful, duplicate, and failed webhook deliveries. Failed provider codes/messages are normalized and stored without exposing credentials or raw personal data.
-- **TNG eWallet payouts:** configure the real TNG Direct Credit merchant credentials and the provider adapter only after the official provider contract is available. The application accepts a TNG phone/DuitNow reference, never a TNG PIN, and keeps the feature visibly unavailable until the provider is genuinely configured.
-- **Supabase migrations:** apply the additive industry-readiness migrations `087`, `088`, `089`, and `090` after migration `086`. Verify destination snapshots, review-source RPCs, report amount keys, and payout-failure fields before testing withdrawals.
+- **TNG eWallet payouts:** live TNG Direct Credit is not implemented and remains disabled. Local or staging tests may enable the signed asynchronous mock described below. The application accepts a TNG phone/DuitNow reference, never a TNG PIN, and stores only a masked label plus an opaque provider reference.
+- **Supabase migrations:** apply the additive industry-readiness migrations in filename order through `100_provider_event_settlement_backfill.sql`. Migration `097` fixes the Admin review-source projection; migration `098` adds service-only destination verification, provider-aware terminal invariants, explicit payout retry auditing, provider-neutral settlement/receipts, and append-only audit history; migration `099` persists provider payout IDs before later accounting steps and blocks unsafe retries; migration `100` safely backfills provider callback receipts and settlement for databases where `098`-`099` were applied without `096`. Never re-run or edit an already-applied older migration to install these fixes.
 
 Recommended smoke sequence: create an email account and verify it, sign in with Google, verify a phone, complete the five profile fields, submit and review KYC, create a verified payout destination, submit a withdrawal, exercise Approve/Reject/Hold/Failed paths, generate the monthly report, and inspect the maintenance run logs.
+
+### TNG mock payout testing (non-production only)
+
+Set these only in a local or isolated staging environment:
+
+```bash
+TNG_PAYOUT_MODE=mock
+TNG_MOCK_WEBHOOK_SECRET=<random-test-secret>
+```
+
+Mock mode is rejected whenever `NODE_ENV=production`. It does not use or prove a live TNG API connection.
+
+1. Apply migrations `096_wallet_ledger_tng_mock_settlement.sql` through `100_provider_event_settlement_backfill.sql` in filename order to the isolated test database. If the database already has `098` and `099` but is missing the provider settlement objects from `096`, apply `100` directly; do not re-run `096`, because its older processing function would temporarily replace the safer claim-aware implementation from `099`.
+2. Complete the normal user prerequisites: email sign-in, verified phone, approved KYC, sufficient earnings, and a verified mock TNG destination.
+3. Submit a withdrawal and complete one approval, or two distinct approvals when `requires_dual_approval=true`. A high-risk withdrawal also requires a recorded Super Admin override.
+4. Confirm Admin approval leaves the withdrawal in `processing` with `payout_provider=tng_direct_credit` and an opaque `tng_payout_*` ID.
+5. Build the exact raw callback JSON below and compute `x-tng-signature` as the lowercase hex HMAC-SHA256 of that raw body using `TNG_MOCK_WEBHOOK_SECRET`:
+
+```json
+{"eventId":"evt_local_paid_001","payoutId":"<opaque payout ID from step 4>","withdrawalId":"<withdrawal UUID>","status":"paid"}
+```
+
+6. `POST` the signed body to `/api/tng/payout/webhook`. Confirm the real test database changes `processing -> paid`, moves reserved earnings to withdrawn earnings, adds one `withdrawal_complete` ledger row, and records one provider event.
+7. Replay the identical callback. It must return `idempotent: true` without changing balances, ledger row counts, notifications, or email outbox rows.
+8. Repeat with a new withdrawal and `status:"failed"` plus bounded `failure.code`/`failure.message`. Confirm reserved earnings are restored once and normalized, redacted failure metadata is stored.
+9. Attempt direct `UPDATE` and `DELETE` against `wallet_transactions` using an application role. Both must fail with `wallet_transactions_append_only`.
+
+For a repeatable real-database verification, use only a disposable/local database:
+
+```bash
+WITHDRAWAL_TEST_DATABASE_URL='<isolated postgres URL>' \
+WITHDRAWAL_TEST_DB_CONFIRM='<Supabase project ref, or local>' \
+WITHDRAWAL_TEST_ALLOW='isolated-withdrawal-test' \
+npm run verify:withdrawal-db
+```
+
+The verifier runs its fixtures in a transaction and rolls them back. It checks destination write denial, provider-aware settlement, replay idempotency, dual approval, append-only transaction/audit history, evidence authorization, masked receipt data, and monthly reporting. Never point it at Production.
+10. Simulate a retryable provider failure. Confirm the withdrawal remains `approved`, the Admin detail view offers **Retry payout**, and retrying creates `withdrawal.payout_retry_requested` in the audit log without creating another approval row.
 
 At `/login`, pick a seeded role — no password (mock auth):
 

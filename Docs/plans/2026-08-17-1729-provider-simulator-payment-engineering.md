@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Ready for execution
+**Status:** Implemented; final verification recorded in the task handoff
 
 **Goal:** Replace client-declared external checkout success with provider-shaped, signed, idempotent asynchronous simulators for TNG eWallet, GrabPay, and bank transfer while preserving Stripe Sandbox, Wallet settlement, refunds, and the existing TNG payout simulator.
 

@@ -53,14 +53,16 @@ describe('GET /api/stripe/connect-status', () => {
       detailsSubmitted: true,
       payoutsEnabled: true,
       chargesEnabled: true,
-      requiresDashboardAction: false,
+      payoutStatus: 'payouts_enabled',
+      requirementCounts: { currentlyDue: 0, pastDue: 0, pendingVerification: 0 },
+      disabledReason: null,
     });
 
     const response = await GET();
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { accountId: 'acct_enabled', payoutsEnabled: true, sync: 'stripe' },
+      data: { accountId: 'acct_enabled', payoutsEnabled: true, payoutStatus: 'payouts_enabled', sync: 'stripe' },
     });
     expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
       p_connect_account_id: 'acct_enabled',
@@ -68,7 +70,7 @@ describe('GET /api/stripe/connect-status', () => {
     });
   });
 
-  it('returns Dashboard action guidance for an incomplete Full Dashboard account', async () => {
+  it('returns accurate currently-due guidance without raw requirement fields', async () => {
     mocks.maybeSingle.mockResolvedValue({
       data: { tier: 'kyc_verified', stripe_connect_account_id: 'acct_incomplete', stripe_payouts_enabled: false },
       error: null,
@@ -80,18 +82,47 @@ describe('GET /api/stripe/connect-status', () => {
       detailsSubmitted: false,
       payoutsEnabled: false,
       chargesEnabled: false,
-      requiresDashboardAction: true,
+      payoutStatus: 'currently_due',
+      requirementCounts: { currentlyDue: 1, pastDue: 0, pendingVerification: 0 },
+      disabledReason: null,
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      data: { payoutStatus: 'currently_due', payoutsEnabled: false },
+    });
+    expect(JSON.stringify(body)).not.toContain('external_account');
+    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
+      p_connect_account_id: 'acct_incomplete',
+      p_payouts_enabled: false,
+    });
+  });
+
+  it('returns pending verification as a no-action status', async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: { tier: 'kyc_verified', stripe_connect_account_id: 'acct_pending' },
+      error: null,
+    });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_pending',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: true,
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      payoutStatus: 'pending_verification',
+      requirementCounts: { currentlyDue: 0, pastDue: 0, pendingVerification: 1 },
+      disabledReason: 'requirements.pending_verification',
     });
 
     const response = await GET();
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { requiresDashboardAction: true, payoutsEnabled: false },
-    });
-    expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
-      p_connect_account_id: 'acct_incomplete',
-      p_payouts_enabled: false,
+      data: { payoutStatus: 'pending_verification', payoutsEnabled: false },
     });
   });
 
@@ -106,6 +137,22 @@ describe('GET /api/stripe/connect-status', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'STRIPE_STATUS_UNAVAILABLE' } });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(['acct_demo_1234567890', '601234567890'])('treats legacy or invalid account ID %s as unlinked', async (accountId) => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: { tier: 'kyc_verified', stripe_connect_account_id: accountId },
+      error: null,
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { accountId: null, payoutStatus: 'unlinked', payoutsEnabled: false },
+    });
+    expect(mocks.retrieveConnectAccountStatus).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

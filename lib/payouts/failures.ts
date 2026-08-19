@@ -3,10 +3,11 @@ import type { PayoutProviderName, ProviderFailure } from './providers';
 function redactProviderMessage(value: string | null | undefined): string | null {
   if (!value) return null;
   return value
-    .replace(/(?:password|pass|token|secret|auth(?:orization)?)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .replace(/(password|pass|token|secret|auth(?:orization)?)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
     .replace(/\b(?:sk|rk|pk|pi|ch|cs|re|cus|acct|pm|src|tok|seti|evt|whsec)_[A-Za-z0-9_-]+\b/gi, '[redacted]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted]')
     .replace(/\+\d{1,3}(?:[\s().-]*\d){7,14}/g, '[redacted]')
+    .replace(/\b01\d(?:[\s().-]*\d){7,8}\b/g, '[redacted]')
     .slice(0, 500);
 }
 

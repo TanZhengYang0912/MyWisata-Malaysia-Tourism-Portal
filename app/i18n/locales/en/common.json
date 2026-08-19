@@ -56,6 +56,7 @@
     "rejected": "Rejected",
     "completed": "Completed",
     "cancelled": "Cancelled",
+    "refunded": "Refunded",
     "failed": "Failed"
   },
   "errors": {

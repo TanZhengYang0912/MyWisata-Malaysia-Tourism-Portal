@@ -6,6 +6,7 @@ import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
 import { getPayoutDestinationCapabilities } from '@/lib/payouts/destinations';
+import { createServiceClient } from '@/lib/supabase/service';
 
 const submitSchema = z.object({
   amountRm: z.string().trim().min(1).max(20),
@@ -116,21 +117,18 @@ export async function POST(request: Request) {
     const { error: syncError } = await db.rpc('update_connect_status', { p_connect_account_id: connectStatus.accountId, p_payouts_enabled: connectStatus.payoutsEnabled });
     if (syncError) return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
     if (!connectStatus.payoutsEnabled) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
-    const { data: destination, error: destinationError } = await db
-      .from('payout_destinations')
-      .upsert({
-        user_id: user.id,
-        dest_type: 'bank',
-        label: 'Stripe Connect bank account',
-        masked_ref: 'Bank account on file',
-        is_default: true,
-        provider: 'stripe_connect',
-        provider_reference: accountId,
-        verification_status: 'verified',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,provider,provider_reference' })
-      .select('id')
-      .single();
+    const { data: destination, error: destinationError } = await createServiceClient().rpc(
+      'save_verified_payout_destination',
+      {
+        p_user_id: user.id,
+        p_dest_type: 'bank',
+        p_provider: 'stripe_connect',
+        p_provider_reference: accountId,
+        p_label: 'Stripe Connect bank account',
+        p_masked_ref: 'Bank account on file',
+        p_is_default: true,
+      },
+    );
     if (destinationError || !destination) return apiFail('PAYOUT_DESTINATION_UNAVAILABLE', 'Unable to verify payout destination', 503);
     destinationId = destination.id;
   }

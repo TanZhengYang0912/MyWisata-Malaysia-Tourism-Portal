@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PlaceCard } from "@/components/customer/place-card";
 import type { Place } from "@/backend/core/types";
 
@@ -20,6 +21,7 @@ export function PlaceList({
   regions: { id: string; name: string }[];
   regionByPoi: Record<string, string>;
 }) {
+  const { t } = useTranslation("customer");
   const [bookableOnly, setBookableOnly] = useState(true);
   const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
 
@@ -45,7 +47,7 @@ export function PlaceList({
   return (
     <section className="mt-8">
       <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-        {filtered.length} {filtered.length === 1 ? "place" : "places"} to visit
+        {t("ui.place.placesToVisit", { count: filtered.length })}
       </h2>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -56,7 +58,7 @@ export function PlaceList({
             bookableOnly ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
           }`}
         >
-          Bookable {bookableOnly && `(${bookableCount})`}
+          {t("ui.place.bookable")}{bookableOnly && ` (${bookableCount})`}
         </button>
         {regions.length > 1 && (
           <div className="flex flex-wrap gap-1.5 border-l border-border pl-3">
@@ -80,7 +82,7 @@ export function PlaceList({
 
       {filtered.length === 0 ? (
         <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No places match these filters.
+          {t("ui.place.noPlacesMatch")}
         </p>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

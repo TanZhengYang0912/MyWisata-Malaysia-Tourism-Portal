@@ -42,7 +42,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     setMounted(false);
     getActivities().then((nextActivities) => { if (active) setActivities(nextActivities); });
-    if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => {
+    if (!currentUser) {
+      setItems([]);
+      setSelectedKeysState(new Set());
+      setMounted(true);
+      return () => { active = false; };
+    }
+    setItems([]);
+    setSelectedKeysState(new Set());
+    commerce.getCart(currentUser.id).then((nextItems) => {
       if (!active) return;
       setItems(nextItems);
       try {
@@ -53,7 +61,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       setMounted(true);
     });
-    else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);
 

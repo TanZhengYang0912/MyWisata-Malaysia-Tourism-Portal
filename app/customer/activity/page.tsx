@@ -1,8 +1,8 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import OrdersPage from "@/app/customer/orders/page";
-import CustomerCalendarPage from "@/app/customer/calendar/page";
+import CustomerCalendarView from "@/components/customer/customer-calendar-view";
+import CustomerOrdersView from "@/components/customer/customer-orders-view";
 import { isActivityHistory, parseActivityTab } from "@/lib/customer/activity-navigation";
 
 export default function CustomerActivityPage() {
@@ -12,7 +12,7 @@ export default function CustomerActivityPage() {
 
   return (
     <div className="min-h-full bg-background">
-      {tab === "orders" ? <OrdersPage /> : <CustomerCalendarPage key={history ? "history" : "upcoming"} initialScope={history ? "past" : "upcoming"} />}
+      {tab === "orders" ? <CustomerOrdersView /> : <CustomerCalendarView key={history ? "history" : "upcoming"} initialScope={history ? "past" : "upcoming"} />}
     </div>
   );
 }

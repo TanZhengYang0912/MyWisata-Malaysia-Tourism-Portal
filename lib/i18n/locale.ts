@@ -72,12 +72,12 @@ export function matchAcceptedLocale(header: string | null | undefined): AppLocal
 }
 
 export function resolveAppLocale(input: ResolveLocaleInput): AppLocale {
-  if (isAppLocale(input.accountLocale)) {
-    return input.accountLocale;
-  }
-
   if (isAppLocale(input.cookieLocale)) {
     return input.cookieLocale;
+  }
+
+  if (isAppLocale(input.accountLocale)) {
+    return input.accountLocale;
   }
 
   return matchAcceptedLocale(input.acceptLanguage) ?? DEFAULT_LOCALE;

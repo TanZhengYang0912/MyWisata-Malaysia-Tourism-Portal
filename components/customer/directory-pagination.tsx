@@ -4,6 +4,7 @@
 // never rendered. Colours are the original author's hard-coded values — kept
 // verbatim on the move. See
 // docs/plans/2026-08-13-0044-place-page-nearby-refinements.md D4.
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type PageItem = number | "ellipsis";
@@ -41,6 +42,7 @@ export function DirectoryPagination({
   totalItems: number;
   totalPages: number;
 }) {
+  const { t } = useTranslation("customer");
   if (totalPages <= 1) return null;
   const pageItems = getPageItems(currentPage, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
@@ -49,12 +51,12 @@ export function DirectoryPagination({
   return (
     <nav aria-label={ariaLabel} className="mt-8 flex flex-col gap-4 border-t border-[#d7ddd9] pt-5 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-[#6d7e83]">
-        Showing <span className="font-bold text-[#122b3a]">{pageStart + 1}–{pageEnd}</span> of <span className="font-bold text-[#122b3a]">{totalItems}</span> {itemLabel}
+        {t("ui.pagination.showing", { from: pageStart + 1, to: pageEnd, total: totalItems, items: itemLabel })}
       </p>
       <div className="flex items-center gap-1.5">
-        <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} aria-label={previousPageLabel ?? `Previous ${itemLabel} page`} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={15} /></button>
+        <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} aria-label={previousPageLabel ?? t("ui.pagination.previousPage", { item: itemLabel })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={15} /></button>
         {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-[#6d7e83]">…</span> : <button key={item} type="button" onClick={() => onPageChange(item)} aria-current={currentPage === item ? "page" : undefined} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${currentPage === item ? "bg-[#010066] text-white" : "border border-[#cad5d1] text-[#6d7e83] hover:border-[#010066] hover:text-[#010066]"}`}>{item}</button>)}
-        <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} aria-label={nextPageLabel ?? `Next ${itemLabel} page`} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:cursor-not-allowed disabled:opacity-35"><ChevronRight size={15} /></button>
+        <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} aria-label={nextPageLabel ?? t("ui.pagination.nextPage", { item: itemLabel })} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:cursor-not-allowed disabled:opacity-35"><ChevronRight size={15} /></button>
       </div>
     </nav>
   );

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 import { featureToPath, geometryBounds, projectPoint, type GeoBounds, type GeoJsonGeometry } from "@/lib/demo-map/geo";
@@ -105,6 +105,7 @@ function renderRegionFeatures(
   onSelectState: (stateId: string | null) => void,
   setHoveredStateId: React.Dispatch<React.SetStateAction<string | null>>,
   handleKeyDown: (event: React.KeyboardEvent<SVGGElement>, action: () => void) => void,
+  selectStateLabel: (name: string) => string,
 ) {
   const canvas = canvasForRegion(region);
   const bounds = boundsForRegion(region);
@@ -128,7 +129,7 @@ function renderRegionFeatures(
               className="cursor-pointer transition-colors"
               role="button"
               tabIndex={0}
-              aria-label={`Select ${state.name}`}
+              aria-label={selectStateLabel(state.name)}
               onClick={() => onSelectState(selected ? null : state.id)}
               onKeyDown={(event) => handleKeyDown(event, () => onSelectState(selected ? null : state.id))}
             >
@@ -172,20 +173,20 @@ export function MalaysiaStateMap({
             <p className="mt-1 max-w-2xl text-[10px] text-[#718395] lg:text-[10px] 2xl:text-sm">{t("ui.map.independentScaleNote")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
-            <p className="font-bold text-[#1d2b3a]">16 regions · 64 places</p>
+            <p className="font-bold text-[#1d2b3a]">{t("ui.map.regionPlaceCount", { regions: 16, places: 64 })}</p>
             <p className="mt-1">{t("ui.map.openDistrictPrompt")}</p>
           </div>
         </div>
       </div>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={t("ui.map.allStatesTerritories")} className="relative block h-full w-full">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none" role="img" aria-label={t("ui.map.mapRegion")} className="relative block h-full w-full">
         <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="transparent" onClick={() => onDismissPlace?.()} />
         <g opacity={0.42} stroke="#ffffff" strokeWidth="1">
           {Array.from({ length: 9 }, (_, index) => <path key={`lat-${index}`} d={`M 40 ${225 + index * 94} H ${WIDTH - 40}`} />)}
           {Array.from({ length: 12 }, (_, index) => <path key={`lng-${index}`} d={`M ${120 + index * 122} 225 V 990`} />)}
         </g>
 
-        {renderRegionFeatures(peninsularFeatures, "peninsular", selectedStateId, onSelectState, setHoveredStateId, handleKeyDown)}
-        {renderRegionFeatures(borneoFeatures, "borneo", selectedStateId, onSelectState, setHoveredStateId, handleKeyDown)}
+        {renderRegionFeatures(peninsularFeatures, "peninsular", selectedStateId, onSelectState, setHoveredStateId, handleKeyDown, (name) => t("ui.map.selectState", { name }))}
+        {renderRegionFeatures(borneoFeatures, "borneo", selectedStateId, onSelectState, setHoveredStateId, handleKeyDown, (name) => t("ui.map.selectState", { name }))}
 
         <g aria-hidden="true">
           {DEMO_STATES.map((state) => {
@@ -226,7 +227,7 @@ export function MalaysiaStateMap({
               key={`label-${state.id}`}
               type="button"
               data-state-label={state.id}
-              aria-label={`${t("ui.map.viewDestination")} ${state.name}`}
+              aria-label={t("ui.map.selectState", { name: state.name })}
               aria-pressed={state.id === selectedStateId}
               onMouseEnter={() => setHoveredStateId(state.id)}
               onMouseLeave={() => setHoveredStateId((current) => (current === state.id ? null : current))}
@@ -236,7 +237,7 @@ export function MalaysiaStateMap({
             >
               <span className="block truncate text-[10px] font-bold leading-none lg:text-[11px] 2xl:text-base">{state.name}</span>
               <span className={`mt-0.5 block truncate text-[8px] leading-none lg:text-[9px] 2xl:text-xs ${active ? "text-white/70" : "text-[#718395]"}`}>
-                {places} {t(places === 1 ? "ui.labels.place" : "ui.labels.places")}
+                {t("ui.map.placesHere", { count: places })}
               </span>
             </button>
           );

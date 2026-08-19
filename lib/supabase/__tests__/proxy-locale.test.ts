@@ -61,7 +61,7 @@ describe("Supabase proxy locale resolution", () => {
     mocks.createServerClient.mockReset();
   });
 
-  it("uses the authenticated account locale before the cookie and browser", async () => {
+  it("keeps the login-page cookie when the authenticated account has another saved locale", async () => {
     const { eq, from, maybeSingle, select } = setupSupabase({
       accountLocale: "ms",
       claimsSub: "user-123",
@@ -71,11 +71,37 @@ describe("Supabase proxy locale resolution", () => {
       makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "en-US" }),
     );
 
-    expect(localeFromResponse(response)).toBe("ms");
+    expect(localeFromResponse(response)).toBe("zh-CN");
     expect(from).toHaveBeenCalledWith("users");
     expect(select).toHaveBeenCalledWith("preferred_locale");
     expect(eq).toHaveBeenCalledWith("id", "user-123");
     expect(maybeSingle).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the login-page cookie when the signed-in account has no saved locale", async () => {
+    setupSupabase({
+      accountLocale: null,
+      claimsSub: "user-123",
+    });
+
+    const response = await updateSession(
+      makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "ms-MY" }),
+    );
+
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("zh-CN");
+  });
+
+  it("uses the authenticated account locale when no selected cookie exists", async () => {
+    setupSupabase({
+      accountLocale: "ms",
+      claimsSub: "user-123",
+    });
+
+    const response = await updateSession(makeRequest({ acceptLanguage: "zh-CN" }));
+
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("ms");
   });
 
   it("uses the anonymous visitor cookie before the browser", async () => {
