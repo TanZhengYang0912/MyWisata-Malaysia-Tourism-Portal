@@ -142,6 +142,7 @@ export async function getVendorShareStats(service: SupabaseClient, vendorId: str
     ? await service.from('affiliate_attributions').select('click_id, status').in('click_id', clickIds).neq('status', 'reversed')
     : { data: [] as { click_id: string; status: string }[] };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clickTarget = new Map(allClicks.map((c) => [c.id, c.target_id]));
 
   function buildStat(listingType: ListingType, id: string, name: string): ListingShareStat {

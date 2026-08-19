@@ -8,6 +8,7 @@ function makeFakeDb(seed: Record<string, Row[]>): SupabaseClient {
   const db = {
     from(table: string) {
       const filters: Array<[string, unknown]> = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = {
         select() {
           return query;

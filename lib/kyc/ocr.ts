@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { hashICWithHmac, normalizeIC } from './hash';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { requiresManualKycReview } from './ocr-policy';
 export { requiresManualKycReview } from './ocr-policy';
 

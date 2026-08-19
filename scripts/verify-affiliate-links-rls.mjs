@@ -147,6 +147,7 @@ async function main() {
   // ---- Case 3: gen_affiliate_code() via admin_review_kyc still auto-creates a link ----
   console.log('\n=== Case 3: KYC-approval auto-creation (gen_affiliate_code via admin_review_kyc) ===');
   const userC = await createTestUser('kyc');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const clientC = await signIn(userC.email, PASSWORD);
   await promoteToProfileComplete(clientAdmin, userC.id);
 

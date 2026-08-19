@@ -61,6 +61,15 @@ export async function reorderTripItemsAction(tripId: string, reorderedItemIds: s
   await import("@/backend/domains/trips").then(m => m.reorderTripItems(tripId, reorderedItemIds, db));
   revalidatePath(`/customer/trip/${tripId}`);
 }
+export async function updateTripItemScheduleAction(
+  tripId: string,
+  itemId: string,
+  updates: { scheduled_date: string | null; scheduled_time: string | null },
+) {
+  const db = await createClient();
+  await import("@/backend/domains/trips").then((m) => m.updateTripItem(itemId, updates, db));
+  revalidatePath(`/customer/trip/${tripId}`);
+}
 export async function updateTripItemLocationAction(tripId: string, itemId: string, updates: { label: string; lat: number; lng: number }) {
   const db = await createClient();
   await import("@/backend/domains/trips").then(m => m.updateTripItemLocation(itemId, updates, db));

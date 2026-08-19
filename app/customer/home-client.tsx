@@ -10,7 +10,7 @@ import { MalaysiaDestinationRail } from "@/components/customer/malaysia-destinat
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import type { ComputedActivity } from "@/backend/core/types";
 import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 
@@ -87,6 +87,10 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
     window.setTimeout(() => document.getElementById("all-experiences")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   }
 
+  function exploreDestination(destinationState: string) {
+    router.push(destinationHref(destinationState));
+  }
+
   function selectCategory(nextCategory: string) {
     setCategory(category === nextCategory ? null : nextCategory);
     setCurrentPage(1);
@@ -98,7 +102,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
         query={query}
         onQueryChange={setQuery}
         onSearch={submitSearch}
-        onExploreState={exploreState}
+        onExploreState={exploreDestination}
       />
 
       {/* State selector */}

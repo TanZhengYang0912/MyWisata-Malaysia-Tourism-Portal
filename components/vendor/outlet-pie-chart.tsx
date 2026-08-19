@@ -61,6 +61,7 @@ export default function OutletPieChart({ data, total }: { data: OutletSale[]; to
                   innerRadius={54}
                   outerRadius={80}
                   paddingAngle={2}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                   stroke="none"

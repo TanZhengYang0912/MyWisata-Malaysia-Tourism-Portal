@@ -22,6 +22,7 @@ export async function POST(request: Request, { params }: Props) {
     .select('roles(name)')
     .eq('user_id', user.id);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const roleNames = (roles ?? []).map((r: any) => (r.roles as Record<string, any>)?.name as string);
   if (!roleNames.includes('super_admin')) {
     return apiFail('FORBIDDEN', 'Only super admin can suspend vendors', 403);

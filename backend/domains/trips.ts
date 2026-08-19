@@ -72,6 +72,7 @@ async function saveMockData(trips: Trip[], items: TripItem[]) {
 }
 // -------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export async function getTrips(db: SupabaseClient<any>): Promise<Trip[]> {
   const { MOCK_TRIPS } = await getMockData();
   return MOCK_TRIPS;
@@ -79,6 +80,7 @@ export async function getTrips(db: SupabaseClient<any>): Promise<Trip[]> {
 
 export async function createTrip(
   input: { name: string; start_date?: string; end_date?: string },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   db: SupabaseClient<any>
 ): Promise<Trip | null> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -107,6 +109,7 @@ export async function addTripItem(
     label: string;
     sublabel?: string;
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   db: SupabaseClient<any>
 ): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -134,11 +137,13 @@ export async function addTripItem(
   await saveMockData(MOCK_TRIPS, MOCK_TRIP_ITEMS);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export async function getTripById(tripId: string, db: SupabaseClient<any>): Promise<Trip | null> {
   const { MOCK_TRIPS } = await getMockData();
   return MOCK_TRIPS.find(t => t.id === tripId) || null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export async function getTripItems(tripId: string, db: SupabaseClient<any>): Promise<TripItem[]> {
   const { MOCK_TRIP_ITEMS } = await getMockData();
   const items = MOCK_TRIP_ITEMS.filter(i => i.trip_id === tripId).sort((a, b) => a.sequence - b.sequence);
@@ -147,7 +152,8 @@ export async function getTripItems(tripId: string, db: SupabaseClient<any>): Pro
 
 export async function updateTripItem(
   itemId: string,
-  updates: { sequence?: number; scheduled_date?: string | null },
+  updates: { sequence?: number; scheduled_date?: string | null; scheduled_time?: string | null },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   db: SupabaseClient<any>
 ): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -155,6 +161,7 @@ export async function updateTripItem(
   if (item) {
     if (updates.sequence !== undefined) item.sequence = updates.sequence;
     if (updates.scheduled_date !== undefined) item.scheduled_date = updates.scheduled_date;
+    if (updates.scheduled_time !== undefined) item.scheduled_time = updates.scheduled_time;
   }
   await saveMockData(MOCK_TRIPS, MOCK_TRIP_ITEMS);
 }
@@ -162,6 +169,7 @@ export async function updateTripItem(
 export async function reorderTripItems(
   tripId: string,
   reorderedItemIds: string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   db: SupabaseClient<any>
 ): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -176,6 +184,7 @@ export async function reorderTripItems(
 export async function updateTripItemLocation(
   itemId: string,
   updates: { label: string; lat: number; lng: number },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   db: SupabaseClient<any>
 ): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -188,6 +197,7 @@ export async function updateTripItemLocation(
   await saveMockData(MOCK_TRIPS, MOCK_TRIP_ITEMS);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export async function deleteTripItem(itemId: string, db: SupabaseClient<any>): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
   const index = MOCK_TRIP_ITEMS.findIndex(i => i.id === itemId);
@@ -195,6 +205,7 @@ export async function deleteTripItem(itemId: string, db: SupabaseClient<any>): P
   await saveMockData(MOCK_TRIPS, MOCK_TRIP_ITEMS);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export async function deleteTrip(tripId: string, db: SupabaseClient<any>): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
   const index = MOCK_TRIPS.findIndex(t => t.id === tripId);

@@ -57,6 +57,6 @@ const NO_FLASH_SCRIPT = `(function(){try{var v=window.localStorage.getItem(${JSO
 
 /** Render as the very first child of <body>, before any other provider. */
 export function FontSizeScript() {
-  // eslint-disable-next-line react/no-danger
+   
   return <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />;
 }

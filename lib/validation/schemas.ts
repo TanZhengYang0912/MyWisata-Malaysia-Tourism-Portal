@@ -10,6 +10,7 @@ import { KYC_REVIEW_REASON_CODES } from '@/lib/kyc/types';
 
 const uuid    = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
 const rmMoney = z.number().finite().min(0.01).max(100_000).multipleOf(0.01);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const shortId = z.string().min(1).max(128);
 
 // ── KYC ────────────────────────────────────────────────────
@@ -104,6 +105,7 @@ export const idempotencyHeaderSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4
 export const checkoutPrepareSchema = z.object({
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),
+  claimId: uuid.nullable().optional(),
   paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card']),
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();

@@ -10,13 +10,13 @@ const chatSource = readFileSync(resolve(workspace, "components/shared/chatbot-wi
 const stateSource = readFileSync(resolve(workspace, "lib/demo-map/data.ts"), "utf8");
 
 describe("Malaysia state discovery map", () => {
-  it("renders a permanent English label layer for every state coordinate", () => {
+  it("renders a progressive English label layer for the active state", () => {
     expect(stateSource).toContain('name: "Perlis"');
     expect(stateSource).toContain('name: "Labuan"');
     expect(mapSource).toContain("STATE_LABEL_LAYOUT");
     expect(mapSource).toContain('aria-label="Malaysia state labels"');
-    expect(mapSource).toContain("DEMO_STATES.map((state)");
-    expect(mapSource).toContain("{state.name}");
+    expect(mapSource).toContain("const visibleStates = activeState ? [activeState] : []");
+    expect(mapSource).toContain("{visibleStates.map((state)");
     expect(mapSource).toContain("statePlacesCount(stateCounts, state.id)");
     expect(mapSource).toContain("data-state-label-layer");
     expect(mapSource).toContain("data-state-label={state.id}");
@@ -45,9 +45,10 @@ describe("Malaysia state discovery map", () => {
     expect(STATE_LABEL_LAYOUT.sarawak).toMatchObject({region: "borneo", side: "left", x: 690});
     expect(STATE_LABEL_LAYOUT.sabah).toMatchObject({region: "borneo", side: "right", x: 1540});
     expect(new Set(Object.values(STATE_LABEL_LAYOUT).map((placement) => placement.elbowX)).size).toBeGreaterThan(8);
-    expect(mapSource).toContain("REGION_CANVASES");
-    expect(mapSource).toContain("WEST_MAP_BOUNDS");
-    expect(mapSource).toContain("BORNEO_MAP_BOUNDS");
+    expect(mapSource).toContain("SINGLE_CANVAS");
+    expect(mapSource).toContain("ALL_MAP_BOUNDS");
+    expect(mapSource).toContain("canvasForRegion");
+    expect(mapSource).toContain("boundsForRegion");
   });
 
   it("keeps neighboring label cards separated", () => {
@@ -59,7 +60,7 @@ describe("Malaysia state discovery map", () => {
 
   it("uses the reference map plate palette and independent region framing", () => {
     expect(mapSource).toContain("All states and federal territories");
-    expect(mapSource).toContain("West and East Malaysia scaled independently");
+    expect(mapSource).toContain("Choose one state to reveal its places.");
     expect(mapSource).toContain("#eef2ff");
     expect(mapSource).toContain("#dce4ff");
   });
@@ -69,37 +70,36 @@ describe("Malaysia state discovery map", () => {
     expect(mapSource).not.toContain("CategoryIcon");
   });
 
-  it("uses the available desktop height without forcing the landscape map wider", () => {
-    expect(storySource).toContain("lg:h-[min(920px,calc(100dvh-8rem))]");
-    expect(storySource).toContain("lg:grid-rows-[minmax(0,1fr)_240px]");
-    expect(mapSource).toContain("lg:h-full");
-    expect(mapSource).toContain("lg:aspect-auto");
-    expect(mapSource).toContain("lg:text-[22px]");
-    expect(mapSource).toContain("viewBox={`0 0 ${WIDTH} ${HEIGHT}`}");
+  it("uses a balanced desktop composition with a fixed shared panel height", () => {
+    expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
+    expect(mapSource).toContain("aspect-[1600/1060]");
+    expect(mapSource).toContain("lg:h-[620px] lg:aspect-auto lg:min-h-0");
+    expect(mapSource).toContain("sm:text-[24px]");
+    expect(mapSource).toContain("viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`}");
     expect(mapSource).toContain('preserveAspectRatio="none"');
   });
 
   it("uses the MyWisata indigo palette and avoids the native map tooltip", () => {
     expect(mapSource).toContain("#eef2ff");
     expect(mapSource).toContain("#dce4ff");
-    expect(mapSource).toContain("#f59e0b");
+    expect(mapSource).toContain("#010066");
     expect(mapSource).not.toContain("<title>Malaysia state discovery map</title>");
     expect(mapSource).not.toContain("<title>{state.name}</title>");
   });
 
   it("keeps state labels readable after the map is enlarged", () => {
-    expect(mapSource).toContain("text-[10px]");
-    expect(mapSource).toContain("2xl:text-base");
-    expect(mapSource).toContain("h-[22px]");
+    expect(mapSource).toContain("text-xs");
+    expect(mapSource).toContain("2xl:text-sm");
+    expect(mapSource).toContain("min-h-[440px]");
     expect(mapSource).toContain("Math.max(150");
     expect(mapSource).not.toContain("<text");
-    expect(mapSource).toContain("height: 760");
-    expect(mapSource).toContain("height: 560");
+    expect(mapSource).toContain("sm:min-h-[500px]");
   });
 
-  it("stacks a full-width experience list below the map", () => {
-    expect(storySource).toContain('<div className="grid gap-6 lg:h-full lg:grid-rows-[minmax(0,1fr)_240px] 2xl:grid-rows-[minmax(0,1fr)_320px]">');
-    expect(storySource).not.toContain("lg:grid-cols-[minmax(0,5.67fr)_minmax(220px,1fr)]");
+  it("pairs the map with a responsive selected-state panel", () => {
+    expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
+    expect(storySource).toContain('aria-label="Selected state details"');
+    expect(storySource).toContain("id=\"explore-experiences\"");
     expect(storySource).toContain("lg:grid-cols-4");
     expect(storySource).toContain("line-clamp-2");
     expect(storySource).toContain('h-8 w-8 shrink-0 rounded-lg object-cover');

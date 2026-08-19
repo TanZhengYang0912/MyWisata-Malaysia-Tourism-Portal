@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, MapPin } from 'lucide-react';
 import { ActivityCard } from '@/components/customer/activity-card';
 import type { ComputedActivity } from '@/backend/core/types';
 
@@ -26,6 +26,7 @@ export default function ForYouClient() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   function useMyLocation() {
@@ -40,7 +41,11 @@ export default function ForYouClient() {
 
   const personalized = result?.mode === 'personalized';
   return <div className="mx-auto max-w-7xl px-5 py-10">
-    <p className="text-xs font-semibold tracking-[0.18em] text-primary">{personalized ? 'PERSONALISED FOR YOU' : 'FOR YOU'}</p>
+    <Link href="/customer" className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/75 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+      <ArrowLeft size={16} aria-hidden="true" />
+      Back to Home
+    </Link>
+    <p className="mt-8 text-xs font-semibold tracking-[0.18em] text-primary">{personalized ? 'PERSONALISED FOR YOU' : 'FOR YOU'}</p>
     <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-foreground">Your Malaysia, your way</h1><p className="mt-2 text-muted-foreground">{personalized ? 'Handpicked recommendations that match your travel preferences.' : 'Popular experiences from MyWisata.'}</p></div><button type="button" onClick={useMyLocation} disabled={locationBusy || loading} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"><MapPin size={16} />{locationBusy ? 'Locating…' : 'Use my location'}</button></div>
     {error && <p className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     {result?.locationSource === 'city' && <p className="mt-4 text-xs text-muted-foreground">Showing distances from your profile city.</p>}

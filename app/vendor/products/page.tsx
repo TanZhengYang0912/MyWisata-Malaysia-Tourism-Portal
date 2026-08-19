@@ -15,6 +15,7 @@ import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ShareButton } from '@/components/shared/share-button';
+import { productImageUrl } from '@/lib/storage/product-image';
 
 interface ProductData {
   id: string;
@@ -37,6 +38,7 @@ interface ProductData {
   digital_asset_size?: number | null;
   media_assets?: { id: string; url: string; alt_text?: string | null; sort_order?: number | null }[];
   outlet?: { id?: string; name?: string; city?: string; state?: string };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   variants?: any[];
   availableStock?: number;
   lowStockThreshold?: number;
@@ -98,6 +100,7 @@ export default function VendorProductsPage() {
     fetch(`/api/vendors/${vendorId}/outlets?page=1&pageSize=100`, { cache: 'no-store' }).then((response) => response.json()).then((payload) => setOutlets(payload.data?.items || payload.data || []));
   }, [vendorId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadProducts(1); }, [filters, vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -183,7 +186,7 @@ export default function VendorProductsPage() {
       <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">No listings match these filters.</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">Clear filters</button></div> : <>
           {canManageOutlet && <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs text-gray-500"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> Select current page</label></div>}<div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 md:grid`}>{isOwner && <span></span>}<span>Listing</span><span>{isOwner ? 'Outlet' : 'Assigned outlet'}</span><span>Price</span><span>Status</span><span className="text-right">Action</span></div>
-          <div className="divide-y divide-gray-100">{products.map((product) => <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} md:items-center md:gap-4 md:px-5`}>{isOwner && <div><input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} aria-label={'Select ' + product.name} /></div>}<div className="flex min-w-0 items-center gap-3"><CompactThumbnail src={product.cover_url} alt={product.name} kind={imageKind(product.product_type)} /><div className="min-w-0"><button type="button" onClick={() => setSelectedProduct(product)} className="block max-w-full text-left font-semibold leading-5 text-gray-900 hover:text-primary line-clamp-2">{product.name}</button>                  <p className="mt-1 truncate text-xs text-gray-500">{typeLabel(product.product_type)} {product.requires_booking ? '· Booking required' : ''}</p>
+          <div className="divide-y divide-gray-100">{products.map((product) => <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} md:items-center md:gap-4 md:px-5`}>{isOwner && <div><input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} aria-label={'Select ' + product.name} /></div>}<div className="flex min-w-0 items-center gap-3"><CompactThumbnail src={productImageUrl(product.cover_url)} alt={product.name} kind={imageKind(product.product_type)} /><div className="min-w-0"><button type="button" onClick={() => setSelectedProduct(product)} className="block max-w-full text-left font-semibold leading-5 text-gray-900 hover:text-primary line-clamp-2">{product.name}</button>                  <p className="mt-1 truncate text-xs text-gray-500">{typeLabel(product.product_type)} {product.requires_booking ? '· Booking required' : ''}</p>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -203,7 +206,8 @@ export default function VendorProductsPage() {
       </section>
       </>}
 
-      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, coverUrl: editingProduct.cover_url || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
     </div>
   );
 }

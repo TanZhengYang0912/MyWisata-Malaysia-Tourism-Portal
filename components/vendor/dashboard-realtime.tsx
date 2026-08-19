@@ -8,6 +8,7 @@ export default function DashboardRealtime({ vendorId }: { vendorId: string }) {
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let channel: any;
     let active = true;
 

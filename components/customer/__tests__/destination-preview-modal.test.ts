@@ -14,6 +14,9 @@ describe("Destination preview modal", () => {
     expect(modalSource).toContain("destination.intro");
     expect(modalSource).toContain("destination.highlights.map");
     expect(modalSource).toContain("Explore {destination.state}");
+    expect(modalSource).toContain("Save to atlas");
+    expect(modalSource).toContain("useSavedDestinations");
+    expect(modalSource).toContain("aria-pressed");
     expect(modalSource).toContain("onClose");
     expect(modalSource).not.toContain("All states");
     expect(modalSource).not.toContain("<form");

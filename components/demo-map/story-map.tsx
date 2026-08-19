@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
-import { getState } from "@/lib/demo-map/data";
+import { DEMO_STATES, getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
 import { CategoryIcon } from "@/components/customer/category-icon";
@@ -31,6 +31,116 @@ const BADGE_OPTIONS: { key: BadgeKey; label: string }[] = [
 // a Set = only those specific types included. Lets "Food + Activity/Nature
 // only" style selections work without a separate subcategory data model.
 type TypeSelection = Record<string, "all" | Set<string>>;
+
+function StateDetailPanel({
+  selectedStateId,
+  stateCounts,
+  activities,
+  onSelectState,
+  onSelectPlace,
+}: {
+  selectedStateId: string | null;
+  stateCounts: StateCounts;
+  activities: ComputedActivity[];
+  onSelectState: (stateId: string | null) => void;
+  onSelectPlace: (placeId: string) => void;
+}) {
+  const selectedState = selectedStateId ? getState(selectedStateId) : undefined;
+  const placeCount = selectedStateId ? (stateCounts[selectedStateId] ?? []).reduce((total, bucket) => total + bucket.count, 0) : 0;
+  const highlights = selectedStateId
+    ? activities.filter((activity) => activityToMapPlace(activity).stateId === selectedStateId).slice(0, 3)
+    : [];
+  const totalPlaces = Object.values(stateCounts).reduce(
+    (total, buckets) => total + buckets.reduce((subtotal, bucket) => subtotal + bucket.count, 0),
+    0,
+  );
+
+  return (
+    <aside aria-label="Selected state details" className="flex min-h-[280px] flex-col justify-between rounded-[1.8rem] border border-[#d7dcef] bg-white p-5 shadow-[0_14px_34px_rgba(1,0,102,0.07)] sm:p-6 lg:h-[620px] lg:min-h-0 lg:overflow-y-auto">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Destination detail</p>
+          <MapPin size={18} className="text-cta-orange" aria-hidden="true" />
+        </div>
+        <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+          {selectedStateId ? selectedState?.name ?? "Selected state" : "Select a state to explore"}
+        </h2>
+
+        {selectedState ? (
+          <>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {placeCount > 0 ? `${placeCount} places ready for your next Malaysia experience.` : "There are no published places here yet, but this region is still part of the map."}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-secondary px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Places</p>
+                <p className="mt-1 text-xl font-bold text-primary">{placeCount}</p>
+              </div>
+              <div className="rounded-2xl bg-secondary px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Categories</p>
+                <p className="mt-1 text-xl font-bold text-primary">{(stateCounts[selectedState?.id ?? ""] ?? []).length}</p>
+              </div>
+            </div>
+            {highlights.length > 0 && (
+              <div className="mt-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">A few places to start</p>
+                <div className="mt-2 space-y-2">
+                  {highlights.map((activity) => (
+                    <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
+                      <span className="min-w-0 truncate text-sm font-bold text-foreground">{activity.name}</span>
+                      <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use the map to compare regions. Select one state to reveal its places and filter the experience list below.</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-secondary px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Regions</p>
+                <p className="mt-1 text-xl font-bold text-primary">16</p>
+              </div>
+              <div className="rounded-2xl bg-secondary px-3 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Places</p>
+                <p className="mt-1 text-xl font-bold text-primary">{totalPlaces}</p>
+              </div>
+            </div>
+          </>
+        )}
+
+        <label htmlFor="explore-state-picker" className="mt-5 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Choose a state</span>
+          <select
+            id="explore-state-picker"
+            aria-label="Choose a state"
+            value={selectedStateId ?? ""}
+            onChange={(event) => onSelectState(event.target.value || null)}
+            className="mt-2 w-full appearance-none rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="">All states</option>
+            {DEMO_STATES.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        {selectedState ? (
+          <>
+            <button type="button" onClick={() => document.getElementById("explore-experiences")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-xs font-bold text-white transition hover:bg-primary/90">
+              View {selectedState.name} places <ArrowRight size={14} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={() => onSelectState(null)} className="rounded-full border border-border px-4 py-3 text-xs font-bold text-muted-foreground transition hover:border-primary hover:text-primary">All states</button>
+          </>
+        ) : (
+          <p className="text-xs font-semibold text-muted-foreground">Hover for a quick preview · click for details</p>
+        )}
+      </div>
+    </aside>
+  );
+}
 
 export function StoryMap({ initialActivities }: { initialActivities: ComputedActivity[] }) {
   const { savedIds, toggleSaved } = useWishlist();
@@ -209,8 +319,8 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
   return (
     <div className="bg-background text-foreground">
-      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:h-[min(920px,calc(100dvh-8rem))] lg:px-8 lg:py-6">
-        <div className="grid gap-6 lg:h-full lg:grid-rows-[minmax(0,1fr)_240px] 2xl:grid-rows-[minmax(0,1fr)_320px]">
+      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)] lg:items-stretch">
           <div className="relative min-w-0 lg:h-full lg:min-h-0">
             <MalaysiaStateMap stateCounts={stateCounts} selectedStateId={selectedStateId} onSelectState={selectState} onDismissPlace={() => setSelectedPlaceId(null)} />
 
@@ -245,7 +355,17 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
             )}
           </div>
 
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card p-2 shadow-[0_12px_28px_rgba(1,0,102,0.08)] sm:p-3 2xl:p-4">
+          <StateDetailPanel
+            selectedStateId={selectedStateId}
+            stateCounts={stateCounts}
+            activities={filteredActivities}
+            onSelectState={selectState}
+            onSelectPlace={setSelectedPlaceId}
+          />
+
+        </div>
+
+        <section id="explore-experiences" className="mt-5 flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card p-3 shadow-[0_12px_28px_rgba(1,0,102,0.08)] sm:p-4 2xl:p-5">
             <div className="flex shrink-0 items-end justify-between gap-3">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary 2xl:text-[10px]">Malaysia experiences</p>
@@ -311,8 +431,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                 </div>
               )}
             </div>
-          </section>
-        </div>
+        </section>
       </section>
     </div>
   );

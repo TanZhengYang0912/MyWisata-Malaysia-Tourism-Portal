@@ -16,6 +16,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { productImageUrl } from '@/lib/storage/product-image';
 import { hashVisitorId } from './click';
 import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
 import { logFraudFlag, hasRecentOpenFlag } from './fraud';
@@ -108,7 +109,7 @@ async function resolveTarget(
       destinationPath: `/customer/activity/${data.id}`,
       ogTitle: data.name,
       ogDescription: data.description ?? SITE_PREVIEW_DESCRIPTION,
-      ogImage: data.cover_url,
+      ogImage: productImageUrl(data.cover_url) || null,
     };
   }
 

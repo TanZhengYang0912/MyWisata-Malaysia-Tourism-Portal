@@ -1,6 +1,7 @@
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { allocateVoucherCodes, parseVoucherCsv } from '@/lib/vendor/voucher-csv';
+import { isProductEligibleForVoucherOutlet } from '@/lib/vendor/voucher-scope';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -29,6 +30,7 @@ export async function POST(request: Request, { params }: Props) {
     const code = row[index('code')]?.trim().toUpperCase() || '';
     const name = row[index('name')]?.trim() || code;
     const perCustomerLimit = row[index('percustomerlimit')] || row[index('per_customer_limit')];
+    const redemptionMode = row[index('redemptionmode')] || row[index('redemption_mode')] || 'online';
     const outletId = row[index('outletid')] || row[index('outlet_id')] || null;
     const maxUsesRaw = row[index('maxuses')] || row[index('max_uses')];
     const maxUses = maxUsesRaw ? Number(maxUsesRaw) : null;
@@ -43,6 +45,7 @@ export async function POST(request: Request, { params }: Props) {
     if (!Number.isFinite(minSpend) || minSpend < 0) errors.push('minimum spend must be a non-negative number');
     if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1)) errors.push('max uses must be a positive integer');
     if (perCustomerLimit && (!Number.isInteger(Number(perCustomerLimit)) || Number(perCustomerLimit) < 1)) errors.push('per customer limit must be a positive integer');
+    if (!['online', 'in_store', 'both'].includes(redemptionMode)) errors.push('invalid redemption mode');
     const productId = row[index('productid')] || row[index('product_id')] || null;
     const buyQuantity = Number(row[index('buyquantity')] || row[index('buy_quantity')] || 0) || null;
     const freeQuantity = Number(row[index('freequantity')] || row[index('free_quantity')] || 0) || null;
@@ -58,7 +61,7 @@ export async function POST(request: Request, { params }: Props) {
       rowNumber: rowIndex + 2,
       errors,
       generated: !code && Boolean(codePrefix),
-      record: { vendor_id: vendorId, code, name, voucher_type: voucherType, discount_value: discountValue, min_spend: minSpend, max_uses: maxUses, per_customer_limit: perCustomerLimit ? Number(perCustomerLimit) : null, valid_from: validFrom, valid_until: validUntil, outlet_id: outletId, product_id: productId, buy_quantity: buyQuantity, free_quantity: freeQuantity, is_active: false, review_status: 'pending_review' },
+      record: { vendor_id: vendorId, code, name, voucher_type: voucherType, discount_value: discountValue, min_spend: minSpend, max_uses: maxUses, per_customer_limit: perCustomerLimit ? Number(perCustomerLimit) : null, valid_from: validFrom, valid_until: validUntil, redemption_mode: redemptionMode, is_claimable: true, outlet_id: outletId, product_id: productId, buy_quantity: buyQuantity, free_quantity: freeQuantity, is_active: false, review_status: 'pending_review' },
     };
   });
 
@@ -83,13 +86,16 @@ export async function POST(request: Request, { params }: Props) {
   const productIds = [...new Set(parsedRows.map((item) => item.record.product_id).filter(Boolean))];
   const [{ data: outlets }, { data: products }] = await Promise.all([
     outletIds.length ? access.access.serviceDb.from('outlets').select('id').eq('vendor_id', vendorId).in('id', outletIds) : Promise.resolve({ data: [] as { id: string }[] }),
-    productIds.length ? access.access.serviceDb.from('products').select('id').eq('vendor_id', vendorId).in('id', productIds) : Promise.resolve({ data: [] as { id: string }[] }),
+    productIds.length ? access.access.serviceDb.from('products').select('id,outlet_id,outlet_offers(outlet_id,status)').eq('vendor_id', vendorId).in('id', productIds) : Promise.resolve({ data: [] as { id: string; outlet_id: string | null; outlet_offers: { outlet_id: string; status: string | null }[] }[] }),
   ]);
   const validOutletIds = new Set((outlets ?? []).map((item) => item.id));
   const validProductIds = new Set((products ?? []).map((item) => item.id));
+  const productById = new Map((products ?? []).map((item) => [item.id, item]));
   parsedRows.forEach((item) => {
     if (item.record.outlet_id && !validOutletIds.has(item.record.outlet_id)) item.errors.push('outlet is not owned by this vendor');
     if (item.record.product_id && !validProductIds.has(item.record.product_id)) item.errors.push('product is not owned by this vendor');
+    const product = item.record.product_id ? productById.get(item.record.product_id) : null;
+    if (product && item.record.outlet_id && !isProductEligibleForVoucherOutlet({ productOutletId: product.outlet_id, offers: product.outlet_offers.map((offer) => ({ outletId: offer.outlet_id, status: offer.status })), selectedOutletId: item.record.outlet_id })) item.errors.push('product is not sold at the selected outlet');
   });
 
   const seenCodes = new Set<string>();
@@ -104,7 +110,8 @@ export async function POST(request: Request, { params }: Props) {
   candidates.forEach((item) => { if (existingCodeSet.has(item.record.code) && !item.generated) item.errors.push('code already exists'); });
   const records = candidates.filter((item) => item.errors.length === 0).map((item) => item.record);
   const failed = parsedRows.filter((item) => item.errors.length > 0).map((item) => ({ row: item.rowNumber, errors: item.errors }));
-  if (records.length === 0) return apiFail('INVALID_CSV', 'No valid voucher rows found.', 400, { failed });
+  const hasInvalidProductScope = failed.some((item) => item.errors.includes('product is not sold at the selected outlet'));
+  if (records.length === 0) return apiFail(hasInvalidProductScope ? 'INVALID_PRODUCT_SCOPE' : 'INVALID_CSV', 'No valid voucher rows found.', 400, { failed });
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const { data, error } = await access.access.serviceDb.from('vouchers').insert(records).select('id,code');
     if (!error) return apiOk({ inserted: data?.length || 0, failed, items: data || [], generated: generatedRows.length }, { status: 201 });

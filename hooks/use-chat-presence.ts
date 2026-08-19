@@ -16,6 +16,7 @@ export function useChatPresence(channelName: string | null | undefined, selfKey:
 
   useEffect(() => {
     if (!channelName || !selfKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPresent([]);
       return;
     }

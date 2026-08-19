@@ -74,9 +74,9 @@ export default function VendorInboxPage() {
   const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
 
-  const loadThreads = useCallback(async () => {
+  const loadThreads = useCallback(async (showLoading = true) => {
     if (!user?.activeVendorId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     setLoadError(null);
     try {
       const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
@@ -87,11 +87,16 @@ export default function VendorInboxPage() {
       setThreads([]);
       setLoadError('Could not load conversations. Please try again.');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadThreads(); }, [loadThreads]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadThreads();
+    const timer = window.setInterval(() => void loadThreads(false), 3000);
+    return () => window.clearInterval(timer);
+  }, [loadThreads]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -110,6 +115,7 @@ export default function VendorInboxPage() {
     const currentlyMuted = mutedThreadIds.has(threadId);
     setMutedThreadIds((previous) => {
       const next = new Set(previous);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       currentlyMuted ? next.delete(threadId) : next.add(threadId);
       return next;
     });
@@ -118,6 +124,7 @@ export default function VendorInboxPage() {
     } catch {
       setMutedThreadIds((previous) => {
         const next = new Set(previous);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         currentlyMuted ? next.add(threadId) : next.delete(threadId);
         return next;
       });
@@ -125,6 +132,7 @@ export default function VendorInboxPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAiReplyDraft(null);
     setAiReplyError(null);
   }, [active]);

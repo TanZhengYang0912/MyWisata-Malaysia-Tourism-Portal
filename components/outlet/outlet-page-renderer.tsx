@@ -1,7 +1,10 @@
+import type React from 'react';
 import type { OutletPageRendererProps } from '@/components/outlet/outlet-block-types';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Accessibility, Clock3, Mail, MapPin, Navigation, PawPrint, Phone } from 'lucide-react';
 import { OutletBlockRenderer, OutletHeroRenderer, formatHours } from '@/components/outlet/outlet-block-renderer';
 import { OutletMenu } from '@/components/outlet/outlet-menu';
+import { readingOrder } from '@/lib/vendor/outlet-grid';
 
 function outletAddress(outlet: OutletPageRendererProps['outlet']) {
   return outlet.address || [outlet.city, outlet.state].filter(Boolean).join(', ') || 'Malaysia';
@@ -29,10 +32,23 @@ export function OutletPageRenderer({ document, outlet, products = [], mode = 'pu
     <OutletHeroRenderer hero={document.hero} brandColour={document.brandColour} outlet={outlet} mode={mode} selected={selectedBlockId === document.hero.id} onSelect={onSelect} />
     <div className="mx-auto max-w-7xl px-6 py-10">
       <VisitSummary outlet={outlet} />
-      <div className="space-y-6">
-        {document.blocks.map((block) => <OutletBlockRenderer key={block.id} block={block} outlet={outlet} products={products} gallery={document.gallery} featuredIds={document.featuredIds} mode={mode} selected={selectedBlockId === block.id} onSelect={onSelect} />)}
-        {mode === 'public' && <OutletMenu outlet={outlet} products={products} />}
+      <div className="outlet-grid">
+        {readingOrder(document.blocks)
+          .filter((block) => !(mode === 'public' && block.type === 'product_grid'))
+          .map((block) => <div
+            key={block.id}
+            className="outlet-grid__cell"
+            style={{
+              '--grid-x': block.x + 1,
+              '--grid-w': block.w,
+              '--grid-y': block.y + 1,
+              '--grid-h': block.h,
+            } as React.CSSProperties}
+          >
+            <OutletBlockRenderer block={block} outlet={outlet} products={products} gallery={document.gallery} featuredIds={document.featuredIds} w={block.w} h={block.h} mode={mode} selected={selectedBlockId === block.id} onSelect={onSelect} />
+          </div>)}
       </div>
+      {mode === 'public' && <div className="mt-6"><OutletMenu outlet={outlet} products={products} /></div>}
     </div>
   </div>;
 }

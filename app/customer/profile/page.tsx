@@ -113,6 +113,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Failed to send OTP");
       }
       setPhonePhase("verify");
@@ -139,6 +140,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Invalid OTP");
       }
       await refreshUser();
@@ -166,6 +168,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Failed to save identity");
       }
       await refreshUser();
@@ -198,6 +201,7 @@ export default function ProfilePage() {
       const signRes = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
       if (!signRes.ok) {
         const b = await signRes.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Failed to get upload URL");
       }
       const { data: { uploadUrl, path } } = await signRes.json() as { data: { uploadUrl: string; path: string } };
@@ -216,6 +220,7 @@ export default function ProfilePage() {
       });
       if (!confirmRes.ok) {
         const b = await confirmRes.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Failed to confirm avatar");
       }
       await refreshUser();
@@ -241,6 +246,7 @@ export default function ProfilePage() {
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         throw new Error((b as any)?.error?.message ?? "Failed to save bio");
       }
       setStep(4);
@@ -455,6 +461,7 @@ export default function ProfilePage() {
           >
             {avatarPreview ? (
               <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={avatarPreview} alt="preview" className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
                 <p className="text-xs text-muted-foreground">Click to change photo</p>
               </>

@@ -64,6 +64,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     finally { setLoading(false); }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadProfile(); }, []);
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
@@ -168,6 +169,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
       <SectionCard title="Personal details" description="These details appear on your public contributor profile.">
         <div className="flex items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           {avatarPreview || summary.avatarUrl ? <img src={avatarPreview || summary.avatarUrl || ""} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary"><Camera size={23} /></div>}
           <div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size <= 2 * 1024 * 1024) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} /><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>Change photo</Button>{avatarFile && <Button size="sm" className="ml-2" onClick={uploadAvatar} disabled={busy}>Save photo</Button>}</div>
         </div>

@@ -4,6 +4,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { isProductEligibleForVoucherOutlet } from '@/lib/vendor/voucher-scope';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -25,15 +26,18 @@ export async function GET(request: Request, { params }: Props) {
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const now = Date.now();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withStatus = (data ?? []).map((voucher: any) => {
     if (voucher.review_status && voucher.review_status !== 'approved') return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status: voucher.review_status };
     const validFrom = voucher.valid_from ? new Date(voucher.valid_from).getTime() : null;
     const validUntil = voucher.valid_until ? new Date(voucher.valid_until).getTime() : null;
     const status = !voucher.is_active ? 'inactive' : validFrom && validFrom > now ? 'scheduled' : validUntil && validUntil < now ? 'expired' : voucher.max_uses && voucher.uses_count >= voucher.max_uses ? 'expired' : 'active';
     return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }).filter((voucher: any) => statusFilter === 'all' || voucher.status === statusFilter);
   const start = (page - 1) * pageSize;
   const items = withStatus.slice(start, start + pageSize);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stats = withStatus.reduce((result: Record<string, number>, voucher: any) => {
     result[voucher.status] = (result[voucher.status] || 0) + 1;
     return result;
@@ -71,8 +75,13 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   if (body.productId) {
-    const { data: product } = await supabase.from('products').select('id').eq('id', body.productId).eq('vendor_id', vendorId).maybeSingle();
+    const { data: product } = await supabase.from('products').select('id,outlet_id,outlet_offers(outlet_id,status)').eq('id', body.productId).eq('vendor_id', vendorId).maybeSingle();
     if (!product) return apiFail('INVALID_PRODUCT', 'Product not found or not owned by this vendor', 400);
+    if (body.outletId && !isProductEligibleForVoucherOutlet({
+      productOutletId: product.outlet_id,
+      offers: (product.outlet_offers ?? []).map((offer: { outlet_id: string; status: string | null }) => ({ outletId: offer.outlet_id, status: offer.status })),
+      selectedOutletId: body.outletId,
+    })) return apiFail('INVALID_PRODUCT_SCOPE', 'Product is not sold at the selected outlet', 400);
   }
 
   const { data, error } = await supabase.from('vouchers').insert({
@@ -87,6 +96,8 @@ export async function POST(request: Request, { params }: Props) {
     per_customer_limit: body.perCustomerLimit ?? null,
     valid_from: body.validFrom ?? null,
     valid_until: body.validUntil ?? null,
+    redemption_mode: body.redemptionMode,
+    is_claimable: body.isClaimable,
     product_id: body.productId ?? null,
     buy_quantity: body.buyQuantity ?? null,
     free_quantity: body.freeQuantity ?? null,

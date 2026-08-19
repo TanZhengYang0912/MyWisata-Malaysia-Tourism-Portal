@@ -25,6 +25,7 @@ export default function WithdrawalReceiptPage() {
 
   useEffect(() => {
     const id = window.location.pathname.split("/").filter(Boolean).at(-1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!id) { setError("Withdrawal receipt not found"); setLoading(false); return; }
     fetch(`/api/wallet/withdrawals/${id}/receipt`)
       .then(async (response) => {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { ArrowRight, MapPin, X } from "lucide-react";
+import { ArrowRight, Bookmark, MapPin, X } from "lucide-react";
+import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import type { MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 
 export type DestinationPreviewModalProps = {
@@ -11,6 +12,8 @@ export type DestinationPreviewModalProps = {
 };
 
 export function DestinationPreviewModal({ destination, onClose, onExplore }: DestinationPreviewModalProps) {
+  const { savedStates, toggleSaved } = useSavedDestinations();
+
   useEffect(() => {
     if (!destination) return;
 
@@ -75,8 +78,16 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
             ))}
           </div>
 
-          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <button type="button" onClick={onClose} className="rounded-full px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">Close</button>
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => void toggleSaved(destination.state)}
+              aria-pressed={savedStates.has(destination.state)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-[#f4f6ff] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+            >
+              <Bookmark size={15} fill={savedStates.has(destination.state) ? "currentColor" : "none"} />
+              {savedStates.has(destination.state) ? "Saved to atlas" : "Save to atlas"}
+            </button>
             <button type="button" onClick={() => onExplore(destination.state)} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#101b66] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
               <span>Explore {destination.state}</span>
               <ArrowRight size={15} />

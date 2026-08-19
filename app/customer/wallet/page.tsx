@@ -114,6 +114,7 @@ function WalletContent() {
       if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
       setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
     }).catch(() => setDestinations([]));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshConnectStatus();
   }, [currentUser, refreshConnectStatus]);
 

@@ -14,6 +14,7 @@ function fakeDb() {
   };
   return {
     from(table: keyof typeof rows) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = {
         select: () => query,
         eq: () => query,
@@ -22,6 +23,7 @@ function fakeDb() {
       };
       return query;
     },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 

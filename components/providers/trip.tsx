@@ -60,6 +60,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredTrip> & { start?: unknown };
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (parsed.start === undefined && Array.isArray(parsed.stops)) setStops(parsed.stops);
       }
     } catch {

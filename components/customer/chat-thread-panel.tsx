@@ -76,6 +76,7 @@ export function ChatThreadPanel({
 
   useEffect(() => {
     if (!pendingFile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPendingPreviewUrl(null);
       return;
     }

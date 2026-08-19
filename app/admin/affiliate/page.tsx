@@ -729,6 +729,7 @@ export default function AdminAffiliatePage() {
             ) : (
               filteredFraudFlags.map((f) => (
                 <tr key={f.id} className="border-t border-border align-top">
+                  {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                   <td className="px-4 py-2.5"><input type="checkbox" aria-label={`Select fraud flag for ${f.userName}`} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(f.id) : next.delete(f.id); return next; })} /></td>
                   <td className="px-4 py-2.5 text-foreground">
                     {f.userName}

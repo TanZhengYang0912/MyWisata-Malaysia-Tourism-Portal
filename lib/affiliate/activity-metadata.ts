@@ -15,6 +15,7 @@
 
 import type { Metadata } from 'next';
 import { createServiceClient } from '@/lib/supabase/service';
+import { productImageUrl } from '@/lib/storage/product-image';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -36,7 +37,7 @@ export async function buildActivityMetadata(productId: string, path: string): Pr
     openGraph: {
       title: product.name,
       description,
-      images: product.cover_url ? [{ url: product.cover_url }] : undefined,
+      images: productImageUrl(product.cover_url) ? [{ url: productImageUrl(product.cover_url)! }] : undefined,
       url: `${SITE_URL}${path}`,
     },
   };

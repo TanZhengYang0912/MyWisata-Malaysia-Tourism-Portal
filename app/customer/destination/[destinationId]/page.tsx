@@ -24,6 +24,8 @@ function stateToSlug(state: string): string {
   return state.toLowerCase().replace(/\s+/g, "-");
 }
 
+const PLACE_FIRST_DESTINATION_SLUGS = new Set(["kuala-lumpur", "putrajaya", "labuan"]);
+
 async function getDestinationData(destinationId: string) {
   const stateName = slugToState(destinationId);
   const destination = MALAYSIA_DESTINATIONS.find(
@@ -91,7 +93,7 @@ export default async function DestinationPage({ params }: Props) {
   // D7: a state renders the new place-first page only once it has places rows;
   // every other state falls through to this page unchanged. No flag day.
   const stateSlug = stateToSlug(destination.state);
-  if (await getPlaceBySlug(stateSlug)) {
+  if (PLACE_FIRST_DESTINATION_SLUGS.has(stateSlug) || (await getPlaceBySlug(stateSlug))) {
     redirect(`/customer/place/${stateSlug}`);
   }
 
@@ -183,7 +185,7 @@ export default async function DestinationPage({ params }: Props) {
                 return (
                   <Link
                     key={product.id}
-                    href={`/customer/experience/${product.id}`}
+                href={`/customer/activity/${product.id}`}
                     className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-primary/10">

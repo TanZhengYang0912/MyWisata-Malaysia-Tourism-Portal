@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { PlaceCard } from "@/components/customer/place-card";
 import type { Place } from "@/backend/core/types";
+import { filterPlaceListings, getPlaceListingCounts, type PlaceAvailabilityFilter } from "@/lib/customer/place-list";
 
 /**
  * Flat POI listing for a state page. Region used to be the grouping axis;
- * now it's a filter alongside "Bookable" — see
+ * now it's a filter alongside "Bookable" and "Free entry" — see
  * docs/plans/2026-08-13-0006-place-page-listing-filters-and-imagery.md D1/D2.
  */
 export function PlaceList({
@@ -20,18 +21,14 @@ export function PlaceList({
   regions: { id: string; name: string }[];
   regionByPoi: Record<string, string>;
 }) {
-  const [bookableOnly, setBookableOnly] = useState(true);
+  const [availability, setAvailability] = useState<PlaceAvailabilityFilter>("all");
   const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
 
-  const bookableCount = pois.filter((poi) => (productCounts[poi.id] ?? 0) > 0).length;
+  const counts = getPlaceListingCounts(pois, productCounts);
 
   const filtered = useMemo(() => {
-    return pois.filter((poi) => {
-      if (bookableOnly && (productCounts[poi.id] ?? 0) === 0) return false;
-      if (selectedRegions.size > 0 && !selectedRegions.has(regionByPoi[poi.id])) return false;
-      return true;
-    });
-  }, [pois, productCounts, bookableOnly, selectedRegions, regionByPoi]);
+    return filterPlaceListings(pois, productCounts, regionByPoi, availability, selectedRegions);
+  }, [availability, pois, productCounts, regionByPoi, selectedRegions]);
 
   function toggleRegion(regionId: string) {
     setSelectedRegions((prev) => {
@@ -43,47 +40,95 @@ export function PlaceList({
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-        {filtered.length} {filtered.length === 1 ? "place" : "places"} to visit
-      </h2>
+    <section className="mt-14" aria-labelledby="places-to-visit-heading">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Explore destinations</p>
+          <h2 id="places-to-visit-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Places to visit
+          </h2>
+          <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {pois.length} places to explore
+          </p>
+        </div>
+        <span className="inline-flex w-fit rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
+          {counts.bookable} bookable {counts.bookable === 1 ? "place" : "places"}
+        </span>
+      </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setBookableOnly((v) => !v)}
-          className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-            bookableOnly ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Bookable {bookableOnly && `(${bookableCount})`}
-        </button>
-        {regions.length > 1 && (
-          <div className="flex flex-wrap gap-1.5 border-l border-border pl-3">
-            {regions.map((region) => (
+      <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter places by availability">
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Show</span>
+            {([
+              ["all", `All (${counts.all})`],
+              ["bookable", `Bookable (${counts.bookable})`],
+              ["freeEntry", `Free entry (${counts.freeEntry})`],
+            ] as const).map(([value, label]) => (
               <button
-                key={region.id}
+                key={value}
                 type="button"
-                onClick={() => toggleRegion(region.id)}
-                className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                  selectedRegions.has(region.id)
-                    ? "bg-primary text-white"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                aria-pressed={availability === value}
+                onClick={() => {
+                  setAvailability(value);
+                  setSelectedRegions(new Set());
+                }}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  availability === value ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {region.name}
+                {label}
               </button>
             ))}
           </div>
-        )}
+
+          {regions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label="Filter places by area">
+              <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Area</span>
+              <button
+                type="button"
+                aria-pressed={selectedRegions.size === 0}
+                onClick={() => setSelectedRegions(new Set())}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  selectedRegions.size === 0 ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All areas
+              </button>
+              {regions.map((region) => (
+                <button
+                  key={region.id}
+                  type="button"
+                  aria-pressed={selectedRegions.has(region.id)}
+                  onClick={() => toggleRegion(region.id)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                    selectedRegions.has(region.id) ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {region.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No places match these filters.
-        </p>
+        <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
+          <p className="font-semibold text-foreground">No places match these filters.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setAvailability("all");
+              setSelectedRegions(new Set());
+            }}
+            className="mt-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            Clear filters
+          </button>
+        </div>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((poi) => (
             <PlaceCard key={poi.id} place={poi} productCount={productCounts[poi.id] ?? 0} />
           ))}

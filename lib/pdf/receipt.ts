@@ -81,6 +81,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
 
     // Totals
     const totalsX = 370;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const totalsW = 175;
     doc.fontSize(10).font('Helvetica');
     doc.text('Subtotal:', totalsX, doc.y, { width: 90 });

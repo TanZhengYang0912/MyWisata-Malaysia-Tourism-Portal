@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Globe, ShoppingCart } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, Globe, ShoppingCart, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
@@ -179,6 +179,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </Link>
+            <Link href="/customer/vouchers" aria-label="My Vouchers" className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary lg:inline-flex">
+              <Tag size={16} className="text-primary" /> My Vouchers
+            </Link>
           </div>
 
           <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
@@ -266,6 +269,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Mobile bottom-ish secondary row for the rest of nav */}
         <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar md:hidden">
+          <Link href="/customer/vouchers" className="flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap" aria-current={isCustomerNavActive(pathname, "/customer/vouchers") ? "page" : undefined} style={{ color: isCustomerNavActive(pathname, "/customer/vouchers") ? "var(--primary)" : "var(--muted-foreground)" }}><Tag size={13} /> My Vouchers</Link>
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}

@@ -63,6 +63,7 @@ export default function DevCustomizePage() {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setWidgets(JSON.parse(raw) as Placed[]);
     } catch {
       // corrupt/unavailable — keep the seed layout

@@ -3,7 +3,6 @@
 import { MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
-import { getOrCreateThread } from "@/backend/domains/identity";
 
 export function OutletChatButton({ outletId }: { outletId: string }) {
   const { currentUser } = useAuth();
@@ -14,8 +13,14 @@ export function OutletChatButton({ outletId }: { outletId: string }) {
       router.push("/login");
       return;
     }
-    const thread = await getOrCreateThread(currentUser.id, outletId);
-    router.push(`/customer/chat/${thread.id}`);
+    const response = await fetch("/api/customer/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outletId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.data?.id) return;
+    router.push(`/customer/chat/${payload.data.id}`);
   }
 
   return (

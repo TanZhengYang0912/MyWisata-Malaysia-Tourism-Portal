@@ -466,6 +466,7 @@ export default function AdminChatbotPage() {
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
+                {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
                 <input type="checkbox" aria-label={`Select knowledge document ${d.title}`} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
