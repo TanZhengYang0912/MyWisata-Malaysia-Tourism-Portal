@@ -12,6 +12,7 @@ import {
   getDiscoveryCategoryLabel,
   type RealCategorySlug,
 } from "@/lib/customer/discovery-categories";
+import { productImageUrl } from "@/lib/storage/product-image";
 
 export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
@@ -286,7 +287,7 @@ function mapActivity(row: ProductRow, reviewMetrics: ReviewMetric = { rating: 0,
     name: row.name,
     category: canonicalCategorySlug(row.categories?.slug) ? getDiscoveryCategoryLabel(row.categories?.slug) : row.categories?.name ?? "",
     description: row.description ?? "",
-    image: row.cover_url ?? null,
+    image: productImageUrl(row.cover_url) ?? null,
     // Card shows "from" pricing when the product is sold at several outlets.
     price: cheapest ? cheapest.price : Number(row.base_price),
     rating: reviewMetrics.rating,

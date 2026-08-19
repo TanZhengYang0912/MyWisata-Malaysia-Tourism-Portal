@@ -43,6 +43,7 @@ next-env.d.ts
 
 # figma design reference screenshots (kept locally, not versioned)
 scripts/figma-screenshots/
+scripts/figma-screenshot.mjs
 
 # local Git worktrees
 .worktrees/
@@ -61,3 +62,23 @@ lint-results.json
 public/assets/
 supabase/.temp/
 scripts/__pycache__/
+
+# one-off diagnostic / debug scripts — not part of the codebase
+scripts/diag-*.mjs
+scripts/debug-*.mjs
+scripts/smoke-test.mjs
+
+# temporary ad-hoc upload / migration scripts created during dev sessions
+scripts/upload-*.ts
+scripts/update-*.ts
+scripts/combined-migration.sql
+scripts/disable-rls.sql.DO-NOT-RUN
+
+# screenshots captured during dev / QA — kept locally only
+scripts/screenshot-*.png
+
+# agent task reports and local work scratch docs
+work/
+design-qa.md
+structure.txt
+DARKMODE-A11Y-TEAM-AUDIT.md

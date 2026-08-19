@@ -14,6 +14,10 @@ export function productImageUrl(path: string | null | undefined): string | null 
 
   let objectPath = path.startsWith(LEGACY_PREFIX) ? path.slice(LEGACY_PREFIX.length) : path;
   objectPath = objectPath.replace(/^\/+/, "");
+  
+  if (!objectPath.includes("/")) {
+    objectPath = `products/${objectPath}`;
+  }
 
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   return `${base}/storage/v1/object/public/${BUCKET}/${objectPath}`;

@@ -30,7 +30,7 @@ describe("customer purchase flow", () => {
 
   it("offers both history and discovery after an order is confirmed", () => {
     const source = read("app/customer/orders/[id]/page.tsx");
-    expect(source).toContain("Back to Order History");
+    expect(source).toContain("Back to Orders");
     expect(source).toContain('href="/customer"');
     expect(source).toContain("Continue exploring");
   });

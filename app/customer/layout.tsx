@@ -10,9 +10,9 @@ import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
-import { WishlistProvider } from "@/components/providers/wishlist";
-import { SavedDestinationsProvider } from "@/components/providers/saved-destinations";
-import { TripProvider, useTrip } from "@/components/providers/trip";
+import { WishlistProvider, useWishlist } from "@/components/providers/wishlist";
+import { SavedDestinationsProvider, useSavedDestinations } from "@/components/providers/saved-destinations";
+import { TripProvider } from "@/components/providers/trip";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
@@ -36,9 +36,10 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"]);
   const { count } = useCart();
-  const { stops: tripStops } = useTrip();
-  // Exclude the origin "location" stop — the badge counts trip waypoints.
-  const tripCount = tripStops.filter((s) => s.source !== "location").length;
+  const { savedIds } = useWishlist();
+  const { savedStates } = useSavedDestinations();
+  const savedCount = savedIds.size + savedStates.size;
+  const [tripCount, setTripCount] = useState(0);
   const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -71,6 +72,25 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       cancelled = true;
       clearInterval(interval);
     };
+  }, [currentUser]);
+
+  // Fetch actual trip count for the badge (reads from cookie-based mock store via API)
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    async function loadTripCount() {
+      try {
+        const res = await fetch("/api/trips/count");
+        if (!cancelled && res.ok) {
+          const body = await res.json() as { count: number };
+          setTripCount(body.count);
+        }
+      } catch {
+        // best-effort
+      }
+    }
+    void loadTripCount();
+    return () => { cancelled = true; };
   }, [currentUser]);
 
   const [unreadChats, setUnreadChats] = useState(0);
@@ -149,16 +169,19 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="relative text-sm font-medium transition-colors hover:opacity-70"
+                className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
-                {item.label}
+                <span>{item.label}</span>
                 {item.href === "/customer/trip" && tripCount > 0 && (
-                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{tripCount}</span>
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
                 )}
                 {item.href === "/customer/chat" && unreadChats > 0 && (
-                  <span className="absolute -top-1.5 -right-3 rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+                )}
+                {item.href === "/customer/saved" && savedCount > 0 && (
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{savedCount > 99 ? "99+" : savedCount}</span>
                 )}
               </Link>
             ))}
@@ -280,10 +303,13 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             >
               <item.icon size={13} /> {item.label}
               {item.href === "/customer/trip" && tripCount > 0 && (
-                <span className="rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{tripCount}</span>
+                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
               )}
               {item.href === "/customer/chat" && unreadChats > 0 && (
-                <span className="rounded-full bg-primary px-1 text-[0.5625rem] font-bold leading-[0.875rem] text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
+              )}
+              {item.href === "/customer/saved" && savedCount > 0 && (
+                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{savedCount > 99 ? "99+" : savedCount}</span>
               )}
             </Link>
           ))}

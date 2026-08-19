@@ -27,7 +27,7 @@ export function OutletChatButton({ outletId }: { outletId: string }) {
     <button
       type="button"
       onClick={handleChat}
-      className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/25"
+      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary"
     >
       <MessageCircle size={15} /> Chat with vendor
     </button>

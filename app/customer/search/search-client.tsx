@@ -3,11 +3,10 @@
 import Link from "next/link";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, Search as SearchIcon, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CATEGORIES, STATES_MY, searchActivities } from "@/backend/domains/catalogue";
 import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
-import { CategoryIcon } from "@/components/customer/category-icon";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
@@ -16,6 +15,7 @@ import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/custome
 import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
+import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -49,27 +49,27 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
   const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || "Malaysia";
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#d7ddd9] bg-white shadow-[0_12px_30px_rgba(22,43,52,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(22,43,52,0.11)]">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
       <Link href={`/customer/vendor/${vendor.id}`} className="block shrink-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
         <div className="relative aspect-[1.45] overflow-hidden bg-[#eef2ff]">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={visual.coverUrl} alt={`${vendor.name} business cover`} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#071923]/80 via-[#071923]/5 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           </> : <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(255,204,0,0.28),transparent_28%),linear-gradient(135deg,#010066,#172b72_58%,#2d5273)] text-white">
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>
             <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Local partner</span>
           </div>}
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#173247]"><ShieldCheck size={12} className="text-[#010066]" /> Verified vendor</span>
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground"><ShieldCheck size={12} className="text-primary" /> Verified vendor</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
       <div className="flex min-h-[220px] flex-1 flex-col space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-[#122b3a]">{vendor.name}</h2></Link>
-            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#6d7e83]">Verified local partner with active outlets across Malaysia.</p>
+            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
+            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">Verified local partner with active outlets across Malaysia.</p>
           </div>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]">
             {visual.logoUrl ? <>
@@ -78,8 +78,8 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
             </> : visual.initials}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-3 text-[11px] text-[#6d7e83]"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {vendor.outlets.length} outlet{vendor.outlets.length === 1 ? "" : "s"}</span><span className="truncate">{categories.length ? categories.join(" · ") : "Local partner"}</span></div>
-        <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">Explore vendor <ArrowRight size={13} /></Link>
+        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {vendor.outlets.length} outlet{vendor.outlets.length === 1 ? "" : "s"}</span><span className="truncate">{categories.length ? categories.join(" · ") : "Local partner"}</span></div>
+        <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">Explore vendor <ArrowRight size={13} /></Link>
       </div>
       <span className="sr-only">Vendor card {index + 1}</span>
     </article>
@@ -95,13 +95,13 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   const image = getPlaceActivityImage(activity);
 
   return (
-    <article className="group overflow-hidden rounded-[24px] border border-[#cbd7f2] bg-white shadow-[0_12px_30px_rgba(22,43,52,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(22,43,52,0.11)]">
+    <article className="group overflow-hidden rounded-[24px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md">
       <Link href={`/customer/activity/${activity.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
         <div className="relative aspect-[1.55] overflow-hidden bg-[#eef2ff]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image} alt={activity.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071923]/80 via-[#071923]/5 to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#010066]">Place-based experience</span>
+          <span className="absolute left-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">Place-based experience</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
@@ -153,6 +153,14 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     return matchesQuery && matchesState && matchesCategory;
   }), [categoriesByVendor, category, initialVendors, query, state]);
 
+  const filteredRecommendedVendors = useMemo(() => recommendedVendors.filter((vendor) => {
+    const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
+    const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
+    const selectedCategoryLabel = CATEGORIES.find((item) => item.id === category)?.label;
+    const matchesCategory = !selectedCategoryLabel || labels.has(selectedCategoryLabel);
+    return matchesState && matchesCategory;
+  }), [categoriesByVendor, category, recommendedVendors, state]);
+
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / RESULTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * RESULTS_PER_PAGE;
@@ -173,21 +181,17 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
           </p>
 
           {/* Search Tools & Filters */}
-          <div className="mt-8 flex flex-col gap-4 lg:flex-row lg:items-center">
-            <div className="flex w-full max-w-2xl gap-3">
-              <div className="flex flex-1 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
-                <SearchIcon size={17} className="shrink-0 text-primary" />
-                <input 
-                  value={query} 
-                  onChange={(e) => { setQuery(e.target.value); setCurrentPage(1); }} 
-                  placeholder="Search vendors..." 
-                  className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" 
-                />
-              </div>
+          <div className="mt-8 space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <DiscoverySearchField 
+                value={query} 
+                onChange={(v) => { setQuery(v); setCurrentPage(1); }} 
+                placeholder="Search vendors..." 
+              />
               <select 
                 value={state ?? ""} 
                 onChange={(e) => { setState(e.target.value || null); setCurrentPage(1); }} 
-                className="w-[200px] shrink-0 rounded-2xl border border-border bg-card px-4 py-3.5 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                className="flex min-h-14 w-full shrink-0 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 text-sm font-semibold text-foreground outline-none focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 sm:w-[200px]"
               >
                 <option value="">All Malaysia</option>
                 {STATES_MY.filter(s => s !== "All Malaysia").map(s => (
@@ -195,32 +199,25 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
                 ))}
               </select>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-              {CATEGORIES.map((categoryOption) => (
-                <button 
-                  key={categoryOption.id} 
-                  type="button" 
-                  onClick={() => { setCategory((value) => value === categoryOption.id ? null : categoryOption.id); setCurrentPage(1); }} 
-                  className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-bold transition ${category === categoryOption.id ? "border-primary bg-primary text-white" : "border-border bg-card text-foreground hover:border-primary"}`}
-                >
-                  <CategoryIcon category={categoryOption.id} size={14} />
-                  {categoryOption.label}
-                </button>
-              ))}
-            </div>
+            
+            <DiscoveryCategoryFilter
+              category={category}
+              hasActiveFilters={Boolean(query.trim() || category || state)}
+              onCategoryChange={(c) => { setCategory(c); setCurrentPage(1); }}
+              onClear={() => { setQuery(""); setCategory(null); setState(null); setCurrentPage(1); }}
+            />
           </div>
         </div>
       </section>
 
 
       {/* Featured Vendors */}
-      {!query && !category && !state && recommendedVendors.length > 0 && (
-        <section className="border-b border-[#d7ddd9] bg-white">
+      {!query && filteredRecommendedVendors.length > 0 && (
+        <section className="border-b border-border">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">Featured Local Partners</h2>
             <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {recommendedVendors.slice(0, 4).map((vendor, index) => (
+              {filteredRecommendedVendors.slice(0, 4).map((vendor, index) => (
                 <VendorDirectoryCard key={vendor.id} vendor={vendor} categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]} index={index} />
               ))}
             </div>
@@ -241,21 +238,21 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
             ))}
           </div>
         ) : (
-          <div className="rounded-[24px] border border-dashed border-[#cad5d1] bg-[#f8fafc] p-12 text-center">
+          <div className="rounded-[24px] border border-dashed border-border bg-secondary/50 p-12 text-center">
             <p className="font-bold text-lg">No vendors found.</p>
-            <p className="mt-2 text-sm text-[#6d7e83]">Try adjusting your search or filters.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Try adjusting your search or filters.</p>
           </div>
         )}
 
         {filteredVendors.length > 0 && totalPages > 1 && (
-          <nav className="mt-10 flex flex-col gap-4 border-t border-[#d7ddd9] pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-[#6d7e83]">
-              Showing <span className="font-bold text-[#122b3a]">{pageStart + 1}–{Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length)}</span> of <span className="font-bold text-[#122b3a]">{filteredVendors.length}</span> partners
+          <nav className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-bold text-foreground">{pageStart + 1}–{Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length)}</span> of <span className="font-bold text-foreground">{filteredVendors.length}</span> partners
             </p>
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:opacity-35"><ChevronLeft size={15} /></button>
-              {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-[#6d7e83]">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-[#010066] text-white" : "border border-[#cad5d1] hover:border-[#010066]"}`}>{item}</button>)}
-              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="flex h-9 w-9 items-center justify-center rounded-full border border-[#cad5d1] text-[#010066] disabled:opacity-35"><ChevronRight size={15} /></button>
+              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
+              {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-primary text-white border-primary" : "border border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}
+              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
             </div>
           </nav>
         )}

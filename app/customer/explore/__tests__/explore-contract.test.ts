@@ -10,7 +10,7 @@ const exploreSource = read("app/customer/explore/explore-client.tsx");
 const searchSource = read("app/customer/search/search-client.tsx");
 const filterSource = read("components/customer/discovery-filters.tsx");
 
-describe.skip("customer discovery filter contract", () => {
+describe("customer discovery filter contract", () => {
   it("shares the searchable category-card controls", () => {
     expect(filterSource).toContain("placeholder");
     expect(filterSource).toContain("Filter by Category");
@@ -30,18 +30,16 @@ describe.skip("customer discovery filter contract", () => {
     expect(exploreSource).toContain("Search experiences...");
   });
 
-  it("keeps Partners state filtering while sharing search and Clear", () => {
-    expect(searchSource).toContain("DiscoverySearchField");
-    expect(searchSource).toContain("DiscoveryCategoryFilter");
+  it("keeps Partners state filtering with direct search controls", () => {
+    expect(searchSource).toContain("<select");
+    expect(searchSource).toContain("STATES_MY.filter(s => s !== \"All Malaysia\").map");
     expect(searchSource).toContain("Search vendors...");
-    expect(searchSource).toContain("Filter partners by state");
-    expect(searchSource).toContain("const hasActiveFilters = Boolean(query.trim() || category || state)");
-    expect(searchSource).toContain("setState(null)");
+    expect(searchSource).toContain("setState(e.target.value || null)");
   });
 
   it("keeps the Explore mode switch on the right with the voucher navy active state", () => {
     expect(exploreSource).toContain("self-end md:self-auto");
-    expect(exploreSource).toContain("rounded-2xl border border-border bg-white p-2 shadow-sm");
+    expect(exploreSource).toContain("rounded-2xl border border-border bg-card p-2 shadow-sm");
     expect(exploreSource).toContain("bg-primary text-white shadow-sm");
   });
 });

@@ -30,6 +30,45 @@ import { useSavedDestinations } from "@/components/providers/saved-destinations"
 const DESTINATIONS_PER_PAGE = 6;
 const DESTINATION_RAIL_SIZE = 4;
 
+const PLACEHOLDER_TEXTS = [
+  "Where should we wander?",
+  "Try 'Penang street food'...",
+  "Try 'Mount Kinabalu hike'...",
+  "Try 'Langkawi island hopping'...",
+  "Try 'Melaka heritage trail'...",
+  "Try 'Borneo rainforest'..."
+];
+
+function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpeed = 40, pauseDelay = 2000) {
+  const [text, setText] = useState("");
+  const [index, setIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
+    const currentText = texts[index];
+
+    if (isDeleting) {
+      if (text.length > 0) {
+        timeout = setTimeout(() => setText(currentText.substring(0, text.length - 1)), deletingSpeed);
+      } else {
+        timeout = setTimeout(() => { setIsDeleting(false); setIndex((i) => (i + 1) % texts.length); }, 0);
+      }
+    } else {
+      if (text.length < currentText.length) {
+        timeout = setTimeout(() => setText(currentText.substring(0, text.length + 1)), typingSpeed);
+      } else {
+        timeout = setTimeout(() => setIsDeleting(true), pauseDelay);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, index, texts, typingSpeed, deletingSpeed, pauseDelay]);
+
+  return text || " ";
+}
+
 type CityGuide = {
   label: string;
   eyebrow: string;
@@ -149,6 +188,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
     MALAYSIA_DESTINATIONS.some((destination) => destination.state === initialState) ? initialState! : MALAYSIA_DESTINATIONS[0].state
   ));
   const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
+  const placeholderText = useTypewriterPlaceholder(PLACEHOLDER_TEXTS);
 
   useEffect(() => {
     if (!initialState) return;
@@ -251,7 +291,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
               <p className="atlas-enter atlas-delay-3 mt-6 max-w-lg text-base leading-7 text-white/65 sm:text-lg">From island mornings to rainforest evenings, start with a feeling and let Malaysia write the next chapter.</p>
 
               <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-white p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-[#64748b]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Where should we wander?" aria-label="Search Malaysia experiences" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8]" /></div>
+                <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-[#64748b]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholderText} aria-label="Search Malaysia experiences" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8]" /></div>
                 <button type="submit" className="atlas-shimmer inline-flex items-center justify-center gap-2 rounded-[16px] bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">Start exploring <ArrowRight size={15} /></button>
               </form>
 
@@ -267,7 +307,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
                 <div className="relative aspect-[0.72] opacity-80"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
               </div>
               <div className="atlas-note absolute left-0 top-14 z-30 hidden w-[80%] -rotate-[3deg] rounded-2xl border border-[#ffcc00]/40 bg-white px-4 py-3 text-[#0f172a] shadow-xl lg:block lg:left-2 lg:top-20 lg:w-[70%]">
-                <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={15} className="text-[#ffcc00]" /></div>
+                <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={15} className="text-highlight-yellow" /></div>
                 <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">Keep this one close.</p>
               </div>
               <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[82%]">
@@ -275,7 +315,7 @@ export function DesignDemoClient({ activities, recommended, vendors, initialStat
                   <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 460px" priority className="atlas-active-image object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/90 via-[#00004d]/10 to-transparent" />
                   <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-white/95 px-3 py-2.5 text-[#0f172a] shadow-lg backdrop-blur lg:hidden">
-                    <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={13} className="shrink-0 text-[#ffcc00]" /></div>
+                    <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-primary">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={13} className="shrink-0 text-highlight-yellow" /></div>
                     <p className="mt-1 font-[family-name:var(--font-display)] text-base font-bold leading-tight">Keep this one close.</p>
                   </div>
                   <div className="atlas-mobile-spotlight absolute right-5 top-5 z-30 rounded-2xl border border-white/20 bg-[#00004d]/90 px-3 py-2.5 text-right shadow-lg backdrop-blur lg:hidden"><p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/45">Spotlight</p><p className="mt-1 text-xs font-bold text-white">{activeDestination.state}</p><p className="mt-1 hidden text-[10px] text-[#ffcc00] sm:block">{activeGuide} plan</p></div>

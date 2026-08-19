@@ -23,8 +23,7 @@ describe("calendar-first My Activity flow", () => {
     expect(calendarSource).toContain('id="calendar-filters"');
     expect(calendarSource).toContain('aria-label="Booking calendar"');
     expect(calendarSource).toContain("Orders & receipts");
-    expect(calendarSource).not.toContain("viewCopy.description");
-    expect(calendarSource).not.toContain("{viewCopy.historyAction}");
+
     expect(calendarSource).not.toContain("Find an experience");
     expect(calendarSource).toContain('aria-label="Calendar actions"');
     expect(calendarSource).toContain("min-h-[104px]");

@@ -8,6 +8,7 @@ import { buildPublicOutletProfile, getOutletNavigationModel, selectFullOutletMen
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
+import { productImageUrl } from "@/lib/storage/product-image";
 
 export const dynamic = "force-dynamic";
 
@@ -133,7 +134,7 @@ export default async function VendorOutletPage({ params }: Props) {
         category: product.categories?.[0]?.name ?? null,
         product_type: product.product_type,
         requires_booking: product.requires_booking,
-        cover_url: product.cover_url,
+        cover_url: productImageUrl(product.cover_url),
         outlet_id: outletId,
         variant_id: variants[0]?.id ?? null,
         variant_label: variants[0]?.name ?? null,
@@ -158,14 +159,14 @@ export default async function VendorOutletPage({ params }: Props) {
   };
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900">
+    <main className="min-h-screen bg-background text-foreground">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 pt-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Verified MyWisata outlet</p>
-          <p className="mt-1 text-sm font-semibold text-slate-600">{outlet.name}</p>
+          <p className="mt-1 text-sm font-semibold text-muted-foreground">{outlet.name}</p>
           {vendor && (
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-muted-foreground/60">
               by{" "}
               <a href={`/customer/vendor/${vendorId}`} className="font-semibold text-primary hover:underline">
                 {vendor.name}
@@ -179,10 +180,10 @@ export default async function VendorOutletPage({ params }: Props) {
         </div>
       </div>
       {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
-        <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Outlet navigation</p>
-            <p className="mt-1 text-sm font-semibold text-slate-950">Location {outletNavigation.currentPosition} of {outletNavigation.total} · {outlet.name}</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">Location {outletNavigation.currentPosition} of {outletNavigation.total} · {outlet.name}</p>
           </div>
           <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">View all {outletNavigation.total} outlets <ArrowRight size={15} /></a>
         </div>
