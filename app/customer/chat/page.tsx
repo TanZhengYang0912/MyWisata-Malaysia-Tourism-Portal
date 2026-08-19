@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
+import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getMessages, getOtherReadMessageIds, getReadChatMessageIds, getThreadsForUser, sendMessage } from "@/backend/domains/identity";
 import { getOutlets } from "@/backend/domains/catalogue";
@@ -33,6 +33,8 @@ export default function ChatListPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
+  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
+  const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentUser) return;
@@ -44,9 +46,10 @@ export default function ChatListPage() {
         const messages = await Promise.all(list.map((thread) => getMessages(thread.id)));
         const allMessages = messages.flat();
         const allMessageIds = allMessages.map((message) => message.id);
-        const [reads, readByOthers] = await Promise.all([
+        const [reads, readByOthers, mutesRes] = await Promise.all([
           getReadChatMessageIds(currentUser.id, allMessageIds),
           getOtherReadMessageIds(currentUser.id, allMessageIds),
+          fetch("/api/chat/mutes").then((r) => (r.ok ? r.json() : { data: [] })),
         ]);
         if (cancelled) return;
 
@@ -55,6 +58,7 @@ export default function ChatListPage() {
         setMessagesByThread(new Map(list.map((thread, index) => [thread.id, messages[index]])));
         setReadMessageIds(reads);
         setReadByOthersIds(readByOthers);
+        setMutedThreadIds(new Set((mutesRes.data ?? []) as string[]));
       } catch {
         if (!cancelled) setLoadError("We couldn't load your conversations. Please refresh and try again.");
       }
@@ -64,6 +68,25 @@ export default function ChatListPage() {
       cancelled = true;
     };
   }, [currentUser]);
+
+  async function toggleMute(threadId: string) {
+    const currentlyMuted = mutedThreadIds.has(threadId);
+    setMutedThreadIds((previous) => {
+      const next = new Set(previous);
+      currentlyMuted ? next.delete(threadId) : next.add(threadId);
+      return next;
+    });
+    try {
+      await fetch(`/api/chat/threads/${threadId}/mute`, { method: currentlyMuted ? "DELETE" : "POST" });
+    } catch {
+      // Best-effort revert — the mute is purely a notification preference, not worth a blocking error.
+      setMutedThreadIds((previous) => {
+        const next = new Set(previous);
+        currentlyMuted ? next.add(threadId) : next.delete(threadId);
+        return next;
+      });
+    }
+  }
 
   const unreadByThread = useMemo(() => {
     const counts = new Map<string, number>();
@@ -254,7 +277,10 @@ export default function ChatListPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>{name}</p>
+                          <p className={`flex min-w-0 items-center gap-1 truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                            <span className="truncate">{name}</span>
+                            {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-muted-foreground" aria-label="Muted" />}
+                          </p>
                           <span className="shrink-0 text-[11px] text-muted-foreground">{formatChatTimestamp(thread.lastMessageAt)}</span>
                         </div>
                         <p className={`mt-1 truncate text-xs ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>
@@ -294,6 +320,8 @@ export default function ChatListPage() {
               onMessageSent={appendMessage}
               backHref="/customer/chat"
               readByOthers={readByOthersIds}
+              isMuted={mutedThreadIds.has(selectedThread.id)}
+              onToggleMute={() => void toggleMute(selectedThread.id)}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
