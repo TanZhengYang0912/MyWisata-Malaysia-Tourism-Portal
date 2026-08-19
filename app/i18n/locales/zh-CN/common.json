@@ -9,6 +9,33 @@
     "saved": "语言偏好已保存。",
     "saveError": "无法保存语言偏好，请重试。"
   },
+  "conductReport": {
+    "submitFailed": "无法提交举报。",
+    "success": "举报已提交，我们的团队会进行审核。",
+    "submitFailedRetry": "无法提交举报，请重试。",
+    "reported": "已举报",
+    "reportConversation": "举报此对话",
+    "report": "举报",
+    "reasonOptional": "原因（可选）",
+    "submitting": "正在提交…",
+    "submit": "提交举报"
+  },
+  "appearance": {
+    "label": "外观",
+    "settings": "外观设置",
+    "theme": "主题",
+    "textSize": "文字大小",
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
+    "fontSizes": {
+      "normal": "标准",
+      "large": "大",
+      "larger": "更大"
+    }
+  },
   "actions": {
     "save": "保存",
     "cancel": "取消",

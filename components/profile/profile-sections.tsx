@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
 import type { ProfileSummary } from "@/backend/core/types";
-import { safeKycReasonCopy } from "@/lib/kyc/customer-submission";
 import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
@@ -75,7 +74,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
   async function savePersonal() {
     const trimmedBio = bio.trim();
     if (trimmedBio.length < MIN_BIO_LENGTH || trimmedBio.length > MAX_BIO_LENGTH) {
-      setError(`${tCustomer("ui.profileWizard.bio")}: ${MIN_BIO_LENGTH}–${MAX_BIO_LENGTH} characters.`);
+      setError(tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }));
       return;
     }
     setBusy(true); setError(null);
@@ -94,7 +93,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
   async function sendPhoneOtp() {
     const parsedPhone = parseInternationalPhone(phone);
-    if (!parsedPhone.ok) { setError(parsedPhone.message); return; }
+    if (!parsedPhone.ok) { setError(tCustomer("ui.profileWizard.invalidPhone")); return; }
     setPhone(parsedPhone.e164);
     setBusy(true); setError(null);
     try {
@@ -108,7 +107,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
   async function verifyPhone() {
     const parsedPhone = parseInternationalPhone(phone);
-    if (!parsedPhone.ok) { setError(parsedPhone.message); return; }
+    if (!parsedPhone.ok) { setError(tCustomer("ui.profileWizard.invalidPhone")); return; }
     setPhone(parsedPhone.e164);
     setBusy(true); setError(null);
     try {
@@ -164,7 +163,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     <CustomerPageShell className={shellClassName}>
       <main className="space-y-5">
       {showHeader && <CustomerPageHeader
-        eyebrow={tCustomer("ui.accountGroups.account")}
+        eyebrow={tCustomer("accountGroups.account")}
         title={summary.displayName || summary.fullName || currentUser?.email || tCustomer("ui.profileWizard.title")}
         description={tCustomer("ui.profileWizard.description")}
         className="mb-2"
@@ -177,7 +176,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
           {avatarPreview || summary.avatarUrl ? <img src={avatarPreview || summary.avatarUrl || ""} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary"><Camera size={23} /></div>}
           <div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size <= 2 * 1024 * 1024) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} /><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>{tCustomer("ui.profileWizard.choosePhoto")}</Button>{avatarFile && <Button size="sm" className="ml-2" onClick={uploadAvatar} disabled={busy}>{tCustomer("ui.profileWizard.savePhoto")}</Button>}</div>
         </div>
-        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullName")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="grid gap-3 sm:grid-cols-2"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder={tCustomer("ui.profileWizard.city")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={tCustomer("ui.profileWizard.country")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bio")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? `${tCustomer("ui.profileWizard.bio")}: ${MIN_BIO_LENGTH}` : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
+        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="grid gap-3 sm:grid-cols-2"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder={tCustomer("ui.profileWizard.cityPlaceholder")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={tCustomer("ui.profileWizard.countryPlaceholder")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.contact")} description={tCustomer("ui.profileWizard.description")}>
@@ -185,8 +184,8 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.kyc.verified")} description={tCustomer("ui.kyc.description")}>
-        <div className="grid gap-2 sm:grid-cols-2"><StatusBadge label={`Email ${summary.emailVerified ? "verified" : "unverified"}`} good={summary.emailVerified} /><StatusBadge label={`Phone ${summary.phoneVerified ? "verified" : "unverified"}`} good={summary.phoneVerified} /><StatusBadge label={`Profile ${summary.profileComplete ? "complete" : "incomplete"}`} good={summary.profileComplete} /><StatusBadge label={`KYC ${summary.kycStatus}`} good={summary.kycStatus === "approved"} /></div>
-        {summary.kycStatus === "rejected" && <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">{tCustomer("ui.kyc.rejected")}</p><p className="mt-1 text-sm text-muted-foreground">{safeKycReasonCopy(summary.latestKycReview?.reasonCode)}</p>{summary.latestKycReview?.reasonDetail && <p className="mt-2 text-sm text-foreground">{summary.latestKycReview.reasonDetail}</p>}<Button className="mt-3" size="sm" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.newSubmission")} <ChevronRight size={14} /></Button></div>}
+        <div className="grid gap-2 sm:grid-cols-2"><StatusBadge label={tCustomer("ui.profileSections.emailStatus", { status: tCustomer(summary.emailVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.emailVerified} /><StatusBadge label={tCustomer("ui.profileSections.phoneStatus", { status: tCustomer(summary.phoneVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.phoneVerified} /><StatusBadge label={tCustomer("ui.profileSections.profileStatus", { status: tCustomer(summary.profileComplete ? "ui.profileSections.complete" : "ui.profileSections.incomplete") })} good={summary.profileComplete} /><StatusBadge label={tCustomer("ui.profileSections.kycStatus", { status: tCustomer(`ui.profileSections.kycStatuses.${summary.kycStatus}`) })} good={summary.kycStatus === "approved"} /></div>
+        {summary.kycStatus === "rejected" && <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">{tCustomer("ui.kyc.rejected")}</p><p className="mt-1 text-sm text-muted-foreground">{tCustomer(`ui.kyc.reviewReasons.${summary.latestKycReview?.reasonCode ?? "default"}`)}</p>{summary.latestKycReview?.reasonDetail && <p className="mt-2 text-sm text-foreground">{summary.latestKycReview.reasonDetail}</p>}<Button className="mt-3" size="sm" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.newSubmission")} <ChevronRight size={14} /></Button></div>}
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.submitDocuments")} <ChevronRight size={14} /></Button>}
       </SectionCard>
 

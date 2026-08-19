@@ -9,6 +9,33 @@
     "saved": "Pilihan bahasa telah disimpan.",
     "saveError": "Tidak dapat menyimpan pilihan bahasa. Sila cuba lagi."
   },
+  "conductReport": {
+    "submitFailed": "Laporan tidak dapat dihantar.",
+    "success": "Laporan dihantar. Pasukan kami akan menyemaknya.",
+    "submitFailedRetry": "Laporan tidak dapat dihantar. Sila cuba lagi.",
+    "reported": "Dilaporkan",
+    "reportConversation": "Laporkan perbualan ini",
+    "report": "Lapor",
+    "reasonOptional": "Sebab (pilihan)",
+    "submitting": "Menghantar…",
+    "submit": "Hantar laporan"
+  },
+  "appearance": {
+    "label": "Penampilan",
+    "settings": "Tetapan penampilan",
+    "theme": "Tema",
+    "textSize": "Saiz teks",
+    "themes": {
+      "light": "Cerah",
+      "dark": "Gelap",
+      "system": "Sistem"
+    },
+    "fontSizes": {
+      "normal": "Biasa",
+      "large": "Besar",
+      "larger": "Lebih besar"
+    }
+  },
   "actions": {
     "save": "Simpan",
     "cancel": "Batal",

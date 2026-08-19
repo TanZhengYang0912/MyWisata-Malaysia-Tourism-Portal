@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useTranslation } from "react-i18next";
 
 interface ReportChatButtonProps {
   chatType: "user_vendor" | "user_admin" | "vendor_admin";
@@ -23,6 +24,7 @@ interface ReportChatButtonProps {
 }
 
 export function ReportChatButton({ chatType, threadId, className }: ReportChatButtonProps) {
+  const { t } = useTranslation("common");
   const { showFeedback } = useActionFeedback();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -40,21 +42,21 @@ export function ReportChatButton({ chatType, threadId, className }: ReportChatBu
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        showFeedback("error", body?.error?.message ?? "Could not submit report.");
+        showFeedback("error", body?.error?.message ?? t("conductReport.submitFailed"));
         return;
       }
       setReported(true);
       setOpen(false);
-      showFeedback("success", "Reported. Our team will review it.");
+      showFeedback("success", t("conductReport.success"));
     } catch {
-      showFeedback("error", "Could not submit report. Please try again.");
+      showFeedback("error", t("conductReport.submitFailedRetry"));
     } finally {
       setSending(false);
     }
   }
 
   if (reported) {
-    return <span className={`text-xs text-muted-foreground ${className ?? ""}`}>Reported</span>;
+    return <span className={`text-xs text-muted-foreground ${className ?? ""}`}>{t("conductReport.reported")}</span>;
   }
 
   return (
@@ -63,27 +65,27 @@ export function ReportChatButton({ chatType, threadId, className }: ReportChatBu
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
-        aria-label="Report this conversation"
-        title="Report"
+        aria-label={t("conductReport.reportConversation")}
+        title={t("conductReport.report")}
       >
         <Flag size={14} />
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-20 w-64 rounded-2xl border border-border bg-card p-3 shadow-lg">
-          <p className="mb-2 text-sm font-semibold text-foreground">Report this conversation</p>
+          <p className="mb-2 text-sm font-semibold text-foreground">{t("conductReport.reportConversation")}</p>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason (optional)"
+            placeholder={t("conductReport.reasonOptional")}
             rows={2}
             maxLength={500}
             className="mb-2 w-full resize-none rounded-xl border border-border bg-background px-2.5 py-2 text-xs text-foreground"
           />
           <div className="flex gap-2">
             <Button size="sm" variant="destructive" className="flex-1" disabled={sending} onClick={() => void submit()}>
-              {sending ? "Submitting…" : "Submit report"}
+              {sending ? t("conductReport.submitting") : t("conductReport.submit")}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" variant="outline" onClick={() => setOpen(false)}>{t("actions.cancel")}</Button>
           </div>
         </div>
       )}

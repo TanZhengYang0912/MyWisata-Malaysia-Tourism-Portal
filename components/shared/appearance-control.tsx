@@ -9,23 +9,25 @@
 // white/10 hover style instead of the light-shell token classes.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Laptop, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "@/components/providers/theme";
 import { useFontSize, type FontSize } from "@/components/providers/font-size";
 
 const THEME_OPTIONS = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Laptop },
+  { value: "light", icon: Sun },
+  { value: "dark", icon: Moon },
+  { value: "system", icon: Laptop },
 ] as const;
 
-const FONT_SIZE_OPTIONS: { value: FontSize; label: string }[] = [
-  { value: "normal", label: "Normal" },
-  { value: "large", label: "Large" },
-  { value: "larger", label: "Larger" },
+const FONT_SIZE_OPTIONS: { value: FontSize }[] = [
+  { value: "normal" },
+  { value: "large" },
+  { value: "larger" },
 ];
 
 export function AppearanceControl({ variant = "light" }: { variant?: "light" | "sidebar-dark" }) {
+  const { t } = useTranslation("common");
   const { theme, setTheme } = useTheme();
   const { fontSize, setFontSize } = useFontSize();
   const [open, setOpen] = useState(false);
@@ -64,24 +66,24 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
     <div ref={ref} className={variant === "sidebar-dark" ? "relative" : "relative shrink-0"}>
       <button
         type="button"
-        aria-label="Appearance settings"
+        aria-label={t("appearance.settings")}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className={triggerClass}
       >
         <Palette size={variant === "sidebar-dark" ? 15 : 18} />
-        {variant === "sidebar-dark" && "Appearance"}
+        {variant === "sidebar-dark" && t("appearance.label")}
       </button>
 
       {open && (
         <div
           role="menu"
-          aria-label="Appearance settings"
+          aria-label={t("appearance.settings")}
           className="absolute z-50 w-72 rounded-2xl border border-border bg-card p-3 text-foreground shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
           style={variant === "sidebar-dark" ? { bottom: "calc(100% + 0.5rem)", left: 0 } : { right: 0, top: "calc(100% + 0.75rem)" }}
         >
-          <p className="px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Theme</p>
+          <p className="px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("appearance.theme")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             {THEME_OPTIONS.map((opt) => (
               <button
@@ -93,12 +95,12 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
                   activeTheme === opt.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                <opt.icon size={16} /> {opt.label}
+                <opt.icon size={16} /> {t(`appearance.themes.${opt.value}`)}
               </button>
             ))}
           </div>
 
-          <p className="mt-3 px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Text size</p>
+          <p className="mt-3 px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("appearance.textSize")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             {FONT_SIZE_OPTIONS.map((opt) => (
               <button
@@ -110,7 +112,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
                   fontSize === opt.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {opt.label}
+                {t(`appearance.fontSizes.${opt.value}`)}
               </button>
             ))}
           </div>

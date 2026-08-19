@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
@@ -163,19 +164,6 @@ const MODE_STYLE: Record<TravelModeId, { color: string; dashed?: boolean }> = {
   TRANSIT: { color: "#010066" },
 };
 
-function fmtMin(min: number): string {
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h} hr ${m} min` : `${h} hr`;
-}
-function fmtShort(min: number): string {
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h}h${m}` : `${h}h`;
-}
-
 function formatTripRange(trip: Trip) {
   if (!trip.start_date) return "Dates pending";
   const format = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -184,6 +172,7 @@ function formatTripRange(trip: Trip) {
 
 export function MapClient({ tripData, initialItems, initialActivities }: { tripData: Trip; initialItems: TripItem[]; initialActivities: ComputedActivity[] }) {
   const trip = useSyncTrip(tripData.id, initialItems);
+  const { t: tCustomer } = useTranslation("customer");
   const [category, setCategory] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
@@ -429,8 +418,8 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
   function locationSuggestions() {
     return (
       <div className="mt-1.5">
-        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
-        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
+        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
+        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noMatches")}</p>}
         {suggestions.length > 0 && (
           <ul className="overflow-hidden rounded-lg border border-border bg-card">
             {suggestions.map((s, i) => (
@@ -464,6 +453,21 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
 
   const directionsUrl = buildGoogleMapsDirectionsUrl(origin, trip.stops.slice(1), mode);
   const hasRouteInputs = trip.stops.length >= 2;
+  function formatDuration(minutes: number) {
+    if (minutes < 60) return tCustomer("ui.map.durationMinutes", { minutes });
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    return remainder ? tCustomer("ui.map.durationHoursMinutes", { hours, minutes: remainder }) : tCustomer("ui.map.durationHours", { hours });
+  }
+  function formatDurationShort(minutes: number) {
+    if (minutes < 60) return tCustomer("ui.map.durationMinutesShort", { minutes });
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    return remainder ? tCustomer("ui.map.durationHoursMinutesShort", { hours, minutes: remainder }) : tCustomer("ui.map.durationHoursShort", { hours });
+  }
+  function travelModeLabel(id: TravelModeId) {
+    return tCustomer(`ui.map.travelModes.${id.toLowerCase()}`);
+  }
   function handleDropOnDay(date: string | null) {
     if (!dragItemId) return;
     const item = trip.items.find((entry) => entry.id === dragItemId);
@@ -515,7 +519,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             </div>
             {isLocation ? locationSuggestions() : (
               <div className="mt-2">
-                {editStopLoading && <p className="text-xs text-muted-foreground">Searching…</p>}
+                {editStopLoading && <p className="text-xs text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
                 {editStopSuggestions.length > 0 && (
                   <ul className="overflow-hidden rounded-lg border border-border bg-card">
                     {editStopSuggestions.map((suggestion, index) => (
@@ -537,7 +541,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             <span className={"grid h-6 w-6 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-bold text-foreground">{item.label}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">{isLocation ? (item.kind === "gps" ? "Current location" : "Starting point") : item.sublabel || "Added place"}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">{isLocation ? (item.kind === "gps" ? tCustomer("ui.map.currentLocation") : tCustomer("ui.map.customStart")) : item.sublabel || tCustomer("ui.map.addPlace")}</span>
             </span>
             <input
               type="time"
@@ -590,7 +594,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
       <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label="Planner views">
         {(["itinerary", "map", "places"] as const).map((panel) => (
           <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-lg px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
-            {panel === "places" ? "Add places" : panel}
+            {panel === "places" ? tCustomer("ui.map.addPlace") : panel}
           </button>
         ))}
       </div>
@@ -600,7 +604,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
           <header className="shrink-0 border-b border-border px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Trip planner</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("ui.map.yourTrip")}</p>
                 <h1 className="mt-1 truncate text-lg font-bold text-foreground">{tripData.name}</h1>
                 <p className="mt-1 text-xs text-muted-foreground">{formatTripRange(tripData)}</p>
               </div>
@@ -613,7 +617,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
               <p className="text-xs font-bold text-foreground">Build your route</p>
               <button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
                 {showAllVendors ? <Eye size={13} className="text-primary" /> : <EyeOff size={13} />}
-                {showAllVendors ? "Map vendors on" : "Map vendors"}
+                {showAllVendors ? tCustomer("ui.map.showingAllVendors") : tCustomer("ui.map.showAllVendors")}
               </button>
             </div>
 
@@ -621,9 +625,9 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
               <div className="mb-3 rounded-2xl border border-dashed border-primary/30 bg-secondary/60 p-3">
                 <div className="flex items-center gap-2">
                   <LocateFixed size={16} className="shrink-0 text-primary" />
-                  {editingStart ? <input autoFocus value={startInput} onChange={(event) => setStartInput(event.target.value)} placeholder="Type your starting point" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" /> : <span className="min-w-0 flex-1"><span className="block text-xs font-bold">Add your starting point</span><span className="block text-[11px] text-muted-foreground">Type a place or use GPS</span></span>}
-                  <button onClick={() => editingStart ? setEditingStart(false) : openStartEditor()} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label="Type a starting point">{editingStart ? <X size={14} /> : <Pencil size={14} />}</button>
-                  <button onClick={useGps} disabled={locating} className="rounded-lg p-1 text-primary hover:bg-background disabled:opacity-50" aria-label="Use current location">{locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}</button>
+                  {editingStart ? <input autoFocus value={startInput} onChange={(event) => setStartInput(event.target.value)} placeholder={tCustomer("ui.map.typeLocation")} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" /> : <span className="min-w-0 flex-1"><span className="block text-xs font-bold">{tCustomer("ui.map.addStartingPoint")}</span><span className="block text-[11px] text-muted-foreground">{tCustomer("ui.map.typePlaceOrGps")}</span></span>}
+                  <button onClick={() => editingStart ? setEditingStart(false) : openStartEditor()} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label={tCustomer("ui.map.typeAddress")}>{editingStart ? <X size={14} /> : <Pencil size={14} />}</button>
+                  <button onClick={useGps} disabled={locating} className="rounded-lg p-1 text-primary hover:bg-background disabled:opacity-50" aria-label={tCustomer("ui.map.useCurrentLocation")}>{locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}</button>
                 </div>
                 {editingStart && locationSuggestions()}
                 {locError && <p className="mt-1 text-xs text-destructive">{locError}</p>}
@@ -640,13 +644,13 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
                 <div className="rounded-2xl border border-border bg-muted p-3">
                   <div className="flex items-center gap-2">
                     <Search size={14} className="text-muted-foreground" />
-                    <input autoFocus value={stopSearchInput} onChange={(event) => setStopSearchInput(event.target.value)} placeholder="Search an address to add" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" />
-                    <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label="Cancel add stop"><X size={14} /></button>
+                    <input autoFocus value={stopSearchInput} onChange={(event) => setStopSearchInput(event.target.value)} placeholder={tCustomer("ui.map.searchPlaceToAdd")} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" />
+                    <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label={tCustomer("ui.actions.cancel")}><X size={14} /></button>
                   </div>
-                  {stopSearchLoading && <p className="mt-2 text-xs text-muted-foreground">Searching…</p>}
+                  {stopSearchLoading && <p className="mt-2 text-xs text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
                   {stopSuggestions.length > 0 && <ul className="mt-2 overflow-hidden rounded-lg border border-border bg-card">{stopSuggestions.map((suggestion, index) => <li key={suggestion.lat + "," + suggestion.lng + "," + index}><button onClick={() => chooseStopSuggestion(suggestion)} className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-left text-xs last:border-0 hover:bg-muted"><LocateFixed size={13} className="mt-0.5 shrink-0 text-primary" /><span className="line-clamp-2">{suggestion.label}</span></button></li>)}</ul>}
                 </div>
-              ) : <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={14} /> Add a custom place</button>}
+              ) : <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={14} /> {tCustomer("ui.map.addPlace")}</button>}
             </div>
           </div>
 
@@ -655,24 +659,24 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
               {TRAVEL_MODES.map((travelMode) => {
                 const supported = Boolean(ORS_PROFILE[travelMode.id]);
                 const best = routes[travelMode.id]?.[0];
-                return <button key={travelMode.id} onClick={() => setMode(travelMode.id)} className="flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[10px] font-bold" style={{ borderColor: mode === travelMode.id ? "var(--travel-blue)" : "var(--border)", backgroundColor: mode === travelMode.id ? "var(--travel-blue)" : "transparent", color: mode === travelMode.id ? "white" : "var(--foreground)" }}><span className="flex items-center gap-1"><travelMode.icon size={12} />{travelMode.label}</span><span className="text-[9px] opacity-80">{!hasRouteInputs ? "" : !supported ? "Maps" : routesLoading ? "…" : best ? fmtShort(best.durationMin) : "—"}</span></button>;
+                return <button key={travelMode.id} onClick={() => setMode(travelMode.id)} className="flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[10px] font-bold" style={{ borderColor: mode === travelMode.id ? "var(--travel-blue)" : "var(--border)", backgroundColor: mode === travelMode.id ? "var(--travel-blue)" : "transparent", color: mode === travelMode.id ? "white" : "var(--foreground)" }}><span className="flex items-center gap-1"><travelMode.icon size={12} />{travelModeLabel(travelMode.id)}</span><span className="text-[9px] opacity-80">{!hasRouteInputs ? "" : !supported ? tCustomer("ui.map.maps") : routesLoading ? "…" : best ? formatDurationShort(best.durationMin) : "—"}</span></button>;
               })}
             </div>
             {activeRoutes.length > 1 && (
               <div className="mb-2 space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Route options</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{tCustomer("ui.map.routeOptions")}</p>
                 {activeRoutes.map((route, index) => (
                   <button key={index} onClick={() => setSelectedRouteIdx(index)} className="flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-[11px]" style={{ borderColor: index === selectedRouteIdx ? "var(--travel-blue)" : "var(--border)", backgroundColor: index === selectedRouteIdx ? "var(--secondary, #dbe6ff)" : "transparent" }}>
-                    <span className="font-bold">{fmtMin(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} km</span></span>
-                    <span className="flex items-center gap-1">{index === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold text-[#16A34A]">Fastest</span>}{route.hasTolls && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">Toll</span>}</span>
+                    <span className="font-bold">{formatDuration(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} km</span></span>
+                    <span className="flex items-center gap-1">{index === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold text-[#16A34A]">{tCustomer("ui.map.fastest")}</span>}{route.hasTolls && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{tCustomer("ui.map.toll")}</span>}</span>
                   </button>
                 ))}
               </div>
             )}
-            {hasRouteInputs && <p className="mb-2 text-center text-[11px] font-semibold text-foreground">{mode === "TRANSIT" ? "Transit route opens in Google Maps" : routesLoading ? "Calculating route…" : activeRoute ? (TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.label + " · " + fmtMin(activeRoute.durationMin) + " · " + activeRoute.distanceKm + " km") : "Route unavailable for this mode"}</p>}
-            <button onClick={() => directionsUrl && window.open(directionsUrl, "_blank")} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white disabled:opacity-40"><Navigation size={14} /> Get directions</button>
-            <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? "Hide" : "Show"} handoff URL</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">Clear trip</button></div>
-            {trip.stops.length > 9 && <p className="mt-1 text-[10px] font-semibold text-destructive">Google Maps supports up to 9 stops.</p>}
+            {hasRouteInputs && <p className="mb-2 text-center text-[11px] font-semibold text-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer("ui.map.calculatingRoute") : activeRoute ? (travelModeLabel(mode) + " · " + formatDuration(activeRoute.durationMin) + " · " + activeRoute.distanceKm + " km") : tCustomer("ui.map.routeUnavailable")}</p>}
+            <button onClick={() => directionsUrl && window.open(directionsUrl, "_blank")} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white disabled:opacity-40"><Navigation size={14} /> {tCustomer("ui.map.getDirectionsGoogle")}</button>
+            <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? tCustomer("ui.map.hideHandoffUrl") : tCustomer("ui.map.showHandoffUrl")}</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">{tCustomer("ui.map.clearTrip")}</button></div>
+            {trip.stops.length > 9 && <p className="mt-1 text-[10px] font-semibold text-destructive">{tCustomer("ui.map.maxStops")}</p>}
             {urlPreview && <code className="mt-2 block max-h-16 overflow-auto break-all rounded-lg bg-muted p-2 text-[10px]">{urlPreview}</code>}
           </footer>
         </aside>
@@ -684,21 +688,21 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
 
         <aside aria-label="Places to add" className={(activePanel === "places" ? "flex" : "hidden") + " min-h-0 flex-col border-l border-border bg-card md:flex"}>
           <header className="shrink-0 border-b border-border px-4 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Discover nearby</p>
-            <div className="mt-1 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-foreground">Add places</h2><p className="mt-1 text-xs text-muted-foreground">{filteredActivities.length} places ready to add</p></div><button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" title="Toggle vendor pins">{showAllVendors ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
-            <label className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary"><Search size={15} className="text-muted-foreground" /><span className="sr-only">Search places</span><input value={listingQuery} onChange={(event) => setListingQuery(event.target.value)} placeholder="Search places or experiences" className="min-w-0 flex-1 bg-transparent text-xs outline-none" /></label>
-            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><label className="sr-only" htmlFor="planner-category">Category</label><select id="planner-category" value={category ?? ""} onChange={(event) => setCategory(event.target.value || null)} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary"><option value="">All categories</option>{CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select><label className="sr-only" htmlFor="planner-radius">Distance</label><select id="planner-radius" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary">{RADIUS_OPTIONS_KM.map((radius) => <option key={radius} value={radius}>{radius} km</option>)}</select></div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("ui.map.nearbyToAdd")}</p>
+            <div className="mt-1 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-foreground">{tCustomer("ui.map.addPlace")}</h2><p className="mt-1 text-xs text-muted-foreground">{filteredActivities.length} places ready to add</p></div><button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" title="Toggle vendor pins">{showAllVendors ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
+            <label className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary"><Search size={15} className="text-muted-foreground" /><span className="sr-only">{tCustomer("ui.map.searchExperience")}</span><input value={listingQuery} onChange={(event) => setListingQuery(event.target.value)} placeholder={tCustomer("ui.map.searchExperience")} className="min-w-0 flex-1 bg-transparent text-xs outline-none" /></label>
+            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><label className="sr-only" htmlFor="planner-category">Category</label><select id="planner-category" value={category ?? ""} onChange={(event) => setCategory(event.target.value || null)} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary"><option value="">{tCustomer("ui.map.allCategories")}</option>{CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select><label className="sr-only" htmlFor="planner-radius">Distance</label><select id="planner-radius" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary">{RADIUS_OPTIONS_KM.map((radius) => <option key={radius} value={radius}>{radius} km</option>)}</select></div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <ul className="flex flex-col gap-2">
               {filteredActivities.slice(0, 24).map((activity) => {
                 const added = trip.has(activity.id);
                 // eslint-disable-next-line @next/next/no-img-element
-                return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={"Show " + activity.name + " on map"}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? activity.distanceKm.toFixed(1) + " km" : activity.outlet.city} · RM {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? "Added" : "Add to trip"}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">View details</a></div></div></div></li>;
+                return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={"Show " + activity.name + " on map"}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? activity.distanceKm.toFixed(1) + " km" : activity.outlet.city} · RM {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("ui.actions.addToTrip")}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">{tCustomer("ui.actions.viewDetails")}</a></div></div></div></li>;
               })}
             </ul>
-            {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">No places found</p><p className="mt-1 text-[11px] text-muted-foreground">Try a different search or widen the distance.</p></div>}
-            {filteredActivities.length > 24 && <p className="mt-3 text-center text-[11px] text-muted-foreground">Showing the first 24 matches. Refine your search to see more.</p>}
+            {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">{tCustomer("ui.map.noPlacesRadius")}</p><p className="mt-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p></div>}
+            {filteredActivities.length > 24 && <p className="mt-3 text-center text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p>}
           </div>
         </aside>
       </div>

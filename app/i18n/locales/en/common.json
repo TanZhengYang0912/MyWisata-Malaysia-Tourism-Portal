@@ -9,6 +9,33 @@
     "saved": "Language preference saved.",
     "saveError": "Unable to save language preference. Please try again."
   },
+  "conductReport": {
+    "submitFailed": "Could not submit report.",
+    "success": "Reported. Our team will review it.",
+    "submitFailedRetry": "Could not submit report. Please try again.",
+    "reported": "Reported",
+    "reportConversation": "Report this conversation",
+    "report": "Report",
+    "reasonOptional": "Reason (optional)",
+    "submitting": "Submitting…",
+    "submit": "Submit report"
+  },
+  "appearance": {
+    "label": "Appearance",
+    "settings": "Appearance settings",
+    "theme": "Theme",
+    "textSize": "Text size",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "fontSizes": {
+      "normal": "Normal",
+      "large": "Large",
+      "larger": "Larger"
+    }
+  },
   "actions": {
     "save": "Save",
     "cancel": "Cancel",

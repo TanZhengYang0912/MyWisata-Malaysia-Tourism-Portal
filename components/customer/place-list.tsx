@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PlaceCard } from "@/components/customer/place-card";
 import type { Place } from "@/backend/core/types";
 import { filterPlaceListings, getPlaceListingCounts, type PlaceAvailabilityFilter } from "@/lib/customer/place-list";
@@ -21,6 +22,7 @@ export function PlaceList({
   regions: { id: string; name: string }[];
   regionByPoi: Record<string, string>;
 }) {
+  const { t } = useTranslation("customer");
   const [availability, setAvailability] = useState<PlaceAvailabilityFilter>("all");
   const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
 
@@ -43,27 +45,27 @@ export function PlaceList({
     <section className="mt-14" aria-labelledby="places-to-visit-heading">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Explore destinations</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>
           <h2 id="places-to-visit-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Places to visit
+            {t("ui.place.placesToVisit", { count: filtered.length })}
           </h2>
           <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {pois.length} places to explore
+            {t("ui.place.listingSummary", { shown: filtered.length, total: pois.length, defaultValue: "Showing {{shown}} of {{total}} places to explore" })}
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          {counts.bookable} bookable {counts.bookable === 1 ? "place" : "places"}
+          {t("ui.place.bookableCount", { count: counts.bookable, defaultValue: `${counts.bookable} bookable ${counts.bookable === 1 ? "place" : "places"}` })}
         </span>
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter places by availability">
-            <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Show</span>
+          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("ui.place.filterAvailabilityLabel", { defaultValue: "Filter places by availability" })}>
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.place.filterShow", { defaultValue: "Show" })}</span>
             {([
-              ["all", `All (${counts.all})`],
-              ["bookable", `Bookable (${counts.bookable})`],
-              ["freeEntry", `Free entry (${counts.freeEntry})`],
+              ["all", `${t("ui.place.all")} (${counts.all})`],
+              ["bookable", `${t("ui.place.bookable")} (${counts.bookable})`],
+              ["freeEntry", `${t("ui.place.freeEntry")} (${counts.freeEntry})`],
             ] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -83,8 +85,8 @@ export function PlaceList({
           </div>
 
           {regions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label="Filter places by area">
-              <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Area</span>
+            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label={t("ui.place.filterAreaLabel", { defaultValue: "Filter places by area" })}>
+              <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.location")}</span>
               <button
                 type="button"
                 aria-pressed={selectedRegions.size === 0}
@@ -93,7 +95,7 @@ export function PlaceList({
                   selectedRegions.size === 0 ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                All areas
+                {t("ui.place.allAreas", { defaultValue: "All areas" })}
               </button>
               {regions.map((region) => (
                 <button
@@ -115,7 +117,7 @@ export function PlaceList({
 
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
-          <p className="font-semibold text-foreground">No places match these filters.</p>
+          <p className="font-semibold text-foreground">{t("ui.place.noPlacesMatch", { defaultValue: "No places match these filters." })}</p>
           <button
             type="button"
             onClick={() => {
@@ -124,7 +126,7 @@ export function PlaceList({
             }}
             className="mt-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            Clear filters
+            {t("ui.actions.clearFilters", { defaultValue: "Clear filters" })}
           </button>
         </div>
       ) : (

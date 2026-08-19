@@ -1306,6 +1306,57 @@
       "reviewed": "Reviewed"
     }
   },
+  "staffConduct": {
+    "title": "Staff conduct review",
+    "tabs": {
+      "flaggedConduct": "Flagged Conduct",
+      "reportedChat": "Reported Chat"
+    },
+    "filters": {
+      "showReviewed": "Show reviewed"
+    },
+    "sources": {
+      "ticketReply": "Ticket reply",
+      "aiAssistant": "AI assistant"
+    },
+    "chatTypes": {
+      "userVendor": "User ↔ Vendor",
+      "userAdmin": "User ↔ Admin",
+      "vendorAdmin": "Vendor ↔ Admin"
+    },
+    "severity": {
+      "medium": "Medium",
+      "high": "High"
+    },
+    "targetPrefix": "to",
+    "reported": "reported",
+    "and": "&",
+    "participantsWith": "{{partyA}} & {{partyB}}",
+    "fallback": {
+      "chat": "Chat"
+    },
+    "empty": {
+      "title": "No conduct issues",
+      "description": "Flagged admin messages and reported chats will appear here.",
+      "allFlagsReviewed": "All flags reviewed.",
+      "nothingToReview": "Nothing to review.",
+      "allReportsReviewed": "All reports reviewed.",
+      "noReportedChats": "No chats have been reported."
+    },
+    "actions": {
+      "viewLog": "View log",
+      "marking": "Marking…",
+      "markReviewed": "Mark reviewed",
+      "reviewed": "Reviewed"
+    },
+    "dialogs": {
+      "aiSession": "AI assistant session — {{name}}",
+      "loading": "Loading…",
+      "noMessages": "No messages found for this session.",
+      "reportedChat": "Reported chat — {{participants}}",
+      "loadingConversation": "Loading conversation…"
+    }
+  },
   "recommendation": {
     "aiReview": {
       "fields": {

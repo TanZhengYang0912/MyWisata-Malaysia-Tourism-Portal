@@ -11,7 +11,7 @@ describe("place discovery section layout", () => {
     const card = read("components/customer/place-card.tsx");
 
     expect(source).toContain('aria-labelledby="places-to-visit-heading"');
-    expect(source).toContain("Explore destinations");
+    expect(source).toContain('t("ui.explore.eyebrow")');
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain("items-stretch");
     expect(card).toContain("group-hover:scale-105");
@@ -22,10 +22,10 @@ describe("place discovery section layout", () => {
   it("gives Nearby businesses a local-partner summary and recoverable empty state", () => {
     const source = read("components/customer/nearby-outlets.tsx");
 
-    expect(source).toContain("Local partners nearby");
+    expect(source).toContain('t("ui.nearbyOutlets.eyebrow"');
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain("min-h-[96px]");
-    expect(source).toContain("Clear filters");
+    expect(source).toContain('t("ui.actions.clearFilters")');
     expect(source).toContain("focus-visible:ring-2");
   });
 });

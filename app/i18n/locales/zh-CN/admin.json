@@ -1306,6 +1306,57 @@
       "reviewed": "已审核"
     }
   },
+  "staffConduct": {
+    "title": "员工行为审核",
+    "tabs": {
+      "flaggedConduct": "已标记的行为",
+      "reportedChat": "被举报的聊天"
+    },
+    "filters": {
+      "showReviewed": "显示已审核"
+    },
+    "sources": {
+      "ticketReply": "工单回复",
+      "aiAssistant": "AI 助手"
+    },
+    "chatTypes": {
+      "userVendor": "用户 ↔ 商家",
+      "userAdmin": "用户 ↔ 管理员",
+      "vendorAdmin": "商家 ↔ 管理员"
+    },
+    "severity": {
+      "medium": "中等",
+      "high": "高"
+    },
+    "targetPrefix": "给",
+    "reported": "举报了",
+    "and": "与",
+    "participantsWith": "{{partyA}} 与 {{partyB}}",
+    "fallback": {
+      "chat": "聊天"
+    },
+    "empty": {
+      "title": "暂无行为问题",
+      "description": "被标记的管理员消息和被举报的聊天会显示在这里。",
+      "allFlagsReviewed": "所有标记均已审核。",
+      "nothingToReview": "没有待审核内容。",
+      "allReportsReviewed": "所有举报均已审核。",
+      "noReportedChats": "暂无被举报的聊天。"
+    },
+    "actions": {
+      "viewLog": "查看记录",
+      "marking": "标记中…",
+      "markReviewed": "标记为已审核",
+      "reviewed": "已审核"
+    },
+    "dialogs": {
+      "aiSession": "AI 助手会话 — {{name}}",
+      "loading": "加载中…",
+      "noMessages": "此会话中未找到消息。",
+      "reportedChat": "被举报的聊天 — {{participants}}",
+      "loadingConversation": "正在加载对话…"
+    }
+  },
   "recommendation": {
     "aiReview": {
       "fields": {

@@ -13,8 +13,9 @@ describe("Destination preview modal", () => {
     expect(modalSource).toContain('aria-modal="true"');
     expect(modalSource).toContain("destination.intro");
     expect(modalSource).toContain("destination.highlights.map");
-    expect(modalSource).toContain("Explore {destination.state}");
-    expect(modalSource).toContain("Save to atlas");
+    expect(modalSource).toContain('t("ui.map.exploreState", { state: destination.state })');
+    expect(modalSource).toContain('t("ui.map.savedToAtlas")');
+    expect(modalSource).toContain('t("ui.map.saveToAtlas")');
     expect(modalSource).toContain("useSavedDestinations");
     expect(modalSource).toContain("aria-pressed");
     expect(modalSource).toContain("onClose");

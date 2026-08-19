@@ -78,6 +78,7 @@ export const ADMIN_I18N_FILES = [
   "components/admin/moderation-flags-panel.tsx",
   "components/admin/recommendation-ai-review-panel.tsx",
   "components/admin/recommendation-detail-view.tsx",
+  "components/admin/staff-conduct-panel.tsx",
   "components/admin/user-management-drawer.tsx",
   "components/shared/affiliate-qr-code.tsx",
   "components/shared/share-button.tsx",

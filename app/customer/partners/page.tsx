@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { getVendors, searchActivities } from "@/backend/domains/catalogue";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors, rankVendorsByPersonalizedFeed } from "@/backend/domains/vendor-recommend";
 import { SearchClient } from "../search/search-client";
 
-export const metadata: Metadata = {
-  title: "Partners — MyWisata",
-  description: "Discover verified local partners, vendors and businesses across Malaysia.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation("customer");
+  return {
+    title: `${t("ui.search.title")} — MyWisata`,
+    description: t("ui.search.description"),
+  };
+}
 
 interface Props {
   searchParams: Promise<{ q?: string }>;

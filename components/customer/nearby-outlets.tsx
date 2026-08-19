@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { ArrowRight, MapPin, Store } from "lucide-react";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
@@ -16,10 +17,11 @@ const CATEGORY_LABELS = DISCOVERY_CATEGORIES.filter((c) => c.kind === "category"
 const RADIUS_OPTIONS_KM = [1, 3, 8] as const;
 
 function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
+  const { t } = useTranslation("customer");
   return (
     <Link
       href={getOutletShopHref(outlet.id)}
-      aria-label={`View ${outlet.name} shop`}
+      aria-label={t("ui.nearbyOutlets.viewShop", { name: outlet.name, defaultValue: "View {{name}} shop" })}
       className="group flex min-h-[96px] items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:gap-4"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition group-hover:bg-primary group-hover:text-white">
@@ -34,11 +36,11 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
             </span>
           )}
         </div>
-        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{outlet.vendorName || outlet.address || "Local partner"}</p>
+        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{outlet.vendorName || outlet.address || t("ui.search.localPartner", { defaultValue: "Local partner" })}</p>
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-bold text-foreground">{km.toFixed(1)} km</p>
-        <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary">View shop <ArrowRight size={13} /></p>
+        <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { defaultValue: "View shop" })} <ArrowRight size={13} aria-hidden="true" /></p>
       </div>
     </Link>
   );
@@ -57,6 +59,7 @@ export function NearbyOutlets({
   outlets: { outlet: Outlet; km: number }[];
   maxRadiusKm: number;
 }) {
+  const { t } = useTranslation("customer");
   const defaultRadius = Math.min(3, maxRadiusKm);
   const [radius, setRadius] = useState(Math.min(3, maxRadiusKm));
   const [category, setCategory] = useState<string | null>(null);
@@ -85,24 +88,24 @@ export function NearbyOutlets({
     <section className="mt-14" aria-labelledby="nearby-businesses-heading">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Local partners nearby</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.nearbyOutlets.eyebrow", { defaultValue: "Local partners nearby" })}</p>
           <h2 id="nearby-businesses-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Nearby businesses
+            {t("ui.nearbyOutlets.title", { defaultValue: "Nearby businesses" })}
           </h2>
           <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "business" : "businesses"} within {radius} km
+            {t("ui.nearbyOutlets.summary", { count: filtered.length, radius, defaultValue: `${filtered.length} ${filtered.length === 1 ? "business" : "businesses"} within ${radius} km` })}
           </p>
         </div>
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          <MapPin size={13} aria-hidden="true" /> Approximate distance
+          <MapPin size={13} aria-hidden="true" /> {t("ui.nearbyOutlets.approximate", { defaultValue: "Approximate distance" })}
         </span>
       </div>
 
       {outlets.length > 0 && (
         <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(120px,auto)] lg:items-center">
-            <div className="min-w-0 flex flex-wrap items-center gap-1.5" aria-label="Filter nearby businesses by type">
-              <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Type</span>
+            <div className="min-w-0 flex flex-wrap items-center gap-1.5" aria-label={t("ui.nearbyOutlets.filterType", { defaultValue: "Filter nearby businesses by type" })}>
+              <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.type", { defaultValue: "Type" })}</span>
             <button
               type="button"
               aria-pressed={category === null}
@@ -114,7 +117,7 @@ export function NearbyOutlets({
                 category === null ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
             >
-              All
+              {t("ui.nearbyOutlets.all")}
             </button>
             {categoriesPresent.map((label) => (
               <button
@@ -129,12 +132,12 @@ export function NearbyOutlets({
                   category === label ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {label}
+                {t(DISCOVERY_CATEGORIES.find((categoryOption) => categoryOption.label === label)?.labelKey ?? "categories.activity", { defaultValue: label })}
               </button>
             ))}
             </div>
-            <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 lg:min-w-[280px] lg:flex-nowrap lg:overflow-visible" aria-label="Filter nearby businesses by distance">
-                <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Within</span>
+            <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 lg:min-w-[280px] lg:flex-nowrap lg:overflow-visible" aria-label={t("ui.nearbyOutlets.filterDistance", { defaultValue: "Filter nearby businesses by distance" })}>
+                <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.nearbyOutlets.within", { defaultValue: "Within" })}</span>
               {RADIUS_OPTIONS_KM.map((km) => (
                 <button
                   key={km}
@@ -148,7 +151,7 @@ export function NearbyOutlets({
                     radius === km ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {km} km
+                  {t("ui.nearbyOutlets.radius", { km })}
                 </button>
               ))}
             </div>
@@ -159,7 +162,7 @@ export function NearbyOutlets({
                   onClick={clearFilters}
                   className="w-fit text-xs font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
-                  Clear filters
+                  {t("ui.actions.clearFilters")}
                 </button>
               )}
             </div>
@@ -169,14 +172,14 @@ export function NearbyOutlets({
 
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
-          <p className="font-semibold text-foreground">No businesses match this view.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Try a wider radius or clear the category filter.</p>
+          <p className="font-semibold text-foreground">{t("ui.nearbyOutlets.empty", { defaultValue: "No businesses match this view." })}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("ui.nearbyOutlets.emptyHint", { defaultValue: "Try a wider radius or clear the category filter." })}</p>
           <button
             type="button"
             onClick={clearFilters}
             className="mt-3 text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            Clear filters
+            {t("ui.actions.clearFilters")}
           </button>
         </div>
       ) : (
@@ -187,9 +190,9 @@ export function NearbyOutlets({
             ))}
           </div>
           <DirectoryPagination
-            ariaLabel="Nearby business pages"
+            ariaLabel={t("ui.nearbyOutlets.paginationLabel", { defaultValue: "Nearby business pages" })}
             currentPage={safePage}
-            itemLabel="businesses"
+            itemLabel={t("ui.nearbyOutlets.itemLabel", { defaultValue: "businesses" })}
             onPageChange={setPage}
             pageSize={PAGE_SIZE}
             totalItems={filtered.length}
@@ -199,8 +202,8 @@ export function NearbyOutlets({
       )}
 
       <p className="mt-4 flex items-start gap-1.5 text-[11px] leading-5 text-muted-foreground">
-        <MapPin size={12} className="mt-0.5 shrink-0" />
-        Distances are approximate.
+        <MapPin size={12} aria-hidden="true" className="mt-0.5 shrink-0" />
+        {t("ui.nearbyOutlets.coordinateNote", { defaultValue: "Distances are approximate." })}
       </p>
     </section>
   );

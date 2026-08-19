@@ -17,6 +17,7 @@
 //                     this session — this tab starts empty and stays mounted).
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { UserX } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,8 @@ interface TranscriptMessage {
 }
 
 const SOURCE_LABEL: Record<ConductFlag["source"], string> = {
-  ticket_reply: "Ticket reply",
-  admin_ai: "AI assistant",
+  ticket_reply: "staffConduct.sources.ticketReply",
+  admin_ai: "staffConduct.sources.aiAssistant",
 };
 
 const SEVERITY_STYLE: Record<ConductFlag["severity"], string> = {
@@ -68,14 +69,20 @@ const SEVERITY_STYLE: Record<ConductFlag["severity"], string> = {
 };
 
 const CHAT_TYPE_LABEL: Record<ChatReport["chatType"], string> = {
-  user_vendor: "User ↔ Vendor",
-  user_admin: "User ↔ Admin",
-  vendor_admin: "Vendor ↔ Admin",
+  user_vendor: "staffConduct.chatTypes.userVendor",
+  user_admin: "staffConduct.chatTypes.userAdmin",
+  vendor_admin: "staffConduct.chatTypes.vendorAdmin",
+};
+
+const SEVERITY_LABEL: Record<ConductFlag["severity"], string> = {
+  medium: "staffConduct.severity.medium",
+  high: "staffConduct.severity.high",
 };
 
 type Tab = "flagged_conduct" | "reported_chat";
 
 export function StaffConductPanel() {
+  const { t } = useTranslation("admin");
   const { currentUser } = useAuth();
   const [tab, setTab] = useState<Tab>("flagged_conduct");
 
@@ -171,7 +178,7 @@ export function StaffConductPanel() {
   // tucked under other content, so "nothing has ever happened" gets an
   // explicit empty state instead of silently rendering nothing.
   if (!hasEverHadFlags && !hasEverHadReports) {
-    return <EmptyState icon={<UserX size={40} />} title="No conduct issues" description="Flagged admin messages and reported chats will appear here." />;
+    return <EmptyState icon={<UserX size={40} />} title={t("staffConduct.empty.title")} description={t("staffConduct.empty.description")} />;
   }
 
   const visibleFlags = flags && (showReviewedFlags ? flags : flags.filter((f) => f.status === "open"));
@@ -179,12 +186,17 @@ export function StaffConductPanel() {
 
   const visibleReports = reports && (showReviewedReports ? reports : reports.filter((r) => r.status === "open"));
   const openReportCount = reports ? reports.filter((r) => r.status === "open").length : 0;
+  const chatLogParticipants = chatLogReport
+    ? chatLogReport.partyBName
+      ? t("staffConduct.participantsWith", { partyA: chatLogReport.partyAName, partyB: chatLogReport.partyBName })
+      : chatLogReport.partyAName
+    : "";
 
   return (
     <div className="rounded-xl bg-card p-4 border border-destructive/20" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-destructive">
-          <UserX size={13} /> Staff conduct review
+          <UserX size={13} /> {t("staffConduct.title")}
         </p>
         <div className="flex gap-1 rounded-lg bg-secondary p-0.5">
           <button
@@ -192,14 +204,14 @@ export function StaffConductPanel() {
             onClick={() => setTab("flagged_conduct")}
             className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${tab === "flagged_conduct" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
           >
-            Flagged Conduct{openFlagCount > 0 && ` (${openFlagCount})`}
+            {t("staffConduct.tabs.flaggedConduct")}{openFlagCount > 0 && ` (${openFlagCount})`}
           </button>
           <button
             type="button"
             onClick={() => setTab("reported_chat")}
             className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${tab === "reported_chat" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
           >
-            Reported Chat{openReportCount > 0 && ` (${openReportCount})`}
+            {t("staffConduct.tabs.reportedChat")}{openReportCount > 0 && ` (${openReportCount})`}
           </button>
         </div>
       </div>
@@ -209,13 +221,13 @@ export function StaffConductPanel() {
           <div className="mb-2 flex justify-end">
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input type="checkbox" checked={showReviewedFlags} onChange={(e) => setShowReviewedFlags(e.target.checked)} />
-              Show reviewed
+              {t("staffConduct.filters.showReviewed")}
             </label>
           </div>
           <div className="space-y-2">
             {(!visibleFlags || visibleFlags.length === 0) && (
               <p className="text-sm text-muted-foreground">
-                {flags && openFlagCount === 0 && flags.length > 0 ? "All flags reviewed." : "Nothing to review."}
+                {flags && openFlagCount === 0 && flags.length > 0 ? t("staffConduct.empty.allFlagsReviewed") : t("staffConduct.empty.nothingToReview")}
               </p>
             )}
             {visibleFlags?.map((f) => (
@@ -224,10 +236,10 @@ export function StaffConductPanel() {
                   <p className="text-foreground">
                     <span className="font-semibold">{f.flaggedAdminName}</span>{" "}
                     <span className="capitalize text-muted-foreground font-normal">
-                      · {SOURCE_LABEL[f.source]} · to {f.targetUserName ?? "—"}
+                      · {t(SOURCE_LABEL[f.source])} · {t("staffConduct.targetPrefix")} {f.targetUserName ?? "—"}
                     </span>{" "}
                     <span className={`rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase ${SEVERITY_STYLE[f.severity]}`}>
-                      {f.severity}
+                      {t(SEVERITY_LABEL[f.severity])}
                     </span>
                   </p>
                   {f.originalText && (
@@ -238,19 +250,19 @@ export function StaffConductPanel() {
                 <div className="flex shrink-0 items-center gap-2">
                   {f.source === "ticket_reply" ? (
                     <Link href={`/admin/support?ticket=${f.sourceRefId}`} className="text-xs font-semibold text-primary hover:underline">
-                      View log
+                      {t("staffConduct.actions.viewLog")}
                     </Link>
                   ) : (
                     <button type="button" onClick={() => void openTranscript(f)} className="text-xs font-semibold text-primary hover:underline">
-                      View log
+                      {t("staffConduct.actions.viewLog")}
                     </button>
                   )}
                   {f.status === "open" ? (
                     <Button size="sm" variant="outline" disabled={reviewingFlagId === f.id} onClick={() => markFlagReviewed(f.id)}>
-                      {reviewingFlagId === f.id ? "Marking…" : "Mark reviewed"}
+                      {reviewingFlagId === f.id ? t("staffConduct.actions.marking") : t("staffConduct.actions.markReviewed")}
                     </Button>
                   ) : (
-                    <span className="text-[0.625rem] text-muted-foreground">Reviewed</span>
+                    <span className="text-[0.625rem] text-muted-foreground">{t("staffConduct.actions.reviewed")}</span>
                   )}
                 </div>
               </div>
@@ -264,13 +276,13 @@ export function StaffConductPanel() {
           <div className="mb-2 flex justify-end">
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input type="checkbox" checked={showReviewedReports} onChange={(e) => setShowReviewedReports(e.target.checked)} />
-              Show reviewed
+              {t("staffConduct.filters.showReviewed")}
             </label>
           </div>
           <div className="space-y-2">
             {(!visibleReports || visibleReports.length === 0) && (
               <p className="text-sm text-muted-foreground">
-                {reports && openReportCount === 0 && reports.length > 0 ? "All reports reviewed." : "No chats have been reported."}
+                {reports && openReportCount === 0 && reports.length > 0 ? t("staffConduct.empty.allReportsReviewed") : t("staffConduct.empty.noReportedChats")}
               </p>
             )}
             {visibleReports?.map((r) => (
@@ -278,15 +290,15 @@ export function StaffConductPanel() {
                 <div>
                   <p className="text-foreground">
                     <span className="font-semibold">{r.reporterName}</span>{" "}
-                    <span className="text-muted-foreground font-normal">reported</span>{" "}
+                    <span className="text-muted-foreground font-normal">{t("staffConduct.reported")}</span>{" "}
                     <span className="font-semibold">{r.partyAName}</span>
                     {r.partyBName && (
                       <>
-                        {" "}<span className="text-muted-foreground font-normal">&amp;</span>{" "}
+                        {" "}<span className="text-muted-foreground font-normal">{t("staffConduct.and")}</span>{" "}
                         <span className="font-semibold">{r.partyBName}</span>
                       </>
                     )}{" "}
-                    <span className="capitalize text-muted-foreground font-normal">· {CHAT_TYPE_LABEL[r.chatType]}</span>
+                    <span className="capitalize text-muted-foreground font-normal">· {t(CHAT_TYPE_LABEL[r.chatType])}</span>
                   </p>
                   {r.reason && <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">&ldquo;{r.reason}&rdquo;</p>}
                   <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(r.createdAt).toLocaleString()}</p>
@@ -294,21 +306,21 @@ export function StaffConductPanel() {
                 <div className="flex shrink-0 items-center gap-2">
                   {r.chatType === "user_admin" ? (
                     <Link href={`/admin/support?ticket=${r.threadRef}`} className="text-xs font-semibold text-primary hover:underline">
-                      View log
+                      {t("staffConduct.actions.viewLog")}
                     </Link>
                   ) : r.chatType === "user_vendor" ? (
                     <button type="button" onClick={() => void openChatLog(r)} className="text-xs font-semibold text-primary hover:underline">
-                      View log
+                      {t("staffConduct.actions.viewLog")}
                     </button>
                   ) : (
                     <span className="text-[0.625rem] text-muted-foreground">—</span>
                   )}
                   {r.status === "open" ? (
                     <Button size="sm" variant="outline" disabled={reviewingReportId === r.id} onClick={() => markReportReviewed(r.id)}>
-                      {reviewingReportId === r.id ? "Marking…" : "Mark reviewed"}
+                      {reviewingReportId === r.id ? t("staffConduct.actions.marking") : t("staffConduct.actions.markReviewed")}
                     </Button>
                   ) : (
-                    <span className="text-[0.625rem] text-muted-foreground">Reviewed</span>
+                    <span className="text-[0.625rem] text-muted-foreground">{t("staffConduct.actions.reviewed")}</span>
                   )}
                 </div>
               </div>
@@ -320,12 +332,12 @@ export function StaffConductPanel() {
       <Dialog open={!!transcriptFlag} onOpenChange={(open) => { if (!open) { setTranscriptFlag(null); setTranscript(null); } }}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>AI assistant session — {transcriptFlag?.flaggedAdminName}</DialogTitle>
+            <DialogTitle>{t("staffConduct.dialogs.aiSession", { name: transcriptFlag?.flaggedAdminName ?? "" })}</DialogTitle>
           </DialogHeader>
           {transcript === null ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{t("staffConduct.dialogs.loading")}</p>
           ) : transcript.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No messages found for this session.</p>
+            <p className="text-sm text-muted-foreground">{t("staffConduct.dialogs.noMessages")}</p>
           ) : (
             <div className="space-y-2">
               {transcript.map((m, i) => (
@@ -341,17 +353,17 @@ export function StaffConductPanel() {
       <Dialog open={!!chatLogReport} onOpenChange={(open) => { if (!open) { setChatLogReport(null); setChatLogMessages(null); } }}>
         <DialogContent className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reported chat — {chatLogReport?.partyAName}{chatLogReport?.partyBName ? ` & ${chatLogReport.partyBName}` : ""}</DialogTitle>
+            <DialogTitle>{t("staffConduct.dialogs.reportedChat", { participants: chatLogParticipants })}</DialogTitle>
           </DialogHeader>
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border">
             {!chatLogMessages || !currentUser ? (
-              <p className="p-4 text-sm text-muted-foreground">Loading conversation…</p>
+              <p className="p-4 text-sm text-muted-foreground">{t("staffConduct.dialogs.loadingConversation")}</p>
             ) : (
               <ChatThreadPanel
                 threadId={chatLogReport!.threadRef}
                 messages={chatLogMessages}
                 currentUserId={currentUser.id}
-                counterpart={{ name: chatLogReport?.partyBName ?? "Chat" }}
+                counterpart={{ name: chatLogReport?.partyBName ?? t("staffConduct.fallback.chat") }}
                 readOnly
               />
             )}

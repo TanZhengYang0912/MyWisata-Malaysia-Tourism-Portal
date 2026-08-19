@@ -20,13 +20,15 @@ describe("place page layout and copy", () => {
 
   it("singularises the activity and vendor counts", () => {
     const activitySource = readFileSync(resolve(process.cwd(), "components/customer/place-activity-section.tsx"), "utf8");
-    expect(activitySource).toContain('products.length === 1 ? "experience" : "experiences"');
-    expect(activitySource).toContain('providerCount === 1 ? "provider" : "providers"');
+    expect(activitySource).toContain('t("ui.place.activityCount"');
+    expect(activitySource).toContain("count: products.length");
+    expect(activitySource).toContain('t("ui.place.vendorCount"');
+    expect(activitySource).toContain("count: providerCount");
   });
 
   it("uses customer-facing public access copy and a compact hero", () => {
-    expect(pageSource).toContain('"Public destination"');
-    expect(pageSource).not.toContain('"No operator"');
+    expect(pageSource).toContain('t("ui.place.noGate")');
+    expect(pageSource).toContain('t("ui.place.noOperator")');
     expect(pageSource).toContain("absolute inset-0 h-full w-full object-cover");
     expect(pageSource).toContain("min-h-[330px]");
   });
@@ -37,13 +39,14 @@ describe("place page discovery controls", () => {
     const listSource = readFileSync(resolve(process.cwd(), "components/customer/place-list.tsx"), "utf8");
     const cardSource = readFileSync(resolve(process.cwd(), "components/customer/place-card.tsx"), "utf8");
     expect(listSource).toContain('useState<PlaceAvailabilityFilter>("all")');
-    expect(listSource).toContain('aria-label="Filter places by availability"');
-    expect(listSource).toContain("All areas");
+    expect(listSource).toContain('ui.place.filterAvailabilityLabel');
+    expect(listSource).toContain('t("ui.place.allAreas"');
     expect(listSource).toContain('className="mt-14"');
     expect(listSource).toContain("mt-6 rounded-2xl");
     expect(listSource).toContain("mt-6 grid items-stretch gap-5");
-    expect(cardSource).toContain("View options");
-    expect(cardSource).toContain("View place");
+    expect(cardSource).toContain('t("ui.outletMenu.chooseOptions"');
+    expect(cardSource).toContain('t("ui.actions.viewDetails")');
+    expect(cardSource).toContain('t("ui.place.explorePlace"');
     expect(cardSource).toContain("h-48 shrink-0 overflow-hidden bg-secondary sm:h-52");
     expect(cardSource).toContain("rounded-[1.5rem] border border-border bg-card shadow-sm transition");
     expect(cardSource).toContain("mt-auto flex items-center justify-between");

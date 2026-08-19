@@ -10,6 +10,6 @@ describe("customer activity image handling", () => {
     expect(cardSource).toContain("const [imageFailed, setImageFailed] = useState(false)");
     expect(cardSource).toContain("onError={() => setImageFailed(true)}");
     expect(cardSource).toContain("!imageSrc || imageFailed");
-    expect(cardSource).toContain("Image unavailable");
+    expect(cardSource).toContain('t("ui.labels.imageUnavailable")');
   });
 });

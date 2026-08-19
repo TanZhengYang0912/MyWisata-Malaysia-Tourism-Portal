@@ -1306,6 +1306,57 @@
       "reviewed": "Disemak"
     }
   },
+  "staffConduct": {
+    "title": "Semakan kelakuan staf",
+    "tabs": {
+      "flaggedConduct": "Kelakuan ditandai",
+      "reportedChat": "Sembang dilaporkan"
+    },
+    "filters": {
+      "showReviewed": "Tunjukkan yang disemak"
+    },
+    "sources": {
+      "ticketReply": "Balasan tiket",
+      "aiAssistant": "Pembantu AI"
+    },
+    "chatTypes": {
+      "userVendor": "Pengguna ↔ Vendor",
+      "userAdmin": "Pengguna ↔ Pentadbir",
+      "vendorAdmin": "Vendor ↔ Pentadbir"
+    },
+    "severity": {
+      "medium": "Sederhana",
+      "high": "Tinggi"
+    },
+    "targetPrefix": "kepada",
+    "reported": "melaporkan",
+    "and": "dan",
+    "participantsWith": "{{partyA}} dan {{partyB}}",
+    "fallback": {
+      "chat": "Sembang"
+    },
+    "empty": {
+      "title": "Tiada isu kelakuan",
+      "description": "Mesej pentadbir yang ditandai dan sembang yang dilaporkan akan dipaparkan di sini.",
+      "allFlagsReviewed": "Semua tanda telah disemak.",
+      "nothingToReview": "Tiada perkara untuk disemak.",
+      "allReportsReviewed": "Semua laporan telah disemak.",
+      "noReportedChats": "Tiada sembang dilaporkan."
+    },
+    "actions": {
+      "viewLog": "Lihat log",
+      "marking": "Menanda…",
+      "markReviewed": "Tanda telah disemak",
+      "reviewed": "Disemak"
+    },
+    "dialogs": {
+      "aiSession": "Sesi pembantu AI — {{name}}",
+      "loading": "Memuatkan…",
+      "noMessages": "Tiada mesej ditemui untuk sesi ini.",
+      "reportedChat": "Sembang yang dilaporkan — {{participants}}",
+      "loadingConversation": "Memuatkan perbualan…"
+    }
+  },
   "recommendation": {
     "aiReview": {
       "fields": {
