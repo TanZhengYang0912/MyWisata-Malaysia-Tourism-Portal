@@ -2,22 +2,22 @@ import { cn } from "@/components/utils";
 
 const STYLES: Record<string, string> = {
   DRAFT:           "bg-muted text-muted-foreground",
-  PENDING_PAYMENT: "bg-accent/25 text-[#B08020]",
+  PENDING_PAYMENT: "bg-accent/25 text-amber-800 dark:text-amber-400",
   PAID:            "bg-primary/15 text-primary",
   COMPLETED:       "bg-primary/15 text-primary",
   CANCELLED:       "bg-destructive/12 text-destructive",
-  pending:         "bg-accent/25 text-[#B08020]",
-  pending_review:  "bg-accent/25 text-[#B08020]",
-  change_requested:"bg-orange-100 text-orange-700",
-  changes_requested:"bg-orange-100 text-orange-700",
+  pending:         "bg-accent/25 text-amber-800 dark:text-amber-400",
+  pending_review:  "bg-accent/25 text-amber-800 dark:text-amber-400",
+  change_requested:"bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  changes_requested:"bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   approved:        "bg-primary/15 text-primary",
-  invited:         "bg-blue-100 text-blue-700",
-  claimed:         "bg-indigo-100 text-indigo-700",
-  onboarding:      "bg-orange-100 text-orange-700",
-  vendor_pending_review: "bg-accent/25 text-[#B08020]",
+  invited:         "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  claimed:         "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  onboarding:      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  vendor_pending_review: "bg-accent/25 text-amber-800 dark:text-amber-400",
   converted:       "bg-teal/15 text-teal",
   rejected:        "bg-destructive/12 text-destructive",
-  processing:      "bg-blue-100 text-blue-700",
+  processing:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   completed:       "bg-primary/15 text-primary",
   failed:          "bg-destructive/12 text-destructive",
   paid:            "bg-primary/15 text-primary",
@@ -50,7 +50,7 @@ const LABELS: Record<string, string> = {
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
   return (
-    <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap", STYLES[status] ?? "bg-muted text-muted-foreground", className)}>
+    <span className={cn("text-[0.625rem] font-bold px-2.5 py-1 rounded-full whitespace-nowrap", STYLES[status] ?? "bg-muted text-muted-foreground", className)}>
       {LABELS[status] ?? status}
     </span>
   );

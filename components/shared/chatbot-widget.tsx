@@ -30,6 +30,7 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { detectLanguage, type ChatLanguage } from "@/lib/chatbot/language";
 import { CHAT_STRINGS } from "@/lib/chatbot/strings";
+import { useSupportChat } from "@/components/providers/support-chat";
 
 type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
@@ -67,7 +68,10 @@ async function postFeedback(payload: Record<string, unknown>) {
 }
 
 export function ChatbotWidget() {
-  const [open, setOpen] = useState(false);
+  // Lifted to context (CLAUDE-SUPPORT-MUTE-REPORT.md Feature 1) so other
+  // entry points — e.g. the profile page's "Contact Support" button — can
+  // open this same widget instance instead of building a second chat surface.
+  const { open, setOpen } = useSupportChat();
   // Lazy initializer, not an effect: reading localStorage here is
   // synchronous and doesn't need a render cycle. Guarded for SSR, where
   // `window` doesn't exist — sessionKey is never rendered into JSX, so a
@@ -187,7 +191,7 @@ export function ChatbotWidget() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary text-white">
             <span className="text-sm font-semibold">MyWisata Support</span>
             <div className="flex items-center gap-3">
-              <Link href="/customer/support" className="text-[11px] underline opacity-90 hover:opacity-100">
+              <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
                 My Tickets
               </Link>
               <button onClick={() => setOpen(false)} aria-label="Close chat">
@@ -251,7 +255,7 @@ export function ChatbotWidget() {
                             {s.no}
                           </Button>
                         </div>
-                        {m.ticketError && <p className="text-[11px] text-destructive mt-1">{m.ticketError}</p>}
+                        {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
                       </div>
                     )}
                     {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{s.noProblem}</p>}

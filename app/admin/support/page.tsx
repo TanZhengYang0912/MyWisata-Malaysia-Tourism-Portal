@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
 
@@ -370,7 +371,7 @@ function AdminSupportContent() {
                   <p className="text-xs text-muted-foreground">
                     {t.category}
                     {t.classificationMethod && (
-                      <span className="text-[9px] uppercase tracking-wide opacity-70"> ({t.classificationMethod})</span>
+                      <span className="text-[0.5625rem] uppercase tracking-wide opacity-70"> ({t.classificationMethod})</span>
                     )}
                     {" "}· from {t.userName} · {new Date(t.createdAt).toLocaleDateString()}
                     {t.unanswered && <span className="text-destructive font-medium"> · unanswered</span>}
@@ -445,16 +446,19 @@ function AdminSupportContent() {
           <DialogHeader>
             <div className="flex items-center justify-between gap-3 pr-6">
               <DialogTitle>{detail?.subject}</DialogTitle>
-              {detail && detail.status !== "resolved" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={updatingId === openTicketId}
-                  onClick={() => openTicketId && updateStatus(openTicketId, "resolved")}
-                >
-                  Mark Resolved
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} />}
+                {detail && detail.status !== "resolved" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={updatingId === openTicketId}
+                    onClick={() => openTicketId && updateStatus(openTicketId, "resolved")}
+                  >
+                    Mark Resolved
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogHeader>
 

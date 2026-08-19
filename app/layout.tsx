@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth";
 import { CartProvider } from "@/components/providers/cart";
 import { ActionFeedbackProvider } from "@/components/providers/action-feedback";
+import { ThemeProvider } from "@/components/providers/theme";
+import { FontSizeProvider, FontSizeScript } from "@/components/providers/font-size";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"] });
@@ -22,11 +24,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${fraunces.variable} ${plusJakartaSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ActionFeedbackProvider>
-          <AuthProvider>
-            <CartProvider>{children}</CartProvider>
-          </AuthProvider>
-        </ActionFeedbackProvider>
+        <FontSizeScript />
+        <ThemeProvider>
+          <FontSizeProvider>
+            <ActionFeedbackProvider>
+              <AuthProvider>
+                <CartProvider>{children}</CartProvider>
+              </AuthProvider>
+            </ActionFeedbackProvider>
+          </FontSizeProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

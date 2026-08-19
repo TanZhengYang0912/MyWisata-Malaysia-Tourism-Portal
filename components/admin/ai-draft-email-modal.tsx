@@ -169,7 +169,7 @@ export function AiDraftEmailModal({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-6 gap-1 text-[11px] px-2"
+                className="h-6 gap-1 text-[0.6875rem] px-2"
                 onClick={() => runDraft()}
                 disabled={drafting || sending}
               >
@@ -188,7 +188,7 @@ export function AiDraftEmailModal({
               placeholder={drafting ? "Drafting…" : "Message body"}
               disabled={sending}
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">{linkHint}</p>
+            <p className="mt-1 text-[0.6875rem] text-muted-foreground">{linkHint}</p>
           </div>
 
           {draftError && <p className="text-xs text-destructive">{draftError}</p>}

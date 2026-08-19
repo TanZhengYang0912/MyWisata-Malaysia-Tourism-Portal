@@ -195,37 +195,37 @@ export default function AffiliateDashboardPage() {
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Clicks</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Clicks</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.clicks}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">People who ordered</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">People who ordered</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.referrals}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Pending</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Pending</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
             RM {stats.totals.pendingEarnings.toFixed(2)}
           </p>
           {Number.isFinite(nearestClearsInDays) && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
+            <p className="text-[0.625rem] text-muted-foreground mt-0.5">
               clears in {nearestClearsInDays} day{nearestClearsInDays === 1 ? "" : "s"}
             </p>
           )}
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Available</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Available</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
             RM {stats.totals.availableToWithdraw.toFixed(2)}
           </p>
           {stats.totals.availableToWithdraw > 0 ? (
-            <Button size="sm" asChild className="h-6 text-[11px] px-2">
+            <Button size="sm" asChild className="h-6 text-[0.6875rem] px-2">
               <Link href="/customer/wallet">
                 <Wallet size={11} /> Cash Out
               </Link>
             </Button>
           ) : (
-            <p className="text-[10px] text-muted-foreground">Earn commission by sharing to withdraw</p>
+            <p className="text-[0.625rem] text-muted-foreground">Earn commission by sharing to withdraw</p>
           )}
         </div>
       </div>
@@ -349,13 +349,13 @@ export default function AffiliateDashboardPage() {
             <select
               value={exportRange}
               onChange={(e) => setExportRange(e.target.value as EarningsExportRange)}
-              className="h-7 rounded-lg border border-border px-2 text-[11px] bg-background text-foreground"
+              className="h-7 rounded-lg border border-border px-2 text-[0.6875rem] bg-background text-foreground"
             >
               <option value="month">This month</option>
               <option value="year">This year</option>
               <option value="all">All time</option>
             </select>
-            <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={downloadEarnings} disabled={exporting}>
+            <Button size="sm" variant="outline" className="h-7 text-[0.6875rem] px-2" onClick={downloadEarnings} disabled={exporting}>
               <Download size={12} /> {exporting ? "Exporting…" : "Download earnings (CSV)"}
             </Button>
           </div>

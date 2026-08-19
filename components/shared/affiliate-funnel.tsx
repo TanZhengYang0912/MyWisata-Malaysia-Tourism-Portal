@@ -39,17 +39,17 @@ export function AffiliateFunnelSection({ funnel, conversionLabel = "Bookings" }:
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="text-center">
           <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.shares}</p>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Shares</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">Shares</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.clicks}</p>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Clicks</p>
-          <p className="text-[11px] text-primary font-semibold">{pct(funnel.shareToClickRate)}</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">Clicks</p>
+          <p className="text-[0.6875rem] text-primary font-semibold">{pct(funnel.shareToClickRate)}</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.conversions}</p>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">{conversionLabel}</p>
-          <p className="text-[11px] text-primary font-semibold">{pct(funnel.clickToConversionRate)}</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">{conversionLabel}</p>
+          <p className="text-[0.6875rem] text-primary font-semibold">{pct(funnel.clickToConversionRate)}</p>
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export function AffiliateFunnelSection({ funnel, conversionLabel = "Bookings" }:
             </tbody>
           </table>
           {!funnel.sourceTrackingActive && (
-            <p className="px-3 py-2 text-[11px] text-muted-foreground bg-muted/50 border-t border-border">
+            <p className="px-3 py-2 text-[0.6875rem] text-muted-foreground bg-muted/50 border-t border-border">
               Per-platform clicks and {conversionLabel.toLowerCase()} need click-source tagging, which only applies to shares made from now on — earlier shares show a dash instead of a count.
             </p>
           )}

@@ -51,7 +51,7 @@ export function AffiliateRankCard() {
       )}
       {rank.topPeers.length > 0 && (
         <div className="mt-3 pt-3 border-t border-border space-y-1">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Top 5 this month</p>
+          <p className="text-[0.625rem] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Top 5 this month</p>
           {rank.topPeers.map((p) => (
             <div key={p.rank} className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
