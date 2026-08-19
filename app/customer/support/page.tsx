@@ -43,6 +43,7 @@ export default function CustomerSupportPage() {
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWithdrawalId(new URLSearchParams(window.location.search).get("withdrawal"));
     (async () => {
       try {

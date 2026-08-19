@@ -66,6 +66,7 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
       // Keep the last known notification state when the poll is temporarily unavailable.
     }
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { void load(); const timer = setInterval(() => void load(), 30_000); return () => clearInterval(timer); }, [scope, vendorId, category, readFilter]);
   useEffect(() => {
     if (!open) return;

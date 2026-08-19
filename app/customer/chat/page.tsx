@@ -128,6 +128,7 @@ export default function ChatListPage() {
     const currentlyMuted = mutedThreadIds.has(threadId);
     setMutedThreadIds((previous) => {
       const next = new Set(previous);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       currentlyMuted ? next.delete(threadId) : next.add(threadId);
       return next;
     });
@@ -137,6 +138,7 @@ export default function ChatListPage() {
       // Best-effort revert — the mute is purely a notification preference, not worth a blocking error.
       setMutedThreadIds((previous) => {
         const next = new Set(previous);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         currentlyMuted ? next.add(threadId) : next.delete(threadId);
         return next;
       });

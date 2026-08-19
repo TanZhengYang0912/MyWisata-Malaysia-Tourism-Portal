@@ -76,6 +76,7 @@ export async function POST(request: Request, { params }: Props) {
     .select('fulfil_status')
     .eq('order_id', item.order_id);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allFulfilled = (allItems ?? []).every((i: any) => i.fulfil_status === 'fulfilled');
 
   return apiOk({

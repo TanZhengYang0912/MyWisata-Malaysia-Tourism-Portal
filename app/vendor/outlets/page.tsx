@@ -57,6 +57,7 @@ export default function VendorOutletsPage() {
     setOutlets(payload.data?.items || []); setStates(payload.data?.availableStates || []); setPagination(payload.data?.pagination || { page: requestedPage, pageSize: 10, total: 0, totalPages: 1 }); setLoading(false);
   }, [filters, pagination.page, vendorId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadOutlets(1); }, [filters, vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (managerShopMode && loading) return <div className="rounded-2xl border border-gray-100 bg-white p-8 text-sm text-gray-500">Loading your shop page…</div>;

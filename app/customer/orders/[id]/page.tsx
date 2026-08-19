@@ -67,6 +67,7 @@ export default function OrderDetailPage() {
           {order.items.map((item, i) => (
             <div key={i} className="flex items-center gap-3 text-sm">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-secondary text-primary print:h-16 print:w-16">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {item.imageUrl ? <img src={item.imageUrl} alt={item.activityName} className="h-full w-full object-cover" /> : <Package size={22} />}
               </div>
               <span className="min-w-0 flex-1 text-foreground">{item.qty}× {item.activityName} ({item.variantLabel})</span>

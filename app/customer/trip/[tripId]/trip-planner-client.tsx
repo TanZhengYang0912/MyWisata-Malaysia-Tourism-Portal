@@ -236,6 +236,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
       return;
     }
     searchActivities({ ...getDiscoverySearchFilter(category), near, sort: near ? "distance_asc" : "recommended" }).then(setActivities);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, origin?.lat, origin?.lng]);
 
   // Route fetch (debounced): all ORS-supported modes → routes[mode] = options.
@@ -243,6 +244,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
   const pointsKey = trip.stops.map((s) => `${s.lat},${s.lng}`).join("|");
   useEffect(() => {
     if (trip.stops.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRoutes({});
       setRoutesLoading(false);
       return;
@@ -272,6 +274,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
       cancelled = true;
       clearTimeout(timer);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointsKey]);
 
   // Real-time geocoding as the user types the start location.
@@ -279,6 +282,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     if (!editingStart) return;
     const q = startInput.trim();
     if (q.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([]);
       return;
     }
@@ -306,6 +310,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     if (!addingStop) return;
     const q = stopSearchInput.trim();
     if (q.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStopSuggestions([]);
       return;
     }
@@ -333,6 +338,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     if (!editingStopId) return;
     const q = editStopInput.trim();
     if (q.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditStopSuggestions([]);
       return;
     }
@@ -686,6 +692,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             <ul className="flex flex-col gap-2">
               {filteredActivities.slice(0, 24).map((activity) => {
                 const added = trip.has(activity.id);
+                // eslint-disable-next-line @next/next/no-img-element
                 return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={"Show " + activity.name + " on map"}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? activity.distanceKm.toFixed(1) + " km" : activity.outlet.city} · RM {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? "Added" : "Add to trip"}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">View details</a></div></div></div></li>;
               })}
             </ul>

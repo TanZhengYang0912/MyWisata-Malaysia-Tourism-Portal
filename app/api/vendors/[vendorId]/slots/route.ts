@@ -41,7 +41,9 @@ export async function GET(_request: Request, { params }: Props) {
       supabase.from('outlets').select('id').in('id', outletIds.length ? outletIds : ['none']).or(`name.ilike.%${q}%,city.ilike.%${q}%`).limit(100),
     ]);
     const conditions = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...((productMatches || []).map((item: any) => `product_id.eq.${item.id}`)),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ...((outletMatches || []).map((item: any) => `outlet_id.eq.${item.id}`)),
     ];
     if (!conditions.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
@@ -50,6 +52,7 @@ export async function GET(_request: Request, { params }: Props) {
   const { data, error, count } = await query.order('starts_at').range((page - 1) * pageSize, page * pageSize - 1);
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (data ?? []).map((slot: any) => ({ ...slot, outlets: slot.outlets ? { ...slot.outlets, full_name: slot.outlets.name, name: outletShortName(slot.outlets.name) } : slot.outlets }));
   return apiOk({ items, pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }

@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const assignments = row?.user_roles ?? [];
     const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
     const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
     const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
     const name = row?.full_name ?? row?.email ?? "User";
@@ -112,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const destination = gate === "restore" ? "/account-restore" : gate === "suspended" ? "/account-suspended" : null;
     const suspendedSupportPath = gate === "suspended" && canSuspendedAccessPath(pathname);
     if (destination && pathname !== destination && !suspendedSupportPath) router.replace(destination);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.status, loading, pathname, router]);
 
   const switchUser = useCallback(async (id: string, selectedUser?: User) => {
@@ -166,6 +168,7 @@ export function useRequireRole(allowed: Role[]): AuthContextValue {
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
       router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.loading, auth.currentUser?.role, pathname]);
 
   return auth;

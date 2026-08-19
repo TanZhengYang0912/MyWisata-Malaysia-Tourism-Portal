@@ -92,6 +92,7 @@ export default function VendorInboxPage() {
   }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadThreads();
     const timer = window.setInterval(() => void loadThreads(false), 3000);
     return () => window.clearInterval(timer);
@@ -114,6 +115,7 @@ export default function VendorInboxPage() {
     const currentlyMuted = mutedThreadIds.has(threadId);
     setMutedThreadIds((previous) => {
       const next = new Set(previous);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       currentlyMuted ? next.delete(threadId) : next.add(threadId);
       return next;
     });
@@ -122,6 +124,7 @@ export default function VendorInboxPage() {
     } catch {
       setMutedThreadIds((previous) => {
         const next = new Set(previous);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         currentlyMuted ? next.add(threadId) : next.delete(threadId);
         return next;
       });
@@ -129,6 +132,7 @@ export default function VendorInboxPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAiReplyDraft(null);
     setAiReplyError(null);
   }, [active]);

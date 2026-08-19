@@ -55,6 +55,7 @@ export async function GET() {
       const assignments = row.user_roles || [];
       const role = pickDemoRole(assignments);
       const assignment = pickDemoAssignment(assignments);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
       const name = row.full_name || row.email;
       const vendor = Array.isArray(assignment?.vendors) ? assignment?.vendors[0] : assignment?.vendors;

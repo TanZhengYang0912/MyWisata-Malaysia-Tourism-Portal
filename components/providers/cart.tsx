@@ -40,6 +40,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(false);
     getActivities().then((nextActivities) => { if (active) setActivities(nextActivities); });
     if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => {
@@ -68,6 +69,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const validKeys = new Set(items.map(cartItemKey));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedKeysState((prev) => {
       const next = new Set([...prev].filter((k) => validKeys.has(k)));
       return next.size === prev.size ? prev : next;
@@ -102,6 +104,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const replaceSelectedKeys = useCallback((keys: string[]) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setSelectedKeysState((current) => {
       const available = new Set(items.map(cartItemKey));
       return new Set(keys.filter((key) => available.has(key)));

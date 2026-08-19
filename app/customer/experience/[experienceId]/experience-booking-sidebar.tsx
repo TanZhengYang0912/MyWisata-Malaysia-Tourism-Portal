@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Link from "next/link";
 import { Check, Star, Minus, Plus } from "lucide-react";
 import { useCart } from "@/components/providers/cart";

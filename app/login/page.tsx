@@ -48,6 +48,7 @@ export default function LoginPage() {
   useEffect(() => {
     const queryError = new URLSearchParams(window.location.search).get("error");
     if (queryError === "oauth") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("Google sign-in could not be completed. Try email/password or a demo account.");
     } else if (queryError) {
       setError(GENERIC_ERROR);

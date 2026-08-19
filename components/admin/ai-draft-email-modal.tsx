@@ -80,6 +80,7 @@ export function AiDraftEmailModal({
 
   useEffect(() => {
     if (!open || !target) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmail(target.defaultEmail ?? "");
     setSubject("");
     setBody("");

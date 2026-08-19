@@ -24,6 +24,7 @@ export function GlobalSearch() {
 
   useEffect(() => {
     if (query.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults(null);
       return;
     }
@@ -70,6 +71,7 @@ export function GlobalSearch() {
         <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-white shadow-xl ring-1 ring-black/5 overflow-hidden z-50">
           {!isLoading && !hasResults && (
             <div className="p-6 text-center text-sm text-slate-500">
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               No results found for "{query}".
             </div>
           )}

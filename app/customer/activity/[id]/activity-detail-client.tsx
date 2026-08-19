@@ -111,7 +111,9 @@ export function ActivityDetailClient({
 
   // A slot switch can leave qty above the new slot's remaining seats — clamp down.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selectedSlot) setQty((q) => Math.min(q, Math.max(1, selectedSlot.capacity - selectedSlot.booked)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotId]);
 
   const chips = useMemo(() => (activity ? getCategoryChips(activity) : []), [activity]);

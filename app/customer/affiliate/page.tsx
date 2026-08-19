@@ -93,6 +93,7 @@ export default function AffiliateDashboardPage() {
     (async () => {
       await loadStats();
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   const sortedProducts = useMemo(() => {

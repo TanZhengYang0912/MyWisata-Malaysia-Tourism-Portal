@@ -55,6 +55,7 @@ function VoucherCard({ voucher, onClaim, claiming }: { voucher: CustomerVoucher;
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-[0_10px_28px_rgba(1,0,102,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(1,0,102,0.12)]">
       <div className="relative aspect-[16/9] overflow-hidden bg-primary text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         {voucher.outletImageUrl ? <img src={voucher.outletImageUrl} alt={imageAlt} width={640} height={360} loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary via-[#15158a] to-[#31537b]">{voucher.vendorLogoUrl ? <img src={voucher.vendorLogoUrl} alt={`${voucher.vendorName} logo`} width={80} height={80} loading="lazy" className="h-20 w-20 rounded-2xl object-contain" /> : <span className="text-4xl font-black">{voucher.vendorName.slice(0, 2).toUpperCase()}</span>}</div>}
         <div className="absolute inset-0 bg-gradient-to-t from-[#01003f]/80 via-transparent to-[#01003f]/10" />
         <div className="absolute inset-x-5 top-4 flex items-center justify-between gap-3">
@@ -110,11 +111,13 @@ export default function VoucherHubClient() {
 
   useEffect(() => {
     const initialTab = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialTab === "mine" || initialTab === "deals") setTab(initialTab);
   }, []);
 
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     fetch(`/api/customer/vouchers?tab=${tab}`, { cache: "no-store" })

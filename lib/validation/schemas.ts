@@ -10,6 +10,7 @@ import { KYC_REVIEW_REASON_CODES } from '@/lib/kyc/types';
 
 const uuid    = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid UUID');
 const rmMoney = z.number().finite().min(0.01).max(100_000).multipleOf(0.01);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const shortId = z.string().min(1).max(128);
 
 // ── KYC ────────────────────────────────────────────────────

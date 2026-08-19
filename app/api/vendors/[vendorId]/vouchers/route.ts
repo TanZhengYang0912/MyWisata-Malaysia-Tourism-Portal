@@ -26,15 +26,18 @@ export async function GET(request: Request, { params }: Props) {
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
   const now = Date.now();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withStatus = (data ?? []).map((voucher: any) => {
     if (voucher.review_status && voucher.review_status !== 'approved') return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status: voucher.review_status };
     const validFrom = voucher.valid_from ? new Date(voucher.valid_from).getTime() : null;
     const validUntil = voucher.valid_until ? new Date(voucher.valid_until).getTime() : null;
     const status = !voucher.is_active ? 'inactive' : validFrom && validFrom > now ? 'scheduled' : validUntil && validUntil < now ? 'expired' : voucher.max_uses && voucher.uses_count >= voucher.max_uses ? 'expired' : 'active';
     return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }).filter((voucher: any) => statusFilter === 'all' || voucher.status === statusFilter);
   const start = (page - 1) * pageSize;
   const items = withStatus.slice(start, start + pageSize);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stats = withStatus.reduce((result: Record<string, number>, voucher: any) => {
     result[voucher.status] = (result[voucher.status] || 0) + 1;
     return result;

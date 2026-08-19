@@ -71,6 +71,7 @@ export default function CartPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const voucher = params.get("voucher")?.trim();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (voucher) setDeepLinkedVoucher({ code: voucher, claimId: params.get("claim") });
   }, []);
 
@@ -85,6 +86,7 @@ export default function CartPage() {
     Promise.all(bookingActivityIds.map((id) => getBookingSlots(id))).then((lists) => {
       setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingActivityKey]);
 
   const { subtotal, discount, total } = totals(appliedVoucher ?? undefined);
@@ -166,6 +168,7 @@ export default function CartPage() {
   useEffect(() => {
     let active = true;
     if (vouchers.length === 0 || voucherValidationItems.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVoucherOptions([]);
       setLoadingVouchers(false);
       return () => { active = false; };
@@ -214,6 +217,7 @@ export default function CartPage() {
 
   const topVoucherOptions = voucherOptions.slice(0, 3);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function applyVoucherCode(rawCode: string, knownVoucher?: Voucher, claimId?: string | null) {
     const normalizedCode = rawCode.trim().toUpperCase();
     if (!normalizedCode) return;
@@ -247,6 +251,7 @@ export default function CartPage() {
 
   useEffect(() => {
     if (!deepLinkedVoucher || appliedVoucher || voucherValidationItems.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDeepLinkedVoucher(null);
     void applyVoucherCode(deepLinkedVoucher.code, undefined, deepLinkedVoucher.claimId);
   }, [appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);

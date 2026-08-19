@@ -15,6 +15,7 @@ afterEach(() => {
   else process.env.GEMINI_MODEL = originalModel;
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function geminiResponse(payload: unknown, ok = true, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
 }

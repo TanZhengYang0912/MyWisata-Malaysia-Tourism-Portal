@@ -59,6 +59,7 @@ export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
         <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-muted/30 py-24 text-center">
           <Navigation className="mb-4 h-12 w-12 text-muted-foreground opacity-50" />
           <h3 className="text-lg font-bold text-foreground">No trips yet</h3>
+          {/* eslint-disable-next-line react/no-unescaped-entities */}
           <p className="mt-1 text-sm text-muted-foreground">You haven't created any trips. Start planning your next adventure!</p>
           <button onClick={() => setIsCreating(true)} className="mt-6 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:bg-primary/90">
             Create your first trip

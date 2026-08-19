@@ -29,8 +29,10 @@ function makeFakeDb() {
     from(table: string) {
       let filters: Array<[string, unknown]> = [];
       let inserted: Row | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       let options: unknown;
       let operation: 'select' | 'insert' = 'select';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const query: any = {
         select() {
           return query;

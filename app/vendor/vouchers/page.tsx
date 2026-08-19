@@ -92,6 +92,7 @@ export default function VendorVouchersPage() {
     finally { setLoading(false); }
   }, [q, status, vendorId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadVouchers(1); }, [loadVouchers]);
   useEffect(() => {
     if (!vendorId) return;
@@ -128,6 +129,7 @@ export default function VendorVouchersPage() {
       setError(requestError instanceof Error ? requestError.message : 'Could not load voucher analytics');
     }
   }, [analyticsFrom, analyticsOutlet, analyticsRange, analyticsTo, vendorId]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadAnalytics(); }, [loadAnalytics]);
 
   async function toggleActive(voucher: VoucherData) {

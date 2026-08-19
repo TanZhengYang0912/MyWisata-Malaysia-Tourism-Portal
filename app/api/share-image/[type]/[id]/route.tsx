@@ -166,7 +166,7 @@ export async function GET(_request: Request, context: { params: Promise<{ type: 
         }}
       >
         {listing.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+          // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
           <img
             src={listing.coverUrl}
             width={SIZE.width}

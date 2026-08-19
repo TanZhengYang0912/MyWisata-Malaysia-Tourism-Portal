@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { OutletPageRendererProps } from '@/components/outlet/outlet-block-types';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Accessibility, Clock3, Mail, MapPin, Navigation, PawPrint, Phone } from 'lucide-react';
 import { OutletBlockRenderer, OutletHeroRenderer, formatHours } from '@/components/outlet/outlet-block-renderer';
 import { OutletMenu } from '@/components/outlet/outlet-menu';

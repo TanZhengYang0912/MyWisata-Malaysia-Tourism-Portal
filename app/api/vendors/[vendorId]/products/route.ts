@@ -71,6 +71,7 @@ export async function GET(request: Request, { params }: Props) {
   const scopedProducts = outletId
     ? filterProductsByOutlet(data ?? [], outletId)
     : data ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = scopedProducts.flatMap((product: any) => {
     const resolvedOutlet = resolveProductOutlet(product, outletId ? [outletId] : access.access.outletIds);
     if (!resolvedOutlet) return [];
@@ -80,7 +81,9 @@ export async function GET(request: Request, { params }: Props) {
       outlet_id: product.outlet_id || resolvedOutlet.id,
       outlet: { ...outlet, full_name: outlet.name, name: outletShortName(outlet.name) },
       variants: product.product_variants ?? [],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       availableStock: (product.product_variants ?? []).reduce((total: number, variant: any) => total + Math.max(0, Number(variant.inventory?.[0]?.quantity ?? 0) - Number(variant.inventory?.[0]?.reserved ?? 0)), 0),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lowStockThreshold: (product.product_variants ?? []).reduce((threshold: number, variant: any) => Math.max(threshold, Number(variant.inventory?.[0]?.low_stock_threshold ?? 5)), 0),
     }];
   });

@@ -67,10 +67,12 @@ function regionForState(stateId: string): StateRegion {
   return DEMO_STATES.find((state) => state.id === stateId)?.region === "Borneo" ? "borneo" : "peninsular";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function boundsForRegion(region: StateRegion): GeoBounds {
   return ALL_MAP_BOUNDS;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function canvasForRegion(region: StateRegion) {
   return SINGLE_CANVAS;
 }

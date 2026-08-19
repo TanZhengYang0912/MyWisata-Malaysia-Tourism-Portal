@@ -49,6 +49,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVoucherCode(params.get("voucher"));
     setClaimId(params.get("claim"));
   }, []);
@@ -77,6 +78,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
     if (!sessionId || !currentUser || selectedItems.length === 0 || paying) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))

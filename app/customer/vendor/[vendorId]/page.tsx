@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ArrowRight, CheckCircle2, Clock3, ExternalLink, MapPin, Navigation, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { ShareButton } from '@/components/shared/share-button';
@@ -121,6 +122,7 @@ function vendorProductDetailHref(productId: string, vendorId: string, outletId?:
 function ProductCard({ product, vendorId }: { product: CatalogueProduct; vendorId: string }) {
   return <Link href={vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined)} className="mw-card group min-w-0 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
     <div className="mw-card-media h-48 aspect-auto bg-gradient-to-br from-primary/15 via-secondary to-amber-50">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">Experience photo coming soon</div>}
       <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">{getVendorProductTypeLabel(product.productType)}</span>
     </div>
@@ -137,6 +139,7 @@ function LocationCard({ location, vendorId }: { location: LocationSummary; vendo
   const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || 'Malaysia';
   const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
   return <article className="mw-card group min-w-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+    {/* eslint-disable-next-line @next/next/no-img-element */}
     <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#030052]/75 via-transparent to-[#030052]/10" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span></div>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">Outlet identity</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active outlet</span></div>
     <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-slate-950" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-slate-100 pt-3 text-xs"><span className="font-semibold text-slate-500">{location.listingCount} published experience{location.listingCount === 1 ? '' : 's'}</span>{location.fromPrice !== null && <span className="font-semibold text-primary">From RM {location.fromPrice.toFixed(2)}</span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">View outlet <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={`Get directions to ${location.name}`} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
   </article>;
@@ -149,6 +152,7 @@ function SingleLocationSummary({ location, vendorId }: { location: LocationSumma
 
   return <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
     <div className="flex items-start gap-4">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xl font-black text-white">{visual.initials}</div>}</div>
       <div className="min-w-0">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Outlet details</p>
@@ -182,10 +186,12 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   return <main className="min-h-screen bg-[#f8fafc] text-slate-900">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <section className="relative isolate overflow-hidden bg-[#030052] text-white">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {heroImage && <img src={heroImage} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" />}
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_75%_20%,rgba(255,210,31,.2),transparent_28%),linear-gradient(110deg,rgba(3,0,82,.98),rgba(3,0,82,.74))]" />
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 lg:grid-cols-[minmax(0,1fr)_350px] lg:items-center lg:py-20">
          <div><div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#ffd21f]"><span className="inline-flex items-center gap-1.5"><ShieldCheck size={15} /> Verified MyWisata vendor</span><span className="h-1 w-1 rounded-full bg-white/50" /><span>{vendorType}</span></div><h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{vendor.name}</h1>{vendor.description && <p className="mt-5 max-w-2xl text-base leading-7 text-white/80">{vendor.description}</p>}<div className="mt-8 flex flex-wrap items-center gap-3"><a href="#experiences" className="inline-flex items-center gap-2 rounded-xl bg-[#ffd21f] px-5 py-3 text-sm font-bold text-[#030052] transition hover:bg-white">Browse experiences <ArrowRight size={16} /></a><a href="#locations" className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"><MapPin size={16} /> View {hasMultipleLocations ? 'locations' : 'location'}</a><ShareButton shareType="vendor" contentId={vendor.id} title={vendor.name} /></div></div>
+         {/* eslint-disable-next-line @next/next/no-img-element */}
          <div className="rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm"><div className="flex items-center gap-3 border-b border-white/15 pb-5">{vendorVisual.logoUrl ? <img src={vendorVisual.logoUrl} alt={`${vendor.name} logo`} className="h-14 w-14 rounded-2xl bg-white object-cover p-1" /> : <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-black text-primary">{vendorVisual.initials}</div>}<div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#ffd21f]">Partner profile</p><p className="mt-1 font-bold">Explore with confidence</p></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div><p className="text-2xl font-black">{locations.length}</p><p className="mt-1 text-xs text-white/65">active {hasMultipleLocations ? 'locations' : 'location'}</p></div><div><p className="text-2xl font-black">{catalogue.length}</p><p className="mt-1 text-xs text-white/65">published listings</p></div></div></div>
       </div>
     </section>

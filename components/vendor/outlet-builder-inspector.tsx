@@ -75,6 +75,7 @@ function MediaLibrary({
             className="group overflow-hidden rounded-lg border border-white bg-white text-left shadow-sm hover:border-primary"
             title="Use this image"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
               alt=""

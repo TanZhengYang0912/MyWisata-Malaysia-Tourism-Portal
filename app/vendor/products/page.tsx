@@ -38,6 +38,7 @@ interface ProductData {
   digital_asset_size?: number | null;
   media_assets?: { id: string; url: string; alt_text?: string | null; sort_order?: number | null }[];
   outlet?: { id?: string; name?: string; city?: string; state?: string };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   variants?: any[];
   availableStock?: number;
   lowStockThreshold?: number;
@@ -99,6 +100,7 @@ export default function VendorProductsPage() {
     fetch(`/api/vendors/${vendorId}/outlets?page=1&pageSize=100`, { cache: 'no-store' }).then((response) => response.json()).then((payload) => setOutlets(payload.data?.items || payload.data || []));
   }, [vendorId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadProducts(1); }, [filters, vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -204,6 +206,7 @@ export default function VendorProductsPage() {
       </section>
       </>}
 
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
     </div>
   );

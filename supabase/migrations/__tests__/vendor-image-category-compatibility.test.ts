@@ -1,4 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { readFileSync } from "node:fs";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 

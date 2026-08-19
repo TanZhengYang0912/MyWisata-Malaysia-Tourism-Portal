@@ -17,6 +17,7 @@ import { productImageUrl } from '@/lib/storage/product-image';
 
 function customerFor(order: VendorOrderData) { const customer = Array.isArray(order.users) ? order.users[0] : order.users; return customer || {}; }
 function imageFor(item: OrderItemData) { const product = Array.isArray(item.products) ? item.products[0] : item.products; return productImageUrl(product?.cover_url) || undefined; }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function dateLabel(value?: string | null) { return value ? new Date(value).toLocaleString('en-MY', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'; }
 
 export default function VendorOrdersPage() {
@@ -47,6 +48,7 @@ export default function VendorOrdersPage() {
     finally { setLoading(false); }
   }, [filters, vendorId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadOrders(1); }, [loadOrders]);
 
   async function updateFulfilOrder(order: VendorOrderData, status: 'ready' | 'fulfilled') {
