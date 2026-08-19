@@ -11,7 +11,7 @@ import Link from "next/link";
 import { z } from "zod";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
 import { Button } from "@/components/ui/button";
 import type { CustomerKycSubmission } from "@/backend/core/types";
@@ -164,13 +164,15 @@ export default function KycPage() {
   if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.kyc.guestTitle")} description={tCustomer("ui.kyc.guestDescription")} nextPath={continuation ?? "/customer/kyc"} /></CustomerPageShell>;
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.kyc.verified")}
         description={tCustomer("ui.kyc.description")}
         icon={<ShieldCheck size={14} />}
       />
+
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
       {isVerified && continuation && <div className="mb-6"><Button asChild><Link href={continuation}>{tCustomer("ui.kyc.continue")}</Link></Button></div>}
 
@@ -359,6 +361,7 @@ export default function KycPage() {
           </Button>
         </form>
       )}
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }

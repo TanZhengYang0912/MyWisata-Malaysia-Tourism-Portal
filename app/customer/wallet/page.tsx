@@ -13,7 +13,7 @@ import {
   getMyWithdrawals,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
-import { CustomerPageHeader, CustomerPageShell, CustomerPanel } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
 import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
@@ -341,13 +341,15 @@ function WalletContent() {
   }
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.wallet.title")}
         description={tCustomer("ui.wallet.description")}
         icon={<Wallet size={14} />}
       />
+
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
       {/* ── Banners ── */}
       {topupSuccess && (
@@ -751,7 +753,8 @@ function WalletContent() {
           </div>
         )}
       </div>
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }
 

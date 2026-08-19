@@ -8,7 +8,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { useTranslation } from "react-i18next";
 
 interface TicketSummary {
@@ -85,13 +85,15 @@ export default function CustomerSupportPage() {
   }
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <CustomerPageTitle
         eyebrow={tCustomer("ui.support.title", { defaultValue: "Support" })}
         title={tCustomer("ui.support.myTickets", { defaultValue: "My Tickets" })}
         description={tCustomer("ui.support.description", { defaultValue: "Track your questions and follow up with the MyWisata support team." })}
         icon={<MessageSquare size={14} aria-hidden="true" />}
       />
+
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact", { defaultValue: "Provide information for your held withdrawal" })}</p>
@@ -133,6 +135,7 @@ export default function CustomerSupportPage() {
           </div>
         </div>
       )}
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }
