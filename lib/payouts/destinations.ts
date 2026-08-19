@@ -1,3 +1,5 @@
+import { isTngMockPayoutEnabled, type TngPayoutEnvironment } from './tng-config';
+
 export type PayoutDestinationType = 'bank_account' | 'e_wallet';
 export type PayoutDestinationStatus = 'pending' | 'verified' | 'disabled' | 'failed';
 
@@ -16,14 +18,36 @@ export type SplitPayment = {
   externalMethod: 'card' | 'online_banking' | 'provider_wallet';
 };
 
-export function getPayoutDestinationCapabilities() {
+export function getPayoutDestinationCapabilities(environment: TngPayoutEnvironment = process.env) {
   return {
     bank_account: { enabled: true, provider: 'stripe_connect' },
     e_wallet: {
-      enabled: Boolean(process.env.TNG_DIRECT_CREDIT_MERCHANT_ID && process.env.TNG_DIRECT_CREDIT_API_KEY),
+      enabled: isTngMockPayoutEnabled(environment),
       provider: 'tng_direct_credit',
     },
   } as const;
+}
+
+const TNG_IDENTIFIER_ERROR = 'Enter a Malaysian mobile number or a valid DuitNow ID (6–32 letters/numbers with at least 4 digits).';
+
+export function normalizeTngDestinationIdentifier(input: string):
+  | { ok: true; value: string }
+  | { ok: false; message: string } {
+  const trimmed = input.trim();
+  const compact = trimmed.replace(/[\s()-]/g, '');
+  const localMobile = /^01\d{8,9}$/.test(compact);
+  const internationalMobile = /^\+601\d{8,9}$/.test(compact);
+
+  if (localMobile || internationalMobile) {
+    return { ok: true, value: localMobile ? `+60${compact.slice(1)}` : compact };
+  }
+
+  const duitNow = compact.toUpperCase();
+  if (/^[A-Z0-9-]{6,32}$/.test(duitNow) && /(?:.*\d){4}/.test(duitNow)) {
+    return { ok: true, value: duitNow };
+  }
+
+  return { ok: false, message: TNG_IDENTIFIER_ERROR };
 }
 
 export function selectDefaultPayoutDestination(destinations: PayoutDestination[]): PayoutDestination | null {

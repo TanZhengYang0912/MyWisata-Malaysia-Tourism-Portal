@@ -13,13 +13,20 @@ export async function POST(request: Request) {
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const parsed = await parseBody(request, checkoutFinalizeSchema);
   if (!parsed.ok) return parsed.response;
-  const { data, error } = await db.rpc('finalize_checkout', {
+  const { data, error } = await db.rpc('finalize_customer_wallet_checkout', {
     p_checkout_session_id: parsed.data.checkoutSessionId,
     p_outcome: parsed.data.outcome,
-    p_provider_payment_id: parsed.data.providerPaymentId ?? null,
-    p_provider_event_id: parsed.data.providerEventId ?? null,
   });
   if (error) {
+    if ((error.message ?? '').toLowerCase().includes('provider_confirmation_required')) {
+      return NextResponse.json({
+        data: null,
+        error: {
+          code: 'PROVIDER_CONFIRMATION_REQUIRED',
+          message: 'External payments must be confirmed by the payment provider.',
+        },
+      }, { status: 403 });
+    }
     const code = getCheckoutErrorCode(error.message);
     return NextResponse.json(
       { data: null, error: { code, message: getCheckoutErrorMessage(error.message) } },

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   enqueueWithdrawalEmail: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
   notifyWithdrawalApprovers: vi.fn(),
+  serviceRpc: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -28,6 +29,7 @@ vi.mock('@/lib/stripe/connect-status', () => ({
   retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
 }));
 vi.mock('@/lib/wallet/approver-notifications', () => ({ notifyWithdrawalApprovers: mocks.notifyWithdrawalApprovers }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc })) }));
 
 import { POST } from '../route';
 
@@ -58,6 +60,7 @@ describe('POST /api/wallet/withdrawals', () => {
       chargesEnabled: true,
       requiresDashboardAction: false,
     });
+    mocks.serviceRpc.mockResolvedValue({ data: { id: 'destination-1' }, error: null });
   });
 
   it('submits only an integer-sen amount to the authenticated withdrawal RPC', async () => {
@@ -67,6 +70,11 @@ describe('POST /api/wallet/withdrawals', () => {
 
     expect(response.status).toBe(201);
     expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', { p_amount_sen: 5025, p_destination_id: 'destination-1' });
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('save_verified_payout_destination', expect.objectContaining({
+      p_user_id: '11111111-1111-4111-8111-111111111111',
+      p_provider: 'stripe_connect',
+      p_provider_reference: 'acct_test',
+    }));
   });
 
   it('maps KYC enforcement to a customer-safe error', async () => {

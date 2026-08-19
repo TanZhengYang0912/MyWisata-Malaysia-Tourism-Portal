@@ -39,7 +39,7 @@ describe('POST /api/checkout/finalize wallet settlement errors', () => {
       data: null,
       error: { code: 'WALLET_INSUFFICIENT', message: 'Wallet balance is no longer sufficient. Top up your Wallet or pay by card.' },
     });
-    expect(rpc).toHaveBeenCalledWith('finalize_checkout', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('finalize_customer_wallet_checkout', expect.objectContaining({
       p_checkout_session_id: '22222222-2222-4222-8222-222222222222',
     }));
   });

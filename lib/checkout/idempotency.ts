@@ -5,6 +5,7 @@ export type CheckoutRequest = {
   voucherCode?: string | null;
   claimId?: string | null;
   paymentMethod: string;
+  paymentProvider?: string | null;
 };
 
 export type NormalizedCheckoutRequest = {
@@ -12,6 +13,7 @@ export type NormalizedCheckoutRequest = {
   voucherCode: string | null;
   claimId: string | null;
   paymentMethod: string;
+  paymentProvider: string | null;
 };
 
 export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedCheckoutRequest {
@@ -24,6 +26,7 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
     voucherCode: input.voucherCode?.trim().toUpperCase() || null,
     claimId: input.claimId?.trim() || null,
     paymentMethod: input.paymentMethod.trim().toLowerCase(),
+    paymentProvider: input.paymentProvider?.trim().toLowerCase() || null,
   };
 }
 

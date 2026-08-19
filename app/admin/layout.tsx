@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2 } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
@@ -19,6 +19,7 @@ const NAV = [
   { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
   { href: "/admin/kyc", label: "KYC Review", icon: Shield },
   { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign },
+  { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
   { href: "/admin/wallet/settings", label: "Wallet Settings", icon: Settings2, superAdminOnly: true },
   { href: "/admin/reports/payouts", label: "Payout Reports", icon: FileBarChart2, superAdminOnly: true },
   { href: "/admin/recommendations", label: "Recommendations", icon: Gem },
