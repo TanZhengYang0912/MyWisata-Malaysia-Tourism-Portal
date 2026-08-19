@@ -7,7 +7,8 @@ describe('wallet payout destination display contract', () => {
 
     expect(page).toContain('payoutCapabilities');
     expect(page).toContain('capabilities');
-    expect(page).toContain('TNG eWallet payouts are not configured yet');
-    expect(page).not.toContain('Only verified bank destinations are enabled. E-wallet payouts are not enabled yet.');
+    expect(page).toContain('payoutCapabilities.e_wallet.enabled && (');
+    expect(page).toContain('tCustomer("ui.wallet.bankOnlyHint")');
+    expect(page).not.toContain('Only verified bank destinations are enabled.');
   });
 });

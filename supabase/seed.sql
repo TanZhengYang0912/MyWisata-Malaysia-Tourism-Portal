@@ -13,6 +13,7 @@
 -- ── Roles ──────────────────────────────────────────────────
 INSERT INTO roles (name, description) VALUES
   ('super_admin',    'Full platform access'),
+  ('admin',          'Platform moderation access'),
   ('approver',       'Can approve/reject wallet withdrawals'),
   ('vendor_owner',   'Manages vendor account and all outlets'),
   ('outlet_manager', 'Manages assigned outlet only'),
@@ -45,7 +46,8 @@ INSERT INTO users (id, email, full_name, kyc_status, email_verified_at, phone_ve
   ('aaaaaaaa-0000-0000-0000-000000000009', 'manager.klcc@demo.local',    'Outlet Manager Hana','approved', NOW(), NOW(), NOW()),
   ('aaaaaaaa-0000-0000-0000-000000000010', 'manager.georgetown@demo.local','Outlet Manager Ravi','approved', NOW(), NOW(), NOW()),
   ('aaaaaaaa-0000-0000-0000-000000000011', 'manager.batu@demo.local',     'Outlet Manager Siti','approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000012', 'manager.melaka@demo.local',   'Outlet Manager Lim', 'approved', NOW(), NOW(), NOW())
+  ('aaaaaaaa-0000-0000-0000-000000000012', 'manager.melaka@demo.local',   'Outlet Manager Lim', 'approved', NOW(), NOW(), NOW()),
+  ('aaaaaaaa-0000-0000-0000-000000000014', 'moderator@demo.local',        'Platform Admin',      'approved', NOW(), NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
   full_name            = EXCLUDED.full_name,
   kyc_status           = EXCLUDED.kyc_status,
@@ -60,6 +62,9 @@ SELECT 'aaaaaaaa-0000-0000-0000-000000000001', id, NULL, NULL FROM roles WHERE n
 ON CONFLICT DO NOTHING;
 INSERT INTO user_roles (user_id, role_id, vendor_id, outlet_id)
 SELECT 'aaaaaaaa-0000-0000-0000-000000000002', id, NULL, NULL FROM roles WHERE name = 'approver'
+ON CONFLICT DO NOTHING;
+INSERT INTO user_roles (user_id, role_id, vendor_id, outlet_id)
+SELECT 'aaaaaaaa-0000-0000-0000-000000000014', id, NULL, NULL FROM roles WHERE name = 'admin'
 ON CONFLICT DO NOTHING;
 -- vendor_owner & outlet_manager roles added after vendor/outlet are inserted below
 

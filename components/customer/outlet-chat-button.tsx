@@ -1,10 +1,12 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
 
 export function OutletChatButton({ outletId }: { outletId: string }) {
+  const { t } = useTranslation("customer");
   const { currentUser } = useAuth();
   const router = useRouter();
 
@@ -27,9 +29,10 @@ export function OutletChatButton({ outletId }: { outletId: string }) {
     <button
       type="button"
       onClick={handleChat}
+      aria-label={t("ui.labels.contactViaChat", { defaultValue: "Contact via chat" })}
       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary"
     >
-      <MessageCircle size={15} /> Chat with vendor
+      <MessageCircle size={15} aria-hidden="true" /> {t("ui.labels.contactViaChat", { defaultValue: "Contact via chat" })}
     </button>
   );
 }

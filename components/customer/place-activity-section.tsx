@@ -2,32 +2,29 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Compass, Ticket } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
 import {
   filterPlaceActivities,
   getPlaceActivityFilterCounts,
-  getPlaceActivityLabel,
   type PlaceActivityFilter,
 } from "@/lib/customer/place-list";
 
-const FILTERS: { value: PlaceActivityFilter; label: string }[] = [
-  { value: "all", label: "All experiences" },
-  { value: "admission", label: "Entry tickets" },
-  { value: "guide_service", label: "Guided" },
-  { value: "addon", label: "Add-ons" },
+const FILTERS: { value: PlaceActivityFilter; key: string; fallback: string }[] = [
+  { value: "all", key: "ui.placeActivity.filters.all", fallback: "All experiences" },
+  { value: "admission", key: "ui.placeActivity.filters.admission", fallback: "Entry tickets" },
+  { value: "guide_service", key: "ui.placeActivity.filters.guideService", fallback: "Guided" },
+  { value: "addon", key: "ui.placeActivity.filters.addon", fallback: "Add-ons" },
 ];
-
-function formatPrice(price: number): string {
-  return price === 0 ? "Free" : `RM ${price.toFixed(2)}`;
-}
 
 function RelationIcon({ relation }: Pick<PlaceProduct, "relation">) {
   return relation === "guide_service" ? <Compass size={14} aria-hidden="true" /> : <Ticket size={14} aria-hidden="true" />;
 }
 
 export function PlaceActivitySection({ products, returnTo }: { products: PlaceProduct[]; returnTo: string }) {
+  const { t } = useTranslation("customer");
   const [filter, setFilter] = useState<PlaceActivityFilter>("all");
   const counts = getPlaceActivityFilterCounts(products);
   const filtered = filterPlaceActivities(products, filter);
@@ -37,17 +34,17 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
     <section className="mt-10" aria-labelledby="place-activities-heading">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Plan your visit</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.outlet.planVisit")}</p>
           <h2 id="place-activities-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Things to do here
+            {t("ui.placeActivity.title", { defaultValue: "Things to do here" })}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {products.length} {products.length === 1 ? "experience" : "experiences"} from {providerCount} {providerCount === 1 ? "provider" : "providers"}
+            {t("ui.placeActivity.summary", { experiences: t("ui.place.activityCount", { count: products.length, defaultValue: `${products.length} ${products.length === 1 ? "experience" : "experiences"}` }), providers: t("ui.place.vendorCount", { count: providerCount, defaultValue: `${providerCount} ${providerCount === 1 ? "provider" : "providers"}` }), defaultValue: "{{experiences}} from {{providers}}" })}
           </p>
         </div>
 
-        <div className="flex shrink-0 rounded-full border border-border bg-card p-1 shadow-sm" role="group" aria-label="Filter experiences by type">
-          {FILTERS.map(({ value, label }) => {
+        <div className="flex shrink-0 rounded-full border border-border bg-card p-1 shadow-sm" role="group" aria-label={t("ui.placeActivity.filterLabel", { defaultValue: "Filter experiences by type" })}>
+          {FILTERS.map(({ value, key, fallback }) => {
             const count = counts[value];
             const isActive = filter === value;
             return (
@@ -60,7 +57,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                   isActive ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
-                {label} <span className={isActive ? "text-white/75" : "text-muted-foreground/70"}>({count})</span>
+                {t(key, { defaultValue: fallback })} <span className={isActive ? "text-white/75" : "text-muted-foreground/70"}>({count})</span>
               </button>
             );
           })}
@@ -69,9 +66,9 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
 
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
-          <p className="font-semibold text-foreground">No experiences in this category yet.</p>
+          <p className="font-semibold text-foreground">{t("ui.placeActivity.empty", { defaultValue: "No experiences in this category yet." })}</p>
           <button type="button" onClick={() => setFilter("all")} className="mt-2 text-sm font-bold text-primary hover:underline">
-            Show all experiences
+            {t("ui.placeActivity.showAll", { defaultValue: "Show all experiences" })}
           </button>
         </div>
       ) : (
@@ -95,7 +92,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                   )}
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">
                     <RelationIcon relation={relation} />
-                    {getPlaceActivityLabel(relation)}
+                    {t(`ui.place.relations.${relation}`, { defaultValue: relation })}
                   </span>
                 </Link>
 
@@ -110,22 +107,22 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                       <p className="mt-1 text-xs font-semibold text-primary">{vendor.name}</p>
                     </div>
                     <p className="shrink-0 text-right text-sm font-bold text-foreground">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">From</span>
-                      {formatPrice(product.price)}
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>
+                      {product.price === 0 ? t("ui.placeActivity.free", { defaultValue: "Free" }) : t("ui.placeActivity.price", { value: product.price.toFixed(2), defaultValue: "RM {{value}}" })}
                     </p>
                   </div>
 
                   <p className="mt-3 mb-5 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                    {product.description || "Explore this experience at the destination."}
+                    {product.description || t("ui.place.activityFallback", { defaultValue: "Explore this experience at the destination." })}
                   </p>
 
                   <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
-                    <span className="text-xs font-semibold text-muted-foreground">{product.requiresBooking ? "Reserve your spot" : "Available to purchase"}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">{t(product.requiresBooking ? "ui.place.reserveSpot" : "ui.place.availablePurchase", { defaultValue: product.requiresBooking ? "Reserve your spot" : "Available to purchase" })}</span>
                     <Link
                       href={activityHref}
                       className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
-                      {product.requiresBooking ? "Book now" : "Details"}
+                      {product.requiresBooking ? t("ui.actions.bookNow", { defaultValue: "Book now" }) : t("ui.actions.viewDetails", { defaultValue: "Details" })}
                       <ArrowUpRight size={14} aria-hidden="true" />
                     </Link>
                   </div>

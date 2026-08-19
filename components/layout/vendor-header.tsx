@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { Bell, Building2 } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/notification-bell';
 import { useAuth } from '@/hooks/use-auth';
+import { useTranslation } from 'react-i18next';
 
 function roleLabel(isOutletManager: boolean, isVendorOwner: boolean) {
-  if (isOutletManager) return 'Outlet manager';
-  if (isVendorOwner) return 'Vendor owner';
-  return 'Vendor team member';
+  if (isOutletManager) return 'shell.roles.outletManager';
+  if (isVendorOwner) return 'shell.roles.vendorOwner';
+  return 'shell.roles.teamMember';
 }
 
 /** Shared vendor shell header. The active vendor comes from the authenticated
@@ -16,6 +17,7 @@ function roleLabel(isOutletManager: boolean, isVendorOwner: boolean) {
  * notification API by NotificationBell. */
 export default function VendorHeader() {
   const { user, loading, isOutletManager, isVendorOwner } = useAuth();
+  const { t } = useTranslation('vendor');
   const vendorId = user?.activeVendorId ?? null;
 
   return (
@@ -26,9 +28,9 @@ export default function VendorHeader() {
             <Building2 size={18} />
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-bold text-gray-950">Vendor Portal</span>
+            <span className="block text-sm font-bold text-gray-950">{t('shell.portal')}</span>
             <span className="block truncate text-xs text-gray-500">
-              {loading ? 'Loading workspace…' : roleLabel(isOutletManager, isVendorOwner)}
+              {loading ? t('shell.loadingWorkspace') : t(roleLabel(isOutletManager, isVendorOwner))}
               {user?.activeOutletName ? ` · ${user.activeOutletName}` : ''}
             </span>
           </span>
@@ -40,7 +42,7 @@ export default function VendorHeader() {
           ) : (
             <span aria-hidden="true" className="rounded-lg p-1.5 text-gray-300"><Bell size={18} /></span>
           )}
-          <span className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 sm:inline">Vendor workspace</span>
+          <span className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 sm:inline">{t('shell.workspace')}</span>
         </div>
       </div>
     </header>

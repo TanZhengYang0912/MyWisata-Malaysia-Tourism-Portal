@@ -26,22 +26,22 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("lg:mt-10");
     expect(homeSource).toContain("lg:pt-8");
     expect(homeSource).toContain("lg:h-44");
-    expect(homeSource).toContain('aria-label="Destination carousel"');
+    expect(homeSource).toContain('aria-label={t("ui.home.destinationCarousel")');
   });
 
   it("exposes keyboard-accessible controls beside View all for the destination rail", () => {
     expect(homeSource).toContain("ChevronLeft");
     expect(homeSource).toContain("ChevronRight");
-    expect(homeSource).toContain('aria-label="Previous destinations"');
-    expect(homeSource).toContain('aria-label="Next destinations"');
+    expect(homeSource).toContain('aria-label={t("ui.map.previous")');
+    expect(homeSource).toContain('aria-label={t("ui.map.next")');
     expect(homeSource).toContain("destinationRailRef");
     expect(homeSource).toContain('behavior: "smooth"');
   });
 
   it("keeps the For You rail visible with a cold-start fallback and a full-page link", () => {
     expect(homeSource).toContain("recommended.length > 0 ? recommended.slice(0, 4) : popular.slice(0, 4)");
-    expect(homeSource).toContain("Popular near you");
+    expect(homeSource).toContain('t("ui.home.popularExperiences")');
     expect(homeSource).toContain('href="/customer/for-you"');
-    expect(homeSource).toContain("See all");
+    expect(homeSource).toContain('t("ui.actions.viewAll")');
   });
 });

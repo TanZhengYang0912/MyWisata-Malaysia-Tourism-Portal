@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { isRealStripeAccountId } from '@/lib/stripe/account-id';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
@@ -21,7 +22,8 @@ export async function GET() {
   }
   if (!row) return apiFail('USER_NOT_FOUND', 'User profile not found', 404);
 
-  const accountId = row.stripe_connect_account_id as string | null;
+  const storedAccountId = row.stripe_connect_account_id as string | null;
+  const accountId = isRealStripeAccountId(storedAccountId) ? storedAccountId : null;
   const tier = row.tier as string;
   if (!accountId) {
     return apiOk({
@@ -29,7 +31,7 @@ export async function GET() {
       tier,
       payoutsEnabled: false,
       detailsSubmitted: false,
-      requiresDashboardAction: false,
+      payoutStatus: 'unlinked' as const,
       sync: 'database' as const,
     });
   }
@@ -61,7 +63,7 @@ export async function GET() {
     tier,
     payoutsEnabled: status.payoutsEnabled,
     detailsSubmitted: status.detailsSubmitted,
-    requiresDashboardAction: status.requiresDashboardAction,
+    payoutStatus: status.payoutStatus,
     sync: 'stripe' as const,
   });
 }

@@ -51,6 +51,8 @@ function withdrawalQuery() {
       payout_failure_category: null,
       payout_failure_at: null,
       payout_failure_retryable: null,
+      payout_execution_claim_token: '11111111-1111-4111-8111-111111111111',
+      payout_execution_claimed_at: '2026-07-22T00:01:00.000Z',
       customer_reason: null,
       created_at: '2026-07-22T00:00:00.000Z',
       updated_at: '2026-07-22T00:00:00.000Z',
@@ -102,5 +104,6 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
       walletTransactions: [],
       fraudFlags: [],
     });
+    expect(body.data.payoutExecution).toEqual({ locked: true, claimedAt: '2026-07-22T00:01:00.000Z' });
   });
 });

@@ -21,22 +21,23 @@ describe("calendar-first My Activity flow", () => {
     expect(calendarSource).toContain("const [filtersOpen, setFiltersOpen] = useState(false)");
     expect(calendarSource).toContain('aria-expanded={filtersOpen}');
     expect(calendarSource).toContain('id="calendar-filters"');
-    expect(calendarSource).toContain('aria-label="Booking calendar"');
-    expect(calendarSource).toContain("Orders & receipts");
+    expect(calendarSource).toContain('aria-label={tCustomer("ui.booking.calendar"');
+    expect(calendarSource).toContain('tCustomer("ui.labels.orders")');
 
-    expect(calendarSource).not.toContain("Find an experience");
-    expect(calendarSource).toContain('aria-label="Calendar actions"');
+    expect(calendarSource).not.toContain("ui.map.searchExperience");
+    expect(calendarSource).toContain('aria-label={tCustomer("ui.calendar.actions")}');
     expect(calendarSource).toContain("min-h-[104px]");
-    expect(calendarSource).toContain('placeholder="Search bookings"');
+    expect(calendarSource).toContain('placeholder={tCustomer("ui.calendar.searchBookings")}');
     expect(calendarSource).not.toContain("stats.map");
   });
 
   it("lets customers choose a calendar month and year directly", () => {
     expect(calendarSource).toContain('aria-haspopup="dialog"');
     expect(calendarSource).toContain('aria-controls="calendar-month-picker"');
-    expect(calendarSource).toContain("Choose month");
-    expect(calendarSource).toContain("Choose year");
-    expect(calendarSource).toContain("January");
-    expect(calendarSource).toContain("December");
+    expect(calendarSource).toContain('tCustomer("ui.calendar.chooseYear")');
+    expect(calendarSource).toContain('Array.from({ length: 12 }');
+    expect(calendarSource).toContain('month: "long"');
+    expect(calendarSource).toContain("selectCalendarMonth");
+    expect(calendarSource).toContain("monthOptions.map");
   });
 });

@@ -6,7 +6,7 @@ describe('profile completion display contract', () => {
     const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
 
     expect(page).toContain('computeProfileCompletion');
-    expect(page).toContain('Profile completion');
+    expect(page).toContain('t("ui.profileWizard.completion")');
     expect(page).toContain('aria-valuenow');
     expect(page).toContain('wizardProgress.percentage');
     expect(page).toContain('profileCompletion.percentage');

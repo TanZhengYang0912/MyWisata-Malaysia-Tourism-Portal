@@ -13,6 +13,7 @@ import { Bot, Send, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -34,6 +35,7 @@ function readLocalStorage(key: string): string {
 }
 
 function AskPanel() {
+  const { t } = useTranslation("admin");
   const [sessionKey, setSessionKey] = useState<string | null>(() =>
     typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_STORAGE_KEY),
   );
@@ -90,7 +92,7 @@ function AskPanel() {
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
-        setMessages((m) => [...m, { role: "bot", text: body.error?.message ?? "Assistant unavailable right now." }]);
+        setMessages((m) => [...m, { role: "bot", text: body.error?.message ?? t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }) }]);
         return;
       }
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
@@ -99,7 +101,7 @@ function AskPanel() {
       }
       setMessages((m) => [...m, { role: "bot", text: body.data!.answer }]);
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: "Assistant unavailable right now." }]);
+      setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }) }]);
     } finally {
       setSending(false);
       requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }));
@@ -111,14 +113,13 @@ function AskPanel() {
       <CardContent className="p-4 flex flex-col" style={{ height: 420 }}>
         <div className="flex items-center gap-2 mb-3">
           <Bot size={16} className="text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Ask about platform metrics</h2>
+          <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title", { defaultValue: "Ask about platform metrics" })}</h2>
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {loadingHistory && <p className="text-xs text-muted-foreground">Restoring conversation…</p>}
+          {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring", { defaultValue: "Restoring conversation…" })}</p>}
           {!loadingHistory && messages.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              e.g. &ldquo;How many recommendations are pending this week?&rdquo; or &ldquo;Show me withdrawals over 500&rdquo;.
-              Answers only come from registered aggregate queries — never raw customer data.
+              {t("aiAssistant.ask.empty", { defaultValue: "e.g. “How many recommendations are pending this week?” or “Show me withdrawals over 500”. Answers only come from registered aggregate queries — never raw customer data." })}
             </p>
           )}
           {messages.map((m, i) => (
@@ -135,7 +136,7 @@ function AskPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Ask a question…"
+            placeholder={t("aiAssistant.ask.placeholder", { defaultValue: "Ask a question…" })}
             className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
             disabled={sending}
           />
@@ -153,6 +154,7 @@ const DRAFT_CONTEXT_KEY = "mw_admin_ai_draft_context";
 const DRAFT_OUTPUT_KEY = "mw_admin_ai_draft_output";
 
 function DraftPanel() {
+  const { t } = useTranslation("admin");
   // Fix 4: all three fields (the type picker, the unsent context, and the
   // last generated draft) survive navigation — same lazy-read /
   // write-on-change pattern as AskPanel's question input.
@@ -189,12 +191,12 @@ function DraftPanel() {
       });
       const body = (await res.json()) as { data: { draft: string } | null; error: { message: string } | null };
       if (!res.ok || !body.data) {
-        setError(body.error?.message ?? "Assistant unavailable right now.");
+        setError(body.error?.message ?? t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }));
         return;
       }
       setDraft(body.data.draft);
     } catch {
-      setError("Assistant unavailable right now.");
+      setError(t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }));
     } finally {
       setGenerating(false);
     }
@@ -205,29 +207,29 @@ function DraftPanel() {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Draft a staff message</h2>
+          <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.draft.title", { defaultValue: "Draft a staff message" })}</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you.
+          {t("aiAssistant.draft.description", { defaultValue: "You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you." })}
         </p>
         <select
           value={type}
           onChange={(e) => setType(e.target.value as typeof type)}
           className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground"
         >
-          {DRAFT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+          {DRAFT_TYPES.map((draftType) => (
+            <option key={draftType.value} value={draftType.value}>{t(`aiAssistant.draft.types.${draftType.value}`, { defaultValue: draftType.label })}</option>
           ))}
         </select>
         <textarea
           value={context}
           onChange={(e) => setContext(e.target.value)}
-          placeholder="e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality."
+          placeholder={t("aiAssistant.draft.contextPlaceholder", { defaultValue: "e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality." })}
           rows={3}
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
         />
         <Button size="sm" onClick={generate} disabled={generating || !context.trim()}>
-          {generating ? "Drafting…" : "Generate draft"}
+          {generating ? t("aiAssistant.draft.drafting", { defaultValue: "Drafting…" }) : t("aiAssistant.draft.generate", { defaultValue: "Generate draft" })}
         </Button>
         {error && <p className="text-xs text-destructive">{error}</p>}
         {draft && (
@@ -245,12 +247,13 @@ function DraftPanel() {
 
 export default function AdminAiAssistantPage() {
   const { currentUser } = useAuth();
+  const { t } = useTranslation("admin");
 
   if (currentUser && currentUser.role !== "super_admin") {
     return (
       <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Shield size={16} /> The AI assistant is limited to super admins.
+          <Shield size={16} /> {t("aiAssistant.restricted", { defaultValue: "The AI assistant is limited to super admins." })}
         </div>
       </div>
     );
@@ -259,10 +262,9 @@ export default function AdminAiAssistantPage() {
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">AI Assistant</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("aiAssistant.title", { defaultValue: "AI Assistant" })}</h1>
         <p className="text-sm text-muted-foreground">
-          Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of
-          registered aggregate queries, and drafts use only what you type in.
+          {t("aiAssistant.description", { defaultValue: "Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries, and drafts use only what you type in." })}
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

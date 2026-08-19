@@ -68,7 +68,9 @@ describe('POST /api/stripe/connect-onboard', () => {
       detailsSubmitted: false,
       payoutsEnabled: false,
       chargesEnabled: false,
-      requiresDashboardAction: false,
+      payoutStatus: 'currently_due',
+      requirementCounts: { currentlyDue: 1, pastDue: 0, pendingVerification: 0 },
+      disabledReason: null,
     });
 
     mocks.getUser.mockResolvedValue({ data: { user: authUser } });
@@ -86,7 +88,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.accountLinksCreate.mockResolvedValue({ url: 'https://connect.stripe.test/onboarding' });
   });
 
-  it('creates a Stripe-liable Standard-equivalent account and never enables payouts locally', async () => {
+  it('creates a transfer-only payout account and never enables payouts locally', async () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
@@ -94,7 +96,6 @@ describe('POST /api/stripe/connect-onboard', () => {
     expect(mocks.accountsCreate).toHaveBeenCalledWith(expect.objectContaining({
       country: 'MY',
       capabilities: {
-        card_payments: { requested: true },
         transfers: { requested: true },
       },
       controller: {
@@ -111,6 +112,15 @@ describe('POST /api/stripe/connect-onboard', () => {
     expect(mocks.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ stripe_payouts_enabled: true }),
     );
+    expect(mocks.accountsCreate).not.toHaveBeenCalledWith(expect.objectContaining({
+      capabilities: expect.objectContaining({ card_payments: expect.anything() }),
+    }));
+    expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
+      collection_options: {
+        fields: 'currently_due',
+        future_requirements: 'omit',
+      },
+    }));
   });
 
   it('replaces a legacy demo account with a real Stripe account', async () => {
@@ -181,7 +191,9 @@ describe('POST /api/stripe/connect-onboard', () => {
       detailsSubmitted: true,
       payoutsEnabled: true,
       chargesEnabled: true,
-      requiresDashboardAction: false,
+      payoutStatus: 'payouts_enabled',
+      requirementCounts: { currentlyDue: 0, pastDue: 0, pendingVerification: 0 },
+      disabledReason: null,
     });
 
     const response = await POST(request());
@@ -195,7 +207,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     });
   });
 
-  it('returns Dashboard action guidance for incomplete Full Dashboard accounts', async () => {
+  it('creates a hosted remediation link for currently-due requirements', async () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
@@ -213,20 +225,54 @@ describe('POST /api/stripe/connect-onboard', () => {
       detailsSubmitted: false,
       payoutsEnabled: false,
       chargesEnabled: false,
-      requiresDashboardAction: true,
+      payoutStatus: 'currently_due',
+      requirementCounts: { currentlyDue: 1, pastDue: 0, pendingVerification: 0 },
+      disabledReason: null,
     });
 
     const response = await POST(request());
 
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({
-      error: { code: 'STRIPE_DASHBOARD_ACTION_REQUIRED' },
-    });
-    expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: 'https://connect.stripe.test/onboarding' });
+    expect(mocks.accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({
+      account: 'acct_incomplete',
+      type: 'account_onboarding',
+      collection_options: { fields: 'currently_due', future_requirements: 'omit' },
+    }));
     expect(mocks.rpc).toHaveBeenCalledWith('update_connect_status', {
       p_connect_account_id: 'acct_incomplete',
       p_payouts_enabled: false,
     });
+  });
+
+  it('returns pending verification without creating another onboarding link', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        tier: 'kyc_verified',
+        stripe_connect_account_id: 'acct_pending',
+        full_name: 'Test User',
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+    mocks.retrieveConnectAccountStatus.mockResolvedValue({
+      accountId: 'acct_pending',
+      accountType: 'standard',
+      dashboardType: 'full',
+      detailsSubmitted: true,
+      payoutsEnabled: false,
+      chargesEnabled: false,
+      payoutStatus: 'pending_verification',
+      requirementCounts: { currentlyDue: 0, pastDue: 0, pendingVerification: 1 },
+      disabledReason: 'requirements.pending_verification',
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'pending_verification', accountId: 'acct_pending' });
+    expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
   });
 
   it('does not start onboarding before KYC verification', async () => {

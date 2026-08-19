@@ -7,6 +7,7 @@
 // onboarding criteria are met).
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,8 @@ type SurveyResponse = {
 
 const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
-export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }: { onSaved?: () => void; submitLabel?: string }) {
+export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => void; submitLabel?: string }) {
+  const { t } = useTranslation("customer");
   const [interests, setInterests] = useState<string[]>([]);
   const [travelStyle, setTravelStyle] = useState("mid_range");
   const [budgetRange, setBudgetRange] = useState("mid_range");
@@ -72,7 +74,7 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
     set(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
 
   async function save() {
-    if (interests.length === 0) { setError("Select at least one interest"); return; }
+    if (interests.length === 0) { setError(t("ui.preferencesEditor.selectInterest")); return; }
     setBusy(true); setError(null); setSaved(false);
     try {
       const res = await fetch("/api/profile/survey", {
@@ -86,18 +88,18 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
       });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
-        throw new Error((b as { error?: { message?: string } })?.error?.message ?? "Failed to save preferences");
+        throw new Error((b as { error?: { message?: string } })?.error?.message ?? t("ui.preferencesEditor.saveError"));
       }
       setSaved(true);
       onSaved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save preferences");
+      setError(err instanceof Error ? err.message : t("ui.preferencesEditor.saveError"));
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading preferences…</p>;
+  if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">{t("ui.preferencesEditor.loading")}</p>;
 
   const topLearned = Object.entries(learned).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
@@ -105,12 +107,12 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
     <div className="space-y-5">
       {topLearned.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles size={13} /> Based on your activity</p>
-          <p className="mt-1 text-xs text-muted-foreground">You seem drawn to {topLearned.map(([slug]) => interestLabel(slug)).join(", ")}. We factor this into your feed automatically.</p>
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles size={13} /> {t("ui.preferencesEditor.basedOnActivity")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("ui.preferencesEditor.learnedHint", { interests: topLearned.map(([slug]) => interestLabel(slug)).join(", ") })}</p>
         </div>
       )}
 
-      <Field label="Interests (select all that apply)">
+      <Field label={t("ui.preferencesEditor.interests")}>
         <div className="flex flex-wrap gap-2">
           {INTEREST_OPTIONS.map(({ slug, label }) => {
             const sel = interests.includes(slug);
@@ -119,31 +121,31 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
         </div>
       </Field>
 
-      <Field label="Travel Style">
+      <Field label={t("ui.preferencesEditor.travelStyle")}>
         <div className="grid grid-cols-2 gap-2">
           {TRAVEL_STYLES.map(({ value, label }) => <Option key={value} selected={travelStyle === value} onClick={() => setTravelStyle(value)}>{label}</Option>)}
         </div>
       </Field>
 
-      <Field label="Who's travelling (select all that apply)">
+      <Field label={t("ui.preferencesEditor.travelling")}>
         <div className="flex flex-wrap gap-2">
           {GROUP_COMPOSITIONS.map(({ value, label }) => <Chip key={value} selected={group.includes(value)} onClick={() => toggle(group, setGroup, value)}>{label}</Chip>)}
         </div>
       </Field>
 
-      <Field label="Budget Range">
+      <Field label={t("ui.preferencesEditor.budgetRange")}>
         <div className="space-y-1.5">
           {BUDGET_RANGES.map(({ value, label }) => <Row key={value} selected={budgetRange === value} onClick={() => setBudgetRange(value)}>{label}</Row>)}
         </div>
       </Field>
 
-      <Field label="Preferred Distance">
+      <Field label={t("ui.preferencesEditor.preferredDistance")}>
         <div className="grid grid-cols-2 gap-2">
           {DISTANCE_OPTIONS.map(({ value, label }) => <Option key={value} selected={radiusKm === value} onClick={() => setRadiusKm(value)}>{label}</Option>)}
         </div>
       </Field>
 
-      <Field label="Mobility & Accessibility">
+      <Field label={t("ui.preferencesEditor.mobilityAccessibility")}>
         <div className="space-y-1.5">
           {MOBILITY_NEEDS.map(({ value, label }) => <Row key={value} selected={mobilityNeeds === value} onClick={() => setMobilityNeeds(value)}>{label}</Row>)}
         </div>
@@ -158,26 +160,26 @@ export function PreferencesEditor({ onSaved, submitLabel = "Save preferences" }:
             fontWeight: petFriendly ? 600 : 400,
           }}
         >
-          {petFriendly && <CheckCircle2 size={13} />} Pet-friendly places
+          {petFriendly && <CheckCircle2 size={13} />} {t("ui.preferencesEditor.petFriendly")}
         </button>
       </Field>
 
-      <Field label="Anything else? (habits, must-haves, dislikes)">
+      <Field label={t("ui.preferencesEditor.anythingElse")}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={500}
           rows={3}
-          placeholder="e.g. I love street food, avoid crowded malls, always travel with my dog…"
+          placeholder={t("ui.preferencesEditor.notesPlaceholder")}
           className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
         />
       </Field>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {saved && <p className="text-xs text-primary">Preferences saved.</p>}
+      {saved && <p className="text-xs text-primary">{t("ui.preferencesEditor.saved")}</p>}
       <Button onClick={save} disabled={busy || interests.length === 0} className="w-full">
         {busy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
-        {busy ? "Saving…" : submitLabel}
+        {busy ? t("ui.preferencesEditor.saving") : (submitLabel ?? t("ui.preferencesEditor.save"))}
       </Button>
     </div>
   );

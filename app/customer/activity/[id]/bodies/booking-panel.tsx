@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   formatBookingCalendarMonth,
@@ -23,6 +24,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
  * panel reads it — the cart only needs the chosen slot id.
  */
 export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: DetailBodyProps & { label: string }) {
+  const { t } = useTranslation("customer");
   const now = useMemo(() => new Date(), []);
   const slotDateGroups = useMemo(() => groupBookingSlotsByDate(slots), [slots]);
   const bookableDateGroups = useMemo(() => groupBookableBookingSlotsByDate(slots, now), [slots, now]);
@@ -58,17 +60,17 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
               aria-controls="booking-availability-calendar"
               className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-secondary"
             >
-              <CalendarDays size={13} /> Calendar
+              <CalendarDays size={13} /> {t("ui.booking.calendar")}
             </button>
 
             {calendarOpen && (
-              <div id="booking-availability-calendar" role="dialog" aria-label="Choose an available date" className="absolute right-0 z-20 mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-white p-4 shadow-xl">
+              <div id="booking-availability-calendar" role="dialog" aria-label={t("ui.booking.chooseDateTime")} className="absolute right-0 z-20 mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-white p-4 shadow-xl">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-foreground">{formatBookingCalendarMonth(displayedMonthKey)}</p>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      aria-label="Previous month"
+                      aria-label={t("actions.previous", { ns: "common" })}
                       onClick={() => setDisplayedMonthKey((month) => getAdjacentBookingMonth(month, -1))}
                       className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
                     >
@@ -76,7 +78,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                     </button>
                     <button
                       type="button"
-                      aria-label="Next month"
+                      aria-label={t("actions.next", { ns: "common" })}
                       onClick={() => setDisplayedMonthKey((month) => getAdjacentBookingMonth(month, 1))}
                       className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
                     >
@@ -93,7 +95,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                   {calendarDays.map((day) => {
                     const available = day.status === "available";
                     const selected = day.key === activeDateKey;
-                    const stateLabel = day.status === "available" ? `${day.availableSlotCount} available ${day.availableSlotCount === 1 ? "time" : "times"}` : day.status === "full" ? "Full" : "Unavailable";
+                     const stateLabel = day.status === "available" ? `${day.availableSlotCount} ${t("ui.booking.available", { defaultValue: "Available" })}` : day.status === "full" ? t("ui.booking.full", { defaultValue: "Full" }) : t("ui.booking.unavailable", { defaultValue: "Unavailable" });
                     return (
                       <button
                         key={day.key}
@@ -114,9 +116,9 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-[10px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Available</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" /> Full</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/20" /> Unavailable</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("ui.booking.available", { defaultValue: "Available" })}</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" /> {t("ui.booking.full", { defaultValue: "Full" })}</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/20" /> {t("ui.booking.unavailable", { defaultValue: "Unavailable" })}</span>
                 </div>
               </div>
             )}
@@ -125,9 +127,9 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
       </div>
 
       {slots.length === 0 ? (
-        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">No slots available yet.</p>
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noSlots")}</p>
       ) : bookableDateGroups.length === 0 ? (
-        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">No available dates right now.</p>
+        <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">{t("ui.states.noDates")}</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -150,7 +152,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
             ))}
           </div>
 
-          <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available times</p>
+          <p className="mb-2 mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.booking.availableTimes")}</p>
           <div className="grid grid-cols-2 gap-2">
             {(activeDateGroup?.slots ?? []).filter((slot) => isBookingSlotAvailable(slot, now)).map((slot) => {
               const selected = slotId === slot.id;
@@ -173,10 +175,10 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">{availableSlotCount} available {availableSlotCount === 1 ? "time" : "times"} on this date.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{availableSlotCount} {t("ui.booking.availableTimes")}.</p>
         </>
       )}
-      {!slotId && availableSlotCount > 0 && <p className="mt-2 text-xs text-destructive">Select a time slot to continue.</p>}
+      {!slotId && availableSlotCount > 0 && <p className="mt-2 text-xs text-destructive">{t("ui.booking.selectSlot")}</p>}
     </div>
   );
 }

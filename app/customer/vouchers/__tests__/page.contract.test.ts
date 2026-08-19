@@ -9,17 +9,18 @@ function read(file: string) {
 describe("customer voucher hub UI contract", () => {
   it("exposes the browse and claimed-voucher tabs", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("Browse Deals");
-    expect(source).toContain("My Vouchers");
-    expect(source).toContain("Claim");
-    expect(source).toContain("Use now");
+    expect(source).toContain('tCustomer("ui.voucherHub.browseDeals")');
+    expect(source).toContain('tCustomer("ui.voucherHub.myVouchers")');
+    expect(source).toContain("tCustomer(`ui.voucherHub.actions.${actionKey}`)");
+    expect(source).toContain('tCustomer("ui.voucherHub.useNow")');
   });
 
   it("explains online checkout redemption and uses the customer voucher API", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
     expect(source).toContain("redemptionMode");
     expect(source).toContain("CircleHelp");
-    expect(source).toContain("Use your voucher in three steps");
+    expect(source).toContain('tCustomer("ui.voucherHub.helpTitle")');
+    expect(source).toContain('tCustomer("ui.voucherHub.helpStep1")');
     expect(source).toContain("group-hover:block");
     expect(source).toContain("/api/customer/vouchers");
     expect(source).toContain("/api/customer/vouchers/claim");
@@ -28,7 +29,7 @@ describe("customer voucher hub UI contract", () => {
 
   it("presents one outlet voucher with real product coverage instead of one card per product", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("Applies to all eligible products at this outlet");
+    expect(source).toContain('tCustomer("ui.voucherHub.allEligibleProducts")');
     expect(source).toContain("eligibleProductCount");
     expect(source).toContain("eligibleProductNames");
   });
@@ -53,8 +54,8 @@ describe("customer voucher hub UI contract", () => {
 
   it("explains why the browse list is empty without inventing partner data", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("approved partner vouchers");
-    expect(source).toContain("live vendor offers");
+    expect(source).toContain('tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle"');
+    expect(source).toContain('tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription"');
   });
 
   it("adds a customer voucher route to the account navigation", () => {
@@ -73,7 +74,7 @@ describe("customer voucher hub UI contract", () => {
   it("keeps the exclusive deals intro and voucher view switch in one desktop row", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
     expect(source).toContain("flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between");
-    expect(source).toContain('role="tablist" aria-label="Voucher views"');
+    expect(source).toContain('role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}');
   });
 
   it("places the desktop My Vouchers action after the cart in the customer header", () => {

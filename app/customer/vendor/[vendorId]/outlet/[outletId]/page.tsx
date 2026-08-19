@@ -8,6 +8,7 @@ import { buildPublicOutletProfile, getOutletNavigationModel, selectFullOutletMen
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { productImageUrl } from "@/lib/storage/product-image";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +36,16 @@ async function getPublicOutletPage(outletId: string, vendorId: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { outletId, vendorId } = await params;
   const { outlet, page } = await getPublicOutletPage(outletId, vendorId);
-  if (!outlet) return { title: "Outlet not found" };
+  const { t } = await getServerTranslation("customer");
+  if (!outlet) return { title: t("ui.outletPage.notFound") };
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
   return {
     title: document.seoTitle || `${outlet.name}${vendor ? ` — ${vendor.name}` : ""} | MyWisata`,
-    description: document.seoDescription || `Explore products and experiences at ${outlet.name}.`,
+    description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
     openGraph: {
       title: document.seoTitle || outlet.name,
-      description: document.seoDescription || `Explore products and experiences at ${outlet.name}.`,
+      description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
       images: document.hero.imageUrl ? [{ url: document.hero.imageUrl }] : undefined,
     },
   };
@@ -53,6 +55,7 @@ export default async function VendorOutletPage({ params }: Props) {
   const { outletId, vendorId } = await params;
   const { outlet, page, outlets } = await getPublicOutletPage(outletId, vendorId);
   if (!outlet) notFound();
+  const { t } = await getServerTranslation("customer");
 
   const outletNavigation = getOutletNavigationModel(outlets, outlet.id);
 
@@ -86,7 +89,7 @@ export default async function VendorOutletPage({ params }: Props) {
       ...document.hero,
       title:
         document.hero.title === "Discover this outlet" || !document.hero.title.trim()
-          ? "Your local day starts here"
+          ? t("ui.outletPage.heroTitle")
           : document.hero.title,
       body:
         document.hero.body === "Discover local food, culture and experiences from this outlet."
@@ -163,11 +166,11 @@ export default async function VendorOutletPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 pt-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Verified MyWisata outlet</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("ui.outletPage.verified")}</p>
           <p className="mt-1 text-sm font-semibold text-muted-foreground">{outlet.name}</p>
           {vendor && (
             <p className="mt-0.5 text-xs text-muted-foreground/60">
-              by{" "}
+              {t("ui.outletPage.by")} {" "}
               <a href={`/customer/vendor/${vendorId}`} className="font-semibold text-primary hover:underline">
                 {vendor.name}
               </a>
@@ -182,10 +185,10 @@ export default async function VendorOutletPage({ params }: Props) {
       {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Outlet navigation</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">Location {outletNavigation.currentPosition} of {outletNavigation.total} · {outlet.name}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("ui.outlet.exploreOutlet")}</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{t("ui.labels.location")} {outletNavigation.currentPosition} / {outletNavigation.total} · {outlet.name}</p>
           </div>
-          <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">View all {outletNavigation.total} outlets <ArrowRight size={15} /></a>
+          <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("ui.actions.viewAll")} {t("ui.vendor.activeOutletCount", { count: outletNavigation.total })} <ArrowRight size={15} /></a>
         </div>
       </div>}
       <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />

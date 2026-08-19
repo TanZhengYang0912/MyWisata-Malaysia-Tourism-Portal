@@ -13,7 +13,7 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 describe("customer discovery filter contract", () => {
   it("shares the searchable category-card controls", () => {
     expect(filterSource).toContain("placeholder");
-    expect(filterSource).toContain("Filter by Category");
+    expect(filterSource).toContain('t("ui.explore.filterByCategory")');
     expect(filterSource).toContain("CATEGORIES.map");
     expect(filterSource).toContain("aria-pressed");
     expect(filterSource).toContain("grid-cols-2");
@@ -27,13 +27,13 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("getDiscoverySearchFilter(category)");
     expect(exploreSource).toContain("onClear");
     expect(exploreSource).toContain("setQuery(\"\")");
-    expect(exploreSource).toContain("Search experiences...");
+    expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
   });
 
   it("keeps Partners state filtering with direct search controls", () => {
     expect(searchSource).toContain("<select");
     expect(searchSource).toContain("STATES_MY.filter(s => s !== \"All Malaysia\").map");
-    expect(searchSource).toContain("Search vendors...");
+    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
     expect(searchSource).toContain("setState(e.target.value || null)");
   });
 

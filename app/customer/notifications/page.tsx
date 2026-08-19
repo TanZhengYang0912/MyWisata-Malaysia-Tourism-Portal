@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 
@@ -13,14 +14,17 @@ const filters = [
 ];
 
 export default function NotificationsPage() {
+  const { t: tCustomer } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
+  const translatedFilters = filters.map((filter) => ({ ...filter, label: tCommon(`notifications.categories.${filter.value}`, { defaultValue: filter.label }) }));
   return (
     <CustomerPageShell>
       <CustomerPageHeader
-        eyebrow="Account"
-        title="Notifications"
-        description="Updates about your bookings, wallet and account."
+        eyebrow={tCustomer("accountGroups.account", { defaultValue: "Account" })}
+        title={tCommon("notifications.title", { defaultValue: "Notifications" })}
+        description={tCustomer("ui.notifications.description", { defaultValue: "Updates about your bookings, wallet and account." })}
       />
-      <NotificationCenter scope="customer" categories={filters} pageSize={15} />
+      <NotificationCenter scope="customer" categories={translatedFilters} pageSize={15} />
     </CustomerPageShell>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
 import type { MapPin } from "./maplibre-map";
 
@@ -33,5 +34,6 @@ export function MapView(props: {
   routeDashed?: boolean;
   focusRequest?: { pin: MapPin; token: number } | null;
 }) {
-  return <MaplibreMap {...props} />;
+  const { t } = useTranslation("customer");
+  return <div aria-label={t("ui.map.mapRegion")}><MaplibreMap {...props} /></div>;
 }

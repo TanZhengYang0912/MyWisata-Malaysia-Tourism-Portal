@@ -19,6 +19,7 @@ import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/compo
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
+import { useTranslation } from "react-i18next";
 
 interface AdminTicket {
   id: string;
@@ -50,12 +51,12 @@ interface QueueStats {
 type SortKey = "default" | "created" | "lastActivity" | "status" | "category" | "unread";
 
 const SORT_LABEL: Record<SortKey, string> = {
-  default: "Oldest unanswered first",
-  created: "Date created",
-  lastActivity: "Last activity",
-  status: "Status",
-  category: "Category",
-  unread: "Unread first",
+  default: "ui.support.sort.oldestUnanswered",
+  created: "ui.support.sort.dateCreated",
+  lastActivity: "ui.support.sort.lastActivity",
+  status: "ui.support.sort.status",
+  category: "ui.support.sort.category",
+  unread: "ui.support.sort.unreadFirst",
 };
 
 interface TicketDetail {
@@ -74,16 +75,17 @@ const STATUSES = ["open", "in_progress", "resolved"] as const;
 const TICKETS_PER_PAGE = 10;
 
 const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  resolved: "Resolved",
-  closed: "Closed",
+  open: "ui.support.status.open",
+  in_progress: "ui.support.status.inProgress",
+  resolved: "ui.support.status.resolved",
+  closed: "ui.support.status.closed",
 };
 
 function AdminSupportContent() {
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
+  const { t } = useTranslation("admin");
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -198,12 +200,12 @@ function AdminSupportContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not update ticket status."); return; }
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.updateStatus")); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, status: status as AdminTicket["status"] } : t)) ?? null);
       if (detail?.id === id) setDetail((d) => (d ? { ...d, status: status as TicketDetail["status"] } : d));
-      showFeedback("success", `Ticket marked ${status.replace("_", " ")}.`);
+      showFeedback("success", t("ui.support.ticketMarked", { status: t(STATUS_LABEL[status] ?? "ui.support.status.unknown") }));
     } catch {
-      showFeedback("error", "Could not update ticket status. Please try again.");
+      showFeedback("error", t("ui.support.errors.updateStatusTryAgain"));
     } finally {
       setUpdatingId(null);
     }
@@ -220,11 +222,11 @@ function AdminSupportContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category }),
       });
-      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not update ticket category."); return; }
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.updateCategory")); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, category, classificationMethod: "manual" } : t)) ?? null);
-      showFeedback("success", "Ticket category updated.");
+      showFeedback("success", t("ui.support.categoryUpdated"));
     } catch {
-      showFeedback("error", "Could not update ticket category. Please try again.");
+      showFeedback("error", t("ui.support.errors.updateCategoryTryAgain"));
     } finally {
       setUpdatingId(null);
     }
@@ -244,13 +246,13 @@ function AdminSupportContent() {
       const failed = responses.find((response) => !response.ok);
       if (failed) {
         const body = await failed.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? "One or more tickets could not be updated.");
+        throw new Error(body?.error?.message ?? t("ui.support.errors.batchUpdate"));
       }
       setTickets((previous) => previous?.map((ticket) => selected.some((item) => item.id === ticket.id) ? { ...ticket, status: "resolved" } : ticket) ?? null);
       setSelectedIds(new Set());
-      showFeedback("success", `${selected.length} tickets marked resolved.`);
+      showFeedback("success", t("ui.support.batchResolved", { count: selected.length }));
     } catch (error) {
-      showFeedback("error", error instanceof Error ? error.message : "Batch ticket update failed.");
+      showFeedback("error", error instanceof Error ? error.message : t("ui.support.errors.batchUpdateFailed"));
     } finally {
       setBatchBusy(false);
     }
@@ -266,13 +268,13 @@ function AdminSupportContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not send reply."); return; }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
       setReply("");
-      showFeedback("success", "Support reply sent.");
+      showFeedback("success", t("ui.support.replySent"));
       await loadDetail(openTicketId);
       await loadTickets();
     } catch {
-      showFeedback("error", "Could not send reply. Please try again.");
+      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
     } finally {
       setSending(false);
     }
@@ -280,17 +282,17 @@ function AdminSupportContent() {
 
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4">Support Tickets</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4">{t("ui.support.title")}</h1>
 
       <ModerationFlagsPanel />
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {[
-            { label: "Open", value: stats.open, alert: false },
-            { label: "In Progress", value: stats.inProgress, alert: false },
-            { label: "Resolved", value: stats.resolved, alert: false },
-            { label: "Unanswered", value: stats.unanswered, alert: stats.unanswered > 0 },
+            { label: t("ui.support.status.open"), value: stats.open, alert: false },
+            { label: t("ui.support.status.inProgress"), value: stats.inProgress, alert: false },
+            { label: t("ui.support.status.resolved"), value: stats.resolved, alert: false },
+            { label: t("ui.support.unanswered"), value: stats.unanswered, alert: stats.unanswered > 0 },
           ].map((card) => (
             <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
               <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
@@ -301,9 +303,9 @@ function AdminSupportContent() {
       )}
       {stats?.avgFirstResponseHours !== null && stats?.avgFirstResponseHours !== undefined && (
         <p className="text-xs text-muted-foreground mb-4">
-          Average first response: {stats.avgFirstResponseHours < 1
-            ? `${Math.round(stats.avgFirstResponseHours * 60)} min`
-            : `${stats.avgFirstResponseHours.toFixed(1)} hr`}
+          {t("ui.support.averageFirstResponse")}: {stats.avgFirstResponseHours < 1
+            ? t("ui.support.minutes", { count: Math.round(stats.avgFirstResponseHours * 60) })
+            : t("ui.support.hours", { count: stats.avgFirstResponseHours.toFixed(1) })}
         </p>
       )}
 
@@ -311,11 +313,11 @@ function AdminSupportContent() {
         <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-foreground">
             <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); }} />
-            Assigned to me
+            {t("ui.support.assignedToMe")}
           </label>
           <label className="flex items-center gap-1.5 text-foreground">
             <input type="checkbox" checked={unreadOnlyFilter} onChange={(e) => { setUnreadOnlyFilter(e.target.checked); setTicketPage(1); }} />
-            Unread only
+            {t("ui.support.unreadOnly")}
           </label>
         </div>
         <div className="flex items-center gap-2">
@@ -325,15 +327,15 @@ function AdminSupportContent() {
             className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
           >
             {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
-              <option key={k} value={k}>{SORT_LABEL[k]}</option>
+              <option key={k} value={k}>{t(SORT_LABEL[k])}</option>
             ))}
           </select>
           <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setTicketPage(1); }}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t("ui.support.category")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
+              <SelectItem value="all">{t("ui.support.allCategories")}</SelectItem>
               {CATEGORIES.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
@@ -341,12 +343,12 @@ function AdminSupportContent() {
           </Select>
           <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setTicketPage(1); }}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("ui.support.statusLabel")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">{t("ui.support.allStatuses")}</SelectItem>
               {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>
+                <SelectItem key={s} value={s}>{t(STATUS_LABEL[s])}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -354,80 +356,77 @@ function AdminSupportContent() {
       </div>
 
       {tickets === null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
       ) : tickets.length === 0 ? (
-        <EmptyState title="No support tickets" />
+        <EmptyState title={t("ui.support.empty")} />
       ) : (
         <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label="Select all visible support tickets" checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">Select all on this page</span></div>
-          <AdminBatchActionBar selectedCount={visibleTickets.filter((ticket) => selectedIds.has(ticket.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved")} actions={[{ value: "resolved", label: "Mark resolved" }]} busy={batchBusy} />
+          <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("ui.support.selectAllVisible")} checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">{t("ui.batch.selectAllOnPage")}</span></div>
+          <AdminBatchActionBar selectedCount={visibleTickets.filter((ticket) => selectedIds.has(ticket.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved")} actions={[{ value: "resolved", label: t("ui.support.markResolved") }]} busy={batchBusy} />
           <div className="divide-y divide-border">
-            {visibleTickets.map((t) => (
-              <div key={t.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
-                {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
-                <input type="checkbox" aria-label={`Select support ticket ${t.subject}`} checked={selectedIds.has(t.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(t.id) : next.delete(t.id); return next; })} />
-                <button onClick={() => openTicket(t.id)} className="flex-1 min-w-0 text-left">
+            {visibleTickets.map((ticket) => (
+              <div key={ticket.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
+                <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(ticket.id) : next.delete(ticket.id); return next; })} />
+                <button onClick={() => openTicket(ticket.id)} className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <MessageSquare size={13} className="text-muted-foreground shrink-0" /> {t.subject}
-                    {t.unread && <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />}
+                    <MessageSquare size={13} className="text-muted-foreground shrink-0" /> {ticket.subject}
+                    {ticket.unread && <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {t.category}
-                    {t.classificationMethod && (
-                      <span className="text-[0.5625rem] uppercase tracking-wide opacity-70"> ({t.classificationMethod})</span>
+                    {ticket.category}
+                    {ticket.classificationMethod && (
+                      <span className="text-[0.5625rem] uppercase tracking-wide opacity-70"> ({ticket.classificationMethod})</span>
                     )}
-                    {" "}· from {t.userName} · {new Date(t.createdAt).toLocaleDateString()}
-                    {t.unanswered && <span className="text-destructive font-medium"> · unanswered</span>}
+                    {" "}{t("ui.support.fromUser", { user: ticket.userName })} · {new Date(ticket.createdAt).toLocaleDateString()}
+                    {ticket.unanswered && <span className="text-destructive font-medium"> · {t("ui.support.unansweredLower")}</span>}
                   </p>
                 </button>
                 <select
-                  value={t.category}
-                  disabled={updatingId === t.id}
-                  onChange={(e) => updateCategory(t.id, e.target.value)}
+                  value={ticket.category}
+                  disabled={updatingId === ticket.id}
+                  onChange={(e) => updateCategory(ticket.id, e.target.value)}
                   className="text-xs rounded-full px-3 py-1.5 border border-border bg-background text-foreground shrink-0"
-                  title="Override category"
+                  title={t("ui.support.overrideCategory")}
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
                 <select
-                  value={t.status}
-                  disabled={updatingId === t.id}
-                  onChange={(e) => updateStatus(t.id, e.target.value)}
+                  value={ticket.status}
+                  disabled={updatingId === ticket.id}
+                  onChange={(e) => updateStatus(ticket.id, e.target.value)}
                   className="text-xs font-semibold rounded-full px-3 py-1.5 border border-border bg-background text-foreground shrink-0"
                 >
                   {STATUSES.map((s) => (
-                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                  <option key={s} value={s}>{t(STATUS_LABEL[s])}</option>
                   ))}
                 </select>
               </div>
             ))}
           </div>
           {sortedTickets.length > 0 && (
-            <nav aria-label="Support ticket pagination" className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>
-                Showing {(ticketPage - 1) * TICKETS_PER_PAGE + 1}–{Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length)} of {sortedTickets.length} tickets
-              </span>
+            <nav aria-label={t("ui.support.pagination")} className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+              <span>{t("ui.support.range", { first: (ticketPage - 1) * TICKETS_PER_PAGE + 1, last: Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length), total: sortedTickets.length })}</span>
               {totalTicketPages > 1 && <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  aria-label="Previous ticket page"
+                  aria-label={t("ui.pagination.previousPage")}
                   onClick={() => setTicketPage((page) => Math.max(1, page - 1))}
                   disabled={ticketPage === 1}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ChevronLeft size={14} /> Previous
+                  <ChevronLeft size={14} /> {t("ui.pagination.previous")}
                 </button>
-                <span className="min-w-20 text-center font-semibold text-foreground">Page {ticketPage} of {totalTicketPages}</span>
+                <span className="min-w-20 text-center font-semibold text-foreground">{t("ui.pagination.pageOf", { page: ticketPage, total: totalTicketPages })}</span>
                 <button
                   type="button"
-                  aria-label="Next ticket page"
+                  aria-label={t("ui.pagination.nextPage")}
                   onClick={() => setTicketPage((page) => Math.min(totalTicketPages, page + 1))}
                   disabled={ticketPage === totalTicketPages}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Next <ChevronRight size={14} />
+                  {t("ui.pagination.next")} <ChevronRight size={14} />
                 </button>
               </div>}
             </nav>
@@ -458,7 +457,7 @@ function AdminSupportContent() {
                     disabled={updatingId === openTicketId}
                     onClick={() => openTicketId && updateStatus(openTicketId, "resolved")}
                   >
-                    Mark Resolved
+                    {t("ui.support.markResolved")}
                   </Button>
                 )}
               </div>
@@ -466,7 +465,7 @@ function AdminSupportContent() {
           </DialogHeader>
 
           {!detail || detail.id !== openTicketId || !currentUser ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
           ) : (
             <>
               <div className="max-h-80 overflow-y-auto">
@@ -487,7 +486,7 @@ function AdminSupportContent() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") sendReply();
                   }}
-                  placeholder="Reply to this ticket…"
+                  placeholder={t("ui.support.replyPlaceholder")}
                   className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
                   disabled={sending}
                 />

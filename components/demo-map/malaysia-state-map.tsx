@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import geoJson from "@/lib/demo-map/malaysia-states.json";
 import { DEMO_STATES } from "@/lib/demo-map/data";
@@ -174,6 +175,7 @@ export function MalaysiaStateMap({
   onSelectState: (stateId: string | null) => void;
   onDismissPlace?: () => void;
 }) {
+  const { t } = useTranslation("customer");
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const activeStateId = hoveredStateId ?? selectedStateId;
   const activeState = DEMO_STATES.find((state) => state.id === activeStateId);
@@ -206,13 +208,13 @@ export function MalaysiaStateMap({
       <div className="pointer-events-none absolute left-5 right-5 top-4 z-10 border-b border-border pb-3 sm:left-7 sm:right-7 sm:pb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary 2xl:text-[11px]">Malaysia</p>
-            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-foreground sm:text-[24px] 2xl:text-[30px]">All states and federal territories</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">Choose one state to reveal its places.</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary 2xl:text-[11px]">{t("ui.labels.malaysia")}</p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-foreground sm:text-[24px] 2xl:text-[30px]">{t("ui.map.allStatesTerritories")}</h2>
+            <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">{t("ui.map.chooseState")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-muted-foreground lg:block 2xl:text-xs">
             <p className="font-bold text-foreground">16 regions · 64 places</p>
-            <p className="mt-1">Hover or select a region</p>
+            <p className="mt-1">{t("ui.map.openDistrictPrompt")}</p>
           </div>
         </div>
       </div>
@@ -220,7 +222,7 @@ export function MalaysiaStateMap({
         viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label="Interactive map of Malaysia showing all states and federal territories"
+        aria-label={t("ui.map.allStatesTerritories")}
         className="relative block h-full w-full"
         onClick={(event) => {
           if (event.target === event.currentTarget) onDismissPlace?.();
@@ -253,7 +255,7 @@ export function MalaysiaStateMap({
         </g>
       </svg>
 
-      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label="Malaysia state labels">
+      <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label={t("ui.map.allStatesTerritories")}>
         <p className="sr-only">Select a state to explore.</p>
         {visibleStates.map((state) => {
           const region = regionForState(state.id);
@@ -267,7 +269,7 @@ export function MalaysiaStateMap({
               key={`label-${state.id}`}
               type="button"
               data-state-label={state.id}
-              aria-label={`Select ${state.name}`}
+              aria-label={`${t("ui.map.viewDestination")} ${state.name}`}
               aria-pressed={state.id === selectedStateId}
               onMouseEnter={() => setHoveredStateId(state.id)}
               onMouseLeave={() => setHoveredStateId((current) => (current === state.id ? null : current))}
@@ -277,7 +279,7 @@ export function MalaysiaStateMap({
             >
               <span className="block truncate text-xs font-bold leading-none 2xl:text-sm">{state.name}</span>
               <span className="mt-1 block truncate text-[10px] leading-none text-white/70">
-                {places} {places === 1 ? "place" : "places"}
+                {places} {t(places === 1 ? "ui.labels.place" : "ui.labels.places")}
               </span>
             </button>
           );

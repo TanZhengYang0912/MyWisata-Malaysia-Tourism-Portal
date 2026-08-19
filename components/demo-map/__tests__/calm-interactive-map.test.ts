@@ -11,7 +11,7 @@ describe("calm interactive Explore map", () => {
     expect(mapSource).toContain("const activeState = DEMO_STATES.find((state) => state.id === activeStateId)");
     expect(mapSource).toContain("activeState ? [activeState] : []");
     expect(mapSource).toContain("activeStateId ? buildStateCalloutPath");
-    expect(mapSource).toContain("Select a state to explore");
+    expect(mapSource).toContain('t("ui.map.chooseState")');
   });
 
   it("keeps small states easy to hit without changing their visual geometry", () => {
@@ -21,11 +21,11 @@ describe("calm interactive Explore map", () => {
   });
 
   it("provides a responsive selected-state detail panel", () => {
-    expect(storySource).toContain('aria-label="Selected state details"');
-    expect(storySource).toContain("Select a state to explore");
+    expect(storySource).toContain('aria-label={t("ui.map.selectedStateDetails")}');
+    expect(storySource).toContain('t("ui.map.selectStateToExplore")');
     expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
     expect(storySource).toContain("selectedStateId ?");
-    expect(storySource).toContain('aria-label="Choose a state"');
+    expect(storySource).toContain('aria-label={t("ui.map.chooseStateLabel")}');
     expect(storySource).toContain('onChange={(event) => onSelectState(event.target.value || null)}');
   });
 

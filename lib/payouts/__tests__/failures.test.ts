@@ -14,6 +14,7 @@ describe('normalizeProviderFailure', () => {
     const failure = normalizeProviderFailure({ provider: 'tng_direct_credit', code: 'timeout', message: 'secret=do-not-store; request timed out' });
 
     expect(failure).toMatchObject({ category: 'timeout', retryable: true });
+    expect(failure.message).toBe('secret=[redacted]; request timed out');
     expect(failure.message).not.toContain('do-not-store');
   });
 
@@ -24,5 +25,16 @@ describe('normalizeProviderFailure', () => {
       code: null,
       message: null,
     });
+  });
+
+  it('redacts Malaysian local mobile and DuitNow identifiers', () => {
+    const failure = normalizeProviderFailure({
+      provider: 'tng_direct_credit',
+      code: 'recipient_invalid',
+      message: 'DuitNow recipient 01158620908 is invalid; contact 017-714 3951',
+    });
+
+    expect(failure.message).toBe('DuitNow recipient [redacted] is invalid; contact [redacted]');
+    expect(failure.message).not.toMatch(/01158620908|017-714 3951/);
   });
 });

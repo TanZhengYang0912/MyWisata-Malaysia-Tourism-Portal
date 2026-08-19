@@ -16,17 +16,17 @@ describe("customer vendor search contract", () => {
     expect(pageSource).toContain("initialResults={results}");
     expect(pageSource).toContain("initialVendors=");
     expect(pageSource).toContain("recommendedVendors=");
-    expect(clientSource).toContain("Featured Local Partners");
+    expect(clientSource).toContain('t("ui.search.recommendFeatured")');
     expect(filterSource).toContain("CATEGORIES.map");
   });
 
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
-    expect(clientSource).toContain("Featured Local Partners");
+    expect(clientSource).toContain('t("ui.search.recommendFeatured")');
     expect(clientSource).toContain("recommendedVendors");
-    expect(clientSource).toContain("verified local partners");
+    expect(clientSource).toContain('t("ui.search.verifiedPartnerDescription")');
     expect(clientSource).not.toContain("<ActivityCard");
-    expect(clientSource).not.toContain("Search Experiences");
+    expect(clientSource).not.toContain("<PlaceActivityCard");
   });
 
   it("also gives place-bound activities their own discovery path", () => {

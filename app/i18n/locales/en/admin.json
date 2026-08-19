@@ -1,0 +1,1938 @@
+{
+  "shell": {
+    "panel": "Admin Panel",
+    "signedInAs": "Signed in as"
+  },
+  "roles": {
+    "admin": "Admin",
+    "approver": "Approver",
+    "super_admin": "Super Admin"
+  },
+  "navigation": {
+    "Overview": "Overview",
+    "Vendor Approvals": "Vendor Approvals",
+    "Catalogue Review": "Catalogue Review",
+    "User Management": "User Management",
+    "KYC Review": "KYC Review",
+    "Withdrawals": "Withdrawals",
+    "Refunds": "Refunds",
+    "Wallet Settings": "Wallet Settings",
+    "Payout Reports": "Payout Reports",
+    "Recommendations": "Recommendations",
+    "Support Tickets": "Support Tickets",
+    "Chat Reports": "Chat Reports",
+    "Affiliate": "Affiliate",
+    "Chatbot": "Chatbot",
+    "AI Assistant": "AI Assistant"
+  },
+  "accessibility": {
+    "unreadRecommendations": "{{count}} unread recommendations"
+  },
+  "filters": {
+    "all": "All",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "open": "Open",
+    "resolved": "Resolved",
+    "active": "Active",
+    "inactive": "Inactive",
+    "filter": "Filter",
+    "dismissed": "Dismissed"
+  },
+  "selection": {
+    "selected": "{{count}} selected",
+    "clear": "Clear selection"
+  },
+  "batchActions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "request_changes": "Request changes",
+    "change_requested": "Request changes",
+    "request_info": "Request info",
+    "suspend": "Suspend",
+    "unsuspend": "Unsuspend",
+    "reactivate": "Reactivate",
+    "hold": "Hold",
+    "resume": "Resume",
+    "fraud-override": "Fraud override",
+    "resolved": "Resolve",
+    "dismissed": "Dismiss",
+    "dismiss": "Dismiss",
+    "confirm": "Confirm & disable",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "revoke": "Revoke"
+  },
+  "affiliate": {
+    "accessibility": {
+      "selectAllFlags": "Select all visible open fraud flags",
+      "selectFlag": "Select fraud flag for {{name}}"
+    },
+    "allAttributions": "All attributions",
+    "allTime": "All time",
+    "analytics": {
+      "bySeverity": "By severity",
+      "byType": "By type",
+      "disabledLinks": "Links auto-disabled",
+      "duplicatePayouts": "Duplicate payouts prevented",
+      "flagCount": "{{count}} flags",
+      "flagsOverTime": "Flags over time",
+      "noFlags": "No flags in this range.",
+      "openPercentage": "{{percent}}% open",
+      "openVsReviewed": "Open vs reviewed",
+      "selfReferrals": "Self-referrals blocked",
+      "topFlagged": "Top flagged affiliates",
+      "totalFlags": "Total flags"
+    },
+    "clearing": {
+      "errors": ", {{count}} error(s)",
+      "result": "Cleared {{cleared}}, reversed {{reversed}}, skipped {{skipped}}{{errors}}"
+    },
+    "columns": {
+      "actions": "Actions",
+      "activity": "Activity",
+      "affiliate": "Affiliate",
+      "commission": "Commission",
+      "date": "Date",
+      "evidence": "Evidence",
+      "select": "Select",
+      "severity": "Severity",
+      "status": "Status",
+      "type": "Type",
+      "user": "User",
+      "when": "When"
+    },
+    "commissionTiers": "Commission tiers",
+    "conversions": "Conversions",
+    "disabledLinks": "Disabled links",
+    "errors": {
+      "batchFlags": "One or more fraud flags could not be updated.",
+      "batchFlagUpdate": "Batch fraud flag update failed.",
+      "clearing": "Clearing run failed.",
+      "exportRetry": "Could not export the affiliate report. Please try again.",
+      "flagNeedsLink": "Every selected open flag must have a link before disabling it.",
+      "fraudSweep": "Fraud sweep failed.",
+      "loadDescription": "Something went wrong loading the affiliate overview. Try refreshing the page.",
+      "loadFraudAnalytics": "Couldn’t load fraud analytics.",
+      "loadTitle": "Couldn't load affiliate stats",
+      "reactivateLink": "Could not reactivate affiliate link.",
+      "reactivateLinkRetry": "Could not reactivate affiliate link. Please try again.",
+      "reviewFlag": "Could not review fraud flag.",
+      "reviewFlagRetry": "Could not review fraud flag. Please try again.",
+      "saveAffiliateTier": "Failed to save affiliate tier.",
+      "saveTier": "Failed to save tier.",
+      "selectOpenFlags": "Select open fraud flags first."
+    },
+    "exporting": "Exporting…",
+    "exportPdf": "Export PDF",
+    "filters": {
+      "allSeverities": "All severities",
+      "allStatuses": "All statuses",
+      "allTypes": "All types"
+    },
+    "flagTypes": {
+      "click_cap_reached": "Limited-tier monthly click cap reached",
+      "click_velocity": "Click velocity spike",
+      "duplicate_attribution": "Duplicate payout attempt",
+      "expired_attribution": "Expired attribution window",
+      "self_referral": "Self-referral",
+      "vendor_ineligible": "Vendor/outlet manager ineligible for commission",
+      "visitor_clustering": "Clicks clustered on one visitor",
+      "zero_conversion": "Many clicks, zero referrals"
+    },
+    "fraudAnalytics": "Fraud analytics",
+    "fraudFlags": "Fraud flags",
+    "fraudGuards": "Fraud guards — proof they work",
+    "loading": "Loading…",
+    "loadingFraudAnalytics": "Loading fraud analytics…",
+    "metrics": {
+      "affiliates": "Affiliates",
+      "clicks": "Clicks",
+      "commission": "Commission committed",
+      "referrals": "Referrals"
+    },
+    "minReferrals": "Min referrals",
+    "noAttributions": "No attributions match this filter.",
+    "noCommissions": "No commissions earned yet.",
+    "noDisabledLinks": "No links are currently disabled.",
+    "noFlags": "Nothing flagged.",
+    "platformFunnel": "Platform-wide funnel",
+    "rate": "Rate",
+    "reEnable": "Re-enable",
+    "reEnabling": "Re-enabling…",
+    "referralCount": "{{count}} referrals",
+    "runClearing": "Run clearing",
+    "runFraudSweep": "Run fraud sweep",
+    "running": "Running…",
+    "saving": "Saving…",
+    "scanning": "Scanning…",
+    "searchPlaceholder": "Search user or activity…",
+    "selectAllOpen": "Select all open flags",
+    "severity": {
+      "high": "High",
+      "low": "Low",
+      "medium": "Medium"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "dismissed": "Dismissed",
+      "open": "Open",
+      "pending": "Pending",
+      "reversed": "Reversed",
+      "reviewed": "Reviewed"
+    },
+    "success": {
+      "batchFlags": "{{count}} fraud flags processed.",
+      "flagConfirmed": "Fraud flag confirmed.",
+      "flagDismissed": "Fraud flag dismissed.",
+      "linkReactivated": "Affiliate link reactivated.",
+      "tierSaved": "Affiliate tier saved."
+    },
+    "sweep": {
+      "result": "Scanned {{links}} links, {{flags}} new flag(s)"
+    },
+    "title": "Affiliate Oversight",
+    "topEarners": "Top earners",
+    "qr": {
+      "errors": {
+        "generate": "Couldn't generate a QR code right now.",
+        "render": "Couldn't render the QR code."
+      },
+      "showFor": "Show QR code for {{label}}",
+      "show": "Show QR code",
+      "showShort": "Show QR",
+      "scanToOpen": "Scan to open",
+      "generating": "Generating…",
+      "downloadPng": "Download PNG"
+    },
+    "fraudCounters": {
+      "selfReferralsBlocked": "Blocked self-referrals: {{count}}",
+      "duplicatePayoutsPrevented": "Prevented duplicate payouts: {{count}}",
+      "openFlagsSummary": "Open flags to review: {{flags}} · Disabled links: {{links}}"
+    }
+  },
+  "aiAssistant": {
+    "ask": {
+      "empty": "e.g. “How many recommendations are pending this week?” or “Show me withdrawals over 500”. Answers only come from registered aggregate queries — never raw customer data.",
+      "placeholder": "Ask a question…",
+      "restoring": "Restoring conversation…",
+      "title": "Ask about platform metrics"
+    },
+    "description": "Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries, and drafts use only what you type in.",
+    "draft": {
+      "contextPlaceholder": "e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality.",
+      "description": "You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you.",
+      "drafting": "Drafting…",
+      "generate": "Generate draft",
+      "title": "Draft a staff message",
+      "types": {
+        "approval": "Approval message",
+        "custom": "Custom",
+        "onboarding": "Vendor onboarding",
+        "rejection": "Rejection notice"
+      }
+    },
+    "errors": {
+      "unavailable": "Assistant unavailable right now."
+    },
+    "restricted": "The AI assistant is limited to super admins.",
+    "title": "AI Assistant"
+  },
+  "catalogue": {
+    "accessibility": {
+      "itemType": "Catalogue item type",
+      "selectAll": "Select all visible catalogue items",
+      "selectItem": "Select {{item}}"
+    },
+    "actions": {
+      "closeReview": "Close review",
+      "openReview": "Open review"
+    },
+    "checklist": {
+      "description": "Confirm the title, description, price, location, images and availability are accurate before approving.",
+      "title": "Review checklist"
+    },
+    "columns": {
+      "action": "Action",
+      "submission": "Submission",
+      "submitted": "Submitted",
+      "type": "Type",
+      "vendorLocation": "Vendor / location"
+    },
+    "description": "Review outlet, product and promotion changes before they become visible to customers.",
+    "empty": "No content is waiting for review.",
+    "entity": {
+      "listing": "Listing",
+      "outlet": "Outlet",
+      "voucher": "Voucher"
+    },
+    "errors": {
+      "actionFailed": "Review action failed",
+      "batchFailed": "One or more catalogue reviews failed",
+      "batchReviewFailed": "Batch review failed",
+      "loadQueue": "Unable to load review queue",
+      "reasonLength": "A reason of at least 10 characters is required.",
+      "reviewActionFailed": "Review action failed"
+    },
+    "eyebrow": "Marketplace governance",
+    "fallback": {
+      "noLocation": "No location provided",
+      "unknownVendor": "Unknown vendor"
+    },
+    "fields": {
+      "reference": "Reference",
+      "vendor": "Vendor"
+    },
+    "filters": {
+      "allItems": "All items"
+    },
+    "reviewTitle": "{{entity}} review",
+    "status": {
+      "pendingReview": "Pending review"
+    },
+    "success": {
+      "approve": "{{entity}} approved.",
+      "batchProcessed": "{{count}} catalogue items processed.",
+      "change_requested": "{{entity}} returned for changes.",
+      "reject": "{{entity}} rejected."
+    },
+    "title": "Catalogue review",
+    "waiting": "Waiting",
+    "prompts": {
+      "rejectReason": "Reason for rejection (at least 10 characters):",
+      "changeReason": "What needs to be changed? (at least 10 characters)",
+      "batchRejectReason": "Reason for rejecting all selected items (at least 10 characters):",
+      "batchChangeReason": "What needs to be changed for all selected items? (at least 10 characters)"
+    }
+  },
+  "chatbot": {
+    "accessibility": {
+      "selectAll": "Select all knowledge documents",
+      "selectDocument": "Select knowledge document {{title}}"
+    },
+    "actions": {
+      "addToKb": "Add to KB",
+      "aiDraft": "AI: draft a KB answer",
+      "edit": "Edit",
+      "newDoc": "New doc"
+    },
+    "categories": {
+      "account": "Account",
+      "affiliate": "Affiliate",
+      "booking": "Booking",
+      "general": "General",
+      "payment": "Payment",
+      "rewards": "Rewards",
+      "vendor": "Vendor",
+      "wallet": "Wallet",
+      "withdrawal": "Withdrawal"
+    },
+    "drafting": "Drafting…",
+    "embedded": "embedded",
+    "emptyDocuments": "No KB documents yet.",
+    "errors": {
+      "batchFailed": "Batch knowledge document update failed.",
+      "batchUpdate": "One or more knowledge documents could not be updated.",
+      "draft": "Could not draft a KB entry right now.",
+      "loadDescription": "Something went wrong loading the chatbot overview. Try refreshing the page.",
+      "loadTitle": "Couldn't load chatbot stats",
+      "reindex": "Reindex failed.",
+      "sameStatus": "Select documents with the same current status before applying this action.",
+      "save": "Failed to save.",
+      "saveRetry": "Knowledge document could not be saved. Please try again.",
+      "status": "Could not update document status.",
+      "statusRetry": "Could not update document status. Please try again."
+    },
+    "form": {
+      "active": "Active",
+      "body": "Body — the fact the bot is allowed to answer from",
+      "editTitle": "Edit KB document",
+      "keywords": "Keywords, comma-separated (used by the keyword fallback)",
+      "newTitle": "New KB document",
+      "title": "Title"
+    },
+    "inactive": "inactive",
+    "knowledgeBase": "Knowledge base",
+    "loading": "Loading…",
+    "metrics": {
+      "answerRate": "Answer rate",
+      "escalationNote": "of failed answers became a ticket",
+      "escalationRate": "Escalation rate",
+      "questions": "Questions asked"
+    },
+    "notEmbedded": "not embedded (keyword-only)",
+    "notHelpful": {
+      "description": "A KB doc matched, but customers said it didn’t help — the doc needs improving, not creating.",
+      "empty": "No thumbs-down yet on an answered question.",
+      "title": "Answered, but not helpful"
+    },
+    "questionMeta": "×{{count}} · last asked {{date}}",
+    "reindex": "Reindex KB",
+    "reindexErrors": ", {{count}} error(s)",
+    "reindexResult": "Scanned {{scanned}}, embedded {{embedded}}, skipped {{skipped}}{{errors}}",
+    "reindexing": "Reindexing…",
+    "saving": "Saving…",
+    "selectAll": "Select all documents",
+    "success": {
+      "activated": "Knowledge document activated.",
+      "batchStatus": "{{count}} knowledge documents updated.",
+      "created": "Knowledge document created.",
+      "deactivated": "Knowledge document deactivated.",
+      "updated": "Knowledge document updated."
+    },
+    "title": "Chatbot Oversight",
+    "topUnanswered": {
+      "description": "No KB doc covers these at all.",
+      "empty": "Nothing unanswered yet — the KB is covering everything asked so far.",
+      "title": "Top unanswered questions"
+    },
+    "uncategorized": "uncategorized"
+  },
+  "chatReports": {
+    "accessibility": {
+      "selectReport": "Select chat report {{id}}",
+      "selectAll": "Select all visible chat reports",
+      "status": "Chat report status"
+    },
+    "actions": {
+      "unblock": "Unblock",
+      "view": "View"
+    },
+    "archive": {
+      "after": "Auto-archive open chats after",
+      "days": "days of inactivity"
+    },
+    "blockedUntil": "Reporter blocked from reporting until {{date}}",
+    "blockReporter": "Block this reporter from filing new reports",
+    "confirmDismiss": "Confirm dismiss",
+    "confirmResolve": "Confirm resolve",
+    "days": "7 days",
+    "daysLong": "30 days",
+    "dialog": {
+      "dismissTitle": "Dismiss report",
+      "resolveTitle": "Resolve report",
+      "title": "Report details"
+    },
+    "dismissedHistory": "{{dismissed}}/{{total}} of their reports dismissed",
+    "empty": {
+      "description": "Reported conversations will show up here.",
+      "pending": "No pending reports",
+      "resolved": "No resolved reports"
+    },
+    "errors": {
+      "batchFailed": "Batch report update failed.",
+      "batchUpdate": "One or more reports could not be updated.",
+      "blockReporter": "Could not block reporter.",
+      "blockReporterRetry": "Could not block reporter. Please try again.",
+      "invalidReason": "Choose a valid resolution reason.",
+      "saveSetting": "Could not save setting.",
+      "saveSettingRetry": "Could not save setting. Please try again.",
+      "unblockReporter": "Could not unblock reporter.",
+      "unblockReporterRetry": "Could not unblock reporter. Please try again.",
+      "updateReport": "Could not update report.",
+      "updateReportRetry": "Could not update report. Please try again."
+    },
+    "fallback": {
+      "customer": "Customer",
+      "outlet": "Outlet",
+      "unknownOutlet": "Unknown outlet",
+      "unknownReporter": "Unknown"
+    },
+    "fields": {
+      "noteOptional": "Note (optional)",
+      "participants": "Participants",
+      "reason": "Reason",
+      "reportedBy": "Reported by",
+      "reporterHistory": "Reporter history",
+      "started": "Conversation started",
+      "status": "Status"
+    },
+    "filters": {
+      "allReasons": "All reasons",
+      "dismissedOnly": "Dismissed only",
+      "outcome": "Outcome",
+      "reason": "Reason",
+      "resolvedDismissed": "Resolved + dismissed",
+      "resolvedOnly": "Resolved only"
+    },
+    "loading": "Loading…",
+    "loadingConversation": "Loading conversation…",
+    "notePlaceholder": "Add context for this decision…",
+    "reasons": {
+      "abuse": "Abuse",
+      "other": "Other",
+      "scam": "Scam",
+      "spam": "Spam"
+    },
+    "reportedBy": "Reported by {{name}} · {{date}}",
+    "reporterHistory": "{{reports}} reports, {{dismissed}} dismissed",
+    "resolution": "Resolution: {{reason}}",
+    "resolutions": {
+      "action_taken": "Action taken",
+      "dismissed": "dismissed",
+      "insufficient_evidence": "Insufficient evidence",
+      "no_violation": "No violation found",
+      "resolved": "resolved",
+      "spam_abuse": "Reporter spam/abuse"
+    },
+    "roles": {
+      "customer": "customer",
+      "vendor": "vendor"
+    },
+    "status": {
+      "dismissed": "Dismissed",
+      "open": "Open",
+      "resolved": "Resolved"
+    },
+    "saving": "Saving…",
+    "searchPlaceholder": "Search outlet, reporter, details…",
+    "selectAll": "Select all visible reports",
+    "separateReports": "This conversation has {{count}} separate reports against it.",
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "reason": "Reason"
+    },
+    "success": {
+      "archiveUpdated": "Archive threshold updated.",
+      "batchMarked": "{{count}} reports marked {{action}}.",
+      "marked": "Report marked {{action}}.",
+      "reporterBlocked": "Reporter blocked from reporting for {{days}} days.",
+      "reporterUnblocked": "Reporter unblocked."
+    },
+    "tabs": {
+      "pending": "Pending",
+      "resolved": "Resolved"
+    },
+    "threadReportCount": "{{count}} reports on this thread",
+    "title": "Chat Reports",
+    "prompts": {
+      "resolutionReason": "Resolution reason ({{reasons}}):",
+      "resolutionNote": "Resolution note (optional):"
+    }
+  },
+  "common": {
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save"
+    }
+  },
+  "dashboard": {
+    "actionCentre": "Action centre",
+    "activityNote": "This pulse is based on withdrawal requests created in the current data set. Use it to spot queue build-up, not as a payout-volume chart.",
+    "allSources": "All sources responding",
+    "approvalSummary": "Approval summary",
+    "description": "A decision-ready view of the queues, money, and risk signals that need attention today.",
+    "errors": {
+      "load": "Unable to load the approval overview"
+    },
+    "eyebrow": "Governance control room",
+    "guardrails": "Operational guardrails",
+    "lanes": {
+      "kyc": {
+        "cta": "Open KYC queue",
+        "detail": "Identity cases awaiting review",
+        "title": "KYC review"
+      },
+      "recommendations": {
+        "cta": "Open recommendations",
+        "detail": "Community submissions awaiting moderation",
+        "title": "Recommendations"
+      },
+      "support": {
+        "cta": "Open support queue",
+        "detail": "Customer conversations still open",
+        "title": "Support tickets"
+      },
+      "vendors": {
+        "cta": "Open vendor queue",
+        "detail": "Unverified outlets in the platform queue",
+        "title": "Vendor approvals"
+      },
+      "withdrawals": {
+        "cta": "Review withdrawals",
+        "detail": "{{amount}} awaiting decision",
+        "title": "Withdrawal approvals"
+      }
+    },
+    "lastRefreshed": "Last refreshed",
+    "lastSevenDays": "Last seven days",
+    "liveWorkspace": "Live data from the current workspace",
+    "loading": "Loading governance queues…",
+    "metrics": {
+      "dualApproval": "Dual approval",
+      "fiveQueues": "Across five governance queues",
+      "needsAttention": "Needs attention",
+      "openConversations": "Customer conversations open",
+      "openSupport": "Open support",
+      "overdue": "Overdue withdrawals",
+      "pendingPayout": "Pending payout value",
+      "reviewTarget": "Past the review target",
+      "twoApprovers": "Waiting for two approvers",
+      "withdrawalRequests": "{{count}} withdrawal requests"
+    },
+    "oldestWithdrawal": "Oldest withdrawal",
+    "openApprovals": "Open approvals",
+    "openItems": "{{count}} open items",
+    "priorityLanes": "Priority lanes",
+    "queueActivity": "Queue activity",
+    "queueHealth": "Queue health",
+    "refresh": "Refresh overview",
+    "reviewOldest": "Review the oldest item first.",
+    "sixDaysAgo": "6 days ago",
+    "sourcesLoaded": "Catalogue, identity, commerce, discovery and support data loaded.",
+    "title": "Admin Overview",
+    "today": "Today",
+    "walletClear": "The withdrawal review queue is clear.",
+    "walletPending": "{{count}} requests need a decision, with {{amount}} in review.",
+    "walletShortcut": "Wallet Approval shortcut"
+  },
+  "kyc": {
+    "accessibility": {
+      "details": "KYC review details",
+      "reason": "KYC review reason",
+      "selectAll": "Select all visible KYC submissions",
+      "selectSubmission": "Select KYC submission for {{name}}"
+    },
+    "action": {
+      "chooseReason": "Choose a reason first. You will review the final action in a confirmation step.",
+      "detailPlaceholder": "Add at least 10 characters of detail.",
+      "informationRequested": "Information requested",
+      "rejectionReason": "Rejection reason",
+      "review": "Review action",
+      "selectReason": "Select a reason…"
+    },
+    "actions": {
+      "viewSide": "View {{side}}"
+    },
+    "confirm": {
+      "approve": "Confirm approval",
+      "approveDescription": "This will mark the customer as KYC verified and close the active submission.",
+      "approveTitle": "Approve KYC submission?",
+      "info": "Send request",
+      "infoDescription": "This will notify the customer that more information is required before KYC can be completed.",
+      "infoTitle": "Send information request?",
+      "reject": "Confirm rejection",
+      "rejectDescription": "This will reject the submission and record the selected reason in the review history.",
+      "rejectTitle": "Reject KYC submission?"
+    },
+    "description": "Review identity documents, resolve exceptions and keep verification decisions auditable.",
+    "documents": {
+      "driving_license": "Driving licence / MyPolis",
+      "national_id": "MyKad",
+      "passport": "Passport"
+    },
+    "empty": {
+      "description": "New submissions will appear here when customers complete identity verification.",
+      "title": "No pending KYC submissions"
+    },
+    "errors": {
+      "batchFailed": "One or more KYC reviews failed.",
+      "batchReviewFailed": "Batch KYC review failed.",
+      "invalidReason": "Choose a valid KYC review reason code.",
+      "loadDocument": "Failed to load document",
+      "loadQueue": "Unable to load KYC review queue",
+      "loadSubmissions": "Unable to load KYC submissions",
+      "otherDetail": "Add at least 10 characters of detail for Other.",
+      "reviewFailed": "Review failed.",
+      "selectReason": "Select a review reason."
+    },
+    "eyebrow": "Verification operations",
+    "fallback": {
+      "noSubmission": "No submission data",
+      "notAvailable": "Not available"
+    },
+    "metrics": {
+      "infoRequested": "Information requested",
+      "infoRequestedNote": "Waiting for customer action",
+      "oldest": "Oldest queue item",
+      "pending": "Pending review",
+      "pendingNote": "Awaiting a decision",
+      "queueClear": "Queue is clear",
+      "submittedFirst": "Submitted first",
+      "verified": "Verified users",
+      "verifiedNote": "Current KYC verified accounts"
+    },
+    "ocr": {
+      "check": "OCR check:",
+      "documentEnding": "Document ending: {{number}}",
+      "expiryDate": "Expiry date: {{date}}",
+      "extractedName": "Extracted name: {{name}}",
+      "mismatch": "Mismatch: {{fields}}",
+      "noMismatch": "No OCR mismatch detected",
+      "status": {
+        "matched": "Matched",
+        "mismatch": "Mismatch",
+        "unavailable": "Unavailable",
+        "unreadable": "Unreadable"
+      }
+    },
+    "prompts": {
+      "otherDetail": "Add at least 10 characters of detail:",
+      "reasonCode": "Reason code ({{reasons}}):"
+    },
+    "queue": {
+      "description": "Open each submission to inspect documents before taking action.",
+      "oldestFirst": "Oldest first",
+      "selectAll": "Select all pending submissions",
+      "title": "Review queue"
+    },
+    "reasons": {
+      "document_expired": "Document is expired",
+      "document_incomplete": "Document is incomplete",
+      "document_mismatch": "Document details do not match",
+      "document_suspected_tampering": "Document is suspected of tampering",
+      "document_unreadable": "Document is unreadable",
+      "other": "Other (add details)"
+    },
+    "status": {
+      "infoRequested": "Info requested"
+    },
+    "submitted": "Submitted {{date}} · Queue position {{position}}",
+    "success": {
+      "approved": "KYC submission approved.",
+      "batchProcessed": "{{count}} KYC submissions processed.",
+      "infoRequested": "Information request sent.",
+      "rejected": "KYC submission rejected."
+    },
+    "title": "KYC Review",
+    "verified": {
+      "account": "Customer account · KYC approved",
+      "badge": "Verified",
+      "count": "{{count}} accounts",
+      "description": "Accounts that currently hold the verified KYC tier.",
+      "empty": "No verified users yet",
+      "title": "Verified users"
+    }
+  },
+  "payouts": {
+    "allSources": "All sources",
+    "amountMetrics": {
+      "amount_approved_rm": "Approved RM",
+      "amount_failed_rm": "Failed RM",
+      "amount_paid_rm": "Paid RM",
+      "amount_requested_rm": "Requested RM",
+      "amount_withdrawn_rm": "Withdrawn RM",
+      "available_amount_rm": "Available RM",
+      "payout_fees_rm": "Payout fees RM",
+      "pending_earnings_amount_rm": "Pending earnings RM",
+      "pending_withdrawal_amount_rm": "Pending withdrawal RM",
+      "reserved_amount_rm": "Reserved RM"
+    },
+    "backToWithdrawals": "Back to withdrawals",
+    "balance": {
+      "available": "Available",
+      "pendingEarnings": "Pending earnings",
+      "pendingWithdrawal": "Pending withdrawal",
+      "reserved": "Reserved"
+    },
+    "balanceDescription": "Captured when this report was generated.",
+    "balanceSnapshot": "Balance snapshot",
+    "columns": {
+      "amount": "Amount",
+      "date": "Date",
+      "fees": "Fees",
+      "requests": "Requests",
+      "source": "Source",
+      "user": "User"
+    },
+    "copyReportId": "Copy report ID",
+    "description": "Generate a monthly payout snapshot. All dates and totals use Asia/Kuala_Lumpur.",
+    "detailCount": "{{shown}} of {{total}} detail rows",
+    "detailTitle": "Detail by user, date and source",
+    "errors": {
+      "load": "Unable to load payout report"
+    },
+    "exportCsv": "Export CSV",
+    "eyebrow": "Finance operations",
+    "financialDescription": "All amounts are shown in Malaysian ringgit.",
+    "financialDetails": "Financial details",
+    "generate": "Generate report",
+    "generating": "Generating…",
+    "malaysiaTime": "Malaysia time",
+    "metrics": {
+      "approved": "Approved",
+      "paid": "Paid",
+      "pending": "Pending",
+      "requested": "Requested"
+    },
+    "noDetails": "No payout detail matches the current filters.",
+    "reportId": "Report ID: {{id}}",
+    "reportMonth": "Report month",
+    "requestStatus": "Request status",
+    "requestStatusDescription": "A quick view of the monthly payout queue.",
+    "searchPlaceholder": "Search user or source",
+    "snapshot": "Monthly snapshot",
+    "sourceFilter": "Filter by payout source",
+    "status": {
+      "completed": "Completed",
+      "failed": "Failed",
+      "pending": "Pending",
+      "rejected": "Rejected"
+    },
+    "success": {
+      "exported": "Payout report exported.",
+      "reportIdCopied": "Report ID copied."
+    },
+    "title": "Payout reports",
+    "total": "{{count}} total",
+    "units": {
+      "requests": "requests",
+      "thisMonth": "this month"
+    }
+  },
+  "rewards": {
+    "columns": {
+      "rate": "Rate",
+      "rollingConfirmed": "Rolling 30-day confirmed",
+      "tier": "Tier"
+    },
+    "confirmed": "Confirmed {{count}} attribution.",
+    "description": "Move affiliate commissions from pending hold into available earnings.",
+    "errors": {
+      "clearanceFailed": "Clearance failed",
+      "unknown": "Unknown error"
+    },
+    "movedToEarnings": "to be moved to earnings_sen",
+    "pastHoldWindow": "attributions past hold window",
+    "readyToConfirm": "Ready to confirm",
+    "runClearance": "Run Clearance",
+    "runDescription": "Processes all pending commissions whose hold window has expired. Vercel Cron also runs this automatically at midnight MYT.",
+    "running": "Running…",
+    "runNow": "Run clearance now",
+    "tierRates": "Affiliate Tier Rates",
+    "title": "Reward Clearance",
+    "totalValue": "Total value"
+  },
+  "ui": {
+    "actions": {
+      "approve": "Approve",
+      "clear": "Clear",
+      "clearFilters": "Clear filters",
+      "close": "Close",
+      "discardChanges": "Discard changes",
+      "reactivate": "Reactivate",
+      "refresh": "Refresh",
+      "reject": "Reject",
+      "request_information": "Request information",
+      "requestChanges": "Request changes",
+      "requestInfo": "Request info",
+      "review": "Review",
+      "saveSettings": "Save settings",
+      "search": "Search",
+      "suspend": "Suspend",
+      "view": "View",
+      "viewDetails": "View details"
+    },
+    "batch": {
+      "clearSelection": "Clear selection",
+      "selectAllOnPage": "Select all on this page",
+      "selected": "{{count}} selected"
+    },
+    "pagination": {
+      "go": "Go",
+      "next": "Next",
+      "nextPage": "Next page",
+      "pageNumber": "Page number",
+      "pageOf": "Page {{page}} of {{total}}",
+      "perPage": "{{count}} per page",
+      "previous": "Previous",
+      "previousPage": "Previous page"
+    },
+    "recommendations": {
+      "allCategories": "All categories",
+      "allStates": "All states",
+      "batch": {
+        "changesReasonPrompt": "What needs to be changed for all selected recommendations? (at least 10 characters):",
+        "processed": "{{count}} recommendations processed.",
+        "reasonError": "Batch reject/request changes requires a reason of at least 10 characters.",
+        "rejectReasonPrompt": "Reason for rejecting all selected recommendations (at least 10 characters):",
+        "reviewFailed": "One or more recommendation reviews failed."
+      },
+      "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
+      "description": "Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.",
+      "duplicate": "Duplicate",
+      "member": "MyWisata member",
+      "noPending": "No pending recommendations",
+      "pending": "Pending ({{count}})",
+      "pendingLabel": "pending recommendations",
+      "pendingPagination": "Pending recommendation pagination",
+      "range": "Showing {{first}}–{{last}} of {{total}} {{kind}}",
+      "reviewed": "Reviewed ({{count}})",
+      "reviewedContributorLine": "{{category}} · {{state}} · by {{author}}",
+      "reviewedLabel": "reviewed recommendations",
+      "reviewedPagination": "Reviewed recommendation pagination",
+      "rewardClearing": {
+        "ariaLabel": "Recommendation reward clearing",
+        "completed": "Cleared {{cleared}}, reversed {{reversed}}, and kept {{skipped}} pending.",
+        "description": "Moves seven-day pending rewards to available earnings only after KYC approval. Cancelled or refunded orders are reversed automatically.",
+        "error": "Unable to clear recommendation rewards.",
+        "run": "Run reward clearing",
+        "running": "Running…",
+        "title": "Recommendation reward clearing"
+      },
+      "searchPlaceholder": "Search recommendation, category, state or contributor…",
+      "selectAllPending": "Select all visible pending recommendations",
+      "selectRecommendation": "Select recommendation {{name}}",
+      "subtitle": "Community-submitted vendors and hidden gems.",
+      "title": "Recommendation Moderation"
+    },
+    "states": {
+      "loadingEllipsis": "Loading…"
+    },
+    "support": {
+      "allCategories": "All categories",
+      "allStatuses": "All statuses",
+      "assignedToMe": "Assigned to me",
+      "averageFirstResponse": "Average first response",
+      "batchResolved": "{{count}} tickets marked resolved.",
+      "category": "Category",
+      "categoryUpdated": "Ticket category updated.",
+      "empty": "No support tickets",
+      "errors": {
+        "batchUpdate": "One or more tickets could not be updated.",
+        "batchUpdateFailed": "Batch ticket update failed.",
+        "sendReply": "Could not send reply.",
+        "sendReplyTryAgain": "Could not send reply. Please try again.",
+        "updateCategory": "Could not update ticket category.",
+        "updateCategoryTryAgain": "Could not update ticket category. Please try again.",
+        "updateStatus": "Could not update ticket status.",
+        "updateStatusTryAgain": "Could not update ticket status. Please try again."
+      },
+      "fromUser": "· from {{user}}",
+      "markResolved": "Mark resolved",
+      "overrideCategory": "Override category",
+      "pagination": "Support ticket pagination",
+      "range": "Showing {{first}}–{{last}} of {{total}} tickets",
+      "replyPlaceholder": "Reply to this ticket…",
+      "replySent": "Support reply sent.",
+      "selectAllVisible": "Select all visible support tickets",
+      "selectTicket": "Select support ticket {{subject}}",
+      "sort": {
+        "category": "Category",
+        "dateCreated": "Date created",
+        "lastActivity": "Last activity",
+        "oldestUnanswered": "Oldest unanswered first",
+        "status": "Status",
+        "unreadFirst": "Unread first"
+      },
+      "status": {
+        "closed": "Closed",
+        "inProgress": "In Progress",
+        "open": "Open",
+        "resolved": "Resolved",
+        "unknown": "Unknown"
+      },
+      "statusLabel": "Status",
+      "ticketMarked": "Ticket marked {{status}}.",
+      "title": "Support Tickets",
+      "unanswered": "Unanswered",
+      "unansweredLower": "unanswered",
+      "unreadOnly": "Unread only",
+      "minutes": "{{count}} min",
+      "hours": "{{count}} hr"
+    },
+    "table": {
+      "action": "Action",
+      "bio": "Bio",
+      "footprint": "Footprint",
+      "kyc": "KYC",
+      "owner": "Owner",
+      "registered": "Registered",
+      "role": "Role",
+      "select": "Select",
+      "status": "Status",
+      "submitted": "Submitted",
+      "user": "User",
+      "vendor": "Vendor",
+      "verification": "Verification"
+    },
+    "users": {
+      "actions": {
+        "clear_bio_restriction": "Clear bio restriction",
+        "restore": "Restore",
+        "suspend": "Suspend",
+        "unsuspend": "Unsuspend"
+      },
+      "batch": {
+        "confirm": "{{action}} {{count}} selected user accounts?",
+        "failed": "One or more user actions failed.",
+        "noCommonAction": "No single account action is valid for every selected user.",
+        "processed": "{{count}} user accounts processed.",
+        "reasonError": "A reason of at least 10 characters is required.",
+        "reasonPrompt": "Reason for this batch account action (at least 10 characters):"
+      },
+      "bio": {
+        "clear": "Bio clear",
+        "locked": "Bio locked",
+        "lockedCount": "Locked ({{count}})"
+      },
+      "copyUserId": "Copy user ID for {{name}}",
+      "description": "Review ordinary user accounts, verification progress, profile completeness and account status.",
+      "directory": {
+        "description": "Select a row to review account details and actions.",
+        "title": "User directory"
+      },
+      "displayNameNotSet": "Display name not set",
+      "email": "Email",
+      "empty": {
+        "description": "Try clearing a filter or searching for an email or user ID.",
+        "title": "No users match these filters"
+      },
+      "errors": {
+        "load": "Unable to load users"
+      },
+      "eyebrow": "Administration",
+      "filters": {
+        "allBioStates": "All bio states",
+        "allKyc": "All KYC",
+        "allRoles": "All roles",
+        "allStatuses": "All statuses",
+        "bioLabel": "Filter by bio status",
+        "kycLabel": "Filter by KYC status",
+        "roleLabel": "Filter by role",
+        "statusLabel": "Filter by status"
+      },
+      "loading": "Loading users…",
+      "phone": "Phone",
+      "profileNameSet": "Profile name set",
+      "roles": {
+        "customer": "Customer",
+        "outlet_manager": "Outlet manager",
+        "outletManager": "Outlet manager",
+        "vendor_owner": "Vendor owner",
+        "vendorOwner": "Vendor owner"
+      },
+      "rows": "Rows",
+      "rowsPerPage": "Rows per page",
+      "searchHint": "Search applies when you press Search. Filters update automatically.",
+      "searchPlaceholder": "Search name, email or user ID",
+      "selectAllVisible": "Select all visible users",
+      "selectUser": "Select user {{name}}",
+      "stats": {
+        "attention": "Needs attention",
+        "attentionNote": "Suspended, deleted or bio restricted",
+        "incomplete": "Incomplete profiles",
+        "pageNote": "On this page",
+        "pendingKyc": "Pending KYC",
+        "total": "Total users",
+        "totalNote": "All users matching the current filters"
+      },
+      "status": {
+        "active": "Active",
+        "approved": "Approved",
+        "deleted": "Deleted",
+        "pending": "Pending",
+        "rejected": "Rejected",
+        "suspended": "Suspended",
+        "unverified": "Unverified",
+        "verified": "Verified"
+      },
+      "title": "User Management",
+      "userIdCopied": "User ID copied."
+    },
+    "vendors": {
+      "actions": {
+        "approveVendor": "Approve vendor",
+        "reactivateVendor": "Reactivate vendor",
+        "suspendVendor": "Suspend vendor"
+      },
+      "actionSuccess": "{{name}}: {{action}} completed successfully.",
+      "applications": {
+        "description": "Select a vendor to see its operating footprint and review history.",
+        "title": "Vendor applications"
+      },
+      "approvalEmail": {
+        "hint": "Your vendor dashboard link is appended automatically when you send — no need to include it.",
+        "send": "Send approval email",
+        "sent": "Approval email sent.",
+        "title": "Send approval email to {{name}}"
+      },
+      "batch": {
+        "confirm": "{{action}} {{count}} selected vendors?",
+        "noneEligible": "No selected vendors are eligible for {{action}} right now.",
+        "partial": "{{updated}} updated. {{failed}} could not be updated.",
+        "reasonPrompt": "Enter one reason for this batch action:",
+        "success": "{{count}} vendors updated successfully."
+      },
+      "confirm": {
+        "approve": "Approve {{name}}?",
+        "reactivate": "Reactivate {{name}}?"
+      },
+      "description": "Review applications, keep vendor health visible, and take action without opening every record.",
+      "details": {
+        "approvedOn": "Approved on",
+        "businessType": "Business type",
+        "contact": "Contact",
+        "description": "Description",
+        "documents": "Documents",
+        "legalName": "Legal name",
+        "onboarding": "Onboarding",
+        "registration": "Registration no.",
+        "reviewNote": "Review note"
+      },
+      "detailsAria": "{{name}} details",
+      "drawer": {
+        "added": "Added {{date}}",
+        "businessOnboarding": "Business & onboarding",
+        "closeDetails": "Close vendor details",
+        "copyId": "Copy vendor ID",
+        "footprint": "Operating footprint",
+        "id": "Vendor ID",
+        "ownerVerification": "Owner & verification",
+        "profile": "Vendor profile"
+      },
+      "empty": {
+        "description": "Try clearing one of the filters to widen the review queue.",
+        "title": "No vendors match these filters"
+      },
+      "errors": {
+        "action": "Action failed",
+        "load": "Unable to load vendors"
+      },
+      "export": "Export view",
+      "eyebrow": "Malaysia vendor network",
+      "filters": {
+        "all": "All vendors",
+        "allKyc": "All KYC statuses",
+        "allStates": "All states",
+        "kycApproved": "KYC approved",
+        "kycPending": "KYC pending",
+        "kycRejected": "KYC rejected",
+        "kycUnverified": "KYC unverified",
+        "needsReview": "Needs review"
+      },
+      "kyc": "KYC",
+      "listingLabel": "Listings",
+      "listings": "{{count}} listings",
+      "loading": "Loading vendor workspace…",
+      "matching": "{{count}} matching vendors",
+      "noEmail": "No email",
+      "noNote": "No note recorded",
+      "noResults": "No vendors to display",
+      "notApproved": "Not approved",
+      "notProvided": "Not provided",
+      "notStarted": "Not started",
+      "outletLabel": "Outlets",
+      "outlets": "{{count}} outlets",
+      "ownerUnnamed": "Unnamed owner",
+      "range": "Showing {{first}}–{{last}} of {{total}}",
+      "reason": {
+        "informationRequest": "Information request reason for {{name}}:",
+        "rejection": "Rejection reason for {{name}}:",
+        "suspension": "Suspension reason for {{name}}:"
+      },
+      "recommendations": {
+        "description": "Link an approved customer recommendation to open its 90-day commission window.",
+        "link": "Link",
+        "linked": "Recommendation linked. The 90-day commission window is now open.",
+        "linkError": "Unable to link recommendation",
+        "linking": "Linking…",
+        "select": "Select recommendation…",
+        "selectFirst": "Select an approved recommendation first.",
+        "title": "Recommendation attribution"
+      },
+      "searchPlaceholder": "Search vendor ID, name or owner…",
+      "selectAllPage": "Select all vendors on this page",
+      "selectVendor": "Select {{name}}",
+      "stats": {
+        "actionNeeded": "Action needed",
+        "live": "Live on platform",
+        "needsAttention": "Needs attention",
+        "needsReview": "Needs review",
+        "noActiveHolds": "No active holds",
+        "queueClear": "Queue is clear",
+        "total": "Total vendors"
+      },
+      "status": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "suspended": "Suspended",
+        "welcomed": "Welcomed"
+      },
+      "statusLabel": "Vendor status",
+      "summary": "Vendor summary",
+      "title": "Vendor review workspace",
+      "vendorIdCopied": "Vendor ID copied."
+    },
+    "walletSettings": {
+      "audit": {
+        "category": "Change category",
+        "description": "Every policy change requires a category and a reason of at least 10 characters.",
+        "reasonLabel": "Why are you changing this?",
+        "reasonPlaceholder": "Describe the policy change and its reason.",
+        "title": "Audit record"
+      },
+      "backToWithdrawals": "Back to withdrawals",
+      "batch": {
+        "confirmRevoke": "Revoke wallet approval access for {{count}} selected approvers?",
+        "revoked": "{{count}} wallet approvers revoked."
+      },
+      "confirm": {
+        "role": {
+          "description": "{{action}} wallet approval access for {{name}}. This permission change will be recorded in the audit log.",
+          "grant": {
+            "confirm": "Grant access",
+            "title": "Grant wallet approver access?"
+          },
+          "revoke": {
+            "confirm": "Revoke access",
+            "title": "Revoke wallet approver access?"
+          }
+        },
+        "saveDescription": "The new values will apply to future rewards and withdrawal requests. Existing requests keep their recorded state, and this change will be written to the audit log.",
+        "saveTitle": "Save wallet policy changes?"
+      },
+      "currentStored": "Stored precisely in sen · Current: {{value}}",
+      "currentUnit": "Current value in {{unit}}",
+      "description": "Manage payout policy, escalation windows and the people authorised to approve wallet requests.",
+      "effective": {
+        "days": "{{count}} days",
+        "description": "The values below are the current working configuration.",
+        "existingState": "Existing withdrawal requests keep their recorded state when policy settings change.",
+        "hours": "{{count}} hours",
+        "title": "Effective policy"
+      },
+      "emptyApprovers": {
+        "description": "Grant access to an active user above.",
+        "title": "No wallet approvers configured"
+      },
+      "errors": {
+        "activeApproversOnly": "Select active wallet approvers only.",
+        "batchReason": "Add a role-change reason of at least 10 characters before using batch revoke.",
+        "batchRevoke": "One or more approver revocations failed.",
+        "batchRevokeFailed": "Batch approver revocation failed.",
+        "changeApprover": "Unable to change wallet approver role",
+        "loadApprovers": "Unable to load wallet approvers",
+        "loadGovernance": "Unable to load wallet governance settings",
+        "loadSettings": "Unable to load wallet settings",
+        "negative": "Values cannot be negative.",
+        "reasonBeforeSave": "Add a change reason of at least 10 characters before saving.",
+        "roleReason": "Add a role-change reason of at least 10 characters before continuing.",
+        "save": "Unable to save settings"
+      },
+      "eyebrow": "Wallet governance",
+      "fields": {
+        "clearanceDays": "Reward clearance days",
+        "dualApprovalThreshold": "Two-person approval threshold",
+        "holdEscalation": "Hold escalation",
+        "minimumWithdrawal": "Minimum withdrawal",
+        "pendingEscalation": "Pending escalation",
+        "rewardClearance": "Reward clearance",
+        "twoPersonApproval": "Two-person approval"
+      },
+      "groups": {
+        "approval": {
+          "description": "Controls second-person approval and operational follow-up windows.",
+          "title": "Approval & escalation"
+        },
+        "earnings": {
+          "description": "Controls when rewards become available and the minimum amount a user can withdraw.",
+          "title": "Earnings & withdrawals"
+        }
+      },
+      "lastUpdated": "Last updated {{date}} MYT",
+      "lastUpdatedBy": "Last updated {{date}} MYT by {{by}}",
+      "loading": "Loading wallet governance…",
+      "policy": {
+        "description": "These values apply to new requests and rewards. Existing requests keep their recorded state.",
+        "title": "Withdrawal policy"
+      },
+      "reasonCategories": {
+        "clearance_window_change": "Clearance window change",
+        "other": "Other",
+        "policy_update": "Policy update",
+        "threshold_change": "Threshold change"
+      },
+      "roleActions": {
+        "grant": "Grant",
+        "revoke": "Revoke"
+      },
+      "roleChanged": "Wallet approver access changed: {{action}}.",
+      "saved": "Wallet governance settings saved.",
+      "title": "Wallet settings",
+      "units": {
+        "days": "days",
+        "hours": "hours"
+      },
+      "unsaved": "Unsaved changes"
+    }
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "email": {
+    "draft": {
+      "advisory": "AI drafts the message below — edit anything before sending.",
+      "close": "Close",
+      "recipient": "Recipient email",
+      "recipientPlaceholder": "vendor@example.com",
+      "subject": "Subject",
+      "drafting": "Drafting…",
+      "regenerate": "Regenerate draft",
+      "subjectPlaceholder": "Subject line",
+      "message": "Message",
+      "messagePlaceholder": "Message body",
+      "linkHint": "A link is appended automatically when you send — no need to include it.",
+      "errors": {
+        "unavailable": "Could not draft an email right now — write one manually.",
+        "sendFailed": "Could not send the email. Please try again."
+      },
+      "cancel": "Cancel",
+      "sending": "Sending…",
+      "send": "Send email"
+    }
+  },
+  "moderation": {
+    "flagTypes": {
+      "slur": "Slur content",
+      "unknown": "Unknown flag"
+    },
+    "sources": {
+      "chatbotMessage": "Chatbot message",
+      "ticket": "Ticket",
+      "ticketReply": "Ticket reply"
+    },
+    "flags": {
+      "title": "Moderation flags",
+      "openCount": "{{count}} open",
+      "showReviewed": "Show reviewed",
+      "allReviewed": "All flags reviewed.",
+      "nothingToReview": "Nothing to review.",
+      "marking": "Marking…",
+      "markReviewed": "Mark reviewed",
+      "reviewed": "Reviewed"
+    }
+  },
+  "staffConduct": {
+    "title": "Staff conduct review",
+    "tabs": {
+      "flaggedConduct": "Flagged Conduct",
+      "reportedChat": "Reported Chat"
+    },
+    "filters": {
+      "showReviewed": "Show reviewed"
+    },
+    "sources": {
+      "ticketReply": "Ticket reply",
+      "aiAssistant": "AI assistant"
+    },
+    "chatTypes": {
+      "userVendor": "User ↔ Vendor",
+      "userAdmin": "User ↔ Admin",
+      "vendorAdmin": "Vendor ↔ Admin"
+    },
+    "severity": {
+      "medium": "Medium",
+      "high": "High"
+    },
+    "targetPrefix": "to",
+    "reported": "reported",
+    "and": "&",
+    "participantsWith": "{{partyA}} & {{partyB}}",
+    "fallback": {
+      "chat": "Chat"
+    },
+    "empty": {
+      "title": "No conduct issues",
+      "description": "Flagged admin messages and reported chats will appear here.",
+      "allFlagsReviewed": "All flags reviewed.",
+      "nothingToReview": "Nothing to review.",
+      "allReportsReviewed": "All reports reviewed.",
+      "noReportedChats": "No chats have been reported."
+    },
+    "actions": {
+      "viewLog": "View log",
+      "marking": "Marking…",
+      "markReviewed": "Mark reviewed",
+      "reviewed": "Reviewed"
+    },
+    "dialogs": {
+      "aiSession": "AI assistant session — {{name}}",
+      "loading": "Loading…",
+      "noMessages": "No messages found for this session.",
+      "reportedChat": "Reported chat — {{participants}}",
+      "loadingConversation": "Loading conversation…"
+    }
+  },
+  "recommendation": {
+    "aiReview": {
+      "fields": {
+        "businessName": "Business name",
+        "description": "Description",
+        "recommendationReason": "Recommendation reason",
+        "category": "Category",
+        "googleLocation": "Google location",
+        "contactMethod": "Contact method",
+        "photos": "Photos",
+        "imageRights": "Image rights",
+        "exactNameMatches": "Exact name matches"
+      },
+      "findingKinds": {
+        "lowQuality": "Low quality",
+        "conflict": "Conflict",
+        "spam": "Spam",
+        "testContent": "Test content",
+        "policy": "Policy",
+        "duplicate": "Duplicate",
+        "manualReview": "Manual review"
+      },
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "photoStatuses": {
+        "appearsRelevant": "Appears relevant",
+        "possibleConflict": "Possible conflict",
+        "unclear": "Unclear",
+        "couldNotAnalyse": "Could not analyse"
+      },
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "requestChanges": "Request changes"
+      },
+      "advisory": "Advisory only — administrator confirmation required",
+      "analysisUnavailable": "AI analysis unavailable. Deterministic evidence checks are still shown below.",
+      "confidence": "{{value}} confidence",
+      "errors": {
+        "unavailable": "AI review unavailable right now."
+      },
+      "evidence": "Evidence",
+      "kind": "Kind",
+      "needsAttention": "Needs attention",
+      "noIssues": "No issues identified.",
+      "passedChecks": "Passed checks",
+      "photoAssessments": "Photo assessments",
+      "photoAttention": "Photo assessments requiring attention are shown below.",
+      "photoLabel": "Photo {{number}}",
+      "review": "AI review",
+      "reviewing": "Reviewing…",
+      "severityLabel": "Severity",
+      "suggestedDecision": "Suggested decision",
+      "suggestedFeedback": "Suggested feedback",
+      "uniqueIssueCount": "Unique issue count",
+      "uniqueIssue": "{{count}} unique issue",
+      "uniqueIssues": "{{count}} unique issues",
+      "useReason": "Use this reason",
+      "duplicateMatch": "{{count}} exact normalized-name match",
+      "duplicateMatches": "{{count}} exact normalized-name matches"
+    },
+    "detail": {
+      "actions": {
+        "approve": "Approve recommendation",
+        "requestChanges": "Request changes",
+        "reject": "Reject recommendation",
+        "continue": "Continue"
+      },
+      "admin": "Admin",
+      "backToRecommendations": "Back to recommendations",
+      "contactMethods": "Contact methods",
+      "contributor": "Contributor",
+      "decisionReason": "Decision reason",
+      "emailUnavailable": "Email unavailable",
+      "errors": {
+        "loadFailed": "Unable to load recommendation.",
+        "reasonTooShort": "Please explain the decision in at least 10 characters.",
+        "reviewFailed": "Review failed."
+      },
+      "feedback": {
+        "approved": "Recommendation approved.",
+        "changesRequested": "Changes requested.",
+        "inviteSent": "Invite sent.",
+        "rejected": "Recommendation rejected."
+      },
+      "fields": {
+        "category": "Category",
+        "description": "Description",
+        "googleLocation": "Google location",
+        "state": "State",
+        "whyRecommended": "Why this place is recommended"
+      },
+      "imageRightsAttested": "Image rights attested: {{date}}",
+      "inviteLinkHint": "The real sign-up link is appended automatically when you send — no need to include it.",
+      "inviteTitle": "Invite {{name}}",
+      "inviteVendor": "Invite vendor",
+      "linkedVendor": "Linked vendor",
+      "loading": "Loading recommendation evidence…",
+      "noAddressRecorded": "No address recorded",
+      "noPhotos": "No photos were attached to this submission.",
+      "notFound": "Recommendation not found.",
+      "notProvided": "Not provided",
+      "notRecorded": "Not recorded",
+      "openMap": "Open map",
+      "openVendorManagement": "Open Vendor Management",
+      "photoAlt": "{{name}} submission photo {{number}}",
+      "privateSubmissionNotice": "Private submission data. Use only for moderation and approved vendor outreach.",
+      "reasonPlaceholder": "Explain what the contributor needs to know (minimum 10 characters)",
+      "recommendationEvidence": "Recommendation evidence",
+      "rejectionReason": "Rejection reason",
+      "requiredChanges": "Required changes",
+      "reviewDecision": "Review decision",
+      "reviewDecisionHint": "Review all evidence before taking an action.",
+      "reviewHistory": "Review history",
+      "reviewed": "Reviewed",
+      "reviewer": "Reviewer",
+      "sendInvite": "Send invite",
+      "submissionEvidence": "Submission evidence",
+      "submissionPhotos": "Submission photos",
+      "submitted": "Submitted {{date}}",
+      "vendorConversion": "Vendor conversion",
+      "vendorOutreach": "Vendor outreach",
+      "vendorOutreachHint": "Draft an invitation with AI, review the message, then send it to the vendor.",
+      "confirm": {
+        "approveTitle": "Approve recommendation?",
+        "rejectTitle": "Reject recommendation?",
+        "requestChangesTitle": "Request changes?",
+        "approveDescription": "This records the approval and notifies the contributor.",
+        "decisionDescription": "This records the decision and shares your reason with the contributor."
+      }
+    }
+  },
+  "userManagement": {
+    "actions": {
+      "clearBioRestriction": "Clear Bio restriction",
+      "suspend": "Suspend account",
+      "unsuspend": "Unsuspend account",
+      "softDelete": "Soft delete account",
+      "restore": "Restore account"
+    },
+    "status": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "deleted": "Deleted",
+      "unknown": "Unknown"
+    },
+    "roles": {
+      "customer": "Customer",
+      "outletManager": "Outlet manager",
+      "unknown": "Unknown role",
+      "vendorOwner": "Vendor owner"
+    },
+    "auditActions": {
+      "clearBioRestriction": "Clear Bio restriction",
+      "restore": "Restore account",
+      "softDelete": "Soft delete account",
+      "suspend": "Suspend account",
+      "unknown": "Unknown action",
+      "unsuspend": "Unsuspend account"
+    },
+    "errors": {
+      "loadFailed": "Unable to load user",
+      "reasonTooShort": "Reason must be at least 10 characters.",
+      "updateFailed": "Unable to update user"
+    },
+    "feedback": {
+      "actionCompleted": "{{action}} completed.",
+      "userIdCopied": "User ID copied."
+    },
+    "loading": "Loading user…",
+    "dialog": {
+      "title": "User details",
+      "userDetails": "User details",
+      "closeDetails": "Close user details",
+      "close": "Close"
+    },
+    "profileNameSet": "Profile name set",
+    "profileNameMissing": "Display name not set — using email identifier",
+    "copyUserId": "Copy user ID",
+    "fields": {
+      "phone": "Phone",
+      "location": "Location",
+      "emailVerification": "Email verification",
+      "phoneVerification": "Phone verification",
+      "profile": "Profile",
+      "kyc": "KYC",
+      "registered": "Registered",
+      "pendingWithdrawals": "Pending withdrawals"
+    },
+    "notSet": "Not set",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "complete": "Complete",
+    "incomplete": "Incomplete",
+    "bioModeration": "Bio moderation",
+    "violations": "Violations: {{count}}",
+    "cooldown": "Cooldown: {{value}}",
+    "none": "None",
+    "bioNotSet": "Bio not set",
+    "recentHistory": "Recent management history",
+    "noHistory": "No User Management actions recorded.",
+    "noReason": "No reason recorded",
+    "accountActions": "Account actions",
+    "softDeleteDisabled": "Soft delete is disabled while a withdrawal is pending or processing.",
+    "reasonHint": "Enter at least 10 characters. This action will be recorded in the audit log.",
+    "reasonPlaceholder": "Reason for this action",
+    "cancel": "Cancel",
+    "reviewAction": "Review action",
+    "confirmAction": "Confirm action",
+    "confirmDescription": "This will apply the selected account action to {{email}}. The reason will be recorded in the audit log.",
+    "thisUser": "this user"
+  },
+  "share": {
+    "actions": {
+      "shared": "Shared",
+      "linkCopied": "Link copied",
+      "copyFailed": "Couldn't copy link",
+      "imageSharedWithReferral": "Shared — your referral link is in the caption",
+      "imageReadyWithReferral": "Image ready — your referral link is copied, paste it in your caption.",
+      "imageDownloadedWithLink": "Image downloaded — link copied",
+      "imageDownloaded": "Image downloaded",
+      "imageCreateFailed": "Couldn't create the image",
+      "shareTitle": "Share {{title}}",
+      "share": "Share",
+      "shareAsImage": "Share as image",
+      "shareImageTitle": "Share {{title}} as an image",
+      "verifyToEarn": "Verify to earn"
+    }
+  },
+  "withdrawals": {
+    "age": {
+      "daysHours": "{{days}}d {{hours}}h",
+      "hours": "{{count}}h",
+      "lessThanHour": "<1h"
+    },
+    "accessibility": {
+      "close": "Close",
+      "decisionGroup": "Withdrawal decision",
+      "detailDialog": "{{customer}} withdrawal review",
+      "highRisk": "High risk",
+      "openRow": "{{customer}}, {{amount}}, {{priority}}",
+      "reviewSummary": "Withdrawal review summary",
+      "selectAllVisible": "Select all visible withdrawals",
+      "selectRow": "Select withdrawal for {{customer}}"
+    },
+    "balances": {
+      "earnings": "Earnings",
+      "pendingRewards": "Pending rewards",
+      "reserved": "Reserved",
+      "title": "Wallet balances",
+      "topUp": "Top-up",
+      "withdrawn": "Withdrawn"
+    },
+    "batch": {
+      "noCommonAction": "No single action is valid for every selected withdrawal."
+    },
+    "common": {
+      "no": "No",
+      "yes": "Yes"
+    },
+    "confirmation": {
+      "amount": "Amount",
+      "cancel": "Cancel",
+      "confirm": "Confirm decision",
+      "customer": "Customer",
+      "decision": "Decision",
+      "destination": "Destination",
+      "note": "Note",
+      "reason": "Reason",
+      "title": "Confirm withdrawal decision"
+    },
+    "customerReason": {
+      "title": "Customer-visible reason"
+    },
+    "decision": {
+      "adminNote": "Admin note",
+      "afterThis": "After this: {{consequence}}",
+      "continueToConfirmation": "Continue to confirmation",
+      "description": "Choose what should happen to this withdrawal request.",
+      "minimumNote": "Minimum 10 characters.",
+      "reasonLabel": "Reason for this decision",
+      "selectDecisionPrompt": "Select a decision to see the required reason and note.",
+      "selectReason": "Select a reason",
+      "title": "Decision"
+    },
+    "decisions": {
+      "approve": {
+        "consequence": "The withdrawal can move to payout processing.",
+        "description": "Confirm the review is complete and start payout processing.",
+        "label": "Approve",
+        "placeholder": "Example: KYC, wallet balance and payout destination were reviewed and verified."
+      },
+      "fraudOverride": {
+        "consequence": "The high-risk override is recorded for audit.",
+        "description": "Record a Super Admin decision after reviewing the risk.",
+        "label": "Override high risk",
+        "placeholder": "Example: Risk review completed and the alert was confirmed as a false positive."
+      },
+      "hold": {
+        "consequence": "Keep the reserved funds held until the review continues.",
+        "description": "Pause the review while requesting more information.",
+        "label": "Hold",
+        "placeholder": "Example: Additional identity or payout information is required before processing."
+      },
+      "reject": {
+        "consequence": "Return the reserved amount to available balance.",
+        "description": "Reject the request because it cannot be approved.",
+        "label": "Reject",
+        "placeholder": "Example: Bank details could not be verified against the customer account."
+      },
+      "resume": {
+        "consequence": "The request becomes available for the next review step.",
+        "description": "Continue a request that was previously placed on hold.",
+        "label": "Resume review",
+        "placeholder": "Example: The requested information has been reviewed and the payout can continue."
+      },
+      "retryPayout": {
+        "consequence": "The approval remains unchanged and only payout execution is attempted again.",
+        "description": "Retry the provider call after confirming the earlier payout failure is safe to retry.",
+        "label": "Retry payout",
+        "placeholder": "Example: Provider availability and destination details were rechecked before retrying."
+      }
+    },
+    "detail": {
+      "amount": "Amount",
+      "appKyc": "App KYC",
+      "eyebrow": "Withdrawal review",
+      "notSupplied": "Not supplied",
+      "overridden": "Overridden",
+      "risk": "Risk",
+      "status": "Status",
+      "unknown": "Unknown"
+    },
+    "empty": {
+      "noRequests": "No withdrawal requests"
+    },
+    "errors": {
+      "actionFailed": "Action failed",
+      "batchActionFailed": "One or more withdrawal actions failed.",
+      "chooseDecisionReason": "Choose a reason for this decision.",
+      "invalidReasonCategory": "Choose a valid reason category for this withdrawal action.",
+      "loadRequests": "Unable to load withdrawal requests",
+      "loadReviewDetails": "Unable to load review details",
+      "matchDecisionReason": "Choose a reason that matches this decision.",
+      "minimumNote": "A note of at least 10 characters is required."
+    },
+    "enumValues": {
+      "accountDisabled": "Account disabled",
+      "adjustment": "Adjustment",
+      "affiliateCommission": "Affiliate commission",
+      "credit": "Credit",
+      "debit": "Debit",
+      "earnings": "Earnings",
+      "earningsConfirm": "Earnings confirmed",
+      "earningsPending": "Earnings pending",
+      "earningsReverse": "Earnings reversed",
+      "invalidDestination": "Invalid destination",
+      "kycVerified": "KYC verified",
+      "pendingEarnings": "Pending earnings",
+      "providerError": "Provider error",
+      "refundCredit": "Refund credit",
+      "rewardCleared": "Reward cleared",
+      "rewardPending": "Reward pending",
+      "spend": "Spend",
+      "topUp": "Top up",
+      "unverified": "Unverified",
+      "withdrawalCancel": "Withdrawal cancelled",
+      "withdrawalComplete": "Withdrawal completed",
+      "withdrawalRelease": "Withdrawal released",
+      "withdrawalReserve": "Withdrawal reserved"
+    },
+    "evidence": {
+      "affiliateSources": "Affiliate sources",
+      "doNotApprove": "Do not approve until the data is available.",
+      "fraudFlags": "Fraud flags",
+      "noAffiliateTransactions": "No affiliate transactions were found.",
+      "noFraudFlags": "No fraud flags recorded.",
+      "noRewardTransactions": "No reward transactions were found.",
+      "noWalletTransactions": "No wallet transactions were found.",
+      "rewardSources": "Reward sources",
+      "unavailable": "Review data is currently unavailable",
+      "walletTransactions": "Wallet transaction history"
+    },
+    "feedback": {
+      "actionCompleted": "Withdrawal action completed.",
+      "batchProcessed": "{{count}} withdrawals processed.",
+      "refreshAndAskSuperAdmin": "Refresh the page and try again; if it continues, ask a Super Admin to check the withdrawal record.",
+      "refreshAndContactSuperAdmin": "Refresh the page and try again; if it continues, contact a Super Admin.",
+      "riskOverrideRecorded": "Risk override recorded."
+    },
+    "filters": {
+      "allRiskLevels": "All risk levels",
+      "allStatuses": "All statuses",
+      "perPage": "{{count}} per page",
+      "searchCustomerOrEmail": "Search customer or email"
+    },
+    "header": {
+      "description": "Review payout requests with the amount, risk, approval progress and age visible before opening the evidence drawer.",
+      "eyebrow": "Wallet governance",
+      "oldestFirst": "Oldest first",
+      "queueClear": "Queue clear",
+      "reviewPriority": "Review priority",
+      "title": "Withdrawal Approvals"
+    },
+    "loading": "Loading…",
+    "metrics": {
+      "dualApproval": "Dual approval",
+      "highRisk": "High risk",
+      "needsAction": "Needs action",
+      "noOverdueRequests": "No overdue requests",
+      "oldestRequest": "Oldest request {{age}}",
+      "overdue": "Overdue",
+      "pendingPayoutValue": "Pending payout value",
+      "requestsInQueue": "Requests in this queue",
+      "visiblePageTotal": "Visible page total",
+      "waitingForSecondApprover": "Waiting for second approver"
+    },
+    "pagination": {
+      "pageOf": "Page {{page}} of {{totalPages}}"
+    },
+    "payoutExecution": {
+      "locked": "Payout execution locked",
+      "lockedDescription": "Another payout attempt is active or its provider result requires reconciliation. Do not retry. Refresh first; if the lock remains, ask a Super Admin to reconcile the provider transaction.",
+      "lockedSince": "Locked since {{date}}"
+    },
+    "payoutFailure": {
+      "category": "Category",
+      "code": "Code",
+      "noProviderMessage": "No provider message supplied",
+      "provider": "Provider",
+      "reason": "Reason",
+      "recommendedNextAction": "Recommended next action",
+      "retryable": "Retryable",
+      "title": "Payout failure",
+      "nextAction": {
+        "invalidDestination": "Ask the customer to correct or reactivate their payout destination. Do not retry until the destination is verified.",
+        "reconcile": "Do not retry this payout. Reconcile the provider transaction and recorded payout reference before taking another action.",
+        "retryable": "Confirm the provider and payout destination are available, then use Retry payout. The existing approval will be preserved."
+      }
+    },
+    "priority": {
+      "highRisk": "High risk",
+      "needsAction": "Needs action",
+      "overdue": "Overdue",
+      "waitingForSecondApprover": "Waiting for second approver"
+    },
+    "prompts": {
+      "adminNote": "Admin note (at least 10 characters):",
+      "batchConfirm": "{{action}} {{count}} selected {{itemLabel}}? Each item will still be checked by its own approval endpoint.",
+      "reasonCategory": "Reason category ({{reasons}}):"
+    },
+    "queue": {
+      "description": "Open a row when the review priority or evidence needs a closer look.",
+      "noOpenRequests": "No open requests",
+      "oldestRequest": "Oldest request {{age}}",
+      "title": "Review queue ({{count}})"
+    },
+    "readiness": {
+      "available": "Available",
+      "payoutDestination": "Payout destination",
+      "reviewPriority": "Review priority: {{priority}}",
+      "singleApproval": "Single approval",
+      "title": "Decision readiness",
+      "unavailable": "Unavailable",
+      "walletEvidence": "Wallet evidence"
+    },
+    "reasons": {
+      "additionalInformationVerified": "Additional information verified",
+      "bankDetailsConfirmed": "Bank details confirmed",
+      "bankDetailsMismatch": "Bank details do not match",
+      "exceptionApproved": "Exception approved",
+      "falsePositive": "False positive",
+      "insufficientPayoutInformation": "Payout information is incomplete",
+      "kycOrIdentityReview": "KYC or identity needs review",
+      "kycReviewCompleted": "KYC review completed",
+      "other": "Other reason",
+      "payoutAccountUnavailable": "Payout account is unavailable",
+      "payoutReady": "Payout details are ready",
+      "reviewCompleted": "Review completed",
+      "riskReviewCleared": "Risk review cleared",
+      "riskReviewRequired": "Additional risk review required",
+      "riskReviewed": "Risk was reviewed"
+    },
+    "risk": {
+      "high": "High",
+      "low": "Low",
+      "review": "Review"
+    },
+    "selection": {
+      "selectAllOnPage": "Select all on this page",
+      "withdrawal": "withdrawal",
+      "withdrawals": "withdrawals"
+    },
+    "status": {
+      "needsReview": "Needs review",
+      "notAssessed": "Not assessed",
+      "unknown": "Unknown",
+      "pending": "Pending",
+      "pending_second_approval": "Pending second approval",
+      "hold": "Hold",
+      "overdue": "Overdue",
+      "approved": "Approved",
+      "processing": "Processing",
+      "paid": "Paid",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "table": {
+      "ageSla": "Age / SLA",
+      "amount": "Amount",
+      "approvalPathReady": "Approval path ready",
+      "approvalProgress": "Approval progress",
+      "customer": "Customer",
+      "dualApprovals": "{{count}}/2 approvals",
+      "overdue": "Overdue",
+      "risk": "Risk: {{level}}",
+      "riskPriority": "Risk / priority",
+      "rm500Threshold": "RM500+ threshold",
+      "singleApproval": "1/1 approval",
+      "standardReview": "Standard review",
+      "status": "Status",
+      "waitingForSecondApprover": "Waiting for second approver",
+      "withinReviewWindow": "Within review window"
+    },
+    "timeline": {
+      "auditNote": "Every decision is recorded in the audit timeline.",
+      "noDecisions": "No decisions recorded yet.",
+      "title": "Approval timeline"
+    }
+  },
+  "refunds": {
+    "actions": {
+      "approve": "Approve",
+      "refresh": "Refresh",
+      "reject": "Reject",
+      "simulateRetryableFailure": "Simulate retryable failure",
+      "simulateSuccess": "Simulate success"
+    },
+    "attempt": "Attempt {{count}}",
+    "detail": {
+      "noReason": "No reason supplied"
+    },
+    "empty": {
+      "description": "New customer refund requests will appear here.",
+      "title": "No refund requests"
+    },
+    "errors": {
+      "loadRequests": "Unable to load refund requests.",
+      "reviewFailed": "Refund review failed.",
+      "simulationFailed": "Simulation failed."
+    },
+    "header": {
+      "description": "Approve or reject customer refunds. Simulator providers remain asynchronous until a signed result is received.",
+      "eyebrow": "Payments",
+      "title": "Refund Requests"
+    },
+    "loading": "Loading refund requests…",
+    "providers": {
+      "bankTransferSimulator": "Bank transfer — Simulator",
+      "grabpaySimulator": "GrabPay — Simulator",
+      "mywisataWallet": "MyWisata Wallet",
+      "stripeSandbox": "Stripe Sandbox",
+      "tngSimulator": "Touch ’n Go eWallet — Simulator",
+      "unknown": "Unknown provider"
+    },
+    "sandbox": {
+      "description": "Provider controls below exercise the signed webhook, idempotency, ledger and refund state machine. No real money moves.",
+      "label": "Sandbox / Simulated:"
+    },
+    "status": {
+      "processed": "Processed",
+      "simulated": "SIMULATED"
+    }
+  }
+}

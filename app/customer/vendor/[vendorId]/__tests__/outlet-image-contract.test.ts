@@ -14,6 +14,6 @@ describe("customer vendor outlet image contract", () => {
 
   it("keeps a real outlet identity fallback when no hero image exists", () => {
     expect(pageSource).toContain("{visual.initials}");
-    expect(pageSource).toContain("Outlet identity");
+    expect(pageSource).toContain("ui.vendor.outletIdentity");
   });
 });

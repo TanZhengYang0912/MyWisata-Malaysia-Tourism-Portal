@@ -15,12 +15,13 @@ import {
 } from "@/backend/domains/places";
 import { getVendors } from "@/backend/domains/catalogue";
 import { PlaceBreadcrumb } from "@/components/customer/place-breadcrumb";
-import { PlaceCard, entryLabel } from "@/components/customer/place-card";
+import { PlaceCard } from "@/components/customer/place-card";
 import { PlaceList } from "@/components/customer/place-list";
 import { PlaceActivitySection } from "@/components/customer/place-activity-section";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,12 @@ function nearbyRadiusKm(level: Place["level"]): number {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const place = await getPlaceBySlug(slug);
-  if (!place) return { title: "Place not found" };
+  const { t } = await getServerTranslation("customer");
+  if (!place) return { title: t("ui.place.notFound") };
   const heroImage = getPlaceHeroImage(place);
   return {
-    title: `${place.name} — Explore Malaysia on MyWisata`,
-    description: place.intro ?? place.tagline ?? `Discover ${place.name}, ${place.state}.`,
+    title: t("ui.place.metaTitle", { name: place.name }),
+    description: place.intro ?? place.tagline ?? t("ui.place.metaDescription", { name: place.name, state: place.state }),
     openGraph: {
       title: `${place.name} | MyWisata`,
       description: place.intro ?? undefined,
@@ -55,6 +57,7 @@ export default async function PlacePage({ params }: Props) {
   const { slug } = await params;
   const place = await getPlaceBySlug(slug);
   if (!place) notFound();
+  const { t } = await getServerTranslation("customer");
   const heroImage = getPlaceHeroImage(place);
 
   const [trail, children, regionGroups, products, nearby, vendors] = await Promise.all([
@@ -67,7 +70,11 @@ export default async function PlacePage({ params }: Props) {
   ]);
 
   const operator = place.managedByVendorId ? vendors.find((v) => v.id === place.managedByVendorId) : undefined;
-  const entry = entryLabel(place);
+  const entry = place.entryFee === null
+    ? { text: t("ui.place.noGate"), tone: "bg-muted text-muted-foreground" }
+    : place.entryFee === 0
+      ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 text-emerald-800" }
+      : { text: t("ui.place.entryFee", { price: place.entryFee }), tone: "bg-amber-100 text-amber-900" };
 
   // Product-option counts for every card this page is about to render — one
   // batch of parallel lookups instead of each PlaceCard fetching its own.
@@ -107,13 +114,13 @@ export default async function PlacePage({ params }: Props) {
         <div className="relative flex min-h-[330px] flex-col justify-end p-5 sm:min-h-[390px] sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-              {place.level}
+              {t(`ui.place.levels.${place.level}`, { defaultValue: place.level })}
             </span>
             <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${entry.tone}`}>
               {entry.text}
             </span>
             <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
-              {operator ? `Operated by ${operator.name}` : "Public destination"}
+              {operator ? t("ui.place.operatedBy", { name: operator.name }) : t("ui.place.noOperator")}
             </span>
           </div>
           <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl">{place.name}</h1>
@@ -166,7 +173,7 @@ export default async function PlacePage({ params }: Props) {
       {/* Region: places to visit, flat. */}
       {place.level === "region" && children.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{children.length} places to visit</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.placesToVisit", { count: children.length })}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {children.map((child) => (
               <PlaceCard key={child.id} place={child} productCount={productCounts.get(child.id) ?? 0} />
@@ -178,13 +185,13 @@ export default async function PlacePage({ params }: Props) {
       {/* POI: know-before-you-go detail. */}
       {place.detail && (
         <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Know before you go</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.knowBefore")}</h2>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2">
             {place.detail.difficulty && (
               <div className="flex gap-2">
                 <Mountain size={15} className="mt-0.5 shrink-0 text-primary" />
                 <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Difficulty</dt>
+                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.difficulty")}</dt>
                   <dd className="text-sm text-foreground">{place.detail.difficulty}</dd>
                 </div>
               </div>
@@ -193,7 +200,7 @@ export default async function PlacePage({ params }: Props) {
               <div className="flex gap-2">
                 <Clock size={15} className="mt-0.5 shrink-0 text-primary" />
                 <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Duration</dt>
+                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.duration")}</dt>
                   <dd className="text-sm text-foreground">{place.detail.duration}</dd>
                 </div>
               </div>
@@ -202,7 +209,7 @@ export default async function PlacePage({ params }: Props) {
               <div className="flex gap-2">
                 <Compass size={15} className="mt-0.5 shrink-0 text-primary" />
                 <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Best time</dt>
+                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.bestTime")}</dt>
                   <dd className="text-sm text-foreground">{place.detail.bestTime}</dd>
                 </div>
               </div>
@@ -211,7 +218,7 @@ export default async function PlacePage({ params }: Props) {
               <div className="flex gap-2">
                 <Route size={15} className="mt-0.5 shrink-0 text-primary" />
                 <div>
-                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Getting there</dt>
+                  <dt className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.gettingThere")}</dt>
                   <dd className="text-sm text-foreground">{place.detail.gettingThere}</dd>
                 </div>
               </div>
@@ -226,8 +233,8 @@ export default async function PlacePage({ params }: Props) {
           <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />
         ) : (
           <section className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">A quiet destination for now</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">There are no bookable experiences here yet. You can still explore the place and nearby local partners.</p>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("ui.place.activitiesHere")}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{t("ui.place.freeUnmanaged")}</p>
           </section>
         )
       )}

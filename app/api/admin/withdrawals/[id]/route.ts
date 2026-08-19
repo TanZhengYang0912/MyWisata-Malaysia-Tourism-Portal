@@ -32,6 +32,7 @@ export async function GET(
       payout_provider, payout_provider_event_id, payout_failure_code,
       payout_failure_message, payout_failure_category, payout_failure_at,
       payout_failure_retryable,
+      payout_execution_claim_token, payout_execution_claimed_at,
       customer_reason, created_at, updated_at,
       users!inner(
         full_name, email, kyc_status, tier,
@@ -137,6 +138,10 @@ export async function GET(
       category: r.payout_failure_category as string | null,
       occurredAt: r.payout_failure_at as string | null,
       retryable: r.payout_failure_retryable as boolean | null,
+    },
+    payoutExecution: {
+      locked: Boolean(r.payout_execution_claim_token),
+      claimedAt: r.payout_execution_claimed_at as string | null,
     },
   };
 

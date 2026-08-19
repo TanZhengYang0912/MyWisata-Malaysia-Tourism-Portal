@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, MapPin, X } from "lucide-react";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import type { MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
@@ -12,8 +13,8 @@ export type DestinationPreviewModalProps = {
 };
 
 export function DestinationPreviewModal({ destination, onClose, onExplore }: DestinationPreviewModalProps) {
+  const { t } = useTranslation("customer");
   const { savedStates, toggleSaved } = useSavedDestinations();
-
   useEffect(() => {
     if (!destination) return;
 
@@ -60,7 +61,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close destination preview"
+            aria-label={t("actions.close", { ns: "common" })}
             autoFocus
             className="absolute right-4 top-4 rounded-full bg-white/90 p-2 text-slate-800 shadow-lg transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
           >
@@ -86,10 +87,10 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
               className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-[#f4f6ff] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
             >
               <Bookmark size={15} fill={savedStates.has(destination.state) ? "currentColor" : "none"} />
-              {savedStates.has(destination.state) ? "Saved to atlas" : "Save to atlas"}
+              {savedStates.has(destination.state) ? t("ui.map.savedToAtlas") : t("ui.map.saveToAtlas")}
             </button>
             <button type="button" onClick={() => onExplore(destination.state)} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#101b66] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
-              <span>Explore {destination.state}</span>
+              <span>{t("ui.map.exploreState", { state: destination.state })}</span>
               <ArrowRight size={15} />
             </button>
           </div>

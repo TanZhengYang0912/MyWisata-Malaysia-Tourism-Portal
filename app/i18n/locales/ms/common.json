@@ -1,0 +1,179 @@
+{
+  "language": {
+    "label": "Bahasa",
+    "andRegion": "Bahasa dan rantau",
+    "english": "English",
+    "simplifiedChinese": "简体中文",
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "Menyimpan pilihan bahasa…",
+    "saved": "Pilihan bahasa telah disimpan.",
+    "saveError": "Tidak dapat menyimpan pilihan bahasa. Sila cuba lagi."
+  },
+  "conductReport": {
+    "submitFailed": "Laporan tidak dapat dihantar.",
+    "success": "Laporan dihantar. Pasukan kami akan menyemaknya.",
+    "submitFailedRetry": "Laporan tidak dapat dihantar. Sila cuba lagi.",
+    "reported": "Dilaporkan",
+    "reportConversation": "Laporkan perbualan ini",
+    "report": "Lapor",
+    "reasonOptional": "Sebab (pilihan)",
+    "submitting": "Menghantar…",
+    "submit": "Hantar laporan"
+  },
+  "appearance": {
+    "label": "Penampilan",
+    "settings": "Tetapan penampilan",
+    "theme": "Tema",
+    "textSize": "Saiz teks",
+    "themes": {
+      "light": "Cerah",
+      "dark": "Gelap",
+      "system": "Sistem"
+    },
+    "fontSizes": {
+      "normal": "Biasa",
+      "large": "Besar",
+      "larger": "Lebih besar"
+    }
+  },
+  "actions": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "close": "Tutup",
+    "confirm": "Sahkan",
+    "search": "Cari",
+    "clear": "Kosongkan",
+    "open": "Buka",
+    "viewAll": "Lihat semua",
+    "clearSelection": "Kosongkan pilihan",
+    "markAllAsRead": "Tandakan semua sebagai dibaca",
+    "previous": "Sebelumnya",
+    "next": "Seterusnya",
+    "signOut": "Log keluar"
+  },
+  "states": {
+    "loading": "Memuatkan",
+    "loadingEllipsis": "Memuatkan…",
+    "processingEllipsis": "Sedang diproses…",
+    "noResults": "Tiada hasil ditemui"
+  },
+  "pagination": {
+    "page": "Halaman {{current}} daripada {{total}}",
+    "items": "{{count}} item",
+    "showing": "Menunjukkan {{first}}–{{last}} daripada {{total}}"
+  },
+  "statuses": {
+    "draft": "Draf",
+    "pendingPayment": "Menunggu bayaran",
+    "paid": "Dibayar",
+    "active": "Aktif",
+    "inactive": "Tidak aktif",
+    "pending": "Menunggu",
+    "pendingReview": "Menunggu semakan",
+    "changesRequested": "Perubahan diminta",
+    "invited": "Dijemput",
+    "claimed": "Dituntut",
+    "onboarding": "Sedang bermula",
+    "vendorPendingReview": "Menunggu semakan vendor",
+    "converted": "Vendor menyertai",
+    "processing": "Sedang diproses",
+    "onHold": "Ditangguhkan",
+    "overdue": "Lewat",
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "completed": "Selesai",
+    "cancelled": "Dibatalkan",
+    "failed": "Gagal"
+  },
+  "errors": {
+    "generic": "Sesuatu tidak kena. Sila cuba lagi.",
+    "network": "Tidak dapat disambungkan. Sila cuba lagi."
+  },
+  "accessibility": {
+    "dismissNotification": "Tutup pemberitahuan",
+    "closeConfirmation": "Tutup pengesahan",
+    "notifications": "Pemberitahuan",
+    "closeChat": "Tutup sembang",
+    "openChat": "Buka sembang",
+    "sendMessage": "Hantar mesej",
+    "search": "Cari",
+    "previousPage": "Halaman sebelumnya",
+    "nextPage": "Halaman seterusnya"
+  },
+  "filters": {
+    "searchByName": "Cari mengikut nama…",
+    "clear": "Kosongkan",
+    "filter": "Tapis"
+  },
+  "notifications": {
+    "title": "Pemberitahuan",
+    "label": "Pemberitahuan",
+    "all": "Semua",
+    "unread": "Belum dibaca",
+    "markAllAsRead": "Tandakan semua sebagai dibaca",
+    "noNotificationsYet": "Belum ada pemberitahuan.",
+    "noNotificationsFound": "Tiada pemberitahuan ditemui.",
+    "viewAll": "Lihat semua pemberitahuan",
+    "open": "Buka",
+    "loadError": "Tidak dapat memuatkan pemberitahuan.",
+    "categories": {
+      "all": "Semua",
+      "wallet": "Dompet",
+      "bookings_purchases": "Tempahan & Pembelian",
+      "recommendations_affiliate": "Cadangan & Afiliasi",
+      "support": "Sokongan",
+      "account_security": "Akaun & Keselamatan",
+      "vendor_orders": "Pesanan",
+      "vendor_bookings": "Tempahan",
+      "vendor_products": "Produk",
+      "vendor_wallet": "Dompet",
+      "vendor_account": "Akaun"
+    }
+  },
+  "ticket": {
+    "noMessagesYet": "Belum ada mesej.",
+    "bot": "Bot",
+    "you": "Anda",
+    "supportTeam": "Pasukan sokongan"
+  },
+  "chatbot": {
+    "title": "Sokongan MyWisata",
+    "myTickets": "Tiket Saya",
+    "closeChat": "Tutup sembang",
+    "emptyPrompt": "Tanya tentang ganjaran, pautan afiliasi, pengeluaran, tempahan atau pengesahan.",
+    "inputPlaceholder": "Tanya soalan…",
+    "send": "Hantar mesej",
+    "openChat": "Sembang dengan kami",
+    "wasThisHelpful": "Adakah ini membantu?",
+    "yes": "Ya",
+    "no": "Tidak",
+    "gladToHelp": "Gembira dapat membantu.",
+    "wantTicket": "Mahu buka tiket sokongan?",
+    "creatingTicket": "Sedang mencipta…",
+    "noProblem": "Tiada masalah. Tanya saya apa-apa sahaja lagi.",
+    "ticketCreatedPrefix": "Selesai — tiket #",
+    "ticketCreatedSuffix": " telah dicipta. Pasukan kami akan membalas; anda boleh lihat di bawah Tiket Saya.",
+    "viewMyTickets": "Lihat tiket saya",
+    "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
+    "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
+    "supportRequest": "Permintaan sokongan"
+  },
+  "account": {
+    "menu": "Menu akaun",
+    "guestMenu": "Menu akaun tetamu",
+    "openMenuFor": "Buka menu akaun {{name}}",
+    "guestSyncHint": "Log masuk untuk melihat dan menyegerakkan akaun anda",
+    "signIn": "Log masuk",
+    "createAccount": "Cipta akaun",
+    "switchAccount": "Tukar akaun"
+  },
+  "guest": {
+    "mode": "Mod tetamu",
+    "startError": "Tidak dapat memulakan Mod tetamu. Sila cuba lagi."
+  },
+  "cart": {
+    "label": "Troli beli-belah",
+    "itemCount": "Troli beli-belah, {{count}} item",
+    "itemCountPlural": "Troli beli-belah, {{count}} item"
+  }
+}

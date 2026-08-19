@@ -17,9 +17,9 @@ describe("saved hub UI contract", () => {
     const wishlistPage = readFileSync(wishlistPagePath, "utf8");
     const designDemo = readFileSync(designDemoPath, "utf8");
     const activityCard = readFileSync(activityCardPath, "utf8");
-    expect(client).toContain("All saved");
-    expect(client).toContain("Places");
-    expect(client).toContain("Experiences");
+    expect(client).toContain('tCustomer("ui.wishlist.allSaved")');
+    expect(client).toContain('tCustomer("ui.labels.places")');
+    expect(client).toContain('tCustomer("ui.wishlist.savedExperiences")');
     expect(client).toContain("useSavedDestinations");
     // Canonical page is /customer/saved
     expect(savedPage).toContain("SavedHubClient");

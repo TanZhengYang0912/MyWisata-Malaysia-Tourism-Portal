@@ -1,12 +1,18 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { MapClient } from "./trip-planner-client";
 import { redirect, notFound } from "next/navigation";
 
-export const metadata = {
-  title: "Trip Planner — MyWisata",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation("customer");
+  return {
+    title: `${t("ui.map.yourTrip")} — MyWisata`,
+    description: t("ui.map.searchHint"),
+  };
+}
 
 export default async function TripPlannerPage({ params }: { params: Promise<{ tripId: string }> }) {
   const db = await createClient();

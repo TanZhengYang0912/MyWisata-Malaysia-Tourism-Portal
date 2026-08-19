@@ -34,13 +34,13 @@ describe("customer vendor commerce boundary", () => {
     expect(pageSource).toContain("function vendorProductDetailHref");
     expect(pageSource).toContain("source=vendor");
     expect(pageSource).toContain("outletId");
-    expect(pageSource).toContain("View product details");
+    expect(pageSource).toContain("ui.vendor.viewProductDetails");
     expect(pageSource).toContain("product.soldAt.length");
   });
 
   it("keeps location copy singular when a vendor has one outlet", () => {
     expect(pageSource).toContain("locations.length > 1");
-    expect(pageSource).toContain("Visit this outlet");
+    expect(pageSource).toContain("ui.vendor.chooseLocationTitle");
   });
 
   it("uses a compact single-outlet summary and reserves location cards for multiple outlets", () => {

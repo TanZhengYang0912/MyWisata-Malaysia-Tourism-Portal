@@ -10,6 +10,8 @@ import { ChatbotWidget } from "@/components/shared/chatbot-widget";
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { useTranslation } from "react-i18next";
 import { WishlistProvider, useWishlist } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider, useSavedDestinations } from "@/components/providers/saved-destinations";
 import { TripProvider } from "@/components/providers/trip";
@@ -18,6 +20,10 @@ import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
 
 const UNREAD_POLL_MS = 30_000;
+
+function customerNavigationKey(href: string) {
+  return href.split("?")[0].replace("/customer/", "");
+}
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -140,6 +146,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     };
   }, [accountMenuOpen]);
 
+  const { t: tCommon } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
+
   async function switchAccount() {
     setAccountMenuOpen(false);
     const { error } = await supabase.auth.signOut();
@@ -148,7 +157,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   if (loading || !currentUser) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">Loading…</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis", { defaultValue: "Loading…" })}</div>;
   }
 
   const customerDisplayName = getCustomerDisplayName(currentUser);
@@ -173,7 +182,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
-                <span>{item.label}</span>
+                <span>{tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}</span>
                 {item.href === "/customer/trip" && tripCount > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
                 )}
@@ -192,7 +201,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             <NotificationBell />
             <Link
               href="/customer/cart"
-              aria-label={count > 0 ? `Shopping cart, ${count} item${count === 1 ? "" : "s"}` : "Shopping cart"}
+              aria-label={count > 0
+                ? tCommon(count === 1 ? "cart.itemCount" : "cart.itemCountPlural", { count })
+                : tCommon("cart.label", { defaultValue: "Shopping cart" })}
               className={HEADER_ICON_BUTTON_CLASS}
             >
               <ShoppingCart size={18} className="text-foreground" />
@@ -213,7 +224,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               onClick={() => setAccountMenuOpen((open) => !open)}
               aria-expanded={accountMenuOpen}
               aria-haspopup="menu"
-              aria-label={`Open ${customerDisplayName} account menu`}
+              aria-label={currentUser
+                ? tCommon("account.openMenuFor", { name: customerDisplayName })
+                : tCommon("account.guestMenu", { defaultValue: "Guest account menu" })}
               className="flex items-center gap-2 rounded-full border border-border bg-card/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
@@ -235,7 +248,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               // axes but allowed no scrolling at all) is gone.
               <div
                 role="menu"
-                aria-label="Account menu"
+                aria-label={tCommon("account.menu", { defaultValue: "Account menu" })}
                 className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
                 style={{ maxHeight: "calc(100vh - 5.75rem)" }}
               >
@@ -246,7 +259,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 <div className="pt-2">
                   {ACCOUNT_MENU_GROUPS.map((group) => (
                     <div key={group.label} className="not-first:mt-2">
-                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{group.label}</p>
+                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(`accountGroups.${group.label}`, { defaultValue: group.label })}</p>
                       {group.items.map((item) => {
                         const active = isCustomerNavActive(pathname, item.href);
                         return (
@@ -263,10 +276,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                             </span>
                             <span className="min-w-0">
                               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                {item.label}
+                                {tCustomer(`accountItems.${item.label}.label`, { defaultValue: item.label })}
                                 {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                               </span>
-                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{item.description}</span>
+                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`accountItems.${item.label}.description`, { defaultValue: item.description })}</span>
                             </span>
                           </Link>
                         );
@@ -275,6 +288,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                   ))}
                 </div>
                 <div className="mt-2 border-t border-border pt-2">
+                  <LanguageSwitcher compact className="px-1 py-1" />
                   <button
                     type="button"
                     role="menuitem"
@@ -282,7 +296,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
                   >
                     <ArrowRightLeft size={16} />
-                    Switch account
+                    {tCommon("account.switchAccount", { defaultValue: "Switch account" })}
                   </button>
                 </div>
               </div>
@@ -301,7 +315,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
-              <item.icon size={13} /> {item.label}
+              <item.icon size={13} /> {tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}
               {item.href === "/customer/trip" && tripCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
               )}

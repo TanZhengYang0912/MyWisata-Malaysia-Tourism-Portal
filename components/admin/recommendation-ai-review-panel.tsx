@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -18,38 +19,38 @@ interface RecommendationAiReviewPanelProps {
 }
 
 const FIELD_LABELS: Record<RecommendationEvidenceField, string> = {
-  vendor_name: "Business name",
-  description: "Description",
-  why_recommend: "Recommendation reason",
-  category: "Category",
-  location: "Google location",
-  contact: "Contact method",
-  photos: "Photos",
-  image_attestation: "Image rights",
-  duplicate: "Exact name matches",
+  vendor_name: "recommendation.aiReview.fields.businessName",
+  description: "recommendation.aiReview.fields.description",
+  why_recommend: "recommendation.aiReview.fields.recommendationReason",
+  category: "recommendation.aiReview.fields.category",
+  location: "recommendation.aiReview.fields.googleLocation",
+  contact: "recommendation.aiReview.fields.contactMethod",
+  photos: "recommendation.aiReview.fields.photos",
+  image_attestation: "recommendation.aiReview.fields.imageRights",
+  duplicate: "recommendation.aiReview.fields.exactNameMatches",
 };
 
 const FINDING_KIND_LABELS: Record<ModerationFinding["kind"], string> = {
-  low_quality: "Low quality",
-  conflict: "Conflict",
-  spam: "Spam",
-  test_content: "Test content",
-  policy: "Policy",
-  duplicate: "Duplicate",
-  manual_review: "Manual review",
+  low_quality: "recommendation.aiReview.findingKinds.lowQuality",
+  conflict: "recommendation.aiReview.findingKinds.conflict",
+  spam: "recommendation.aiReview.findingKinds.spam",
+  test_content: "recommendation.aiReview.findingKinds.testContent",
+  policy: "recommendation.aiReview.findingKinds.policy",
+  duplicate: "recommendation.aiReview.findingKinds.duplicate",
+  manual_review: "recommendation.aiReview.findingKinds.manualReview",
 };
 
 const SEVERITY_LABELS: Record<ModerationFinding["severity"], string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
+  low: "recommendation.aiReview.severity.low",
+  medium: "recommendation.aiReview.severity.medium",
+  high: "recommendation.aiReview.severity.high",
 };
 
 const PHOTO_STATUS_LABELS: Record<PhotoAssessment["status"], string> = {
-  appears_relevant: "Appears relevant",
-  possible_conflict: "Possible conflict",
-  unclear: "Unclear",
-  could_not_analyse: "Could not analyse",
+  appears_relevant: "recommendation.aiReview.photoStatuses.appearsRelevant",
+  possible_conflict: "recommendation.aiReview.photoStatuses.possibleConflict",
+  unclear: "recommendation.aiReview.photoStatuses.unclear",
+  could_not_analyse: "recommendation.aiReview.photoStatuses.couldNotAnalyse",
 };
 
 const FIELD_TARGETS: Partial<Record<RecommendationEvidenceField, string>> = {
@@ -101,6 +102,7 @@ export function RecommendationAiReviewPanel({
   recommendationId,
   onUseReason,
 }: RecommendationAiReviewPanelProps) {
+  const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ModerationAssessment | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -122,13 +124,13 @@ export function RecommendationAiReviewPanel({
       };
       if (!response.ok || !body.data) {
         setResult(null);
-        setError(body.error?.message ?? "AI review unavailable right now.");
+        setError(body.error?.message ?? t("recommendation.aiReview.errors.unavailable"));
         return;
       }
       setResult(body.data);
     } catch {
       setResult(null);
-      setError("AI review unavailable right now.");
+      setError(t("recommendation.aiReview.errors.unavailable"));
     } finally {
       setLoading(false);
     }
@@ -144,11 +146,11 @@ export function RecommendationAiReviewPanel({
     ...photoIssues.map((photo) => issueKey("photos", photo.message)),
   ]).size : 0;
   const actionLabel = result?.suggestedAction === "request_changes"
-    ? "Request changes"
+    ? t("recommendation.aiReview.actions.requestChanges")
     : result?.suggestedAction === "reject"
-      ? "Reject"
+      ? t("recommendation.aiReview.actions.reject")
       : result?.suggestedAction === "approve"
-        ? "Approve"
+        ? t("recommendation.aiReview.actions.approve")
         : null;
   const canUseReason = (
     result?.suggestedAction === "request_changes"
@@ -158,40 +160,40 @@ export function RecommendationAiReviewPanel({
   return (
     <div>
       <Button size="sm" variant="outline" onClick={runReview} disabled={loading} className="gap-1.5">
-        <Sparkles size={13} /> {loading ? "Reviewing…" : "AI review"}
+        <Sparkles size={13} /> {loading ? t("recommendation.aiReview.reviewing") : t("recommendation.aiReview.review")}
       </Button>
       {error && <p role="alert" aria-live="polite" className="mt-2 text-xs text-destructive">{error}</p>}
       {result && (
         <div className="mt-3 space-y-3 rounded-xl bg-muted p-4 text-xs">
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-            Advisory only — administrator confirmation required
+            {t("recommendation.aiReview.advisory")}
           </p>
 
           {result.aiAvailable && result.suggestedAction ? (
-            <section aria-label="Suggested decision">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Suggested decision</p>
+            <section aria-label={t("recommendation.aiReview.suggestedDecision")}>
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("recommendation.aiReview.suggestedDecision")}</p>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <div>
                   <p className="text-base font-bold text-foreground">{actionLabel}</p>
-                  <p aria-label="Unique issue count" className="mt-1 text-[11px] font-semibold text-muted-foreground">
-                    {issueCount} unique {issueCount === 1 ? "issue" : "issues"}
+                  <p aria-label={t("recommendation.aiReview.uniqueIssueCount")} className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                    {t(issueCount === 1 ? "recommendation.aiReview.uniqueIssue" : "recommendation.aiReview.uniqueIssues", { count: issueCount })}
                   </p>
                 </div>
                 <span className="rounded-full bg-background px-2 py-1 font-semibold">
-                  {result.confidence} confidence
+                  {t("recommendation.aiReview.confidence", { value: result.confidence })}
                 </span>
               </div>
             </section>
           ) : (
             <p className="rounded-lg bg-background p-3 text-muted-foreground">
-              AI analysis unavailable. Deterministic evidence checks are still shown below.
+              {t("recommendation.aiReview.analysisUnavailable")}
             </p>
           )}
 
-          <section aria-label="Needs attention" className="rounded-lg bg-background p-3">
-            <p className="font-bold text-foreground">Needs attention</p>
+          <section aria-label={t("recommendation.aiReview.needsAttention")} className="rounded-lg bg-background p-3">
+            <p className="font-bold text-foreground">{t("recommendation.aiReview.needsAttention")}</p>
             {failedChecks.length === 0 && result.findings.length === 0 && photoIssues.length === 0 ? (
-              <p className="mt-2 text-muted-foreground">No issues identified.</p>
+              <p className="mt-2 text-muted-foreground">{t("recommendation.aiReview.noIssues")}</p>
             ) : (
               <div className="mt-2 space-y-2">
                 {failedChecks.map((check) => (
@@ -202,31 +204,31 @@ export function RecommendationAiReviewPanel({
                 {result.findings.map((finding, index) => (
                   <EvidenceIssue key={`finding-${finding.field}-${index}`} field={finding.field}>
                     <span className="block">
-                      <span className="font-semibold">{FIELD_LABELS[finding.field]}</span>
+                      <span className="font-semibold">{t(FIELD_LABELS[finding.field])}</span>
                       <span className="text-muted-foreground">
-                        {" · Kind: "}{FINDING_KIND_LABELS[finding.kind]}
-                        {" · Severity: "}{SEVERITY_LABELS[finding.severity]}
+                        {` · ${t("recommendation.aiReview.kind")}: `}{t(FINDING_KIND_LABELS[finding.kind])}
+                        {` · ${t("recommendation.aiReview.severityLabel")}: `}{t(SEVERITY_LABELS[finding.severity])}
                       </span>
                     </span>
                     <span className="mt-1 block">{finding.message}</span>
                     {finding.evidenceSummary && (
-                      <span className="mt-1 block text-muted-foreground">Evidence: {finding.evidenceSummary}</span>
+                      <span className="mt-1 block text-muted-foreground">{t("recommendation.aiReview.evidence")}: {finding.evidenceSummary}</span>
                     )}
                   </EvidenceIssue>
                 ))}
                 {photoIssues.length > 0 && (
-                  <p className="text-muted-foreground">Photo assessments requiring attention are shown below.</p>
+                  <p className="text-muted-foreground">{t("recommendation.aiReview.photoAttention")}</p>
                 )}
               </div>
             )}
             {photoAssessments.length > 0 && (
-              <section aria-label="Photo assessments" className="mt-3 rounded-lg bg-muted/50 p-3">
-                <p className="font-semibold text-foreground">Photo assessments</p>
+              <section aria-label={t("recommendation.aiReview.photoAssessments")} className="mt-3 rounded-lg bg-muted/50 p-3">
+                <p className="font-semibold text-foreground">{t("recommendation.aiReview.photoAssessments")}</p>
                 <div className="mt-2 space-y-2">
                   {photoAssessments.map((photo, index) => (
                     <EvidenceIssue key={`photo-assessment-${photo.imageId}-${index}`} field="photos">
                       <span className="block font-semibold">
-                        Photo {index + 1} · {PHOTO_STATUS_LABELS[photo.status]}
+                        {t("recommendation.aiReview.photoLabel", { number: index + 1 })} · {t(PHOTO_STATUS_LABELS[photo.status])}
                       </span>
                       <span className="mt-1 block">{photo.message}</span>
                     </EvidenceIssue>
@@ -236,20 +238,20 @@ export function RecommendationAiReviewPanel({
             )}
           </section>
 
-          <section aria-label="Passed checks" className="rounded-lg bg-emerald-50 p-3 text-emerald-800">
-            <p className="font-bold">Passed checks</p>
+          <section aria-label={t("recommendation.aiReview.passedChecks")} className="rounded-lg bg-emerald-50 p-3 text-emerald-800">
+            <p className="font-bold">{t("recommendation.aiReview.passedChecks")}</p>
             <ul className="mt-2 space-y-1">
               {passedChecks.map((check) => <li key={`passed-${check.field}`}>✓ {check.message}</li>)}
             </ul>
           </section>
 
           <p className="rounded-lg bg-background p-3 font-semibold">
-            {result.duplicateCount} exact normalized-name {result.duplicateCount === 1 ? "match" : "matches"}
+            {t(result.duplicateCount === 1 ? "recommendation.aiReview.duplicateMatch" : "recommendation.aiReview.duplicateMatches", { count: result.duplicateCount })}
           </p>
 
           {result.feedbackDraft && (
-            <section aria-label="Suggested feedback" className="rounded-lg bg-background p-3">
-              <p className="font-bold text-foreground">Suggested feedback</p>
+            <section aria-label={t("recommendation.aiReview.suggestedFeedback")} className="rounded-lg bg-background p-3">
+              <p className="font-bold text-foreground">{t("recommendation.aiReview.suggestedFeedback")}</p>
               <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{result.feedbackDraft}</p>
               {canUseReason && (
                 <Button
@@ -257,7 +259,7 @@ export function RecommendationAiReviewPanel({
                   className="mt-3 w-full"
                   onClick={() => onUseReason(result.suggestedAction as ReasonAction, result.feedbackDraft!.trim())}
                 >
-                  Use this reason
+                  {t("recommendation.aiReview.useReason")}
                 </Button>
               )}
             </section>

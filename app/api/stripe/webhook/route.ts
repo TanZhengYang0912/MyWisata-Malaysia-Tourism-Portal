@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 import { createServiceClient } from '@/lib/supabase/service';
 import { stripe } from '@/lib/stripe';
@@ -41,31 +42,41 @@ export async function POST(req: Request) {
     const db = createServiceClient();
 
     if (session.metadata?.payment_kind === 'order' && session.metadata.checkout_session_id) {
-      const { data: finalizeData, error: finalizeError } = await db.rpc('finalize_checkout', {
+      if (session.payment_status !== 'paid' || !session.currency) {
+        return NextResponse.json({ error: 'Order payment is not confirmed as paid' }, { status: 409 });
+      }
+      const { data: finalizeData, error: finalizeError } = await db.rpc('settle_provider_checkout', {
         p_checkout_session_id: session.metadata.checkout_session_id,
+        p_provider: 'stripe',
         p_outcome: 'succeeded',
-        p_provider_payment_id: typeof session.payment_intent === 'string' ? session.payment_intent : session.id,
+        p_provider_payment_id: session.id,
         p_provider_event_id: event.id,
+        p_payload_sha256: createHash('sha256').update(body).digest('hex'),
+        p_amount_sen: session.amount_total,
+        p_currency: session.currency.toUpperCase(),
       });
       if (finalizeError) {
         console.error('[stripe-webhook] order finalize RPC failed:', finalizeError);
         return NextResponse.json({ error: 'Failed to finalize order' }, { status: 500 });
       }
-      const paymentEmail = getPaymentEmailType('order');
-      try {
-        await enqueueUserTransactionEmail({
-          userId,
-          eventType: paymentEmail.eventType,
-          eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
-          reference: session.id,
-          amountRm: session.amount_total / 100,
-          occurredAt: new Date(event.created * 1000).toISOString(),
-        });
-      } catch (emailError) {
-        console.error('[stripe-webhook] payment email enqueue failed:', emailError);
-      }
+      const idempotent = Boolean(finalizeData && typeof finalizeData === 'object' && 'idempotent' in finalizeData && finalizeData.idempotent);
       const orderId = finalizeData && typeof finalizeData === 'object' && 'order_id' in finalizeData && typeof finalizeData.order_id === 'string' ? finalizeData.order_id : session.metadata.order_id ?? null;
-      if (orderId) {
+      if (!idempotent) {
+        const paymentEmail = getPaymentEmailType('order');
+        try {
+          await enqueueUserTransactionEmail({
+            userId,
+            eventType: paymentEmail.eventType,
+            eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
+            reference: session.id,
+            amountRm: session.amount_total / 100,
+            occurredAt: new Date(event.created * 1000).toISOString(),
+          });
+        } catch (emailError) {
+          console.error('[stripe-webhook] payment email enqueue failed:', emailError);
+        }
+      }
+      if (!idempotent && orderId) {
         void emitOrderVendorEvent({
           serviceDb: db,
           orderId,

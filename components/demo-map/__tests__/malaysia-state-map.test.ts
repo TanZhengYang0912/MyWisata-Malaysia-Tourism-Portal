@@ -10,11 +10,11 @@ const chatSource = readFileSync(resolve(workspace, "components/shared/chatbot-wi
 const stateSource = readFileSync(resolve(workspace, "lib/demo-map/data.ts"), "utf8");
 
 describe("Malaysia state discovery map", () => {
-  it("renders a progressive English label layer for the active state", () => {
+  it("renders a progressive localized label layer for the active state", () => {
     expect(stateSource).toContain('name: "Perlis"');
     expect(stateSource).toContain('name: "Labuan"');
     expect(mapSource).toContain("STATE_LABEL_LAYOUT");
-    expect(mapSource).toContain('aria-label="Malaysia state labels"');
+    expect(mapSource).toContain('aria-label={t("ui.map.allStatesTerritories")}');
     expect(mapSource).toContain("const visibleStates = activeState ? [activeState] : []");
     expect(mapSource).toContain("{visibleStates.map((state)");
     expect(mapSource).toContain("statePlacesCount(stateCounts, state.id)");
@@ -59,8 +59,8 @@ describe("Malaysia state discovery map", () => {
   });
 
   it("uses the reference map plate palette and independent region framing", () => {
-    expect(mapSource).toContain("All states and federal territories");
-    expect(mapSource).toContain("Choose one state to reveal its places.");
+    expect(mapSource).toContain('t("ui.map.allStatesTerritories")');
+    expect(mapSource).toContain('t("ui.map.chooseState")');
     expect(mapSource).toContain("#c7d2fe");
     expect(mapSource).toContain("#dce4ff");
   });
@@ -98,7 +98,7 @@ describe("Malaysia state discovery map", () => {
 
   it("pairs the map with a responsive selected-state panel", () => {
     expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
-    expect(storySource).toContain('aria-label="Selected state details"');
+    expect(storySource).toContain('aria-label={t("ui.map.selectedStateDetails")}');
     expect(storySource).toContain("id=\"explore-experiences\"");
     expect(storySource).toContain("lg:grid-cols-4");
     expect(storySource).toContain("line-clamp-2");
@@ -107,6 +107,6 @@ describe("Malaysia state discovery map", () => {
   });
 
   it("gives the floating chat control an accessible name", () => {
-    expect(chatSource).toContain('aria-label="Open chat"');
+    expect(chatSource).toContain('aria-label={t("accessibility.openChat"');
   });
 });

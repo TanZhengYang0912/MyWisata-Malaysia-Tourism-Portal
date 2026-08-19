@@ -6,16 +6,16 @@ const source = readFileSync(resolve(process.cwd(), "app/vendor/outlets/page.tsx"
 
 describe("vendor outlets management affordances", () => {
   it("keeps page selection in the result summary row", () => {
-    expect(source).toContain('aria-label="Select all outlets on current page"');
-    expect(source).toContain("Select page");
+    expect(source).toContain("aria-label={t('ui.outlets.selectCurrentPage')}");
+    expect(source).toContain("t('ui.outlets.selectCurrentPage')");
     expect(source).not.toContain("Select current page");
   });
 
   it("makes outlet actions and empty listing states explicit", () => {
-    expect(source).toContain("View details");
-    expect(source).toContain("Edit outlet");
-    expect(source).toContain("No listings yet");
-    expect(source).toContain("Manage listings");
+    expect(source).toContain("t('ui.outlets.viewDetails')");
+    expect(source).toContain("t('ui.outlets.editOutlet')");
+    expect(source).toContain("t('ui.outlets.noListings')");
+    expect(source).toContain("t('ui.outlets.manageListings')");
   });
 
   it("only renders pagination when there is more than one page", () => {

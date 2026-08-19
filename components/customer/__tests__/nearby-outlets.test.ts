@@ -9,8 +9,8 @@ const nearbySource = readFileSync(
 
 describe("nearby outlets section", () => {
   it("drops the radius from the heading, keeping it on the chips", () => {
-    expect(nearbySource).toContain("Nearby businesses");
-    expect(nearbySource).not.toContain("Nearby businesses, within");
+    expect(nearbySource).toContain('t("ui.nearbyOutlets.title"');
+    expect(nearbySource).toContain('t("ui.nearbyOutlets.summary", { count: filtered.length, radius');
   });
 
   it("links every row to the outlet's shop page", () => {
@@ -19,11 +19,10 @@ describe("nearby outlets section", () => {
   });
 
   it("groups type and distance filters and defaults to a local radius", () => {
-    expect(nearbySource).toContain('aria-label="Filter nearby businesses by type"');
-    expect(nearbySource).toContain('aria-label="Filter nearby businesses by distance"');
+    expect(nearbySource).toContain('aria-label={t("ui.nearbyOutlets.filterType"');
+    expect(nearbySource).toContain('aria-label={t("ui.nearbyOutlets.filterDistance"');
     expect(nearbySource).toContain("useState(Math.min(3, maxRadiusKm))");
-    expect(nearbySource).toContain("Distances are approximate.");
-    expect(nearbySource).not.toContain("Computed from coordinates, not a foreign key");
+    expect(nearbySource).toContain('t("ui.nearbyOutlets.coordinateNote"');
   });
 
   it("keeps the distance controls fixed instead of deriving them from the server radius", () => {

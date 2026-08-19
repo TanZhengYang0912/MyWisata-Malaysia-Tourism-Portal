@@ -1,0 +1,179 @@
+{
+  "language": {
+    "label": "语言",
+    "andRegion": "语言和地区",
+    "english": "English",
+    "simplifiedChinese": "简体中文",
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "正在保存语言偏好…",
+    "saved": "语言偏好已保存。",
+    "saveError": "无法保存语言偏好，请重试。"
+  },
+  "conductReport": {
+    "submitFailed": "无法提交举报。",
+    "success": "举报已提交，我们的团队会进行审核。",
+    "submitFailedRetry": "无法提交举报，请重试。",
+    "reported": "已举报",
+    "reportConversation": "举报此对话",
+    "report": "举报",
+    "reasonOptional": "原因（可选）",
+    "submitting": "正在提交…",
+    "submit": "提交举报"
+  },
+  "appearance": {
+    "label": "外观",
+    "settings": "外观设置",
+    "theme": "主题",
+    "textSize": "文字大小",
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
+    "fontSizes": {
+      "normal": "标准",
+      "large": "大",
+      "larger": "更大"
+    }
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "confirm": "确认",
+    "search": "搜索",
+    "clear": "清除",
+    "open": "打开",
+    "viewAll": "查看全部",
+    "clearSelection": "清除选择",
+    "markAllAsRead": "全部标为已读",
+    "previous": "上一页",
+    "next": "下一页",
+    "signOut": "退出登录"
+  },
+  "states": {
+    "loading": "加载中",
+    "loadingEllipsis": "加载中…",
+    "processingEllipsis": "处理中…",
+    "noResults": "未找到结果"
+  },
+  "pagination": {
+    "page": "第 {{current}} 页，共 {{total}} 页",
+    "items": "{{count}} 项",
+    "showing": "显示第 {{first}}–{{last}} 项，共 {{total}} 项"
+  },
+  "statuses": {
+    "draft": "草稿",
+    "pendingPayment": "待付款",
+    "paid": "已付款",
+    "active": "活跃",
+    "inactive": "未启用",
+    "pending": "待处理",
+    "pendingReview": "待审核",
+    "changesRequested": "要求修改",
+    "invited": "已邀请",
+    "claimed": "已认领",
+    "onboarding": "入门中",
+    "vendorPendingReview": "待商家审核",
+    "converted": "商家已加入",
+    "processing": "处理中",
+    "onHold": "暂缓",
+    "overdue": "逾期",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "completed": "已完成",
+    "cancelled": "已取消",
+    "failed": "失败"
+  },
+  "errors": {
+    "generic": "出错了，请重试。",
+    "network": "无法连接，请重试。"
+  },
+  "accessibility": {
+    "dismissNotification": "关闭通知",
+    "closeConfirmation": "关闭确认对话框",
+    "notifications": "通知",
+    "closeChat": "关闭聊天",
+    "openChat": "打开聊天",
+    "sendMessage": "发送消息",
+    "search": "搜索",
+    "previousPage": "上一页",
+    "nextPage": "下一页"
+  },
+  "filters": {
+    "searchByName": "按名称搜索…",
+    "clear": "清除",
+    "filter": "筛选"
+  },
+  "notifications": {
+    "title": "通知",
+    "label": "通知",
+    "all": "全部",
+    "unread": "未读",
+    "markAllAsRead": "全部标为已读",
+    "noNotificationsYet": "暂无通知。",
+    "noNotificationsFound": "未找到通知。",
+    "viewAll": "查看所有通知",
+    "open": "打开",
+    "loadError": "无法加载通知。",
+    "categories": {
+      "all": "全部",
+      "wallet": "钱包",
+      "bookings_purchases": "预订与购买",
+      "recommendations_affiliate": "推荐与联盟",
+      "support": "客服支持",
+      "account_security": "账户与安全",
+      "vendor_orders": "订单",
+      "vendor_bookings": "预订",
+      "vendor_products": "产品",
+      "vendor_wallet": "钱包",
+      "vendor_account": "账户"
+    }
+  },
+  "ticket": {
+    "noMessagesYet": "暂无消息。",
+    "bot": "机器人",
+    "you": "您",
+    "supportTeam": "客服团队"
+  },
+  "chatbot": {
+    "title": "MyWisata 客服",
+    "myTickets": "我的工单",
+    "closeChat": "关闭聊天",
+    "emptyPrompt": "可以询问奖励、联盟链接、提现、预订或验证相关问题。",
+    "inputPlaceholder": "输入问题…",
+    "send": "发送消息",
+    "openChat": "与我们聊天",
+    "wasThisHelpful": "这个回答有帮助吗？",
+    "yes": "有",
+    "no": "没有",
+    "gladToHelp": "很高兴能帮到你。",
+    "wantTicket": "需要提交支持工单吗？",
+    "creatingTicket": "创建中…",
+    "noProblem": "没问题，还有其他问题请随时问我。",
+    "ticketCreatedPrefix": "完成——工单 #",
+    "ticketCreatedSuffix": " 已创建。我们的团队会回复；你可以在“我的工单”中查看。",
+    "viewMyTickets": "查看我的工单",
+    "ticketError": "暂时无法创建工单，请重试。",
+    "somethingWrong": "抱歉，出了点问题，请重试。",
+    "supportRequest": "支持请求"
+  },
+  "account": {
+    "menu": "账户菜单",
+    "guestMenu": "游客账户菜单",
+    "openMenuFor": "打开 {{name}} 的账户菜单",
+    "guestSyncHint": "登录以查看并同步您的账户",
+    "signIn": "登录",
+    "createAccount": "创建账户",
+    "switchAccount": "切换账户"
+  },
+  "guest": {
+    "mode": "游客模式",
+    "startError": "无法启动游客模式，请重试。"
+  },
+  "cart": {
+    "label": "购物车",
+    "itemCount": "购物车，{{count}} 件商品",
+    "itemCountPlural": "购物车，{{count}} 件商品"
+  }
+}

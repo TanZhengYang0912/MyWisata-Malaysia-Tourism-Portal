@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getComputedActivity, getBookingSlots, getProductReviews } from "@/backend/domains/catalogue";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { experienceId } = await params;
   const db = await createClient();
   const experience = await getComputedActivity(experienceId, undefined, db);
-  if (!experience) return { title: "Experience not found" };
+  const { t } = await getServerTranslation("customer");
+  if (!experience) return { title: t("ui.experience.notFound") };
   const vendorName = experience.outlet?.vendorName;
   return {
     title: `${experience.name}${vendorName ? ` by ${vendorName}` : ""} — MyWisata`,
     description:
       experience.description ||
-      `Book ${experience.name} on MyWisata — discover local experiences across Malaysia.`,
+      t("ui.experience.metaDescription", { name: experience.name }),
   };
 }
 
@@ -33,6 +35,7 @@ export default async function ExperiencePage({ params }: Props) {
   const experience = await getComputedActivity(experienceId, undefined, db);
   
   if (!experience) notFound();
+  const { t } = await getServerTranslation("customer");
 
   const [slots, reviews] = await Promise.all([
     experience.requiresBooking ? getBookingSlots(experience.id, db) : Promise.resolve([]),
@@ -45,7 +48,7 @@ export default async function ExperiencePage({ params }: Props) {
     verified: experience.outlet.verified,
   };
   
-  const location = [experience.outlet.city, experience.outlet.state].filter(Boolean).join(", ") || "Malaysia";
+  const location = [experience.outlet.city, experience.outlet.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
 
   return (
     <main className="min-h-screen bg-background">
@@ -55,7 +58,7 @@ export default async function ExperiencePage({ params }: Props) {
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary"
         >
           <ArrowLeft size={15} />
-          Back to Explore
+          {t("ui.experience.backToExplore")}
         </Link>
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -97,7 +100,7 @@ export default async function ExperiencePage({ params }: Props) {
                 {experience.requiresBooking && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
                     <Clock size={12} />
-                    Bookable experience
+                    {t("ui.experience.bookable")}
                   </span>
                 )}
               </div>
@@ -107,7 +110,7 @@ export default async function ExperiencePage({ params }: Props) {
             {experience.description && (
               <section className="mt-8">
                 <h2 className="text-base font-bold text-foreground">
-                  About this experience
+                  {t("ui.experience.about")}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-muted-foreground whitespace-pre-wrap">
                   {experience.description}
@@ -117,18 +120,18 @@ export default async function ExperiencePage({ params }: Props) {
 
             {/* Things to Know / Cancellation Policy */}
             <section className="mt-8">
-              <h2 className="text-base font-bold text-foreground">Things to Know</h2>
+              <h2 className="text-base font-bold text-foreground">{t("ui.experience.thingsToKnow")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-border p-4">
-                  <h3 className="font-semibold text-foreground">Cancellation Policy</h3>
+                  <h3 className="font-semibold text-foreground">{t("ui.experience.cancellationPolicy")}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Free cancellation up to 24 hours before the experience starts.
+                    {t("ui.experience.freeCancellation")}
                   </p>
                 </div>
                 <div className="rounded-xl border border-border p-4">
-                  <h3 className="font-semibold text-foreground">What to Bring</h3>
+                  <h3 className="font-semibold text-foreground">{t("ui.experience.whatToBring")}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Comfortable clothing and a valid ID or booking confirmation.
+                    {t("ui.experience.bringDescription")}
                   </p>
                 </div>
               </div>
@@ -138,7 +141,7 @@ export default async function ExperiencePage({ params }: Props) {
             {vendor.id && (
               <section className="mt-8 rounded-2xl border border-border p-5">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                  Provided by
+                  {t("ui.experience.providedBy")}
                 </p>
                 <Link
                   href={`/customer/vendor/${vendor.id}`}
@@ -148,11 +151,11 @@ export default async function ExperiencePage({ params }: Props) {
                     {vendor.name?.charAt(0) || "V"}
                   </span>
                   <div>
-                    <p className="font-bold text-foreground">{vendor.name || "Verified Vendor"}</p>
+                    <p className="font-bold text-foreground">{vendor.name || t("ui.experience.verifiedVendorFallback")}</p>
                     {vendor.verified && (
                       <p className="mt-0.5 flex items-center gap-1 text-xs text-primary">
                         <ShieldCheck size={12} />
-                        Verified vendor
+                        {t("ui.experience.verifiedVendor")}
                       </p>
                     )}
                   </div>
@@ -163,7 +166,7 @@ export default async function ExperiencePage({ params }: Props) {
             {/* Outlet */}
             <section className="mt-4 rounded-2xl border border-border p-5">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                Location
+                {t("ui.experience.location")}
               </p>
               <Link
                 href={`/customer/outlet/${experience.outletId}`}
@@ -178,7 +181,7 @@ export default async function ExperiencePage({ params }: Props) {
             
             {/* Reviews Section */}
             <section className="mt-10 pt-10 border-t border-border">
-              <h2 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)] mb-6">Guest Reviews</h2>
+              <h2 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)] mb-6">{t("ui.experience.guestReviews")}</h2>
               <ActivityReviews 
                 productId={experience.id} 
                 rating={experience.rating} 

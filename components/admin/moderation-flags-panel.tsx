@@ -8,8 +8,10 @@
 // support/chatbot surface.
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 interface ModerationFlag {
   id: string;
@@ -26,12 +28,18 @@ interface ModerationFlag {
 }
 
 const SOURCE_LABEL: Record<ModerationFlag["sourceType"], string> = {
-  chatbot_message: "Chatbot message",
-  ticket: "Ticket",
-  ticket_reply: "Ticket reply",
+  chatbot_message: "moderation.sources.chatbotMessage",
+  ticket: "moderation.sources.ticket",
+  ticket_reply: "moderation.sources.ticketReply",
+};
+
+const FLAG_TYPE_LABEL: Record<string, string> = {
+  slur: "moderation.flagTypes.slur",
 };
 
 export function ModerationFlagsPanel() {
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [flags, setFlags] = useState<ModerationFlag[] | null | undefined>(undefined);
   const [showReviewed, setShowReviewed] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
@@ -76,17 +84,17 @@ export function ModerationFlagsPanel() {
     <div className="rounded-xl bg-card p-4 mb-4 border border-destructive/20" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-destructive flex items-center gap-1.5">
-          <ShieldAlert size={13} /> Moderation flags {openCount > 0 && `(${openCount} open)`}
+          <ShieldAlert size={13} /> {t("moderation.flags.title")} {openCount > 0 && `(${t("moderation.flags.openCount", { count: openCount })})`}
         </p>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <input type="checkbox" checked={showReviewed} onChange={(e) => setShowReviewed(e.target.checked)} />
-          Show reviewed
+          {t("moderation.flags.showReviewed")}
         </label>
       </div>
       <div className="space-y-2">
         {visible.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {openCount === 0 && flags.length > 0 ? "All flags reviewed." : "Nothing to review."}
+            {openCount === 0 && flags.length > 0 ? t("moderation.flags.allReviewed") : t("moderation.flags.nothingToReview")}
           </p>
         )}
         {visible.map((f) => (
@@ -95,20 +103,20 @@ export function ModerationFlagsPanel() {
               <p className="text-foreground">
                 <span className="font-semibold">{f.userName}</span>{" "}
                 <span className="capitalize text-muted-foreground font-normal">
-                  · {SOURCE_LABEL[f.sourceType]} · {f.flagType}
+                  · {t(SOURCE_LABEL[f.sourceType])} · {t(FLAG_TYPE_LABEL[f.flagType] ?? "moderation.flagTypes.unknown", { defaultValue: f.flagType })}
                 </span>
               </p>
               {f.originalExcerpt && (
                 <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">&ldquo;{f.originalExcerpt}&rdquo;</p>
               )}
-              <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString()}</p>
+              <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString(locale)}</p>
             </div>
             {f.status === "open" ? (
               <Button size="sm" variant="outline" disabled={reviewingId === f.id} onClick={() => markReviewed(f.id)}>
-                {reviewingId === f.id ? "Marking…" : "Mark reviewed"}
+                {reviewingId === f.id ? t("moderation.flags.marking") : t("moderation.flags.markReviewed")}
               </Button>
             ) : (
-              <span className="text-[0.625rem] text-muted-foreground shrink-0">Reviewed</span>
+              <span className="text-[0.625rem] text-muted-foreground shrink-0">{t("moderation.flags.reviewed")}</span>
             )}
           </div>
         ))}

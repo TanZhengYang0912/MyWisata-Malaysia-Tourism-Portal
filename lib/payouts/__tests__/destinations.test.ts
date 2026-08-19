@@ -2,16 +2,45 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateWalletSplit,
   getPayoutDestinationCapabilities,
+  normalizeTngDestinationIdentifier,
   selectDefaultPayoutDestination,
   type PayoutDestination,
 } from '../destinations';
 
 describe('payout destination capabilities', () => {
+  it('accepts Malaysian mobile numbers and supported DuitNow identifiers only', () => {
+    expect(normalizeTngDestinationIdentifier('012-345 6789')).toEqual({ ok: true, value: '+60123456789' });
+    expect(normalizeTngDestinationIdentifier('+60123456789')).toEqual({ ok: true, value: '+60123456789' });
+    expect(normalizeTngDestinationIdentifier('900101-14-5678')).toEqual({ ok: true, value: '900101145678' });
+    expect(normalizeTngDestinationIdentifier('abcdef')).toEqual({
+      ok: false,
+      message: 'Enter a Malaysian mobile number or a valid DuitNow ID (6–32 letters/numbers with at least 4 digits).',
+    });
+  });
+
   it('enables Stripe Connect bank and keeps E-wallet disabled without an adapter', () => {
-    expect(getPayoutDestinationCapabilities()).toEqual({
+    expect(getPayoutDestinationCapabilities({
+      NODE_ENV: 'test',
+      TNG_PAYOUT_MODE: '',
+      TNG_MOCK_WEBHOOK_SECRET: '',
+    })).toEqual({
       bank_account: { enabled: true, provider: 'stripe_connect' },
       e_wallet: { enabled: false, provider: 'tng_direct_credit' },
     });
+  });
+
+  it('advertises E-wallet only for the configured non-production mock', () => {
+    expect(getPayoutDestinationCapabilities({
+      NODE_ENV: 'test',
+      TNG_PAYOUT_MODE: 'mock',
+      TNG_MOCK_WEBHOOK_SECRET: 'test-secret',
+    }).e_wallet.enabled).toBe(true);
+
+    expect(getPayoutDestinationCapabilities({
+      NODE_ENV: 'production',
+      TNG_PAYOUT_MODE: 'mock',
+      TNG_MOCK_WEBHOOK_SECRET: 'test-secret',
+    }).e_wallet.enabled).toBe(false);
   });
 
   it('selects only a verified default destination', () => {

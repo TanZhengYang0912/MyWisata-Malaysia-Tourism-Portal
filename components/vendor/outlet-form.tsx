@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import AddressAutocomplete, { type AddressSelection } from '@/components/vendor/address-autocomplete';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   vendorId: string;
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export default function OutletForm({ vendorId, initialData, onSuccess, onClose }: Props) {
+  const { t } = useTranslation('vendor');
+  const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -54,22 +57,22 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
       
       const result = await res.json();
       if (!res.ok) {
-        setServerError(result.error?.message ?? 'Failed to save outlet');
-        showFeedback('error', result.error?.message ?? 'Failed to save outlet');
+        setServerError(result.error?.message ?? t('outletForm.saveFailed'));
+        showFeedback('error', result.error?.message ?? t('outletForm.saveFailed'));
         return;
       }
-      showFeedback('success', initialData?.id ? 'Outlet updated successfully.' : 'Outlet created successfully.');
+      showFeedback('success', initialData?.id ? t('outletForm.updated') : t('outletForm.created'));
       onSuccess?.();
     } catch {
-      setServerError('Network error. Please try again.');
-      showFeedback('error', 'Outlet could not be saved. Please try again.');
+      setServerError(tCommon('errors.network'));
+      showFeedback('error', t('outletForm.saveNetworkError'));
     }
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">{initialData?.id ? 'Edit Outlet' : 'Add Outlet'}</h2>
+        <h2 className="text-xl font-semibold">{initialData?.id ? t('outletForm.editTitle') : t('outletForm.addTitle')}</h2>
         {onClose && <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>}
       </div>
 
@@ -81,99 +84,99 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-          <Input {...register('name')} placeholder="e.g. KLCC Branch" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.nameRequired')}</label>
+          <Input {...register('name')} placeholder={t('outletForm.namePlaceholder')} />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <AddressAutocomplete value={address || ''} onChange={(value) => setValue('address', value, { shouldDirty: true })} onSelect={applyAddress} placeholder="Search a Malaysia address…" />
-          <p className="mt-1 text-xs text-gray-400">Choose a suggestion to fill city, state, postcode and map coordinates.</p>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.address')}</label>
+          <AddressAutocomplete value={address || ''} onChange={(value) => setValue('address', value, { shouldDirty: true })} onSelect={applyAddress} placeholder={t('outletForm.addressPlaceholder')} />
+          <p className="mt-1 text-xs text-gray-400">{t('outletForm.addressHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <Input {...register('city')} placeholder="Kuala Lumpur" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.city')}</label>
+            <Input {...register('city')} placeholder={t('outletForm.cityPlaceholder')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-            <Input {...register('state')} placeholder="Wilayah Persekutuan" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.state')}</label>
+            <Input {...register('state')} placeholder={t('outletForm.statePlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Postcode</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.postcode')}</label>
             <Input {...register('postcode')} placeholder="50450" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-            <Input {...register('country')} placeholder="Malaysia" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.country')}</label>
+            <Input {...register('country')} placeholder={t('outletForm.countryPlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.phone')}</label>
             <Input {...register('phone')} placeholder="+60 12-345 6789" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <Input {...register('email')} type="email" placeholder="branch@example.com" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.email')}</label>
+            <Input {...register('email')} type="email" placeholder={t('outletForm.emailPlaceholder')} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.latitude')}</label>
             <Input {...register('lat', { valueAsNumber: true })} type="number" step="any" placeholder="3.1577" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.longitude')}</label>
             <Input {...register('lng', { valueAsNumber: true })} type="number" step="any" placeholder="101.7118" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Wheelchair accessible</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.wheelchair')}</label>
             <select
               {...register('wheelchairAccessible', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Not specified</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
+              <option value="">{t('outletForm.notSpecified')}</option>
+              <option value="true">{t('outletForm.yes')}</option>
+              <option value="false">{t('outletForm.no')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pet-friendly</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.petFriendly')}</label>
             <select
               {...register('petFriendly', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Not specified</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
+              <option value="">{t('outletForm.notSpecified')}</option>
+              <option value="true">{t('outletForm.yes')}</option>
+              <option value="false">{t('outletForm.no')}</option>
             </select>
           </div>
         </div>
-        <p className="-mt-2 text-xs text-gray-400">Only “Yes” shows an accessibility badge and boosts you for travellers who need it. Leave “Not specified” if unsure.</p>
+        <p className="-mt-2 text-xs text-gray-400">{t('outletForm.accessibilityHint')}</p>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-medium text-gray-700">Chat welcome message</label>
+            <label className="block text-sm font-medium text-gray-700">{t('outletForm.welcomeMessage')}</label>
             <label className="flex items-center gap-2 text-xs text-gray-500">
               <input type="checkbox" {...register('welcomeEnabled')} className="h-4 w-4" />
-              Auto-send welcome
+              {t('outletForm.autoWelcome')}
             </label>
           </div>
           <textarea
             {...register('welcomeMessage')}
             rows={3}
-            placeholder="Welcome! Thanks for your interest. Any questions? (leave blank to use the default greeting)"
+            placeholder={t('outletForm.welcomePlaceholder')}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {errors.welcomeMessage && <p className="text-red-500 text-xs mt-1">{errors.welcomeMessage.message}</p>}
@@ -182,10 +185,10 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
         {onClose && (
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{tCommon('actions.cancel')}</Button>
         )}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Outlet'}
+          {isSubmitting ? t('outletForm.saving') : t('outletForm.save')}
         </Button>
       </div>
     </form>

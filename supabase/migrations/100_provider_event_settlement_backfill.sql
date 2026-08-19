@@ -1,0 +1,230 @@
+-- 100_provider_event_settlement_backfill.sql
+-- Forward-only backfill for databases that received migrations 098-099
+-- without the provider event objects from migration 096.
+--
+-- Deliberately does not redefine mark_provider_withdrawal_processing; the
+-- claim-aware implementation from migration 099 remains authoritative.
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.complete_withdrawal_payout(uuid,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'migration_098_required: complete_withdrawal_payout is missing';
+  END IF;
+END;
+$$;
+
+-- ── Append-only wallet history ──────────────────────────────────────────────
+
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.wallet_transactions
+  FROM anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.wallet_transactions_are_append_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public AS $$
+BEGIN
+  RAISE EXCEPTION 'wallet_transactions_append_only';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.wallet_transactions_are_append_only()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS wallet_transactions_append_only ON public.wallet_transactions;
+CREATE TRIGGER wallet_transactions_append_only
+  BEFORE UPDATE OR DELETE ON public.wallet_transactions
+  FOR EACH ROW EXECUTE FUNCTION public.wallet_transactions_are_append_only();
+
+-- ── Append-only provider callback receipts ─────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.payout_provider_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  withdrawal_id UUID NOT NULL REFERENCES public.withdrawal_requests(id) ON DELETE RESTRICT,
+  provider TEXT NOT NULL CHECK (provider IN ('stripe_connect', 'tng_direct_credit')),
+  event_id TEXT NOT NULL CHECK (char_length(event_id) BETWEEN 1 AND 255),
+  provider_payout_id TEXT NOT NULL CHECK (char_length(provider_payout_id) BETWEEN 1 AND 255),
+  status TEXT NOT NULL CHECK (status IN ('paid', 'failed')),
+  failure_code TEXT,
+  failure_category TEXT,
+  failure_retryable BOOLEAN NOT NULL DEFAULT FALSE,
+  payload_sha256 TEXT CHECK (payload_sha256 IS NULL OR payload_sha256 ~ '^[0-9a-f]{64}$'),
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (provider, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS payout_provider_events_withdrawal_idx
+  ON public.payout_provider_events(withdrawal_id, received_at DESC);
+
+ALTER TABLE public.payout_provider_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.payout_provider_events
+  FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.payout_provider_events_are_append_only()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public AS $$
+BEGIN
+  RAISE EXCEPTION 'payout_provider_events_append_only';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.payout_provider_events_are_append_only()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS payout_provider_events_append_only ON public.payout_provider_events;
+CREATE TRIGGER payout_provider_events_append_only
+  BEFORE UPDATE OR DELETE ON public.payout_provider_events
+  FOR EACH ROW EXECUTE FUNCTION public.payout_provider_events_are_append_only();
+
+-- ── Signed provider callback -> atomic wallet settlement ────────────────────
+
+CREATE OR REPLACE FUNCTION public.settle_provider_withdrawal(
+  p_withdrawal_id UUID,
+  p_provider TEXT,
+  p_event_id TEXT,
+  p_provider_payout_id TEXT,
+  p_status TEXT,
+  p_failure_code TEXT DEFAULT NULL,
+  p_failure_message TEXT DEFAULT NULL,
+  p_failure_category TEXT DEFAULT NULL,
+  p_retryable BOOLEAN DEFAULT FALSE,
+  p_payload_sha256 TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_request public.withdrawal_requests%ROWTYPE;
+  v_existing_event public.payout_provider_events%ROWTYPE;
+  v_inserted_event_id UUID;
+  v_result JSONB;
+  v_final_status TEXT;
+  v_event_id TEXT;
+  v_provider_payout_id TEXT;
+BEGIN
+  IF COALESCE(auth.role(), '') <> 'service_role' THEN
+    RAISE EXCEPTION 'service_role_required';
+  END IF;
+  IF p_provider <> 'tng_direct_credit' THEN
+    RAISE EXCEPTION 'payout_provider_unsupported';
+  END IF;
+  IF p_status NOT IN ('paid', 'failed') THEN
+    RAISE EXCEPTION 'invalid_payout_status';
+  END IF;
+
+  v_event_id := BTRIM(COALESCE(p_event_id, ''));
+  v_provider_payout_id := BTRIM(COALESCE(p_provider_payout_id, ''));
+  IF v_event_id = '' OR char_length(v_event_id) > 255 THEN
+    RAISE EXCEPTION 'provider_event_id_invalid';
+  END IF;
+  IF v_provider_payout_id = '' OR char_length(v_provider_payout_id) > 255 THEN
+    RAISE EXCEPTION 'provider_payout_id_invalid';
+  END IF;
+  IF p_payload_sha256 IS NOT NULL
+     AND p_payload_sha256 !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'payload_hash_invalid';
+  END IF;
+  IF p_failure_category IS NOT NULL
+     AND p_failure_category NOT IN (
+       'invalid_destination', 'account_disabled', 'provider_rejected',
+       'timeout', 'not_configured', 'unknown'
+     ) THEN
+    RAISE EXCEPTION 'failure_category_invalid';
+  END IF;
+
+  SELECT * INTO v_request
+    FROM public.withdrawal_requests
+   WHERE id = p_withdrawal_id
+   FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'withdrawal_not_found'; END IF;
+  IF v_request.payout_provider IS DISTINCT FROM p_provider THEN
+    RAISE EXCEPTION 'payout_provider_mismatch';
+  END IF;
+  IF v_request.payout_provider_event_id IS DISTINCT FROM v_provider_payout_id THEN
+    RAISE EXCEPTION 'provider_payout_id_conflict';
+  END IF;
+
+  INSERT INTO public.payout_provider_events(
+    withdrawal_id,
+    provider,
+    event_id,
+    provider_payout_id,
+    status,
+    failure_code,
+    failure_category,
+    failure_retryable,
+    payload_sha256
+  ) VALUES (
+    p_withdrawal_id,
+    p_provider,
+    v_event_id,
+    v_provider_payout_id,
+    p_status,
+    LEFT(NULLIF(BTRIM(COALESCE(p_failure_code, '')), ''), 120),
+    p_failure_category,
+    COALESCE(p_retryable, false),
+    p_payload_sha256
+  )
+  ON CONFLICT (provider, event_id) DO NOTHING
+  RETURNING id INTO v_inserted_event_id;
+
+  IF v_inserted_event_id IS NULL THEN
+    SELECT * INTO v_existing_event
+      FROM public.payout_provider_events
+     WHERE provider = p_provider
+       AND event_id = v_event_id;
+
+    IF v_existing_event.withdrawal_id IS DISTINCT FROM p_withdrawal_id
+       OR v_existing_event.provider_payout_id IS DISTINCT FROM v_provider_payout_id
+       OR v_existing_event.status IS DISTINCT FROM p_status THEN
+      RAISE EXCEPTION 'provider_event_conflict';
+    END IF;
+
+    v_final_status := CASE WHEN p_status = 'paid' THEN 'paid' ELSE 'failed' END;
+    IF v_request.status IS DISTINCT FROM v_final_status THEN
+      RAISE EXCEPTION 'provider_event_state_conflict';
+    END IF;
+
+    RETURN jsonb_build_object(
+      'request_id', p_withdrawal_id,
+      'user_id', v_request.user_id,
+      'amount_rm', v_request.amount,
+      'status', v_final_status,
+      'provider', p_provider,
+      'idempotent', true
+    );
+  END IF;
+
+  v_result := public.complete_withdrawal_payout(
+    p_withdrawal_id,
+    v_provider_payout_id,
+    p_status
+  );
+
+  IF p_status = 'failed' THEN
+    UPDATE public.withdrawal_requests
+       SET payout_failure_code = LEFT(NULLIF(BTRIM(COALESCE(p_failure_code, '')), ''), 120),
+           payout_failure_message = LEFT(NULLIF(BTRIM(COALESCE(p_failure_message, '')), ''), 500),
+           payout_failure_category = COALESCE(p_failure_category, 'unknown'),
+           payout_failure_at = now(),
+           payout_failure_retryable = COALESCE(p_retryable, false),
+           updated_at = now()
+     WHERE id = p_withdrawal_id;
+  END IF;
+
+  RETURN v_result || jsonb_build_object(
+    'user_id', v_request.user_id,
+    'amount_rm', v_request.amount,
+    'provider', p_provider
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.settle_provider_withdrawal(
+  UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT
+) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.settle_provider_withdrawal(
+  UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT
+) TO service_role;
+
+NOTIFY pgrst, 'reload schema';

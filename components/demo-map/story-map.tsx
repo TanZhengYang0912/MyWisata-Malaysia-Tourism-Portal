@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
@@ -38,12 +40,14 @@ function StateDetailPanel({
   activities,
   onSelectState,
   onSelectPlace,
+  t,
 }: {
   selectedStateId: string | null;
   stateCounts: StateCounts;
   activities: ComputedActivity[];
   onSelectState: (stateId: string | null) => void;
   onSelectPlace: (placeId: string) => void;
+  t: TFunction;
 }) {
   const selectedState = selectedStateId ? getState(selectedStateId) : undefined;
   const placeCount = selectedStateId ? (stateCounts[selectedStateId] ?? []).reduce((total, bucket) => total + bucket.count, 0) : 0;
@@ -56,34 +60,34 @@ function StateDetailPanel({
   );
 
   return (
-    <aside aria-label="Selected state details" className="flex min-h-[280px] flex-col justify-between rounded-[1.8rem] border border-border bg-card p-5 shadow-sm sm:p-6 lg:h-[620px] lg:min-h-0 lg:overflow-y-auto">
+    <aside aria-label={t("ui.map.selectedStateDetails")} className="flex min-h-[280px] flex-col justify-between rounded-[1.8rem] border border-border bg-card p-5 shadow-sm sm:p-6 lg:h-[620px] lg:min-h-0 lg:overflow-y-auto">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Destination detail</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{t("ui.map.destinationDetail")}</p>
           <MapPin size={18} className="text-cta-orange" aria-hidden="true" />
         </div>
         <h2 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl">
-          {selectedStateId ? selectedState?.name ?? "Selected state" : "Select a state to explore"}
+          {selectedStateId ? selectedState?.name ?? t("ui.map.selectedState") : t("ui.map.selectStateToExplore")}
         </h2>
 
         {selectedState ? (
           <>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {placeCount > 0 ? `${placeCount} places ready for your next Malaysia experience.` : "There are no published places here yet, but this region is still part of the map."}
+              {placeCount > 0 ? t("ui.map.placesReady", { count: placeCount }) : t("ui.map.noPublishedPlaces")}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-2xl bg-secondary px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Places</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.labels.places")}</p>
                 <p className="mt-1 text-xl font-bold text-primary">{placeCount}</p>
               </div>
               <div className="rounded-2xl bg-secondary px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Categories</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.map.categories")}</p>
                 <p className="mt-1 text-xl font-bold text-primary">{(stateCounts[selectedState?.id ?? ""] ?? []).length}</p>
               </div>
             </div>
             {highlights.length > 0 && (
               <div className="mt-5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">A few places to start</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{t("ui.map.placesToStart")}</p>
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
@@ -97,14 +101,14 @@ function StateDetailPanel({
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Use the map to compare regions. Select one state to reveal its places and filter the experience list below.</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("ui.map.compareRegions")}</p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-2xl bg-secondary px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Regions</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.map.regions")}</p>
                 <p className="mt-1 text-xl font-bold text-primary">16</p>
               </div>
               <div className="rounded-2xl bg-secondary px-3 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Places</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{t("ui.labels.places")}</p>
                 <p className="mt-1 text-xl font-bold text-primary">{totalPlaces}</p>
               </div>
             </div>
@@ -112,15 +116,15 @@ function StateDetailPanel({
         )}
 
         <label htmlFor="explore-state-picker" className="mt-5 block">
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Choose a state</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{t("ui.map.chooseStateLabel")}</span>
           <select
             id="explore-state-picker"
-            aria-label="Choose a state"
+            aria-label={t("ui.map.chooseStateLabel")}
             value={selectedStateId ?? ""}
             onChange={(event) => onSelectState(event.target.value || null)}
             className="mt-2 w-full appearance-none rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
-            <option value="">All states</option>
+            <option value="">{t("ui.map.allStatesTerritories")}</option>
             {DEMO_STATES.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}
           </select>
         </label>
@@ -130,12 +134,12 @@ function StateDetailPanel({
         {selectedState ? (
           <>
             <button type="button" onClick={() => document.getElementById("explore-experiences")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-xs font-bold text-white transition hover:bg-primary/90">
-              View {selectedState.name} places <ArrowRight size={14} aria-hidden="true" />
+              {t("ui.map.viewStatePlaces", { state: selectedState.name })} <ArrowRight size={14} aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => onSelectState(null)} className="rounded-full border border-border px-4 py-3 text-xs font-bold text-muted-foreground transition hover:border-primary hover:text-primary">All states</button>
+            <button type="button" onClick={() => onSelectState(null)} className="rounded-full border border-border px-4 py-3 text-xs font-bold text-muted-foreground transition hover:border-primary hover:text-primary">{t("ui.map.allStatesTerritories")}</button>
           </>
         ) : (
-          <p className="text-xs font-semibold text-muted-foreground">Hover for a quick preview · click for details</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t("ui.map.previewHint")}</p>
         )}
       </div>
     </aside>
@@ -143,6 +147,7 @@ function StateDetailPanel({
 }
 
 export function StoryMap({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+  const { t } = useTranslation("customer");
   const { savedIds, toggleSaved } = useWishlist();
   const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -260,12 +265,12 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
     <aside
       id="explore-category-filter"
       className="mt-3 rounded-2xl border border-border bg-secondary/60 p-3"
-      aria-label="More filters"
+      aria-label={t("ui.map.moreFilters")}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">More filters</p>
-          <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">Refine results.</h3>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{t("ui.map.moreFilters")}</p>
+          <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">{t("ui.map.refineResults")}</h3>
         </div>
         <MapPin size={18} className="mt-1 text-cta-orange" />
       </div>
@@ -276,12 +281,12 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
           const allTypeSlugs = detail.types.map((t) => t.slug);
           return (
             <div key={slug} className="mb-2.5 last:mb-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold text-foreground"><CategoryIcon category={slug} size={14} strokeWidth={1.8} />{meta?.label ?? slug}</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold text-foreground"><CategoryIcon category={slug} size={14} strokeWidth={1.8} />{t(`categories.${slug}`, { defaultValue: meta?.label ?? slug })}</p>
               <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1">
-                {detail.types.map((t) => (
-                  <label key={t.slug} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input type="checkbox" checked={isTypeChecked(slug, t.slug)} onChange={() => toggleType(slug, t.slug, allTypeSlugs)} className="h-3 w-3 accent-primary" />
-                    {t.label}
+                {detail.types.map((typeOption) => (
+                  <label key={typeOption.slug} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <input type="checkbox" checked={isTypeChecked(slug, typeOption.slug)} onChange={() => toggleType(slug, typeOption.slug, allTypeSlugs)} className="h-3 w-3 accent-primary" />
+                    {t(`ui.map.types.${typeOption.slug}`, { defaultValue: typeOption.label })}
                   </label>
                 ))}
               </div>
@@ -291,17 +296,17 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
         <label className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-sm font-bold text-foreground">
           <input type="checkbox" checked={selectedBadges.has("hidden_gem")} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
-          <span className="flex-1">💎 Hidden Gem</span>
+          <span className="flex-1">💎 {t("ui.labels.hiddenGem")}</span>
           <span className="text-[11px] font-normal text-muted-foreground">{activities.filter((activity) => activity.isHiddenGem).length}</span>
         </label>
 
         <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">Good for</p>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">{t("ui.outlet.goodToKnow")}</p>
           <div className="flex flex-col gap-1">
             {BADGE_OPTIONS.map((b) => (
               <label key={b.key} className="flex items-center gap-2 text-xs text-foreground">
                 <input type="checkbox" checked={selectedBadges.has(b.key)} onChange={() => toggleBadge(b.key)} className="h-3.5 w-3.5 accent-primary" />
-                {b.label}
+                {t(`ui.map.badges.${b.key}`, { defaultValue: b.label })}
               </label>
             ))}
           </div>
@@ -310,8 +315,8 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
       {activeFilterCount > 0 && (
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-          <span className="text-[11px] text-muted-foreground">{activeFilterCount} active</span>
-          <button type="button" onClick={clearFilters} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">Clear all</button>
+          <span className="text-[11px] text-muted-foreground">{t("ui.map.activeFilters", { count: activeFilterCount })}</span>
+          <button type="button" onClick={clearFilters} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">{t("ui.actions.clearFilters")}</button>
         </div>
       )}
     </aside>
@@ -343,12 +348,12 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
                 </div>
-                <button type="button" aria-label={saved ? "Remove saved place" : "Save place"} aria-pressed={saved} onClick={() => toggleSaved(selectedActivity.id)} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
-                <button type="button" aria-label="Close" onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
+                <button type="button" aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} aria-pressed={saved} onClick={() => toggleSaved(selectedActivity.id)} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
+                <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({selectedActivity.reviews} reviews)</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">RM {selectedActivity.price}</span></div>
-                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">View place <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> Directions</a></div>
+                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">RM {selectedActivity.price}</span></div>
+                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
             </div>
@@ -361,6 +366,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
             activities={filteredActivities}
             onSelectState={selectState}
             onSelectPlace={setSelectedPlaceId}
+            t={t}
           />
 
         </div>
@@ -368,17 +374,17 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
         <section id="explore-experiences" className="mt-5 flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card p-3 shadow-[0_12px_28px_rgba(1,0,102,0.08)] sm:p-4 2xl:p-5">
             <div className="flex shrink-0 items-end justify-between gap-3">
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary 2xl:text-[10px]">Malaysia experiences</p>
-                <h2 className="mt-0.5 font-[family-name:var(--font-display)] text-lg font-bold tracking-tight sm:text-xl 2xl:text-2xl">{selectedStateId ? getState(selectedStateId)?.name : "Across Malaysia"}</h2>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary 2xl:text-[10px]">{t("ui.map.exploreMalaysia")}</p>
+                <h2 className="mt-0.5 font-[family-name:var(--font-display)] text-lg font-bold tracking-tight sm:text-xl 2xl:text-2xl">{selectedStateId ? getState(selectedStateId)?.name : t("ui.search.allMalaysia")}</h2>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {selectedStateId && <button type="button" onClick={() => selectState(null)} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] font-bold text-muted-foreground transition hover:border-primary hover:text-primary"><X size={12} /> All states</button>}
-                <span className="text-xs font-semibold text-muted-foreground">{filteredActivities.length} places</span>
+                {selectedStateId && <button type="button" onClick={() => selectState(null)} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] font-bold text-muted-foreground transition hover:border-primary hover:text-primary"><X size={12} /> {t("ui.map.allStatesTerritories")}</button>}
+                <span className="text-xs font-semibold text-muted-foreground">{t("ui.map.placesHere", { count: filteredActivities.length })}</span>
               </div>
             </div>
 
-            <div className="mt-1 flex shrink-0 flex-wrap gap-1.5 2xl:mt-2" aria-label="Experience filters">
-              <button type="button" onClick={clearFilters} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${activeFilterCount === 0 ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}>All</button>
+            <div className="mt-1 flex shrink-0 flex-wrap gap-1.5 2xl:mt-2" aria-label={t("ui.map.experienceFilters")}>
+              <button type="button" onClick={clearFilters} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${activeFilterCount === 0 ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}>{t("ui.search.allMalaysia")}</button>
               {Object.entries(CATEGORY_META).map(([slug, meta]) => (
                 <button
                   key={slug}
@@ -386,12 +392,12 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                   onClick={() => toggleCategory(slug)}
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedTypes[slug] !== undefined ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}
                 >
-                  <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {meta.label}
+                  <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {t(`categories.${slug}`, { defaultValue: meta.label })}
                 </button>
               ))}
-              <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedBadges.has("hidden_gem") ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> Hidden Gem</button>
+              <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedBadges.has("hidden_gem") ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
               <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="explore-category-filter" className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filtersOpen || activeFilterCount > 0 ? "border-primary/30 bg-secondary text-primary" : "border-border text-muted-foreground hover:bg-secondary"}`}>
-                <SlidersHorizontal size={13} /> More filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+                <SlidersHorizontal size={13} /> {t("ui.map.moreFilters")}{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
               </button>
             </div>
 
@@ -399,14 +405,14 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
             <div className="mt-2 min-h-0 overflow-hidden 2xl:mt-3">
               {filteredActivities.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">No experiences match this view. Try another state or fewer filters.</div>
+                <div className="rounded-2xl border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">{t("ui.states.loadingError")}</div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {filteredActivities.slice(0, 8).map((activity) => (
                     <button
                       key={activity.id}
                       type="button"
-                      aria-label={`Open ${activity.name}`}
+                      aria-label={t("ui.map.openPlace", { name: activity.name })}
                       aria-pressed={activity.id === selectedPlaceId}
                       onClick={() => setSelectedPlaceId(activity.id)}
                       className={`group min-h-[56px] rounded-xl border bg-background p-1.5 text-left shadow-[0_5px_16px_rgba(1,0,102,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(1,0,102,0.1)] sm:p-2 2xl:min-h-[64px] 2xl:p-3 ${activity.id === selectedPlaceId ? "border-cta-orange bg-orange-50/50" : "border-border"}`}
@@ -422,7 +428,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                         )}
                          <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
-                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {activity.category}</p>
+                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`, { defaultValue: activity.category })}</p>
                          </div>
                         <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">RM {activity.price}</span>
                        </div>

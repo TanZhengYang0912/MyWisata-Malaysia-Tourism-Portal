@@ -1,0 +1,179 @@
+{
+  "language": {
+    "label": "Language",
+    "andRegion": "Language & region",
+    "english": "English",
+    "simplifiedChinese": "简体中文",
+    "bahasaMelayu": "Bahasa Melayu",
+    "saving": "Saving language preference…",
+    "saved": "Language preference saved.",
+    "saveError": "Unable to save language preference. Please try again."
+  },
+  "conductReport": {
+    "submitFailed": "Could not submit report.",
+    "success": "Reported. Our team will review it.",
+    "submitFailedRetry": "Could not submit report. Please try again.",
+    "reported": "Reported",
+    "reportConversation": "Report this conversation",
+    "report": "Report",
+    "reasonOptional": "Reason (optional)",
+    "submitting": "Submitting…",
+    "submit": "Submit report"
+  },
+  "appearance": {
+    "label": "Appearance",
+    "settings": "Appearance settings",
+    "theme": "Theme",
+    "textSize": "Text size",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "fontSizes": {
+      "normal": "Normal",
+      "large": "Large",
+      "larger": "Larger"
+    }
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "search": "Search",
+    "clear": "Clear",
+    "open": "Open",
+    "viewAll": "View all",
+    "clearSelection": "Clear selection",
+    "markAllAsRead": "Mark all as read",
+    "previous": "Previous",
+    "next": "Next",
+    "signOut": "Sign out"
+  },
+  "states": {
+    "loading": "Loading",
+    "loadingEllipsis": "Loading…",
+    "processingEllipsis": "Processing…",
+    "noResults": "No results found"
+  },
+  "pagination": {
+    "page": "Page {{current}} of {{total}}",
+    "items": "{{count}} items",
+    "showing": "Showing {{first}}–{{last}} of {{total}}"
+  },
+  "statuses": {
+    "draft": "Draft",
+    "pendingPayment": "Pending payment",
+    "paid": "Paid",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "pendingReview": "Pending review",
+    "changesRequested": "Changes requested",
+    "invited": "Invited",
+    "claimed": "Claimed",
+    "onboarding": "Onboarding",
+    "vendorPendingReview": "Pending vendor review",
+    "converted": "Vendor joined",
+    "processing": "Processing",
+    "onHold": "On hold",
+    "overdue": "Overdue",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "failed": "Failed"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Unable to connect. Please try again."
+  },
+  "accessibility": {
+    "dismissNotification": "Dismiss notification",
+    "closeConfirmation": "Close confirmation",
+    "notifications": "Notifications",
+    "closeChat": "Close chat",
+    "openChat": "Open chat",
+    "sendMessage": "Send message",
+    "search": "Search",
+    "previousPage": "Previous page",
+    "nextPage": "Next page"
+  },
+  "filters": {
+    "searchByName": "Search by name…",
+    "clear": "Clear",
+    "filter": "Filter"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "label": "Notifications",
+    "all": "All",
+    "unread": "Unread",
+    "markAllAsRead": "Mark all as read",
+    "noNotificationsYet": "No notifications yet.",
+    "noNotificationsFound": "No notifications found.",
+    "viewAll": "View all notifications",
+    "open": "Open",
+    "loadError": "Unable to load notifications.",
+    "categories": {
+      "all": "All",
+      "wallet": "Wallet",
+      "bookings_purchases": "Bookings & Purchases",
+      "recommendations_affiliate": "Recommendations & Affiliate",
+      "support": "Support",
+      "account_security": "Account & Security",
+      "vendor_orders": "Orders",
+      "vendor_bookings": "Bookings",
+      "vendor_products": "Products",
+      "vendor_wallet": "Wallet",
+      "vendor_account": "Account"
+    }
+  },
+  "ticket": {
+    "noMessagesYet": "No messages yet.",
+    "bot": "Bot",
+    "you": "You",
+    "supportTeam": "Support team"
+  },
+  "chatbot": {
+    "title": "MyWisata Support",
+    "myTickets": "My Tickets",
+    "closeChat": "Close chat",
+    "emptyPrompt": "Ask about rewards, affiliate links, withdrawals, booking, or verification.",
+    "inputPlaceholder": "Ask a question…",
+    "send": "Send message",
+    "openChat": "Chat with us",
+    "wasThisHelpful": "Was this helpful?",
+    "yes": "Yes",
+    "no": "No",
+    "gladToHelp": "Glad I could help.",
+    "wantTicket": "Want to open a support ticket?",
+    "creatingTicket": "Creating…",
+    "noProblem": "No problem. Ask me anything else.",
+    "ticketCreatedPrefix": "Done — ticket #",
+    "ticketCreatedSuffix": " created. Our team will reply; you'll see it under My Tickets.",
+    "viewMyTickets": "View my tickets",
+    "ticketError": "Couldn't create a ticket right now. Please try again.",
+    "somethingWrong": "Sorry, something went wrong. Please try again.",
+    "supportRequest": "Support request"
+  },
+  "account": {
+    "menu": "Account menu",
+    "guestMenu": "Guest account menu",
+    "openMenuFor": "Open {{name}} account menu",
+    "guestSyncHint": "Sign in to view and sync your account",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "switchAccount": "Switch account"
+  },
+  "guest": {
+    "mode": "Guest Mode",
+    "startError": "Unable to start Guest Mode. Please try again."
+  },
+  "cart": {
+    "label": "Shopping cart",
+    "itemCount": "Shopping cart, {{count}} item",
+    "itemCountPlural": "Shopping cart, {{count}} items"
+  }
+}

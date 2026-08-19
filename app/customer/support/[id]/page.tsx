@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useTranslation } from "react-i18next";
 
 interface TicketDetail {
   id: string;
@@ -37,6 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 const LOCKED_STATUSES = new Set(["resolved", "closed"]);
 
 export default function CustomerTicketDetailPage() {
+  const { t: tCustomer, i18n } = useTranslation("customer");
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
@@ -77,12 +79,12 @@ export default function CustomerTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not send reply."); return; }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.replyError", { defaultValue: "Could not send reply." })); return; }
       setReply("");
-      showFeedback("success", "Reply sent.");
+      showFeedback("success", tCustomer("ui.support.replySent", { defaultValue: "Reply sent." }));
       await loadTicket();
     } catch {
-      showFeedback("error", "Could not send reply. Please try again.");
+      showFeedback("error", tCustomer("ui.support.replyRetry", { defaultValue: "Could not send reply. Please try again." }));
     } finally {
       setSending(false);
     }
@@ -93,40 +95,40 @@ export default function CustomerTicketDetailPage() {
     setReopening(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/reopen`, { method: "POST" });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? "Could not reopen ticket."); return; }
-      showFeedback("success", "Ticket reopened.");
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.reopenError", { defaultValue: "Could not reopen ticket." })); return; }
+      showFeedback("success", tCustomer("ui.support.ticketReopened", { defaultValue: "Ticket reopened." }));
       await loadTicket();
     } catch {
-      showFeedback("error", "Could not reopen ticket. Please try again.");
+      showFeedback("error", tCustomer("ui.support.reopenRetry", { defaultValue: "Could not reopen ticket. Please try again." }));
     } finally {
       setReopening(false);
     }
   }
 
   if (ticket === undefined || !currentUser) {
-    return <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">Loading…</div>;
+    return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading", { defaultValue: "Loading…" })}</div>;
   }
   if (ticket === null) {
-    return <EmptyState title="Couldn't load this ticket" description="It may not exist, or it's not yours." />;
+    return <EmptyState title={tCustomer("ui.support.ticketLoadError", { defaultValue: "Couldn't load this ticket" })} description={tCustomer("ui.support.ticketNotFound", { defaultValue: "It may not exist, or it's not yours." })} />;
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <Link href="/customer/support" className="text-xs text-muted-foreground flex items-center gap-1 mb-4 hover:opacity-70">
-        <ArrowLeft size={13} /> My Tickets
+        <ArrowLeft size={13} aria-hidden="true" /> {tCustomer("ui.support.myTickets", { defaultValue: "My Tickets" })}
       </Link>
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 bg-muted text-muted-foreground">
-            {STATUS_LABEL[ticket.status] ?? ticket.status}
+            {tCustomer(`ui.support.status.${ticket.status}`, { defaultValue: STATUS_LABEL[ticket.status] ?? ticket.status })}
           </span>
           <ReportChatButton chatType="user_admin" threadId={ticket.id} />
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-6">
-        {ticket.category} · opened {new Date(ticket.createdAt).toLocaleDateString()}
+        {ticket.category} · {tCustomer("ui.support.opened", { defaultValue: "opened" })} {new Date(ticket.createdAt).toLocaleDateString(i18n.resolvedLanguage || undefined)}
       </p>
 
       <div className="rounded-xl border border-border overflow-hidden mb-4">
@@ -145,11 +147,11 @@ export default function CustomerTicketDetailPage() {
       {LOCKED_STATUSES.has(ticket.status) ? (
         <div className="rounded-xl border border-border bg-muted px-4 py-3 text-center">
           <p className="text-sm text-muted-foreground mb-2">
-            This ticket is resolved.{" "}
+            {tCustomer("ui.support.resolved", { defaultValue: "This ticket is resolved." })}{" "}
             <button onClick={reopenTicket} disabled={reopening} className="text-primary underline font-medium">
-              {reopening ? "Reopening…" : "Reopen ticket"}
+              {reopening ? tCustomer("ui.support.reopening", { defaultValue: "Reopening…" }) : tCustomer("ui.support.reopen", { defaultValue: "Reopen ticket" })}
             </button>{" "}
-            or start a new one.
+            {tCustomer("ui.support.startNew", { defaultValue: "or start a new one." })}
           </p>
         </div>
       ) : (
@@ -160,12 +162,13 @@ export default function CustomerTicketDetailPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") sendReply();
             }}
-            placeholder="Reply to this ticket…"
+            aria-label={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket" })}
+            placeholder={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket…" })}
             className="flex-1 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
             disabled={sending}
           />
           <Button size="icon" className="h-10 w-10 rounded-full shrink-0" onClick={sendReply} disabled={sending || !reply.trim()}>
-            <Send size={14} />
+            <Send size={14} aria-hidden="true" />
           </Button>
         </div>
       )}
