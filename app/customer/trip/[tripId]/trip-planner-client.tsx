@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Expand, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
+import { Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
-import { useCart } from "@/components/providers/cart";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, type GeoHit, type RouteResult } from "@/lib/routing";
 import type { ComputedActivity } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
-import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction } from "../actions";
+import { groupTripItemsByDay, formatTripDay } from "@/lib/customer/trip-planner";
+import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
 
 export interface TripStop {
   id: string; // e.g., experience_id or custom id
@@ -39,6 +39,7 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
   const origin = stops.find(s => s.source === "location") || null;
 
   return {
+    items,
     origin,
     stops,
     has: (id: string) => stops.some(s => s.id === id),
@@ -136,6 +137,15 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
       }));
       await updateTripItemLocationAction(tripId, id, updates);
     },
+    schedule: async (id: string, scheduledDate: string | null, scheduledTime: string | null) => {
+      const previous = items.find((item) => item.id === id);
+      setItems((current) => current.map((item) => item.id === id ? { ...item, scheduled_date: scheduledDate, scheduled_time: scheduledTime } : item));
+      try {
+        await updateTripItemScheduleAction(tripId, id, { scheduled_date: scheduledDate, scheduled_time: scheduledTime });
+      } catch {
+        if (previous) setItems((current) => current.map((item) => item.id === id ? previous : item));
+      }
+    },
     clear: async () => {
       // not implemented for db for safety, just stub
       alert("Please delete the trip from the Trip Hub.");
@@ -166,14 +176,18 @@ function fmtShort(min: number): string {
   return m ? `${h}h${m}` : `${h}h`;
 }
 
+function formatTripRange(trip: Trip) {
+  if (!trip.start_date) return "Dates pending";
+  const format = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return trip.end_date ? `${format(trip.start_date)} – ${format(trip.end_date)}` : format(trip.start_date);
+}
+
 export function MapClient({ tripData, initialItems, initialActivities }: { tripData: Trip; initialItems: TripItem[]; initialActivities: ComputedActivity[] }) {
   const trip = useSyncTrip(tripData.id, initialItems);
   const [category, setCategory] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
   const [mode, setMode] = useState<TravelModeId>("DRIVING");
-  const [collapsed, setCollapsed] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
   const [urlPreview, setUrlPreview] = useState<string | null>(null);
 
   // Start editor + real-time geocoding autocomplete
@@ -205,7 +219,9 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
   const [routesLoading, setRoutesLoading] = useState(false);
   const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
 
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragItemId, setDragItemId] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<"itinerary" | "map" | "places">("itinerary");
+  const [listingQuery, setListingQuery] = useState("");
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
   const focusTokenRef = useRef(0);
 
@@ -425,19 +441,10 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     );
   }
 
-  // One flat, reorderable list — the top item is the route origin. Dragging is
-  // a plain move; each row's affordances follow its source identity, not its
-  // position (see the list JSX below).
-  function handleDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) {
-      setDragIndex(null);
-      return;
-    }
-    trip.move(dragIndex, targetIndex);
-    setDragIndex(null);
-  }
-
   const visibleActivities = near ? (activities ?? []).filter((a) => (a.distanceKm ?? Infinity) <= radiusKm) : activities ?? [];
+  const filteredActivities = visibleActivities.filter((activity) => activity.name.toLowerCase().includes(listingQuery.trim().toLowerCase()));
+  const groupedItems = groupTripItemsByDay(tripData, trip.items);
+  const scheduledItemCount = trip.items.filter((item) => item.scheduled_date).length;
   const center: [number, number] = near ? [near.lat, near.lng] : KL_CENTER;
   // Trip-stop pins always render (numbered markers matching the list order);
   // vendor "browse to add" pins are opt-in via showAllVendors, off by default so
@@ -449,396 +456,243 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     : [];
   const pins: MapPin[] = [...stopPins, ...vendorPins];
 
-  // Waypoints count = everything except the origin "location" stop.
-  const waypointCount = trip.stops.filter((s) => s.source !== "location").length;
   const directionsUrl = buildGoogleMapsDirectionsUrl(origin, trip.stops.slice(1), mode);
-  function handleGetDirections() {
-    if (directionsUrl) window.open(directionsUrl, "_blank");
-  }
   const hasRouteInputs = trip.stops.length >= 2;
+  function handleDropOnDay(date: string | null) {
+    if (!dragItemId) return;
+    const item = trip.items.find((entry) => entry.id === dragItemId);
+    if (item) trip.schedule(item.id, date, item.scheduled_time);
+    setDragItemId(null);
+  }
 
-  return (
-    <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden md:flex-row">
-      {/* Left Side: Itinerary Panel */}
-      <div
-        className={`relative z-10 flex flex-col bg-card shadow-xl transition-all duration-300 border-r border-border ${
-          collapsed ? "h-auto w-full border-b md:h-full md:w-16 md:border-b-0" : "h-1/2 w-full md:h-full md:w-[450px]"
-        }`}
+  function handleDropOnItem(targetId: string) {
+    if (!dragItemId || dragItemId === targetId) {
+      setDragItemId(null);
+      return;
+    }
+    const from = trip.items.findIndex((item) => item.id === dragItemId);
+    const to = trip.items.findIndex((item) => item.id === targetId);
+    trip.move(from, to);
+    setDragItemId(null);
+  }
+
+  function renderStopRow(item: TripItem) {
+    const stopNumber = trip.stops.findIndex((stop) => stop.id === item.id) + 1;
+    const isLocation = item.source === "location";
+    const isCustom = isLocation && item.id !== trip.origin?.id;
+    const editing = editingStopId === item.id || (isLocation && editingStart);
+
+    return (
+      <li
+        key={item.id}
+        draggable
+        onDragStart={() => setDragItemId(item.id)}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={() => handleDropOnItem(item.id)}
+        onDragEnd={() => setDragItemId(null)}
+        className={"rounded-xl border bg-card p-2.5 transition " + (dragItemId === item.id ? "opacity-40" : "border-border hover:border-primary/40")}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-          {!collapsed ? (
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{tripData.name}</h1>
-              <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
-                {tripData.start_date ? (tripData.end_date ? `${tripData.start_date} to ${tripData.end_date}` : tripData.start_date) : "Dates pending"}
-              </p>
+        {editing ? (
+          <div>
+            <div className="flex items-center gap-2">
+              <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
+              <input
+                autoFocus
+                value={isLocation ? startInput : editStopInput}
+                onChange={(event) => isLocation ? setStartInput(event.target.value) : setEditStopInput(event.target.value)}
+                placeholder="Search a new location…"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+              <button onClick={() => isLocation ? setEditingStart(false) : setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label="Cancel edit">
+                <X size={14} />
+              </button>
             </div>
-          ) : <span />}
-          <div className="flex items-center gap-1">
-            <button onClick={() => setCollapsed(!collapsed)} className="grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground">
-              {collapsed ? <Maximize2 size={14} /> : <Minus size={14} />}
+            {isLocation ? locationSuggestions() : (
+              <div className="mt-2">
+                {editStopLoading && <p className="text-xs text-muted-foreground">Searching…</p>}
+                {editStopSuggestions.length > 0 && (
+                  <ul className="overflow-hidden rounded-lg border border-border bg-card">
+                    {editStopSuggestions.map((suggestion, index) => (
+                      <li key={suggestion.lat + "," + suggestion.lng + "," + index}>
+                        <button onClick={() => chooseStopEditSuggestion(suggestion)} className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-left text-xs last:border-0 hover:bg-muted">
+                          <LocateFixed size={13} className="mt-0.5 shrink-0 text-primary" />
+                          <span className="line-clamp-2">{suggestion.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
+            <span className={"grid h-6 w-6 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-bold text-foreground">{item.label}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">{isLocation ? (item.kind === "gps" ? "Current location" : "Starting point") : item.sublabel || "Added place"}</span>
+            </span>
+            <input
+              type="time"
+              value={item.scheduled_time ?? ""}
+              onChange={(event) => trip.schedule(item.id, item.scheduled_date, event.target.value || null)}
+              aria-label={"Time for " + item.label}
+              className="w-[86px] rounded-lg border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
+            />
+            {item.scheduled_date && <span className="sr-only">Scheduled for {item.scheduled_date}</span>}
+            {(isLocation || isCustom) && (
+              <button
+                onClick={() => isLocation ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-primary"
+                aria-label={"Edit " + item.label}
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+            <button onClick={() => trip.remove(item.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={"Remove " + item.label}>
+              <X size={14} />
             </button>
           </div>
-        </div>
-        {!collapsed && (
-          <>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4">
-              <div className="mb-2 flex gap-2 mt-4">
-                <label className="flex-1">
-                    <span className="sr-only">Filter by category</span>
-                    <select value={category ?? ""} onChange={(e) => setCategory(e.target.value || null)} className="w-full rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">
-                      <option value="">All categories</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.id}>{c.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span className="sr-only">Radius</span>
-                    <select value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">
-                      {RADIUS_OPTIONS_KM.map((km) => (
-                        <option key={km} value={km}>{km} km</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAllVendors((v) => !v)}
-                  className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted"
-                  aria-pressed={showAllVendors}
-                >
-                  {showAllVendors ? <Eye size={13} className="text-primary" /> : <EyeOff size={13} />}
-                  {showAllVendors ? "Showing all vendors on map" : "Show all vendors on map"}
-                </button>
-
-                {/* One flat, drag-reorderable list. The top item is the route origin.
-                    Affordances follow each row's source identity, not its position:
-                    location = GPS + edit + move (wherever it sits), custom = edit + move,
-                    vendor = move only. */}
-                <ul className="mb-2 flex flex-col gap-1.5">
-                  {/* No location set yet — a prompt to add your starting point (GPS or typed). */}
-                  {!locationStop && (
-                    <li className="rounded-xl border border-dashed p-2" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
-                      <div className="flex items-center gap-2">
-                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-muted-foreground"><LocateFixed size={14} /></span>
-                        {editingStart ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={startInput}
-                            onChange={(e) => setStartInput(e.target.value)}
-                            placeholder="Type your location…"
-                            className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] text-foreground outline-none focus:border-primary"
-                          />
-                        ) : (
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-[13px] font-bold text-foreground">Add your starting point</span>
-                            <span className="block text-[11px] text-muted-foreground">Type a place or use GPS</span>
-                          </span>
-                        )}
-                        <span className="flex shrink-0 items-center gap-0.5">
-                          <button onClick={() => (editingStart ? setEditingStart(false) : openStartEditor())} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-black/5" aria-label="Type an address" title="Type an address">
-                            {editingStart ? <X size={15} /> : <Pencil size={13} />}
-                          </button>
-                          <button onClick={useGps} disabled={locating} className="grid h-7 w-7 place-items-center rounded-md text-primary hover:bg-black/5 disabled:opacity-50" aria-label="Use my current location" title="Use my GPS location">
-                            {locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={15} />}
-                          </button>
-                        </span>
-                      </div>
-                      {editingStart && locationSuggestions()}
-                      {locError && <p className="mt-1 px-1 text-[11px] text-destructive">{locError}</p>}
-                    </li>
-                  )}
-
-                  {trip.stops.map((s, i) => {
-                    const isLocation = s.source === "location" && s.id === trip.origin?.id;
-                    const isCustom = s.source === "location" && s.id !== trip.origin?.id;
-                    const editing = isLocation ? editingStart : editingStopId === s.id;
-                    const badge = i + 1;
-                    return (
-                      <li
-                        key={s.id}
-                        draggable
-                        onDragStart={() => setDragIndex(i)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleDrop(i)}
-                        onDragEnd={() => setDragIndex(null)}
-                        className={`rounded-xl border p-2 ${isLocation ? "border-transparent" : "border-border bg-muted"} ${dragIndex === i ? "opacity-40" : ""}`}
-                        style={isLocation ? { backgroundColor: "var(--secondary, #dbe6ff)" } : undefined}
-                      >
-                        {editing ? (
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
-                              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md text-[10px] font-bold text-white ${isLocation ? "" : "bg-primary"}`} style={isLocation ? { backgroundColor: "var(--nature-green, #16A34A)" } : undefined}>{badge}</span>
-                              <input
-                                autoFocus
-                                type="text"
-                                value={isLocation ? startInput : editStopInput}
-                                onChange={(e) => (isLocation ? setStartInput(e.target.value) : setEditStopInput(e.target.value))}
-                                placeholder="Type a new location…"
-                                className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] text-foreground outline-none focus:border-primary"
-                              />
-                              {isLocation && (
-                                <button onClick={useGps} disabled={locating} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-primary hover:bg-black/5 disabled:opacity-50" aria-label="Use my current location" title="Use my GPS location">
-                                  {locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={15} />}
-                                </button>
-                              )}
-                              <button onClick={() => (isLocation ? setEditingStart(false) : setEditingStopId(null))} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-black/5" aria-label="Cancel edit">
-                                <X size={15} />
-                              </button>
-                            </div>
-                            {isLocation ? (
-                              locationSuggestions()
-                            ) : (
-                              <div className="mt-1.5">
-                                {editStopLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
-                                {!editStopLoading && editStopInput.trim().length >= 3 && editStopSuggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
-                                {editStopSuggestions.length > 0 && (
-                                  <ul className="overflow-hidden rounded-lg border border-border bg-card">
-                                    {editStopSuggestions.map((sug, i2) => (
-                                      <li key={`${sug.lat},${sug.lng},${i2}`}>
-                                        <button onClick={() => chooseStopEditSuggestion(sug)} className="flex w-full items-start gap-2 border-b border-border px-2.5 py-2 text-left last:border-0 hover:bg-muted">
-                                          <LocateFixed size={12} className="mt-0.5 shrink-0 text-primary" />
-                                          <span className="line-clamp-2 text-[12px] text-foreground">{sug.label}</span>
-                                        </button>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            )}
-                            {isLocation && locError && <p className="mt-1 px-1 text-[11px] text-destructive">{locError}</p>}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
-                            <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md text-[10px] font-bold text-white ${isLocation ? "" : "bg-primary"}`} style={isLocation ? { backgroundColor: "var(--nature-green, #16A34A)" } : undefined}>{badge}</span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13px] font-bold text-foreground">{s.label}</span>
-                              {isLocation ? (
-                                <span className="block text-[11px] text-muted-foreground">{s.locationKind === "gps" ? "Your current location" : "Custom start"}</span>
-                              ) : (
-                                s.sublabel && <span className="block truncate text-[11px] text-muted-foreground">{s.sublabel}</span>
-                              )}
-                            </span>
-                            {(isLocation || isCustom) && (
-                              <button onClick={() => (isLocation ? openStartEditor() : openStopEditor(s))} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-primary" aria-label={isLocation ? "Edit location" : "Edit stop"}>
-                                <Pencil size={13} />
-                              </button>
-                            )}
-                            {isLocation && (
-                              <button onClick={useGps} disabled={locating} className="shrink-0 rounded-md p-1 text-primary hover:bg-black/5 disabled:opacity-50" aria-label="Use my current location" title="Use my GPS location">
-                                {locating ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={14} />}
-                              </button>
-                            )}
-                            <button onClick={() => trip.remove(s.id)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive" aria-label={isLocation ? "Remove location" : "Remove stop"}>
-                              <X size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                {/* Add any address as a stop */}
-                <div className="mb-3">
-                  {addingStop ? (
-                    <div className="rounded-xl border border-border bg-muted p-2">
-                      <div className="flex items-center gap-2">
-                        <Search size={13} className="shrink-0 text-muted-foreground" />
-                        <input
-                          autoFocus
-                          type="text"
-                          value={stopSearchInput}
-                          onChange={(e) => setStopSearchInput(e.target.value)}
-                          placeholder="Search a place to add…"
-                          className="min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] text-foreground outline-none focus:border-primary"
-                        />
-                        <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-black/5" aria-label="Cancel">
-                          <X size={15} />
-                        </button>
-                      </div>
-                      <div className="mt-1.5">
-                        {stopSearchLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
-                        {!stopSearchLoading && stopSearchInput.trim().length >= 3 && stopSuggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
-                        {stopSuggestions.length > 0 && (
-                          <ul className="overflow-hidden rounded-lg border border-border bg-card">
-                            {stopSuggestions.map((s, i) => (
-                              <li key={`${s.lat},${s.lng},${i}`}>
-                                <button onClick={() => chooseStopSuggestion(s)} className="flex w-full items-start gap-2 border-b border-border px-2.5 py-2 text-left last:border-0 hover:bg-muted">
-                                  <LocateFixed size={12} className="mt-0.5 shrink-0 text-primary" />
-                                  <span className="line-clamp-2 text-[12px] text-foreground">{s.label}</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2 text-[12px] font-semibold text-muted-foreground hover:border-primary hover:text-primary">
-                      <Plus size={13} /> Add a place
-                    </button>
-                  )}
-                </div>
-
-                {waypointCount === 0 && (
-                  <p className="mb-3 rounded-xl border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">Tap a pin on the map or a place below to add stops.</p>
-                )}
-
-                {/* travel modes with per-mode time */}
-                <div className="mb-3 mt-1 flex gap-1.5">
-                  {TRAVEL_MODES.map((m) => {
-                    const supported = Boolean(ORS_PROFILE[m.id]);
-                    const best = routes[m.id]?.[0];
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => setMode(m.id)}
-                        className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 py-1.5 text-[11px] font-bold"
-                        style={{ borderColor: mode === m.id ? "var(--travel-blue)" : "var(--border)", backgroundColor: mode === m.id ? "var(--travel-blue)" : "transparent", color: mode === m.id ? "white" : "var(--foreground)" }}
-                      >
-                        <span className="flex items-center gap-1"><m.icon size={13} /> {m.label}</span>
-                        <span className="text-[9px] font-semibold opacity-80">{!hasRouteInputs ? "" : !supported ? "Maps" : routesLoading ? "…" : best ? fmtShort(best.durationMin) : "—"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* alternative routes (driving, simple 2-point trips) */}
-                {activeRoutes.length > 1 && (
-                  <div className="mb-3 flex flex-col gap-1.5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Route options</p>
-                    {activeRoutes.map((r, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedRouteIdx(idx)}
-                        className="flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left"
-                        style={{ borderColor: idx === selectedRouteIdx ? "var(--travel-blue)" : "var(--border)", backgroundColor: idx === selectedRouteIdx ? "var(--secondary, #dbe6ff)" : "transparent" }}
-                      >
-                        <span className="text-[13px] font-bold text-foreground">
-                          {fmtMin(r.durationMin)} <span className="font-semibold text-muted-foreground">· {r.distanceKm} km</span>
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          {idx === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold" style={{ color: "var(--nature-green, #16A34A)" }}>Fastest</span>}
-                          {r.hasTolls && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-amber-900" style={{ backgroundColor: "var(--highlight-yellow)" }}>Toll</span>}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* nearby to add */}
-                <p className="mb-2 mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">Nearby to add</p>
-                <ul className="mb-2 flex flex-col gap-0.5 pb-2">
-                  {visibleActivities.slice(0, 12).map((a) => {
-                    const inTrip = trip.has(a.id);
-                    return (
-                      <li key={a.id} className="flex items-center gap-2.5 rounded-xl p-1.5 hover:bg-muted">
-                        <button
-                          type="button"
-                          onClick={() => focusPin({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `RM ${a.price} · ${a.outlet.city}`, href: `/customer/activity/${a.id}` })}
-                          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-                        >
-                          {a.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={a.image} alt={a.name} className="h-9 w-9 shrink-0 rounded-lg object-cover" />
-                          ) : (
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-                              <ImageOff size={14} strokeWidth={1.5} aria-hidden="true" />
-                            </div>
-                          )}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-bold text-foreground">{a.name}</span>
-                            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                              <Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {a.rating}
-                              {" · "}
-                              {near && a.distanceKm !== undefined ? `${a.distanceKm.toFixed(1)} km` : a.outlet.city}
-                              {" · "}RM {a.price}
-                            </span>
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => toggleStop({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `RM ${a.price} · ${a.outlet.city}` })}
-                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-base font-bold"
-                          style={inTrip ? { backgroundColor: "var(--nature-green, #16A34A)", borderColor: "var(--nature-green, #16A34A)", color: "white" } : { borderColor: "var(--border)", color: "var(--primary)" }}
-                          aria-label={inTrip ? "Remove from trip" : "Add to trip"}
-                        >
-                          {inTrip ? "✓" : "+"}
-                        </button>
-                      </li>
-                    );
-                  })}
-                  {visibleActivities.length === 0 && <li className="px-1 py-2 text-xs text-muted-foreground">No places found — try a wider radius.</li>}
-                </ul>
-              </div>
-
-              <div className="border-t border-border px-4 pb-4 pt-3">
-                {hasRouteInputs && (
-                  <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-[12px] font-semibold text-foreground">
-                    {mode === "TRANSIT" ? (
-                      <span className="text-muted-foreground">Transit route opens in Google Maps →</span>
-                    ) : routesLoading ? (
-                      <span className="text-muted-foreground">Calculating route…</span>
-                    ) : activeRoute ? (
-                      <>
-                        <span>{TRAVEL_MODES.find((m) => m.id === mode)!.label} · {fmtMin(activeRoute.durationMin)} · {activeRoute.distanceKm} km</span>
-                        {activeRoute.hasTolls && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold text-amber-900" style={{ backgroundColor: "var(--highlight-yellow)" }}>Toll</span>}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Route unavailable for this mode</span>
-                    )}
-                  </p>
-                )}
-                <button onClick={handleGetDirections} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white disabled:opacity-40">
-                  <Navigation size={16} /> Get Directions in Google Maps
-                </button>
-                <div className="mt-2 flex items-center justify-between">
-                  <button onClick={() => setUrlPreview((c) => (c ? null : directionsUrl))} className="text-[11px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? "Hide" : "Show"} handoff URL</button>
-                  <button onClick={trip.clear} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">Clear trip</button>
-                </div>
-                {trip.stops.length > 9 && <p className="mt-1.5 text-[11px] font-semibold text-destructive">Google allows 9 stops max — extras dropped.</p>}
-                {urlPreview && (
-                  <div className="mt-2 rounded-lg border border-border bg-muted p-2">
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--nature-green, #16A34A)" }}>Opens in a new tab →</p>
-                    <code className="block break-all text-[10.5px] text-foreground">{urlPreview}</code>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-      {/* Right Side: Map */}
-      <div className="relative flex-1 bg-muted">
-        <MapView
-          pins={pins}
-          center={center}
-          zoom={near ? 12 : 7}
-          height="100%"
-          cluster
-          radiusCenter={near ? [near.lat, near.lng] : undefined}
-          radiusKm={near ? radiusKm : undefined}
-          onAddStop={toggleStop}
-          stopIds={trip.stops.map((s) => s.id)}
-          routes={activeRoutes.map((r, i) => ({ path: r.geometry, selected: i === selectedRouteIdx }))}
-          routeColor={MODE_STYLE[mode].color}
-          routeDashed={MODE_STYLE[mode].dashed}
-          focusRequest={focusRequest}
-        />
-        {/* Radius toggle overlay */}
-        {near && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-card p-1 shadow-lg">
-            {RADIUS_OPTIONS_KM.map((r) => (
-              <button key={r} onClick={() => setRadiusKm(r)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${radiusKm === r ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                {r} km
-              </button>
-            ))}
-          </div>
         )}
+      </li>
+    );
+  }
+
+  function renderDaySection(title: string, date: string | null, items: TripItem[], emptyCopy: string) {
+    return (
+      <section
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={() => handleDropOnDay(date)}
+        className="rounded-2xl border border-border bg-muted/35 p-3"
+      >
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-primary">{title}</h2>
+            {date && <p className="mt-0.5 text-[11px] text-muted-foreground">{formatTripDay(date)}</p>}
+          </div>
+          <span className="rounded-full bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground">{items.length} {items.length === 1 ? "stop" : "stops"}</span>
+        </div>
+        {items.length > 0 ? <ul className="flex flex-col gap-2">{items.map(renderStopRow)}</ul> : <p className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-3 text-center text-xs text-muted-foreground">{emptyCopy}</p>}
+      </section>
+    );
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background">
+      <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label="Planner views">
+        {(["itinerary", "map", "places"] as const).map((panel) => (
+          <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-lg px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
+            {panel === "places" ? "Add places" : panel}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid min-h-0 flex-1 md:grid-cols-[360px_minmax(0,1fr)_360px]">
+        <aside aria-label="Trip itinerary" className={(activePanel === "itinerary" ? "flex" : "hidden") + " min-h-0 flex-col border-r border-border bg-card md:flex"}>
+          <header className="shrink-0 border-b border-border px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Trip planner</p>
+                <h1 className="mt-1 truncate text-lg font-bold text-foreground">{tripData.name}</h1>
+                <p className="mt-1 text-xs text-muted-foreground">{formatTripRange(tripData)}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold text-primary">{scheduledItemCount}/{trip.items.length} planned</span>
+            </div>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-foreground">Build your route</p>
+              <button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
+                {showAllVendors ? <Eye size={13} className="text-primary" /> : <EyeOff size={13} />}
+                {showAllVendors ? "Map vendors on" : "Map vendors"}
+              </button>
+            </div>
+
+            {!locationStop && (
+              <div className="mb-3 rounded-2xl border border-dashed border-primary/30 bg-secondary/60 p-3">
+                <div className="flex items-center gap-2">
+                  <LocateFixed size={16} className="shrink-0 text-primary" />
+                  {editingStart ? <input autoFocus value={startInput} onChange={(event) => setStartInput(event.target.value)} placeholder="Type your starting point" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" /> : <span className="min-w-0 flex-1"><span className="block text-xs font-bold">Add your starting point</span><span className="block text-[11px] text-muted-foreground">Type a place or use GPS</span></span>}
+                  <button onClick={() => editingStart ? setEditingStart(false) : openStartEditor()} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label="Type a starting point">{editingStart ? <X size={14} /> : <Pencil size={14} />}</button>
+                  <button onClick={useGps} disabled={locating} className="rounded-lg p-1 text-primary hover:bg-background disabled:opacity-50" aria-label="Use current location">{locating ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}</button>
+                </div>
+                {editingStart && locationSuggestions()}
+                {locError && <p className="mt-1 text-xs text-destructive">{locError}</p>}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {groupedItems.days.length > 0 ? groupedItems.days.map((day, index) => renderDaySection("Day " + (index + 1), day.date, day.items, "Drop a stop here or add one from the right panel.")) : renderDaySection("Plan your days", null, groupedItems.unscheduled, "Add places from the right panel to start planning.")}
+              {groupedItems.days.length > 0 && renderDaySection("Unscheduled", null, groupedItems.unscheduled, "All your places are assigned to a day.")}
+            </div>
+
+            <div className="mt-3">
+              {addingStop ? (
+                <div className="rounded-2xl border border-border bg-muted p-3">
+                  <div className="flex items-center gap-2">
+                    <Search size={14} className="text-muted-foreground" />
+                    <input autoFocus value={stopSearchInput} onChange={(event) => setStopSearchInput(event.target.value)} placeholder="Search an address to add" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary" />
+                    <button onClick={() => { setAddingStop(false); setStopSearchInput(""); setStopSuggestions([]); }} className="rounded-lg p-1 text-muted-foreground hover:bg-background" aria-label="Cancel add stop"><X size={14} /></button>
+                  </div>
+                  {stopSearchLoading && <p className="mt-2 text-xs text-muted-foreground">Searching…</p>}
+                  {stopSuggestions.length > 0 && <ul className="mt-2 overflow-hidden rounded-lg border border-border bg-card">{stopSuggestions.map((suggestion, index) => <li key={suggestion.lat + "," + suggestion.lng + "," + index}><button onClick={() => chooseStopSuggestion(suggestion)} className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-left text-xs last:border-0 hover:bg-muted"><LocateFixed size={13} className="mt-0.5 shrink-0 text-primary" /><span className="line-clamp-2">{suggestion.label}</span></button></li>)}</ul>}
+                </div>
+              ) : <button onClick={() => setAddingStop(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-bold text-muted-foreground hover:border-primary hover:text-primary"><Plus size={14} /> Add a custom place</button>}
+            </div>
+          </div>
+
+          <footer className="shrink-0 border-t border-border bg-card p-3">
+            <div className="mb-2 grid grid-cols-4 gap-1.5">
+              {TRAVEL_MODES.map((travelMode) => {
+                const supported = Boolean(ORS_PROFILE[travelMode.id]);
+                const best = routes[travelMode.id]?.[0];
+                return <button key={travelMode.id} onClick={() => setMode(travelMode.id)} className="flex flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-[10px] font-bold" style={{ borderColor: mode === travelMode.id ? "var(--travel-blue)" : "var(--border)", backgroundColor: mode === travelMode.id ? "var(--travel-blue)" : "transparent", color: mode === travelMode.id ? "white" : "var(--foreground)" }}><span className="flex items-center gap-1"><travelMode.icon size={12} />{travelMode.label}</span><span className="text-[9px] opacity-80">{!hasRouteInputs ? "" : !supported ? "Maps" : routesLoading ? "…" : best ? fmtShort(best.durationMin) : "—"}</span></button>;
+              })}
+            </div>
+            {activeRoutes.length > 1 && (
+              <div className="mb-2 space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Route options</p>
+                {activeRoutes.map((route, index) => (
+                  <button key={index} onClick={() => setSelectedRouteIdx(index)} className="flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-[11px]" style={{ borderColor: index === selectedRouteIdx ? "var(--travel-blue)" : "var(--border)", backgroundColor: index === selectedRouteIdx ? "var(--secondary, #dbe6ff)" : "transparent" }}>
+                    <span className="font-bold">{fmtMin(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} km</span></span>
+                    <span className="flex items-center gap-1">{index === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold text-[#16A34A]">Fastest</span>}{route.hasTolls && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">Toll</span>}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {hasRouteInputs && <p className="mb-2 text-center text-[11px] font-semibold text-foreground">{mode === "TRANSIT" ? "Transit route opens in Google Maps" : routesLoading ? "Calculating route…" : activeRoute ? (TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.label + " · " + fmtMin(activeRoute.durationMin) + " · " + activeRoute.distanceKm + " km") : "Route unavailable for this mode"}</p>}
+            <button onClick={() => directionsUrl && window.open(directionsUrl, "_blank")} disabled={!directionsUrl} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white disabled:opacity-40"><Navigation size={14} /> Get directions</button>
+            <div className="mt-2 flex items-center justify-between"><button onClick={() => setUrlPreview((current) => current ? null : directionsUrl)} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">{urlPreview ? "Hide" : "Show"} handoff URL</button><button onClick={trip.clear} className="text-[10px] font-bold text-muted-foreground hover:text-destructive">Clear trip</button></div>
+            {trip.stops.length > 9 && <p className="mt-1 text-[10px] font-semibold text-destructive">Google Maps supports up to 9 stops.</p>}
+            {urlPreview && <code className="mt-2 block max-h-16 overflow-auto break-all rounded-lg bg-muted p-2 text-[10px]">{urlPreview}</code>}
+          </footer>
+        </aside>
+
+        <main aria-label="Trip map" className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 bg-muted md:flex"}>
+          <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near ? [near.lat, near.lng] : undefined} radiusKm={near ? radiusKm : undefined} onAddStop={toggleStop} stopIds={trip.stops.map((stop) => stop.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx }))} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} />
+          {near && <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-card p-1 shadow-lg">{RADIUS_OPTIONS_KM.map((radius) => <button key={radius} onClick={() => setRadiusKm(radius)} className={"rounded-full px-3 py-1 text-[11px] font-bold " + (radiusKm === radius ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>{radius} km</button>)}</div>}
+        </main>
+
+        <aside aria-label="Places to add" className={(activePanel === "places" ? "flex" : "hidden") + " min-h-0 flex-col border-l border-border bg-card md:flex"}>
+          <header className="shrink-0 border-b border-border px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Discover nearby</p>
+            <div className="mt-1 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-foreground">Add places</h2><p className="mt-1 text-xs text-muted-foreground">{filteredActivities.length} places ready to add</p></div><button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" title="Toggle vendor pins">{showAllVendors ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
+            <label className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary"><Search size={15} className="text-muted-foreground" /><span className="sr-only">Search places</span><input value={listingQuery} onChange={(event) => setListingQuery(event.target.value)} placeholder="Search places or experiences" className="min-w-0 flex-1 bg-transparent text-xs outline-none" /></label>
+            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><label className="sr-only" htmlFor="planner-category">Category</label><select id="planner-category" value={category ?? ""} onChange={(event) => setCategory(event.target.value || null)} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary"><option value="">All categories</option>{CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select><label className="sr-only" htmlFor="planner-radius">Distance</label><select id="planner-radius" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary">{RADIUS_OPTIONS_KM.map((radius) => <option key={radius} value={radius}>{radius} km</option>)}</select></div>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <ul className="flex flex-col gap-2">
+              {filteredActivities.slice(0, 24).map((activity) => {
+                const added = trip.has(activity.id);
+                return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={"Show " + activity.name + " on map"}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? activity.distanceKm.toFixed(1) + " km" : activity.outlet.city} · RM {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? "Added" : "Add to trip"}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">View details</a></div></div></div></li>;
+              })}
+            </ul>
+            {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">No places found</p><p className="mt-1 text-[11px] text-muted-foreground">Try a different search or widen the distance.</p></div>}
+            {filteredActivities.length > 24 && <p className="mt-3 text-center text-[11px] text-muted-foreground">Showing the first 24 matches. Refine your search to see more.</p>}
+          </div>
+        </aside>
       </div>
     </div>
   );

@@ -21,4 +21,10 @@ describe("checkout error handling", () => {
     expect(getCheckoutErrorMessage("voucher_minimum_spend")).toContain("minimum spend");
     expect(getCheckoutErrorMessage("voucher_discount_mismatch")).toContain("discount could not be verified");
   });
+
+  it("maps claimed voucher checkout failures without exposing database text", () => {
+    expect(getCheckoutErrorCode("voucher_claim_expired")).toBe("VOUCHER_CLAIM_EXPIRED");
+    expect(getCheckoutErrorMessage("voucher_claim_mismatch")).toContain("does not match");
+    expect(getCheckoutErrorMessage("voucher_claim_hold_missing")).toContain("no longer available");
+  });
 });

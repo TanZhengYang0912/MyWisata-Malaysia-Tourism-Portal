@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, UserRound, WalletCards } from "lucide-react";
+import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, UserRound, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -38,6 +38,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
   {
     label: "Payments & verification",
     items: [
+      { href: "/customer/vouchers", label: "My Vouchers", description: "Claimed partner deals", icon: Tag },
       { href: "/customer/wallet", label: "Wallet", description: "Balance and payouts", icon: WalletCards },
       { href: "/customer/kyc", label: "Verification", description: "Verify your identity", icon: ShieldCheck },
     ],

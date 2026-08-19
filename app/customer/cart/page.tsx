@@ -48,6 +48,8 @@ export default function CartPage() {
   const { showFeedback } = useActionFeedback();
   const [code, setCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
+  const [appliedClaimId, setAppliedClaimId] = useState<string | null>(null);
+  const [deepLinkedVoucher, setDeepLinkedVoucher] = useState<{ code: string; claimId: string | null } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
@@ -64,6 +66,12 @@ export default function CartPage() {
     getActivities().then(setActivities);
     getOutlets().then((list) => setOutlets(new Map(list.map((o) => [o.id, o]))));
     getVouchers().then(setVouchers).catch(() => setVouchers([]));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const voucher = params.get("voucher")?.trim();
+    if (voucher) setDeepLinkedVoucher({ code: voucher, claimId: params.get("claim") });
   }, []);
 
   const bookingActivityIds = useMemo(
@@ -206,14 +214,7 @@ export default function CartPage() {
 
   const topVoucherOptions = voucherOptions.slice(0, 3);
 
-  useEffect(() => {
-    const selectableSet = new Set(selectableKeys);
-    selectedKeys.forEach((key) => {
-      if (!selectableSet.has(key)) toggleSelected(key);
-    });
-  }, [selectableKeys, selectedKeys, toggleSelected]);
-
-  async function applyVoucherCode(rawCode: string, knownVoucher?: Voucher) {
+  async function applyVoucherCode(rawCode: string, knownVoucher?: Voucher, claimId?: string | null) {
     const normalizedCode = rawCode.trim().toUpperCase();
     if (!normalizedCode) return;
     setCode(normalizedCode);
@@ -232,15 +233,30 @@ export default function CartPage() {
     if (!response.ok || !payload.data?.valid) {
       setVoucherError(payload.data?.reason || "Voucher validation failed.");
       setAppliedVoucher(null);
+      setAppliedClaimId(null);
       return;
     }
     const v = knownVoucher ?? await getVoucherByCode(normalizedCode);
     setVoucherError(null);
     setAppliedVoucher(v ?? null);
+    setAppliedClaimId(claimId ?? null);
     setShowManualVoucher(false);
     setShowAllVouchers(false);
     showFeedback("success", `Voucher ${normalizedCode} applied.`);
   }
+
+  useEffect(() => {
+    if (!deepLinkedVoucher || appliedVoucher || voucherValidationItems.length === 0) return;
+    setDeepLinkedVoucher(null);
+    void applyVoucherCode(deepLinkedVoucher.code, undefined, deepLinkedVoucher.claimId);
+  }, [appliedVoucher, applyVoucherCode, deepLinkedVoucher, voucherValidationItems.length]);
+
+  useEffect(() => {
+    const selectableSet = new Set(selectableKeys);
+    selectedKeys.forEach((key) => {
+      if (!selectableSet.has(key)) toggleSelected(key);
+    });
+  }, [selectableKeys, selectedKeys, toggleSelected]);
 
   if (items.length === 0) {
     return (
@@ -409,7 +425,7 @@ export default function CartPage() {
         {appliedVoucher && !voucherError && (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-3 py-2 text-xs">
             <span className="flex items-center gap-2 font-semibold text-primary"><Check size={14} /> {appliedVoucher.code} applied</span>
-            <button type="button" onClick={() => setAppliedVoucher(null)} className="font-semibold text-muted-foreground hover:text-foreground">Remove</button>
+            <button type="button" onClick={() => { setAppliedVoucher(null); setAppliedClaimId(null); }} className="font-semibold text-muted-foreground hover:text-foreground">Remove</button>
           </div>
         )}
 
@@ -514,7 +530,7 @@ export default function CartPage() {
 
       {selectedKeys.size > 0 ? (
         <a
-          href={appliedVoucher ? `/customer/checkout?voucher=${appliedVoucher.code}` : "/customer/checkout"}
+          href={appliedVoucher ? `/customer/checkout?voucher=${encodeURIComponent(appliedVoucher.code)}${appliedClaimId ? `&claim=${encodeURIComponent(appliedClaimId)}` : ""}` : "/customer/checkout"}
           className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-base font-medium text-primary-foreground transition-all hover:bg-primary/90"
         >
           Proceed to Checkout ({selectedKeys.size})

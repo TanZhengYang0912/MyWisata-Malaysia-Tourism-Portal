@@ -3,9 +3,8 @@
 // `places` table means the unified layout survives, only the sections shown
 // differ by level. See docs/plans/2026-08-12-2152-penang-place-model-and-data-reset.md §5.
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Clock, Compass, Mountain, Route, Ticket } from "lucide-react";
+import { ArrowUpRight, Clock, Compass, MapPin, Mountain, Route } from "lucide-react";
 import {
   getPlaceBySlug,
   getPlaceChildren,
@@ -18,21 +17,16 @@ import { getVendors } from "@/backend/domains/catalogue";
 import { PlaceBreadcrumb } from "@/components/customer/place-breadcrumb";
 import { PlaceCard, entryLabel } from "@/components/customer/place-card";
 import { PlaceList } from "@/components/customer/place-list";
+import { PlaceActivitySection } from "@/components/customer/place-activity-section";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
-import { buildActivityPath } from "@/lib/customer/navigation-context";
-import type { Place, PlaceRelation } from "@/backend/core/types";
+import type { Place } from "@/backend/core/types";
+import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
-
-const RELATION_LABEL: Record<PlaceRelation, string> = {
-  admission: "Includes entry",
-  guide_service: "Guide service · entry is free",
-  addon: "Add-on service",
-};
 
 /** A state centre is arbitrary, so the radius widens as the level gets coarser. */
 function nearbyRadiusKm(level: Place["level"]): number {
@@ -45,13 +39,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const place = await getPlaceBySlug(slug);
   if (!place) return { title: "Place not found" };
+  const heroImage = getPlaceHeroImage(place);
   return {
     title: `${place.name} — Explore Malaysia on MyWisata`,
     description: place.intro ?? place.tagline ?? `Discover ${place.name}, ${place.state}.`,
     openGraph: {
       title: `${place.name} | MyWisata`,
       description: place.intro ?? undefined,
-      images: place.imageUrl ? [{ url: place.imageUrl }] : undefined,
+      images: heroImage ? [{ url: heroImage }] : undefined,
     },
   };
 }
@@ -60,6 +55,7 @@ export default async function PlacePage({ params }: Props) {
   const { slug } = await params;
   const place = await getPlaceBySlug(slug);
   if (!place) notFound();
+  const heroImage = getPlaceHeroImage(place);
 
   const [trail, children, regionGroups, products, nearby, vendors] = await Promise.all([
     getPlaceAncestors(slug),
@@ -86,7 +82,7 @@ export default async function PlacePage({ params }: Props) {
     for (const poi of pois) regionByPoi[poi.id] = region.id;
   }
 
-  const vendorCount = new Set(products.map((entry) => entry.vendor.id)).size;
+  const directionsHref = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
 
   // The operating vendor's outlet IS this place — "Kek Lok Si Temple — Main
   // Entrance · 0.0 km" under Nearby businesses on Kek Lok Si Temple's own page
@@ -96,32 +92,66 @@ export default async function PlacePage({ params }: Props) {
     : nearby;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <PlaceBreadcrumb trail={trail} />
 
-      {/* Hero — same markup at every level */}
-      <header className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {place.imageUrl && (
+      {/* Hero — keep the place identity and first decision in one visual frame. */}
+      <header className="relative mt-3 min-h-[330px] overflow-hidden rounded-[1.75rem] border border-border bg-primary shadow-lg sm:min-h-[390px]">
+        {heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={place.imageUrl} alt={place.name} className="h-44 w-full object-cover sm:h-56" />
+          <img src={heroImage} alt={place.name} className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-slate-700" aria-hidden="true" />
         )}
-        <div className="p-5">
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-slate-950/5" aria-hidden="true" />
+        <div className="relative flex min-h-[330px] flex-col justify-end p-5 sm:min-h-[390px] sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+            <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
               {place.level}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${entry.tone}`}>
+            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${entry.tone}`}>
               {entry.text}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {operator ? `Operated by ${operator.name}` : "No operator"}
+            <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
+              {operator ? `Operated by ${operator.name}` : "Public destination"}
             </span>
           </div>
-          <h1 className="mt-3 text-2xl font-bold text-foreground sm:text-3xl">{place.name}</h1>
-          {place.tagline && <p className="mt-1 text-sm font-semibold text-primary">{place.tagline}</p>}
-          {place.intro && <p className="mt-3 text-sm leading-6 text-muted-foreground">{place.intro}</p>}
+          <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl">{place.name}</h1>
+          {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg">{place.tagline}</p>}
+          {place.intro && <p className="mt-3 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">{place.intro}</p>}
         </div>
       </header>
+
+      <section className="-mt-5 relative mx-3 rounded-2xl border border-border bg-card p-4 shadow-md sm:mx-6 sm:p-5" aria-label={`${place.name} visitor information`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid gap-4 text-sm sm:grid-cols-3 sm:gap-8">
+            <div className="flex items-start gap-2.5">
+              <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Location</p>
+                <p className="mt-1 font-semibold text-foreground">{place.district ? `${place.district}, ${place.state}` : place.state}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 text-base font-bold text-primary" aria-hidden="true">RM</span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Entry</p>
+                <p className="mt-1 font-semibold text-foreground">{entry.text}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Local partner</p>
+                <p className="mt-1 font-semibold text-foreground">{operator?.name ?? "Open destination"}</p>
+              </div>
+            </div>
+          </div>
+          <a href={directionsHref} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+            Get directions <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
+        </div>
+      </section>
 
       {/* State: places to visit, flat, filterable by region + bookability. */}
       {place.level === "state" && poisShown.length > 0 && (
@@ -190,50 +220,16 @@ export default async function PlacePage({ params }: Props) {
         </section>
       )}
 
-      {/* POI: vendor options, grouped by relation type via the badge on each row. */}
+      {/* POI: vendor options, grouped by relation type through the filterable section. */}
       {place.level === "poi" && (
-        <section className="mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Activities here</h2>
-          {products.length > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {products.length} {products.length === 1 ? "activity" : "activities"} from{" "}
-              {vendorCount} {vendorCount === 1 ? "vendor" : "vendors"}
-            </p>
-          )}
-
-          {products.length === 0 ? (
-            <p className="mt-3 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Free and unmanaged — nobody sells anything here yet.
-            </p>
-          ) : (
-            <div className="mt-3 space-y-3">
-              {products.map(({ product, vendor, relation }) => (
-                <Link
-                  key={product.id}
-                  href={buildActivityPath(product.id, `/customer/place/${slug}`)}
-                  className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground">{product.name}</p>
-                      <p className="mt-0.5 text-xs font-semibold text-primary">{vendor.name}</p>
-                      {product.description && <p className="mt-1 text-xs text-muted-foreground">{product.description}</p>}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-base font-bold text-foreground">{product.price === 0 ? "Free" : `RM${product.price}`}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                      <Ticket size={11} />
-                      {RELATION_LABEL[relation]}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        products.length > 0 ? (
+          <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />
+        ) : (
+          <section className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">A quiet destination for now</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">There are no bookable experiences here yet. You can still explore the place and nearby local partners.</p>
+          </section>
+        )
       )}
 
       <NearbyOutlets outlets={nearbyBusinesses} maxRadiusKm={nearbyRadiusKm(place.level)} />

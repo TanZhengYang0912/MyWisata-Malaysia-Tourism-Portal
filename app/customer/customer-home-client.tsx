@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bookmark, Building2, Compass, MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bookmark, Building2, ChevronLeft, ChevronRight, Compass, MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComputedActivity } from "@/backend/core/types";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
+import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
-import { useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 
 export type DemoVendor = {
   id: string;
@@ -89,6 +89,7 @@ export function CustomerHomeClient({
   const [query, setQuery] = useState("");
   const { savedStates, toggleSaved } = useSavedDestinations();
   const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
+  const destinationRailRef = useRef<HTMLDivElement>(null);
 
   const activeDestination = useMemo(
     () => MALAYSIA_DESTINATIONS.find((destination) => destination.state === activeState) ?? MALAYSIA_DESTINATIONS[0],
@@ -103,49 +104,59 @@ export function CustomerHomeClient({
     router.push(trimmedQuery ? `/customer/search?q=${encodeURIComponent(trimmedQuery)}` : "/customer/explore");
   }
 
+  function scrollDestinations(direction: "previous" | "next") {
+    const rail = destinationRailRef.current;
+    if (!rail) return;
+    const distance = Math.max(rail.clientWidth * 0.75, 280);
+    rail.scrollBy({ left: direction === "next" ? distance : -distance, behavior: "smooth" });
+  }
+
+  const recommendationItems = recommended.length > 0 ? recommended.slice(0, 4) : popular.slice(0, 4);
+  const hasPersonalizedRecommendations = recommended.length > 0;
+
   return (
     <div className="bg-background min-h-screen text-foreground pb-20">
       {/* 1. Hero Section */}
-      <section className="relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white">
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-64px)] overflow-hidden bg-primary text-white lg:h-auto lg:min-h-[calc(100svh-64px)]">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_12%,rgba(255,204,0,0.2),transparent_24%),radial-gradient(circle_at_8%_85%,rgba(84,112,210,0.18),transparent_30%),linear-gradient(125deg,#020044_0%,#05083d_58%,#0a243b_100%)]" />
         <div className="atlas-ambient absolute left-[55%] top-20 -z-10 h-72 w-72 rounded-full border border-white/10 sm:h-96 sm:w-96" />
         <div className="atlas-ambient atlas-ambient-delayed absolute left-[58%] top-32 -z-10 h-56 w-56 rounded-full border border-white/10 sm:h-72 sm:w-72" />
 
-        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:px-8 lg:pb-8">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-7">
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:flex lg:flex-col lg:px-8 lg:pb-8 lg:pt-4">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-2">
             <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> MyWisata / Atlas</div>
             <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">View the full map <ArrowRight size={14} /></Link>
           </div>
 
-          <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-16">
+          <div className="grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:gap-7 lg:flex-none lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:gap-10">
             <div className="max-w-2xl">
-              <div className="atlas-enter atlas-delay-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[#ffcc00]/35 bg-[#ffcc00]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]"><Sparkles size={13} /> A living atlas of Malaysia</div>
-              <h1 className="atlas-enter atlas-delay-2 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl">Find the place that <span className="text-[#ffcc00]">changes your pace.</span></h1>
-              <p className="atlas-enter atlas-delay-3 mt-6 max-w-lg text-base leading-7 text-white/65 sm:text-lg">From island mornings to rainforest evenings, start with a feeling and let Malaysia write the next chapter.</p>
+              <div className="atlas-enter atlas-delay-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[#ffcc00]/35 bg-[#ffcc00]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00] lg:mb-4"><Sparkles size={13} /> A living atlas of Malaysia</div>
+              <h1 className="atlas-enter atlas-delay-2 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl lg:text-6xl">Find the place that <span className="text-[#ffcc00]">changes your pace.</span></h1>
+              <p className="atlas-enter atlas-delay-3 mt-6 max-w-lg text-base leading-7 text-white/65 sm:text-lg lg:mt-4 lg:text-base">From island mornings to rainforest evenings, start with a feeling and let Malaysia write the next chapter.</p>
 
-              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-white p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center">
+              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-white p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-6">
                 <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-[#64748b]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Where should we wander?" aria-label="Search Malaysia experiences" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8]" /></div>
                 <button type="submit" className="atlas-shimmer inline-flex items-center justify-center gap-2 rounded-[16px] bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">Start exploring <ArrowRight size={15} /></button>
               </form>
 
-              <div className="atlas-enter atlas-delay-5 mt-8 grid max-w-xl grid-cols-3 gap-4 border-t border-white/15 pt-5">
+              <div className="atlas-enter atlas-delay-5 mt-8 grid max-w-xl grid-cols-3 gap-4 border-t border-white/15 pt-5 lg:mt-5 lg:pt-4">
                 <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{MALAYSIA_DESTINATIONS.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">destinations</p></div>
                 <div><p className="font-mono text-lg font-bold text-[#ffcc00]">{popular.length}</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">local experiences</p></div>
                 <div><p className="font-mono text-lg font-bold text-[#ffcc00]">∞</p><p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/50">ways to wander</p></div>
               </div>
             </div>
 
-            <div className="atlas-enter atlas-delay-3 relative mx-auto min-h-[540px] w-full max-w-[460px] md:min-h-[500px] md:max-w-[390px] lg:min-h-[510px] lg:max-w-[500px]">
-              <div className="atlas-depth-card absolute right-0 top-7 hidden w-[72%] rotate-[5deg] overflow-hidden rounded-[28px] border border-white/20 bg-[#11115f] shadow-2xl lg:block lg:top-10 lg:w-[68%]" aria-hidden="true">
-                <div className="relative aspect-[0.72] opacity-80"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
+            <div className="atlas-enter atlas-delay-3 relative mx-auto min-h-[540px] w-full max-w-[460px] md:min-h-[500px] md:max-w-[390px] lg:min-h-[500px] lg:max-w-[560px]">
+              <div className="atlas-depth-card absolute right-0 top-7 hidden w-[72%] rotate-[5deg] overflow-hidden rounded-[28px] border border-white/20 bg-[#11115f] shadow-2xl lg:block lg:top-8 lg:h-[380px] lg:w-[68%]" aria-hidden="true">
+                <div className="relative aspect-[0.72] opacity-80 lg:h-full lg:aspect-auto"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
               </div>
               <div className="atlas-note absolute left-0 top-14 z-30 hidden w-[80%] -rotate-[3deg] rounded-2xl border border-[#ffcc00]/40 bg-white px-4 py-3 text-[#0f172a] shadow-xl lg:block lg:left-2 lg:top-20 lg:w-[70%]">
                 <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={15} className="text-[#ffcc00]" /></div>
                 <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">Keep this one close.</p>
               </div>
-              <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[82%]">
-                <div className="relative aspect-[0.78]">
-                  <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 460px" priority className="atlas-active-image object-cover" />
+              <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[88%]">
+                <div className="relative aspect-[0.78] lg:h-[500px] lg:aspect-auto">
+                  <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/90 via-[#00004d]/10 to-transparent" />
                   <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-white/95 px-3 py-2.5 text-[#0f172a] shadow-lg backdrop-blur lg:hidden">
                     <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={13} className="shrink-0 text-[#ffcc00]" /></div>
@@ -158,22 +169,32 @@ export function CustomerHomeClient({
             </div>
           </div>
 
-          <nav aria-label="Destination carousel" className="mt-12 border-t border-white/15 pt-8">
-            <div className="flex items-center justify-between mb-6">
+          <nav aria-label="Destination carousel" className="mt-12 border-t border-white/15 pt-8 lg:mt-10 lg:pt-8">
+            <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">Explore Destinations</p>
                 <p className="mt-1 text-xs text-white/55">Swipe to explore all {MALAYSIA_DESTINATIONS.length} states.</p>
               </div>
-              <Link href="/customer/explore" className="text-xs font-bold text-[#ffcc00] hover:underline">View all</Link>
+              <div className="flex shrink-0 items-center gap-3">
+                <div className="flex items-center gap-1" aria-label="Destination carousel controls">
+                  <button type="button" onClick={() => scrollDestinations("previous")} aria-label="Previous destinations" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button type="button" onClick={() => scrollDestinations("next")} aria-label="Next destinations" className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+                <Link href="/customer/explore" className="text-xs font-bold text-[#ffcc00] hover:underline">View all</Link>
+              </div>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory">
+            <div ref={destinationRailRef} className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory scroll-smooth">
               {MALAYSIA_DESTINATIONS.map((dest) => {
                 const isSelected = dest.state === activeState;
                 return (
                   <button
                     key={dest.state}
                     onClick={() => setActiveState(dest.state)}
-                    className={`group relative h-48 w-36 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40 sm:h-56 sm:w-44 transition border ${isSelected ? "border-[#ffcc00] ring-2 ring-[#ffcc00]/35" : "border-white/15 hover:border-white/40"}`}
+                    className={`group relative h-48 w-36 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40 sm:h-56 sm:w-44 lg:h-44 transition border ${isSelected ? "border-[#ffcc00] ring-2 ring-[#ffcc00]/35" : "border-white/15 hover:border-white/40"}`}
                   >
                     <Image src={dest.image} alt={dest.state} fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(min-width: 640px) 176px, 144px" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-[#00004d]/20 to-transparent" />
@@ -193,13 +214,19 @@ export function CustomerHomeClient({
 
 
         {/* 3. Recommended Experiences */}
-        {recommended.length > 0 && (
+        {recommendationItems.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-xl font-bold font-[family-name:var(--font-display)] mb-6 flex items-center gap-2">
-              <Sparkles size={20} className="text-primary" /> For You
-            </h2>
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold font-[family-name:var(--font-display)] flex items-center gap-2">
+                  <Sparkles size={20} className="text-primary" /> {hasPersonalizedRecommendations ? "For You" : "Popular near you"}
+                </h2>
+                {!hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">A few places to start exploring.</p>}
+              </div>
+              <Link href="/customer/for-you" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">See all <ArrowRight size={14} /></Link>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {recommended.slice(0, 4).map((activity) => (
+              {recommendationItems.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} />
               ))}
             </div>
@@ -237,7 +264,7 @@ export function CustomerHomeClient({
           destination={previewDestination}
           onExplore={() => {
             setPreviewDestination(null);
-            window.location.href = `/customer/explore?state=${encodeURIComponent(previewDestination.state)}`;
+            router.push(destinationHref(previewDestination.state));
           }}
           onClose={() => setPreviewDestination(null)}
         />
@@ -347,6 +374,13 @@ export function CustomerHomeClient({
 
         @media (hover: hover) and (pointer: fine) {
           .atlas-shimmer:hover::after { animation-duration: 1.6s; }
+        }
+
+        @media (min-width: 1024px) and (max-height: 850px) {
+          .atlas-hero-section {
+            height: auto;
+            min-height: 0;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

@@ -15,6 +15,21 @@ function supabaseStorageRemotePattern() {
       hostname,
       pathname: '/storage/v1/object/public/place-images/**',
     },
+    {
+      protocol: 'https' as const,
+      hostname,
+      pathname: '/storage/v1/object/public/vendor-images/**',
+    },
+    {
+      protocol: 'https' as const,
+      hostname,
+      pathname: '/storage/v1/object/public/vendor-products/**',
+    },
+    {
+      protocol: 'https' as const,
+      hostname,
+      pathname: '/storage/v1/object/public/product-images/**',
+    },
   ];
 }
 

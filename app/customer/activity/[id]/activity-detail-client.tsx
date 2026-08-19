@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
-import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { unitPrice } from "@/backend/core/helpers";
@@ -20,6 +19,7 @@ import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound }
 import { outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
+import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
 import { getDetailBody } from "./bodies";
 
 export function ActivityDetailClient({
@@ -39,6 +39,8 @@ export function ActivityDetailClient({
   const { currentUser } = useAuth();
   const { addItem } = useCart();
   const vendorDiscovery = searchParams.get("source") === "vendor";
+  const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
+  const outletSelectionRequired = shouldRequireOutletSelection(searchParams.get("source"), effectiveOutletCount);
   const requestedOutletId = searchParams.get("outletId");
   const initialOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
     ? requestedOutletId
@@ -131,7 +133,7 @@ export function ActivityDetailClient({
     if (activity!.requiresBooking && !slotId) return;
     // Sold at several outlets → the customer must pick one; price and stock
     // belong to the outlet, not to the shared product.
-    if (outletChoices.length > 0 && !outletId) return;
+    if (effectiveOutletCount > 1 && !outletId) return;
     if (!variantId && !slotId) {
       setAddError("This listing is not available to add to cart yet. Please try another listing.");
       return;
@@ -153,9 +155,20 @@ export function ActivityDetailClient({
 
   async function handleChat() {
     if (!currentUser) return;
-    const thread = await getOrCreateThread(currentUser.id, selectedOutlet!.outletId);
-    await sendMessage(thread.id, currentUser.id, "customer", `Re: ${activity!.name}`, undefined, activity!.id);
-    router.push(`/customer/chat/${thread.id}`);
+    const response = await fetch("/api/customer/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outletId: selectedOutlet!.outletId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.data?.id) return;
+    const messageResponse = await fetch(`/api/customer/chat/${payload.data.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: `Re: ${activity!.name}`, contextProductId: activity!.id }),
+    });
+    if (!messageResponse.ok) return;
+    router.push(`/customer/chat/${payload.data.id}`);
   }
 
   return (
@@ -224,7 +237,7 @@ export function ActivityDetailClient({
                 </p>
               )}
               <div className="flex items-center gap-4 flex-wrap text-sm">
-                {vendorDiscovery ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> Available at {outletChoices.length} outlet{outletChoices.length === 1 ? "" : "s"}</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
+                {outletSelectionRequired ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> Available at {effectiveOutletCount} outlets</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
                 {publicPlace ? <div className="font-semibold text-primary">Public access</div> : <>
                   <div className="flex items-center gap-1.5">
                     <Star size={13} fill="var(--highlight-yellow)" stroke="none" />
@@ -263,7 +276,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{body.panelTitle(activity)}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">Free to explore</p><p className="text-[11px] text-muted-foreground">Public access</p></> : vendorDiscovery ? <><p className="text-sm font-bold text-primary">Choose an outlet</p><p className="text-[11px] text-muted-foreground">Price and availability vary by outlet</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">Free to explore</p><p className="text-[11px] text-muted-foreground">Public access</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">Choose an outlet</p><p className="text-[11px] text-muted-foreground">Price and availability vary by outlet</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug)}</p></>}
             </div>
           </div>
 
@@ -275,7 +288,7 @@ export function ActivityDetailClient({
              {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">Visit vendor</Link>}
            </div>
 
-          {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">No vendor booking is listed for this public place. Check the access details before you visit.</div> : vendorDiscovery ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
+          {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">No vendor booking is listed for this public place. Check the access details before you visit.</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
             <p className="text-sm font-bold text-foreground">Choose an outlet to continue</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Each outlet sets its own price, availability and booking times. Open an outlet menu to buy or book this experience.</p>
             <div className="mt-4 flex flex-col gap-2">
@@ -287,7 +300,7 @@ export function ActivityDetailClient({
               )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">View outlet <span aria-hidden="true">→</span></Link>}
             </div>
           </div> : <>
-          {outletChoices.length > 0 && (
+          {effectiveOutletCount > 1 && outletChoices.length > 0 && (
             <div className="mb-4">
               <label className="mb-2 block text-xs font-semibold text-muted-foreground">
                 Available at {outletChoices.length} outlet{outletChoices.length > 1 ? "s" : ""} — choose one
@@ -424,7 +437,7 @@ export function ActivityDetailClient({
       </aside>
       </div>
 
-       {!publicPlace && !vendorDiscovery && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
+       {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{body.quantityLabel(qty)}</p>

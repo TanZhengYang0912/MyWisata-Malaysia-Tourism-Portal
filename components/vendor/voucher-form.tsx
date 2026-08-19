@@ -40,7 +40,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
 
   const { register, handleSubmit, watch, setValue, setError, formState: { errors, isSubmitting } } = useForm<VoucherFormInput, unknown, VoucherFormData>({
     resolver: zodResolver(voucherCreateSchema),
-    defaultValues: { voucherType: 'fixed', minSpend: 0 },
+    defaultValues: { voucherType: 'fixed', minSpend: 0, redemptionMode: 'online', isClaimable: true },
   });
 
   function fieldError(field: keyof VoucherFormInput) {
@@ -96,7 +96,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
         const message = result.error?.message ?? 'Failed to save voucher';
         const fieldErrors = result.error?.details?.fieldErrors as Record<string, string[]> | undefined;
         Object.entries(fieldErrors ?? {}).forEach(([field, messages]) => {
-          if (field in errors || field in { code: true, name: true, voucherType: true, discountValue: true, minSpend: true, maxUses: true, perCustomerLimit: true, validFrom: true, validUntil: true, outletId: true, productId: true, buyQuantity: true, freeQuantity: true }) {
+          if (field in errors || field in { code: true, name: true, voucherType: true, discountValue: true, minSpend: true, maxUses: true, perCustomerLimit: true, validFrom: true, validUntil: true, redemptionMode: true, outletId: true, productId: true, buyQuantity: true, freeQuantity: true }) {
             setError(field as keyof VoucherFormInput, { type: 'server', message: messages[0] });
           }
         });
@@ -131,6 +131,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const maxUses = watch('maxUses');
   const perCustomerLimit = watch('perCustomerLimit');
   const selectedOutlet = watch('outletId');
+  const redemptionMode = watch('redemptionMode');
   const discountSummary = voucherType === 'bogo'
     ? 'Buy X, get Y free'
     : voucherType === 'percent'
@@ -168,6 +169,16 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
             <Input {...register('name')} aria-invalid={Boolean(fieldError('name'))} className={inputClass('name')} placeholder="e.g. Summer Special" />
             <FieldError message={fieldError('name')} />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Redemption mode *</label>
+          <select {...register('redemptionMode')} aria-invalid={Boolean(fieldError('redemptionMode'))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <option value="online">Online checkout</option>
+            <option value="both">Online or in-store</option>
+            <option value="in_store">In-store only</option>
+          </select>
+          <FieldError message={fieldError('redemptionMode')} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -246,7 +257,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
 
       <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-600">
         <p className="font-semibold text-gray-900">Voucher summary</p>
-        <p className="mt-1">{discountSummary} · Min spend RM {Number(minSpend || 0).toFixed(2)} · {maxUses ? `${maxUses} total uses` : 'Unlimited total uses'} · {perCustomerLimit ? `${perCustomerLimit} per customer` : 'Unlimited per customer'} · {selectedOutlet ? 'Outlet restricted' : 'All outlets'}</p>
+        <p className="mt-1">{discountSummary} · {redemptionMode === 'both' ? 'Online or in-store' : redemptionMode === 'in_store' ? 'In-store only' : 'Online checkout'} · Min spend RM {Number(minSpend || 0).toFixed(2)} · {maxUses ? `${maxUses} total uses` : 'Unlimited total uses'} · {perCustomerLimit ? `${perCustomerLimit} per customer` : 'Unlimited per customer'} · {selectedOutlet ? 'Outlet restricted' : 'All outlets'}</p>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

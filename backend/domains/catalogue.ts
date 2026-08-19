@@ -580,13 +580,13 @@ function mapVoucher(row: {
 }
 
 export async function getVouchers(): Promise<Voucher[]> {
-  const { data, error } = await supabase.from("vouchers").select("*");
+  const { data, error } = await supabase.from("vouchers").select("*").eq("is_active", true).eq("review_status", "approved").in("redemption_mode", ["online", "both"]);
   if (error) throw error;
   return (data ?? []).map(mapVoucher);
 }
 
 export async function getVoucherByCode(code: string): Promise<Voucher | undefined> {
-  const { data, error } = await supabase.from("vouchers").select("*").ilike("code", code).eq("is_active", true).eq("review_status", "approved").maybeSingle();
+  const { data, error } = await supabase.from("vouchers").select("*").ilike("code", code).eq("is_active", true).eq("review_status", "approved").in("redemption_mode", ["online", "both"]).maybeSingle();
   if (error) throw error;
   return data ? mapVoucher(data) : undefined;
 }

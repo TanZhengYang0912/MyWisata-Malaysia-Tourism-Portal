@@ -72,9 +72,9 @@ export default function VendorInboxPage() {
   const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
 
-  const loadThreads = useCallback(async () => {
+  const loadThreads = useCallback(async (showLoading = true) => {
     if (!user?.activeVendorId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     setLoadError(null);
     try {
       const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
@@ -85,11 +85,15 @@ export default function VendorInboxPage() {
       setThreads([]);
       setLoadError('Could not load conversations. Please try again.');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadThreads(); }, [loadThreads]);
+  useEffect(() => {
+    void loadThreads();
+    const timer = window.setInterval(() => void loadThreads(false), 3000);
+    return () => window.clearInterval(timer);
+  }, [loadThreads]);
 
   useEffect(() => {
     setAiReplyDraft(null);

@@ -147,7 +147,7 @@ export async function getTripItems(tripId: string, db: SupabaseClient<any>): Pro
 
 export async function updateTripItem(
   itemId: string,
-  updates: { sequence?: number; scheduled_date?: string | null },
+  updates: { sequence?: number; scheduled_date?: string | null; scheduled_time?: string | null },
   db: SupabaseClient<any>
 ): Promise<void> {
   const { MOCK_TRIPS, MOCK_TRIP_ITEMS } = await getMockData();
@@ -155,6 +155,7 @@ export async function updateTripItem(
   if (item) {
     if (updates.sequence !== undefined) item.sequence = updates.sequence;
     if (updates.scheduled_date !== undefined) item.scheduled_date = updates.scheduled_date;
+    if (updates.scheduled_time !== undefined) item.scheduled_time = updates.scheduled_time;
   }
   await saveMockData(MOCK_TRIPS, MOCK_TRIP_ITEMS);
 }

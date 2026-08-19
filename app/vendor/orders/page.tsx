@@ -13,8 +13,10 @@ interface OrderItemData { id: string; order_id: string; product_name: string; va
 interface VendorOrderData { id: string; display_id?: string; status: string; paid_at?: string | null; completed_at?: string | null; created_at: string; users?: { full_name?: string; email?: string } | Array<{ full_name?: string; email?: string }>; vendor_total: number; vendor_items: OrderItemData[]; outlets_summary: string; vendor_fulfil_status: string; product_summary: string; }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 
+import { productImageUrl } from '@/lib/storage/product-image';
+
 function customerFor(order: VendorOrderData) { const customer = Array.isArray(order.users) ? order.users[0] : order.users; return customer || {}; }
-function imageFor(item: OrderItemData) { const product = Array.isArray(item.products) ? item.products[0] : item.products; return product?.cover_url; }
+function imageFor(item: OrderItemData) { const product = Array.isArray(item.products) ? item.products[0] : item.products; return productImageUrl(product?.cover_url) || undefined; }
 function dateLabel(value?: string | null) { return value ? new Date(value).toLocaleString('en-MY', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'; }
 
 export default function VendorOrdersPage() {

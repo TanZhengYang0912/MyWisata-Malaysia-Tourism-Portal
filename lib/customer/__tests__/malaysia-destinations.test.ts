@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  destinationHref,
   getVisibleDestinationQueue,
   MALAYSIA_DESTINATIONS,
   rotateDestinationQueue,
@@ -22,6 +23,15 @@ describe("MALAYSIA_DESTINATIONS", () => {
       expect(destination.highlights).toHaveLength(3);
       expect(destination.highlights.every((item) => item.trim().length > 0)).toBe(true);
     }
+  });
+
+  it("builds the destination detail path from each destination state", () => {
+    expect(destinationHref("Kuala Lumpur")).toBe("/customer/destination/kuala-lumpur");
+    expect(
+      MALAYSIA_DESTINATIONS.every((destination) =>
+        destinationHref(destination.state) === `/customer/destination/${destination.state.toLowerCase().replace(/\s+/g, "-")}`,
+      ),
+    ).toBe(true);
   });
 });
 

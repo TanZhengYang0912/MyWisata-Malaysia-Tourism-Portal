@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select("id,email,full_name,city,country,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw new Error(error.message || "Unable to load your account profile");
 
     const assignments = row?.user_roles ?? [];
     const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
@@ -90,7 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      loadSupabaseUser(session.user.id).finally(() => setLoading(false));
+      void loadSupabaseUser(session.user.id)
+        .catch(() => {
+          if (!active) return;
+          setCurrentUser(null);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
     });
 
     return () => {

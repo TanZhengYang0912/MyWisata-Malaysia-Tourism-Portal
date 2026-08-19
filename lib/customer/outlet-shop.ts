@@ -59,7 +59,20 @@ export interface OutletProductCardModel {
   ratingLabel?: string;
   locationLabel: string;
   primaryActionLabel: string;
-  secondaryActionLabel: string;
+  secondaryActionLabel?: string;
+}
+
+export type OutletProductDetailReason = 'slot_required' | 'selection_required' | 'out_of_stock';
+
+export interface OutletNavigationItem {
+  id: string;
+  name: string;
+}
+
+export interface OutletNavigationModel {
+  currentPosition: number;
+  total: number;
+  hasMultipleOutlets: boolean;
 }
 
 const DEFAULT_OPERATING_HOURS = {
@@ -122,6 +135,26 @@ export function getOutletProductAction(input: OutletProductActionInput): OutletP
   };
 }
 
+export function getOutletDetailActionLabel(reason: OutletProductDetailReason) {
+  if (reason === 'slot_required') return 'Choose a time';
+  if (reason === 'selection_required') return 'Choose options';
+  return 'View details';
+}
+
+export function getOutletNavigationModel(
+  outlets: readonly OutletNavigationItem[],
+  currentOutletId: string,
+): OutletNavigationModel {
+  const uniqueOutlets = outlets.filter((outlet, index, all) => all.findIndex((candidate) => candidate.id === outlet.id) === index);
+  const currentIndex = uniqueOutlets.findIndex((outlet) => outlet.id === currentOutletId);
+
+  return {
+    currentPosition: currentIndex >= 0 ? currentIndex + 1 : 1,
+    total: uniqueOutlets.length,
+    hasMultipleOutlets: uniqueOutlets.length > 1,
+  };
+}
+
 export function buildOutletProductCardModel(input: OutletProductCardModelInput): OutletProductCardModel {
   const requiresBooking = Boolean(input.requiresBooking);
   const categoryLabel = clean(input.category) || (requiresBooking
@@ -153,7 +186,7 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
     ratingLabel,
     locationLabel: `Available at ${input.outletName}`,
     primaryActionLabel: actionLabel,
-    secondaryActionLabel: input.hasCartAction ? (requiresBooking ? 'Book now' : 'Buy now') : 'View details',
+    ...(input.hasCartAction ? { secondaryActionLabel: requiresBooking ? 'Book now' : 'Buy now' } : {}),
   };
 }
 

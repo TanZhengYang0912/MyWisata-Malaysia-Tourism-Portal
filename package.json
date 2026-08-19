@@ -16,7 +16,9 @@
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
-    "upload:place-images": "PLACE_IMAGES_UPLOAD=1 node scripts/upload-place-images.mjs"
+    "upload:place-images": "PLACE_IMAGES_UPLOAD=1 node scripts/upload-place-images.mjs",
+    "upload:vendor-images": "VENDOR_IMAGES_UPLOAD=1 node scripts/upload-vendor-images.mjs",
+    "upload:product-images": "node scripts/upload-product-images.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

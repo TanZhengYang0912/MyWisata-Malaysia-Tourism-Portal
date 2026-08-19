@@ -25,4 +25,20 @@ describe("getVendorVisual", () => {
       initials: "EO",
     });
   });
+
+  it("accepts curated local vendor assets but not arbitrary local customer images", () => {
+    // Note: Since we are not actually running in Next.js, process.env.NEXT_PUBLIC_SUPABASE_URL might be undefined
+    // If it's undefined, vendorImageUrl will prepend "/storage/v1/object/public/vendor-images/".
+    // If it is set, it will prepend the full base.
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    expect(getVendorVisual({
+      name: "Abdul Antiques",
+      coverUrl: "/assets/customer/vendor-images/abdul-antiques.jpg",
+      logoUrl: "/assets/customer/penang/unknown.jpg",
+    })).toEqual({
+      coverUrl: `${base}/storage/v1/object/public/vendor-images/vendor-images/abdul-antiques.jpg`,
+      logoUrl: null,
+      initials: "AA",
+    });
+  });
 });

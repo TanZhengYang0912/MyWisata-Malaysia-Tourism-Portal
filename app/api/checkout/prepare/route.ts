@@ -8,7 +8,7 @@ import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
 import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
-import { getCheckoutErrorMessage } from '@/lib/checkout/errors';
+import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     };
   });
 
-  const { data: prepared, error: prepareError } = await db.rpc('prepare_checkout', {
+  const checkoutArgs = {
     p_cart_id: cart.id,
     p_selected_item_ids: selectedRows.map((row) => row.id),
     p_idempotency_key: body.idempotencyKey,
@@ -164,35 +164,12 @@ export async function POST(request: Request) {
     p_total: totals.total,
     p_voucher_code: normalized.voucherCode,
     p_lines: lines,
-  });
+    ...(normalized.claimId ? { p_claim_id: normalized.claimId } : {}),
+  };
+  const { data: prepared, error: prepareError } = await db.rpc('prepare_checkout', checkoutArgs);
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
-    const errorText = rawMessage.toLowerCase();
-    const code = errorText.includes("booking_capacity_unavailable")
-      ? "BOOKING_CAPACITY_UNAVAILABLE"
-      : errorText.includes("booking_slot_invalid")
-        ? "BOOKING_SLOT_INVALID"
-        : errorText.includes("inventory_unavailable")
-          ? "INVENTORY_UNAVAILABLE"
-          : errorText.includes("voucher_not_available")
-            ? "VOUCHER_NOT_AVAILABLE"
-            : errorText.includes("voucher_not_started")
-              ? "VOUCHER_NOT_STARTED"
-              : errorText.includes("voucher_expired")
-                ? "VOUCHER_EXPIRED"
-                : errorText.includes("voucher_limit_reached")
-                  ? "VOUCHER_LIMIT_REACHED"
-                  : errorText.includes("voucher_minimum_spend")
-                    ? "VOUCHER_MINIMUM_SPEND"
-                    : errorText.includes("voucher_outlet_not_applicable")
-                      ? "VOUCHER_OUTLET_NOT_APPLICABLE"
-                      : errorText.includes("voucher_product_not_applicable")
-                        ? "VOUCHER_PRODUCT_NOT_APPLICABLE"
-                        : errorText.includes("voucher_customer_limit_reached")
-                          ? "VOUCHER_CUSTOMER_LIMIT_REACHED"
-                          : errorText.includes("voucher_discount_mismatch")
-                            ? "VOUCHER_DISCOUNT_MISMATCH"
-                            : "CHECKOUT_FAILED";
+    const code = getCheckoutErrorCode(rawMessage);
     return NextResponse.json(
       { error: { code, message: getCheckoutErrorMessage(code) } },
       { status: 409 },

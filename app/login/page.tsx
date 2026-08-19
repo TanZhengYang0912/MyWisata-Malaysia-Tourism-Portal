@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
 import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
 import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
+import { postLoginDestination } from "@/lib/auth/post-login-destination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,6 @@ import type { Role, User } from "@/backend/core/types";
 type DemoUser = User & { vendorName?: string; outletName?: string };
 type AuthMode = "signin" | "signup" | "verify" | "forgot";
 
-const HOME_BY_ROLE: Record<Role, string> = {
-  customer: "/customer", vendor_owner: "/vendor/dashboard", outlet_manager: "/vendor/dashboard",
-  admin: "/admin/dashboard", approver: "/admin/dashboard", super_admin: "/admin/dashboard",
-};
 const ROLE_LABEL: Record<Role, string> = {
   customer: "Customer", vendor_owner: "Vendor Owner", outlet_manager: "Outlet Manager",
   admin: "Admin", approver: "Approver", super_admin: "Super Admin",
@@ -49,7 +46,12 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("error")) setError(GENERIC_ERROR);
+    const queryError = new URLSearchParams(window.location.search).get("error");
+    if (queryError === "oauth") {
+      setError("Google sign-in could not be completed. Try email/password or a demo account.");
+    } else if (queryError) {
+      setError(GENERIC_ERROR);
+    }
     fetch("/api/auth/demo-users")
       .then(async (response) => { if (!response.ok) throw new Error("Unable to load demo accounts"); return response.json() as Promise<DemoUser[]>; })
       .then(setUsers)
@@ -66,8 +68,7 @@ export default function LoginPage() {
     resetFeedback();
     try {
       const signedInUser = await switchUser(user.id, user);
-      const next = requestedNext();
-      router.push(next ?? HOME_BY_ROLE[signedInUser?.role ?? user.role]);
+      router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext()));
       router.refresh();
     } catch { setError(GENERIC_ERROR); }
   }

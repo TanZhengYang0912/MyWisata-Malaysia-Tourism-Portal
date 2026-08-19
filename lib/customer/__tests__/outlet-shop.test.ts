@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOutletProductCardModel,
   buildPublicOutletProfile,
+  getOutletDetailActionLabel,
   getOutletProductAction,
+  getOutletNavigationModel,
   getPublicOutletEmptyState,
   selectPublicOutletProductIds,
 } from '@/lib/customer/outlet-shop';
@@ -32,7 +34,7 @@ describe('professional outlet product cards', () => {
   });
 
   it('directs incomplete cards to details instead of promising checkout', () => {
-    expect(buildOutletProductCardModel({
+    const model = buildOutletProductCardModel({
       outletName: 'Kota Bharu',
       productName: 'Local craft set',
       basePrice: 52,
@@ -42,11 +44,44 @@ describe('professional outlet product cards', () => {
       rating: 0,
       reviews: 0,
       hasCartAction: false,
-    })).toMatchObject({
+    });
+
+    expect(model).toMatchObject({
       availabilityLabel: 'Out of stock',
       primaryActionLabel: 'View details',
-      secondaryActionLabel: 'View details',
     });
+    expect(model.secondaryActionLabel).toBeUndefined();
+  });
+});
+
+describe('outlet navigation context', () => {
+  it('identifies the current outlet within a multi-outlet vendor', () => {
+    expect(getOutletNavigationModel([
+      { id: 'outlet-a', name: 'A' },
+      { id: 'outlet-b', name: 'B' },
+      { id: 'outlet-c', name: 'C' },
+      { id: 'outlet-d', name: 'D' },
+    ], 'outlet-c')).toEqual({
+      currentPosition: 3,
+      total: 4,
+      hasMultipleOutlets: true,
+    });
+  });
+
+  it('does not present a multi-outlet switcher for a single active outlet', () => {
+    expect(getOutletNavigationModel([{ id: 'outlet-a', name: 'A' }], 'outlet-a')).toEqual({
+      currentPosition: 1,
+      total: 1,
+      hasMultipleOutlets: false,
+    });
+  });
+});
+
+describe('outlet detail CTA labels', () => {
+  it('uses one clear action for each incomplete purchase state', () => {
+    expect(getOutletDetailActionLabel('selection_required')).toBe('Choose options');
+    expect(getOutletDetailActionLabel('slot_required')).toBe('Choose a time');
+    expect(getOutletDetailActionLabel('out_of_stock')).toBe('View details');
   });
 });
 

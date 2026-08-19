@@ -164,6 +164,11 @@ export const MALAYSIA_DESTINATIONS: MalaysiaDestination[] = DESTINATION_SOURCES.
   image: placeImageUrl(destination.image) ?? destination.image,
 }));
 
+export function destinationHref(state: string): string {
+  const slug = state.trim().toLowerCase().replace(/\s+/g, "-");
+  return `/customer/destination/${slug}`;
+}
+
 export function getVisibleDestinationQueue<T extends { state: string }>(items: T[], activeState: string, limit: number): T[] {
   return items.filter((item) => item.state !== activeState).slice(0, Math.max(0, limit));
 }

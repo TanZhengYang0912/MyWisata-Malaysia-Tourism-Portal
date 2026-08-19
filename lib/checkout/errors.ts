@@ -18,6 +18,9 @@ export type CheckoutErrorCode =
   | "VOUCHER_PRODUCT_NOT_APPLICABLE"
   | "VOUCHER_CUSTOMER_LIMIT_REACHED"
   | "VOUCHER_DISCOUNT_MISMATCH"
+  | "VOUCHER_CLAIM_UNAVAILABLE"
+  | "VOUCHER_CLAIM_EXPIRED"
+  | "VOUCHER_CLAIM_MISMATCH"
   | "CHECKOUT_FAILED";
 
 function payloadText(payload: CheckoutErrorPayload): string {
@@ -40,6 +43,9 @@ export function getCheckoutErrorCode(payload: CheckoutErrorPayload): CheckoutErr
   if (text.includes("voucher_product_not_applicable")) return "VOUCHER_PRODUCT_NOT_APPLICABLE";
   if (text.includes("voucher_customer_limit_reached")) return "VOUCHER_CUSTOMER_LIMIT_REACHED";
   if (text.includes("voucher_discount_mismatch")) return "VOUCHER_DISCOUNT_MISMATCH";
+  if (text.includes("voucher_claim_expired")) return "VOUCHER_CLAIM_EXPIRED";
+  if (text.includes("voucher_claim_mismatch")) return "VOUCHER_CLAIM_MISMATCH";
+  if (text.includes("voucher_claim_unavailable") || text.includes("voucher_claim_hold_missing")) return "VOUCHER_CLAIM_UNAVAILABLE";
   return "CHECKOUT_FAILED";
 }
 
@@ -71,6 +77,12 @@ export function getCheckoutErrorMessage(payload: CheckoutErrorPayload): string {
       return "You have reached this voucher's per-customer limit.";
     case "VOUCHER_DISCOUNT_MISMATCH":
       return "The voucher discount could not be verified. Please try again.";
+    case "VOUCHER_CLAIM_EXPIRED":
+      return "This claimed voucher has expired. Please choose another voucher.";
+    case "VOUCHER_CLAIM_MISMATCH":
+      return "This voucher claim does not match the selected voucher.";
+    case "VOUCHER_CLAIM_UNAVAILABLE":
+      return "This voucher claim is no longer available. Please choose another voucher.";
     case "CHECKOUT_FAILED":
     default:
       return "We could not start checkout right now. Please try again.";

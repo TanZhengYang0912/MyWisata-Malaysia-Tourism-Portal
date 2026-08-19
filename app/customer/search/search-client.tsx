@@ -43,8 +43,8 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
   const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || "Malaysia";
 
   return (
-    <article className="group overflow-hidden rounded-[24px] border border-[#d7ddd9] bg-white shadow-[0_12px_30px_rgba(22,43,52,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(22,43,52,0.11)]">
-      <Link href={`/customer/vendor/${vendor.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[#d7ddd9] bg-white shadow-[0_12px_30px_rgba(22,43,52,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(22,43,52,0.11)]">
+      <Link href={`/customer/vendor/${vendor.id}`} className="block shrink-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
         <div className="relative aspect-[1.45] overflow-hidden bg-[#eef2ff]">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
@@ -59,11 +59,11 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
-      <div className="space-y-3 p-4">
+      <div className="flex min-h-[220px] flex-1 flex-col space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h2 className="line-clamp-2 text-sm font-bold leading-5 text-[#122b3a]">{vendor.name}</h2></Link>
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#6d7e83]">Verified local partner with active outlets across Malaysia.</p>
+            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-[#122b3a]">{vendor.name}</h2></Link>
+            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-[#6d7e83]">Verified local partner with active outlets across Malaysia.</p>
           </div>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]">
             {visual.logoUrl ? <>
@@ -73,7 +73,7 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 text-[11px] text-[#6d7e83]"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {vendor.outlets.length} outlet{vendor.outlets.length === 1 ? "" : "s"}</span><span className="truncate">{categories.length ? categories.join(" · ") : "Local partner"}</span></div>
-        <Link href={`/customer/vendor/${vendor.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">Explore vendor <ArrowRight size={13} /></Link>
+        <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">Explore vendor <ArrowRight size={13} /></Link>
       </div>
       <span className="sr-only">Vendor card {index + 1}</span>
     </article>

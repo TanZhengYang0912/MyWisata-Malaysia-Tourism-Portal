@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import type { RecentOrder } from '@/components/vendor/recent-transactions';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
 import { isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { productImageUrl } from '@/lib/storage/product-image';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m' | 'custom';
 export type DashboardCustomRange = { from?: string; to?: string };
@@ -228,7 +229,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     const reserved = number(row.reserved);
     const available = Math.max(0, quantity - reserved);
     const threshold = Math.max(0, number(row.low_stock_threshold ?? 5));
-    return available <= threshold ? [{ variantId: row.variant_id, productId: product.id, productName: product.name, variantName: variant.name, outletId: resolvedOutlet.id, quantity, reserved, available, threshold, coverUrl: product.cover_url || null }] : [];
+    return available <= threshold ? [{ variantId: row.variant_id, productId: product.id, productName: product.name, variantName: variant.name, outletId: resolvedOutlet.id, quantity, reserved, available, threshold, coverUrl: productImageUrl(product.cover_url) || null }] : [];
   }).sort((a, b) => a.available - b.available).slice(0, 12) as StockAlert[];
 
   const chartMap = new Map<string, { revenue: number; orders: Set<string> }>();
@@ -252,7 +253,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName: string }>();
   for (const item of currentItems) {
     const key = item.product_id || item.product_name;
-    const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productById[key]?.cover_url || null, outletName: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet' };
+    const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productImageUrl(productById[key]?.cover_url) || null, outletName: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet' };
     product.quantity += number(item.quantity);
     if (isRevenueItem(item)) product.revenue += number(item.line_total);
     productMap.set(key, product);
@@ -271,7 +272,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     ratingMap.set(key, rating);
   }
   const topRated = [...ratingMap.entries()].sort(([, a], [, b]) => (b.total / b.count) - (a.total / a.count) || b.count - a.count).slice(0, 5).map(([productId, rating]) => ({
-    name: productNames[productId] || 'Unnamed experience', coverUrl: productById[productId]?.cover_url || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count, outletName: outletShortNames[productOutletIds[productId] || ''] || 'Unknown outlet',
+    name: productNames[productId] || 'Unnamed experience', coverUrl: productImageUrl(productById[productId]?.cover_url) || null, rating: Math.round((rating.total / rating.count) * 10) / 10, reviews: rating.count, outletName: outletShortNames[productOutletIds[productId] || ''] || 'Unknown outlet',
   }));
 
   const recentOrderMap = new Map<string, RecentOrderDraft>();

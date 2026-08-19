@@ -7,7 +7,8 @@ import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } 
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
-import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
+import { buildOutletProductCardModel, getOutletDetailActionLabel, getOutletProductAction } from "@/lib/customer/outlet-shop";
+import { productImageUrl } from "@/lib/storage/product-image";
 
 function productDetailHref(productId: string, outletId: string) {
   return `/customer/activity/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlet/${outletId}`)}`;
@@ -51,10 +52,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
   const detailHref = productDetailHref(product.id, outlet.id);
 
   async function handleAction(kind: "add" | "buy") {
-    if (action.kind === "details") {
-      router.push(detailHref);
-      return;
-    }
+    if (action.kind !== "cart") return;
     if (!currentUser) {
       router.push(`/login?next=${encodeURIComponent(`/customer/outlet/${outlet.id}`)}`);
       return;
@@ -85,7 +83,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
       <Link href={detailHref} className="relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={`View ${product.name}`}>
         {product.cover_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={product.cover_url} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : fallbackImage(model.categoryLabel)}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent px-4 pb-3 pt-12">
           <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
@@ -121,15 +119,20 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
         {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
 
-        <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
-          <button type="button" onClick={() => void handleAction("add")} disabled={Boolean(working) || action.kind !== "cart"} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full border border-primary/20 px-2 py-2 text-xs font-bold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
-            {added && action.kind === "cart" ? <><Check size={13} /> Added</> : model.primaryActionLabel}
-          </button>
-          <button type="button" onClick={() => void handleAction("buy")} disabled={Boolean(working) || action.kind !== "cart"} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-2 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-            {working === "buy" ? "Adding…" : model.secondaryActionLabel}
-          </button>
-        </div>
-        {action.kind === "details" && <Link href={detailHref} className="mt-3 text-center text-xs font-semibold text-primary hover:underline">{action.reason === "slot_required" ? "Choose a time to book →" : action.reason === "out_of_stock" ? "View details →" : "Choose options →"}</Link>}
+        {action.kind === "cart" ? (
+          <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
+            <button type="button" onClick={() => void handleAction("add")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full border border-primary/20 px-2 py-2 text-xs font-bold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
+              {added ? <><Check size={13} /> Added</> : model.primaryActionLabel}
+            </button>
+            <button type="button" onClick={() => void handleAction("buy")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-2 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+              {working === "buy" ? "Adding…" : model.secondaryActionLabel}
+            </button>
+          </div>
+        ) : (
+          <Link href={detailHref} className="mt-auto inline-flex min-h-10 items-center justify-center rounded-full border border-primary/20 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/5">
+            {getOutletDetailActionLabel(action.reason)} <span aria-hidden="true">→</span>
+          </Link>
+        )}
       </div>
     </article>
   );

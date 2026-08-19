@@ -24,8 +24,10 @@ describe("place-bound activity presentation", () => {
 });
 
 describe("vendor-to-outlet commerce boundary", () => {
-  it("requires an outlet before exposing purchase actions for vendor discovery", () => {
+  it("only requires outlet selection for multi-outlet vendor discovery", () => {
     expect(source).toContain('const vendorDiscovery = searchParams.get("source") === "vendor";');
+    expect(source).toContain("getEffectiveOutletCount");
+    expect(source).toContain("shouldRequireOutletSelection");
     expect(source).toContain("Choose an outlet to continue");
     expect(source).toContain("View outlet");
     expect(source).toContain("Price and availability vary by outlet");

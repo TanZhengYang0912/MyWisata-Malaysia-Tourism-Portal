@@ -6,6 +6,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
 import { authorizeVendor } from '@/lib/vendor-authorization';
+import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -36,17 +37,19 @@ export async function GET(request: Request, { params }: Props) {
   if (status) query = query.eq('status', status);
   query = query.order(sort === 'name' ? 'name' : 'created_at', { ascending: sort === 'name' });
 
-  const [{ data, error, count }, { data: stateRows, error: stateError }] = await Promise.all([
+  const [{ data, error, count }, { data: stateRows, error: stateError }, { data: managedPlaces, error: managedPlacesError }] = await Promise.all([
     query,
     supabase.from('outlets').select('state').in('id', access.access.outletIds.length ? access.access.outletIds : ['none']).not('state', 'is', null).order('state'),
+    supabase.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
   ]);
-  if (error || stateError) return apiFail('DB_ERROR', (error || stateError)?.message || 'Unknown error', 500);
+  if (error || stateError || managedPlacesError) return apiFail('DB_ERROR', (error || stateError || managedPlacesError)?.message || 'Unknown error', 500);
+  const managedPlaceImages = (managedPlaces ?? []).map((place: { name: string; image_url: string | null }) => ({ name: place.name, imageUrl: place.image_url })) as ManagedPlaceImage[];
   const items = (data ?? []).map((outlet: any) => {
     const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
     const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;
     const manager = Array.isArray(assignment?.users) ? assignment.users[0] : assignment?.users;
     const pendingInvite = (Array.isArray(outlet.outlet_manager_invitations) ? outlet.outlet_manager_invitations : []).find((invite: { invited_email: string; status: string; expires_at: string }) => invite.status === 'pending' && new Date(invite.expires_at).getTime() > Date.now());
-    return { ...outlet, coverUrl: outletPage?.hero_url || null, productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
+    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }), productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
   });
   return apiOk({ items, availableStates: [...new Set((stateRows || []).map((row: any) => row.state))], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });
 }

@@ -107,7 +107,7 @@ export function GlobalSearch() {
                   {results.experiences.map((exp) => (
                     <Link
                       key={exp.id}
-                      href={`/customer/experience/${exp.id}`}
+                      href={`/customer/activity/${exp.id}`}
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
                     >

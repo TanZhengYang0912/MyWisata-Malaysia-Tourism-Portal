@@ -39,6 +39,7 @@ export default function CheckoutPage() {
   const { currentUser } = useAuth();
   const { selectedItems, selectedKeys, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
+  const [claimId, setClaimId] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [method, setMethod] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
@@ -47,7 +48,9 @@ export default function CheckoutPage() {
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
 
   useEffect(() => {
-    setVoucherCode(new URLSearchParams(window.location.search).get("voucher"));
+    const params = new URLSearchParams(window.location.search);
+    setVoucherCode(params.get("voucher"));
+    setClaimId(params.get("claim"));
   }, []);
 
   useEffect(() => {
@@ -108,7 +111,7 @@ export default function CheckoutPage() {
       const prepareResponse = await fetch("/api/checkout/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ selectedKeys: [...selectedKeys], voucherCode, paymentMethod: method, idempotencyKey }),
+        body: JSON.stringify({ selectedKeys: [...selectedKeys], voucherCode, claimId, paymentMethod: method, idempotencyKey }),
       });
       const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
