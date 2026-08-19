@@ -159,7 +159,11 @@
     "placeActivity": {
       "eyebrow": "规划您的行程",
       "title": "这里的体验活动",
-      "summary": "{{experiences}} 个体验，来自 {{providers}} 个服务商",
+      "summary": "{{experiences}}，来自 {{providers}}",
+      "experienceCount_one": "{{count}} 个体验",
+      "experienceCount_other": "{{count}} 个体验",
+      "providerCount_one": "{{count}} 个服务商",
+      "providerCount_other": "{{count}} 个服务商",
       "filterLabel": "按类型筛选体验",
       "filters": {
         "all": "所有体验",
@@ -632,6 +636,7 @@
       "pageOf": "第 {{page}} 页，共 {{total}} 页"
     },
     "search": {
+      "searchPlaceholder": "搜索商家、地点或州属",
       "showing": "显示第 {{start}}–{{end}} 项，共 {{total}} 个{{items}}",
       "vendorCard": "商家卡片 {{index}}",
       "placeCard": "地点活动卡片 {{index}}",
@@ -1348,6 +1353,10 @@
       "metaTitle": "{{name}} — 在 MyWisata 探索马来西亚",
       "metaDescription": "探索 {{state}} 的 {{name}}。",
       "all": "全部",
+      "allAreas": "全部地区",
+      "filterAvailabilityLabel": "按可用性筛选地点",
+      "filterAreaLabel": "按地区筛选地点",
+      "explorePlace": "探索 {{name}}",
       "levels": {
         "state": "州",
         "region": "地区",
@@ -1362,7 +1371,7 @@
       "noVendorSells": "这里没有商家提供服务",
       "noPlacesMatch": "没有地点符合这些筛选条件。",
       "operatedBy": "运营方：{{name}}",
-      "noOperator": "无运营方",
+      "noOperator": "公共目的地",
       "placesToVisit": "{{count}} 个可游览地点",
       "placesToVisit_other": "{{count}} 个可游览地点",
       "knowBefore": "出发前须知",

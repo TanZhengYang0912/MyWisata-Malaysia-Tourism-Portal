@@ -28,7 +28,7 @@ describe("customer vendor profile image contract", () => {
   });
 
   it("keeps outlet identity text readable", () => {
-    expect(pageSource).toContain("from-[#010066] via-[#172b72] to-[#2d5273]");
+    expect(pageSource).toContain("from-black/80 via-black/20 to-transparent");
     expect(pageSource).toContain("text-white/90");
   });
 });

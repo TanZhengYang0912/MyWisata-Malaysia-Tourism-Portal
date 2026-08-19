@@ -6,8 +6,9 @@ const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8"
 const pageSource = read("app/customer/partners/page.tsx");
 const clientSource = read("app/customer/search/search-client.tsx");
 const catalogueSource = read("backend/domains/catalogue.ts");
+const filterSource = read("components/customer/discovery-filters.tsx");
 
-describe.skip("customer vendor search contract", () => {
+describe("customer vendor search contract", () => {
   it("provides the approved vendor directory with promotion data", () => {
     expect(pageSource).toContain("getVendors(db)");
     expect(pageSource).toContain("getRecommendedFeed");
@@ -15,63 +16,46 @@ describe.skip("customer vendor search contract", () => {
     expect(pageSource).toContain("initialResults={results}");
     expect(pageSource).toContain("initialVendors=");
     expect(pageSource).toContain("recommendedVendors=");
-    expect(clientSource).toContain("PromotionSpotlight");
-    expect(clientSource).toContain("Filter by category");
+    expect(clientSource).toContain('tCustomer("ui.search.recommendFeatured")');
+    expect(filterSource).toContain("CATEGORIES.map");
   });
 
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
-    expect(clientSource).toContain("Recommended for you");
+    expect(clientSource).toContain('tCustomer("ui.search.recommendFeatured")');
     expect(clientSource).toContain("recommendedVendors");
-    expect(clientSource).toContain("Tune my preferences");
-    expect(clientSource).toContain("/customer/preferences");
-    expect(clientSource).toContain("Verified local partners");
-    expect(clientSource).toContain("Explore vendor");
-    expect(clientSource).toContain("Vendor directory pages");
+    expect(clientSource).toContain('tCustomer("ui.search.verifiedPartners")');
     expect(clientSource).not.toContain("<ActivityCard");
     expect(clientSource).not.toContain("Search Experiences");
   });
 
   it("also gives place-bound activities their own discovery path", () => {
-    expect(clientSource).toContain("Places & trails");
     expect(clientSource).toContain("PlaceActivityCard");
     expect(clientSource).toContain("getActivityDiscoveryMode");
-    expect(clientSource).toContain("Place-based experience");
     expect(clientSource).toContain("PLACE_ACTIVITIES_PER_PAGE");
     expect(clientSource).toContain("const PLACE_ACTIVITIES_PER_PAGE = 8");
-    expect(clientSource).toContain("Showing");
-    expect(clientSource).toContain("Place activity pages");
-    expect(clientSource).toContain("Previous places page");
-    expect(clientSource).toContain("Next places page");
     expect(clientSource).toContain("getActivityCommerceMode");
-    expect(clientSource).toContain("Free to explore");
   });
 
   it("keeps category and state filtering in the vendor flow", () => {
-    expect(clientSource).toContain("CATEGORIES.map");
+    expect(filterSource).toContain("CATEGORIES.map");
     expect(clientSource).toContain("STATES_MY.filter");
     expect(clientSource).toContain("category");
     expect(clientSource).toContain("state");
-    expect(clientSource).toContain("approved vendors");
   });
 
   it("uses equal-sized responsive controls for every category filter", () => {
-    expect(clientSource).toContain("grid-cols-2");
-    expect(clientSource).toContain("sm:grid-cols-3");
-    expect(clientSource).toContain("lg:grid-cols-5");
-    expect(clientSource).toContain("h-16 w-full");
-    expect(clientSource).toContain("h-10 w-10 shrink-0");
+    // Categories are now standard buttons
+    expect(filterSource).toContain("flex-col");
+    expect(filterSource).toContain("min-h-20");
+    expect(filterSource).toContain("rounded-2xl");
   });
 
   it("keeps the first viewport vendor-first", () => {
-    const categoryIndex = clientSource.indexOf("Filter by category");
-    const vendorIndex = clientSource.indexOf("Vendor directory");
-    const promotionIndex = clientSource.indexOf("<PromotionSpotlight activities={activityPool} />");
-    expect(categoryIndex).toBeGreaterThan(-1);
-    expect(vendorIndex).toBeGreaterThan(categoryIndex);
-    expect(promotionIndex).toBeGreaterThan(vendorIndex);
-    expect(clientSource).not.toContain("Browse by Category");
-    expect(clientSource).toContain("approved vendors");
+    const filterIndex = clientSource.indexOf("<DiscoveryCategoryFilter");
+    const vendorIndex = clientSource.indexOf("<VendorDirectoryCard");
+    expect(filterIndex).toBeGreaterThan(-1);
+    expect(vendorIndex).toBeGreaterThan(filterIndex);
   });
 
   it("uses a white canvas and the brand blue for vendor surfaces", () => {
@@ -92,6 +76,4 @@ describe.skip("customer vendor search contract", () => {
     expect(clientSource).not.toContain("vendorDestination");
     expect(clientSource).not.toContain("destination.image");
   });
-
-
 });

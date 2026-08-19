@@ -37,7 +37,9 @@ describe('public outlet menu', () => {
 
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
-    expect(source).toContain('Location {outletNavigation.currentPosition} of {outletNavigation.total}');
-    expect(source).toContain('View all {outletNavigation.total} outlets');
+    expect(source).toContain('t("ui.labels.location")');
+    expect(source).toContain('outletNavigation.currentPosition} / {outletNavigation.total');
+    expect(source).toContain('t("ui.actions.viewAll")');
+    expect(source).toContain('t("ui.vendor.activeOutletCount", { count: outletNavigation.total })');
   });
 });

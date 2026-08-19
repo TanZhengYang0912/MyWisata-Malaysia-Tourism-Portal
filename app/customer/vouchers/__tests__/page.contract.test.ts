@@ -67,7 +67,7 @@ describe("customer voucher hub UI contract", () => {
   it("places the voucher view switch on the right like Explore", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
     expect(source).toContain("flex shrink-0 flex-col items-end gap-3 lg:pt-1");
-    expect(source).toContain("inline-flex rounded-2xl border border-border bg-white p-2 shadow-sm");
+    expect(source).toContain("inline-flex rounded-2xl border border-border bg-card p-2 shadow-sm");
   });
 
   it("keeps the exclusive deals intro and voucher view switch in one desktop row", () => {

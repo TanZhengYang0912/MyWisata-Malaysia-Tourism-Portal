@@ -27,7 +27,7 @@ export function SavedDestinationCard({ destination, savedAt }: { destination: Ma
       <Link href={destinationPath} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
         <div className="relative aspect-[1.65] overflow-hidden bg-secondary">
           <Image src={destination.image} alt={`${destination.attraction}, ${destination.state}`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition duration-500 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/85 via-[#00004d]/15 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute inset-x-4 bottom-4 text-white">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]">{destination.zone}</p>
             <h3 className="mt-1 text-xl font-bold">{destination.state}</h3>

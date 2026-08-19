@@ -569,9 +569,10 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
     );
   }
 
-  function renderDaySection(title: string, date: string | null, items: TripItem[], emptyCopy: string) {
+  function renderDaySection(title: string, date: string | null, items: TripItem[], emptyCopy: string, key?: string | number) {
     return (
       <section
+        key={key ?? title}
         onDragOver={(event) => event.preventDefault()}
         onDrop={() => handleDropOnDay(date)}
         className="rounded-2xl border border-border bg-muted/35 p-3"
@@ -634,7 +635,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             )}
 
             <div className="space-y-3">
-              {groupedItems.days.length > 0 ? groupedItems.days.map((day, index) => renderDaySection("Day " + (index + 1), day.date, day.items, "Drop a stop here or add one from the right panel.")) : renderDaySection("Plan your days", null, groupedItems.unscheduled, "Add places from the right panel to start planning.")}
+              {groupedItems.days.length > 0 ? groupedItems.days.map((day, index) => renderDaySection("Day " + (index + 1), day.date, day.items, "Drop a stop here or add one from the right panel.", index)) : renderDaySection("Plan your days", null, groupedItems.unscheduled, "Add places from the right panel to start planning.")}
               {groupedItems.days.length > 0 && renderDaySection("Unscheduled", null, groupedItems.unscheduled, "All your places are assigned to a day.")}
             </div>
 

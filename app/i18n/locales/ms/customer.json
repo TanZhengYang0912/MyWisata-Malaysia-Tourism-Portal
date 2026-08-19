@@ -159,7 +159,11 @@
     "placeActivity": {
       "eyebrow": "Rancang lawatan anda",
       "title": "Aktiviti di sini",
-      "summary": "{{experiences}} pengalaman daripada {{providers}} penyedia",
+      "summary": "{{experiences}} daripada {{providers}}",
+      "experienceCount_one": "{{count}} pengalaman",
+      "experienceCount_other": "{{count}} pengalaman",
+      "providerCount_one": "{{count}} penyedia",
+      "providerCount_other": "{{count}} penyedia",
       "filterLabel": "Tapis pengalaman mengikut jenis",
       "filters": {
         "all": "Semua pengalaman",
@@ -632,6 +636,7 @@
       "pageOf": "Halaman {{page}} daripada {{total}}"
     },
     "search": {
+      "searchPlaceholder": "Cari vendor, tempat atau negeri",
       "showing": "Menunjukkan {{start}}–{{end}} daripada {{total}} {{items}}",
       "vendorCard": "Kad vendor {{index}}",
       "placeCard": "Kad aktiviti tempat {{index}}",
@@ -1348,6 +1353,10 @@
       "metaTitle": "{{name}} — Teroka Malaysia di MyWisata",
       "metaDescription": "Temui {{name}}, {{state}}.",
       "all": "Semua",
+      "allAreas": "Semua kawasan",
+      "filterAvailabilityLabel": "Tapis tempat mengikut ketersediaan",
+      "filterAreaLabel": "Tapis tempat mengikut kawasan",
+      "explorePlace": "Teroka {{name}}",
       "levels": {
         "state": "Negeri",
         "region": "Wilayah",
@@ -1362,7 +1371,7 @@
       "noVendorSells": "Tiada vendor menjual di sini",
       "noPlacesMatch": "Tiada tempat sepadan dengan penapis ini.",
       "operatedBy": "Dikendalikan oleh {{name}}",
-      "noOperator": "Tiada pengendali",
+      "noOperator": "Destinasi awam",
       "placesToVisit": "{{count}} tempat untuk dilawati",
       "placesToVisit_other": "{{count}} tempat untuk dilawati",
       "knowBefore": "Ketahui sebelum pergi",

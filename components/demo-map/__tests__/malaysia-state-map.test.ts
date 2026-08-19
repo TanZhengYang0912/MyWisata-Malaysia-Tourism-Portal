@@ -63,7 +63,7 @@ describe("Malaysia state discovery map", () => {
   it("uses the reference map plate palette and independent region framing", () => {
     expect(mapSource).toContain('t("ui.map.allStatesTerritories")');
     expect(mapSource).toContain('t("ui.map.independentScaleNote")');
-    expect(mapSource).toContain("#eef2ff");
+    expect(mapSource).toContain("#c7d2fe");
     expect(mapSource).toContain("#dce4ff");
   });
 
@@ -82,7 +82,7 @@ describe("Malaysia state discovery map", () => {
   });
 
   it("uses the MyWisata indigo palette and avoids the native map tooltip", () => {
-    expect(mapSource).toContain("#eef2ff");
+    expect(mapSource).toContain("#c7d2fe");
     expect(mapSource).toContain("#dce4ff");
     expect(mapSource).toContain("#010066");
     expect(mapSource).not.toContain("<title>Malaysia state discovery map</title>");

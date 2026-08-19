@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { productImageUrl } from "@/lib/storage/product-image";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -195,7 +196,7 @@ export default async function DestinationPage({ params }: Props) {
                       {product.cover_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={product.cover_url}
+                          src={productImageUrl(product.cover_url) ?? ""}
                           alt={product.name}
                           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         />

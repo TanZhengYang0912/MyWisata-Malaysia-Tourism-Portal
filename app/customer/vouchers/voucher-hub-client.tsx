@@ -56,12 +56,12 @@ function VoucherCard({ voucher, onClaim, claiming }: { voucher: CustomerVoucher;
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{isOutletVoucher ? tCustomer("ui.voucherHub.outletVoucher") : voucher.voucherType === "bogo" ? tCustomer("ui.voucherHub.freebie") : tCustomer("ui.voucherHub.partnerVoucher")}</p>
         <h2 className="mt-1 text-xl font-bold leading-tight text-foreground">{isOutletVoucher ? voucher.outletName ?? voucher.name : voucher.name}</h2>
         <p className="mt-2 text-2xl font-black text-primary">{discountLabel}</p>
-        {isOutletVoucher && <div className="mt-4 rounded-2xl bg-[#f3f6fb] p-3">
+        {isOutletVoucher && <div className="mt-4 rounded-2xl bg-secondary/50 p-3">
           <p className="text-xs font-semibold text-primary">{tCustomer("ui.voucherHub.allEligibleProducts")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.voucherHub.productsAvailable", { count: voucher.eligibleProductCount })}</p>
           {visibleProductNames.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">
-            {visibleProductNames.map((productName) => <span key={productName} className="max-w-full truncate rounded-full border border-border bg-white px-2 py-1 text-[11px] font-medium text-foreground">{productName}</span>)}
-            {remainingProductCount > 0 && <span className="rounded-full border border-border bg-white px-2 py-1 text-[11px] font-semibold text-primary">{tCustomer("ui.voucherHub.moreProducts", { count: remainingProductCount })}</span>}
+            {visibleProductNames.map((productName) => <span key={productName} className="max-w-full truncate rounded-full border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground">{productName}</span>)}
+            {remainingProductCount > 0 && <span className="rounded-full border border-border bg-card px-2 py-1 text-[11px] font-semibold text-primary">{tCustomer("ui.voucherHub.moreProducts", { count: remainingProductCount })}</span>}
           </div>}
         </div>}
         {voucher.minSpend > 0 && <p className="mt-3 text-xs font-semibold text-muted-foreground">{tCustomer("ui.voucherHub.minSpend", { value: voucher.minSpend.toFixed(2) })}</p>}
@@ -144,25 +144,25 @@ export default function VoucherHubClient() {
   }, [filter, search, vouchers]);
 
   return (
-    <div className="min-h-full bg-[#f3f6fb]">
+    <div className="min-h-full bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <header className="mb-0 min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#c28a00]">{tCustomer("ui.voucherHub.eyebrow")}</p>
-            <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-[#10234f] sm:text-5xl">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsTitle" : "ui.voucherHub.mineTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#617394]">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsDescription" : "ui.voucherHub.mineDescription")}</p>
+            <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground sm:text-5xl">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsTitle" : "ui.voucherHub.mineTitle")}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsDescription" : "ui.voucherHub.mineDescription")}</p>
           </header>
 
           <div className="flex shrink-0 flex-col items-end gap-3 lg:pt-1">
-            <div className="inline-flex rounded-2xl border border-border bg-white p-2 shadow-sm" role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}>
+            <div className="inline-flex rounded-2xl border border-border bg-card p-2 shadow-sm" role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}>
               <button type="button" role="tab" aria-selected={tab === "deals"} onClick={() => setTab("deals")} className={`rounded-xl px-5 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${tab === "deals" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.browseDeals")}</button>
               <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")} className={`rounded-xl px-5 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${tab === "mine" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.myVouchers")}</button>
             </div>
             <div className="group relative">
-              <button type="button" aria-expanded={helpOpen} aria-controls="voucher-help" onClick={() => setHelpOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary/30 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+              <button type="button" aria-expanded={helpOpen} aria-controls="voucher-help" onClick={() => setHelpOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary/30 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
                 <CircleHelp size={16} aria-hidden="true" /> {tCustomer("ui.voucherHub.howItWorks")}
               </button>
-              <div id="voucher-help" role="tooltip" className={`${helpOpen ? "block" : "hidden"} absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-border bg-white p-4 text-left text-xs leading-5 text-muted-foreground shadow-xl group-hover:block group-focus-within:block`}>
+              <div id="voucher-help" role="tooltip" className={`${helpOpen ? "block" : "hidden"} absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-border bg-card p-4 text-left text-xs leading-5 text-muted-foreground shadow-xl group-hover:block group-focus-within:block`}>
                 <p className="font-bold text-foreground">{tCustomer("ui.voucherHub.helpTitle")}</p>
                 <ol className="mt-2 space-y-2">
                   <li><span className="font-bold text-primary">1.</span> {tCustomer("ui.voucherHub.helpStep1")}</li>
@@ -176,12 +176,12 @@ export default function VoucherHubClient() {
 
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={tCustomer("ui.voucherHub.filterLabel")}>
-            {FILTERS.map((item) => <button key={item.value} type="button" onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-white" : "border-border bg-white text-muted-foreground hover:border-primary/30 hover:text-primary"}`}>{tCustomer(item.labelKey)}</button>)}
+            {FILTERS.map((item) => <button key={item.value} type="button" onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}>{tCustomer(item.labelKey)}</button>)}
           </div>
-          <label className="relative block w-full lg:max-w-xs"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><span className="sr-only">{tCustomer("ui.voucherHub.searchLabel")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tCustomer("ui.voucherHub.searchPlaceholder")} className="h-10 w-full rounded-full border border-border bg-white pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus-visible:ring-primary/15" /></label>
+          <label className="relative block w-full lg:max-w-xs"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><span className="sr-only">{tCustomer("ui.voucherHub.searchLabel")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tCustomer("ui.voucherHub.searchPlaceholder")} className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></label>
         </div>
 
-         {loading ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-96 animate-pulse rounded-3xl bg-white" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-white p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-white p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{visibleVouchers.map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} />)}</div>}
+        {loading ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-96 animate-pulse rounded-3xl bg-secondary/50" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-card p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-card p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{visibleVouchers.map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} />)}</div>}
       </div>
     </div>
   );

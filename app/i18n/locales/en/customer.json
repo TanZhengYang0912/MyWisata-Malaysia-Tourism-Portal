@@ -159,7 +159,11 @@
     "placeActivity": {
       "eyebrow": "Plan your visit",
       "title": "Things to do here",
-      "summary": "{{experiences}} experiences from {{providers}} providers",
+      "summary": "{{experiences}} from {{providers}}",
+      "experienceCount_one": "{{count}} experience",
+      "experienceCount_other": "{{count}} experiences",
+      "providerCount_one": "{{count}} provider",
+      "providerCount_other": "{{count}} providers",
       "filterLabel": "Filter experiences by type",
       "filters": {
         "all": "All experiences",
@@ -632,6 +636,7 @@
       "pageOf": "Page {{page}} of {{total}}"
     },
     "search": {
+      "searchPlaceholder": "Search vendors, places or states",
       "showing": "Showing {{start}}–{{end}} of {{total}} {{items}}",
       "vendorCard": "Vendor card {{index}}",
       "placeCard": "Place activity card {{index}}",
@@ -1348,6 +1353,10 @@
       "metaTitle": "{{name}} — Explore Malaysia on MyWisata",
       "metaDescription": "Discover {{name}}, {{state}}.",
       "all": "All",
+      "allAreas": "All areas",
+      "filterAvailabilityLabel": "Filter places by availability",
+      "filterAreaLabel": "Filter places by area",
+      "explorePlace": "Explore {{name}}",
       "levels": {
         "state": "State",
         "region": "Region",
@@ -1362,7 +1371,7 @@
       "noVendorSells": "No vendor sells here",
       "noPlacesMatch": "No places match these filters.",
       "operatedBy": "Operated by {{name}}",
-      "noOperator": "No operator",
+      "noOperator": "Public destination",
       "placesToVisit": "{{count}} place to visit",
       "placesToVisit_other": "{{count}} places to visit",
       "knowBefore": "Know before you go",

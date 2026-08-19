@@ -7,25 +7,27 @@ import {
   isCustomerNavActive,
 } from "@/lib/customer/header-navigation";
 
-describe.skip("customer header navigation", () => {
+describe("customer header navigation", () => {
   it("keeps every customer destination discoverable", () => {
     expect(CUSTOMER_NAV.map((item) => item.href)).toEqual([
       "/customer",
       "/customer/explore",
       "/customer/partners",
       "/customer/trip",
+      "/customer/chat",
       "/customer/activity?tab=itinerary",
       "/customer/saved",
     ]);
     expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer", label: "Home" });
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/for-you")).toBe(false);
-    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/chat")).toBe(false);
+    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/chat")).toBe(true);
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/map")).toBe(false);
 
     expect(getAllAccountRoutes()).toEqual([
       "/customer/profile",
       "/customer/notifications",
       "/customer/preferences",
+      "/customer/vouchers",
       "/customer/wallet",
       "/customer/kyc",
       "/customer/support",

@@ -6,7 +6,7 @@
    class — this also activates every dark: class already written elsewhere
    in the app (e.g. components/ui/badge.tsx's status colors), which until
    now only ever responded to the OS scheme, never a manual toggle. */
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f8fafc;

@@ -6,30 +6,19 @@ const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 function supabaseStorageRemotePattern() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return [];
+  const hostname = supabaseUrl ? new URL(supabaseUrl).hostname : '*.supabase.co';
 
-  const hostname = new URL(supabaseUrl).hostname;
   return [
     {
       protocol: 'https' as const,
       hostname,
-      pathname: '/storage/v1/object/public/place-images/**',
+      pathname: '/storage/v1/object/public/**',
     },
     {
       protocol: 'https' as const,
-      hostname,
-      pathname: '/storage/v1/object/public/vendor-images/**',
-    },
-    {
-      protocol: 'https' as const,
-      hostname,
-      pathname: '/storage/v1/object/public/vendor-products/**',
-    },
-    {
-      protocol: 'https' as const,
-      hostname,
-      pathname: '/storage/v1/object/public/product-images/**',
-    },
+      hostname: '*.supabase.co', // Fallback wildcard just in case
+      pathname: '/storage/v1/object/public/**',
+    }
   ];
 }
 

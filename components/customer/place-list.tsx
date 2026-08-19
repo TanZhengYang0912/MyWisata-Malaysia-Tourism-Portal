@@ -60,7 +60,7 @@ export function PlaceList({
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-1.5" aria-label="Filter places by availability">
+          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("ui.place.filterAvailabilityLabel")}>
               <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.actions.viewDetails")}</span>
             {([
                 ["all", `${t("ui.place.all")} (${counts.all})`],
@@ -85,7 +85,7 @@ export function PlaceList({
           </div>
 
           {regions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label="Filter places by area">
+            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label={t("ui.place.filterAreaLabel")}>
               <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.location")}</span>
               <button
                 type="button"
@@ -95,7 +95,7 @@ export function PlaceList({
                   selectedRegions.size === 0 ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t("ui.place.all")}
+                {t("ui.place.allAreas")}
               </button>
               {regions.map((region) => (
                 <button

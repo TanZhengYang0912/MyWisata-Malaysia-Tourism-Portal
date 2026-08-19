@@ -10,6 +10,7 @@ import { getVendorProductTypeLabel, selectFeaturedVendorProducts, summarizeVendo
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
+import { productImageUrl } from '@/lib/storage/product-image';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +89,7 @@ async function getVendor(vendorId: string) {
       description: product.description as string | null,
       productType: product.product_type as string | null,
       requiresBooking: Boolean(product.requires_booking),
-      coverUrl: product.cover_url as string | null,
+      coverUrl: productImageUrl(product.cover_url as string | null),
       fromPrice: soldAt.length ? Math.min(...soldAt.map((entry) => entry.price)) : Number(product.base_price),
       soldAt,
       rating: metric.rating,
@@ -144,7 +145,7 @@ function LocationCard({ location, vendorId, t }: { location: LocationSummary; ve
   const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
   return <article className="mw-card group min-w-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#030052]/75 via-transparent to-[#030052]/10" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span></div>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
+    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-gradient-to-br from-[#010066] via-[#172b72] to-[#2d5273]">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.02]">{visual.initials}</span></div>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
     <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-slate-950" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-slate-500" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-slate-100 pt-3 text-xs"><span className="font-semibold text-slate-500">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>{location.fromPrice !== null && <span className="font-semibold text-primary">{t('ui.vendor.fromPrice', { price: location.fromPrice.toFixed(2) })}</span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
   </article>;
 }

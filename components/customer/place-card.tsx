@@ -20,7 +20,7 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
   return (
     <Link
       href={`/customer/place/${place.slug}`}
-      aria-label={`Explore ${place.name}`}
+      aria-label={t("ui.place.explorePlace", { name: place.name })}
       className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <div className="relative h-48 shrink-0 overflow-hidden bg-secondary sm:h-52">
