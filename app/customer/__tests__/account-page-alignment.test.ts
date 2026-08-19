@@ -30,4 +30,18 @@ describe("customer account page alignment", () => {
     const source = page("../profile/register-vendor/page.tsx");
     expect(source.match(/<CustomerPageTitle/g) ?? []).toHaveLength(2);
   });
+
+  it.each(["../calendar/page.tsx", "../orders/page.tsx"])(
+    "uses the shared two-anchor layout in %s",
+    (path) => {
+      const source = page(path);
+      expect(source).toContain("CustomerPageTitle");
+      expect(source).toContain('CustomerPageShell className="pt-0 sm:pt-0"');
+    },
+  );
+
+  it("keeps My Vouchers outside the shared account title layout", () => {
+    const source = page("../vouchers/voucher-hub-client.tsx");
+    expect(source).not.toContain("CustomerPageTitle");
+  });
 });

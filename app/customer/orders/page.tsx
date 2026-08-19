@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import type { Order, Outlet } from "@/backend/core/types";
 import { activityHref } from "@/lib/customer/activity-navigation";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -118,15 +119,18 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary"><ReceiptText size={14} /> {tCustomer("ui.labels.history")}</p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{tCustomer("ui.orders.title", { defaultValue: "Orders, all in one place." })}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{tCustomer("ui.orders.description", { defaultValue: "Receipts for every booking, meal and Malaysian experience you have collected." })}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2"><Link href={activityHref("itinerary")}><Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">{tCustomer("ui.calendar.viewItinerary")}</Button></Link><Link href="/customer"><Button className="rounded-full bg-primary px-5 hover:bg-primary/90">{tCustomer("ui.actions.continueExploring")}</Button></Link></div>
-        </header>
+      <CustomerPageTitle
+        eyebrow={tCustomer("ui.labels.history")}
+        title={tCustomer("ui.orders.title", { defaultValue: "Orders, all in one place." })}
+        description={tCustomer("ui.orders.description", { defaultValue: "Receipts for every booking, meal and Malaysian experience you have collected." })}
+        icon={<ReceiptText size={14} />}
+        actions={<>
+          <Link href={activityHref("itinerary")}><Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">{tCustomer("ui.calendar.viewItinerary")}</Button></Link>
+          <Link href="/customer"><Button className="rounded-full bg-primary px-5 hover:bg-primary/90">{tCustomer("ui.actions.continueExploring")}</Button></Link>
+        </>}
+        className="mb-0"
+      />
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
         <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>
 
@@ -209,7 +213,7 @@ export default function OrdersPage() {
           })}</div>
           {pageCount > 1 && <nav aria-label={tCustomer("ui.orders.paginationLabel")} className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">{tCustomer("ui.orders.showing", { from: (visiblePage - 1) * PAGE_SIZE + 1, to: Math.min(visiblePage * PAGE_SIZE, filteredOrders.length), total: filteredOrders.length })}</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label={tCustomer("ui.orders.previousPage")} disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {tCustomer("ui.orders.previous")}</button><span className="min-w-20 text-center text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.pageOf", { page: visiblePage, pages: pageCount })}</span><button type="button" aria-label={tCustomer("ui.orders.nextPage")} disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">{tCustomer("ui.orders.next")} <ChevronRight size={15} /></button></div></nav>}
         </>}
-      </div>
+      </CustomerPageShell>
     </div>
   );
 }

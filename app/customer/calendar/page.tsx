@@ -18,6 +18,7 @@ import { calendarDateKey, countItineraryGroupsInMonth, getHiddenItineraryGroupCo
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 
 type BookingScope = "upcoming" | "past" | "all";
 
@@ -135,14 +136,14 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
 
   return (
     <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><CalendarDays size={14} /> {localizedViewCopy.eyebrow}</p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{localizedViewCopy.title}</h1>
-            <p className="mt-2 max-w-xl text-sm text-muted-foreground">{localizedViewCopy.description}</p>
-          </div>
-        </header>
+      <CustomerPageTitle
+        eyebrow={localizedViewCopy.eyebrow}
+        title={localizedViewCopy.title}
+        description={localizedViewCopy.description}
+        icon={<CalendarDays size={14} />}
+        className="mb-6"
+      />
+      <CustomerPageShell className="pt-0 sm:pt-0">
         <section aria-label={tCustomer("ui.booking.calendar", { defaultValue: "Booking calendar" })} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="border-b border-border">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
@@ -200,7 +201,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
         </section>
 
         <div className="mt-6 md:hidden">{itineraryGroups.length === 0 && <p className="text-center text-xs text-slate-400">{tCustomer("ui.calendar.noBookingsMatch")}</p>}</div>
-      </div>
+      </CustomerPageShell>
       {selectedDayDate && selectedDayGroups.length > 0 && <BookingDayDrawer date={selectedDayDate} groups={selectedDayGroups} outletMap={outletMap} onClose={closeBookingDay} />}
     </div>
   );
