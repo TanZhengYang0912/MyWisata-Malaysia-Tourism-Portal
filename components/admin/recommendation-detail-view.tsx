@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AiDraftEmailModal } from "@/components/admin/ai-draft-email-modal";
@@ -12,6 +13,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import { Button } from "@/components/ui/button";
 import type { AdminRecommendationDetail } from "@/lib/recommendations/admin-detail";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 type ReviewAction = "approve" | "reject" | "request_changes";
 
@@ -25,19 +27,21 @@ const EVIDENCE_TARGET_IDS = {
   contact: "recommendation-field-contact",
 } as const;
 
-function displayDate(value: string | null) {
-  if (!value) return "Not recorded";
-  return new Intl.DateTimeFormat("en-MY", {
+function displayDate(value: string | null, locale: string, emptyLabel: string) {
+  if (!value) return emptyLabel;
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 }
 
-function EvidenceValue({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">{children || "Not provided"}</p>;
+function EvidenceValue({ children, emptyLabel }: { children: React.ReactNode; emptyLabel: string }) {
+  return <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">{children || emptyLabel}</p>;
 }
 
 export function RecommendationDetailView({ recommendationId }: { recommendationId: string }) {
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [detail, setDetail] = useState<AdminRecommendationDetail | null>(null);
@@ -61,16 +65,16 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         error: { message: string } | null;
       };
       if (!response.ok || !body.data) {
-        setError(body.error?.message ?? "Unable to load recommendation.");
+        setError(body.error?.message ?? t("recommendation.detail.errors.loadFailed"));
         return;
       }
       setDetail(body.data);
     } catch {
-      setError("Unable to load recommendation.");
+      setError(t("recommendation.detail.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [recommendationId]);
+  }, [recommendationId, t]);
 
   useEffect(() => {
     void Promise.resolve().then(loadDetail);
@@ -110,7 +114,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   function continueWithReason() {
     if (!action || action === "approve") return;
     if (reason.trim().length < 10) {
-      setError("Please explain the decision in at least 10 characters.");
+      setError(t("recommendation.detail.errors.reasonTooShort"));
       return;
     }
     setError(null);
@@ -134,38 +138,40 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        const message = body?.error?.message ?? "Review failed.";
+        const message = body?.error?.message ?? t("recommendation.detail.errors.reviewFailed");
         setError(message);
         showFeedback("error", message);
         return;
       }
       showFeedback("success", action === "request_changes"
-        ? "Changes requested."
-        : `Recommendation ${action === "approve" ? "approved" : "rejected"}.`);
+        ? t("recommendation.detail.feedback.changesRequested")
+        : action === "approve"
+          ? t("recommendation.detail.feedback.approved")
+          : t("recommendation.detail.feedback.rejected"));
       setConfirmOpen(false);
       setAction(null);
       setReason("");
       await loadDetail();
     } catch {
-      setError("Review failed.");
-      showFeedback("error", "Review failed.");
+      setError(t("recommendation.detail.errors.reviewFailed"));
+      showFeedback("error", t("recommendation.detail.errors.reviewFailed"));
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground sm:p-8">Loading recommendation evidence…</div>;
+    return <div className="p-6 text-sm text-muted-foreground sm:p-8">{t("recommendation.detail.loading")}</div>;
   }
 
   if (!detail) {
     return (
       <div className="p-6 sm:p-8">
         <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm text-primary">
-          <ArrowLeft size={15} /> Back to recommendations
+          <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
         </Link>
         <div className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
-          {error ?? "Recommendation not found."}
+          {error ?? t("recommendation.detail.notFound")}
         </div>
       </div>
     );
@@ -176,8 +182,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const reasonAction = action === "reject" || action === "request_changes";
   const reviewDecision = isPending ? (
     <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
-      <h2 className="font-bold text-foreground">Review decision</h2>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">Review all evidence before taking an action.</p>
+      <h2 className="font-bold text-foreground">{t("recommendation.detail.reviewDecision")}</h2>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("recommendation.detail.reviewDecisionHint")}</p>
       {currentUser?.role === "super_admin" && (
         <div className="mt-4">
           <RecommendationAiReviewPanel
@@ -187,14 +193,14 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         </div>
       )}
       <div className="mt-5 grid gap-2">
-        <Button onClick={() => prepareAction("approve")}>Approve recommendation</Button>
-        <Button variant="outline" onClick={() => prepareAction("request_changes")}>Request changes</Button>
-        <Button variant="destructive" onClick={() => prepareAction("reject")}>Reject recommendation</Button>
+        <Button onClick={() => prepareAction("approve")}>{t("recommendation.detail.actions.approve")}</Button>
+        <Button variant="outline" onClick={() => prepareAction("request_changes")}>{t("recommendation.detail.actions.requestChanges")}</Button>
+        <Button variant="destructive" onClick={() => prepareAction("reject")}>{t("recommendation.detail.actions.reject")}</Button>
       </div>
       {reasonAction && (
         <div className="mt-4">
           <label htmlFor="review-reason" className="text-xs font-semibold text-foreground">
-            {action === "reject" ? "Rejection reason" : "Required changes"}
+            {action === "reject" ? t("recommendation.detail.rejectionReason") : t("recommendation.detail.requiredChanges")}
           </label>
           <textarea
             id="review-reason"
@@ -203,11 +209,11 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             maxLength={500}
             rows={4}
             className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            placeholder="Explain what the contributor needs to know (minimum 10 characters)"
+            placeholder={t("recommendation.detail.reasonPlaceholder")}
           />
           <div className="mt-2 flex items-center justify-between gap-3">
             <span className="text-[11px] text-muted-foreground">{reason.length}/500</span>
-            <Button size="sm" onClick={continueWithReason}>Continue</Button>
+            <Button size="sm" onClick={continueWithReason}>{t("recommendation.detail.actions.continue")}</Button>
           </div>
         </div>
       )}
@@ -217,14 +223,14 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   return (
     <div className="p-6 sm:p-8">
       <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft size={15} /> Back to recommendations
+        <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
       </Link>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div id={EVIDENCE_TARGET_IDS.vendorName}>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Recommendation evidence</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("recommendation.detail.recommendationEvidence")}</p>
           <h1 className="mt-1 text-2xl font-bold text-foreground">{detail.name}</h1>
-          <p className="mt-1 text-xs text-muted-foreground">Submitted {displayDate(detail.submittedAt)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("recommendation.detail.submitted", { date: displayDate(detail.submittedAt, locale, t("recommendation.detail.notRecorded")) })}</p>
         </div>
         <StatusBadge status={detail.status} />
       </div>
@@ -234,24 +240,24 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-bold text-foreground">Submission evidence</h2>
+            <h2 className="font-bold text-foreground">{t("recommendation.detail.submissionEvidence")}</h2>
             <div className="mt-5 grid gap-5">
               <div id={EVIDENCE_TARGET_IDS.description}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
-                <EvidenceValue>{detail.description}</EvidenceValue>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("recommendation.detail.fields.description")}</p>
+                <EvidenceValue emptyLabel={t("recommendation.detail.notProvided")}>{detail.description}</EvidenceValue>
               </div>
               <div id={EVIDENCE_TARGET_IDS.whyRecommend}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why this place is recommended</p>
-                <EvidenceValue>{detail.whyRecommend}</EvidenceValue>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("recommendation.detail.fields.whyRecommended")}</p>
+                <EvidenceValue emptyLabel={t("recommendation.detail.notProvided")}>{detail.whyRecommend}</EvidenceValue>
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div id={EVIDENCE_TARGET_IDS.category}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
-                  <EvidenceValue>{detail.category}</EvidenceValue>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("recommendation.detail.fields.category")}</p>
+                  <EvidenceValue emptyLabel={t("recommendation.detail.notProvided")}>{detail.category}</EvidenceValue>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">State</p>
-                  <EvidenceValue>{detail.state}</EvidenceValue>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("recommendation.detail.fields.state")}</p>
+                  <EvidenceValue emptyLabel={t("recommendation.detail.notProvided")}>{detail.state}</EvidenceValue>
                 </div>
               </div>
             </div>
@@ -260,13 +266,13 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
           <section id={EVIDENCE_TARGET_IDS.location} className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-bold text-foreground">Google location</h2>
-                <p className="mt-2 text-sm font-semibold text-foreground">{detail.location?.name ?? "Not provided"}</p>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail.location?.address ?? "No address recorded"}</p>
+                <h2 className="font-bold text-foreground">{t("recommendation.detail.fields.googleLocation")}</h2>
+                <p className="mt-2 text-sm font-semibold text-foreground">{detail.location?.name ?? t("recommendation.detail.notProvided")}</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail.location?.address ?? t("recommendation.detail.noAddressRecorded")}</p>
               </div>
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-                  Open map <ExternalLink size={13} />
+                  {t("recommendation.detail.openMap")} <ExternalLink size={13} />
                 </a>
               )}
             </div>
@@ -281,39 +287,39 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
         <aside className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-bold text-foreground">Contributor</h2>
+            <h2 className="font-bold text-foreground">{t("recommendation.detail.contributor")}</h2>
             <div className="mt-4 flex items-center gap-2">
               <p className="text-sm font-semibold text-foreground">{detail.author.name}</p>
               <VerifiedContributorBadge verified={detail.author.isKycVerified} />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{detail.author.email ?? "Email unavailable"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{detail.author.email ?? t("recommendation.detail.emailUnavailable")}</p>
           </section>
 
           <section id={EVIDENCE_TARGET_IDS.contact} className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-bold text-foreground">Contact methods</h2>
+            <h2 className="font-bold text-foreground">{t("recommendation.detail.contactMethods")}</h2>
             <div className="mt-4 space-y-3 text-sm">
-              <p className="flex items-center gap-2"><Phone size={14} className="text-muted-foreground" /> {detail.contact.phone ?? "Not provided"}</p>
-              <p className="flex items-center gap-2 break-all"><Mail size={14} className="shrink-0 text-muted-foreground" /> {detail.contact.email ?? "Not provided"}</p>
-              <p className="flex items-start gap-2 break-all"><ExternalLink size={14} className="mt-0.5 shrink-0 text-muted-foreground" /> {detail.contact.website ?? "Not provided"}</p>
+              <p className="flex items-center gap-2"><Phone size={14} className="text-muted-foreground" /> {detail.contact.phone ?? t("recommendation.detail.notProvided")}</p>
+              <p className="flex items-center gap-2 break-all"><Mail size={14} className="shrink-0 text-muted-foreground" /> {detail.contact.email ?? t("recommendation.detail.notProvided")}</p>
+              <p className="flex items-start gap-2 break-all"><ExternalLink size={14} className="mt-0.5 shrink-0 text-muted-foreground" /> {detail.contact.website ?? t("recommendation.detail.notProvided")}</p>
             </div>
-            <p className="mt-4 text-[11px] leading-4 text-muted-foreground">Private submission data. Use only for moderation and approved vendor outreach.</p>
+            <p className="mt-4 text-[11px] leading-4 text-muted-foreground">{t("recommendation.detail.privateSubmissionNotice")}</p>
           </section>
 
           {detail.review && (
             <section className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="font-bold text-foreground">Review history</h2>
+              <h2 className="font-bold text-foreground">{t("recommendation.detail.reviewHistory")}</h2>
               <div className="mt-4 space-y-3 text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground">Reviewer</p>
-                  <p className="font-medium">{detail.review.reviewer?.name ?? "Admin"}</p>
+                  <p className="text-xs text-muted-foreground">{t("recommendation.detail.reviewer")}</p>
+                  <p className="font-medium">{detail.review.reviewer?.name ?? t("recommendation.detail.admin")}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Reviewed</p>
-                  <p className="font-medium">{displayDate(detail.review.reviewedAt)}</p>
+                  <p className="text-xs text-muted-foreground">{t("recommendation.detail.reviewed")}</p>
+                  <p className="font-medium">{displayDate(detail.review.reviewedAt, locale, t("recommendation.detail.notRecorded"))}</p>
                 </div>
                 {detail.review.reason && (
                   <div>
-                    <p className="text-xs text-muted-foreground">Decision reason</p>
+                    <p className="text-xs text-muted-foreground">{t("recommendation.detail.decisionReason")}</p>
                     <p className="mt-1 whitespace-pre-wrap leading-5">{detail.review.reason}</p>
                   </div>
                 )}
@@ -323,20 +329,20 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
           {detail.conversion && (
             <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
-              <h2 className="flex items-center gap-2 font-bold text-foreground"><ShieldCheck size={16} /> Vendor conversion</h2>
-              <p className="mt-3 text-sm">{detail.conversion.vendorName ?? "Linked vendor"}</p>
-              <Link href="/admin/vendors" className="mt-2 inline-flex text-xs font-semibold text-primary hover:underline">Open Vendor Management</Link>
+              <h2 className="flex items-center gap-2 font-bold text-foreground"><ShieldCheck size={16} /> {t("recommendation.detail.vendorConversion")}</h2>
+              <p className="mt-3 text-sm">{detail.conversion.vendorName ?? t("recommendation.detail.linkedVendor")}</p>
+              <Link href="/admin/vendors" className="mt-2 inline-flex text-xs font-semibold text-primary hover:underline">{t("recommendation.detail.openVendorManagement")}</Link>
             </section>
           )}
 
           {isApproved && (
             <section className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="font-bold text-foreground">Vendor outreach</h2>
+              <h2 className="font-bold text-foreground">{t("recommendation.detail.vendorOutreach")}</h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Draft an invitation with AI, review the message, then send it to the vendor.
+                {t("recommendation.detail.vendorOutreachHint")}
               </p>
               <Button className="mt-4 w-full gap-2" onClick={() => setInviteOpen(true)}>
-                <Mail size={14} /> Invite vendor
+                <Mail size={14} /> {t("recommendation.detail.inviteVendor")}
               </Button>
             </section>
           )}
@@ -345,9 +351,9 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
         <div className="grid gap-6 xl:col-span-2 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)] xl:items-start">
           <section id={EVIDENCE_TARGET_IDS.photos} className="rounded-2xl border border-border bg-card p-5">
-            <h2 className="font-bold text-foreground">Submission photos</h2>
+            <h2 className="font-bold text-foreground">{t("recommendation.detail.submissionPhotos")}</h2>
             {detail.images.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">No photos were attached to this submission.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("recommendation.detail.noPhotos")}</p>
             ) : (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {detail.images.map((image, index) => (
@@ -356,7 +362,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={image.url}
-                      alt={`${detail.name} submission photo ${index + 1}`}
+                      alt={t("recommendation.detail.photoAlt", { name: detail.name, number: index + 1 })}
                       loading="lazy"
                       decoding="async"
                       className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
@@ -366,7 +372,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
               </div>
             )}
             <p className="mt-3 text-xs text-muted-foreground">
-              Image rights attested: {displayDate(detail.imageAttestedAt)}
+              {t("recommendation.detail.imageRightsAttested", { date: displayDate(detail.imageAttestedAt, locale, t("recommendation.detail.notRecorded")) })}
             </p>
           </section>
           {reviewDecision}
@@ -375,11 +381,11 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
       <AdminConfirmDialog
         open={confirmOpen}
-        title={action === "approve" ? "Approve recommendation?" : action === "reject" ? "Reject recommendation?" : "Request changes?"}
+        title={action === "approve" ? "recommendation.detail.confirm.approveTitle" : action === "reject" ? "recommendation.detail.confirm.rejectTitle" : "recommendation.detail.confirm.requestChangesTitle"}
         description={action === "approve"
-          ? "This records the approval and notifies the contributor."
-          : "This records the decision and shares your reason with the contributor."}
-        confirmLabel={action === "approve" ? "Approve" : action === "reject" ? "Reject" : "Request changes"}
+          ? "recommendation.detail.confirm.approveDescription"
+          : "recommendation.detail.confirm.decisionDescription"}
+        confirmLabel={action === "approve" ? "recommendation.detail.actions.approve" : action === "reject" ? "recommendation.detail.actions.reject" : "recommendation.detail.actions.requestChanges"}
         confirmVariant={action === "approve" ? "default" : "destructive"}
         busy={submitting}
         onCancel={() => setConfirmOpen(false)}
@@ -389,16 +395,16 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
       <AiDraftEmailModal
         open={inviteOpen}
         target={inviteOpen ? { id: detail.id, name: detail.name, defaultEmail: detail.contact.email ?? undefined } : null}
-        title={`Invite ${detail.name}`}
+        title={t("recommendation.detail.inviteTitle", { name: detail.name })}
         draftUrl="/api/admin/vendors/recommendation-invite/draft"
         sendUrl="/api/admin/vendors/recommendation-invite"
         extraBody={{ recommendationId: detail.id }}
-        sendLabel="Send invite"
-        linkHint="The real sign-up link is appended automatically when you send — no need to include it."
+        sendLabel={t("recommendation.detail.sendInvite")}
+        linkHint={t("recommendation.detail.inviteLinkHint")}
         onClose={() => setInviteOpen(false)}
         onSent={() => {
           setInviteOpen(false);
-          showFeedback("success", "Invite sent.");
+          showFeedback("success", t("recommendation.detail.feedback.inviteSent"));
           void loadDetail();
         }}
       />

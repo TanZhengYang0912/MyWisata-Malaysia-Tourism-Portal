@@ -59,6 +59,7 @@ const DEMO_USERS = [
   ['aaaaaaaa-0000-0000-0000-000000000011', 'outlet.manager.nadia@demo.local', 'Outlet Manager Nadia'],
   ['aaaaaaaa-0000-0000-0000-000000000012', 'outlet.manager.farid@demo.local', 'Outlet Manager Farid'],
   ['aaaaaaaa-0000-0000-0000-000000000013', 'outlet.manager.lim@demo.local', 'Outlet Manager Lim'],
+  ['aaaaaaaa-0000-0000-0000-000000000014', 'moderator@demo.local', 'Platform Admin'],
 ];
 
 const CUSTOMER_IDS = DEMO_USERS.filter(([, email]) => email.startsWith('customer')).map(([id]) => id);
@@ -341,6 +342,7 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
   // Ensure default roles exist first
   const defaultRoles = [
     { name: 'super_admin', description: 'Full platform administrative control' },
+    { name: 'admin', description: 'Platform moderator without super-admin account controls' },
     { name: 'approver', description: 'Financial auditor responsible for dual-approving withdrawals' },
     { name: 'vendor_owner', description: 'Owner of a vendor company with full catalogue management' },
     { name: 'outlet_manager', description: 'Manager restricted to orders/bookings of a single outlet' },
@@ -349,12 +351,13 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
   const { error: roleInsertErr } = await supabase.from('roles').upsert(defaultRoles, { onConflict: 'name' });
   if (roleInsertErr) throw new Error(`Failed to ensure default roles: ${roleInsertErr.message}`);
 
-  const { data: roles, error } = await supabase.from('roles').select('id,name').in('name', ['super_admin', 'approver', 'vendor_owner', 'outlet_manager']);
+  const { data: roles, error } = await supabase.from('roles').select('id,name').in('name', ['super_admin', 'admin', 'approver', 'vendor_owner', 'outlet_manager']);
   if (error) throw error;
   const roleByName = Object.fromEntries((roles || []).map((role) => [role.name, role.id]));
   const assignments = [
     { user_id: DEMO_USERS[0][0], role_id: roleByName.super_admin, vendor_id: null, outlet_id: null },
     { user_id: DEMO_USERS[1][0], role_id: roleByName.approver, vendor_id: null, outlet_id: null },
+    { user_id: DEMO_USERS[13][0], role_id: roleByName.admin, vendor_id: null, outlet_id: null },
     ...ownerIds.map((ownerId) => ({ user_id: ownerId, role_id: roleByName.vendor_owner, vendor_id: vendorId, outlet_id: null })),
     ...outletIds.slice(0, managerIds.length).map((outletId, index) => ({ user_id: managerIds[index], role_id: roleByName.outlet_manager, vendor_id: null, outlet_id: outletId })),
   ];

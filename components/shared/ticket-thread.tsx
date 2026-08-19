@@ -19,6 +19,7 @@
 // human reply from either side.
 
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface TranscriptMessage {
   id: string;
@@ -58,6 +59,7 @@ interface TicketThreadProps {
 }
 
 export function TicketThread({ currentUserId, ticketOwnerId, ticketBody, ticketCreatedAt, transcript, replies }: TicketThreadProps) {
+  const { t } = useTranslation("common");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Every ticket created via the chatbot widget already has its opening
@@ -96,7 +98,7 @@ export function TicketThread({ currentUserId, ticketOwnerId, ticketBody, ticketC
   }, [items.length]);
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-6">No messages yet.</p>;
+    return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet", { defaultValue: "No messages yet." })}</p>;
   }
 
   return (
@@ -105,8 +107,8 @@ export function TicketThread({ currentUserId, ticketOwnerId, ticketBody, ticketC
         const isMine = item.senderId !== null && item.senderId === currentUserId;
         return (
           <div key={item.key} className={isMine ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
-            {item.isBot && <p className="text-[10px] text-muted-foreground mb-0.5">Bot</p>}
-            {item.label && <p className="text-[10px] text-muted-foreground mb-0.5">{isMine ? "You" : item.label}</p>}
+            {item.isBot && <p className="text-[10px] text-muted-foreground mb-0.5">{t("ticket.bot", { defaultValue: "Bot" })}</p>}
+            {item.label && <p className="text-[10px] text-muted-foreground mb-0.5">{isMine ? t("ticket.you", { defaultValue: "You" }) : t("ticket.supportTeam", { defaultValue: item.label })}</p>}
             <div
               className={`rounded-xl px-3 py-2 text-sm ${
                 item.isBot ? "bg-teal/10 text-foreground" : isMine ? "bg-primary text-white" : "bg-muted text-foreground"

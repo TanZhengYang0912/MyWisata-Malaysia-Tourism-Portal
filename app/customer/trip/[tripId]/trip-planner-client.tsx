@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import { Expand, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Shrink, Star, X } from "lucide-react";
+import { Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Maximize2, Minus, Navigation, Pencil, Plus, Search, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { useCart } from "@/components/providers/cart";
@@ -168,6 +169,7 @@ function fmtShort(min: number): string {
 
 export function MapClient({ tripData, initialItems, initialActivities }: { tripData: Trip; initialItems: TripItem[]; initialActivities: ComputedActivity[] }) {
   const trip = useSyncTrip(tripData.id, initialItems);
+  const { t: tCustomer } = useTranslation("customer");
   const [category, setCategory] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
@@ -407,8 +409,8 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
   function locationSuggestions() {
     return (
       <div className="mt-1.5">
-        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">Searching…</p>}
-        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">No matches — keep typing.</p>}
+        {geoLoading && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.searching")}</p>}
+        {!geoLoading && startInput.trim().length >= 3 && suggestions.length === 0 && <p className="px-1 py-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noMatches")}</p>}
         {suggestions.length > 0 && (
           <ul className="overflow-hidden rounded-lg border border-border bg-card">
             {suggestions.map((s, i) => (

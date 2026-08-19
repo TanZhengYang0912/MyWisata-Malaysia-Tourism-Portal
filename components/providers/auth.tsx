@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { setCurrentUserId } from "@/backend/domains/current-user";
+import { isAppLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoAssignment } from "@/lib/auth/demo-user-role";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
@@ -31,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
     const { data: row, error } = await supabase
       .from("users")
-      .select("id,email,full_name,city,country,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
+      .select("id,email,full_name,city,country,preferred_locale,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
     if (error) throw error;
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarInitial: name[0]?.toUpperCase() ?? "?",
       city: row.city ?? undefined,
       country: row.country ?? undefined,
+      preferredLocale: isAppLocale(row.preferred_locale) ? row.preferred_locale : undefined,
       phone: row.phone ?? undefined,
       status: (row.status ?? "active") as User["status"],
       verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],

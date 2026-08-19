@@ -14,7 +14,8 @@
     "seed:chat-volume": "CHAT_VOLUME_SEED=1 node scripts/seed-chat-volume.mjs",
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
-    "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs"
+    "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
+    "verify:i18n": "node scripts/verify-i18n-coverage.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
@@ -36,10 +37,12 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "i18next": "^26.3.6",
     "libphonenumber-js": "^1.13.8",
     "lucide-react": "^1.24.0",
     "maplibre-gl": "^5.24.0",
     "next": "16.2.10",
+    "next-i18next": "^16.0.10",
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
@@ -47,6 +50,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.81.0",
+    "react-i18next": "^17.0.11",
     "react-international-phone": "^4.8.0",
     "react-map-gl": "^8.1.1",
     "recharts": "^3.9.2",

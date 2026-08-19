@@ -14,6 +14,9 @@ import { useEffect, useState } from "react";
 import { Sparkles, RefreshCw } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { formatDateTime } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 type InsightMode = "llm" | "rule-based";
 
@@ -43,6 +46,8 @@ function readCached(scope: string, userId: string): CachedInsight | null {
 
 export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
   const { currentUser } = useAuth();
+  const { t, i18n } = useTranslation("vendor");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const userId = currentUser?.id ?? "anon";
   const [cached, setCached] = useState<CachedInsight | null>(() => readCached(scope, userId));
   const [loading, setLoading] = useState(false);
@@ -58,7 +63,7 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
       const res = await fetch(endpoint);
       const body = (await res.json()) as { data: { insight: string; mode: InsightMode } | null; error: { message: string } | null };
       if (!res.ok || !body.data) {
-        setError(body.error?.message ?? "Couldn't generate an insight right now.");
+        setError(body.error?.message ?? t("affiliate.insight.generateFailed"));
         return;
       }
       const next: CachedInsight = { insight: body.data.insight, mode: body.data.mode, generatedAt: new Date().toISOString() };
@@ -67,7 +72,7 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
         window.localStorage.setItem(storageKey(scope, userId), JSON.stringify(next));
       }
     } catch {
-      setError("Couldn't generate an insight right now.");
+      setError(t("affiliate.insight.generateFailed"));
     } finally {
       setLoading(false);
     }
@@ -88,21 +93,21 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
     <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-          <Sparkles size={13} /> Insights
+          <Sparkles size={13} /> {t("affiliate.insight.title")}
         </p>
         <Button size="sm" variant="outline" onClick={generate} disabled={loading}>
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? "Generating…" : "Regenerate"}
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? t("affiliate.insight.generating") : t("affiliate.insight.regenerate")}
         </Button>
       </div>
 
       {error && !cached && <p className="text-sm text-destructive">{error}</p>}
-      {!error && !cached && loading && <p className="text-sm text-muted-foreground">Generating your insight…</p>}
+      {!error && !cached && loading && <p className="text-sm text-muted-foreground">{t("affiliate.insight.generatingYourInsight")}</p>}
       {cached && (
         <div>
           <p className="text-sm text-foreground leading-relaxed">{cached.insight}</p>
           <p className="text-[10px] text-muted-foreground mt-2">
-            {cached.mode === "rule-based" ? "Rule-based summary (AI unavailable)" : "AI-generated"} ·{" "}
-            {new Date(cached.generatedAt).toLocaleString()}
+            {cached.mode === "rule-based" ? t("affiliate.insight.ruleBased") : t("affiliate.insight.aiGenerated")} ·{" "}
+            {formatDateTime(cached.generatedAt, locale)}
           </p>
         </div>
       )}

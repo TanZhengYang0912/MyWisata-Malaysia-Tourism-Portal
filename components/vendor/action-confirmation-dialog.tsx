@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTranslation } from 'react-i18next';
 
 export interface ActionConfirmationDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ export default function ActionConfirmationDialog({
   onCancel,
   onConfirm,
 }: ActionConfirmationDialogProps) {
+  const { t } = useTranslation('vendor');
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !busy) onCancel(); }}>
       <DialogContent className="rounded-2xl border-amber-100 p-6 sm:max-w-md">
@@ -39,9 +41,9 @@ export default function ActionConfirmationDialog({
           <DialogDescription className="leading-6 text-gray-600">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>{t('actions.cancel')}</Button>
           <Button type="button" variant={tone === 'danger' ? 'destructive' : 'default'} onClick={onConfirm} disabled={busy}>
-            {busy ? 'Working…' : confirmLabel}
+            {busy ? t('actions.working') : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

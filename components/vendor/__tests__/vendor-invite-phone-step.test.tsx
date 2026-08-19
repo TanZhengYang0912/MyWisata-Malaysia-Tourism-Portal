@@ -1,5 +1,30 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+
+const { translate } = vi.hoisted(() => {
+  const values: Record<string, string> = {
+    'invite.phone.mobileVerified': 'Mobile verified',
+    'invite.phone.reviewApplication': 'Review your application',
+    'invite.phone.personalMobile': 'Personal mobile number',
+    'invite.phone.sendOtp': 'Send phone OTP',
+    'invite.phone.mobileDescription': 'This number stays private. It verifies your User identity and is separate from the Outlet contact.',
+    'invite.phone.useAsOutletContact': 'Use this mobile as Outlet contact',
+    'invite.phone.pendingReview': 'Pending MyWisata review. The Vendor and Outlet stay private until approval.',
+    'invite.phone.authorization': 'I confirm that I am authorized to represent this business and submit this Vendor application.',
+    'invite.actions.back': 'Back',
+    'invite.phone.submitting': 'Submitting…',
+  };
+
+  return {
+    translate: (key: string, options?: { index?: number; defaultValue?: string }) => {
+      if (key === 'invite.phone.otpDigit') return `OTP digit ${options?.index}`;
+      return values[key] ?? options?.defaultValue ?? key;
+    },
+  };
+});
+
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
+
 import { VendorInviteOtpDigits, VendorInvitePhoneStep } from '@/components/vendor/vendor-invite-phone-step';
 import {
   buildGuidedVendorClaimInput,
@@ -201,11 +226,39 @@ describe('vendor invite phone and claim executable state', () => {
 
     expect(recovery).toEqual({
       target: 'details',
-      message: 'Choose an available Vendor category and try again.',
+      message: 'invite.errors.claim.details.categoryInvalid',
       clearDraft: false,
     });
     expect(recovery.message).not.toContain('categoryId');
     expect(recovery.message).not.toContain('Invalid input');
+  });
+
+  it('keeps claim recovery categories distinct while preserving targets and draft state', () => {
+    expect(mapClaimError({ code: 'CATEGORY_NOT_ACTIVE', status: 409 })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.categoryInactive',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'VALIDATION_FAILED', status: 422, fields: ['businessName'] })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.required',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'VALIDATION_FAILED', status: 422, fields: ['contactEmail'] })).toMatchObject({
+      target: 'details',
+      message: 'invite.errors.claim.details.format',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'INVITE_EMAIL_MISMATCH', status: 409 })).toMatchObject({
+      target: 'account',
+      message: 'invite.errors.claim.account.emailMismatch',
+      clearDraft: false,
+    });
+    expect(mapClaimError({ code: 'PHONE_VERIFICATION_REQUIRED', status: 403 })).toMatchObject({
+      target: 'verify',
+      message: 'invite.errors.claim.verify.required',
+      clearDraft: false,
+    });
   });
 
   it('reloads stale account and phone status for routed claim recovery', () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -29,10 +30,10 @@ const STATUS_CHIP_STYLES: Record<string, string> = {
 };
 
 type InboxFilter = 'all' | 'unread' | 'needs_reply';
-const FILTERS: { value: InboxFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'unread', label: 'Unread' },
-  { value: 'needs_reply', label: 'Needs your reply' },
+const FILTERS: { value: InboxFilter; translationKey: string }[] = [
+  { value: 'all', translationKey: 'ui.inbox.filter.all' },
+  { value: 'unread', translationKey: 'ui.inbox.filter.unread' },
+  { value: 'needs_reply', translationKey: 'ui.inbox.filter.needs_reply' },
 ];
 
 function toChatMessages(thread: Thread): ChatMessage[] {
@@ -53,6 +54,7 @@ function toChatMessages(thread: Thread): ChatMessage[] {
 }
 
 export default function VendorInboxPage() {
+  const { t } = useTranslation('vendor');
   const { user } = useAuth();
   const { showFeedback } = useActionFeedback();
   const supabase = useMemo(() => createClient(), []);
@@ -68,6 +70,7 @@ export default function VendorInboxPage() {
   const [aiReplyError, setAiReplyError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<InboxFilter>('all');
+  const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
 
   const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
@@ -83,11 +86,11 @@ export default function VendorInboxPage() {
       setLoadError(payload.error);
     } catch {
       setThreads([]);
-      setLoadError('Could not load conversations. Please try again.');
+      setLoadError(t('ui.inbox.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [t, user]);
 
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
@@ -106,10 +109,10 @@ export default function VendorInboxPage() {
         body: JSON.stringify({ surface: 'inbox_reply', threadId: active }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error?.message || 'AI writing is unavailable.');
+      if (!response.ok) throw new Error(payload.error?.message || t('ui.inbox.aiUnavailable'));
       setAiReplyDraft(payload.data?.draft || null);
     } catch (reason) {
-      setAiReplyError(reason instanceof Error ? reason.message : 'AI writing is unavailable.');
+      setAiReplyError(reason instanceof Error ? reason.message : t('ui.inbox.aiUnavailable'));
     } finally { setAiReplyBusy(false); }
   }
 
@@ -229,14 +232,14 @@ export default function VendorInboxPage() {
   }, [threads, unreadByThread, filter, query]);
 
   async function sendReply(text: string, replyToId?: string): Promise<ChatMessage> {
-    if (!active || !user?.activeVendorId) throw new Error('No conversation selected');
+    if (!active || !user?.activeVendorId) throw new Error(t('ui.inbox.noConversationSelected'));
     const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ threadId: active, body: text, replyToId }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error?.message || 'Could not send reply.');
+    if (!response.ok) throw new Error(payload.error?.message || t('ui.inbox.sendFailed'));
     const row: RawMessage = payload.data;
     return { id: row.id, threadId: active, senderId: row.sender_id, senderRole: 'vendor', text: row.body, sentAt: row.created_at, replyToId: row.reply_to_message_id ?? undefined };
   }
@@ -254,33 +257,33 @@ export default function VendorInboxPage() {
   }
 
   function handleSendError() {
-    showFeedback('error', 'Could not send reply. Please try again.');
+    showFeedback('error', t('ui.inbox.sendFailed'));
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><MessageCircle size={15} /> Traveller conversations</div>
-        <h1 className="text-2xl font-bold text-gray-950">Inbox</h1>
-        <p className="mt-1 text-sm text-gray-500">Reply to customer questions from your Malaysia outlets.</p>
+        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><MessageCircle size={15} /> {t('ui.inbox.travellerConversations')}</div>
+        <h1 className="text-2xl font-bold text-gray-950">{t('ui.inbox.title')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('ui.inbox.description')}</p>
       </div>
       <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex w-80 shrink-0 flex-col border-r border-gray-200">
           <div className="shrink-0 border-b border-gray-100 p-4">
             <div className="relative">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <label className="sr-only" htmlFor="vendor-inbox-search">Search conversations</label>
+              <label className="sr-only" htmlFor="vendor-inbox-search">{t('ui.inbox.searchConversations')}</label>
               <input
                 id="vendor-inbox-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search conversations"
+                placeholder={t('ui.inbox.searchConversations')}
                 className="h-9 w-full rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 text-xs text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary"
               />
             </div>
             <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 hide-scrollbar">
               <SlidersHorizontal size={13} className="shrink-0 text-gray-400" />
-              {FILTERS.map((option) => (
+              {filters.map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -298,32 +301,32 @@ export default function VendorInboxPage() {
             {loadError ? (
               <div className="px-4 py-10 text-center text-xs text-red-600">
                 <p>{loadError}</p>
-                <button type="button" onClick={() => void loadThreads()} className="mt-3 font-semibold text-primary hover:underline">Try again</button>
+                <button type="button" onClick={() => void loadThreads()} className="mt-3 font-semibold text-primary hover:underline">{t('ui.common.tryAgain')}</button>
               </div>
             ) : loading ? (
-              <p className="px-4 py-10 text-center text-xs text-gray-400">Loading conversations…</p>
+              <p className="px-4 py-10 text-center text-xs text-gray-400">{t('ui.inbox.loading')}</p>
             ) : visibleThreads.length === 0 ? (
-              <p className="px-4 py-10 text-center text-xs text-gray-400">{threads.length === 0 ? 'No conversations yet.' : 'No matching conversations.'}</p>
+              <p className="px-4 py-10 text-center text-xs text-gray-400">{threads.length === 0 ? t('ui.inbox.noConversations') : t('ui.inbox.noMatchingConversations')}</p>
             ) : visibleThreads.map((thread) => {
               const messages = thread.chat_messages ?? [];
               const latest = messages[messages.length - 1];
               const unreadCount = unreadByThread.get(thread.id) ?? 0;
-              const name = thread.customer?.full_name || 'Traveller';
+              const name = thread.customer?.full_name || t('ui.inbox.traveller');
               return (
                 <button key={thread.id} type="button" onClick={() => setActive(thread.id)} className={`w-full border-b border-gray-100 px-4 py-4 text-left transition hover:bg-secondary ${active === thread.id ? 'bg-secondary' : ''}`}>
                   <div className="flex items-start gap-3">
                     <span className="relative shrink-0 rounded-full bg-secondary p-2 text-primary">
                       <UserRound size={16} />
                       {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary" />}
-                      {onlineCustomerIds.has(thread.customer_id) && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" title="Online" />}
+                      {onlineCustomerIds.has(thread.customer_id) && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" title={t('ui.inbox.online')} />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-2">
                         <span className={`truncate text-sm text-gray-900 ${unreadCount > 0 ? 'font-bold' : 'font-semibold'}`}>{name}</span>
-                        <span className="shrink-0 text-[11px] text-gray-400">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : 'New'}</span>
+                        <span className="shrink-0 text-[11px] text-gray-400">{thread.last_message_at ? formatChatTimestamp(thread.last_message_at) : t('ui.inbox.newConversation')}</span>
                       </span>
                       <span className="mt-0.5 flex items-center gap-1.5">
-                        <span className="block truncate text-xs text-gray-500">{thread.outlets?.name || 'Malaysia outlet'}</span>
+                        <span className="block truncate text-xs text-gray-500">{thread.outlets?.name || t('ui.inbox.malaysiaOutlet')}</span>
                         {thread.status !== 'open' && (
                           <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 text-gray-500'}`}>
                             {thread.status}
@@ -331,14 +334,14 @@ export default function VendorInboxPage() {
                         )}
                       </span>
                       <span className={`mt-1 block truncate text-xs ${unreadCount > 0 ? 'font-medium text-gray-900' : 'text-gray-500'}`}>
-                        {latest ? truncateChatMessage(latest.body, 58) : 'No messages yet'}
+                        {latest ? truncateChatMessage(latest.body, 58) : t('ui.inbox.noMessages')}
                       </span>
                       {(unreadCount > 0 || (latest && latest.sender_id === user?.id)) && (
                         <span className="mt-2 flex items-center justify-end">
                           {unreadCount > 0 ? (
                             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">{unreadCount}</span>
                           ) : (
-                            <CheckCheck size={13} className="text-primary" aria-label="Your last message" />
+                            <CheckCheck size={13} className="text-primary" aria-label={t('ui.inbox.lastMessage')} />
                           )}
                         </span>
                       )}
@@ -353,7 +356,7 @@ export default function VendorInboxPage() {
           {!selected ? (
             <div className="flex flex-1 flex-col items-center justify-center text-gray-400">
               <MessageCircle size={34} className="mb-3 opacity-30" />
-              <p className="text-sm">Select a conversation</p>
+              <p className="text-sm">{t('ui.inbox.selectConversation')}</p>
             </div>
           ) : (
             <ChatThreadPanel
@@ -362,7 +365,7 @@ export default function VendorInboxPage() {
               messages={toChatMessages(selected)}
               currentUserId={user?.id ?? ""}
               counterpart={{
-                name: selected.customer?.full_name || 'Traveller',
+                name: selected.customer?.full_name || t('ui.inbox.traveller'),
                 online: onlineCustomerIds.has(selected.customer_id),
               }}
               onSend={(text, replyToId) => sendReply(text, replyToId).catch((error) => { handleSendError(); throw error; })}

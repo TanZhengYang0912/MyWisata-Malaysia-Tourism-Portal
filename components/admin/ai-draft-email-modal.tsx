@@ -12,6 +12,7 @@
 // flow, which carries its id in the URL instead).
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Mail, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,11 +40,12 @@ export function AiDraftEmailModal({
   draftUrl,
   sendUrl,
   extraBody = {},
-  sendLabel = "Send email",
-  linkHint = "A link is appended automatically when you send — no need to include it.",
+  sendLabel,
+  linkHint,
   onClose,
   onSent,
 }: Props) {
+  const { t } = useTranslation("admin");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -66,13 +68,13 @@ export function AiDraftEmailModal({
         error: { message: string } | null;
       };
       if (!res.ok || !responseBody.data) {
-        setDraftError(responseBody.error?.message ?? "Could not draft an email right now — write one manually.");
+        setDraftError(responseBody.error?.message ?? t("email.draft.errors.unavailable"));
         return;
       }
       setSubject(responseBody.data.subject);
       setBody(responseBody.data.body);
     } catch {
-      setDraftError("Could not draft an email right now — write one manually.");
+      setDraftError(t("email.draft.errors.unavailable"));
     } finally {
       setDrafting(false);
     }
@@ -111,12 +113,12 @@ export function AiDraftEmailModal({
       });
       const responseBody = (await res.json()) as { error: { message: string } | null };
       if (!res.ok) {
-        setSendError(responseBody.error?.message ?? "Could not send the email. Please try again.");
+        setSendError(responseBody.error?.message ?? t("email.draft.errors.sendFailed"));
         return;
       }
       onSent(target.id);
     } catch {
-      setSendError("Could not send the email. Please try again.");
+      setSendError(t("email.draft.errors.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -137,11 +139,11 @@ export function AiDraftEmailModal({
             <h2 id="ai-draft-email-title" className="text-base font-semibold text-foreground">
               {title}
             </h2>
-            <p className="mt-1 text-xs text-muted-foreground">AI drafts the message below — edit anything before sending.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("email.draft.advisory")}</p>
           </div>
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("email.draft.close")}
             onClick={onClose}
             disabled={sending}
             className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50"
@@ -152,19 +154,19 @@ export function AiDraftEmailModal({
 
         <div className="mt-4 space-y-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Recipient email</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("email.draft.recipient")}</label>
             <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="vendor@example.com"
+              placeholder={t("email.draft.recipientPlaceholder")}
               disabled={sending}
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-muted-foreground">Subject</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("email.draft.subject")}</label>
               <Button
                 type="button"
                 size="sm"
@@ -173,22 +175,22 @@ export function AiDraftEmailModal({
                 onClick={() => runDraft()}
                 disabled={drafting || sending}
               >
-                <Sparkles size={11} /> {drafting ? "Drafting…" : "Regenerate draft"}
+                <Sparkles size={11} /> {drafting ? t("email.draft.drafting") : t("email.draft.regenerate")}
               </Button>
             </div>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={drafting ? "Drafting…" : "Subject line"} disabled={sending} />
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={drafting ? t("email.draft.drafting") : t("email.draft.subjectPlaceholder")} disabled={sending} />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Message</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("email.draft.message")}</label>
             <Textarea
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder={drafting ? "Drafting…" : "Message body"}
+              placeholder={drafting ? t("email.draft.drafting") : t("email.draft.messagePlaceholder")}
               disabled={sending}
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">{linkHint}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{linkHint ?? t("email.draft.linkHint")}</p>
           </div>
 
           {draftError && <p className="text-xs text-destructive">{draftError}</p>}
@@ -197,10 +199,10 @@ export function AiDraftEmailModal({
 
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={sending}>
-            Cancel
+            {t("email.draft.cancel")}
           </Button>
           <Button onClick={sendEmail} disabled={!canSend} className="gap-1.5">
-            <Mail size={14} /> {sending ? "Sending…" : sendLabel}
+            <Mail size={14} /> {sending ? t("email.draft.sending") : sendLabel ?? t("email.draft.send")}
           </Button>
         </div>
       </div>

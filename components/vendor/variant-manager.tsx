@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { useTranslation } from 'react-i18next';
 
 interface VariantData {
   id: string;
@@ -24,6 +25,8 @@ interface Props {
 }
 
 export default function VariantManager({ vendorId, productId, variants, onUpdate, requiresBooking }: Props) {
+  const { t } = useTranslation('vendor');
+  const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -36,68 +39,68 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, priceOffset: Number(newPriceOffset) || 0, isDefault: variants.length === 0 }),
       });
-      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not add variant.'); return; }
-      setNewName(''); setNewPriceOffset(''); setAdding(false); showFeedback('success', 'Variant added successfully.'); onUpdate();
-    } catch { showFeedback('error', 'Could not add variant. Please try again.'); }
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || t('variants.addFailed')); return; }
+      setNewName(''); setNewPriceOffset(''); setAdding(false); showFeedback('success', t('variants.added')); onUpdate();
+    } catch { showFeedback('error', t('variants.addTryAgain')); }
   }
 
   async function handleSetDefault(variantId: string) {
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDefault: true }) });
-      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not set default variant.'); return; }
-      showFeedback('success', 'Default variant updated.'); onUpdate();
-    } catch { showFeedback('error', 'Could not set default variant. Please try again.'); }
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || t('variants.defaultFailed')); return; }
+      showFeedback('success', t('variants.defaultUpdated')); onUpdate();
+    } catch { showFeedback('error', t('variants.defaultTryAgain')); }
   }
 
   async function handleDelete(variantId: string) {
-    if (!confirm('Archive this variant?')) return;
+    if (!confirm(t('variants.archiveConfirm'))) return;
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'DELETE' });
-      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not archive variant.'); return; }
-      showFeedback('success', 'Variant archived.'); onUpdate();
-    } catch { showFeedback('error', 'Could not archive variant. Please try again.'); }
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || t('variants.archiveFailed')); return; }
+      showFeedback('success', t('variants.archived')); onUpdate();
+    } catch { showFeedback('error', t('variants.archiveTryAgain')); }
   }
 
   async function handleInventoryUpdate(variantId: string, currentQty: number) {
-    const newQty = prompt('Update total quantity:', String(currentQty));
+    const newQty = prompt(t('variants.quantityPrompt'), String(currentQty));
     if (newQty === null) return;
     const qty = parseInt(newQty, 10);
-    if (isNaN(qty) || qty < 0) return alert('Invalid quantity');
+    if (isNaN(qty) || qty < 0) return alert(t('variants.invalidQuantity'));
 
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: qty }) });
-      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || 'Could not update inventory.'); return; }
-      showFeedback('success', 'Inventory quantity updated.'); onUpdate();
-    } catch { showFeedback('error', 'Could not update inventory. Please try again.'); }
+      if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || t('variants.inventoryFailed')); return; }
+      showFeedback('success', t('variants.inventoryUpdated')); onUpdate();
+    } catch { showFeedback('error', t('variants.inventoryTryAgain')); }
   }
 
   return (
     <div className="space-y-3 mt-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold">Variants & Inventory</h3>
+        <h3 className="text-sm font-semibold">{t('variants.title')}</h3>
         {!adding && (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>+ Add Variant</Button>
+          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>+ {t('variants.add')}</Button>
         )}
       </div>
 
       {adding && (
         <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
           <Input 
-            placeholder="Name (e.g. Adult)" 
+            placeholder={t('variants.namePlaceholder')}
             value={newName} 
             onChange={e => setNewName(e.target.value)}
             className="h-8 text-sm"
           />
           <Input 
-            placeholder="Price Offset (RM)" 
+            placeholder={t('variants.priceOffsetPlaceholder')}
             type="number" 
             step="0.01" 
             value={newPriceOffset} 
             onChange={e => setNewPriceOffset(e.target.value)}
             className="h-8 text-sm"
           />
-          <Button size="sm" onClick={handleAdd}>Save</Button>
-          <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
+          <Button size="sm" onClick={handleAdd}>{tCommon('actions.save')}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>{tCommon('actions.cancel')}</Button>
         </div>
       )}
 
@@ -105,9 +108,9 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium text-right">Price Offset</th>
-              {!requiresBooking && <th className="px-3 py-2 font-medium text-right">Inventory</th>}
+              <th className="px-3 py-2 font-medium">{t('variants.name')}</th>
+              <th className="px-3 py-2 font-medium text-right">{t('variants.priceOffset')}</th>
+              {!requiresBooking && <th className="px-3 py-2 font-medium text-right">{t('variants.inventory')}</th>}
               <th className="px-3 py-2 font-medium"></th>
             </tr>
           </thead>
@@ -117,7 +120,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     {v.name}
-                    {v.is_default && <span className="px-1.5 py-0.5 rounded text-[10px] bg-secondary text-primary font-medium tracking-wide uppercase">Default</span>}
+                    {v.is_default && <span className="px-1.5 py-0.5 rounded text-[10px] bg-secondary text-primary font-medium tracking-wide uppercase">{t('variants.default')}</span>}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -131,15 +134,15 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                     >
                       {v.inventory?.[0]?.quantity ?? 0}
                     </button>
-                    <span className="text-xs text-gray-400 ml-1">({v.inventory?.[0]?.reserved ?? 0} res)</span>
+                    <span className="text-xs text-gray-400 ml-1">({v.inventory?.[0]?.reserved ?? 0} {t('variants.reservedShort')})</span>
                   </td>
                 )}
                 <td className="px-3 py-2 text-right space-x-2">
                   {!v.is_default && (
-                    <button onClick={() => handleSetDefault(v.id)} className="text-xs text-primary hover:underline">Set Default</button>
+                    <button onClick={() => handleSetDefault(v.id)} className="text-xs text-primary hover:underline">{t('variants.setDefault')}</button>
                   )}
                   {variants.length > 1 && (
-                    <button onClick={() => handleDelete(v.id)} className="text-xs text-red-500 hover:underline">Archive</button>
+                    <button onClick={() => handleDelete(v.id)} className="text-xs text-red-500 hover:underline">{t('variants.archive')}</button>
                   )}
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 import { VendorInviteAccountStep } from '@/components/vendor/vendor-invite-account-step';
 import { VendorInviteDetailsStep } from '@/components/vendor/vendor-invite-details-step';
@@ -59,6 +60,7 @@ function draftReducer(current: DraftState, action: DraftAction): DraftState {
 }
 
 export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWizardProps) {
+  const { t } = useTranslation('vendor');
   const initialDraft = useMemo(() => draftFromVendorInvitePreview(preview), [preview]);
   const [step, setStep] = useState<VendorInviteStep>('account');
   const [draftState, dispatchDraft] = useReducer(draftReducer, { draft: initialDraft, dirtyFields: [] });
@@ -139,22 +141,24 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
         setSubmitted(true);
         return;
       }
-      const recovery = mapClaimError(await readApiFailure(response));
+      const failure = await readApiFailure(response);
+      const recovery = mapClaimError(failure);
+      const recoveryMessage = t(recovery.message);
       if (recovery.target === 'inactive') {
         setInactive(true);
       } else if (recovery.target === 'account' || recovery.target === 'details' || recovery.target === 'verify') {
         setStep(recovery.target);
         if (recovery.target === 'verify') {
           dispatchPhoneRecovery({ type: 'claim-phone-required' });
-          setClaimError(recovery.message);
+          setClaimError(recoveryMessage);
         }
-        else setRouteError(recovery.message);
+        else setRouteError(recoveryMessage);
         if (recoveryRequiresPreviewReload(recovery.target)) await onReload();
       } else {
-        setClaimError(recovery.message);
+        setClaimError(recoveryMessage);
       }
     } catch {
-      setClaimError(mapClaimError({ code: '', status: 503 }).message);
+      setClaimError(t('invite.errors.claim.retry.generic'));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -167,8 +171,8 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
   if (submitted) {
     return (
       <section className="rounded-2xl border border-border bg-card p-6 text-center">
-        <h2 className="text-xl font-bold text-foreground">Vendor application submitted</h2>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">Your Vendor and first Outlet are private while MyWisata reviews the application.</p>
+        <h2 className="text-xl font-bold text-foreground">{t('invite.submitted.title')}</h2>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('invite.submitted.description')}</p>
       </section>
     );
   }
@@ -176,15 +180,15 @@ export function VendorInviteWizard({ token, preview, onReload }: VendorInviteWiz
   if (inactive) {
     return (
       <section className="rounded-2xl border border-border bg-card p-6 text-center">
-        <h2 className="text-xl font-bold text-foreground">Vendor invitation inactive</h2>
-        <p className="mt-3 text-sm text-muted-foreground">This vendor invitation is no longer active. Contact MyWisata support if you need help.</p>
+        <h2 className="text-xl font-bold text-foreground">{t('invite.inactive.title')}</h2>
+        <p className="mt-3 text-sm text-muted-foreground">{t('invite.inactive.description')}</p>
       </section>
     );
   }
 
   return (
-    <section aria-label="Vendor invitation setup">
-      <p className="mb-3 text-sm font-semibold text-primary">Step {stepNumber} of 3</p>
+    <section aria-label={t('invite.setupLabel')}>
+      <p className="mb-3 text-sm font-semibold text-primary">{t('invite.step', { current: stepNumber, total: 3 })}</p>
       {routeError && <p role="alert" className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">{routeError}</p>}
       {activeStep === 'account' && <VendorInviteAccountStep token={token} account={preview.account} onContinue={() => setStep('details')} onReload={onReload} />}
       {activeStep === 'details' && <VendorInviteDetailsStep preview={preview} draft={draftState.draft} update={update} onContinue={() => setStep('verify')} />}

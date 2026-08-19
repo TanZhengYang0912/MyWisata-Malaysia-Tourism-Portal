@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { FileUp, LoaderCircle, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface UploadedMedia {
   url: string;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function ProductMediaUploader({ vendorId, productId, kind = 'image', value, successMessage, onUploaded, onError }: Props) {
+  const { t } = useTranslation('vendor');
   const { showFeedback } = useActionFeedback();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -37,11 +39,11 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
       if (productId) formData.append('productId', productId);
       const response = await fetch('/api/vendors/' + vendorId + '/media/upload', { method: 'POST', body: formData });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message || 'Upload failed.');
+      if (!response.ok) throw new Error(payload.error?.message || t('media.uploadFailed'));
       onUploaded(payload.data);
-      showFeedback('success', successMessage || (kind === 'image' ? 'Product image uploaded.' : 'Digital asset uploaded.'));
+      showFeedback('success', successMessage || (kind === 'image' ? t('media.productImageUploaded') : t('media.digitalAssetUploaded')));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Upload failed.';
+      const message = error instanceof Error ? error.message : t('media.uploadFailed');
       onError?.(message);
       showFeedback('error', message);
     } finally {
@@ -59,13 +61,13 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
         const file = event.dataTransfer.files?.[0];
         if (file && !uploading) void upload(file);
       }}
-      aria-label="Drop a file to upload"
+      aria-label={t('media.dropFile')}
     >
       <div className="flex items-center gap-3">
         {value ? (
           kind === 'image'
-            ? <img src={value} alt="Uploaded product media preview" className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
-            : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">FILE READY</div>
+            ? <img src={value} alt={t('media.uploadedPreview')} className="h-16 w-24 rounded-lg border border-gray-200 object-cover" />
+            : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">{t('media.fileReady')}</div>
         ) : <div className="flex h-16 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400"><FileUp size={20} /></div>}
         <div className="min-w-0 flex-1">
           <input
@@ -77,10 +79,10 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
           />
           <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:border-primary/30 hover:text-primary disabled:opacity-50">
             {uploading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            {value ? 'Replace file' : 'Upload file'}
+            {value ? t('media.replaceFile') : t('media.uploadFile')}
           </button>
-          <p className="mt-1 text-[11px] text-gray-500">{kind === 'digital' ? 'PDF or ZIP · max 10 MB' : 'JPG, PNG or WebP · max 10 MB'}</p>
-          <p className="mt-1 text-[10px] font-semibold text-primary/60">Or drag a file here</p>
+          <p className="mt-1 text-[11px] text-gray-500">{kind === 'digital' ? t('media.digitalFormats') : t('media.imageFormats')}</p>
+          <p className="mt-1 text-[10px] font-semibold text-primary/60">{t('media.dragFileHint')}</p>
         </div>
       </div>
     </div>

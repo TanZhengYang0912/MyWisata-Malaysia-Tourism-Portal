@@ -2,6 +2,10 @@
 
 import { AlertCircle, Check, CheckCircle2, ChevronDown, Copy, Eye, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber } from '@/lib/i18n/format';
+import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from '@/lib/i18n/locale';
+import type { TFunction } from 'i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,13 +57,14 @@ const inputClass = 'h-9 w-full rounded-lg border border-gray-200 bg-white px-2.5
 const selectClass = `${inputClass} appearance-none pr-7`;
 export const VOUCHER_CSV_AUTOSAVE_DELAY_MS = 8000;
 
-function blankDocument(): VoucherCsvDraftDocument {
-  return { title: 'Untitled voucher batch', rows: [emptyVoucherCsvDraft()], autoGenerate: true, codePrefix: 'TRAVEL' };
+function blankDocument(title: string): VoucherCsvDraftDocument {
+  return { title, rows: [emptyVoucherCsvDraft()], autoGenerate: true, codePrefix: 'TRAVEL' };
 }
 
-function formatSavedAt(value?: string) {
-  if (!value) return 'Not saved yet';
-  return `Saved ${new Date(value).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}`;
+function formatSavedAt(value: string | undefined, locale: AppLocale, translate: TFunction) {
+  if (!value) return translate('voucher.csv.notSaved');
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  return translate('voucher.csv.savedAt', { time });
 }
 
 export default function VoucherCsvBuilder({
@@ -74,7 +79,9 @@ export default function VoucherCsvBuilder({
   onBack,
   onUseCsv,
 }: Props) {
-  const [document, setDocument] = useState<VoucherCsvDraftDocument>(() => initialDraft?.document || blankDocument());
+  const { t, i18n } = useTranslation('vendor');
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
+  const [document, setDocument] = useState<VoucherCsvDraftDocument>(() => initialDraft?.document || blankDocument(t('voucher.csv.untitledBatch')));
   const [draftId, setDraftId] = useState(initialDraft?.id);
   const [draftVersion, setDraftVersion] = useState(initialDraft?.draftVersion);
   const [savedAt, setSavedAt] = useState(initialDraft?.updatedAt);
@@ -129,9 +136,9 @@ export default function VoucherCsvBuilder({
       setDirty(false);
       setSelectedRows([]);
       setRowErrors({});
-      setMessage('Draft loaded.');
+      setMessage(t('voucher.csv.draftLoaded'));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load draft.');
+      setError(reason instanceof Error ? reason.message : t('voucher.csv.loadFailed'));
     } finally {
       setLoadingDraft(false);
     }
@@ -148,16 +155,16 @@ export default function VoucherCsvBuilder({
       setDraftVersion(saved.draftVersion);
       setSavedAt(saved.updatedAt);
       setDirty(false);
-      setMessage('Draft saved. You can safely return later.');
+      setMessage(t('voucher.csv.draftSaved'));
       if (exitAfterSave) onBack();
       return true;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not save draft. Your changes are still on this screen.');
+      setError(reason instanceof Error ? reason.message : t('voucher.csv.saveFailed'));
       return false;
     } finally {
       setSaving(false);
     }
-  }, [document, draftId, draftVersion, onBack, onSaveDraft]);
+  }, [document, draftId, draftVersion, onBack, onSaveDraft, t]);
 
   useEffect(() => {
     if (!open || !dirty || saving || previewOpen) return;
@@ -169,7 +176,7 @@ export default function VoucherCsvBuilder({
     const nextErrors = validateVoucherCsvDrafts(document.rows);
     if (Object.keys(nextErrors).length) {
       setRowErrors(nextErrors);
-      setError(getVoucherCsvDraftBlockingError(document) || 'Fix the highlighted rows before previewing this batch.');
+      setError(getVoucherCsvDraftBlockingError(document) || t('voucher.csv.fixRows'));
       return;
     }
     const blockingError = getVoucherCsvDraftBlockingError(document);
@@ -180,19 +187,19 @@ export default function VoucherCsvBuilder({
   }
 
   function closeBuilder() {
-    if (dirty && !window.confirm('You have unsaved changes. Leave this builder?')) return;
+    if (dirty && !window.confirm(t('voucher.csv.leaveUnsavedConfirm'))) return;
     onBack();
   }
 
   async function discardDraft() {
-    if (!draftId || !window.confirm('Discard this saved CSV draft? This cannot be undone.')) return;
+    if (!draftId || !window.confirm(t('voucher.csv.discardConfirm'))) return;
     if (await onDeleteDraft(draftId)) {
-      setDocument(blankDocument());
+      setDocument(blankDocument(t('voucher.csv.untitledBatch')));
       setDraftId(undefined);
       setDraftVersion(undefined);
       setSavedAt(undefined);
       setDirty(true);
-      setMessage('Draft discarded.');
+      setMessage(t('voucher.csv.draftDiscarded'));
     }
   }
 
@@ -201,26 +208,26 @@ export default function VoucherCsvBuilder({
   }
 
   function rowStatus(index: number) {
-    return rowErrors[index]?.length ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600"><AlertCircle size={13} /> Fix row</span> : <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600"><CheckCircle2 size={13} /> Ready</span>;
+    return rowErrors[index]?.length ? <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600"><AlertCircle size={13} /> {t('voucher.csv.fixRow')}</span> : <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600"><CheckCircle2 size={13} /> {t('voucher.csv.ready')}</span>;
   }
 
   function renderMobileRow(row: VoucherCsvDraft, index: number) {
     const errors = rowErrors[index] || [];
     return <article key={`mobile-${index}`} className="rounded-2xl border border-amber-100 bg-amber-50/40 p-4">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">Voucher {index + 1}</p><div className="mt-1">{rowStatus(index)}</div></div><input type="checkbox" checked={selectedRows.includes(index)} onChange={() => setSelectedRows((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={`Select voucher ${index + 1}`} /></div>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">{t('voucher.csv.voucherNumber', { number: index + 1 })}</p><div className="mt-1">{rowStatus(index)}</div></div><input type="checkbox" checked={selectedRows.includes(index)} onChange={() => setSelectedRows((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={t('voucher.csv.selectVoucher', { number: index + 1 })} /></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-semibold text-gray-700 sm:col-span-2">Voucher name *<Input value={row.name} onChange={(event) => updateRow(index, 'name', event.target.value)} placeholder="Malaysia Welcome" className="mt-1 bg-white" /></label>
-        <label className="text-xs font-semibold text-gray-700">Code<Input value={row.code} onChange={(event) => updateRow(index, 'code', event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 50))} placeholder="Auto-generated" className="mt-1 bg-white font-mono uppercase" /></label>
-        <label className="text-xs font-semibold text-gray-700">Type<select value={row.voucherType} onChange={(event) => updateRow(index, 'voucherType', event.target.value as VoucherCsvDraft['voucherType'])} className={`mt-1 ${selectClass}`}>{renderSelectOptions([{ id: 'fixed', name: 'Fixed amount' }, { id: 'percent', name: 'Percentage' }, { id: 'bogo', name: 'Buy 1 Get 1 (BOGO)' }], '')}</select></label>
-        {row.voucherType !== 'bogo' && <label className="text-xs font-semibold text-gray-700">Discount value *<Input value={row.discountValue} onChange={(event) => updateRow(index, 'discountValue', event.target.value)} type="number" min="0.01" step="0.01" placeholder="10" className="mt-1 bg-white" /></label>}
-        <label className="text-xs font-semibold text-gray-700">Minimum spend<Input value={row.minSpend} onChange={(event) => updateRow(index, 'minSpend', event.target.value)} type="number" min="0" step="0.01" className="mt-1 bg-white" /></label>
-        <label className="text-xs font-semibold text-gray-700">Total uses<Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder="Unlimited" className="mt-1 bg-white" /></label>
-        <label className="text-xs font-semibold text-gray-700">Per customer<Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder="Unlimited" className="mt-1 bg-white" /></label>
-        <label className="text-xs font-semibold text-gray-700">Valid from<input value={row.validFrom} onChange={(event) => updateRow(index, 'validFrom', event.target.value)} type="datetime-local" className={inputClass} /></label>
-        <label className="text-xs font-semibold text-gray-700">Valid until<input value={row.validUntil} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} /></label>
-        <label className="text-xs font-semibold text-gray-700">Outlet<select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, 'All outlets')}</select></label>
-        <label className="text-xs font-semibold text-gray-700">Product<select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, 'All products')}</select></label>
-        {row.voucherType === 'bogo' && <><label className="text-xs font-semibold text-gray-700">Buy quantity *<Input value={row.buyQuantity} onChange={(event) => updateRow(index, 'buyQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label><label className="text-xs font-semibold text-gray-700">Free quantity *<Input value={row.freeQuantity} onChange={(event) => updateRow(index, 'freeQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label></>}
+        <label className="text-xs font-semibold text-gray-700 sm:col-span-2">{t('voucher.csv.voucherName')} *<Input value={row.name} onChange={(event) => updateRow(index, 'name', event.target.value)} placeholder={t('voucher.csv.exampleVoucher')} className="mt-1 bg-white" /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.code')}<Input value={row.code} onChange={(event) => updateRow(index, 'code', event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 50))} placeholder={t('voucher.csv.autoGenerated')} className="mt-1 bg-white font-mono uppercase" /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.type')}<select value={row.voucherType} onChange={(event) => updateRow(index, 'voucherType', event.target.value as VoucherCsvDraft['voucherType'])} className={`mt-1 ${selectClass}`}>{renderSelectOptions([{ id: 'fixed', name: t('voucher.form.fixedAmount') }, { id: 'percent', name: t('voucher.form.percentage') }, { id: 'bogo', name: t('voucher.form.buyOneGetOne') }], '')}</select></label>
+        {row.voucherType !== 'bogo' && <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.discountValue')} *<Input value={row.discountValue} onChange={(event) => updateRow(index, 'discountValue', event.target.value)} type="number" min="0.01" step="0.01" placeholder="10" className="mt-1 bg-white" /></label>}
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.minimumSpend')}<Input value={row.minSpend} onChange={(event) => updateRow(index, 'minSpend', event.target.value)} type="number" min="0" step="0.01" className="mt-1 bg-white" /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.totalUses')}<Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className="mt-1 bg-white" /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.perCustomer')}<Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className="mt-1 bg-white" /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.validFrom')}<input value={row.validFrom} onChange={(event) => updateRow(index, 'validFrom', event.target.value)} type="datetime-local" className={inputClass} /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.validUntil')}<input value={row.validUntil} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.outlet')}<select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.product')}<select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, t('voucher.csv.allProducts'))}</select></label>
+        {row.voucherType === 'bogo' && <><label className="text-xs font-semibold text-gray-700">{t('voucher.csv.buy')} *<Input value={row.buyQuantity} onChange={(event) => updateRow(index, 'buyQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label><label className="text-xs font-semibold text-gray-700">{t('voucher.csv.free')} *<Input value={row.freeQuantity} onChange={(event) => updateRow(index, 'freeQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label></>}
       </div>
       {errors.length > 0 && <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{errors.join(' ')}</div>}
     </article>;
@@ -231,14 +238,14 @@ export default function VoucherCsvBuilder({
       <div className="flex min-w-0 max-h-[96vh] flex-col">
         <DialogHeader className="min-w-0 border-b border-gray-100 px-6 py-5">
           <div className="flex flex-wrap items-start justify-between gap-4 pr-8">
-            <div><DialogTitle className="text-xl text-gray-950">Build voucher CSV</DialogTitle><DialogDescription className="mt-1 max-w-3xl leading-6 text-gray-600">Work like a spreadsheet: fill rows, choose names from the lists, save anytime, then preview before creating vouchers.</DialogDescription></div>
-            <div className="flex items-center gap-2 text-xs text-gray-500"><span className={dirty ? 'text-amber-700' : 'text-emerald-700'}>{dirty ? 'Unsaved changes' : <><Check size={13} className="mr-1 inline" />{formatSavedAt(savedAt)}</>}</span><span className="rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-600">{summary.total} rows</span></div>
+            <div><DialogTitle className="text-xl text-gray-950">{t('voucher.csv.title')}</DialogTitle><DialogDescription className="mt-1 max-w-3xl leading-6 text-gray-600">{t('voucher.csv.description')}</DialogDescription></div>
+            <div className="flex items-center gap-2 text-xs text-gray-500"><span className={dirty ? 'text-amber-700' : 'text-emerald-700'}>{dirty ? t('voucher.csv.unsavedChanges') : <><Check size={13} className="mr-1 inline" />{formatSavedAt(savedAt, locale, t)}</>}</span><span className="rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-600">{t('voucher.csv.rows', { count: formatNumber(summary.total, locale) })}</span></div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Input value={document.title} onChange={(event) => updateDocument((current) => ({ ...current, title: event.target.value }))} placeholder="Campaign name" className="h-9 w-64 border-amber-200 text-sm font-semibold" aria-label="CSV draft name" />
-            {drafts.length > 0 && <label className="relative"><span className="sr-only">Open saved draft</span><select disabled={loadingDraft} value={draftId || ''} onChange={(event) => { if (event.target.value) void loadDraft(event.target.value); }} className="h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-xs font-semibold text-gray-700"><option value="">Open saved draft…</option>{drafts.map((draft) => <option key={draft.id} value={draft.id}>{draft.title} · {formatSavedAt(draft.updatedAt)}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" /></label>}
-            <label className="ml-auto inline-flex items-center gap-2 text-xs font-semibold text-gray-700"><input type="checkbox" checked={document.autoGenerate} onChange={(event) => updateDocument((current) => ({ ...current, autoGenerate: event.target.checked }))} /> Generate blank codes</label>
-            {document.autoGenerate && <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">Prefix<input value={document.codePrefix} onChange={(event) => updateDocument((current) => ({ ...current, codePrefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))} className="h-9 w-28 rounded-lg border border-amber-200 bg-white px-2 font-mono text-xs uppercase outline-none focus:ring-2 focus:ring-amber-100" placeholder="TRAVEL" /></label>}
+            <Input value={document.title} onChange={(event) => updateDocument((current) => ({ ...current, title: event.target.value }))} placeholder={t('voucher.csv.campaignName')} className="h-9 w-64 border-amber-200 text-sm font-semibold" aria-label={t('voucher.csv.draftName')} />
+            {drafts.length > 0 && <label className="relative"><span className="sr-only">{t('voucher.csv.openSavedDraft')}</span><select disabled={loadingDraft} value={draftId || ''} onChange={(event) => { if (event.target.value) void loadDraft(event.target.value); }} className="h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 text-xs font-semibold text-gray-700"><option value="">{t('voucher.csv.openDraft')}</option>{drafts.map((draft) => <option key={draft.id} value={draft.id}>{draft.title} · {formatSavedAt(draft.updatedAt, locale, t)}</option>)}</select><ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" /></label>}
+            <label className="ml-auto inline-flex items-center gap-2 text-xs font-semibold text-gray-700"><input type="checkbox" checked={document.autoGenerate} onChange={(event) => updateDocument((current) => ({ ...current, autoGenerate: event.target.checked }))} /> {t('voucher.csv.generateBlankCodes')}</label>
+            {document.autoGenerate && <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">{t('voucher.csv.prefix')}<input value={document.codePrefix} onChange={(event) => updateDocument((current) => ({ ...current, codePrefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))} className="h-9 w-28 rounded-lg border border-amber-200 bg-white px-2 font-mono text-xs uppercase outline-none focus:ring-2 focus:ring-amber-100" placeholder="TRAVEL" /></label>}
           </div>
         </DialogHeader>
 
@@ -246,44 +253,44 @@ export default function VoucherCsvBuilder({
         {message && <div className="mx-6 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-700"><CheckCircle2 size={16} className="mr-1 inline" />{message}</div>}
 
         <div className="min-w-0 flex-1 overflow-y-auto px-6 py-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap items-center gap-2"><p className="text-xs text-gray-500"><span className="font-semibold text-gray-800">{summary.valid} ready</span> · <span className={summary.errors ? 'font-semibold text-red-600' : ''}>{summary.errors} need attention</span> · {summary.blankCodes} blank codes</p><p className="hidden text-[11px] text-gray-400 md:block">Scroll horizontally to see more fields</p></div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" onClick={() => addRow()}><Plus size={14} /> Add row</Button><Button type="button" variant="outline" size="sm" disabled={!selectedRows.length} onClick={() => addRow(document.rows[selectedRows[0]])}><Copy size={14} /> Duplicate</Button><Button type="button" variant="outline" size="sm" disabled={!selectedRows.length || document.rows.length <= 1} onClick={() => removeRows(selectedRows)}><Trash2 size={14} /> Delete</Button></div></div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap items-center gap-2"><p className="text-xs text-gray-500"><span className="font-semibold text-gray-800">{t('voucher.csv.readyCount', { count: formatNumber(summary.valid, locale) })}</span> · <span className={summary.errors ? 'font-semibold text-red-600' : ''}>{t('voucher.csv.attentionCount', { count: formatNumber(summary.errors, locale) })}</span> · {t('voucher.csv.blankCodesCount', { count: formatNumber(summary.blankCodes, locale) })}</p><p className="hidden text-[11px] text-gray-400 md:block">{t('voucher.csv.scrollFields', { defaultValue: 'Scroll horizontally to see more fields' })}</p></div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" onClick={() => addRow()}><Plus size={14} /> {t('voucher.csv.addRow')}</Button><Button type="button" variant="outline" size="sm" disabled={!selectedRows.length} onClick={() => addRow(document.rows[selectedRows[0]])}><Copy size={14} /> {t('voucher.csv.duplicate')}</Button><Button type="button" variant="outline" size="sm" disabled={!selectedRows.length || document.rows.length <= 1} onClick={() => removeRows(selectedRows)}><Trash2 size={14} /> {t('voucher.csv.delete')}</Button></div></div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block" role="region" aria-label="Voucher CSV spreadsheet" tabIndex={0}>
+          <div className="hidden overflow-x-auto rounded-xl border border-gray-200 md:block" role="region" aria-label={t('voucher.csv.spreadsheet')} tabIndex={0}>
             <div className={`grid min-w-[1748px] ${tableColumns} gap-1 border-b border-gray-200 bg-gray-50/90 px-2 py-3 text-[10px] font-bold uppercase tracking-[0.1em] text-gray-500`}>
-              <span className="sticky left-0 z-10 bg-gray-50/90">#</span><span className="sticky left-[40px] z-10 bg-gray-50/90">Code</span><span className="sticky left-[155px] z-10 bg-gray-50/90">Voucher name *</span><span>Type</span><span>Value *</span><span>Min spend</span><span>Total uses</span><span>Per customer</span><span>Valid from</span><span>Valid until</span><span>Outlet</span><span>Product</span><span>Buy</span><span>Free</span>
+              <span className="sticky left-0 z-10 bg-gray-50/90">#</span><span className="sticky left-[40px] z-10 bg-gray-50/90">{t('voucher.csv.code')}</span><span className="sticky left-[155px] z-10 bg-gray-50/90">{t('voucher.csv.voucherName')} *</span><span>{t('voucher.csv.type')}</span><span>{t('voucher.csv.value')} *</span><span>{t('voucher.csv.minimumSpend')}</span><span>{t('voucher.csv.totalUses')}</span><span>{t('voucher.csv.perCustomer')}</span><span>{t('voucher.csv.validFrom')}</span><span>{t('voucher.csv.validUntil')}</span><span>{t('voucher.csv.outlet')}</span><span>{t('voucher.csv.product')}</span><span>{t('voucher.csv.buy')}</span><span>{t('voucher.csv.free')}</span>
             </div>
             {document.rows.map((row, index) => <div key={index} className={`grid min-w-[1748px] ${tableColumns} items-start gap-1 border-b border-gray-100 px-2 py-2 last:border-0 ${rowErrors[index]?.length ? 'bg-red-50/30' : 'bg-white'}`}>
-              <div className="sticky left-0 z-10 flex items-center gap-1 bg-inherit pt-2"><input type="checkbox" checked={selectedRows.includes(index)} onChange={() => setSelectedRows((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={`Select voucher row ${index + 1}`} /><span className="text-xs font-semibold text-gray-500">{index + 1}</span></div>
-              <div className="sticky left-[40px] z-10 bg-inherit"><Input value={row.code} onChange={(event) => updateRow(index, 'code', event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 50))} placeholder="Auto" className={`${inputClass} font-mono uppercase`} /></div>
-              <div className="sticky left-[155px] z-10 bg-inherit"><Input value={row.name} onChange={(event) => updateRow(index, 'name', event.target.value)} placeholder="Malaysia Welcome" className={inputClass} />{rowErrors[index]?.length ? <p className="mt-1 text-[10px] text-red-600">{rowErrors[index].join(' ')}</p> : <p className="mt-1 text-[10px] text-emerald-600">Ready</p>}</div>
-              <select value={row.voucherType} onChange={(event) => updateRow(index, 'voucherType', event.target.value as VoucherCsvDraft['voucherType'])} className={selectClass}><option value="fixed">Fixed amount</option><option value="percent">Percentage</option><option value="bogo">BOGO</option></select>
-              <Input value={row.discountValue} onChange={(event) => updateRow(index, 'discountValue', event.target.value)} disabled={row.voucherType === 'bogo'} type="number" min="0.01" step="0.01" placeholder={row.voucherType === 'percent' ? '15%' : row.voucherType === 'bogo' ? 'Auto' : '10'} className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`} />
+              <div className="sticky left-0 z-10 flex items-center gap-1 bg-inherit pt-2"><input type="checkbox" checked={selectedRows.includes(index)} onChange={() => setSelectedRows((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={t('voucher.csv.selectRow', { number: index + 1 })} /><span className="text-xs font-semibold text-gray-500">{index + 1}</span></div>
+              <div className="sticky left-[40px] z-10 bg-inherit"><Input value={row.code} onChange={(event) => updateRow(index, 'code', event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 50))} placeholder={t('voucher.csv.auto')} className={`${inputClass} font-mono uppercase`} /></div>
+              <div className="sticky left-[155px] z-10 bg-inherit"><Input value={row.name} onChange={(event) => updateRow(index, 'name', event.target.value)} placeholder={t('voucher.csv.exampleVoucher')} className={inputClass} />{rowErrors[index]?.length ? <p className="mt-1 text-[10px] text-red-600">{rowErrors[index].join(' ')}</p> : <p className="mt-1 text-[10px] text-emerald-600">{t('voucher.csv.ready')}</p>}</div>
+              <select value={row.voucherType} onChange={(event) => updateRow(index, 'voucherType', event.target.value as VoucherCsvDraft['voucherType'])} className={selectClass}><option value="fixed">{t('voucher.form.fixedAmount')}</option><option value="percent">{t('voucher.form.percentage')}</option><option value="bogo">{t('voucher.form.buyOneGetOneShort')}</option></select>
+              <Input value={row.discountValue} onChange={(event) => updateRow(index, 'discountValue', event.target.value)} disabled={row.voucherType === 'bogo'} type="number" min="0.01" step="0.01" placeholder={row.voucherType === 'percent' ? '15%' : row.voucherType === 'bogo' ? t('voucher.csv.auto') : '10'} className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`} />
               <Input value={row.minSpend} onChange={(event) => updateRow(index, 'minSpend', event.target.value)} type="number" min="0" step="0.01" className={inputClass} />
-              <Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder="Unlimited" className={inputClass} />
-              <Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder="Unlimited" className={inputClass} />
+              <Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className={inputClass} />
+              <Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className={inputClass} />
               <input value={row.validFrom} onChange={(event) => updateRow(index, 'validFrom', event.target.value)} type="datetime-local" className={inputClass} />
               <input value={row.validUntil} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} />
-              <select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, 'All outlets')}</select>
-              <select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, 'All products')}</select>
+              <select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select>
+              <select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, t('voucher.csv.allProducts'))}</select>
               <Input value={row.buyQuantity} onChange={(event) => updateRow(index, 'buyQuantity', event.target.value)} disabled={row.voucherType !== 'bogo'} type="number" min="1" className={`${inputClass} disabled:bg-gray-100`} />
               <Input value={row.freeQuantity} onChange={(event) => updateRow(index, 'freeQuantity', event.target.value)} disabled={row.voucherType !== 'bogo'} type="number" min="1" className={`${inputClass} disabled:bg-gray-100`} />
             </div>)}
           </div>
           <div className="space-y-3 md:hidden">{document.rows.map(renderMobileRow)}</div>
-          <button type="button" onClick={() => addRow()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-50"><Plus size={15} /> Add another voucher row</button>
+          <button type="button" onClick={() => addRow()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-50"><Plus size={15} /> {t('voucher.csv.addAnotherRow')}</button>
         </div>
 
         <div className="min-w-0 flex flex-wrap items-center gap-2 border-t border-gray-100 bg-white px-6 py-4">
-          <Button type="button" variant="outline" onClick={closeBuilder}>Back</Button>
-          {draftId && <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={saving} onClick={() => void discardDraft()}>Discard draft</Button>}
-          <span className="ml-auto text-xs text-gray-500">{saving ? <><Loader2 size={13} className="mr-1 inline animate-spin" />Saving…</> : dirty ? 'Changes save after 8 seconds of inactivity' : formatSavedAt(savedAt)}</span>
-          <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft()}><Save size={15} /> {saving ? 'Saving…' : 'Save draft'}</Button>
-          <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft(true)}>Save & exit</Button>
-          <Button type="button" onClick={requestPreview} disabled={saving || loadingDraft}><Eye size={15} /> Preview & upload</Button>
+          <Button type="button" variant="outline" onClick={closeBuilder}>{t('actions.back')}</Button>
+          {draftId && <Button type="button" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" disabled={saving} onClick={() => void discardDraft()}>{t('voucher.csv.discardDraft')}</Button>}
+            <span className="ml-auto text-xs text-gray-500">{saving ? <><Loader2 size={13} className="mr-1 inline animate-spin" />{t('actions.saving')}</> : dirty ? t('voucher.csv.autosaveNotice') : formatSavedAt(savedAt, locale, t)}</span>
+          <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft()}><Save size={15} /> {saving ? t('actions.saving') : t('actions.saveDraft')}</Button>
+          <Button type="button" variant="outline" disabled={saving || !dirty} onClick={() => void saveDraft(true)}>{t('actions.saveAndExit')}</Button>
+          <Button type="button" onClick={requestPreview} disabled={saving || loadingDraft}><Eye size={15} /> {t('actions.previewUpload')}</Button>
         </div>
       </div>
 
-      {previewOpen && <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-950/35 p-4"><div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">Final review</p><h2 className="mt-1 text-xl font-bold text-gray-950">Ready to upload?</h2><p className="mt-2 text-sm leading-6 text-gray-600">Nothing is created until you continue to the upload confirmation.</p></div><button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100" aria-label="Close preview"><X size={18} /></button></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Rows</p><p className="mt-1 text-lg font-bold text-gray-950">{summary.total}</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Ready</p><p className="mt-1 text-lg font-bold text-emerald-800">{summary.valid}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Blank codes</p><p className="mt-1 text-lg font-bold text-amber-800">{summary.blankCodes}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">Prefix</p><p className="mt-1 font-mono text-sm font-bold text-gray-950">{document.autoGenerate ? document.codePrefix : 'Off'}</p></div></div>{codePreview && <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p className="text-xs font-semibold text-amber-800">Generated code preview · {codePreview.generated} codes</p><div className="mt-2 flex flex-wrap gap-2">{codePreview.sampleCodes.slice(0, 8).map((code, index) => <span key={`${code}-${index}`} className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-amber-800">{code}</span>)}</div></div>}<p className="mt-4 text-xs leading-5 text-gray-500">The upload API will check duplicate codes, UUID ownership, dates, limits, BOGO requirements, and row-level errors again before creating inactive vouchers for admin review.</p><DialogFooter className="mt-6"><Button type="button" variant="outline" onClick={() => setPreviewOpen(false)}>Back to edit</Button><Button type="button" onClick={() => { setPreviewOpen(false); onUseCsv(normalizeVoucherCsvDraft(document), draftId); }}>Continue to upload</Button></DialogFooter></div></div>}
+      {previewOpen && <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-950/35 p-4"><div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">{t('voucher.csv.finalReview')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{t('voucher.csv.readyToUpload')}</h2><p className="mt-2 text-sm leading-6 text-gray-600">{t('voucher.csv.uploadConfirmationNotice')}</p></div><button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100" aria-label={t('actions.close')}><X size={18} /></button></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.rowsLabel')}</p><p className="mt-1 text-lg font-bold text-gray-950">{formatNumber(summary.total, locale)}</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">{t('voucher.csv.ready')}</p><p className="mt-1 text-lg font-bold text-emerald-800">{formatNumber(summary.valid, locale)}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">{t('voucher.csv.blankCodes')}</p><p className="mt-1 text-lg font-bold text-amber-800">{formatNumber(summary.blankCodes, locale)}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.prefix')}</p><p className="mt-1 font-mono text-sm font-bold text-gray-950">{document.autoGenerate ? document.codePrefix : t('voucher.csv.off')}</p></div></div>{codePreview && <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p className="text-xs font-semibold text-amber-800">{t('voucher.csv.generatedPreview', { count: formatNumber(codePreview.generated, locale) })}</p><div className="mt-2 flex flex-wrap gap-2">{codePreview.sampleCodes.slice(0, 8).map((code, index) => <span key={`${code}-${index}`} className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-amber-800">{code}</span>)}</div></div>}<p className="mt-4 text-xs leading-5 text-gray-500">{t('voucher.csv.apiValidationNotice')}</p><DialogFooter className="mt-6"><Button type="button" variant="outline" onClick={() => setPreviewOpen(false)}>{t('voucher.csv.backToEdit')}</Button><Button type="button" onClick={() => { setPreviewOpen(false); onUseCsv(normalizeVoucherCsvDraft(document), draftId); }}>{t('voucher.csv.continueUpload')}</Button></DialogFooter></div></div>}
     </DialogContent>
   </Dialog>;
 }

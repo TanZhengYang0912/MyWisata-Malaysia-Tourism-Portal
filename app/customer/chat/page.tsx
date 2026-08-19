@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -22,6 +23,7 @@ const FILTERS: { value: ChatFilter; label: string }[] = [
 ];
 
 export default function ChatListPage() {
+  const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("thread");
@@ -183,9 +185,9 @@ export default function ChatListPage() {
     <div className="mx-auto flex h-[calc(100dvh-7rem)] max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-8">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Your inbox</p>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Messages</h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">Keep every question and vendor reply in one place.</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">{tCustomer("ui.chat.inboxEyebrow")}</p>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{tCustomer("ui.chat.messages")}</h1>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">{tCustomer("ui.chat.inboxDescription")}</p>
         </div>
         <div className="flex items-center gap-5 text-xs text-muted-foreground">
           <span><strong className="text-foreground">{threads.length}</strong> conversations</span>

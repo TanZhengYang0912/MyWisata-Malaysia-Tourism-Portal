@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
 };
 
 export function AdminConfirmDialog({ open, title, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm }: Props) {
+  const { t: tAdmin } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -36,17 +39,17 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{title}</h2>
-              <button type="button" aria-label="Close confirmation" onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
+              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{tAdmin(title, { defaultValue: title })}</h2>
+              <button type="button" aria-label={tCommon("accessibility.closeConfirmation", { defaultValue: "Close confirmation" })} onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
                 <X size={17} />
               </button>
             </div>
-            <p id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">{description}</p>
+            <p id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">{tAdmin(description, { defaultValue: description })}</p>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
-          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? "Processing…" : confirmLabel}</Button>
+          <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel", { defaultValue: "Cancel" })}</Button>
+          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis", { defaultValue: "Processing…" }) : tAdmin(confirmLabel, { defaultValue: confirmLabel })}</Button>
         </div>
       </div>
     </div>

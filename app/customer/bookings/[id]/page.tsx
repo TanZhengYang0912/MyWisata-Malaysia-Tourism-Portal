@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock3, MapPin, Printer, ReceiptText, Users } from "lucide-react";
@@ -16,6 +17,7 @@ import { hasDifferentBookingTime } from "@/lib/customer/booking-details";
 import { formatBookingDate, formatBookingTime } from "@/lib/customer/itinerary-calendar";
 
 export default function CustomerBookingDetailsPage() {
+  const { t: tCustomer } = useTranslation("customer");
   const params = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const [booking, setBooking] = useState<Booking | null | undefined>(undefined);
@@ -68,11 +70,11 @@ export default function CustomerBookingDetailsPage() {
   }
 
   if (booking === undefined) {
-    return <div className="mx-auto max-w-3xl px-4 py-16 text-sm text-muted-foreground sm:px-6">Loading your booking…</div>;
+    return <div className="mx-auto max-w-3xl px-4 py-16 text-sm text-muted-foreground sm:px-6">{tCustomer("ui.states.loadingYourBooking")}</div>;
   }
 
   if (booking === null) {
-    return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><EmptyState title="Booking not found" description="This booking may no longer be available." /></div>;
+    return <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6"><EmptyState title={tCustomer("ui.booking.notFound")} description={tCustomer("ui.booking.unavailable")} /></div>;
   }
 
   const outletName = outlets.find((outlet) => outlet.id === booking.outletId)?.name ?? "MyWisata outlet";
@@ -81,7 +83,7 @@ export default function CustomerBookingDetailsPage() {
     <main className="min-h-full bg-background">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
         <Link href="/customer/activity?tab=itinerary" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> Back to calendar
+          <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("ui.actions.backToCalendar", { defaultValue: "Back to calendar" })}
         </Link>
 
         <header className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -95,8 +97,8 @@ export default function CustomerBookingDetailsPage() {
 
         <section className="mt-7 overflow-hidden rounded-3xl border border-border bg-white shadow-[0_12px_32px_rgba(1,0,102,0.06)]" aria-labelledby="booking-summary-heading">
           <div className="border-b border-slate-100 bg-secondary/45 px-5 py-5 sm:px-7">
-            <h2 id="booking-summary-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">Booking details</h2>
-            <p className="mt-1 text-sm text-slate-500">Your confirmed experience information</p>
+            <h2 id="booking-summary-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{tCustomer("ui.booking.details")}</h2>
+            <p className="mt-1 text-sm text-slate-500">{tCustomer("ui.booking.confirmedInfo")}</p>
           </div>
           <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-7">
             <div className="rounded-2xl border border-border bg-slate-50/70 p-4">

@@ -1,9 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { getActivities, getOutlets } from "@/backend/domains/catalogue";
 import { buildDiscoveryMapData, type DiscoveryMapData } from "@/lib/demo-map/discovery-pins";
+import { getServerTranslation } from "@/lib/i18n/server";
 import { DevExploreClient } from "./dev-explore-client";
 
-export const metadata = { title: "Dev · District & discovery map" };
+export async function generateMetadata() {
+  const { t } = await getServerTranslation("auth");
+  return { title: t("dev.explore.title") };
+}
 
 /**
  * Successor to the earlier /demo/explore prototype — see
@@ -18,6 +22,7 @@ export const metadata = { title: "Dev · District & discovery map" };
  * expansion in one pure, tested function.
  */
 export default async function DevExplorePage() {
+  const { t } = await getServerTranslation("auth");
   let mapData: DiscoveryMapData | null = null;
   let error: string | null = null;
   try {
@@ -25,7 +30,7 @@ export default async function DevExplorePage() {
     const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
     mapData = buildDiscoveryMapData(activities, outlets);
   } catch (cause) {
-    error = cause instanceof Error ? cause.message : "Failed to load the catalogue.";
+    error = cause instanceof Error ? cause.message : t("dev.explore.loadError");
   }
 
   return <DevExploreClient mapData={mapData} error={error} />;

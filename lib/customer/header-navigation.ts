@@ -4,6 +4,7 @@ import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptTex
 export type CustomerNavigationItem = {
   href: string;
   label: string;
+  labelKey: string;
   icon: LucideIcon;
 };
 
@@ -13,47 +14,52 @@ export type CustomerAccountItem = CustomerNavigationItem & {
 
 export type CustomerAccountGroup = {
   label: string;
+  labelKey: string;
   items: CustomerAccountItem[];
 };
 
 export const CUSTOMER_NAV: CustomerNavigationItem[] = [
-  { href: "/customer", label: "Home", icon: Home },
-  { href: "/customer/explore", label: "Explore", icon: Compass },
-  { href: "/customer/partners", label: "Partners", icon: Store },
-  { href: "/customer/trip", label: "Trip", icon: Map },
-  { href: "/customer/chat", label: "Chat", icon: MessageCircle },
-  { href: "/customer/activity?tab=itinerary", label: "My Activity", icon: ReceiptText },
-  { href: "/customer/saved", label: "Saved", icon: Heart },
+  { href: "/customer", label: "Home", labelKey: "navigation.home", icon: Home },
+  { href: "/customer/explore", label: "Explore", labelKey: "navigation.explore", icon: Compass },
+  { href: "/customer/partners", label: "Partners", labelKey: "navigation.search", icon: Store },
+  { href: "/customer/trip", label: "Trip", labelKey: "navigation.trip", icon: Map },
+  { href: "/customer/chat", label: "Chat", labelKey: "navigation.chat", icon: MessageCircle },
+  { href: "/customer/activity?tab=itinerary", label: "My Activity", labelKey: "navigation.activity", icon: ReceiptText },
+  { href: "/customer/saved", label: "Saved", labelKey: "navigation.wishlist", icon: Heart },
 ];
 
 export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
   {
     label: "Account",
+    labelKey: "accountGroups.account",
     items: [
-      { href: "/customer/profile", label: "Profile", description: "Your personal details", icon: UserRound },
-      { href: "/customer/notifications", label: "Notifications", description: "Bookings, wallet and account updates", icon: Bell },
-      { href: "/customer/preferences", label: "Preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
+      { href: "/customer/profile", label: "Profile", labelKey: "accountItems.profile", description: "Your personal details", icon: UserRound },
+      { href: "/customer/notifications", label: "Notifications", labelKey: "accountItems.notifications", description: "Bookings, wallet and account updates", icon: Bell },
+      { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
     ],
   },
   {
     label: "Payments & verification",
+    labelKey: "accountGroups.paymentsVerification",
     items: [
-      { href: "/customer/wallet", label: "Wallet", description: "Balance and payouts", icon: WalletCards },
-      { href: "/customer/kyc", label: "Verification", description: "Verify your identity", icon: ShieldCheck },
+      { href: "/customer/wallet", label: "Wallet", labelKey: "accountItems.wallet", description: "Balance and payouts", icon: WalletCards },
+      { href: "/customer/kyc", label: "Verification", labelKey: "accountItems.verification", description: "Verify your identity", icon: ShieldCheck },
     ],
   },
   {
     label: "Help",
+    labelKey: "accountGroups.help",
     items: [
-      { href: "/customer/support", label: "Support", description: "Get help with your trip", icon: Inbox },
+      { href: "/customer/support", label: "Support", labelKey: "accountItems.support", description: "Get help with your trip", icon: Inbox },
     ],
   },
   {
     label: "More",
+    labelKey: "accountGroups.more",
     items: [
-      { href: "/customer/affiliate", label: "Earn & Share", description: "Manage affiliate activity", icon: Gift },
-      { href: "/customer/profile/register-vendor", label: "Become a Vendor", description: "Apply to list your business", icon: Store },
-      { href: "/customer/recommendations", label: "Recommend a Vendor", description: "Share local discoveries", icon: Star },
+      { href: "/customer/affiliate", label: "Earn & Share", labelKey: "accountItems.earnShare", description: "Manage affiliate activity", icon: Gift },
+      { href: "/customer/profile/register-vendor", label: "Become a Vendor", labelKey: "accountItems.becomeVendor", description: "Apply to list your business", icon: Store },
+      { href: "/customer/recommendations", label: "Recommend a Vendor", labelKey: "accountItems.recommendVendor", description: "Share local discoveries", icon: Star },
     ],
   },
 ];

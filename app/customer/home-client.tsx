@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,6 +42,7 @@ function getPageItems(currentPage: number, totalPages: number): PageItem[] {
 }
 
 export function HomeClient({ initialActivities, initialRecommended }: { initialActivities: ComputedActivity[]; initialRecommended: ComputedActivity[] }) {
+  const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [state, setState] = useState("All Malaysia");
@@ -221,7 +223,7 @@ export function HomeClient({ initialActivities, initialRecommended }: { initialA
           </Link>
         </div>
         {activities === null ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>
         ) : activities.length === 0 ? (
           <EmptyState title="No experiences found" description="Try clearing your state or category filter." />
         ) : (

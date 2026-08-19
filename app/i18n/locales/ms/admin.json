@@ -1,0 +1,1887 @@
+{
+  "shell": {
+    "panel": "Panel pentadbir",
+    "signedInAs": "Log masuk sebagai"
+  },
+  "roles": {
+    "admin": "Pentadbir",
+    "approver": "Pelulus",
+    "super_admin": "Pentadbir super"
+  },
+  "navigation": {
+    "Overview": "Gambaran keseluruhan",
+    "Vendor Approvals": "Kelulusan vendor",
+    "Catalogue Review": "Semakan katalog",
+    "User Management": "Pengurusan pengguna",
+    "KYC Review": "Semakan KYC",
+    "Withdrawals": "Pengeluaran",
+    "Refunds": "Bayaran balik",
+    "Wallet Settings": "Tetapan dompet",
+    "Payout Reports": "Laporan pembayaran",
+    "Recommendations": "Cadangan",
+    "Support Tickets": "Tiket sokongan",
+    "Chat Reports": "Laporan sembang",
+    "Affiliate": "Afiliasi",
+    "Chatbot": "Chatbot",
+    "AI Assistant": "Pembantu AI"
+  },
+  "accessibility": {
+    "unreadRecommendations": "{{count}} cadangan belum dibaca"
+  },
+  "filters": {
+    "all": "Semua",
+    "pending": "Menunggu",
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "open": "Terbuka",
+    "resolved": "Selesai",
+    "active": "Aktif",
+    "inactive": "Tidak aktif",
+    "filter": "Tapis",
+    "dismissed": "Diabaikan"
+  },
+  "selection": {
+    "selected": "{{count}} dipilih",
+    "clear": "Kosongkan pilihan"
+  },
+  "batchActions": {
+    "approve": "Luluskan",
+    "reject": "Tolak",
+    "request_changes": "Minta perubahan",
+    "change_requested": "Minta perubahan",
+    "request_info": "Minta maklumat",
+    "suspend": "Gantung",
+    "unsuspend": "Nyahgantung",
+    "reactivate": "Aktifkan semula",
+    "hold": "Tahan",
+    "resume": "Sambung semula",
+    "fraud-override": "Atasi penipuan",
+    "resolved": "Selesaikan",
+    "dismissed": "Abaikan",
+    "dismiss": "Abaikan",
+    "confirm": "Sahkan & nyahaktifkan",
+    "activate": "Aktifkan",
+    "deactivate": "Nyahaktifkan",
+    "revoke": "Tarik balik"
+  },
+  "affiliate": {
+    "accessibility": {
+      "selectAllFlags": "Pilih semua bendera penipuan terbuka yang kelihatan",
+      "selectFlag": "Pilih bendera penipuan untuk {{name}}"
+    },
+    "allAttributions": "Semua atribusi",
+    "allTime": "Sepanjang masa",
+    "analytics": {
+      "bySeverity": "Mengikut keterukan",
+      "byType": "Mengikut jenis",
+      "disabledLinks": "Pautan dilumpuhkan secara automatik",
+      "duplicatePayouts": "Bayaran pendua dicegah",
+      "flagCount": "{{count}} bendera",
+      "flagsOverTime": "Bendera mengikut masa",
+      "noFlags": "Tiada bendera dalam julat ini.",
+      "openPercentage": "{{percent}}% terbuka",
+      "openVsReviewed": "Terbuka berbanding disemak",
+      "selfReferrals": "Rujukan kendiri disekat",
+      "topFlagged": "Afiliasi paling banyak ditandai",
+      "totalFlags": "Jumlah bendera"
+    },
+    "clearing": {
+      "errors": ", {{count}} ralat",
+      "result": "Diselesaikan {{cleared}}, diterbalikkan {{reversed}}, dilangkau {{skipped}}{{errors}}"
+    },
+    "columns": {
+      "actions": "Tindakan",
+      "activity": "Aktiviti",
+      "affiliate": "Afiliasi",
+      "commission": "Komisen",
+      "date": "Tarikh",
+      "evidence": "Bukti",
+      "select": "Pilih",
+      "severity": "Keterukan",
+      "status": "Status",
+      "type": "Jenis",
+      "user": "Pengguna",
+      "when": "Bila"
+    },
+    "commissionTiers": "Peringkat komisen",
+    "conversions": "Penukaran",
+    "disabledLinks": "Pautan dilumpuhkan",
+    "errors": {
+      "batchFlags": "Satu atau lebih bendera penipuan tidak dapat dikemas kini.",
+      "batchFlagUpdate": "Kemas kini bendera penipuan secara pukal gagal.",
+      "clearing": "Penyelesaian gagal.",
+      "exportRetry": "Tidak dapat mengeksport laporan afiliasi. Sila cuba lagi.",
+      "flagNeedsLink": "Setiap bendera terbuka yang dipilih mesti mempunyai pautan sebelum dilumpuhkan.",
+      "fraudSweep": "Imbasan penipuan gagal.",
+      "loadDescription": "Sesuatu tidak kena semasa memuatkan gambaran keseluruhan afiliasi. Cuba muat semula halaman.",
+      "loadFraudAnalytics": "Tidak dapat memuatkan analitik penipuan.",
+      "loadTitle": "Tidak dapat memuatkan statistik afiliasi",
+      "reactivateLink": "Tidak dapat mengaktifkan semula pautan afiliasi.",
+      "reactivateLinkRetry": "Tidak dapat mengaktifkan semula pautan afiliasi. Sila cuba lagi.",
+      "reviewFlag": "Tidak dapat menyemak bendera penipuan.",
+      "reviewFlagRetry": "Tidak dapat menyemak bendera penipuan. Sila cuba lagi.",
+      "saveAffiliateTier": "Gagal menyimpan peringkat afiliasi.",
+      "saveTier": "Gagal menyimpan peringkat.",
+      "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu."
+    },
+    "exporting": "Mengeksport…",
+    "exportPdf": "Eksport PDF",
+    "filters": {
+      "allSeverities": "Semua keterukan",
+      "allStatuses": "Semua status",
+      "allTypes": "Semua jenis"
+    },
+    "flagTypes": {
+      "click_cap_reached": "Had klik bulanan peringkat terhad dicapai",
+      "click_velocity": "Lonjakan kadar klik",
+      "duplicate_attribution": "Percubaan atribusi pendua",
+      "expired_attribution": "Tempoh atribusi tamat",
+      "self_referral": "Rujukan kendiri",
+      "vendor_ineligible": "Vendor/pengurus outlet tidak layak menerima komisen",
+      "visitor_clustering": "Klik berkumpul pada seorang pelawat",
+      "zero_conversion": "Banyak klik, tiada penukaran"
+    },
+    "fraudAnalytics": "Analitik penipuan",
+    "fraudFlags": "Bendera penipuan",
+    "fraudGuards": "Kawalan penipuan — bukti ia berfungsi",
+    "loading": "Memuatkan…",
+    "loadingFraudAnalytics": "Memuatkan analitik penipuan…",
+    "metrics": {
+      "affiliates": "Afiliasi",
+      "clicks": "Klik",
+      "commission": "Komisen diperuntukkan",
+      "referrals": "Rujukan"
+    },
+    "minReferrals": "Min rujukan",
+    "noAttributions": "Tiada atribusi sepadan dengan penapis ini.",
+    "noCommissions": "Tiada komisen diperoleh lagi.",
+    "noDisabledLinks": "Tiada pautan yang sedang dilumpuhkan.",
+    "noFlags": "Tiada apa-apa ditandai.",
+    "platformFunnel": "Corong seluruh platform",
+    "rate": "Kadar",
+    "reEnable": "Aktifkan semula",
+    "reEnabling": "Mengaktifkan semula…",
+    "referralCount": "{{count}} rujukan",
+    "runClearing": "Jalankan penyelesaian",
+    "runFraudSweep": "Jalankan imbasan penipuan",
+    "running": "Berjalan…",
+    "saving": "Menyimpan…",
+    "scanning": "Mengimbas…",
+    "searchPlaceholder": "Cari pengguna atau aktiviti…",
+    "selectAllOpen": "Pilih semua bendera terbuka",
+    "severity": {
+      "high": "Tinggi",
+      "low": "Rendah",
+      "medium": "Sederhana"
+    },
+    "status": {
+      "confirmed": "Disahkan",
+      "dismissed": "Diabaikan",
+      "open": "Terbuka",
+      "pending": "Menunggu",
+      "reversed": "Diterbalikkan",
+      "reviewed": "Disemak"
+    },
+    "success": {
+      "batchFlags": "{{count}} bendera penipuan diproses.",
+      "flagConfirmed": "Bendera penipuan disahkan.",
+      "flagDismissed": "Bendera penipuan diabaikan.",
+      "linkReactivated": "Pautan afiliasi diaktifkan semula.",
+      "tierSaved": "Peringkat afiliasi disimpan."
+    },
+    "sweep": {
+      "result": "Diimbas {{links}} pautan, {{flags}} bendera baharu"
+    },
+    "title": "Pemantauan Afiliasi",
+    "topEarners": "Penerima pendapatan tertinggi",
+    "qr": {
+      "errors": {
+        "generate": "Kod QR tidak dapat dijana sekarang.",
+        "render": "Kod QR tidak dapat dipaparkan."
+      },
+      "showFor": "Tunjukkan kod QR untuk {{label}}",
+      "show": "Tunjukkan kod QR",
+      "showShort": "Tunjukkan QR",
+      "scanToOpen": "Imbas untuk membuka",
+      "generating": "Menjana…",
+      "downloadPng": "Muat turun PNG"
+    },
+    "fraudCounters": {
+      "selfReferralsBlocked": "Rujukan kendiri disekat: {{count}}",
+      "duplicatePayoutsPrevented": "Bayaran pendua dicegah: {{count}}",
+      "openFlagsSummary": "Bendera untuk disemak: {{flags}} · Pautan dilumpuhkan: {{links}}"
+    }
+  },
+  "aiAssistant": {
+    "ask": {
+      "empty": "cth. “Berapa banyak cadangan yang menunggu minggu ini?” atau “Tunjukkan pengeluaran melebihi 500”. Jawapan hanya datang daripada pertanyaan agregat berdaftar — bukan data pelanggan mentah.",
+      "placeholder": "Tanya soalan…",
+      "restoring": "Memulihkan perbualan…",
+      "title": "Tanya tentang metrik platform"
+    },
+    "description": "Analitik platform dan penggubalan mesej kakitangan. Tidak pernah melihat rekod pelanggan mentah — metrik datang daripada set pertanyaan agregat berdaftar yang tetap, dan draf hanya menggunakan perkara yang anda taip.",
+    "draft": {
+      "contextPlaceholder": "cth. Vendor: Sunset Kayak Tours. Foto yang dihantar kabur, kualiti penyenaraian tidak dapat disahkan.",
+      "description": "Anda membekalkan butiran — pembantu tidak mengambil data vendor atau pelanggan sendiri. Sunting dan hantar secara manual; tiada apa-apa dihantar bagi pihak anda.",
+      "drafting": "Merangka…",
+      "generate": "Jana draf",
+      "title": "Rangka mesej kakitangan",
+      "types": {
+        "approval": "Mesej kelulusan",
+        "custom": "Tersuai",
+        "onboarding": "Pendaftaran vendor",
+        "rejection": "Notis penolakan"
+      }
+    },
+    "errors": {
+      "unavailable": "Pembantu tidak tersedia buat masa ini."
+    },
+    "restricted": "Pembantu AI terhad kepada pentadbir super.",
+    "title": "Pembantu AI"
+  },
+  "catalogue": {
+    "accessibility": {
+      "itemType": "Jenis item katalog",
+      "selectAll": "Pilih semua item katalog yang kelihatan",
+      "selectItem": "Pilih {{item}}"
+    },
+    "actions": {
+      "closeReview": "Tutup semakan",
+      "openReview": "Buka semakan"
+    },
+    "checklist": {
+      "description": "Sahkan tajuk, penerangan, harga, lokasi, imej dan ketersediaan adalah tepat sebelum meluluskan.",
+      "title": "Senarai semak semakan"
+    },
+    "columns": {
+      "action": "Tindakan",
+      "submission": "Penyerahan",
+      "submitted": "Dihantar",
+      "type": "Jenis",
+      "vendorLocation": "Vendor / lokasi"
+    },
+    "description": "Semak perubahan outlet, produk dan promosi sebelum dipaparkan kepada pelanggan.",
+    "empty": "Tiada kandungan menunggu semakan.",
+    "entity": {
+      "listing": "Senarai",
+      "outlet": "Outlet",
+      "voucher": "Baucar"
+    },
+    "errors": {
+      "actionFailed": "Tindakan semakan gagal",
+      "batchFailed": "Satu atau lebih semakan katalog gagal",
+      "batchReviewFailed": "Semakan pukal gagal",
+      "loadQueue": "Tidak dapat memuatkan barisan semakan",
+      "reasonLength": "Sebab sekurang-kurangnya 10 aksara diperlukan.",
+      "reviewActionFailed": "Tindakan semakan gagal"
+    },
+    "eyebrow": "Tadbir urus pasaran",
+    "fallback": {
+      "noLocation": "Tiada lokasi diberikan",
+      "unknownVendor": "Vendor tidak diketahui"
+    },
+    "fields": {
+      "reference": "Rujukan",
+      "vendor": "Vendor"
+    },
+    "filters": {
+      "allItems": "Semua item"
+    },
+    "reviewTitle": "{{entity}} semakan",
+    "status": {
+      "pendingReview": "Menunggu semakan"
+    },
+    "success": {
+      "approve": "{{entity}} diluluskan.",
+      "batchProcessed": "{{count}} item katalog diproses.",
+      "change_requested": "{{entity}} dikembalikan untuk perubahan.",
+      "reject": "{{entity}} ditolak."
+    },
+    "title": "Semakan katalog",
+    "waiting": "Menunggu",
+    "prompts": {
+      "rejectReason": "Masukkan sebab penolakan (sekurang-kurangnya 10 aksara):",
+      "changeReason": "Nyatakan perkara yang perlu diubah (sekurang-kurangnya 10 aksara):",
+      "batchRejectReason": "Masukkan sebab menolak semua item dipilih (sekurang-kurangnya 10 aksara):",
+      "batchChangeReason": "Nyatakan perubahan untuk semua item dipilih (sekurang-kurangnya 10 aksara):"
+    }
+  },
+  "chatbot": {
+    "accessibility": {
+      "selectAll": "Pilih semua dokumen pengetahuan",
+      "selectDocument": "Pilih dokumen pengetahuan {{title}}"
+    },
+    "actions": {
+      "addToKb": "Tambah ke KB",
+      "aiDraft": "AI: rangka jawapan KB",
+      "edit": "Sunting",
+      "newDoc": "Dokumen baharu"
+    },
+    "categories": {
+      "account": "Akaun",
+      "affiliate": "Afiliasi",
+      "booking": "Tempahan",
+      "general": "Umum",
+      "payment": "Pembayaran",
+      "rewards": "Ganjaran",
+      "vendor": "Vendor",
+      "wallet": "Dompet",
+      "withdrawal": "Pengeluaran"
+    },
+    "drafting": "Merangka…",
+    "embedded": "dibenamkan",
+    "emptyDocuments": "Tiada dokumen KB lagi.",
+    "errors": {
+      "batchFailed": "Kemas kini dokumen pengetahuan secara pukal gagal.",
+      "batchUpdate": "Satu atau lebih dokumen pengetahuan tidak dapat dikemas kini.",
+      "draft": "Tidak dapat merangka entri KB sekarang.",
+      "loadDescription": "Sesuatu tidak kena semasa memuatkan gambaran keseluruhan chatbot. Cuba muat semula halaman.",
+      "loadTitle": "Tidak dapat memuatkan statistik chatbot",
+      "reindex": "Pengindeksan semula gagal.",
+      "sameStatus": "Pilih dokumen dengan status semasa yang sama sebelum menggunakan tindakan ini.",
+      "save": "Gagal menyimpan.",
+      "saveRetry": "Dokumen pangkalan pengetahuan tidak dapat disimpan. Sila cuba lagi.",
+      "status": "Tidak dapat mengemas kini status dokumen.",
+      "statusRetry": "Tidak dapat mengemas kini status dokumen. Sila cuba lagi."
+    },
+    "form": {
+      "active": "Aktif",
+      "body": "Isi — fakta yang dibenarkan untuk dijawab oleh bot",
+      "editTitle": "Sunting dokumen KB",
+      "keywords": "Kata kunci, dipisahkan dengan koma (digunakan oleh sandaran kata kunci)",
+      "newTitle": "Dokumen KB baharu",
+      "title": "Tajuk"
+    },
+    "inactive": "tidak aktif",
+    "knowledgeBase": "Pangkalan pengetahuan",
+    "loading": "Memuatkan…",
+    "metrics": {
+      "answerRate": "Kadar jawapan",
+      "escalationNote": "daripada jawapan gagal menjadi tiket",
+      "escalationRate": "Kadar eskalasi",
+      "questions": "Soalan yang ditanya"
+    },
+    "notEmbedded": "tidak dibenamkan (kata kunci sahaja)",
+    "notHelpful": {
+      "description": "Dokumen KB dipadankan, tetapi pelanggan berkata ia tidak membantu — dokumen itu perlu ditambah baik, bukan dibuat baharu.",
+      "empty": "Tiada tanda tidak suka lagi untuk soalan yang dijawab.",
+      "title": "Dijawab, tetapi tidak membantu"
+    },
+    "questionMeta": "×{{count}} · kali terakhir ditanya {{date}}",
+    "reindex": "Indeks semula KB",
+    "reindexErrors": ", {{count}} ralat",
+    "reindexResult": "Diimbas {{scanned}}, dibenamkan {{embedded}}, dilangkau {{skipped}}{{errors}}",
+    "reindexing": "Mengindeks semula…",
+    "saving": "Menyimpan…",
+      "selectAll": "Pilih semua dokumen",
+    "success": {
+      "activated": "Dokumen pangkalan pengetahuan diaktifkan.",
+      "batchStatus": "{{count}} dokumen pengetahuan dikemas kini.",
+      "created": "Dokumen pangkalan pengetahuan dicipta.",
+      "deactivated": "Dokumen pangkalan pengetahuan dinyahaktifkan.",
+      "updated": "Dokumen pangkalan pengetahuan dikemas kini."
+    },
+    "title": "Pemantauan chatbot",
+    "topUnanswered": {
+      "description": "Tiada dokumen KB yang meliputi perkara ini.",
+      "empty": "Tiada soalan belum dijawab lagi — KB meliputi semua soalan yang ditanya setakat ini.",
+      "title": "Soalan paling banyak belum dijawab"
+    },
+    "uncategorized": "tidak dikategorikan"
+  },
+  "chatReports": {
+    "accessibility": {
+      "selectReport": "Pilih laporan sembang {{id}}",
+      "selectAll": "Pilih semua laporan sembang yang kelihatan",
+      "status": "Status laporan sembang"
+    },
+    "actions": {
+      "unblock": "Nyahsekat",
+      "view": "Lihat"
+    },
+    "archive": {
+      "after": "Arkibkan sembang terbuka secara automatik selepas",
+      "days": "hari tidak aktif"
+    },
+    "blockedUntil": "Pelapor disekat daripada membuat laporan sehingga {{date}}",
+    "blockReporter": "Sekat pelapor ini daripada membuat laporan baharu",
+    "confirmDismiss": "Sahkan pengabaian",
+    "confirmResolve": "Sahkan penyelesaian",
+    "days": "7 hari",
+    "daysLong": "30 hari",
+    "dialog": {
+      "dismissTitle": "Abaikan laporan",
+      "resolveTitle": "Selesaikan laporan",
+      "title": "Butiran laporan"
+    },
+    "dismissedHistory": "{{dismissed}}/{{total}} daripada laporan mereka diabaikan",
+    "empty": {
+      "description": "Perbualan yang dilaporkan akan dipaparkan di sini.",
+      "pending": "Tiada laporan belum selesai",
+      "resolved": "Tiada laporan selesai"
+    },
+    "errors": {
+      "batchFailed": "Kemas kini laporan secara pukal gagal.",
+      "batchUpdate": "Satu atau lebih laporan tidak dapat dikemas kini.",
+      "blockReporter": "Tidak dapat menyekat pelapor.",
+      "blockReporterRetry": "Tidak dapat menyekat pelapor. Sila cuba lagi.",
+      "invalidReason": "Pilih sebab penyelesaian yang sah.",
+      "saveSetting": "Tidak dapat menyimpan tetapan.",
+      "saveSettingRetry": "Tidak dapat menyimpan tetapan. Sila cuba lagi.",
+      "unblockReporter": "Tidak dapat menyahsekat pelapor.",
+      "unblockReporterRetry": "Tidak dapat menyahsekat pelapor. Sila cuba lagi.",
+      "updateReport": "Tidak dapat mengemas kini laporan.",
+      "updateReportRetry": "Tidak dapat mengemas kini laporan. Sila cuba lagi."
+    },
+    "fallback": {
+      "customer": "Pelanggan",
+      "outlet": "Outlet",
+      "unknownOutlet": "Outlet tidak diketahui",
+      "unknownReporter": "Tidak diketahui"
+    },
+    "fields": {
+      "noteOptional": "Nota (pilihan)",
+      "participants": "Peserta",
+      "reason": "Sebab",
+      "reportedBy": "Dilaporkan oleh",
+      "reporterHistory": "Sejarah pelapor",
+      "started": "Perbualan bermula",
+      "status": "Status"
+    },
+    "filters": {
+      "allReasons": "Semua sebab",
+      "dismissedOnly": "Yang diabaikan sahaja",
+      "outcome": "Hasil",
+      "reason": "Sebab",
+      "resolvedDismissed": "Selesai + diabaikan",
+      "resolvedOnly": "Yang selesai sahaja"
+    },
+    "loading": "Memuatkan…",
+    "loadingConversation": "Memuatkan perbualan…",
+    "notePlaceholder": "Tambah konteks untuk keputusan ini…",
+    "reasons": {
+      "abuse": "Penyalahgunaan",
+      "other": "Lain-lain",
+      "scam": "Penipuan",
+      "spam": "Spam"
+    },
+    "reportedBy": "Dilaporkan oleh {{name}} · {{date}}",
+    "reporterHistory": "{{reports}} laporan, {{dismissed}} diabaikan",
+    "resolution": "Penyelesaian: {{reason}}",
+    "resolutions": {
+      "action_taken": "Tindakan diambil",
+      "dismissed": "diabaikan",
+      "insufficient_evidence": "Bukti tidak mencukupi",
+      "no_violation": "Tiada pelanggaran ditemui",
+      "resolved": "diselesaikan",
+      "spam_abuse": "Spam/penyalahgunaan pelapor"
+    },
+    "roles": {
+      "customer": "pelanggan",
+      "vendor": "vendor"
+    },
+    "status": {
+      "dismissed": "Diabaikan",
+      "open": "Terbuka",
+      "resolved": "Diselesaikan"
+    },
+    "saving": "Menyimpan…",
+    "searchPlaceholder": "Cari outlet, pelapor, butiran…",
+    "selectAll": "Pilih semua laporan yang kelihatan",
+    "separateReports": "Perbualan ini mempunyai {{count}} laporan berasingan terhadapnya.",
+    "sort": {
+      "newest": "Paling baharu dahulu",
+      "oldest": "Paling lama dahulu",
+      "reason": "Sebab"
+    },
+    "success": {
+      "archiveUpdated": "Ambang pengarkiban dikemas kini.",
+      "batchMarked": "{{count}} laporan ditandai {{action}}.",
+      "marked": "Laporan ditandai {{action}}.",
+      "reporterBlocked": "Pelapor disekat daripada membuat laporan selama {{days}} hari.",
+      "reporterUnblocked": "Pelapor dinyahsekat."
+    },
+    "tabs": {
+      "pending": "Menunggu",
+      "resolved": "Selesai"
+    },
+    "threadReportCount": "{{count}} laporan dalam rangkaian ini",
+    "title": "Laporan sembang",
+    "prompts": {
+      "resolutionReason": "Sebab penyelesaian ({{reasons}}):",
+      "resolutionNote": "Nota penyelesaian (pilihan):"
+    }
+  },
+  "common": {
+    "actions": {
+      "cancel": "Batal",
+      "save": "Simpan"
+    }
+  },
+  "dashboard": {
+    "actionCentre": "Pusat tindakan",
+    "activityNote": "Denyutan ini berdasarkan permintaan pengeluaran yang dibuat dalam set data semasa. Gunakannya untuk melihat penumpukan barisan, bukan sebagai carta volum pembayaran.",
+    "allSources": "Semua sumber yang memberi respons",
+    "approvalSummary": "Ringkasan kelulusan",
+    "description": "Paparan sedia untuk keputusan tentang barisan, wang dan isyarat risiko yang memerlukan perhatian hari ini.",
+    "errors": {
+      "load": "Tidak dapat memuatkan gambaran keseluruhan kelulusan"
+    },
+    "eyebrow": "Bilik kawalan tadbir urus",
+    "guardrails": "Kawalan operasi",
+    "lanes": {
+      "kyc": {
+        "cta": "Buka barisan KYC",
+        "detail": "Kes identiti menunggu semakan",
+        "title": "Semakan KYC"
+      },
+      "recommendations": {
+        "cta": "Buka cadangan",
+        "detail": "Penyerahan komuniti menunggu penyederhanaan",
+        "title": "Cadangan"
+      },
+      "support": {
+        "cta": "Buka barisan sokongan",
+        "detail": "Perbualan pelanggan masih terbuka",
+        "title": "Tiket sokongan"
+      },
+      "vendors": {
+        "cta": "Buka barisan vendor",
+        "detail": "Outlet belum disahkan dalam barisan platform",
+        "title": "Kelulusan vendor"
+      },
+      "withdrawals": {
+        "cta": "Semak pengeluaran",
+        "detail": "{{amount}} menunggu keputusan",
+        "title": "Kelulusan pengeluaran"
+      }
+    },
+    "lastRefreshed": "Kali terakhir dimuat semula",
+    "lastSevenDays": "Tujuh hari terakhir",
+    "liveWorkspace": "Data langsung daripada ruang kerja semasa",
+    "loading": "Memuatkan barisan tadbir urus…",
+    "metrics": {
+      "dualApproval": "Kelulusan berganda",
+      "fiveQueues": "Merentas lima barisan tadbir urus",
+      "needsAttention": "Perlu perhatian",
+      "openConversations": "Perbualan pelanggan terbuka",
+      "openSupport": "Sokongan terbuka",
+      "overdue": "Pengeluaran tertunggak",
+      "pendingPayout": "Nilai pembayaran menunggu",
+      "reviewTarget": "Melepasi sasaran semakan",
+      "twoApprovers": "Menunggu dua pelulus",
+      "withdrawalRequests": "{{count}} permintaan pengeluaran"
+    },
+    "oldestWithdrawal": "Pengeluaran paling lama",
+    "openApprovals": "Kelulusan terbuka",
+    "openItems": "{{count}} item terbuka",
+    "priorityLanes": "Barisan keutamaan",
+    "queueActivity": "Aktiviti barisan",
+    "queueHealth": "Kesihatan barisan",
+    "refresh": "Muat semula gambaran keseluruhan",
+    "reviewOldest": "Semak item paling lama dahulu.",
+    "sixDaysAgo": "6 hari lalu",
+    "sourcesLoaded": "Data katalog, identiti, dagangan, penemuan dan sokongan dimuatkan.",
+    "title": "Gambaran keseluruhan pentadbir",
+    "today": "Hari ini",
+    "walletClear": "Barisan semakan pengeluaran kosong.",
+    "walletPending": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "walletShortcut": "Pintasan Kelulusan Dompet"
+  },
+  "kyc": {
+    "accessibility": {
+      "details": "Butiran semakan KYC",
+      "reason": "Sebab semakan KYC",
+      "selectAll": "Pilih semua penyerahan KYC yang kelihatan",
+      "selectSubmission": "Pilih penyerahan KYC untuk {{name}}"
+    },
+    "action": {
+      "chooseReason": "Pilih sebab dahulu. Anda akan menyemak tindakan akhir dalam langkah pengesahan.",
+      "detailPlaceholder": "Tambah butiran sekurang-kurangnya 10 aksara.",
+      "informationRequested": "Maklumat diminta",
+      "rejectionReason": "Sebab penolakan",
+      "review": "Tindakan semakan",
+      "selectReason": "Pilih sebab…"
+    },
+    "actions": {
+      "viewSide": "Lihat {{side}}"
+    },
+    "confirm": {
+      "approve": "Sahkan kelulusan",
+      "approveDescription": "Ini akan menandakan pelanggan sebagai disahkan KYC dan menutup penyerahan aktif.",
+      "approveTitle": "Luluskan penyerahan KYC?",
+      "info": "Hantar permintaan",
+      "infoDescription": "Ini akan memaklumkan pelanggan bahawa maklumat lanjut diperlukan sebelum KYC dapat diselesaikan.",
+      "infoTitle": "Hantar permintaan maklumat?",
+      "reject": "Sahkan penolakan",
+      "rejectDescription": "Ini akan menolak penyerahan dan merekodkan sebab yang dipilih dalam sejarah semakan.",
+      "rejectTitle": "Tolak penyerahan KYC?"
+    },
+    "description": "Semak dokumen identiti, selesaikan pengecualian dan pastikan keputusan pengesahan boleh diaudit.",
+    "documents": {
+      "driving_license": "Lesen memandu / MyPolis",
+      "national_id": "MyKad",
+      "passport": "Pasport"
+    },
+    "empty": {
+      "description": "Penyerahan baharu akan dipaparkan di sini apabila pelanggan melengkapkan pengesahan identiti.",
+      "title": "Tiada penyerahan KYC yang belum selesai"
+    },
+    "errors": {
+      "batchFailed": "Satu atau lebih semakan KYC gagal.",
+      "batchReviewFailed": "Semakan KYC secara pukal gagal.",
+      "invalidReason": "Pilih kod sebab semakan KYC yang sah.",
+      "loadDocument": "Gagal memuatkan dokumen",
+      "loadQueue": "Tidak dapat memuatkan barisan semakan KYC",
+      "loadSubmissions": "Tidak dapat memuatkan penyerahan KYC",
+      "otherDetail": "Tambah butiran sekurang-kurangnya 10 aksara untuk Lain-lain.",
+      "reviewFailed": "Semakan gagal.",
+      "selectReason": "Pilih sebab semakan."
+    },
+    "eyebrow": "Operasi pengesahan",
+    "fallback": {
+      "noSubmission": "Tiada data penyerahan",
+      "notAvailable": "Tidak tersedia"
+    },
+    "metrics": {
+      "infoRequested": "Maklumat diminta",
+      "infoRequestedNote": "Menunggu tindakan pelanggan",
+      "oldest": "Item barisan paling lama",
+      "pending": "Menunggu semakan",
+      "pendingNote": "Menunggu keputusan",
+      "queueClear": "Barisan kosong",
+      "submittedFirst": "Dihantar dahulu",
+      "verified": "Pengguna disahkan",
+      "verifiedNote": "Akaun KYC disahkan semasa"
+    },
+    "ocr": {
+      "check": "Semakan OCR:",
+      "documentEnding": "Dokumen berakhir dengan: {{number}}",
+      "expiryDate": "Tarikh luput: {{date}}",
+      "extractedName": "Nama diekstrak: {{name}}",
+      "mismatch": "Tidak sepadan: {{fields}}",
+      "noMismatch": "Tiada ketidakpadanan OCR dikesan",
+      "status": {
+        "matched": "Sepadan",
+        "mismatch": "Tidak sepadan",
+        "unavailable": "Tidak tersedia",
+        "unreadable": "Tidak boleh dibaca"
+      }
+    },
+    "prompts": {
+      "otherDetail": "Tambah butiran sekurang-kurangnya 10 aksara:",
+      "reasonCode": "Kod sebab ({{reasons}}):"
+    },
+    "queue": {
+      "description": "Buka setiap penyerahan untuk memeriksa dokumen sebelum mengambil tindakan.",
+      "oldestFirst": "Paling lama dahulu",
+      "selectAll": "Pilih semua penyerahan yang belum selesai",
+      "title": "Semakan baris gilir"
+    },
+    "reasons": {
+      "document_expired": "Dokumen telah luput",
+      "document_incomplete": "Dokumen tidak lengkap",
+      "document_mismatch": "Butiran dokumen tidak sepadan",
+      "document_suspected_tampering": "Dokumen disyaki diusik",
+      "document_unreadable": "Dokumen tidak boleh dibaca",
+      "other": "Lain-lain (tambah butiran)"
+    },
+    "status": {
+      "infoRequested": "Maklumat diminta"
+    },
+    "submitted": "Dihantar {{date}} · Kedudukan dalam barisan {{position}}",
+    "success": {
+      "approved": "Penyerahan KYC diluluskan.",
+      "batchProcessed": "{{count}} penyerahan KYC diproses.",
+      "infoRequested": "Permintaan maklumat dihantar.",
+      "rejected": "Penyerahan KYC ditolak."
+    },
+    "title": "Semakan KYC",
+    "verified": {
+      "account": "Akaun pelanggan · KYC diluluskan",
+      "badge": "Disahkan",
+      "count": "{{count}} akaun",
+      "description": "Akaun yang kini memegang peringkat KYC disahkan.",
+      "empty": "Tiada pengguna disahkan lagi",
+      "title": "Pengguna disahkan"
+    }
+  },
+  "payouts": {
+    "allSources": "Semua sumber",
+    "amountMetrics": {
+      "amount_approved_rm": "Diluluskan RM",
+      "amount_failed_rm": "Gagal RM",
+      "amount_paid_rm": "Dibayar RM",
+      "amount_requested_rm": "Diminta RM",
+      "amount_withdrawn_rm": "Dikeluarkan RM",
+      "available_amount_rm": "Tersedia RM",
+      "payout_fees_rm": "Yuran pembayaran RM",
+      "pending_earnings_amount_rm": "Pendapatan tertunda RM",
+      "pending_withdrawal_amount_rm": "Menunggu pengeluaran RM",
+      "reserved_amount_rm": "Dikhaskan RM"
+    },
+    "backToWithdrawals": "Kembali ke pengeluaran",
+    "balance": {
+      "available": "Tersedia",
+      "pendingEarnings": "Pendapatan tertunda",
+      "pendingWithdrawal": "Menunggu pengeluaran",
+      "reserved": "Dikhaskan"
+    },
+    "balanceDescription": "Direkodkan apabila laporan ini dijana.",
+    "balanceSnapshot": "Gambaran baki",
+    "columns": {
+      "amount": "Amaun",
+      "date": "Tarikh",
+      "fees": "Yuran",
+      "requests": "Permintaan",
+      "source": "Sumber",
+      "user": "Pengguna"
+    },
+    "copyReportId": "Salin ID laporan",
+    "description": "Jana ringkasan pembayaran bulanan. Semua tarikh dan jumlah menggunakan Asia/Kuala_Lumpur.",
+    "detailCount": "{{shown}} daripada {{total}} baris butiran",
+    "detailTitle": "Butiran mengikut pengguna, tarikh dan sumber",
+    "errors": {
+      "load": "Tidak dapat memuatkan laporan pembayaran"
+    },
+    "exportCsv": "Eksport CSV",
+    "eyebrow": "Operasi kewangan",
+    "financialDescription": "Semua amaun dipaparkan dalam ringgit Malaysia.",
+    "financialDetails": "Butiran kewangan",
+    "generate": "Jana laporan",
+    "generating": "Menjana…",
+    "malaysiaTime": "Waktu Malaysia",
+    "metrics": {
+      "approved": "Diluluskan",
+      "paid": "Dibayar",
+      "pending": "Menunggu",
+      "requested": "Diminta"
+    },
+    "noDetails": "Tiada butiran pembayaran sepadan dengan penapis semasa.",
+    "reportId": "Laporan ID: {{id}}",
+    "reportMonth": "Bulan laporan",
+    "requestStatus": "Status permintaan",
+    "requestStatusDescription": "Paparan ringkas barisan pembayaran bulanan.",
+    "searchPlaceholder": "Cari pengguna atau sumber",
+    "snapshot": "Ringkasan bulanan",
+    "sourceFilter": "Tapis mengikut sumber pembayaran",
+    "status": {
+      "completed": "Selesai",
+      "failed": "Gagal",
+      "pending": "Menunggu",
+      "rejected": "Ditolak"
+    },
+    "success": {
+      "exported": "Laporan pembayaran dieksport.",
+      "reportIdCopied": "ID laporan disalin."
+    },
+    "title": "Laporan pembayaran",
+    "total": "{{count}} keseluruhan",
+    "units": {
+      "requests": "permintaan",
+      "thisMonth": "bulan ini"
+    }
+  },
+  "rewards": {
+    "columns": {
+      "rate": "Kadar",
+      "rollingConfirmed": "Disahkan 30 hari bergulir",
+      "tier": "Peringkat"
+    },
+    "confirmed": "Atribusi {{count}} disahkan.",
+    "description": "Pindahkan komisen afiliasi daripada penahanan sementara kepada pendapatan tersedia.",
+    "errors": {
+      "clearanceFailed": "Penyelesaian gagal",
+      "unknown": "Ralat tidak diketahui"
+    },
+    "movedToEarnings": "untuk dipindahkan ke earnings_sen",
+    "pastHoldWindow": "atribusi yang melepasi tempoh penahanan",
+    "readyToConfirm": "Sedia untuk disahkan",
+    "runClearance": "Jalankan penyelesaian",
+    "runDescription": "Memproses semua komisen tertunda yang tempoh penahanannya telah tamat. Vercel Cron turut menjalankannya secara automatik pada tengah malam MYT.",
+    "running": "Berjalan…",
+    "runNow": "Jalankan penyelesaian sekarang",
+    "tierRates": "Kadar peringkat afiliasi",
+    "title": "Pelepasan ganjaran",
+    "totalValue": "Jumlah nilai"
+  },
+  "ui": {
+    "actions": {
+      "approve": "Luluskan",
+      "clear": "Kosongkan",
+      "clearFilters": "Kosongkan penapis",
+      "close": "Tutup",
+      "discardChanges": "Buang perubahan",
+      "reactivate": "Aktifkan semula",
+      "refresh": "Muat semula",
+      "reject": "Tolak",
+      "request_information": "Minta maklumat",
+      "requestChanges": "Minta perubahan",
+      "requestInfo": "Minta maklumat",
+      "review": "Semak",
+      "saveSettings": "Simpan tetapan",
+      "search": "Cari",
+      "suspend": "Gantung",
+      "view": "Lihat",
+      "viewDetails": "Lihat butiran"
+    },
+    "batch": {
+      "clearSelection": "Kosongkan pilihan",
+      "selectAllOnPage": "Pilih semua pada halaman ini",
+      "selected": "{{count}} dipilih"
+    },
+    "pagination": {
+      "go": "Pergi",
+      "next": "Seterusnya",
+      "nextPage": "Halaman seterusnya",
+      "pageNumber": "Nombor halaman",
+      "pageOf": "Halaman {{page}} daripada {{total}}",
+      "perPage": "{{count}} setiap halaman",
+      "previous": "Sebelumnya",
+      "previousPage": "Halaman sebelumnya"
+    },
+    "recommendations": {
+      "allCategories": "Semua kategori",
+      "allStates": "Semua negeri",
+      "batch": {
+        "changesReasonPrompt": "Apakah yang perlu diubah untuk semua cadangan yang dipilih? (sekurang-kurangnya 10 aksara):",
+        "processed": "{{count}} cadangan telah diproses.",
+        "reasonError": "Penolakan atau permintaan perubahan secara pukal memerlukan sebab sekurang-kurangnya 10 aksara.",
+        "rejectReasonPrompt": "Sebab menolak semua cadangan yang dipilih (sekurang-kurangnya 10 aksara):",
+        "reviewFailed": "Satu atau lebih semakan cadangan gagal."
+      },
+      "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
+      "description": "Luluskan cadangan berkualiti untuk tindakan susulan. Kelulusan tidak menerbitkan vendor; pautkan cadangan yang diluluskan daripada Pengurusan Vendor selepas vendor menyertai supaya atribusi dan komisen kekal dilampirkan.",
+      "duplicate": "Pendua",
+      "member": "Ahli MyWisata",
+      "noPending": "Tiada cadangan belum selesai",
+      "pending": "Belum selesai ({{count}})",
+      "pendingLabel": "cadangan belum selesai",
+      "pendingPagination": "Penomboran halaman cadangan belum selesai",
+      "range": "Menunjukkan {{first}}–{{last}} daripada {{total}} {{kind}}",
+      "reviewed": "Disemak ({{count}})",
+      "reviewedContributorLine": "{{category}} · {{state}} · oleh {{author}}",
+      "reviewedLabel": "cadangan yang disemak",
+      "reviewedPagination": "Penomboran halaman cadangan yang disemak",
+      "rewardClearing": {
+        "ariaLabel": "Penjelasan ganjaran cadangan",
+        "completed": "{{cleared}} dijelaskan, {{reversed}} dibalikkan dan {{skipped}} dikekalkan belum selesai.",
+        "description": "Memindahkan ganjaran tertunda tujuh hari kepada pendapatan tersedia hanya selepas kelulusan KYC. Pesanan yang dibatalkan atau dibayar balik akan dibalikkan secara automatik.",
+        "error": "Tidak dapat menjelaskan ganjaran cadangan.",
+        "run": "Jalankan penjelasan ganjaran",
+        "running": "Sedang dijalankan…",
+        "title": "Penjelasan ganjaran cadangan"
+      },
+      "searchPlaceholder": "Cari cadangan, kategori, negeri atau penyumbang…",
+      "selectAllPending": "Pilih semua cadangan belum selesai yang kelihatan",
+      "selectRecommendation": "Pilih cadangan {{name}}",
+      "subtitle": "Vendor dan lokasi menarik tersembunyi yang dihantar komuniti.",
+      "title": "Moderasi Cadangan"
+    },
+    "states": {
+      "loadingEllipsis": "Memuatkan…"
+    },
+    "support": {
+      "allCategories": "Semua kategori",
+      "allStatuses": "Semua status",
+      "assignedToMe": "Ditugaskan kepada saya",
+      "averageFirstResponse": "Purata respons pertama",
+      "batchResolved": "{{count}} tiket ditandai selesai.",
+      "category": "Kategori",
+      "categoryUpdated": "Kategori tiket dikemas kini.",
+      "empty": "Tiada tiket sokongan",
+      "errors": {
+        "batchUpdate": "Satu atau lebih tiket tidak dapat dikemas kini.",
+        "batchUpdateFailed": "Kemas kini tiket secara pukal gagal.",
+        "sendReply": "Tidak dapat menghantar balasan.",
+        "sendReplyTryAgain": "Tidak dapat menghantar balasan. Sila cuba lagi.",
+        "updateCategory": "Tidak dapat mengemas kini kategori tiket.",
+        "updateCategoryTryAgain": "Tidak dapat mengemas kini kategori tiket. Sila cuba lagi.",
+        "updateStatus": "Tidak dapat mengemas kini status tiket.",
+        "updateStatusTryAgain": "Tidak dapat mengemas kini status tiket. Sila cuba lagi."
+      },
+      "fromUser": "· daripada {{user}}",
+      "markResolved": "Tandai selesai",
+      "overrideCategory": "Ubah kategori",
+      "pagination": "Penomboran halaman tiket sokongan",
+      "range": "Menunjukkan {{first}}–{{last}} daripada {{total}} tiket",
+      "replyPlaceholder": "Balas tiket ini…",
+      "replySent": "Balasan sokongan dihantar.",
+      "selectAllVisible": "Pilih semua tiket sokongan yang kelihatan",
+      "selectTicket": "Pilih tiket sokongan {{subject}}",
+      "sort": {
+        "category": "Kategori",
+        "dateCreated": "Tarikh dicipta",
+        "lastActivity": "Aktiviti terakhir",
+        "oldestUnanswered": "Belum dijawab paling lama dahulu",
+        "status": "Status",
+        "unreadFirst": "Belum dibaca dahulu"
+      },
+      "status": {
+        "closed": "Ditutup",
+        "inProgress": "Sedang Diproses",
+        "open": "Terbuka",
+        "resolved": "Selesai",
+        "unknown": "Tidak diketahui"
+      },
+      "statusLabel": "Status",
+      "ticketMarked": "Tiket ditandai {{status}}.",
+      "title": "Tiket Sokongan",
+      "unanswered": "Belum dijawab",
+      "unansweredLower": "belum dijawab",
+      "unreadOnly": "Belum dibaca sahaja",
+      "minutes": "{{count}} minit",
+      "hours": "{{count}} jam"
+    },
+    "table": {
+      "action": "Tindakan",
+      "bio": "Bio",
+      "footprint": "Skop operasi",
+      "kyc": "KYC",
+      "owner": "Pemilik",
+      "registered": "Didaftarkan",
+      "role": "Peranan",
+      "select": "Pilih",
+      "status": "Status",
+      "submitted": "Dihantar",
+      "user": "Pengguna",
+      "vendor": "Vendor",
+      "verification": "Pengesahan"
+    },
+    "users": {
+      "actions": {
+        "clear_bio_restriction": "Kosongkan sekatan bio",
+        "restore": "Pulihkan",
+        "suspend": "Gantung",
+        "unsuspend": "Nyahgantung"
+      },
+      "batch": {
+        "confirm": "{{action}} {{count}} akaun pengguna yang dipilih?",
+        "failed": "Satu atau lebih tindakan pengguna gagal.",
+        "noCommonAction": "Tiada satu tindakan akaun yang sah untuk setiap pengguna yang dipilih.",
+        "processed": "{{count}} akaun pengguna telah diproses.",
+        "reasonError": "Sebab sekurang-kurangnya 10 aksara diperlukan.",
+        "reasonPrompt": "Sebab bagi tindakan akaun pukal ini (sekurang-kurangnya 10 aksara):"
+      },
+      "bio": {
+        "clear": "Bio bersih",
+        "locked": "Bio dikunci",
+        "lockedCount": "Dikunci ({{count}})"
+      },
+      "copyUserId": "Salin ID pengguna untuk {{name}}",
+      "description": "Semak akaun pengguna biasa, kemajuan pengesahan, kelengkapan profil dan status akaun.",
+      "directory": {
+        "description": "Pilih baris untuk menyemak butiran dan tindakan akaun.",
+        "title": "Direktori pengguna"
+      },
+      "displayNameNotSet": "Nama paparan belum ditetapkan",
+      "email": "E-mel",
+      "empty": {
+        "description": "Cuba kosongkan penapis atau cari e-mel atau ID pengguna.",
+        "title": "Tiada pengguna sepadan dengan penapis ini"
+      },
+      "errors": {
+        "load": "Tidak dapat memuatkan pengguna"
+      },
+      "eyebrow": "Pentadbiran",
+      "filters": {
+        "allBioStates": "Semua keadaan bio",
+        "allKyc": "Semua KYC",
+        "allRoles": "Semua peranan",
+        "allStatuses": "Semua status",
+        "bioLabel": "Tapis mengikut status bio",
+        "kycLabel": "Tapis mengikut status KYC",
+        "roleLabel": "Tapis mengikut peranan",
+        "statusLabel": "Tapis mengikut status"
+      },
+      "loading": "Memuatkan pengguna…",
+      "phone": "Telefon",
+      "profileNameSet": "Nama profil ditetapkan",
+      "roles": {
+        "customer": "Pelanggan",
+        "outlet_manager": "Pengurus outlet",
+        "outletManager": "Pengurus outlet",
+        "vendor_owner": "Pemilik vendor",
+        "vendorOwner": "Pemilik vendor"
+      },
+      "rows": "Baris",
+      "rowsPerPage": "Baris setiap halaman",
+      "searchHint": "Carian digunakan apabila anda menekan Cari. Penapis dikemas kini secara automatik.",
+      "searchPlaceholder": "Cari nama, e-mel atau ID pengguna",
+      "selectAllVisible": "Pilih semua pengguna yang kelihatan",
+      "selectUser": "Pilih pengguna {{name}}",
+      "stats": {
+        "attention": "Perlu perhatian",
+        "attentionNote": "Digantung, dipadam atau bio disekat",
+        "incomplete": "Profil tidak lengkap",
+        "pageNote": "Pada halaman ini",
+        "pendingKyc": "KYC belum selesai",
+        "total": "Jumlah pengguna",
+        "totalNote": "Semua pengguna yang sepadan dengan penapis semasa"
+      },
+      "status": {
+        "active": "Aktif",
+        "approved": "Diluluskan",
+        "deleted": "Dipadam",
+        "pending": "Belum selesai",
+        "rejected": "Ditolak",
+        "suspended": "Digantung",
+        "unverified": "Belum disahkan",
+        "verified": "Disahkan"
+      },
+      "title": "Pengurusan Pengguna",
+      "userIdCopied": "ID pengguna disalin."
+    },
+    "vendors": {
+      "actions": {
+        "approveVendor": "Luluskan vendor",
+        "reactivateVendor": "Aktifkan semula vendor",
+        "suspendVendor": "Gantung vendor"
+      },
+      "actionSuccess": "{{name}}: {{action}} berjaya diselesaikan.",
+      "applications": {
+        "description": "Pilih vendor untuk melihat skop operasi dan sejarah semakannya.",
+        "title": "Permohonan vendor"
+      },
+      "approvalEmail": {
+        "hint": "Pautan papan pemuka vendor anda ditambah secara automatik semasa dihantar — tidak perlu menyertakannya.",
+        "send": "Hantar e-mel kelulusan",
+        "sent": "E-mel kelulusan dihantar.",
+        "title": "Hantar e-mel kelulusan kepada {{name}}"
+      },
+      "batch": {
+        "confirm": "{{action}} {{count}} vendor yang dipilih?",
+        "noneEligible": "Tiada vendor yang dipilih layak untuk {{action}} sekarang.",
+        "partial": "{{updated}} dikemas kini. {{failed}} tidak dapat dikemas kini.",
+        "reasonPrompt": "Masukkan satu sebab untuk tindakan pukal ini:",
+        "success": "{{count}} vendor berjaya dikemas kini."
+      },
+      "confirm": {
+        "approve": "Luluskan {{name}}?",
+        "reactivate": "Aktifkan semula {{name}}?"
+      },
+      "description": "Semak permohonan, pantau keadaan vendor dan ambil tindakan tanpa membuka setiap rekod.",
+      "details": {
+        "approvedOn": "Diluluskan pada",
+        "businessType": "Jenis perniagaan",
+        "contact": "Hubungan",
+        "description": "Penerangan",
+        "documents": "Dokumen",
+        "legalName": "Nama sah",
+        "onboarding": "Pendaftaran",
+        "registration": "No. pendaftaran",
+        "reviewNote": "Nota semakan"
+      },
+      "detailsAria": "Butiran {{name}}",
+      "drawer": {
+        "added": "Ditambah {{date}}",
+        "businessOnboarding": "Perniagaan & pendaftaran",
+        "closeDetails": "Tutup butiran vendor",
+        "copyId": "Salin ID vendor",
+        "footprint": "Skop operasi",
+        "id": "ID vendor",
+        "ownerVerification": "Pemilik & pengesahan",
+        "profile": "Profil vendor"
+      },
+      "empty": {
+        "description": "Cuba kosongkan salah satu penapis untuk meluaskan barisan semakan.",
+        "title": "Tiada vendor sepadan dengan penapis ini"
+      },
+      "errors": {
+        "action": "Tindakan gagal",
+        "load": "Tidak dapat memuatkan vendor"
+      },
+      "export": "Eksport paparan",
+      "eyebrow": "Rangkaian vendor Malaysia",
+      "filters": {
+        "all": "Semua vendor",
+        "allKyc": "Semua status KYC",
+        "allStates": "Semua negeri",
+        "kycApproved": "KYC diluluskan",
+        "kycPending": "KYC belum selesai",
+        "kycRejected": "KYC ditolak",
+        "kycUnverified": "KYC belum disahkan",
+        "needsReview": "Perlu semakan"
+      },
+      "kyc": "KYC",
+      "listingLabel": "Penyenaraian",
+      "listings": "{{count}} penyenaraian",
+      "loading": "Memuatkan ruang kerja vendor…",
+      "matching": "{{count}} vendor sepadan",
+      "noEmail": "Tiada e-mel",
+      "noNote": "Tiada nota direkodkan",
+      "noResults": "Tiada vendor untuk dipaparkan",
+      "notApproved": "Belum diluluskan",
+      "notProvided": "Tidak diberikan",
+      "notStarted": "Belum bermula",
+      "outletLabel": "Outlet",
+      "outlets": "{{count}} outlet",
+      "ownerUnnamed": "Pemilik tanpa nama",
+      "range": "Menunjukkan {{first}}–{{last}} daripada {{total}}",
+      "reason": {
+        "informationRequest": "Sebab permintaan maklumat untuk {{name}}:",
+        "rejection": "Sebab penolakan untuk {{name}}:",
+        "suspension": "Sebab penggantungan untuk {{name}}:"
+      },
+      "recommendations": {
+        "description": "Pautkan cadangan pelanggan yang diluluskan untuk membuka tempoh komisen 90 harinya.",
+        "link": "Pautkan",
+        "linked": "Cadangan dipautkan. Tempoh komisen 90 hari kini dibuka.",
+        "linkError": "Tidak dapat memautkan cadangan",
+        "linking": "Sedang memautkan…",
+        "select": "Pilih cadangan…",
+        "selectFirst": "Pilih cadangan yang diluluskan terlebih dahulu.",
+        "title": "Atribusi cadangan"
+      },
+      "searchPlaceholder": "Cari ID vendor, nama atau pemilik…",
+      "selectAllPage": "Pilih semua vendor pada halaman ini",
+      "selectVendor": "Pilih {{name}}",
+      "stats": {
+        "actionNeeded": "Tindakan diperlukan",
+        "live": "Aktif di platform",
+        "needsAttention": "Perlu perhatian",
+        "needsReview": "Perlu semakan",
+        "noActiveHolds": "Tiada penahanan aktif",
+        "queueClear": "Barisan kosong",
+        "total": "Jumlah vendor"
+      },
+      "status": {
+        "approved": "Diluluskan",
+        "rejected": "Ditolak",
+        "suspended": "Digantung",
+        "welcomed": "Telah dialu-alukan"
+      },
+      "statusLabel": "Status vendor",
+      "summary": "Ringkasan vendor",
+      "title": "Ruang kerja semakan vendor",
+      "vendorIdCopied": "ID vendor disalin."
+    },
+    "walletSettings": {
+      "audit": {
+        "category": "Kategori perubahan",
+        "description": "Setiap perubahan polisi memerlukan kategori dan sebab sekurang-kurangnya 10 aksara.",
+        "reasonLabel": "Mengapa anda membuat perubahan ini?",
+        "reasonPlaceholder": "Terangkan perubahan polisi dan sebabnya.",
+        "title": "Rekod audit"
+      },
+      "backToWithdrawals": "Kembali ke pengeluaran",
+      "batch": {
+        "confirmRevoke": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
+        "revoked": "{{count}} pelulus dompet telah ditarik balik."
+      },
+      "confirm": {
+        "role": {
+          "description": "{{action}} akses kelulusan dompet untuk {{name}}. Perubahan kebenaran ini akan direkodkan dalam log audit.",
+          "grant": {
+            "confirm": "Berikan akses",
+            "title": "Berikan akses pelulus dompet?"
+          },
+          "revoke": {
+            "confirm": "Tarik balik akses",
+            "title": "Tarik balik akses pelulus dompet?"
+          }
+        },
+        "saveDescription": "Nilai baharu akan digunakan pada ganjaran dan permintaan pengeluaran akan datang. Permintaan sedia ada mengekalkan keadaan yang direkodkan, dan perubahan ini akan ditulis ke log audit.",
+        "saveTitle": "Simpan perubahan polisi dompet?"
+      },
+      "currentStored": "Disimpan tepat dalam sen · Semasa: {{value}}",
+      "currentUnit": "Nilai semasa dalam {{unit}}",
+      "description": "Urus polisi pembayaran, tempoh eskalasi dan individu yang diberi kuasa meluluskan permintaan dompet.",
+      "effective": {
+        "days": "{{count}} hari",
+        "description": "Nilai di bawah ialah konfigurasi semasa yang berkuat kuasa.",
+        "existingState": "Permintaan pengeluaran sedia ada mengekalkan keadaan yang direkodkan apabila tetapan polisi berubah.",
+        "hours": "{{count}} jam",
+        "title": "Polisi berkuat kuasa"
+      },
+      "emptyApprovers": {
+        "description": "Berikan akses kepada pengguna aktif di atas.",
+        "title": "Tiada pelulus dompet dikonfigurasi"
+      },
+      "errors": {
+        "activeApproversOnly": "Pilih pelulus dompet aktif sahaja.",
+        "batchReason": "Tambah sebab perubahan peranan sekurang-kurangnya 10 aksara sebelum menggunakan penarikan balik pukal.",
+        "batchRevoke": "Satu atau lebih penarikan balik pelulus gagal.",
+        "batchRevokeFailed": "Penarikan balik pelulus secara pukal gagal.",
+        "changeApprover": "Tidak dapat menukar peranan pelulus dompet",
+        "loadApprovers": "Tidak dapat memuatkan pelulus dompet",
+        "loadGovernance": "Tidak dapat memuatkan tetapan tadbir urus dompet",
+        "loadSettings": "Tidak dapat memuatkan tetapan dompet",
+        "negative": "Nilai tidak boleh negatif.",
+        "reasonBeforeSave": "Tambah sebab perubahan sekurang-kurangnya 10 aksara sebelum menyimpan.",
+        "roleReason": "Tambah sebab perubahan peranan sekurang-kurangnya 10 aksara sebelum meneruskan.",
+        "save": "Tidak dapat menyimpan tetapan"
+      },
+      "eyebrow": "Tadbir urus dompet",
+      "fields": {
+        "clearanceDays": "Hari penjelasan ganjaran",
+        "dualApprovalThreshold": "Ambang kelulusan dua orang",
+        "holdEscalation": "Eskalasi penahanan",
+        "minimumWithdrawal": "Pengeluaran minimum",
+        "pendingEscalation": "Eskalasi belum selesai",
+        "rewardClearance": "Penjelasan ganjaran",
+        "twoPersonApproval": "Kelulusan dua orang"
+      },
+      "groups": {
+        "approval": {
+          "description": "Mengawal kelulusan orang kedua dan tempoh susulan operasi.",
+          "title": "Kelulusan & eskalasi"
+        },
+        "earnings": {
+          "description": "Mengawal bila ganjaran tersedia dan jumlah minimum yang boleh dikeluarkan pengguna.",
+          "title": "Pendapatan & pengeluaran"
+        }
+      },
+      "lastUpdated": "Kemas kini terakhir {{date}} MYT",
+      "lastUpdatedBy": "Kemas kini terakhir {{date}} MYT oleh {{by}}",
+      "loading": "Memuatkan tadbir urus dompet…",
+      "policy": {
+        "description": "Nilai ini digunakan pada permintaan dan ganjaran baharu. Permintaan sedia ada mengekalkan keadaan yang direkodkan.",
+        "title": "Polisi pengeluaran"
+      },
+      "reasonCategories": {
+        "clearance_window_change": "Perubahan tempoh penjelasan",
+        "other": "Lain-lain",
+        "policy_update": "Kemas kini polisi",
+        "threshold_change": "Perubahan ambang"
+      },
+      "roleActions": {
+        "grant": "Berikan",
+        "revoke": "Tarik balik"
+      },
+      "roleChanged": "Akses pelulus dompet telah {{action}}.",
+      "saved": "Tetapan tadbir urus dompet disimpan.",
+      "title": "Tetapan dompet",
+      "units": {
+        "days": "hari",
+        "hours": "jam"
+      },
+      "unsaved": "Perubahan belum disimpan"
+    }
+  },
+  "actions": {
+    "approve": "Luluskan",
+    "reject": "Tolak"
+  },
+  "email": {
+    "draft": {
+      "advisory": "AI merangka mesej di bawah — sunting sebelum menghantar.",
+      "close": "Tutup",
+      "recipient": "E-mel penerima",
+      "recipientPlaceholder": "vendor@example.com",
+      "subject": "Subjek",
+      "drafting": "Merangka…",
+      "regenerate": "Jana semula draf",
+      "subjectPlaceholder": "Baris subjek",
+      "message": "Mesej",
+      "messagePlaceholder": "Isi mesej",
+      "linkHint": "Pautan ditambah secara automatik apabila anda menghantar — tidak perlu memasukkannya.",
+      "errors": {
+        "unavailable": "E-mel tidak dapat dirangka sekarang — tulis secara manual.",
+        "sendFailed": "E-mel tidak dapat dihantar. Cuba lagi."
+      },
+      "cancel": "Batal",
+      "sending": "Menghantar…",
+      "send": "Hantar e-mel"
+    }
+  },
+  "moderation": {
+    "flagTypes": {
+      "slur": "Kandungan penghinaan",
+      "unknown": "Bendera tidak diketahui"
+    },
+    "sources": {
+      "chatbotMessage": "Mesej chatbot",
+      "ticket": "Tiket",
+      "ticketReply": "Balasan tiket"
+    },
+    "flags": {
+      "title": "Bendera penyederhanaan",
+      "openCount": "{{count}} terbuka",
+      "showReviewed": "Tunjukkan yang disemak",
+      "allReviewed": "Semua bendera telah disemak.",
+      "nothingToReview": "Tiada perkara untuk disemak.",
+      "marking": "Menanda…",
+      "markReviewed": "Tanda telah disemak",
+      "reviewed": "Disemak"
+    }
+  },
+  "recommendation": {
+    "aiReview": {
+      "fields": {
+        "businessName": "Nama perniagaan",
+        "description": "Penerangan",
+        "recommendationReason": "Sebab cadangan",
+        "category": "Kategori",
+        "googleLocation": "Lokasi Google",
+        "contactMethod": "Kaedah hubungan",
+        "photos": "Foto",
+        "imageRights": "Hak imej",
+        "exactNameMatches": "Padanan nama tepat"
+      },
+      "findingKinds": {
+        "lowQuality": "Kualiti rendah",
+        "conflict": "Konflik",
+        "spam": "Spam",
+        "testContent": "Kandungan ujian",
+        "policy": "Dasar",
+        "duplicate": "Pendua",
+        "manualReview": "Semakan manual"
+      },
+      "severity": {
+        "low": "Rendah",
+        "medium": "Sederhana",
+        "high": "Tinggi"
+      },
+      "photoStatuses": {
+        "appearsRelevant": "Nampak berkaitan",
+        "possibleConflict": "Kemungkinan konflik",
+        "unclear": "Tidak jelas",
+        "couldNotAnalyse": "Tidak dapat dianalisis"
+      },
+      "actions": {
+        "approve": "Luluskan",
+        "reject": "Tolak",
+        "requestChanges": "Minta perubahan"
+      },
+      "advisory": "Untuk rujukan sahaja — pengesahan pentadbir diperlukan",
+      "analysisUnavailable": "Analisis AI tidak tersedia. Semakan bukti berasaskan peraturan masih dipaparkan di bawah.",
+      "confidence": "keyakinan {{value}}",
+      "errors": {
+        "unavailable": "Semakan AI tidak tersedia sekarang."
+      },
+      "evidence": "Bukti",
+      "kind": "Jenis",
+      "needsAttention": "Perlu perhatian",
+      "noIssues": "Tiada isu dikenal pasti.",
+      "passedChecks": "Semakan lulus",
+      "photoAssessments": "Penilaian foto",
+      "photoAttention": "Penilaian foto yang memerlukan perhatian dipaparkan di bawah.",
+      "photoLabel": "Foto {{number}}",
+      "review": "Semakan AI",
+      "reviewing": "Menyemak…",
+      "severityLabel": "Keterukan",
+      "suggestedDecision": "Keputusan dicadangkan",
+      "suggestedFeedback": "Maklum balas dicadangkan",
+      "uniqueIssueCount": "Bilangan isu unik",
+      "uniqueIssue": "{{count}} isu unik",
+      "uniqueIssues": "{{count}} isu unik",
+      "useReason": "Gunakan sebab ini",
+      "duplicateMatch": "{{count}} padanan nama dinormalkan",
+      "duplicateMatches": "{{count}} padanan nama dinormalkan"
+    },
+    "detail": {
+      "actions": {
+        "approve": "Luluskan cadangan",
+        "requestChanges": "Minta perubahan",
+        "reject": "Tolak cadangan",
+        "continue": "Teruskan"
+      },
+      "admin": "Pentadbir",
+      "backToRecommendations": "Kembali ke cadangan",
+      "contactMethods": "Kaedah hubungan",
+      "contributor": "Penyumbang",
+      "decisionReason": "Sebab keputusan",
+      "emailUnavailable": "E-mel tidak tersedia",
+      "errors": {
+        "loadFailed": "Tidak dapat memuatkan cadangan.",
+        "reasonTooShort": "Jelaskan keputusan dengan sekurang-kurangnya 10 aksara.",
+        "reviewFailed": "Semakan gagal."
+      },
+      "feedback": {
+        "approved": "Cadangan diluluskan.",
+        "changesRequested": "Perubahan diminta.",
+        "inviteSent": "Jemputan dihantar.",
+        "rejected": "Cadangan ditolak."
+      },
+      "fields": {
+        "category": "Kategori",
+        "description": "Penerangan",
+        "googleLocation": "Lokasi Google",
+        "state": "Negeri",
+        "whyRecommended": "Sebab tempat ini dicadangkan"
+      },
+      "imageRightsAttested": "Hak imej diakui: {{date}}",
+      "inviteLinkHint": "Pautan pendaftaran sebenar ditambah secara automatik apabila dihantar — tidak perlu memasukkannya.",
+      "inviteTitle": "Jemput {{name}}",
+      "inviteVendor": "Jemput vendor",
+      "linkedVendor": "Vendor dipautkan",
+      "loading": "Memuatkan bukti cadangan…",
+      "noAddressRecorded": "Tiada alamat direkodkan",
+      "noPhotos": "Tiada foto dilampirkan pada penyerahan ini.",
+      "notFound": "Cadangan tidak ditemui.",
+      "notProvided": "Tidak diberikan",
+      "notRecorded": "Tidak direkodkan",
+      "openMap": "Buka peta",
+      "openVendorManagement": "Buka Pengurusan Vendor",
+      "photoAlt": "Foto penyerahan {{name}} {{number}}",
+      "privateSubmissionNotice": "Data penyerahan peribadi. Gunakan hanya untuk penyederhanaan dan hubungan vendor yang diluluskan.",
+      "reasonPlaceholder": "Terangkan perkara yang perlu diketahui penyumbang (minimum 10 aksara)",
+      "recommendationEvidence": "Bukti cadangan",
+      "rejectionReason": "Sebab penolakan",
+      "requiredChanges": "Perubahan diperlukan",
+      "reviewDecision": "Keputusan semakan",
+      "reviewDecisionHint": "Semak semua bukti sebelum mengambil tindakan.",
+      "reviewHistory": "Sejarah semakan",
+      "reviewed": "Disemak",
+      "reviewer": "Penyemak",
+      "sendInvite": "Hantar jemputan",
+      "submissionEvidence": "Bukti penyerahan",
+      "submissionPhotos": "Foto penyerahan",
+      "submitted": "Dihantar pada {{date}}",
+      "vendorConversion": "Penukaran vendor",
+      "vendorOutreach": "Hubungan vendor",
+      "vendorOutreachHint": "Rangka jemputan dengan AI, semak mesej, kemudian hantarkannya kepada vendor.",
+      "confirm": {
+        "approveTitle": "Luluskan cadangan?",
+        "rejectTitle": "Tolak cadangan?",
+        "requestChangesTitle": "Minta perubahan?",
+        "approveDescription": "Ini merekodkan kelulusan dan memaklumkan penyumbang.",
+        "decisionDescription": "Ini merekodkan keputusan dan berkongsi sebab anda dengan penyumbang."
+      }
+    }
+  },
+  "userManagement": {
+    "actions": {
+      "clearBioRestriction": "Kosongkan sekatan Bio",
+      "suspend": "Gantung akaun",
+      "unsuspend": "Nyahgantung akaun",
+      "softDelete": "Padam lembut akaun",
+      "restore": "Pulihkan akaun"
+    },
+    "status": {
+      "active": "Aktif",
+      "suspended": "Digantung",
+      "deleted": "Dipadam",
+      "unknown": "Tidak diketahui"
+    },
+    "roles": {
+      "customer": "Pelanggan",
+      "outletManager": "Pengurus outlet",
+      "unknown": "Peranan tidak diketahui",
+      "vendorOwner": "Pemilik vendor"
+    },
+    "auditActions": {
+      "clearBioRestriction": "Kosongkan sekatan Bio",
+      "restore": "Pulihkan akaun",
+      "softDelete": "Padam lembut akaun",
+      "suspend": "Gantung akaun",
+      "unknown": "Tindakan tidak diketahui",
+      "unsuspend": "Nyahgantung akaun"
+    },
+    "errors": {
+      "loadFailed": "Tidak dapat memuatkan pengguna",
+      "reasonTooShort": "Sebab mestilah sekurang-kurangnya 10 aksara.",
+      "updateFailed": "Tidak dapat mengemas kini pengguna"
+    },
+    "feedback": {
+      "actionCompleted": "{{action}} selesai.",
+      "userIdCopied": "ID pengguna disalin."
+    },
+    "loading": "Memuatkan pengguna…",
+    "dialog": {
+      "title": "Butiran pengguna",
+      "userDetails": "Butiran pengguna",
+      "closeDetails": "Tutup butiran pengguna",
+      "close": "Tutup"
+    },
+    "profileNameSet": "Nama profil ditetapkan",
+    "profileNameMissing": "Nama paparan belum ditetapkan — menggunakan pengecam e-mel",
+    "copyUserId": "Salin ID pengguna",
+    "fields": {
+      "phone": "Telefon",
+      "location": "Lokasi",
+      "emailVerification": "Pengesahan e-mel",
+      "phoneVerification": "Pengesahan telefon",
+      "profile": "Profil",
+      "kyc": "KYC",
+      "registered": "Didaftar",
+      "pendingWithdrawals": "Pengeluaran belum selesai"
+    },
+    "notSet": "Belum ditetapkan",
+    "verified": "Disahkan",
+    "unverified": "Tidak disahkan",
+    "complete": "Lengkap",
+    "incomplete": "Tidak lengkap",
+    "bioModeration": "Penyederhanaan bio",
+    "violations": "Pelanggaran: {{count}}",
+    "cooldown": "Tempoh bertenang: {{value}}",
+    "none": "Tiada",
+    "bioNotSet": "Bio belum ditetapkan",
+    "recentHistory": "Sejarah pengurusan terkini",
+    "noHistory": "Tiada tindakan Pengurusan Pengguna direkodkan.",
+    "noReason": "Tiada sebab direkodkan",
+    "accountActions": "Tindakan akaun",
+    "softDeleteDisabled": "Padam lembut dilumpuhkan apabila pengeluaran belum selesai atau sedang diproses.",
+    "reasonHint": "Masukkan sekurang-kurangnya 10 aksara. Tindakan ini akan direkodkan dalam log audit.",
+    "reasonPlaceholder": "Sebab tindakan ini",
+    "cancel": "Batal",
+    "reviewAction": "Semak tindakan",
+    "confirmAction": "Sahkan tindakan",
+    "confirmDescription": "Ini akan melaksanakan tindakan akaun yang dipilih pada {{email}}. Sebab akan direkodkan dalam log audit.",
+    "thisUser": "pengguna ini"
+  },
+  "share": {
+    "actions": {
+      "shared": "Dikongsi",
+      "linkCopied": "Pautan disalin",
+      "copyFailed": "Tidak dapat menyalin pautan",
+      "imageSharedWithReferral": "Dikongsi — pautan rujukan anda ada dalam kapsyen",
+      "imageReadyWithReferral": "Imej sedia — pautan rujukan disalin, tampalkannya dalam kapsyen.",
+      "imageDownloadedWithLink": "Imej dimuat turun — pautan disalin",
+      "imageDownloaded": "Imej dimuat turun",
+      "imageCreateFailed": "Tidak dapat mencipta imej",
+      "shareTitle": "Kongsi {{title}}",
+      "share": "Kongsi",
+      "shareAsImage": "Kongsi sebagai imej",
+      "shareImageTitle": "Kongsi {{title}} sebagai imej",
+      "verifyToEarn": "Sahkan untuk memperoleh ganjaran"
+    }
+  },
+  "withdrawals": {
+    "age": {
+      "daysHours": "{{days}} hari {{hours}} jam",
+      "hours": "{{count}} jam",
+      "lessThanHour": "<1 jam"
+    },
+    "accessibility": {
+      "close": "Tutup",
+      "decisionGroup": "Keputusan pengeluaran",
+      "detailDialog": "Semakan pengeluaran {{customer}}",
+      "highRisk": "Risiko tinggi",
+      "openRow": "{{customer}}, {{amount}}, {{priority}}",
+      "reviewSummary": "Ringkasan semakan pengeluaran",
+      "selectAllVisible": "Pilih semua pengeluaran yang kelihatan",
+      "selectRow": "Pilih pengeluaran untuk {{customer}}"
+    },
+    "balances": {
+      "earnings": "Pendapatan",
+      "pendingRewards": "Ganjaran tertunda",
+      "reserved": "Dikhaskan",
+      "title": "Baki dompet",
+      "topUp": "Tambah nilai",
+      "withdrawn": "Dikeluarkan"
+    },
+    "batch": {
+      "noCommonAction": "Tiada tindakan tunggal yang sah untuk setiap pengeluaran yang dipilih."
+    },
+    "common": {
+      "no": "Tidak",
+      "yes": "Ya"
+    },
+    "confirmation": {
+      "amount": "Jumlah",
+      "cancel": "Batal",
+      "confirm": "Sahkan keputusan",
+      "customer": "Pelanggan",
+      "decision": "Keputusan",
+      "destination": "Destinasi",
+      "note": "Nota",
+      "reason": "Sebab",
+      "title": "Sahkan keputusan pengeluaran"
+    },
+    "customerReason": {
+      "title": "Sebab yang dilihat pelanggan"
+    },
+    "decision": {
+      "adminNote": "Nota pentadbir",
+      "afterThis": "Selepas ini: {{consequence}}",
+      "continueToConfirmation": "Teruskan ke pengesahan",
+      "description": "Pilih tindakan untuk permintaan pengeluaran ini.",
+      "minimumNote": "Minimum 10 aksara.",
+      "reasonLabel": "Sebab keputusan ini",
+      "selectDecisionPrompt": "Pilih keputusan untuk melihat sebab dan nota yang diperlukan.",
+      "selectReason": "Pilih sebab",
+      "title": "Keputusan"
+    },
+    "decisions": {
+      "approve": {
+        "consequence": "Pengeluaran boleh bergerak ke pemprosesan pembayaran.",
+        "description": "Sahkan semakan selesai dan mulakan pemprosesan pembayaran.",
+        "label": "Luluskan",
+        "placeholder": "Contoh: KYC, baki dompet dan destinasi pembayaran telah disemak dan disahkan."
+      },
+      "fraudOverride": {
+        "consequence": "Penggantian risiko tinggi direkodkan untuk audit.",
+        "description": "Rekod keputusan pentadbir super selepas menyemak risiko.",
+        "label": "Ganti risiko tinggi",
+        "placeholder": "Contoh: Semakan risiko selesai dan amaran disahkan sebagai positif palsu."
+      },
+      "hold": {
+        "consequence": "Kekalkan dana yang dikhaskan sehingga semakan diteruskan.",
+        "description": "Jeda semakan sambil meminta maklumat lanjut.",
+        "label": "Tahan",
+        "placeholder": "Contoh: Maklumat identiti atau pembayaran tambahan diperlukan sebelum diproses."
+      },
+      "reject": {
+        "consequence": "Pulangkan jumlah yang dikhaskan ke baki tersedia.",
+        "description": "Tolak permintaan kerana ia tidak boleh diluluskan.",
+        "label": "Tolak",
+        "placeholder": "Contoh: Butiran bank tidak dapat disahkan dengan akaun pelanggan."
+      },
+      "resume": {
+        "consequence": "Permintaan tersedia untuk langkah semakan seterusnya.",
+        "description": "Teruskan permintaan yang sebelum ini ditahan.",
+        "label": "Sambung semakan",
+        "placeholder": "Contoh: Maklumat yang diminta telah disemak dan pembayaran boleh diteruskan."
+      },
+      "retryPayout": {
+        "consequence": "Kelulusan kekal dan hanya pelaksanaan pembayaran dicuba semula.",
+        "description": "Cuba semula panggilan penyedia selepas mengesahkan kegagalan pembayaran terdahulu selamat untuk dicuba.",
+        "label": "Cuba semula pembayaran",
+        "placeholder": "Contoh: Ketersediaan penyedia dan butiran destinasi disemak semula sebelum mencuba."
+      }
+    },
+    "detail": {
+      "amount": "Jumlah",
+      "appKyc": "KYC aplikasi",
+      "eyebrow": "Semakan pengeluaran",
+      "notSupplied": "Tidak dibekalkan",
+      "overridden": "Diganti",
+      "risk": "Risiko",
+      "status": "Status",
+      "unknown": "Tidak diketahui"
+    },
+    "empty": {
+      "noRequests": "Tiada permintaan pengeluaran"
+    },
+    "errors": {
+      "actionFailed": "Tindakan gagal",
+      "batchActionFailed": "Satu atau lebih tindakan pengeluaran gagal.",
+      "chooseDecisionReason": "Pilih sebab untuk keputusan ini.",
+      "invalidReasonCategory": "Pilih kategori sebab yang sah untuk tindakan pengeluaran ini.",
+      "loadRequests": "Tidak dapat memuatkan permintaan pengeluaran",
+      "loadReviewDetails": "Tidak dapat memuatkan butiran semakan",
+      "matchDecisionReason": "Pilih sebab yang sepadan dengan keputusan ini.",
+      "minimumNote": "Nota sekurang-kurangnya 10 aksara diperlukan."
+    },
+    "enumValues": {
+      "accountDisabled": "Akaun dinyahaktifkan",
+      "adjustment": "Pelarasan",
+      "affiliateCommission": "Komisen afiliasi",
+      "credit": "Kredit",
+      "debit": "Debit",
+      "earnings": "Pendapatan",
+      "earningsConfirm": "Pendapatan disahkan",
+      "earningsPending": "Pendapatan tertunda",
+      "earningsReverse": "Pendapatan diterbalikkan",
+      "invalidDestination": "Destinasi tidak sah",
+      "kycVerified": "KYC disahkan",
+      "pendingEarnings": "Pendapatan tertunda",
+      "providerError": "Ralat penyedia",
+      "refundCredit": "Kredit bayaran balik",
+      "rewardCleared": "Ganjaran dijelaskan",
+      "rewardPending": "Ganjaran tertunda",
+      "spend": "Perbelanjaan",
+      "topUp": "Tambah nilai",
+      "unverified": "Tidak disahkan",
+      "withdrawalCancel": "Pengeluaran dibatalkan",
+      "withdrawalComplete": "Pengeluaran selesai",
+      "withdrawalRelease": "Pengeluaran dilepaskan",
+      "withdrawalReserve": "Pengeluaran dikhaskan"
+    },
+    "evidence": {
+      "affiliateSources": "Sumber afiliasi",
+      "doNotApprove": "Jangan luluskan sehingga data tersedia.",
+      "fraudFlags": "Tanda penipuan",
+      "noAffiliateTransactions": "Tiada transaksi afiliasi ditemui.",
+      "noFraudFlags": "Tiada tanda penipuan direkodkan.",
+      "noRewardTransactions": "Tiada transaksi ganjaran ditemui.",
+      "noWalletTransactions": "Tiada transaksi dompet ditemui.",
+      "rewardSources": "Sumber ganjaran",
+      "unavailable": "Data semakan tidak tersedia buat masa ini",
+      "walletTransactions": "Sejarah transaksi dompet"
+    },
+    "feedback": {
+      "actionCompleted": "Tindakan pengeluaran selesai.",
+      "batchProcessed": "{{count}} pengeluaran diproses.",
+      "refreshAndAskSuperAdmin": "Muat semula halaman dan cuba lagi; jika berterusan, minta pentadbir super menyemak rekod pengeluaran.",
+      "refreshAndContactSuperAdmin": "Muat semula halaman dan cuba lagi; jika berterusan, hubungi pentadbir super.",
+      "riskOverrideRecorded": "Penggantian risiko direkodkan."
+    },
+    "filters": {
+      "allRiskLevels": "Semua tahap risiko",
+      "allStatuses": "Semua status",
+      "perPage": "{{count}} setiap halaman",
+      "searchCustomerOrEmail": "Cari pelanggan atau e-mel"
+    },
+    "header": {
+      "description": "Semak permintaan pembayaran dengan jumlah, risiko, kemajuan kelulusan dan umur dipaparkan sebelum membuka laci bukti.",
+      "eyebrow": "Tadbir urus dompet",
+      "oldestFirst": "Paling lama dahulu",
+      "queueClear": "Barisan kosong",
+      "reviewPriority": "Keutamaan semakan",
+      "title": "Kelulusan Pengeluaran"
+    },
+    "loading": "Memuatkan…",
+    "metrics": {
+      "dualApproval": "Kelulusan berganda",
+      "highRisk": "Risiko tinggi",
+      "needsAction": "Perlu tindakan",
+      "noOverdueRequests": "Tiada permintaan tertunggak",
+      "oldestRequest": "Permintaan paling lama {{age}}",
+      "overdue": "Tertunggak",
+      "pendingPayoutValue": "Nilai pembayaran tertunda",
+      "requestsInQueue": "Permintaan dalam barisan ini",
+      "visiblePageTotal": "Jumlah halaman yang kelihatan",
+      "waitingForSecondApprover": "Menunggu pelulus kedua"
+    },
+    "pagination": {
+      "pageOf": "Halaman {{page}} daripada {{totalPages}}"
+    },
+    "payoutExecution": {
+      "locked": "Pelaksanaan pembayaran dikunci",
+      "lockedDescription": "Percubaan pembayaran lain sedang aktif atau keputusan penyedia memerlukan penyelarasan. Jangan cuba semula. Muat semula dahulu; jika kunci kekal, minta pentadbir super menyelaraskan transaksi penyedia.",
+      "lockedSince": "Dikunci sejak {{date}}"
+    },
+    "payoutFailure": {
+      "category": "Kategori",
+      "code": "Kod",
+      "noProviderMessage": "Tiada mesej penyedia dibekalkan",
+      "provider": "Penyedia",
+      "reason": "Sebab",
+      "recommendedNextAction": "Tindakan seterusnya yang disyorkan",
+      "retryable": "Boleh dicuba semula",
+      "title": "Pembayaran gagal",
+      "nextAction": {
+        "invalidDestination": "Minta pelanggan membetulkan atau mengaktifkan semula destinasi pembayaran. Jangan cuba semula sehingga destinasi disahkan.",
+        "reconcile": "Jangan cuba semula pembayaran ini. Selaraskan transaksi penyedia dan rujukan pembayaran yang direkodkan sebelum mengambil tindakan lain.",
+        "retryable": "Sahkan penyedia dan destinasi pembayaran tersedia, kemudian gunakan Cuba semula pembayaran. Kelulusan sedia ada akan dikekalkan."
+      }
+    },
+    "priority": {
+      "highRisk": "Risiko tinggi",
+      "needsAction": "Perlu tindakan",
+      "overdue": "Tertunggak",
+      "waitingForSecondApprover": "Menunggu pelulus kedua"
+    },
+    "prompts": {
+      "adminNote": "Nota pentadbir (sekurang-kurangnya 10 aksara):",
+      "batchConfirm": "Laksanakan “{{action}}” pada {{count}} {{itemLabel}} yang dipilih? Setiap item masih akan disemak oleh titik akhir kelulusannya sendiri.",
+      "reasonCategory": "Kategori sebab ({{reasons}}):"
+    },
+    "queue": {
+      "description": "Buka baris apabila keutamaan semakan atau bukti memerlukan perhatian lebih dekat.",
+      "noOpenRequests": "Tiada permintaan terbuka",
+      "oldestRequest": "Permintaan paling lama {{age}}",
+      "title": "Barisan semakan ({{count}})"
+    },
+    "readiness": {
+      "available": "Tersedia",
+      "payoutDestination": "Destinasi pembayaran",
+      "reviewPriority": "Keutamaan semakan: {{priority}}",
+      "singleApproval": "Kelulusan tunggal",
+      "title": "Kesediaan keputusan",
+      "unavailable": "Tidak tersedia",
+      "walletEvidence": "Bukti dompet"
+    },
+    "reasons": {
+      "additionalInformationVerified": "Maklumat tambahan disahkan",
+      "bankDetailsConfirmed": "Butiran bank disahkan",
+      "bankDetailsMismatch": "Butiran bank tidak sepadan",
+      "exceptionApproved": "Pengecualian diluluskan",
+      "falsePositive": "Positif palsu",
+      "insufficientPayoutInformation": "Maklumat pembayaran tidak lengkap",
+      "kycOrIdentityReview": "KYC atau identiti perlu disemak",
+      "kycReviewCompleted": "Semakan KYC selesai",
+      "other": "Sebab lain",
+      "payoutAccountUnavailable": "Akaun pembayaran tidak tersedia",
+      "payoutReady": "Butiran pembayaran sedia",
+      "reviewCompleted": "Semakan selesai",
+      "riskReviewCleared": "Semakan risiko dilepaskan",
+      "riskReviewRequired": "Semakan risiko tambahan diperlukan",
+      "riskReviewed": "Risiko telah disemak"
+    },
+    "risk": {
+      "high": "Tinggi",
+      "low": "Rendah",
+      "review": "Semakan"
+    },
+    "selection": {
+      "selectAllOnPage": "Pilih semua pada halaman ini",
+      "withdrawal": "pengeluaran",
+      "withdrawals": "pengeluaran"
+    },
+    "status": {
+      "needsReview": "Perlu semakan",
+      "notAssessed": "Belum dinilai",
+      "unknown": "Tidak diketahui",
+      "pending": "Menunggu",
+      "pending_second_approval": "Menunggu kelulusan kedua",
+      "hold": "Tahan",
+      "overdue": "Tertunggak",
+      "approved": "Diluluskan",
+      "processing": "Sedang diproses",
+      "paid": "Dibayar",
+      "completed": "Selesai",
+      "rejected": "Ditolak",
+      "failed": "Gagal"
+    },
+    "table": {
+      "ageSla": "Umur / SLA",
+      "amount": "Jumlah",
+      "approvalPathReady": "Laluan kelulusan sedia",
+      "approvalProgress": "Kemajuan kelulusan",
+      "customer": "Pelanggan",
+      "dualApprovals": "{{count}}/2 kelulusan",
+      "overdue": "Tertunggak",
+      "risk": "Risiko: {{level}}",
+      "riskPriority": "Risiko / keutamaan",
+      "rm500Threshold": "Ambang RM500+",
+      "singleApproval": "1/1 kelulusan",
+      "standardReview": "Semakan standard",
+      "status": "Status",
+      "waitingForSecondApprover": "Menunggu pelulus kedua",
+      "withinReviewWindow": "Dalam tempoh semakan"
+    },
+    "timeline": {
+      "auditNote": "Setiap keputusan direkodkan dalam garis masa audit.",
+      "noDecisions": "Tiada keputusan direkodkan lagi.",
+      "title": "Garis masa kelulusan"
+    }
+  },
+  "refunds": {
+    "actions": {
+      "approve": "Luluskan",
+      "refresh": "Muat semula",
+      "reject": "Tolak",
+      "simulateRetryableFailure": "Simulasikan kegagalan boleh cuba semula",
+      "simulateSuccess": "Simulasikan kejayaan"
+    },
+    "attempt": "Percubaan {{count}}",
+    "detail": {
+      "noReason": "Tiada sebab dibekalkan"
+    },
+    "empty": {
+      "description": "Permintaan bayaran balik pelanggan baharu akan muncul di sini.",
+      "title": "Tiada permintaan bayaran balik"
+    },
+    "errors": {
+      "loadRequests": "Tidak dapat memuatkan permintaan bayaran balik.",
+      "reviewFailed": "Semakan bayaran balik gagal.",
+      "simulationFailed": "Simulasi gagal."
+    },
+    "header": {
+      "description": "Luluskan atau tolak bayaran balik pelanggan. Penyedia simulator kekal tidak segerak sehingga keputusan bertandatangan diterima.",
+      "eyebrow": "Pembayaran",
+      "title": "Permintaan Bayaran Balik"
+    },
+    "loading": "Memuatkan permintaan bayaran balik…",
+    "providers": {
+      "bankTransferSimulator": "Pindahan bank — Simulasi",
+      "grabpaySimulator": "GrabPay — Simulasi",
+      "mywisataWallet": "Dompet MyWisata",
+      "stripeSandbox": "Stripe Sandbox",
+      "tngSimulator": "eDompet Touch ’n Go — Simulasi",
+      "unknown": "Penyedia tidak diketahui"
+    },
+    "sandbox": {
+      "description": "Kawalan penyedia di bawah menguji webhook bertandatangan, idempotensi, lejar dan mesin keadaan bayaran balik. Tiada wang sebenar bergerak.",
+      "label": "Sandbox / Simulasi:"
+    },
+    "status": {
+      "processed": "Diproses",
+      "simulated": "SIMULASI"
+    }
+  }
+}

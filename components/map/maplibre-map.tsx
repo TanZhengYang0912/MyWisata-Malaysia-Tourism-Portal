@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Map, { Layer, Marker, Popup, Source, type MapRef, type MarkerDragEvent } from "react-map-gl/maplibre";
 import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
@@ -95,6 +96,7 @@ export function MaplibreMap({
   /** Bumping `token` (even for the same pin) re-triggers the pan+select. */
   focusRequest?: { pin: MapPin; token: number } | null;
 }) {
+  const { t } = useTranslation("customer");
   const mapRef = useRef<MapRef | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
@@ -238,7 +240,7 @@ export function MaplibreMap({
           onDragEnd={(e: MarkerDragEvent) => onUserLocationDrag?.(e.lngLat.lat, e.lngLat.lng)}
         >
           <div
-            title={onUserLocationDrag ? "Drag to set your location" : "You are here"}
+            title={onUserLocationDrag ? t("ui.map.dragToSetLocation") : t("ui.map.youAreHere")}
             style={{
               width: 22,
               height: 22,
@@ -286,7 +288,7 @@ export function MaplibreMap({
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
             {selectedPin.href && (
               <a href={selectedPin.href} style={{ fontSize: 11, fontWeight: 600, color: "var(--travel-blue)" }}>
-                View details →
+                {t("ui.actions.viewDetails")} →
               </a>
             )}
             {onAddStop && (
@@ -304,7 +306,7 @@ export function MaplibreMap({
                   cursor: "pointer",
                 }}
               >
-                {stopIds?.includes(selectedPin.id) ? "✓ In trip" : "+ Add to trip"}
+                {stopIds?.includes(selectedPin.id) ? `✓ ${t("ui.actions.inTrip")}` : `+ ${t("ui.actions.addToTrip")}`}
               </button>
             )}
           </div>

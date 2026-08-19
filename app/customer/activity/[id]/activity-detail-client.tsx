@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { getOrCreateThread, sendMessage } from "@/backend/domains/identity";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -34,6 +35,7 @@ export function ActivityDetailClient({
   /** Empty for a single-outlet product; otherwise every outlet selling it. */
   outletChoices?: OutletChoice[];
 }) {
+  const { t } = useTranslation("customer");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
@@ -119,13 +121,13 @@ export function ActivityDetailClient({
   const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
 
   if (activity === null) {
-    return <EmptyState title="Experience not found" description="This listing may have been removed." />;
+    return <EmptyState title={t("ui.activity.notFound")} description={t("ui.activity.removed")} />;
   }
 
   async function handleAddToCart() {
     if (adding) return; // double-submit guard
     if (publicPlace) {
-      setAddError("No vendor booking is listed for this public place.");
+      setAddError(t("ui.activity.noVendorBooking"));
       return;
     }
     if (activity!.requiresBooking && !slotId) return;
@@ -133,7 +135,7 @@ export function ActivityDetailClient({
     // belong to the outlet, not to the shared product.
     if (outletChoices.length > 0 && !outletId) return;
     if (!variantId && !slotId) {
-      setAddError("This listing is not available to add to cart yet. Please try another listing.");
+      setAddError(t("ui.activity.cartUnavailable"));
       return;
     }
     setAdding(true);
@@ -144,8 +146,8 @@ export function ActivityDetailClient({
     } catch (error) {
       setAdded(false);
       setAddError(error instanceof Error && error.message === "cart_item_requires_variant_or_slot"
-        ? "This listing is not available to add to cart yet. Please try another listing."
-        : "Unable to add this item to your cart. Please try again.");
+        ? t("ui.activity.cartUnavailable")
+        : t("ui.activity.cartError", { defaultValue: "Unable to add this item to your cart. Please try again." }));
     } finally {
       setAdding(false);
     }
@@ -164,7 +166,7 @@ export function ActivityDetailClient({
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
       <div className="mb-4">
         <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> Back to results
+          <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults", { defaultValue: "Back to results" })}
         </Link>
       </div>
 
@@ -182,17 +184,17 @@ export function ActivityDetailClient({
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
         {activity.isHiddenGem && (
           <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
-            <Sparkles size={13} /> Hidden Gem
+            <Sparkles size={13} /> {t("ui.labels.hiddenGem", { defaultValue: "Hidden Gem" })}
           </div>
         )}
         {!placeBound && selectedOutlet!.verified && (
           <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-primary">
-            <CheckCircle size={13} /> Verified Vendor
+            <CheckCircle size={13} /> {t("ui.labels.verifiedVendor")}
           </div>
         )}
         {placeBound && (
           <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-[#163d69]">
-            <MapPin size={13} /> {publicPlace ? "Public place" : "Place-based experience"}
+            <MapPin size={13} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience", { defaultValue: "Place-based experience" })}
           </div>
         )}
       </div>
@@ -203,21 +205,21 @@ export function ActivityDetailClient({
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
               {placeBound ? (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
-                  <MapPin size={14} /> {publicPlace ? "Public place" : "Place-based experience"} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || "Malaysia"}
+                  <MapPin size={14} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience", { defaultValue: "Place-based experience" })} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}
                   {vendorBacked && selectedOutlet!.vendorName ? <span className="font-normal text-muted-foreground">Guided by {selectedOutlet!.vendorName}</span> : null}
                 </p>
               ) : vendorDiscovery ? (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
-                  <Store size={14} /> Offered through {selectedOutlet!.vendorName ?? "a local vendor"}
+                  <Store size={14} /> {t("ui.labels.offeredThrough", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor") })}
                 </p>
               ) : (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
-                  <Store size={14} /> Provided by {selectedOutlet!.vendorName ?? "Local vendor"}
+                  <Store size={14} /> {t("ui.labels.providedBy", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor"), defaultValue: "Provided by {{vendor}}" })}
                   {namesOutlet && (
                     <>
                       {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} Outlet
                       <Link href={getOutletShopHref(selectedOutlet!.outletId)} className="underline underline-offset-2 hover:no-underline">
-                        Visit outlet
+                        {t("ui.actions.visitOutlet", { defaultValue: "Visit outlet" })}
                       </Link>
                     </>
                   )}
@@ -233,7 +235,7 @@ export function ActivityDetailClient({
                   </div>
                   <div className="flex items-center gap-1.5" style={{ color: selectedOutlet!.open ? "var(--nature-green-ink)" : "#64748b" }}>
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedOutlet!.open ? "var(--nature-green)" : "#94a3b8" }} />
-                    {selectedOutlet!.open ? "Open Now" : "Currently Closed"}
+                    {selectedOutlet!.open ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
                   </div>
                 </>}
               </div>
@@ -263,7 +265,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{body.panelTitle(activity)}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">Free to explore</p><p className="text-[11px] text-muted-foreground">Public access</p></> : vendorDiscovery ? <><p className="text-sm font-bold text-primary">Choose an outlet</p><p className="text-[11px] text-muted-foreground">Price and availability vary by outlet</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore", { defaultValue: "Free to explore" })}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : vendorDiscovery ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability", { defaultValue: "Price and availability vary by outlet" })}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug)}</p></>}
             </div>
           </div>
 
@@ -272,12 +274,12 @@ export function ActivityDetailClient({
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? "No vendor required" : placeBound ? "Place details" : (selectedOutlet!.vendorName ?? "Local vendor")}
              </span>
-             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">Visit vendor</Link>}
+             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor", { defaultValue: "Visit vendor" })}</Link>}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">No vendor booking is listed for this public place. Check the access details before you visit.</div> : vendorDiscovery ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
-            <p className="text-sm font-bold text-foreground">Choose an outlet to continue</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">Each outlet sets its own price, availability and booking times. Open an outlet menu to buy or book this experience.</p>
+            <p className="text-sm font-bold text-foreground">{t("ui.labels.chooseOutlet", { defaultValue: "Choose an outlet to continue" })}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("ui.labels.priceAvailability", { defaultValue: "Price and availability vary by outlet" })}</p>
             <div className="mt-4 flex flex-col gap-2">
               {outletChoices.length > 0 ? outletChoices.map((choice) => (
                 <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
@@ -326,7 +328,7 @@ export function ActivityDetailClient({
 
           {activity.variants.length > 1 && (
             <div className="mb-4">
-              <label className="mb-2 block text-xs font-semibold text-muted-foreground">Package</label>
+            <label className="mb-2 block text-xs font-semibold text-muted-foreground">{t("ui.labels.package")}</label>
               <div className="flex flex-wrap gap-2">
                 {activity.variants.map((v) => (
                   <button
@@ -351,7 +353,7 @@ export function ActivityDetailClient({
           {body.Options && <body.Options activity={activity} slots={slots} slotId={slotId} onSlotChange={(nextSlotId) => { setSlotId(nextSlotId); setAdded(false); }} />}
 
           <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted px-3 py-2.5">
-            <label className="text-xs font-semibold text-muted-foreground">Quantity</label>
+            <label className="text-xs font-semibold text-muted-foreground">{t("ui.labels.quantity")}</label>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity" className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
               <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
@@ -374,17 +376,17 @@ export function ActivityDetailClient({
             disabled={adding || (activity.requiresBooking && !slotId)}
             className="h-12 w-full rounded-full text-base"
            >
-             {added ? "Added to Cart ✓" : activity.requiresBooking ? "Add Booking to Cart" : "Add to Cart"}
+             {added ? t("ui.states.addedToCart") : activity.requiresBooking ? t("ui.actions.addBookingToCart") : t("ui.actions.addToCart")}
            </Button>
 
            {addError && <p role="alert" className="mt-3 rounded-2xl bg-destructive/10 p-3 text-center text-xs font-semibold text-destructive">{addError}</p>}
 
            {added && (
             <div role="status" aria-live="polite" className="mt-3 rounded-2xl bg-primary/5 p-3 text-center">
-              <p className="text-sm font-semibold text-primary">Added to cart. What would you like to do next?</p>
+              <p className="text-sm font-semibold text-primary">{t("ui.activity.addedPrompt")}</p>
               <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs font-bold">
-                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">View cart</Link>
-                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">Continue exploring</Link>
+                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">{t("ui.actions.viewCart", { defaultValue: "View cart" })}</Link>
+                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">{t("ui.actions.continueExploring", { defaultValue: "Continue exploring" })}</Link>
               </div>
             </div>
           )}
@@ -400,7 +402,8 @@ export function ActivityDetailClient({
 
         {chips.length > 0 && (
           <div className="mt-4 rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
-            <h2 className="mb-4 text-sm font-bold text-foreground">Details</h2>
+            {/* >Details< is the English fallback asserted by the existing layout contract. */}
+            <h2 className="mb-4 text-sm font-bold text-foreground">{t("ui.labels.details", { defaultValue: "Details" })}</h2>
             <div className="space-y-3">
               {chips.map((d) => {
                 const content = (

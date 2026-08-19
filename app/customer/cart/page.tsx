@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -23,6 +24,7 @@ function voucherDiscountLabel(voucher: Voucher) {
 }
 
 function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption; applied: boolean; onApply: () => void }) {
+  const { t: tCustomer } = useTranslation("customer");
   const { voucher, discountAmount } = option;
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-3">
@@ -37,7 +39,7 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
         </p>
       </div>
       <Button type="button" variant="outline" onClick={onApply} disabled={applied} className="shrink-0 rounded-full px-3 text-xs">
-        {applied ? "Applied" : "Apply"}
+        {applied ? tCustomer("ui.actions.applied") : tCustomer("ui.actions.apply")}
       </Button>
     </div>
   );

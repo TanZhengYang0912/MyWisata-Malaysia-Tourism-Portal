@@ -28,7 +28,7 @@ describe('operating hours contract', () => {
   });
 
   it('uses distinct labels for operating hours and booking slots', () => {
-    expect(bookingsPage).toContain('Operating hours');
-    expect(bookingsPage.toLowerCase()).toContain('booking slots');
+    expect(bookingsPage).toContain("t('ui.bookings.operatingHours')");
+    expect(bookingsPage).toContain("t('ui.bookings.slotsSummary'");
   });
 });
