@@ -19,6 +19,8 @@ const requestedRoutes = [
 describe("customer page dimensions", () => {
   it("defines the shared responsive page frame and panel scale", () => {
     expect(shellSource).toContain("max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8");
+    expect(shellSource).toContain("max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10");
+    expect(shellSource).toContain("export function CustomerPageTitle");
     expect(shellSource).toContain("export function CustomerPageHeader");
     expect(shellSource).toContain("text-3xl font-bold leading-tight tracking-tight");
     expect(shellSource).toContain("rounded-2xl border border-border bg-card");
@@ -29,7 +31,7 @@ describe("customer page dimensions", () => {
     for (const route of requestedRoutes) {
       const source = readFileSync(resolve(workspace, route), "utf8");
       expect(source, route).toContain("CustomerPageShell");
-      expect(source, route).toContain("CustomerPageHeader");
+      expect(source, route).toContain("CustomerPageTitle");
     }
   });
 });
