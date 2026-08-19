@@ -10,6 +10,7 @@ describe('provider-neutral withdrawal completion migration', () => {
     const sql = readFileSync(migrationUrl, 'utf8');
 
     expect(sql).toContain('DROP CONSTRAINT IF EXISTS wr_terminal_has_stripe_ids');
+    expect(sql).toContain('DROP CONSTRAINT IF EXISTS wr_terminal_has_provider_reference');
     expect(sql).toContain("payout_provider = 'tng_direct_credit'");
     expect(sql).toContain('payout_provider_event_id IS NOT NULL');
     expect(sql).toContain("COALESCE(payout_provider, 'stripe_connect') = 'stripe_connect'");

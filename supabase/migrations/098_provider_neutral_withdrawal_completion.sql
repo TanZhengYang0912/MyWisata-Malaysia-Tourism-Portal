@@ -7,6 +7,9 @@ ALTER TABLE public.withdrawal_requests
   DROP CONSTRAINT IF EXISTS wr_terminal_has_stripe_ids;
 
 ALTER TABLE public.withdrawal_requests
+  DROP CONSTRAINT IF EXISTS wr_terminal_has_provider_reference;
+
+ALTER TABLE public.withdrawal_requests
   ADD CONSTRAINT wr_terminal_has_provider_reference
   CHECK (
     status NOT IN ('processing', 'paid', 'completed')
