@@ -301,7 +301,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
       {status === "copied" && <p className="text-xs text-primary">Link copied</p>}
       {status === "error" && <p className="text-xs text-destructive">Couldn&apos;t copy link</p>}
       {!isVerified && (status === "idle" || status === "working") && (
-        <p className="text-[10px] text-muted-foreground text-center max-w-20">Verify to earn</p>
+        <p className="text-[0.625rem] text-muted-foreground text-center max-w-20">Verify to earn</p>
       )}
     </div>
   );

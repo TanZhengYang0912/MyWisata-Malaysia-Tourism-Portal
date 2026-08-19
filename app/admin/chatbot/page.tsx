@@ -298,7 +298,7 @@ export default function AdminChatbotPage() {
           <Button size="sm" variant="outline" onClick={runReindex} disabled={reindexing}>
             <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? "Reindexing…" : "Reindex KB"}
           </Button>
-          {reindexResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
+          {reindexResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
         </div>
       </div>
 
@@ -314,7 +314,7 @@ export default function AdminChatbotPage() {
         <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-sm font-semibold text-muted-foreground">Escalation rate</p>
           <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">of failed answers became a ticket</p>
+          <p className="text-[0.625rem] text-muted-foreground mt-0.5">of failed answers became a ticket</p>
         </div>
       </div>
 
@@ -322,7 +322,7 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> Top unanswered questions
         </p>
-        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">No KB doc covers these at all.</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">No KB doc covers these at all.</p>
         {stats.topUnanswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing unanswered yet — the KB is covering everything asked so far.</p>
         ) : (
@@ -334,7 +334,7 @@ export default function AdminChatbotPage() {
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
                     <span className="truncate">{q.question}</span>
                   </span>
-                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
                     ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -356,7 +356,7 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> Answered, but not helpful
         </p>
-        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">A KB doc matched, but customers said it didn&apos;t help — the doc needs improving, not creating.</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">A KB doc matched, but customers said it didn&apos;t help — the doc needs improving, not creating.</p>
         {stats.notHelpfulAnswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">No thumbs-down yet on an answered question.</p>
         ) : (
@@ -368,7 +368,7 @@ export default function AdminChatbotPage() {
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
                     <span className="truncate">{q.question}</span>
                   </span>
-                  <p className="text-[11px] text-muted-foreground pl-[19px]">
+                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
                     ×{q.count} · last asked {new Date(q.lastAskedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -445,7 +445,7 @@ export default function AdminChatbotPage() {
               Active
             </label>
           </div>
-          {formError && <p className="text-[11px] text-destructive">{formError}</p>}
+          {formError && <p className="text-[0.6875rem] text-destructive">{formError}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={saveDoc} disabled={saving || !form.title.trim() || !form.body.trim()}>
               {saving ? "Saving…" : "Save"}

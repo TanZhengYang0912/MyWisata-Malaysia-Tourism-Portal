@@ -419,13 +419,13 @@ export default function AdminAffiliatePage() {
             <Button size="sm" variant="outline" onClick={runClearing} disabled={clearing}>
               <RefreshCw size={13} className={clearing ? "animate-spin" : ""} /> {clearing ? "Running…" : "Run clearing"}
             </Button>
-            {clearingResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{clearingResult}</p>}
+            {clearingResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[220px]">{clearingResult}</p>}
           </div>
           <div>
             <Button size="sm" variant="outline" onClick={runFraudSweepAction} disabled={sweeping}>
               <AlertTriangle size={13} className={sweeping ? "animate-pulse" : ""} /> {sweeping ? "Scanning…" : "Run fraud sweep"}
             </Button>
-            {sweepResult && <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
+            {sweepResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
           </div>
         </div>
       </div>
@@ -474,7 +474,7 @@ export default function AdminAffiliatePage() {
             );
           })}
         </div>
-        {tierError && <p className="text-[11px] text-destructive mt-2">{tierError}</p>}
+        {tierError && <p className="text-[0.6875rem] text-destructive mt-2">{tierError}</p>}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

@@ -101,14 +101,14 @@ export function ModerationFlagsPanel() {
               {f.originalExcerpt && (
                 <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">&ldquo;{f.originalExcerpt}&rdquo;</p>
               )}
-              <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString()}</p>
+              <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString()}</p>
             </div>
             {f.status === "open" ? (
               <Button size="sm" variant="outline" disabled={reviewingId === f.id} onClick={() => markReviewed(f.id)}>
                 {reviewingId === f.id ? "Marking…" : "Mark reviewed"}
               </Button>
             ) : (
-              <span className="text-[10px] text-muted-foreground shrink-0">Reviewed</span>
+              <span className="text-[0.625rem] text-muted-foreground shrink-0">Reviewed</span>
             )}
           </div>
         ))}

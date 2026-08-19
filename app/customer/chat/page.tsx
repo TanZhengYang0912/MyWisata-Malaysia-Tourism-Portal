@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
+import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
@@ -83,6 +83,9 @@ export default function ChatListPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
+  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
+  const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
+  const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentUser) return;
@@ -95,12 +98,17 @@ export default function ChatListPage() {
         if (!response.ok) throw new Error(payload.error?.message || "Unable to load conversations");
         const rawThreads = Array.isArray(payload.data?.threads) ? payload.data.threads : [];
         const normalized: ReturnType<typeof normalizeThread>[] = rawThreads.map((row: ApiThread) => normalizeThread(row));
+        
+        const mutesRes = await fetch("/api/chat/mutes").then((r) => (r.ok ? r.json() : { data: [] })).catch(() => ({ data: [] }));
+
         if (cancelled) return;
 
         setThreads(normalized.map(({ thread }) => thread));
         setOutlets(new Map(normalized.flatMap(({ outlet }) => outlet ? [[outlet.id, outlet] as const] : [])));
         setMessagesByThread(new Map(normalized.map(({ thread, messages }) => [thread.id, messages])));
         setReadMessageIds(new Set(Array.isArray(payload.data?.readMessageIds) ? payload.data.readMessageIds : []));
+        setReadByOthersIds(new Set(Array.isArray(payload.data?.readByOthersIds) ? payload.data.readByOthersIds : []));
+        setMutedThreadIds(new Set((mutesRes.data ?? []) as string[]));
         setLoadError(null);
       } catch {
         if (!cancelled) setLoadError("We couldn't load your conversations. Please refresh and try again.");
@@ -115,6 +123,25 @@ export default function ChatListPage() {
       window.clearInterval(timer);
     };
   }, [currentUser]);
+
+  async function toggleMute(threadId: string) {
+    const currentlyMuted = mutedThreadIds.has(threadId);
+    setMutedThreadIds((previous) => {
+      const next = new Set(previous);
+      currentlyMuted ? next.delete(threadId) : next.add(threadId);
+      return next;
+    });
+    try {
+      await fetch(`/api/chat/threads/${threadId}/mute`, { method: currentlyMuted ? "DELETE" : "POST" });
+    } catch {
+      // Best-effort revert — the mute is purely a notification preference, not worth a blocking error.
+      setMutedThreadIds((previous) => {
+        const next = new Set(previous);
+        currentlyMuted ? next.add(threadId) : next.delete(threadId);
+        return next;
+      });
+    }
+  }
 
   const unreadByThread = useMemo(() => {
     const counts = new Map<string, number>();
@@ -271,7 +298,10 @@ export default function ChatListPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>{name}</p>
+                          <p className={`flex min-w-0 items-center gap-1 truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                            <span className="truncate">{name}</span>
+                            {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-muted-foreground" aria-label="Muted" />}
+                          </p>
                           <span className="shrink-0 text-[11px] text-muted-foreground">{formatChatTimestamp(thread.lastMessageAt)}</span>
                         </div>
                         <p className={`mt-1 truncate text-xs ${unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}>
@@ -326,6 +356,9 @@ export default function ChatListPage() {
               }}
               onMessageSent={appendMessage}
               backHref="/customer/chat"
+              readByOthers={readByOthersIds}
+              isMuted={mutedThreadIds.has(selectedThread.id)}
+              onToggleMute={() => void toggleMute(selectedThread.id)}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">

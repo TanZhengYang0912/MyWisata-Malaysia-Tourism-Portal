@@ -8,6 +8,7 @@ import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercen
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
+import { AppearanceControl } from '@/components/shared/appearance-control';
 
 type VendorNavItem = { href: string; activeHref?: string; label: string; icon: LucideIcon };
 
@@ -78,7 +79,7 @@ export default function VendorSidebar() {
       <div className="px-5 py-5 border-b border-gray-700">
         <p className="text-xs text-gray-400 uppercase tracking-wider">Vendor Portal</p>
         <p className="font-semibold text-white mt-0.5">Malaysia Tourism</p>
-        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> Outlet operations</p>}
+        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> Outlet operations</p>}
         {!loading && isOutletManager && user?.activeOutletName && <p className="mt-2 truncate text-xs text-gray-400" title={user.activeOutletName}>{user.activeOutletName}</p>}
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
@@ -93,13 +94,16 @@ export default function VendorSidebar() {
             <Icon size={17} />
             {label}
             {href === '/vendor/inbox' && unreadChats > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-white">
                 {unreadChats}
               </span>
             )}
           </Link>
         ))}
       </nav>
+      <div className="border-t border-gray-700 px-2 py-2">
+        <AppearanceControl variant="sidebar-dark" />
+      </div>
       <button
         onClick={signOut}
         className="flex items-center gap-3 px-5 py-4 text-sm text-gray-400 hover:text-red-400 border-t border-gray-700 transition-colors"

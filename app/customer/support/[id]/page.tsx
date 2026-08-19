@@ -11,6 +11,7 @@ import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 
 interface TicketDetail {
@@ -116,9 +117,12 @@ export default function CustomerTicketDetailPage() {
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
-        <span className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 bg-muted text-muted-foreground">
-          {STATUS_LABEL[ticket.status] ?? ticket.status}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs font-semibold rounded-full px-3 py-1.5 bg-muted text-muted-foreground">
+            {STATUS_LABEL[ticket.status] ?? ticket.status}
+          </span>
+          <ReportChatButton chatType="user_admin" threadId={ticket.id} />
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-6">
         {ticket.category} · opened {new Date(ticket.createdAt).toLocaleDateString()}
