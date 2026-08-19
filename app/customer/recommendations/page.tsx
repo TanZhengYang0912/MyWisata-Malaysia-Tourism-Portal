@@ -12,7 +12,7 @@ import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
-import { CustomerPageHeader, CustomerPageShell, CustomerPanel } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
 import { useTranslation } from "react-i18next";
 
@@ -177,8 +177,8 @@ export default function RecommendationsPage() {
   const reviewed = (recs ?? []).filter((r) => r.status !== "pending");
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <CustomerPageTitle
         eyebrow={tCustomer("ui.recommendations.community", { defaultValue: "Community" })}
         title={tCustomer("ui.recommendations.title", { defaultValue: "Recommend a Vendor" })}
         description={tCustomer("ui.recommendations.description", { defaultValue: "Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation." })}
@@ -187,6 +187,8 @@ export default function RecommendationsPage() {
           <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend", { defaultValue: "Recommend" })}
         </Button>}
       />
+
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
@@ -334,6 +336,7 @@ export default function RecommendationsPage() {
           </div>
         )}
       </CustomerPanel>
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }

@@ -15,7 +15,7 @@ import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -154,23 +154,25 @@ export default function AffiliateDashboardPage() {
   // this is how the feature recruits affiliates in the first place.
   if (!isAffiliateEligible(currentUser)) {
     return (
-      <CustomerPageShell>
-      <CustomerPageHeader
-        eyebrow="Community"
-        title="Earn & Share"
-        description="Share activities you love and earn commission when someone books through your link."
-        icon={<Gift size={14} />}
-      />
-      <div className="mx-auto max-w-md py-4 text-center sm:py-8">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-          <Gift size={24} className="text-primary" />
-        </div>
-        <p className="text-sm text-muted-foreground mb-6">Verify your account to unlock affiliate sharing and earnings.</p>
-        <Button asChild>
-          <Link href="/customer/kyc">Verify my account</Link>
-        </Button>
-      </div>
-      </CustomerPageShell>
+      <>
+        <CustomerPageTitle
+          eyebrow="Community"
+          title="Earn & Share"
+          description="Share activities you love and earn commission when someone books through your link."
+          icon={<Gift size={14} />}
+        />
+        <CustomerPageShell className="pt-0 sm:pt-0">
+          <div className="mx-auto max-w-md py-4 text-center sm:py-8">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Gift size={24} className="text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">Verify your account to unlock affiliate sharing and earnings.</p>
+            <Button asChild>
+              <Link href="/customer/kyc">Verify my account</Link>
+            </Button>
+          </div>
+        </CustomerPageShell>
+      </>
     );
   }
 
@@ -188,13 +190,15 @@ export default function AffiliateDashboardPage() {
     .reduce((min, c) => Math.min(min, c.clearsInDays as number), Infinity);
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <CustomerPageTitle
         eyebrow="Community"
         title="Earn & Share"
         description="Share local experiences you love and track the rewards generated through your referral link."
         icon={<Gift size={14} />}
       />
+
+      <CustomerPageShell className="pt-0 sm:pt-0">
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
@@ -392,6 +396,7 @@ export default function AffiliateDashboardPage() {
           )}
         </div>
       </div>
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }
