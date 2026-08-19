@@ -1,6 +1,6 @@
 # Fix wallet migration idempotency
 
-Status: In progress
+Status: Complete
 
 ## Context
 
