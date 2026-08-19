@@ -58,7 +58,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
               style={{ backgroundColor: "#EEF2FF" }}
             />
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.5) 0%, transparent 55%)" }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
           {activity.hot && <div className="absolute left-3 top-3 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">🔥 Trending</div>}
           {activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} /> Verified</div>}
           {activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title="Wheelchair accessible"><Accessibility size={9} /> Accessible</div>}

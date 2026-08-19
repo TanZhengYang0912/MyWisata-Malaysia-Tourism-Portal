@@ -6,6 +6,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Package, ReceiptText, 
 import { useAuth } from "@/components/providers/auth";
 import { getOrdersForUser } from "@/backend/domains/commerce";
 import { getOutlets } from "@/backend/domains/catalogue";
+import { productImageUrl } from "@/lib/storage/product-image";
 import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -107,31 +108,96 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary"><ReceiptText size={14} /> Trip ledger</p>
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Orders, all in one place.</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">Receipts for every booking, meal and Malaysian experience you have collected.</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Receipts for every booking, meal and Malaysian experience you have collected.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2"><Link href={activityHref("itinerary")}><Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">View itinerary</Button></Link><Link href="/customer"><Button className="rounded-full bg-primary px-5 hover:bg-primary/90">Explore again</Button></Link></div>
         </header>
 
-        <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-slate-500"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> orders <span className="text-slate-300">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> paid or completed <span className="text-slate-300">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> with bookings</p>
+        <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> orders <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> paid or completed <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> with bookings</p>
 
-        <section className="mt-6 rounded-2xl border border-border bg-white p-4 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order ID, experience or outlet" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> Filters {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
-          {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => setStatus(event.target.value as OrderFilterStatus)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><select value={type} onChange={(event) => setType(event.target.value as OrderFilterType)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary"><option value="all">All bookings</option><option value="booking">Scheduled Bookings</option><option value="product">Open Experiences</option><option value="mixed">Mixed bookings</option></select><select value={outletId} onChange={(event) => setOutletId(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary"><option value="all">All outlets</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label="Orders from date" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary" /><input type="date" value={to} onChange={(event) => setTo(event.target.value)} aria-label="Orders to date" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary" /></div>}
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order ID, experience or outlet" className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> Filters {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
+          {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => setStatus(event.target.value as OrderFilterStatus)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><select value={type} onChange={(event) => setType(event.target.value as OrderFilterType)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">All bookings</option><option value="booking">Scheduled Bookings</option><option value="product">Open Experiences</option><option value="mixed">Mixed bookings</option></select><select value={outletId} onChange={(event) => setOutletId(event.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">All outlets</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label="Orders from date" className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onChange={(event) => setTo(event.target.value)} aria-label="Orders to date" className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
           {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> Clear filters</button>}
         </section>
 
         {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="mt-7 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">History</p><p className="mt-1 text-sm text-slate-500">{filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found</p></div><span className="hidden items-center gap-1 text-xs text-slate-400 sm:inline-flex"><Clock3 size={14} /> Newest first</span></div>
+        <div className="mt-7 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">History</p><p className="mt-1 text-sm text-muted-foreground">{filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found</p></div><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> Newest first</span></div>
 
         {filteredOrders.length === 0 ? <div className="mt-5"><EmptyState icon={<Package size={40} />} title={hasFilters ? "No orders match these filters" : "No orders yet"} description={hasFilters ? "Try clearing one filter or searching for another activity." : "Your booking and order history will show up here once you check out."} action={hasFilters ? <Button variant="outline" onClick={clearFilters}>Clear filters</Button> : <Link href="/customer"><Button>Explore experiences</Button></Link>} /></div> : <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <div className="mt-4 space-y-3">{pagedOrders.map((order) => { const kind = orderType(order); const orderOutlets = [...new Set(order.items.map((item) => outletMap.get(item.outletId)?.name).filter(Boolean))]; const primaryItem = order.items.find((item) => item.imageUrl) ?? order.items[0]; return <Link key={order.id} href={`/customer/orders/${order.id}`} className="group block rounded-2xl border border-border bg-white p-4 shadow-[0_6px_20px_rgba(1,0,102,0.04)] transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_12px_28px_rgba(1,0,102,0.1)] sm:p-5"><div className="flex items-start gap-3"><div className="relative mt-0.5 h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary">{primaryItem?.imageUrl ? <img src={primaryItem.imageUrl} alt={primaryItem.activityName} loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center">{kind === "booking" ? <CalendarDays size={22} /> : kind === "mixed" ? <ReceiptText size={22} /> : <Package size={22} />}</div>}{order.items.length > 1 && <span className="absolute bottom-1 right-1 rounded-md bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-bold text-white">+{order.items.length - 1}</span>}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-[family-name:var(--font-mono)] text-xs font-bold text-primary">{shortOrderId(order.id)}</span><span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{typeLabel(kind)}</span><StatusBadge status={order.status} /></div><p className="mt-3 text-sm font-semibold leading-5 text-slate-800">{order.items.slice(0, 2).map((item) => `${item.qty}× ${item.activityName}`).join(" · ")}{order.items.length > 2 ? ` +${order.items.length - 2} more` : ""}</p><p className="mt-2 text-xs text-slate-500">{orderOutlets.join(" · ") || "MyWisata marketplace"} · {paymentLabel(order.paymentMethod)}</p></div><ChevronRight size={18} className="mt-1 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-primary" /></div><div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs"><span className="text-slate-500">{dateLabel(order.createdAt)} · {order.items.reduce((sum, item) => sum + item.qty, 0)} items</span><span className="font-[family-name:var(--font-mono)] text-sm font-bold text-primary">RM {order.total.toFixed(2)}</span></div></Link>; })}</div>
-          {pageCount > 1 && <nav aria-label="Order history pagination" className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-white px-4 py-3 shadow-[0_6px_20px_rgba(1,0,102,0.04)] sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-slate-500">Showing {(visiblePage - 1) * PAGE_SIZE + 1}–{Math.min(visiblePage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label="Previous page" disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> Previous</button><span className="min-w-20 text-center text-xs font-semibold text-slate-500">Page {visiblePage} of {pageCount}</span><button type="button" aria-label="Next page" disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={15} /></button></div></nav>}
+          <div className="mt-4 space-y-4">{pagedOrders.map((order) => { 
+            const kind = orderType(order); 
+            const orderOutlets = [...new Set(order.items.map((item) => outletMap.get(item.outletId)?.name).filter(Boolean))]; 
+            const primaryItem = order.items.find((item) => item.imageUrl) ?? order.items[0]; 
+            
+            return (
+              <Link key={order.id} href={`/customer/orders/${order.id}`} className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
+                  {/* Image/Icon Box - Enlarge for better visual */}
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
+                    {primaryItem?.imageUrl ? (
+                      <img src={productImageUrl(primaryItem.imageUrl) || ''} alt={primaryItem.activityName} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent">
+                        {kind === "booking" ? <CalendarDays size={28} className="opacity-80" /> : kind === "mixed" ? <ReceiptText size={28} className="opacity-80" /> : <Package size={28} className="opacity-80" />}
+                      </div>
+                    )}
+                    {order.items.length > 1 && (
+                      <span className="absolute bottom-1.5 right-1.5 rounded-md bg-foreground/80 px-1.5 py-0.5 text-[10px] font-bold text-background shadow backdrop-blur-sm">
+                        +{order.items.length - 1}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Middle Left: Primary Details */}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="font-[family-name:var(--font-mono)] text-xs font-bold text-primary">{shortOrderId(order.id)}</span>
+                      <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">{typeLabel(kind)}</span>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <p className="text-base font-bold leading-snug text-foreground md:text-lg">
+                      {order.items.slice(0, 2).map((item) => `${item.qty}× ${item.activityName}`).join(" · ")}
+                      {order.items.length > 2 ? <span className="text-muted-foreground"> +{order.items.length - 2} more</span> : ""}
+                    </p>
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <span className="truncate">{orderOutlets.join(" · ") || "MyWisata marketplace"}</span>
+                    </p>
+                  </div>
+                  
+                  {/* Middle Right: Date & Meta (Fills the gap on desktop) */}
+                  <div className="hidden min-w-32 flex-col items-end gap-1 border-l border-border pl-6 lg:flex xl:min-w-40">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Order Date</span>
+                    <span className="text-sm font-semibold text-foreground">{dateLabel(order.createdAt)}</span>
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><Package size={12} /> {order.items.reduce((sum, item) => sum + item.qty, 0)} items</span>
+                  </div>
+
+                  {/* Far Right: Total & Action Arrow */}
+                  <div className="flex shrink-0 items-center justify-between gap-4 border-t border-border pt-4 sm:border-0 sm:pt-0 lg:pl-4">
+                    <div className="flex flex-col sm:items-end">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 sm:hidden">Total Amount</span>
+                      <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary lg:text-xl">
+                        RM {order.total.toFixed(2)}
+                      </span>
+                      <span className="mt-1 text-xs font-medium text-muted-foreground sm:hidden">
+                        {dateLabel(order.createdAt)} · {order.items.reduce((sum, item) => sum + item.qty, 0)} items
+                      </span>
+                    </div>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
+                      <ChevronRight size={16} className="transition group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ); 
+          })}</div>
+          {pageCount > 1 && <nav aria-label="Order history pagination" className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">Showing {(visiblePage - 1) * PAGE_SIZE + 1}–{Math.min(visiblePage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label="Previous page" disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> Previous</button><span className="min-w-20 text-center text-xs font-semibold text-muted-foreground">Page {visiblePage} of {pageCount}</span><button type="button" aria-label="Next page" disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={15} /></button></div></nav>}
         </>}
       </div>
     </div>

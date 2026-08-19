@@ -56,7 +56,7 @@ function StateDetailPanel({
   );
 
   return (
-    <aside aria-label="Selected state details" className="flex min-h-[280px] flex-col justify-between rounded-[1.8rem] border border-[#d7dcef] bg-white p-5 shadow-[0_14px_34px_rgba(1,0,102,0.07)] sm:p-6 lg:h-[620px] lg:min-h-0 lg:overflow-y-auto">
+    <aside aria-label="Selected state details" className="flex min-h-[280px] flex-col justify-between rounded-[1.8rem] border border-border bg-card p-5 shadow-sm sm:p-6 lg:h-[620px] lg:min-h-0 lg:overflow-y-auto">
       <div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Destination detail</p>

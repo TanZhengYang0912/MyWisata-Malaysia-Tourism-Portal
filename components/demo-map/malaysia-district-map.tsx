@@ -266,7 +266,7 @@ export function MalaysiaDistrictMap({
         </div>
         <div className="flex items-center gap-2">
           {stateId && (
-            <span className="rounded-full px-3 py-1.5 text-[13px] font-semibold" style={{ backgroundColor: "#ffffff", color: COAST }}>
+            <span className="rounded-full bg-card px-3 py-1.5 text-[13px] font-semibold" style={{ color: COAST }}>
               {districts.length > 0
                 ? `${districts.length} daerah · ${stockedCount} with listings`
                 : activeState?.kind === "federal-territory"
@@ -278,7 +278,7 @@ export function MalaysiaDistrictMap({
             <button
               type="button"
               onClick={() => { onSelectState(null); onSelectDistrict(null); }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-foreground transition hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="inline-flex items-center gap-1.5 rounded-full bg-card border border-border px-3 py-1.5 text-[13px] font-bold text-foreground transition hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <ArrowLeft size={12} /> All Malaysia
             </button>

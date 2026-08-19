@@ -202,16 +202,16 @@ export function MalaysiaStateMap({
   }
 
   return (
-    <div className="relative w-full max-w-full aspect-[1600/1060] min-h-[440px] overflow-hidden rounded-[1.8rem] border border-[#c5cfee] bg-[#eef2ff] shadow-none sm:min-h-[500px] lg:h-[620px] lg:aspect-auto lg:min-h-0">
-      <div className="pointer-events-none absolute left-5 right-5 top-4 z-10 border-b border-[#b7c6d4] pb-3 sm:left-7 sm:right-7 sm:pb-4">
+    <div className="relative w-full max-w-full aspect-[1600/1060] min-h-[440px] overflow-hidden rounded-[1.8rem] border border-border bg-card shadow-sm sm:min-h-[500px] lg:h-[620px] lg:aspect-auto lg:min-h-0">
+      <div className="pointer-events-none absolute left-5 right-5 top-4 z-10 border-b border-border pb-3 sm:left-7 sm:right-7 sm:pb-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#91a4b5] 2xl:text-[11px]">Malaysia</p>
-            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-[#1d2b3a] sm:text-[24px] 2xl:text-[30px]">All states and federal territories</h2>
-            <p className="mt-1 max-w-2xl text-[10px] text-[#718395] 2xl:text-sm">Choose one state to reveal its places.</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary 2xl:text-[11px]">Malaysia</p>
+            <h2 className="mt-1 font-[family-name:var(--font-display)] text-[20px] font-bold leading-tight text-foreground sm:text-[24px] 2xl:text-[30px]">All states and federal territories</h2>
+            <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">Choose one state to reveal its places.</p>
           </div>
-          <div className="hidden shrink-0 text-right text-[10px] text-[#718395] lg:block 2xl:text-xs">
-            <p className="font-bold text-[#1d2b3a]">16 regions · 64 places</p>
+          <div className="hidden shrink-0 text-right text-[10px] text-muted-foreground lg:block 2xl:text-xs">
+            <p className="font-bold text-foreground">16 regions · 64 places</p>
             <p className="mt-1">Hover or select a region</p>
           </div>
         </div>

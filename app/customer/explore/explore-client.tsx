@@ -73,7 +73,7 @@ export function ExploreClient({
             </div>
 
             {/* Tab switch */}
-            <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-white p-2 shadow-sm">
+            <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
               <button
                 type="button"
                 onClick={() => setTab("destinations")}

@@ -120,7 +120,7 @@ export function buildPublicOutletProfile(input: PublicOutletProfileInput): Publi
 
 export function getOutletProductAction(input: OutletProductActionInput): OutletProductAction {
   if (input.availableStock === 0) return { kind: 'details', reason: 'out_of_stock' };
-  if (input.requiresBooking && !clean(input.firstAvailableSlotId)) {
+  if (input.requiresBooking) {
     return { kind: 'details', reason: 'slot_required' };
   }
 

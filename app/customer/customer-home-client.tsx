@@ -10,7 +10,48 @@ import { ActivityCard } from "@/components/customer/activity-card";
 import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const PLACEHOLDER_TEXTS = [
+  "Where should we wander?",
+  "Try 'Penang street food'...",
+  "Try 'Mount Kinabalu hike'...",
+  "Try 'Langkawi island hopping'...",
+  "Try 'Melaka heritage trail'...",
+  "Try 'Borneo rainforest'..."
+];
+
+function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpeed = 40, pauseDelay = 2000) {
+  const [text, setText] = useState("");
+  const [index, setIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
+    const currentText = texts[index];
+
+    if (isDeleting) {
+      if (text.length > 0) {
+        timeout = setTimeout(() => setText(currentText.substring(0, text.length - 1)), deletingSpeed);
+      } else {
+        setIsDeleting(false);
+        setIndex((i) => (i + 1) % texts.length);
+      }
+    } else {
+      if (text.length < currentText.length) {
+        timeout = setTimeout(() => setText(currentText.substring(0, text.length + 1)), typingSpeed);
+      } else {
+        timeout = setTimeout(() => setIsDeleting(true), pauseDelay);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, index, texts, typingSpeed, deletingSpeed, pauseDelay]);
+
+  // Provide a minimum height character (zero-width space or space) to avoid collapse
+  return text || " ";
+}
 
 export type DemoVendor = {
   id: string;
@@ -33,31 +74,31 @@ function VendorCard({ vendor }: { vendor: DemoVendor }) {
   const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || "Malaysia";
 
   return (
-    <article className="group overflow-hidden rounded-[22px] border border-[#d8deef] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+    <article className="group overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md">
       <Link href={`/customer/vendor/${vendor.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
         <div className="relative aspect-[1.5] overflow-hidden bg-secondary">
           {visual.coverUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={visual.coverUrl} alt={`${vendor.name} cover`} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/70 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[linear-gradient(135deg,#010066,#172b72)] text-white">
               <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/25 bg-white/10 text-xl font-black">{visual.initials}</span>
             </div>
           )}
-          <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-800"><ShieldCheck size={12} className="text-primary" /> Verified</div>
+          <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground"><ShieldCheck size={12} className="text-primary" /> Verified</div>
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</div>
         </div>
       </Link>
       <div className="p-4 space-y-2.5">
         <div className="flex items-start justify-between gap-3">
           <Link href={`/customer/vendor/${vendor.id}`} className="min-w-0">
-            <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{vendor.name}</h3>
+            <h3 className="line-clamp-2 text-sm font-bold text-foreground">{vendor.name}</h3>
           </Link>
           {visual.logoUrl ? (
-             <span className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-[#d8deef] bg-white p-0.5">
+             <span className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border bg-card p-0.5">
                {/* eslint-disable-next-line @next/next/no-img-element */}
                <img src={visual.logoUrl} alt="" className="h-full w-full object-cover" />
              </span>
@@ -65,8 +106,8 @@ function VendorCard({ vendor }: { vendor: DemoVendor }) {
              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-primary">{visual.initials}</span>
           )}
         </div>
-        <p className="line-clamp-2 min-h-10 text-[11px] leading-5 text-slate-500">{vendor.description || `${formatBusinessType(vendor.businessType)} in ${location}.`}</p>
-        <div className="flex items-center justify-between text-[11px] text-slate-500">
+        <p className="line-clamp-2 min-h-10 text-[11px] leading-5 text-muted-foreground">{vendor.description || `${formatBusinessType(vendor.businessType)} in ${location}.`}</p>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><Building2 size={12} /> {vendor.outlets.length} outlet{vendor.outlets.length === 1 ? "" : "s"}</span>
           <span className="truncate">{formatBusinessType(vendor.businessType)}</span>
         </div>
@@ -90,6 +131,7 @@ export function CustomerHomeClient({
   const { savedStates, toggleSaved } = useSavedDestinations();
   const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
   const destinationRailRef = useRef<HTMLDivElement>(null);
+  const placeholderText = useTypewriterPlaceholder(PLACEHOLDER_TEXTS);
 
   const activeDestination = useMemo(
     () => MALAYSIA_DESTINATIONS.find((destination) => destination.state === activeState) ?? MALAYSIA_DESTINATIONS[0],
@@ -134,8 +176,8 @@ export function CustomerHomeClient({
               <h1 className="atlas-enter atlas-delay-2 max-w-xl font-[family-name:var(--font-display)] text-5xl font-bold leading-[0.96] tracking-[-0.04em] text-[#ffffff] sm:text-7xl lg:text-6xl">Find the place that <span className="text-[#ffcc00]">changes your pace.</span></h1>
               <p className="atlas-enter atlas-delay-3 mt-6 max-w-lg text-base leading-7 text-white/65 sm:text-lg lg:mt-4 lg:text-base">From island mornings to rainforest evenings, start with a feeling and let Malaysia write the next chapter.</p>
 
-              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-white p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-6">
-                <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-[#64748b]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Where should we wander?" aria-label="Search Malaysia experiences" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8]" /></div>
+              <form onSubmit={submitSearch} className="atlas-enter atlas-delay-4 mt-8 flex max-w-xl flex-col gap-2 rounded-[22px] border border-white/15 bg-card p-2 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center lg:mt-6">
+                <div className="flex min-w-0 flex-1 items-center gap-3 px-3"><Search size={18} className="shrink-0 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={placeholderText} aria-label="Search Malaysia experiences" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" /></div>
                 <button type="submit" className="atlas-shimmer inline-flex items-center justify-center gap-2 rounded-[16px] bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">Start exploring <ArrowRight size={15} /></button>
               </form>
 
@@ -150,16 +192,16 @@ export function CustomerHomeClient({
               <div className="atlas-depth-card absolute right-0 top-7 hidden w-[72%] rotate-[5deg] overflow-hidden rounded-[28px] border border-white/20 bg-[#11115f] shadow-2xl lg:block lg:top-8 lg:h-[380px] lg:w-[68%]" aria-hidden="true">
                 <div className="relative aspect-[0.72] opacity-80 lg:h-full lg:aspect-auto"><Image src={nextDestination.image} alt="" fill sizes="320px" className="object-cover" /><div className="absolute inset-0 bg-[#010066]/35" /></div>
               </div>
-              <div className="atlas-note absolute left-0 top-14 z-30 hidden w-[80%] -rotate-[3deg] rounded-2xl border border-[#ffcc00]/40 bg-white px-4 py-3 text-[#0f172a] shadow-xl lg:block lg:left-2 lg:top-20 lg:w-[70%]">
-                <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={15} className="text-[#ffcc00]" /></div>
+              <div className="atlas-note absolute left-0 top-14 z-30 hidden w-[80%] -rotate-[3deg] rounded-2xl border border-[#ffcc00]/40 bg-card px-4 py-3 text-foreground shadow-xl lg:block lg:left-2 lg:top-20 lg:w-[70%]">
+                <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={15} className="text-highlight-yellow" /></div>
                 <p className="mt-1 font-[family-name:var(--font-display)] text-lg font-bold">Keep this one close.</p>
               </div>
               <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[88%]">
                 <div className="relative aspect-[0.78] lg:h-[500px] lg:aspect-auto">
                   <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#00004d]/90 via-[#00004d]/10 to-transparent" />
-                  <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-white/95 px-3 py-2.5 text-[#0f172a] shadow-lg backdrop-blur lg:hidden">
-                    <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#010066]">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={13} className="shrink-0 text-[#ffcc00]" /></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+                  <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-card/95 px-3 py-2.5 text-foreground shadow-lg backdrop-blur lg:hidden">
+                    <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-primary">Postcard {String(activeIndex + 1).padStart(2, "0")} / 16</span><MapPin size={13} className="shrink-0 text-highlight-yellow" /></div>
                     <p className="mt-1 font-[family-name:var(--font-display)] text-base font-bold leading-tight">Keep this one close.</p>
                   </div>
                   <div className="atlas-desktop-spotlight absolute right-5 top-5 z-30 hidden rounded-2xl border border-white/20 bg-[#00004d]/90 px-4 py-3 text-right shadow-lg backdrop-blur lg:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">In the spotlight</p><p className="mt-1 text-sm font-bold text-white">{activeDestination.state}</p><p className="mt-1 text-[11px] text-[#ffcc00]">Island mood</p></div>
@@ -197,7 +239,7 @@ export function CustomerHomeClient({
                     className={`group relative h-48 w-36 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40 sm:h-56 sm:w-44 lg:h-44 transition border ${isSelected ? "border-[#ffcc00] ring-2 ring-[#ffcc00]/35" : "border-white/15 hover:border-white/40"}`}
                   >
                     <Image src={dest.image} alt={dest.state} fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(min-width: 640px) 176px, 144px" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-[#00004d]/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute bottom-3 left-3 text-left">
                       <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#ffcc00]">{dest.zone}</p>
                       <p className="mt-1 text-sm font-bold text-white">{dest.state}</p>
@@ -237,6 +279,7 @@ export function CustomerHomeClient({
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">Popular Experiences</h2>
+            <Link href="/customer/explore" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">See all <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {popular.slice(0, 8).map((activity) => (
@@ -249,7 +292,7 @@ export function CustomerHomeClient({
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">Featured Partners</h2>
-            <Link href="/customer/partners" className="text-sm font-bold text-primary hover:underline">View partners</Link>
+            <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">View partners <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {vendors.slice(0, 8).map((vendor) => (

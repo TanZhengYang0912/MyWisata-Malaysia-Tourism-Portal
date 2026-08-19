@@ -112,13 +112,14 @@ type OrderItemRow = {
   unit_price: number;
   quantity: number;
   outlet_id: string;
+  products?: { cover_url: string | null } | null;
 };
 
 function mapOrderItem(row: OrderItemRow): OrderItem {
   return {
     activityId: row.product_id ?? "",
     activityName: row.product_name,
-    imageUrl: row.image_url ?? undefined,
+    imageUrl: row.image_url ?? row.products?.cover_url ?? undefined,
     variantLabel: row.variant_name ?? "Standard",
     slotStartsAt: row.slot_starts_at ?? undefined,
     unitPrice: Number(row.unit_price),
@@ -141,7 +142,7 @@ type OrderRow = {
 };
 
 const ORDER_SELECT =
-  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id)";
+  "id,user_id,status,subtotal,discount_amount,total_amount,payment_method,voucher_code,created_at,order_items(product_id,product_name,image_url,variant_name,slot_starts_at,unit_price,quantity,outlet_id,products(cover_url))";
 
 function mapOrder(row: OrderRow): Order {
   return {
