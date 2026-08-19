@@ -34,7 +34,6 @@ function orderType(order: Order): Exclude<OrderFilterType, "all"> {
   return hasBooking && hasProduct ? "mixed" : hasBooking ? "booking" : "product";
 }
 function typeLabel(type: Exclude<OrderFilterType, "all">) { return type === "mixed" ? "Mixed booking" : type === "booking" ? "Booking" : "Experience"; }
-function paymentLabel(method?: string) { return ({ stripe_card: "Stripe demo card", ewallet: "E-wallet", bank_transfer: "Bank transfer", wallet: "MyWisata wallet", mock_card: "Demo card" } as Record<string, string>)[method ?? ""] || "Demo payment"; }
 function dateLabel(value: string) { return new Date(value).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }); }
 function matchesDate(value: string, from: string, to: string) {
   const time = new Date(value).getTime();
@@ -130,7 +129,6 @@ export default function OrdersPage() {
         <div className="mt-7 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">History</p><p className="mt-1 text-sm text-muted-foreground">{filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"} found</p></div><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> Newest first</span></div>
 
         {filteredOrders.length === 0 ? <div className="mt-5"><EmptyState icon={<Package size={40} />} title={hasFilters ? "No orders match these filters" : "No orders yet"} description={hasFilters ? "Try clearing one filter or searching for another activity." : "Your booking and order history will show up here once you check out."} action={hasFilters ? <Button variant="outline" onClick={clearFilters}>Clear filters</Button> : <Link href="/customer"><Button>Explore experiences</Button></Link>} /></div> : <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <div className="mt-4 space-y-4">{pagedOrders.map((order) => { 
             const kind = orderType(order); 
             const orderOutlets = [...new Set(order.items.map((item) => outletMap.get(item.outletId)?.name).filter(Boolean))]; 
@@ -142,6 +140,7 @@ export default function OrdersPage() {
                   {/* Image/Icon Box - Enlarge for better visual */}
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
                     {primaryItem?.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={productImageUrl(primaryItem.imageUrl) || ''} alt={primaryItem.activityName} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent">

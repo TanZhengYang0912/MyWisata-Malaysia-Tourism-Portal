@@ -35,8 +35,7 @@ function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpe
       if (text.length > 0) {
         timeout = setTimeout(() => setText(currentText.substring(0, text.length - 1)), deletingSpeed);
       } else {
-        setIsDeleting(false);
-        setIndex((i) => (i + 1) % texts.length);
+        timeout = setTimeout(() => { setIsDeleting(false); setIndex((i) => (i + 1) % texts.length); }, 0);
       }
     } else {
       if (text.length < currentText.length) {
