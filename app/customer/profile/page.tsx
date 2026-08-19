@@ -42,6 +42,14 @@ function ProfileCompletionCard({ percentage, missing, t }: { percentage: number;
   );
 }
 
+function ProfilePageTitle({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10">
+      <CustomerPageHeader eyebrow={eyebrow} title={title} description={description} />
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, refreshUser } = useAuth();
@@ -278,12 +286,12 @@ export default function ProfilePage() {
 
   if (isDone) return (
     <>
-      <CustomerPageShell className="pb-0">
-        <CustomerPageHeader
-          eyebrow={tCustomer("accountGroups.account")}
-          title={tCustomer("ui.profileWizard.title")}
-          description={tCustomer("ui.profileWizard.description")}
-        />
+      <ProfilePageTitle
+        eyebrow={tCustomer("accountGroups.account")}
+        title={tCustomer("ui.profileWizard.title")}
+        description={tCustomer("ui.profileWizard.description")}
+      />
+      <CustomerPageShell className="pt-0 pb-0 sm:pt-0">
         <div className="text-sm font-semibold text-primary" aria-label={tCustomer("ui.profileWizard.verificationComplete")}>
           {tCustomer("ui.profileWizard.stepOf", { current: 5, total: 5 })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: 100 })}
         </div>
@@ -299,12 +307,13 @@ export default function ProfilePage() {
   const currentProgress = wizardProgress.currentStep - 1;
 
   return (
-    <CustomerPageShell>
-      <CustomerPageHeader
+    <>
+      <ProfilePageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.profileWizard.completeTitle")}
         description={tCustomer("ui.profileWizard.completeDescription")}
       />
+      <CustomerPageShell className="pt-0 sm:pt-0">
       <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
         <span className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
@@ -541,6 +550,7 @@ export default function ProfilePage() {
           />
         </div>
       )}
-    </CustomerPageShell>
+      </CustomerPageShell>
+    </>
   );
 }
