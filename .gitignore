@@ -21,6 +21,12 @@
 # production
 /build
 
+# locally generated exports
+/output/
+
+# local PDF renders and other temporary workspace files
+/tmp/
+
 # misc
 .DS_Store
 *.pem
