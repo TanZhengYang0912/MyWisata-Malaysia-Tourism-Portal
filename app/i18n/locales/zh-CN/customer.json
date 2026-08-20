@@ -105,20 +105,6 @@
     "hiddenGem": "隐藏宝藏"
   },
   "preferences": {
-    "travelStyles": {
-      "budget_backpacker": "经济背包客",
-      "mid_range": "中档探索者",
-      "luxury": "豪华旅行者",
-      "business": "商务旅行者",
-      "family_group": "家庭团体"
-    },
-    "groupCompositions": {
-      "solo": "独自旅行",
-      "couple": "情侣",
-      "friends": "朋友团体",
-      "family": "带孩子的家庭",
-      "senior": "长者团体"
-    },
     "budgetRanges": {
       "budget": "经济型（每天低于 RM 100）",
       "mid_range": "中档（每天 RM 100–500）",
@@ -961,8 +947,6 @@
       "notesPlaceholder": "例如：我喜欢街头美食、避开拥挤商场，并且总是带狗旅行……",
       "basedOnActivity": "根据您的活动",
       "interests": "兴趣（可多选）",
-      "travelStyle": "旅行风格",
-      "travelling": "同行人员（可多选）",
       "budgetRange": "预算范围",
       "preferredDistance": "偏好距离",
       "mobilityAccessibility": "行动与无障碍",
@@ -1066,6 +1050,7 @@
       "photoHint": "JPEG、PNG 或 WebP · 每张最大 5 MB",
       "photosLabel": "添加 1 至 5 张照片",
       "uploadHint": "点击上传区域添加照片。",
+      "photoReplacementConfirm": "您已经选择了 5 张照片。继续添加会用最新选择的照片替换最旧的照片。是否继续？",
       "contact": "至少添加一种联系方式",
       "imagePermission": "我拥有这些图片或有权发布它们",
       "submit": "提交推荐",
@@ -1259,6 +1244,7 @@
       "title": "我的钱包",
       "description": "管理可消费余额、收益和提现。",
       "topupSuccess": "充值已发起！支付完成后余额会更新（通常在一分钟内）。",
+      "withdrawalSubmitted": "提现申请已成功提交，现正等待审核。",
       "bankSetupSubmitted": "银行账户设置已提交。Stripe 将核验你的资料，可能需要几分钟。",
       "setupExpired": "设置链接已过期，请重试。",
       "topupBalance": "充值余额",
@@ -1295,7 +1281,8 @@
       "minimumWithdrawal": "最低提现金额为 RM {{amount}}。",
       "submitWithdrawalError": "提现申请提交失败。",
       "submitError": "提交失败。",
-      "minimumTopUp": "最低充值金额为 RM 1.00。",
+      "minimumTopUp": "最低充值金额为 RM {{amount}}。",
+      "maximumTopUp": "最高充值金额为 RM {{amount}}。",
       "topUpError": "无法发起充值。",
       "bankWithdrawalsEnabled": "银行提款已启用",
       "completePayoutDetails": "请完成收款资料",
@@ -1380,7 +1367,6 @@
       "deletePlaceholder": "输入 DELETE 进行确认",
       "closeAccount": "关闭账户",
       "noInterests": "尚未选择兴趣",
-      "travelStyleNotSet": "未设置旅行风格",
       "budgetNotSet": "未设置预算",
       "mobilityNotSet": "未设置行动需求",
       "support": "支持",

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   const [{ data: profile, error: profileError }, { data: survey, error: surveyError }] = await Promise.all([
     db.from('users').select('tier,city').eq('id', user.id).maybeSingle(),
-    db.from('preference_survey_responses').select('interests,budget_range,mobility_needs,preferred_distance').eq('user_id', user.id).maybeSingle(),
+    db.from('preference_survey_responses').select('interests,budget_range,mobility_needs,preferred_radius_km').eq('user_id', user.id).maybeSingle(),
   ]);
   if (profileError || !profile) return apiFail('PROFILE_UNAVAILABLE', 'Unable to read your verification status', 500);
   if (!PHONE_READY_TIERS.has(profile.tier)) return apiFail('PHONE_VERIFICATION_REQUIRED', 'Phone verification is required before using recommendations', 403);
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     interests: normalizeCategorySlugs(survey?.interests),
     budgetRange: survey?.budget_range ?? 'mid_range',
     mobilityNeeds: survey?.mobility_needs ?? 'none',
-    preferredDistance: survey?.preferred_distance ?? 'no_preference',
+    preferredRadiusKm: survey?.preferred_radius_km ?? 20,
   };
   const ranked = rankPersonalizedActivities(activities, preferences).slice(0, 6);
   const cards = await Promise.all(ranked.map(async ({ activity, score, whyItFits }) => ({

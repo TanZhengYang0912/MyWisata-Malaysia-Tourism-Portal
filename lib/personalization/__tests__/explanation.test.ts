@@ -5,7 +5,7 @@ vi.mock('server-only', () => ({}));
 import { describeFit } from '@/lib/personalization/explanation';
 
 const input = {
-  preferences: { interests: ['food'], budgetRange: 'budget', mobilityNeeds: 'none', preferredDistance: 'nearby' },
+  preferences: { interests: ['food'], budgetRange: 'budget', mobilityNeeds: 'none', preferredRadiusKm: 5 },
   activity: { name: 'Penang food walk', category: 'Food & Dining', description: 'Public itinerary', tags: ['food'], price: 40 },
 };
 
@@ -32,6 +32,7 @@ describe('describeFit', () => {
     await expect(describeFit(input)).resolves.toBe('A concise public recommendation.');
     const body = JSON.stringify(fetchMock.mock.calls[0]?.[1]?.body);
     expect(body).toContain('Penang food walk');
+    expect(body).toContain('preferredRadiusKm');
     expect(body).not.toContain('email');
     expect(body).not.toContain('phone');
   });

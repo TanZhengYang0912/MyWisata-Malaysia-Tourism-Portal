@@ -1,11 +1,9 @@
 import type { ComputedActivity } from '@/backend/core/types';
 
-export type TravelPreferences = { interests: string[]; budgetRange: string; mobilityNeeds: string; preferredDistance: string };
-
-const DISTANCE_KM: Record<string, number | undefined> = { walking: 1, nearby: 5, travel: 20 };
+export type TravelPreferences = { interests: string[]; budgetRange: string; mobilityNeeds: string; preferredRadiusKm: number };
 
 export function rankPersonalizedActivities(activities: ComputedActivity[], preferences: TravelPreferences) {
-  const maxDistance = DISTANCE_KM[preferences.preferredDistance];
+  const maxDistance = preferences.preferredRadiusKm > 0 ? preferences.preferredRadiusKm : undefined;
   return activities
     .filter((activity) => maxDistance === undefined || activity.distanceKm === undefined || activity.distanceKm <= maxDistance)
     .map((activity) => {

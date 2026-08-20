@@ -11,7 +11,7 @@ import type { ProfileSummary } from "@/backend/core/types";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
-import { BUDGET_RANGES, MOBILITY_NEEDS, TRAVEL_STYLES } from "@/backend/domains/preferences";
+import { BUDGET_RANGES, MOBILITY_NEEDS } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
@@ -193,7 +193,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
       <SectionCard id="preferences" title={tCustomer("ui.preferencesPage.eyebrow")} description={tCustomer("ui.preferencesPage.description")}>
         <div className="space-y-2 text-sm">
           <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map((slug) => { const key = getOptionalDiscoveryCategoryLabelKey(slug); return key ? tCustomer(key) : slug; }).join(", ") : tCustomer("ui.profileSections.noInterests")}</p>
-          {summary.survey && <p className="text-muted-foreground">{preferenceLabelKey(TRAVEL_STYLES, summary.survey.travelStyle) ? tCustomer(preferenceLabelKey(TRAVEL_STYLES, summary.survey.travelStyle)!) : tCustomer("ui.profileSections.travelStyleNotSet")} · {preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange) ? tCustomer(preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange)!) : tCustomer("ui.profileSections.budgetNotSet")} · {preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds) ? tCustomer(preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds)!) : tCustomer("ui.profileSections.mobilityNotSet")}</p>}
+          {summary.survey && <p className="text-muted-foreground">{preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange) ? tCustomer(preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange)!) : tCustomer("ui.profileSections.budgetNotSet")} · {preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds) ? tCustomer(preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds)!) : tCustomer("ui.profileSections.mobilityNotSet")}</p>}
           <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>{tCustomer("ui.preferencesEditor.save")} <ChevronRight size={14} /></Button>
         </div>
       </SectionCard>

@@ -25,7 +25,7 @@ describe('rankPersonalizedActivities', () => {
     const ranked = rankPersonalizedActivities([
       activity('museum', { category: 'Heritage & Culture' }),
       activity('food-tour', { tags: ['food'] }),
-    ], { interests: ['food'], budgetRange: 'budget', mobilityNeeds: 'none', preferredDistance: 'no_preference' });
+    ], { interests: ['food'], budgetRange: 'budget', mobilityNeeds: 'none', preferredRadiusKm: 0 });
 
     expect(ranked[0]?.activity.id).toBe('food-tour');
   });
@@ -34,16 +34,25 @@ describe('rankPersonalizedActivities', () => {
     const ranked = rankPersonalizedActivities([
       activity('nearby', { distanceKm: 0.8 }),
       activity('far-away', { distanceKm: 8 }),
-    ], { interests: [], budgetRange: 'budget', mobilityNeeds: 'none', preferredDistance: 'walking' });
+    ], { interests: [], budgetRange: 'budget', mobilityNeeds: 'none', preferredRadiusKm: 1 });
 
     expect(ranked.map((item) => item.activity.id)).toEqual(['nearby']);
+  });
+
+  it('treats a zero preferred radius as any distance', () => {
+    const ranked = rankPersonalizedActivities([
+      activity('nearby', { distanceKm: 0.8 }),
+      activity('far-away', { distanceKm: 80 }),
+    ], { interests: [], budgetRange: 'budget', mobilityNeeds: 'none', preferredRadiusKm: 0 });
+
+    expect(ranked).toHaveLength(2);
   });
 
   it('scores activities carrying a selected mobility tag', () => {
     const ranked = rankPersonalizedActivities([
       activity('plain'),
       activity('accessible', { tags: ['wheelchair accessible'] }),
-    ], { interests: [], budgetRange: 'budget', mobilityNeeds: 'wheelchair', preferredDistance: 'no_preference' });
+    ], { interests: [], budgetRange: 'budget', mobilityNeeds: 'wheelchair', preferredRadiusKm: 0 });
 
     expect(ranked[0]?.activity.id).toBe('accessible');
   });

@@ -44,7 +44,7 @@ export async function describeFit(input: DescribeFitInput): Promise<string> {
         interests: input.preferences.interests,
         budgetRange: input.preferences.budgetRange,
         mobilityNeeds: input.preferences.mobilityNeeds,
-        preferredDistance: input.preferences.preferredDistance,
+        preferredRadiusKm: input.preferences.preferredRadiusKm,
       },
       activity: {
         name: input.activity.name,

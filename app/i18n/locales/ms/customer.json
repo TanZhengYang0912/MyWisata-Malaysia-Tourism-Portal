@@ -105,20 +105,6 @@
     "hiddenGem": "Permata Tersembunyi"
   },
   "preferences": {
-    "travelStyles": {
-      "budget_backpacker": "Pengembara beg bajet",
-      "mid_range": "Penjelajah pertengahan",
-      "luxury": "Pengembara mewah",
-      "business": "Pengembara perniagaan",
-      "family_group": "Kumpulan keluarga"
-    },
-    "groupCompositions": {
-      "solo": "Solo",
-      "couple": "Pasangan",
-      "friends": "Kumpulan rakan",
-      "family": "Keluarga dengan kanak-kanak",
-      "senior": "Kumpulan warga emas"
-    },
     "budgetRanges": {
       "budget": "Bajet (< RM 100/hari)",
       "mid_range": "Pertengahan (RM 100–500/hari)",
@@ -961,8 +947,6 @@
       "notesPlaceholder": "cth. Saya suka makanan jalanan, mengelakkan pusat beli-belah sesak dan sentiasa mengembara dengan anjing saya…",
       "basedOnActivity": "Berdasarkan aktiviti anda",
       "interests": "Minat (pilih semua yang berkenaan)",
-      "travelStyle": "Gaya perjalanan",
-      "travelling": "Siapa yang mengembara (pilih semua yang berkenaan)",
       "budgetRange": "Julat bajet",
       "preferredDistance": "Jarak pilihan",
       "mobilityAccessibility": "Mobiliti & kebolehcapaian",
@@ -1066,6 +1050,7 @@
       "photoHint": "JPEG, PNG atau WebP · sehingga 5 MB setiap satu",
       "photosLabel": "Tambah 1 hingga 5 foto",
       "uploadHint": "Klik kawasan muat naik untuk menambah foto.",
+      "photoReplacementConfirm": "Anda sudah memilih 5 foto. Menambah foto baharu akan menggantikan foto paling lama dengan pilihan terbaharu. Teruskan?",
       "contact": "Tambah sekurang-kurangnya satu kaedah hubungan",
       "imagePermission": "Saya memiliki imej ini atau mempunyai kebenaran untuk menerbitkannya",
       "submit": "Hantar cadangan",
@@ -1259,6 +1244,7 @@
       "title": "Dompet Saya",
       "description": "Urus baki yang boleh dibelanjakan, pendapatan dan pengeluaran bayaran.",
       "topupSuccess": "Tambah nilai dimulakan! Baki anda akan dikemas kini selepas bayaran selesai (biasanya dalam seminit).",
+      "withdrawalSubmitted": "Permintaan pengeluaran berjaya dihantar. Permintaan ini kini menunggu semakan.",
       "bankSetupSubmitted": "Penyediaan akaun bank dihantar. Stripe akan mengesahkan butiran anda — ini mungkin mengambil beberapa minit.",
       "setupExpired": "Pautan penyediaan telah tamat tempoh. Sila cuba lagi.",
       "topupBalance": "Baki tambah nilai",
@@ -1295,7 +1281,8 @@
       "minimumWithdrawal": "Pengeluaran minimum ialah RM {{amount}}.",
       "submitWithdrawalError": "Gagal menghantar permintaan pengeluaran.",
       "submitError": "Gagal menghantar.",
-      "minimumTopUp": "Tambah nilai minimum ialah RM 1.00.",
+      "minimumTopUp": "Tambah nilai minimum ialah RM {{amount}}.",
+      "maximumTopUp": "Tambah nilai maksimum ialah RM {{amount}}.",
       "topUpError": "Gagal memulakan tambah nilai.",
       "bankWithdrawalsEnabled": "Pengeluaran bank diaktifkan",
       "completePayoutDetails": "Sila lengkapkan butiran pembayaran anda",
@@ -1380,7 +1367,6 @@
       "deletePlaceholder": "Taip DELETE untuk mengesahkan",
       "closeAccount": "Tutup akaun",
       "noInterests": "Tiada minat dipilih lagi",
-      "travelStyleNotSet": "Gaya perjalanan belum ditetapkan",
       "budgetNotSet": "Bajet belum ditetapkan",
       "mobilityNotSet": "Keperluan mobiliti belum ditetapkan",
       "support": "Sokongan",

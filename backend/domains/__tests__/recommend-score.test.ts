@@ -4,7 +4,6 @@ import type { ComputedActivity } from "@/backend/core/types";
 
 const basePrefs: UserPrefs = {
   interests: ["food"],
-  travelStyle: "mid_range",
   budgetRange: "mid_range",
   mobilityNeeds: "none",
   petFriendly: false,

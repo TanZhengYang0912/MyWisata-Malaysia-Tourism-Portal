@@ -20,13 +20,11 @@ export const bioSchema = z.object({
 
 // ── Preference survey ─────────────────────────────────────────────────────────
 // interests are category slugs (backend/domains/preferences.ts), so they join
-// straight to listings. travelStyle now holds the real §11.1 vocabulary.
+// straight to listings.
 export const preferenceSurveySchema = z.object({
   interests:         z.array(z.enum(INTEREST_SLUGS as [string, ...string[]])).min(1).max(4),
-  travelStyle:       z.enum(['budget_backpacker', 'mid_range', 'luxury', 'business', 'family_group']),
   budgetRange:       z.enum(['budget', 'mid_range', 'luxury']),
   mobilityNeeds:     z.enum(['none', 'limited', 'wheelchair']).default('none'),
-  groupComposition:  z.array(z.enum(['solo', 'couple', 'friends', 'family', 'senior'])).max(5).default([]),
   petFriendly:       z.boolean().default(false),
   preferredRadiusKm: z.number().int().min(0).max(500).default(20),
   notes:             z.string().trim().max(500).optional(),

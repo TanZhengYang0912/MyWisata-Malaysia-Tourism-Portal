@@ -19,4 +19,11 @@ describe("recommendation evidence form contract", () => {
     expect(page).toContain("changes_requested");
     expect(page).toContain('tCustomer("ui.recommendations.notEditable")');
   });
+
+  it("warns before replacing the oldest selected photos", () => {
+    expect(page).toContain("allowRecommendationImageSelection");
+    expect(page).toContain("replacementConfirmedRef");
+    expect(page).toContain('tCustomer("ui.recommendations.photoReplacementConfirm")');
+    expect(page).toContain("event.preventDefault()");
+  });
 });

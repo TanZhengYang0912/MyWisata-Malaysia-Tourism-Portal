@@ -318,10 +318,9 @@ export interface ProfileSummary {
   profileComplete: boolean;
   survey: {
     interests: string[];
-    travelStyle: string | null;
     budgetRange: string | null;
     mobilityNeeds: string | null;
-    preferredDistance: string | null;
+    preferredRadiusKm: number | null;
   } | null;
   latestKycReview: {
     status: string;

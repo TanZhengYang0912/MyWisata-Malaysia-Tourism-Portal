@@ -27,6 +27,27 @@ export const recommendationSubmissionSchema = z.object({
   imageAttested: z.literal(true),
 }).strict();
 
+export function mergeRecommendationImages(current: File[], selected: File[]): File[] {
+  return [...current, ...selected].slice(-5);
+}
+
+export function allowRecommendationImageSelection(
+  currentCount: number,
+  selectedCount: number,
+  confirmReplacement: () => boolean,
+): boolean {
+  if (currentCount < 5 && currentCount + selectedCount <= 5) return true;
+  return confirmReplacement();
+}
+
+export function appendSelectedRecommendationImages(
+  selectedFiles: ArrayLike<File> | null,
+  updateImages: (update: (current: File[]) => File[]) => void,
+): void {
+  const selected = Array.from(selectedFiles ?? []);
+  updateImages((current) => mergeRecommendationImages(current, selected));
+}
+
 export function validateRecommendationImage(file: File): string | null {
   if (file.size > 5 * 1024 * 1024) return 'Image must be 5 MB or smaller';
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return 'Use a JPEG, PNG, or WebP image';

@@ -11,17 +11,14 @@ import { useTranslation } from "react-i18next";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  INTEREST_OPTIONS, TRAVEL_STYLES, GROUP_COMPOSITIONS,
-  BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
+  INTEREST_OPTIONS, BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
 } from "@/backend/domains/preferences";
 import { getOptionalDiscoveryCategoryLabelKey, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 
 type SurveyResponse = {
   interests: string[] | null;
-  travel_style: string | null;
   budget_range: string | null;
   mobility_needs: string | null;
-  group_composition: string[] | null;
   pet_friendly: boolean | null;
   preferred_radius_km: number | null;
   notes: string | null;
@@ -31,10 +28,8 @@ type SurveyResponse = {
 export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => void; submitLabel?: string }) {
   const { t } = useTranslation("customer");
   const [interests, setInterests] = useState<string[]>([]);
-  const [travelStyle, setTravelStyle] = useState("mid_range");
   const [budgetRange, setBudgetRange] = useState("mid_range");
   const [mobilityNeeds, setMobilityNeeds] = useState("none");
-  const [group, setGroup] = useState<string[]>([]);
   const [petFriendly, setPetFriendly] = useState(false);
   const [radiusKm, setRadiusKm] = useState(20);
   const [notes, setNotes] = useState("");
@@ -53,10 +48,8 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
         const s = body.data;
         if (s) {
           setInterests(normalizeCategorySlugs(s.interests));
-          setTravelStyle(s.travel_style ?? "mid_range");
           setBudgetRange(s.budget_range ?? "mid_range");
           setMobilityNeeds(s.mobility_needs ?? "none");
-          setGroup(s.group_composition ?? []);
           setPetFriendly(Boolean(s.pet_friendly));
           setRadiusKm(s.preferred_radius_km ?? 20);
           setNotes(s.notes ?? "");
@@ -79,8 +72,8 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          interests, travelStyle, budgetRange, mobilityNeeds,
-          groupComposition: group, petFriendly, preferredRadiusKm: radiusKm,
+          interests, budgetRange, mobilityNeeds,
+          petFriendly, preferredRadiusKm: radiusKm,
           notes: notes.trim() || undefined,
         }),
       });
@@ -115,18 +108,6 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
             const sel = interests.includes(slug);
             return <Chip key={slug} selected={sel} onClick={() => toggle(interests, setInterests, slug)}>{t(labelKey)}</Chip>;
           })}
-        </div>
-      </Field>
-
-      <Field label={t("ui.preferencesEditor.travelStyle")}>
-        <div className="grid grid-cols-2 gap-2">
-          {TRAVEL_STYLES.map(({ value, labelKey }) => <Option key={value} selected={travelStyle === value} onClick={() => setTravelStyle(value)}>{t(labelKey)}</Option>)}
-        </div>
-      </Field>
-
-      <Field label={t("ui.preferencesEditor.travelling")}>
-        <div className="flex flex-wrap gap-2">
-          {GROUP_COMPOSITIONS.map(({ value, labelKey }) => <Chip key={value} selected={group.includes(value)} onClick={() => toggle(group, setGroup, value)}>{t(labelKey)}</Chip>)}
         </div>
       </Field>
 

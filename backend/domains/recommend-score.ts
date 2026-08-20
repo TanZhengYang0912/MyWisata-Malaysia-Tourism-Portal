@@ -9,7 +9,6 @@ export type ReasonTag = "near_you" | "interests" | "similar" | "hidden_gem";
 
 export interface UserPrefs {
   interests: string[];        // category slugs
-  travelStyle: string;
   budgetRange: "budget" | "mid_range" | "luxury";
   mobilityNeeds: "none" | "limited" | "wheelchair";
   petFriendly: boolean;
