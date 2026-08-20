@@ -16,13 +16,13 @@ const filters = [
 export default function NotificationsPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { t: tCommon } = useTranslation("common");
-  const translatedFilters = filters.map((filter) => ({ ...filter, label: tCommon(`notifications.categories.${filter.value}`, { defaultValue: filter.label }) }));
+  const translatedFilters = filters.map((filter) => ({ ...filter, label: tCommon(`notifications.categories.${filter.value}`) }));
   return (
     <>
       <CustomerPageTitle
-        eyebrow={tCustomer("accountGroups.account", { defaultValue: "Account" })}
-        title={tCommon("notifications.title", { defaultValue: "Notifications" })}
-        description={tCustomer("ui.notifications.description", { defaultValue: "Updates about your bookings, wallet and account." })}
+        eyebrow={tCustomer("accountGroups.account")}
+        title={tCommon("notifications.title")}
+        description={tCustomer("ui.notifications.description")}
       />
       <CustomerPageShell className="pt-0 sm:pt-0">
         <NotificationCenter scope="customer" categories={translatedFilters} pageSize={15} />

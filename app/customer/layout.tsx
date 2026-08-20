@@ -18,12 +18,9 @@ import { TripProvider } from "@/components/providers/trip";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 const UNREAD_POLL_MS = 30_000;
-
-function customerNavigationKey(href: string) {
-  return href.split("?")[0].replace("/customer/", "");
-}
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -157,10 +154,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   if (loading || !currentUser) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis", { defaultValue: "Loading…" })}</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
-  const customerDisplayName = getCustomerDisplayName(currentUser);
+  const customerDisplayName = getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"));
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
@@ -170,7 +167,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
               <Globe size={16} className="text-white" />
             </div>
-            <span className="font-bold text-base text-foreground font-[family-name:var(--font-display)]">MyWisata</span>
+            <span className="font-bold text-base text-foreground font-[family-name:var(--font-display)]">{BRAND_NAME}</span>
           </Link>
 
           <div className="hidden flex-1 items-center gap-5 md:flex xl:gap-6">
@@ -182,7 +179,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
-                <span>{tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}</span>
+                <span>{tCustomer(item.labelKey)}</span>
                 {item.href === "/customer/trip" && tripCount > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
                 )}
@@ -203,7 +200,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               href="/customer/cart"
               aria-label={count > 0
                 ? tCommon(count === 1 ? "cart.itemCount" : "cart.itemCountPlural", { count })
-                : tCommon("cart.label", { defaultValue: "Shopping cart" })}
+                : tCommon("cart.label")}
               className={HEADER_ICON_BUTTON_CLASS}
             >
               <ShoppingCart size={18} className="text-foreground" />
@@ -213,8 +210,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </Link>
-            <Link href="/customer/vouchers" aria-label="My Vouchers" className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary lg:inline-flex">
-              <Tag size={16} className="text-primary" /> My Vouchers
+            <Link href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")} className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary lg:inline-flex">
+              <Tag size={16} className="text-primary" /> {tCustomer("accountItems.vouchers.label")}
             </Link>
           </div>
 
@@ -226,7 +223,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-haspopup="menu"
               aria-label={currentUser
                 ? tCommon("account.openMenuFor", { name: customerDisplayName })
-                : tCommon("account.guestMenu", { defaultValue: "Guest account menu" })}
+                : tCommon("account.guestMenu")}
               className="flex items-center gap-2 rounded-full border border-border bg-card/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
@@ -248,7 +245,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               // axes but allowed no scrolling at all) is gone.
               <div
                 role="menu"
-                aria-label={tCommon("account.menu", { defaultValue: "Account menu" })}
+                aria-label={tCommon("account.menu")}
                 className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
                 style={{ maxHeight: "calc(100vh - 5.75rem)" }}
               >
@@ -258,8 +255,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="pt-2">
                   {ACCOUNT_MENU_GROUPS.map((group) => (
-                    <div key={group.label} className="not-first:mt-2">
-                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(`accountGroups.${group.label}`, { defaultValue: group.label })}</p>
+                    <div key={group.labelKey} className="not-first:mt-2">
+                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(group.labelKey)}</p>
                       {group.items.map((item) => {
                         const active = isCustomerNavActive(pathname, item.href);
                         return (
@@ -276,10 +273,10 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                             </span>
                             <span className="min-w-0">
                               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                {tCustomer(`accountItems.${item.label}.label`, { defaultValue: item.label })}
+                                {tCustomer(`${item.labelKey}.label`)}
                                 {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                               </span>
-                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`accountItems.${item.label}.description`, { defaultValue: item.description })}</span>
+                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                             </span>
                           </Link>
                         );
@@ -296,7 +293,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
                   >
                     <ArrowRightLeft size={16} />
-                    {tCommon("account.switchAccount", { defaultValue: "Switch account" })}
+                    {tCommon("account.switchAccount")}
                   </button>
                 </div>
               </div>
@@ -306,7 +303,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Mobile bottom-ish secondary row for the rest of nav */}
         <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 hide-scrollbar md:hidden">
-          <Link href="/customer/vouchers" className="flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap" aria-current={isCustomerNavActive(pathname, "/customer/vouchers") ? "page" : undefined} style={{ color: isCustomerNavActive(pathname, "/customer/vouchers") ? "var(--primary)" : "var(--muted-foreground)" }}><Tag size={13} /> My Vouchers</Link>
+          <Link href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")} className="flex shrink-0 items-center gap-1.5 text-xs font-medium whitespace-nowrap" aria-current={isCustomerNavActive(pathname, "/customer/vouchers") ? "page" : undefined} style={{ color: isCustomerNavActive(pathname, "/customer/vouchers") ? "var(--primary)" : "var(--muted-foreground)" }}><Tag size={13} /> {tCustomer("accountItems.vouchers.label")}</Link>
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}
@@ -315,7 +312,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
             >
-              <item.icon size={13} /> {tCustomer(`navigation.${customerNavigationKey(item.href)}`, { defaultValue: item.label })}
+              <item.icon size={13} /> {tCustomer(item.labelKey)}
               {item.href === "/customer/trip" && tripCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
               )}

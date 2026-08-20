@@ -6,14 +6,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { CATEGORIES, STATES_MY, searchActivities } from "@/backend/domains/catalogue";
+import { STATES_MY, searchActivities } from "@/backend/domains/catalogue";
 import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/customer/category-details";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
+import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
@@ -80,7 +80,7 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
             </> : visual.initials}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="truncate">{categories.length ? categories.join(" · ") : t("ui.search.localPartner")}</span></div>
+        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="truncate">{categories.length ? categories.map((category) => { const key = getOptionalDiscoveryCategoryLabelKey(category); return key ? t(key) : category; }).join(" · ") : t("ui.search.localPartner")}</span></div>
         <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">{t("ui.actions.exploreVendor")} <ArrowRight size={13} /></Link>
       </div>
       <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>
@@ -140,8 +140,9 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     for (const activity of initialResults.filter((item) => getActivityDiscoveryMode(item) === "vendor")) {
       const vendorId = activity.outlet.vendorId;
       const labels = map.get(vendorId) ?? new Set<string>();
-      if (activity.categorySlug) labels.add(CATEGORIES.find((item) => item.id === activity.categorySlug)?.label ?? activity.category);
-      if (activity.isHiddenGem) labels.add("Hidden Gem");
+      const canonicalSlug = canonicalCategorySlug(activity.categorySlug);
+      labels.add(canonicalSlug ?? activity.categorySlug ?? activity.category);
+      if (activity.isHiddenGem) labels.add("hidden_gem");
       map.set(vendorId, labels);
     }
     return map;
@@ -152,16 +153,14 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     const matchesQuery = !normalizedQuery || `${vendor.name} ${vendor.outlets.map((outlet) => `${outlet.city} ${outlet.state}`).join(" ")}`.toLowerCase().includes(normalizedQuery);
     const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
     const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
-    const selectedCategoryLabel = CATEGORIES.find((item) => item.id === category)?.label;
-    const matchesCategory = !selectedCategoryLabel || labels.has(selectedCategoryLabel);
+    const matchesCategory = !category || labels.has(category);
     return matchesQuery && matchesState && matchesCategory;
   }), [categoriesByVendor, category, initialVendors, query, state]);
 
   const filteredRecommendedVendors = useMemo(() => recommendedVendors.filter((vendor) => {
     const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
     const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
-    const selectedCategoryLabel = CATEGORIES.find((item) => item.id === category)?.label;
-    const matchesCategory = !selectedCategoryLabel || labels.has(selectedCategoryLabel);
+    const matchesCategory = !category || labels.has(category);
     return matchesState && matchesCategory;
   }), [categoriesByVendor, category, recommendedVendors, state]);
 

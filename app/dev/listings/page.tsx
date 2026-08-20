@@ -10,6 +10,7 @@ import Link from "next/link";
 import { getActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { Activity } from "@/backend/core/types";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 const CATEGORY_ORDER = Object.keys(CATEGORY_DETAILS);
 
@@ -58,7 +59,7 @@ export default function DevListingsPage() {
                   >
                     <span className="truncate">{a.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      RM {a.price}
+                      {MYR_CODE} {a.price}
                       {a.isHiddenGem ? " · 💎" : ""}
                     </span>
                   </Link>

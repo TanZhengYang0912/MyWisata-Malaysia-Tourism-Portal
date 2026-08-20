@@ -11,15 +11,17 @@
 import { Shield } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { StaffConductPanel } from "@/components/admin/staff-conduct-panel";
+import { useTranslation } from "react-i18next";
 
 export default function AdminStaffConductPage() {
   const { currentUser } = useAuth();
+  const { t } = useTranslation("admin");
 
   if (currentUser && currentUser.role !== "super_admin") {
     return (
       <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Shield size={16} /> Staff conduct review is limited to super admins.
+          <Shield size={16} /> {t("strictMigration.staffConduct.restricted")}
         </div>
       </div>
     );
@@ -28,9 +30,9 @@ export default function AdminStaffConductPage() {
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">Staff Conduct</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("strictMigration.staffConduct.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Flagged admin conduct and human-submitted chat reports, for super-admin review.
+          {t("strictMigration.staffConduct.description")}
         </p>
       </div>
       <StaffConductPanel />

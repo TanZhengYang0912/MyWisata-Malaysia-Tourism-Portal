@@ -86,7 +86,7 @@ export function StatusBadge({ status, className }: { status: string; className?:
   const fallbackLabel = ownString(LABELS, status) ?? status;
   return (
     <span className={cn("text-[0.625rem] font-bold px-2.5 py-1 rounded-full whitespace-nowrap", ownString(STYLES, status) ?? "bg-muted text-muted-foreground", className)}>
-      {labelKey ? t(labelKey, { defaultValue: fallbackLabel }) : fallbackLabel}
+      {labelKey ? t(labelKey) : fallbackLabel}
     </span>
   );
 }

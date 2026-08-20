@@ -50,18 +50,18 @@ export function PlaceList({
             {t("ui.place.placesToVisit", { count: filtered.length })}
           </h2>
           <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            {t("ui.place.listingSummary", { shown: filtered.length, total: pois.length, defaultValue: "Showing {{shown}} of {{total}} places to explore" })}
+            {t("ui.place.listingSummary", { shown: filtered.length, total: pois.length })}
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          {t("ui.place.bookableCount", { count: counts.bookable, defaultValue: `${counts.bookable} bookable ${counts.bookable === 1 ? "place" : "places"}` })}
+          {t("ui.place.bookableCount", { count: counts.bookable })}
         </span>
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("ui.place.filterAvailabilityLabel", { defaultValue: "Filter places by availability" })}>
-            <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.place.filterShow", { defaultValue: "Show" })}</span>
+          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("ui.place.filterAvailabilityLabel")}>
+            <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.place.filterShow")}</span>
             {([
               ["all", `${t("ui.place.all")} (${counts.all})`],
               ["bookable", `${t("ui.place.bookable")} (${counts.bookable})`],
@@ -85,7 +85,7 @@ export function PlaceList({
           </div>
 
           {regions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label={t("ui.place.filterAreaLabel", { defaultValue: "Filter places by area" })}>
+            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4" aria-label={t("ui.place.filterAreaLabel")}>
               <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.location")}</span>
               <button
                 type="button"
@@ -95,7 +95,7 @@ export function PlaceList({
                   selectedRegions.size === 0 ? "bg-primary text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t("ui.place.allAreas", { defaultValue: "All areas" })}
+                {t("ui.place.allAreas")}
               </button>
               {regions.map((region) => (
                 <button
@@ -117,7 +117,7 @@ export function PlaceList({
 
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
-          <p className="font-semibold text-foreground">{t("ui.place.noPlacesMatch", { defaultValue: "No places match these filters." })}</p>
+          <p className="font-semibold text-foreground">{t("ui.place.noPlacesMatch")}</p>
           <button
             type="button"
             onClick={() => {
@@ -126,7 +126,7 @@ export function PlaceList({
             }}
             className="mt-2 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            {t("ui.actions.clearFilters", { defaultValue: "Clear filters" })}
+            {t("ui.actions.clearFilters")}
           </button>
         </div>
       ) : (

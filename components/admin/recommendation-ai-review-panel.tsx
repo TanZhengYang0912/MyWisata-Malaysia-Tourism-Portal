@@ -205,14 +205,16 @@ export function RecommendationAiReviewPanel({
                   <EvidenceIssue key={`finding-${finding.field}-${index}`} field={finding.field}>
                     <span className="block">
                       <span className="font-semibold">{t(FIELD_LABELS[finding.field])}</span>
-                      <span className="text-muted-foreground">
-                        {` · ${t("recommendation.aiReview.kind")}: `}{t(FINDING_KIND_LABELS[finding.kind])}
-                        {` · ${t("recommendation.aiReview.severityLabel")}: `}{t(SEVERITY_LABELS[finding.severity])}
-                      </span>
+                      <span className="text-muted-foreground"> {t("strictMigration.recommendationFindingMeta", {
+                        kindLabel: t("recommendation.aiReview.kind"),
+                        kind: t(FINDING_KIND_LABELS[finding.kind]),
+                        severityLabel: t("recommendation.aiReview.severityLabel"),
+                        severity: t(SEVERITY_LABELS[finding.severity]),
+                      })}</span>
                     </span>
                     <span className="mt-1 block">{finding.message}</span>
                     {finding.evidenceSummary && (
-                      <span className="mt-1 block text-muted-foreground">{t("recommendation.aiReview.evidence")}: {finding.evidenceSummary}</span>
+                      <span className="mt-1 block text-muted-foreground">{t("strictMigration.recommendationEvidence", { label: t("recommendation.aiReview.evidence"), evidence: finding.evidenceSummary })}</span>
                     )}
                   </EvidenceIssue>
                 ))}
@@ -228,7 +230,7 @@ export function RecommendationAiReviewPanel({
                   {photoAssessments.map((photo, index) => (
                     <EvidenceIssue key={`photo-assessment-${photo.imageId}-${index}`} field="photos">
                       <span className="block font-semibold">
-                        {t("recommendation.aiReview.photoLabel", { number: index + 1 })} · {t(PHOTO_STATUS_LABELS[photo.status])}
+                        {t("strictMigration.recommendationPhotoStatus", { photo: t("recommendation.aiReview.photoLabel", { number: index + 1 }), status: t(PHOTO_STATUS_LABELS[photo.status]) })}
                       </span>
                       <span className="mt-1 block">{photo.message}</span>
                     </EvidenceIssue>

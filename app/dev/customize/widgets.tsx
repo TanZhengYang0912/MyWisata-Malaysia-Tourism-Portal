@@ -24,7 +24,7 @@ export interface PromoContent { title: string; code: string }
 export interface ReviewsContent { items: { text: string; rating: number }[] }
 export interface AnnouncementContent { text: string }
 export interface SocialContent { links: { platform: string; url: string }[] }
-export type WidgetTranslate = (key: string) => string;
+export type WidgetTranslate = (key: string, options?: { ns?: string }) => string;
 
 export type ContentFor<T extends WidgetType> = T extends "cover" ? CoverContent
   : T extends "about" ? AboutContent
@@ -55,15 +55,15 @@ export const WIDGET_ORDER = Object.keys(WIDGET_CATALOG) as WidgetType[];
 
 export function defaultContent(type: WidgetType, t: WidgetTranslate): unknown {
   switch (type) {
-    case "cover": return { title: t("dev.customize.defaults.coverTitle"), subtitle: t("dev.customize.defaults.coverSubtitle"), imageUrl: "", buttonLabel: t("dev.customize.defaults.coverButton") } satisfies CoverContent;
-    case "about": return { title: t("dev.customize.defaults.aboutTitle"), body: t("dev.customize.defaults.aboutBody") } satisfies AboutContent;
+    case "cover": return { title: t("dev.customize.defaults.coverTitle", { ns: "auth" }), subtitle: t("dev.customize.defaults.coverSubtitle", { ns: "auth" }), imageUrl: "", buttonLabel: t("dev.customize.defaults.coverButton", { ns: "auth" }) } satisfies CoverContent;
+    case "about": return { title: t("dev.customize.defaults.aboutTitle", { ns: "auth" }), body: t("dev.customize.defaults.aboutBody", { ns: "auth" }) } satisfies AboutContent;
     case "hours": return { days: DAY_KEYS.map((_, i) => ({ open: "09:00", close: "18:00", closed: i === 6 })) } satisfies HoursContent;
     case "gallery": return { images: [{ url: "" }, { url: "" }, { url: "" }] } satisfies GalleryContent;
-    case "contact": return { address: t("dev.customize.defaults.contactAddress"), phone: t("dev.customize.defaults.contactPhone") } satisfies ContactContent;
-    case "products": return { items: [{ name: t("dev.customize.defaults.productOne"), price: "18" }, { name: t("dev.customize.defaults.productTwo"), price: "42" }] } satisfies ProductsContent;
-    case "promo": return { title: t("dev.customize.defaults.promoTitle"), code: "MYWISATA20" } satisfies PromoContent;
-    case "reviews": return { items: [{ text: t("dev.customize.defaults.reviewText"), rating: 5 }] } satisfies ReviewsContent;
-    case "announcement": return { text: t("dev.customize.defaults.announcementText") } satisfies AnnouncementContent;
+    case "contact": return { address: t("dev.customize.defaults.contactAddress", { ns: "auth" }), phone: t("dev.customize.defaults.contactPhone", { ns: "auth" }) } satisfies ContactContent;
+    case "products": return { items: [{ name: t("dev.customize.defaults.productOne", { ns: "auth" }), price: "18" }, { name: t("dev.customize.defaults.productTwo", { ns: "auth" }), price: "42" }] } satisfies ProductsContent;
+    case "promo": return { title: t("dev.customize.defaults.promoTitle", { ns: "auth" }), code: "MYWISATA20" } satisfies PromoContent;
+    case "reviews": return { items: [{ text: t("dev.customize.defaults.reviewText", { ns: "auth" }), rating: 5 }] } satisfies ReviewsContent;
+    case "announcement": return { text: t("dev.customize.defaults.announcementText", { ns: "auth" }) } satisfies AnnouncementContent;
     case "social": return { links: [{ platform: "Instagram", url: "" }, { platform: "WhatsApp", url: "" }] } satisfies SocialContent;
   }
 }

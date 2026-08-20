@@ -45,7 +45,7 @@ export function AdminBatchActionBar({ selectedCount, onApply, onClear, actions, 
     <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/5 px-5 py-3 text-sm">
       <div className="mr-1 flex items-center gap-2 font-semibold text-primary">
         <CheckSquare size={16} />
-        {t('selection.selected', { count: formatNumber(selectedCount, locale), defaultValue: '{{count}} selected' })}
+        {t('selection.selected', { count: formatNumber(selectedCount, locale) })}
       </div>
       {message && <span className="text-xs text-muted-foreground">{message}</span>}
       {selectedCount > 0 && (
@@ -62,13 +62,13 @@ export function AdminBatchActionBar({ selectedCount, onApply, onClear, actions, 
                 className={`inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${destructive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-primary/20 text-primary hover:bg-primary/5'}`}
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} />}
-                {t(`batchActions.${action.value}`, { defaultValue: action.label })}
+                {t(`batchActions.${action.value}`)}
               </button>
             );
           })}
           <button type="button" onClick={onClear} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-white hover:text-foreground">
             <X size={14} />
-            {t('selection.clear', { defaultValue: 'Clear selection' })}
+            {t('selection.clear')}
           </button>
         </div>
       )}

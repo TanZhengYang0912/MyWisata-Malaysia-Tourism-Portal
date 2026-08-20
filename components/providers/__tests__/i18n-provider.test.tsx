@@ -222,7 +222,7 @@ describe("AppI18nProvider runtime resource hydration", () => {
     container.textContent = "";
   });
 
-  it("renders English fallback text initially and hydrates a previously absent locale", async () => {
+  it("never falls back to English while hydrating a selected non-English locale", async () => {
     root = createRoot(container as unknown as Element);
 
     await act(async () => {
@@ -235,7 +235,7 @@ describe("AppI18nProvider runtime resource hydration", () => {
       );
     });
 
-    expect(container.textContent).toBe("你好|English fallback");
+    expect(container.textContent).toBe("你好|fallback");
 
     await act(async () => {
       root?.render(
@@ -247,6 +247,6 @@ describe("AppI18nProvider runtime resource hydration", () => {
       );
     });
 
-    expect(container.textContent).toBe("Hai|English fallback");
+    expect(container.textContent).toBe("Hai|fallback");
   });
 });

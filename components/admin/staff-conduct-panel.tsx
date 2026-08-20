@@ -234,9 +234,8 @@ export function StaffConductPanel() {
               <div key={f.id} className="flex items-start justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
                 <div>
                   <p className="text-foreground">
-                    <span className="font-semibold">{f.flaggedAdminName}</span>{" "}
                     <span className="capitalize text-muted-foreground font-normal">
-                      · {t(SOURCE_LABEL[f.source])} · {t("staffConduct.targetPrefix")} {f.targetUserName ?? "—"}
+                      {t("strictMigration.staffConduct.flagSummary", { admin: f.flaggedAdminName, source: t(SOURCE_LABEL[f.source]), target: f.targetUserName ?? "—" })}
                     </span>{" "}
                     <span className={`rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase ${SEVERITY_STYLE[f.severity]}`}>
                       {t(SEVERITY_LABEL[f.severity])}

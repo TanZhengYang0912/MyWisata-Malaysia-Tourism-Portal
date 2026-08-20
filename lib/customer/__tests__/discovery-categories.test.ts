@@ -7,6 +7,7 @@ import {
   normalizeCategoryRows,
   normalizeCategorySlugs,
   getDiscoveryCategoryLabel,
+  getOptionalDiscoveryCategoryLabelKey,
 } from "@/lib/customer/discovery-categories";
 
 describe("discovery category contract", () => {
@@ -45,6 +46,13 @@ describe("discovery category contract", () => {
     expect(getDiscoveryCategoryLabel("activity")).toBe("Activity");
     expect(getDiscoveryCategoryLabel("nature")).toBe("Activity");
     expect(getDiscoveryCategoryLabel("old-unknown")).toBe("Activity");
+  });
+
+  it("translates only known system categories and preserves unknown database labels", () => {
+    expect(getOptionalDiscoveryCategoryLabelKey("food")).toBe("categories.food");
+    expect(getOptionalDiscoveryCategoryLabelKey("nature")).toBe("categories.activity");
+    expect(getOptionalDiscoveryCategoryLabelKey("hidden_gem")).toBe("categories.hiddenGem");
+    expect(getOptionalDiscoveryCategoryLabelKey("Community-created label")).toBeNull();
   });
 
   it("builds a category filter without treating Hidden Gem as a category row", () => {

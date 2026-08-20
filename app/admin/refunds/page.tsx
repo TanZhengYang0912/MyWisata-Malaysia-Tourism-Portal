@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 type RefundRow = {
   id: string;
@@ -29,13 +30,13 @@ const SIMULATOR_PROVIDERS = new Set([
   'bank_transfer_simulator',
 ]);
 
-function providerLabel(provider: string | null, t: (key: string) => string) {
-  if (provider === 'tng_ewallet_simulator') return t('refunds.providers.tngSimulator');
-  if (provider === 'grabpay_simulator') return t('refunds.providers.grabpaySimulator');
-  if (provider === 'bank_transfer_simulator') return t('refunds.providers.bankTransferSimulator');
-  if (provider === 'stripe') return t('refunds.providers.stripeSandbox');
-  if (provider === 'platform_wallet') return t('refunds.providers.mywisataWallet');
-  return provider ?? t('refunds.providers.unknown');
+function providerLabel(provider: string | null, t: (key: string, options?: { ns?: string }) => string) {
+  if (provider === 'tng_ewallet_simulator') return t('refunds.providers.tngSimulator', { ns: 'admin' });
+  if (provider === 'grabpay_simulator') return t('refunds.providers.grabpaySimulator', { ns: 'admin' });
+  if (provider === 'bank_transfer_simulator') return t('refunds.providers.bankTransferSimulator', { ns: 'admin' });
+  if (provider === 'stripe') return t('refunds.providers.stripeSandbox', { ns: 'admin' });
+  if (provider === 'platform_wallet') return t('refunds.providers.mywisataWallet', { ns: 'admin' });
+  return provider ?? t('refunds.providers.unknown', { ns: 'admin' });
 }
 
 export default function AdminRefundsPage() {
@@ -148,7 +149,7 @@ export default function AdminRefundsPage() {
                       <p className="mt-2 text-sm text-destructive">{refund.failureCode}: {refund.failureMessage}</p>
                     )}
                   </div>
-                  <p className="text-xl font-bold tabular-nums">RM {refund.amountRm.toFixed(2)}</p>
+                  <p className="text-xl font-bold tabular-nums">{MYR_CODE} {refund.amountRm.toFixed(2)}</p>
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-end gap-2">

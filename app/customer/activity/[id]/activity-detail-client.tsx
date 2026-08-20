@@ -22,6 +22,7 @@ import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
 import { getDetailBody } from "./bodies";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -118,7 +119,7 @@ export function ActivityDetailClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotId]);
 
-  const chips = useMemo(() => (activity ? getCategoryChips(activity) : []), [activity]);
+  const chips = useMemo(() => (activity ? getCategoryChips(activity, t) : []), [activity, t]);
   // What varies by category lives in the body; everything around it is shared.
   const body = getDetailBody(activity?.categorySlug);
   const namesOutlet = activity ? !placeBound : true;
@@ -151,7 +152,7 @@ export function ActivityDetailClient({
       setAdded(false);
       setAddError(error instanceof Error && error.message === "cart_item_requires_variant_or_slot"
         ? t("ui.activity.cartUnavailable")
-        : t("ui.activity.cartError", { defaultValue: "Unable to add this item to your cart. Please try again." }));
+        : t("ui.activity.cartError"));
     } finally {
       setAdding(false);
     }
@@ -181,7 +182,7 @@ export function ActivityDetailClient({
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
       <div className="mb-4">
         <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults", { defaultValue: "Back to results" })}
+          <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults")}
         </Link>
       </div>
 
@@ -199,7 +200,7 @@ export function ActivityDetailClient({
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(36,49,58,0.65) 0%, transparent 50%)" }} />
         {activity.isHiddenGem && (
           <div className="absolute top-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: "var(--highlight-yellow, #D97706)" }}>
-            <Sparkles size={13} /> {t("ui.labels.hiddenGem", { defaultValue: "Hidden Gem" })}
+            <Sparkles size={13} /> {t("ui.labels.hiddenGem")}
           </div>
         )}
         {!placeBound && selectedOutlet!.verified && (
@@ -209,7 +210,7 @@ export function ActivityDetailClient({
         )}
         {placeBound && (
           <div className="absolute bottom-4 left-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold text-white bg-[#163d69]">
-            <MapPin size={13} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience", { defaultValue: "Place-based experience" })}
+            <MapPin size={13} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience")}
           </div>
         )}
       </div>
@@ -220,8 +221,8 @@ export function ActivityDetailClient({
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]">{activity.name}</h1>
               {placeBound ? (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
-                  <MapPin size={14} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience", { defaultValue: "Place-based experience" })} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}
-                  {vendorBacked && selectedOutlet!.vendorName ? <span className="font-normal text-muted-foreground">Guided by {selectedOutlet!.vendorName}</span> : null}
+                  <MapPin size={14} /> {publicPlace ? t("ui.labels.publicPlace") : t("ui.labels.placeBasedExperience")} · {[selectedOutlet!.city, selectedOutlet!.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}
+                  {vendorBacked && selectedOutlet!.vendorName ? <span className="font-normal text-muted-foreground">{t("ui.labels.guidedBy", { vendor: selectedOutlet!.vendorName })}</span> : null}
                 </p>
               ) : vendorDiscovery ? (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
@@ -229,24 +230,24 @@ export function ActivityDetailClient({
                 </p>
               ) : (
                 <p className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-primary">
-                  <Store size={14} /> {t("ui.labels.providedBy", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor"), defaultValue: "Provided by {{vendor}}" })}
+                  <Store size={14} /> {t("ui.labels.providedBy", { vendor: selectedOutlet!.vendorName ?? t("ui.labels.localVendor") })}
                   {namesOutlet && (
                     <>
-                      {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} Outlet
+                      {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} {t("ui.map.outlet")}
                       <Link href={getOutletShopHref(selectedOutlet!.outletId)} className="underline underline-offset-2 hover:no-underline">
-                        {t("ui.actions.visitOutlet", { defaultValue: "Visit outlet" })}
+                        {t("ui.actions.visitOutlet")}
                       </Link>
                     </>
                   )}
                 </p>
               )}
               <div className="flex items-center gap-4 flex-wrap text-sm">
-                {outletSelectionRequired ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> Available at {effectiveOutletCount} outlets</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
-                {publicPlace ? <div className="font-semibold text-primary">Public access</div> : <>
+                {outletSelectionRequired ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {t("strictMigration.activityDetail.availableAtOutlets", { count: effectiveOutletCount })}</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
+                {publicPlace ? <div className="font-semibold text-primary">{t("ui.labels.publicAccess")}</div> : <>
                   <div className="flex items-center gap-1.5">
                     <Star size={13} fill="var(--highlight-yellow)" stroke="none" />
                     <span className="font-bold text-foreground">{selectedOutlet!.rating}</span>
-                    <span className="text-muted-foreground">({selectedOutlet!.reviews} reviews)</span>
+                    <span className="text-muted-foreground">{t("strictMigration.activityDetail.reviewCount", { count: selectedOutlet!.reviews })}</span>
                   </div>
                   <div className="flex items-center gap-1.5" style={{ color: selectedOutlet!.open ? "var(--nature-green-ink)" : "#64748b" }}>
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedOutlet!.open ? "var(--nature-green)" : "#94a3b8" }} />
@@ -276,20 +277,20 @@ export function ActivityDetailClient({
         <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
           <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{body.panelKicker}</p>
-              <h2 className="mt-1 text-lg font-bold text-foreground">{body.panelTitle(activity)}</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{t(body.panelKickerKey)}</p>
+              <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">RM {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">{MYR_CODE} {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
            <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-4 text-xs">
              <span className="min-w-0 truncate text-muted-foreground">
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
-               {publicPlace ? "No vendor required" : placeBound ? "Place details" : (selectedOutlet!.vendorName ?? "Local vendor")}
+               {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
-             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor", { defaultValue: "Visit vendor" })}</Link>}
+             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
@@ -298,16 +299,16 @@ export function ActivityDetailClient({
             <div className="mt-4 flex flex-col gap-2">
               {outletChoices.length > 0 ? outletChoices.map((choice) => (
                 <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
-                  <span className="min-w-0"><span className="block truncate text-sm font-semibold text-foreground">View outlet · {outletShortName(choice.outletName, choice.vendorName)}</span><span className="text-xs text-muted-foreground">{choice.city}{!choice.open && " · Currently closed"}</span></span>
+                  <span className="min-w-0"><span className="block truncate text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
                   <span className="shrink-0 text-primary" aria-hidden="true">→</span>
                 </Link>
-              )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">View outlet <span aria-hidden="true">→</span></Link>}
+              )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
             </div>
           </div> : <>
           {effectiveOutletCount > 1 && outletChoices.length > 0 && (
             <div className="mb-4">
               <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-                Available at {outletChoices.length} outlet{outletChoices.length > 1 ? "s" : ""} — choose one
+                {t("strictMigration.activityDetail.availableAtChoose", { count: outletChoices.length })}
               </label>
               <div className="flex flex-col gap-2">
                 {outletChoices.map((choice) => {
@@ -328,11 +329,11 @@ export function ActivityDetailClient({
                         <span className="block truncate text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
                         <span className="text-xs text-muted-foreground">
                           {choice.city}
-                          {!choice.open && " · Currently closed"}
+                          {!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
-                        RM {choice.price.toFixed(2)}
+                        {MYR_CODE} {choice.price.toFixed(2)}
                       </span>
                     </button>
                   );
@@ -370,12 +371,12 @@ export function ActivityDetailClient({
           <div className="mb-5 flex items-center justify-between rounded-2xl bg-muted px-3 py-2.5">
             <label className="text-xs font-semibold text-muted-foreground">{t("ui.labels.quantity")}</label>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity" className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label={t("ui.activityDetail.decreaseQuantity")} className="h-8 w-8 rounded-lg border border-border bg-card text-foreground">−</button>
               <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
               <button
                 type="button"
                 onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
-                aria-label="Increase quantity"
+                aria-label={t("ui.activityDetail.increaseQuantity")}
                 disabled={seatsLeft !== undefined && qty >= seatsLeft}
                 className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -384,7 +385,7 @@ export function ActivityDetailClient({
             </div>
           </div>
 
-          {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{seatsLeft} seats left</p>}
+          {seatsLeft !== undefined && <p className="-mt-3 mb-4 text-right text-[11px] text-muted-foreground">{t("ui.cart.seatsLeft", { count: seatsLeft })}</p>}
            <Button
             type="button"
             onClick={handleAddToCart}
@@ -400,15 +401,15 @@ export function ActivityDetailClient({
             <div role="status" aria-live="polite" className="mt-3 rounded-2xl bg-primary/5 p-3 text-center">
               <p className="text-sm font-semibold text-primary">{t("ui.activity.addedPrompt")}</p>
               <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs font-bold">
-                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">{t("ui.actions.viewCart", { defaultValue: "View cart" })}</Link>
-                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">{t("ui.actions.continueExploring", { defaultValue: "Continue exploring" })}</Link>
+                <Link href="/customer/cart" className="rounded-full bg-primary px-3 py-2 text-white">{t("ui.actions.viewCart")}</Link>
+                <Link href={returnTo} className="rounded-full border border-primary/20 px-3 py-2 text-primary">{t("ui.actions.continueExploring")}</Link>
               </div>
             </div>
           )}
 
           </>}
           {!publicPlace && <div className="mt-3 flex items-center justify-center gap-3">
-            {vendorBacked && <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title="Chat with vendor" aria-label="Chat with vendor">
+            {vendorBacked && <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title={t("ui.activityDetail.chatVendor")} aria-label={t("ui.activityDetail.chatVendor")}>
               <MessageCircle size={17} />
             </Button>}
             <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
@@ -417,8 +418,7 @@ export function ActivityDetailClient({
 
         {chips.length > 0 && (
           <div className="mt-4 rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
-            {/* >Details< is the English fallback asserted by the existing layout contract. */}
-            <h2 className="mb-4 text-sm font-bold text-foreground">{t("ui.labels.details", { defaultValue: "Details" })}</h2>
+            <h2 className="mb-4 text-sm font-bold text-foreground">{t("ui.labels.details")}</h2>
             <div className="space-y-3">
               {chips.map((d) => {
                 const content = (
@@ -445,14 +445,14 @@ export function ActivityDetailClient({
        {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <div className="min-w-0">
-            <p className="truncate text-xs text-muted-foreground">{body.quantityLabel(qty)}</p>
-            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">RM {price * qty}</p>
+            <p className="truncate text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
+            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{MYR_CODE} {price * qty}</p>
           </div>
           {added ? (
-            <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">View Cart</Link>
+            <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>
           ) : (
             <Button type="button" onClick={handleAddToCart} disabled={adding || (activity.requiresBooking && !slotId)} className="h-11 flex-1 rounded-full">
-              {activity.requiresBooking ? "Add Booking" : "Add to Cart"}
+              {activity.requiresBooking ? t("ui.activityDetail.addBooking") : t("ui.actions.addToCart")}
             </Button>
           )}
         </div>

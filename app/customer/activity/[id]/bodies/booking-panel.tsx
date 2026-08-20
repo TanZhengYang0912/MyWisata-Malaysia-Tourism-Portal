@@ -95,7 +95,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                   {calendarDays.map((day) => {
                     const available = day.status === "available";
                     const selected = day.key === activeDateKey;
-                     const stateLabel = day.status === "available" ? `${day.availableSlotCount} ${t("ui.booking.available", { defaultValue: "Available" })}` : day.status === "full" ? t("ui.booking.full", { defaultValue: "Full" }) : t("ui.booking.unavailable", { defaultValue: "Unavailable" });
+                     const stateLabel = day.status === "available" ? `${day.availableSlotCount} ${t("ui.booking.available")}` : day.status === "full" ? t("ui.booking.full") : t("ui.booking.unavailable");
                     return (
                       <button
                         key={day.key}
@@ -116,9 +116,9 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-[10px] text-muted-foreground">
-                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("ui.booking.available", { defaultValue: "Available" })}</span>
-                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" /> {t("ui.booking.full", { defaultValue: "Full" })}</span>
-                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/20" /> {t("ui.booking.unavailable", { defaultValue: "Unavailable" })}</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("ui.booking.available")}</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" /> {t("ui.booking.full")}</span>
+                   <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/20" /> {t("ui.booking.unavailable")}</span>
                 </div>
               </div>
             )}
@@ -170,12 +170,12 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
                   }}
                 >
                   <span className="block truncate text-sm font-semibold">{formatBookingSlotTime(slot.startsAt)}</span>
-                  <span className="mt-0.5 block text-[11px] font-medium opacity-75">{slot.capacity - slot.booked} left</span>
+                  <span className="mt-0.5 block text-[11px] font-medium opacity-75">{t("ui.experience.slotsLeft", { count: slot.capacity - slot.booked })}</span>
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">{availableSlotCount} {t("ui.booking.availableTimes")}.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">{t("strictMigration.bookingPanel.availableTimesCount", { count: availableSlotCount })}</p>
         </>
       )}
       {!slotId && availableSlotCount > 0 && <p className="mt-2 text-xs text-destructive">{t("ui.booking.selectSlot")}</p>}

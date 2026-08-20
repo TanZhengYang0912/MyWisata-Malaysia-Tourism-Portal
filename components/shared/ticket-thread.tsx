@@ -98,7 +98,7 @@ export function TicketThread({ currentUserId, ticketOwnerId, ticketBody, ticketC
   }, [items.length]);
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet", { defaultValue: "No messages yet." })}</p>;
+    return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet")}</p>;
   }
 
   return (
@@ -107,8 +107,8 @@ export function TicketThread({ currentUserId, ticketOwnerId, ticketBody, ticketC
         const isMine = item.senderId !== null && item.senderId === currentUserId;
         return (
           <div key={item.key} className={isMine ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
-            {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot", { defaultValue: "Bot" })}</p>}
-            {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you", { defaultValue: "You" }) : t("ticket.supportTeam", { defaultValue: item.label })}</p>}
+            {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot")}</p>}
+            {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you") : t("ticket.supportTeam")}</p>}
             <div
               className={`rounded-xl px-3 py-2 text-sm ${
                 item.isBot ? "bg-teal/10 text-foreground" : isMine ? "bg-primary text-white" : "bg-muted text-foreground"

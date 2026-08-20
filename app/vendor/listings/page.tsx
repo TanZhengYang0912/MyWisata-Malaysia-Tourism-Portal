@@ -7,6 +7,7 @@ import { scopedOutletIds } from "@/lib/vendor-scope";
 import { getActivities, getOutlets } from "@/backend/domains/catalogue";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { Activity, Outlet } from "@/backend/core/types";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export default function VendorListingsPage() {
   const { t } = useTranslation("vendor");
@@ -45,7 +46,7 @@ export default function VendorListingsPage() {
                   <td className="px-6 py-4 text-sm text-muted-foreground">{outlets.get(l.outletId)?.name}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{l.category}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{l.requiresBooking ? t("ui.common.yes") : t("ui.common.no")}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">RM {l.price}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {l.price}</td>
                 </tr>
               ))}
             </tbody>

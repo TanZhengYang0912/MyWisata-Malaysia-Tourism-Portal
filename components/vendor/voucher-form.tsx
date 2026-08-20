@@ -176,11 +176,11 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Redemption mode *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('strictMigration.redemptionModeRequired')}</label>
           <select {...register('redemptionMode')} aria-invalid={Boolean(fieldError('redemptionMode'))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-            <option value="online">Online checkout</option>
-            <option value="both">Online or in-store</option>
-            <option value="in_store">In-store only</option>
+            <option value="online">{t("voucher.form.onlineCheckout")}</option>
+            <option value="both">{t("voucher.form.onlineOrInStore")}</option>
+            <option value="in_store">{t("voucher.form.inStoreOnly")}</option>
           </select>
           <FieldError message={fieldError('redemptionMode')} />
         </div>
@@ -250,7 +250,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('voucher.form.specificOutlet')} {t('voucher.form.optional')}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('strictMigration.specificOutletOptional')}</label>
           <select {...register('outletId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('outletId'))} className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${fieldError('outletId') ? 'border-red-400' : ''}`}>
             <option value="">{t('voucher.form.allOutlets')}</option>
             {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}

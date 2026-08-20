@@ -10,8 +10,8 @@ function StayOptions(props: DetailBodyProps) {
 }
 
 export const stayBody: DetailBody = {
-  panelKicker: "Ready to stay",
-  panelTitle: (activity) => (activity.requiresBooking ? "Select your dates" : "Choose your room"),
-  quantityLabel: (qty) => `${qty} night${qty > 1 ? "s" : ""}`,
+  panelKickerKey: "strictMigration.activityDetail.readyToStay",
+  panelTitleKey: (activity) => (activity.requiresBooking ? "strictMigration.activityDetail.selectDates" : "strictMigration.activityDetail.chooseRoom"),
+  quantityLabelKey: "strictMigration.activityDetail.nightCount",
   Options: StayOptions,
 };

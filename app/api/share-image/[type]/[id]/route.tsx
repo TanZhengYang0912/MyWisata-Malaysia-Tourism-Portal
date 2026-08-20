@@ -21,6 +21,7 @@ import { aggregateReviewMetrics } from '@/backend/domains/review-metrics';
 import { toRM } from '@/lib/money';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export const runtime = 'edge';
 
@@ -238,7 +239,7 @@ export async function GET(_request: Request, context: { params: Promise<{ type: 
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <span style={{ fontFamily: '"Fraunces"', fontWeight: 600, fontSize: 30, color: BRAND.navy }}>MyWisata</span>
+            <span style={{ fontFamily: '"Fraunces"', fontWeight: 600, fontSize: 30, color: BRAND.navy }}>{BRAND_NAME}</span>
           </div>
         </div>
       </div>

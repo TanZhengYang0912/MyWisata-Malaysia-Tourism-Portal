@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
@@ -13,6 +12,7 @@ import { searchActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 import { MalaysiaStateMap, type StateCounts } from "./malaysia-state-map";
+import { HIDDEN_GEM_SYMBOL, MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 // Display metadata for the 4 real categories — Hidden Gem is a collection
 // filter backed by the listing flag and is rendered separately below.
@@ -40,15 +40,14 @@ function StateDetailPanel({
   activities,
   onSelectState,
   onSelectPlace,
-  t,
 }: {
   selectedStateId: string | null;
   stateCounts: StateCounts;
   activities: ComputedActivity[];
   onSelectState: (stateId: string | null) => void;
   onSelectPlace: (placeId: string) => void;
-  t: TFunction;
 }) {
+  const { t } = useTranslation("customer");
   const selectedState = selectedStateId ? getState(selectedStateId) : undefined;
   const placeCount = selectedStateId ? (stateCounts[selectedStateId] ?? []).reduce((total, bucket) => total + bucket.count, 0) : 0;
   const highlights = selectedStateId
@@ -281,12 +280,12 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
           const allTypeSlugs = detail.types.map((t) => t.slug);
           return (
             <div key={slug} className="mb-2.5 last:mb-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold text-foreground"><CategoryIcon category={slug} size={14} strokeWidth={1.8} />{t(`categories.${slug}`, { defaultValue: meta?.label ?? slug })}</p>
+              <p className="flex items-center gap-1.5 text-[11px] font-bold text-foreground"><CategoryIcon category={slug} size={14} strokeWidth={1.8} />{t(`categories.${slug}`)}</p>
               <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1">
                 {detail.types.map((typeOption) => (
                   <label key={typeOption.slug} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <input type="checkbox" checked={isTypeChecked(slug, typeOption.slug)} onChange={() => toggleType(slug, typeOption.slug, allTypeSlugs)} className="h-3 w-3 accent-primary" />
-                    {t(`ui.map.types.${typeOption.slug}`, { defaultValue: typeOption.label })}
+                    {t(`ui.map.types.${typeOption.slug}`)}
                   </label>
                 ))}
               </div>
@@ -296,7 +295,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
         <label className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-sm font-bold text-foreground">
           <input type="checkbox" checked={selectedBadges.has("hidden_gem")} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
-          <span className="flex-1">💎 {t("ui.labels.hiddenGem")}</span>
+          <span className="flex-1">{HIDDEN_GEM_SYMBOL} {t("ui.labels.hiddenGem")}</span>
           <span className="text-[11px] font-normal text-muted-foreground">{activities.filter((activity) => activity.isHiddenGem).length}</span>
         </label>
 
@@ -306,7 +305,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
             {BADGE_OPTIONS.map((b) => (
               <label key={b.key} className="flex items-center gap-2 text-xs text-foreground">
                 <input type="checkbox" checked={selectedBadges.has(b.key)} onChange={() => toggleBadge(b.key)} className="h-3.5 w-3.5 accent-primary" />
-                {t(`ui.map.badges.${b.key}`, { defaultValue: b.label })}
+                {t(`ui.map.badges.${b.key}`)}
               </label>
             ))}
           </div>
@@ -352,7 +351,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">RM {selectedActivity.price}</span></div>
+                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{MYR_CODE} {selectedActivity.price}</span></div>
                 <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
@@ -366,7 +365,6 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
             activities={filteredActivities}
             onSelectState={selectState}
             onSelectPlace={setSelectedPlaceId}
-            t={t}
           />
 
         </div>
@@ -392,7 +390,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                   onClick={() => toggleCategory(slug)}
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedTypes[slug] !== undefined ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}
                 >
-                  <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {t(`categories.${slug}`, { defaultValue: meta.label })}
+                  <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {t(`categories.${slug}`)}
                 </button>
               ))}
               <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedBadges.has("hidden_gem") ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
@@ -428,9 +426,9 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                         )}
                          <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
-                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`, { defaultValue: activity.category })}</p>
+                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</p>
                          </div>
-                        <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">RM {activity.price}</span>
+                        <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{MYR_CODE} {activity.price}</span>
                        </div>
                     </button>
                   ))}

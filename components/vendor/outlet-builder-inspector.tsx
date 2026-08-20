@@ -14,6 +14,7 @@ import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
 import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";
 import { useTranslation } from "react-i18next";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 interface ProductOption {
   id: string;
@@ -147,7 +148,7 @@ export default function OutletBuilderInspector({
   onDiscardHeroAi,
   outlet,
 }: Props) {
-  const { t } = useTranslation("vendor");
+  const { t } = useTranslation(["vendor", "customer"]);
   const panelClassName =
     "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
 
@@ -285,7 +286,7 @@ export default function OutletBuilderInspector({
   return (
     <aside className={panelClassName} aria-label={t("builder.inspector.editSelected")}>
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-        {t("builder.inspector.editing", { label: t(`builder.blockTypes.${block.type}`, { defaultValue: getBuilderBlockLabel(block.type) }) })}
+        {t("builder.inspector.editing", { label: t(`builder.blockTypes.${block.type}`) })}
       </p>
       <div className="mt-4 space-y-3">
         {isPhoto && fieldLabel(
@@ -392,7 +393,7 @@ export default function OutletBuilderInspector({
                     {product.name}
                   </span>
                   <span className="font-mono text-[10px] text-gray-400">
-                    RM {Number(product.base_price).toFixed(2)}
+                    {MYR_CODE} {Number(product.base_price).toFixed(2)}
                   </span>
                 </label>
               ))}
@@ -489,7 +490,12 @@ export default function OutletBuilderInspector({
         )}
 
         {OVERRIDE_FIELDS[block.type]?.map(({ key, label }) => {
-          const live = resolveBlockContent({}, outlet)[key];
+          const live = resolveBlockContent({}, outlet, {
+            scheduleUnavailable: t("customer:ui.outlet.scheduleBeforeBooking"),
+            closed: t("customer:ui.outlet.closed"),
+            day: (day) => t(`customer:ui.labels.days.${day.slice(0, 3).toLowerCase()}`),
+            verifiedReview: t("customer:ui.outlet.verifiedGuestsRecommend"),
+          })[key];
           const custom = Boolean(block.overrides?.[key]);
           return <div key={key}>
             {fieldLabel(

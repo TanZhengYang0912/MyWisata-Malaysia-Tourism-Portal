@@ -8,7 +8,7 @@ import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } 
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
-import { buildOutletProductCardModel, getOutletDetailActionLabel, getOutletProductAction } from "@/lib/customer/outlet-shop";
+import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
 import { productImageUrl } from "@/lib/storage/product-image";
 
 function productDetailHref(productId: string, outletId: string) {
@@ -52,9 +52,9 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
     hasCartAction: action.kind === "cart",
   });
   const detailHref = productDetailHref(product.id, outlet.id);
-  const categoryLabel = product.category || t(product.product_type ? `ui.vendor.productTypes.${product.product_type}` : "ui.outlet.availableToExplore", { defaultValue: model.categoryLabel });
-  const descriptionFallback = t("ui.outletMenu.descriptionFallback", { outlet: outlet.name, defaultValue: "A local favourite from {{outlet}}." });
-  const priceLabel = t("ui.outletMenu.price", { price: Number(product.base_price).toFixed(2), defaultValue: "RM {{price}}" });
+  const categoryLabel = product.category || t(product.product_type ? `ui.vendor.productTypes.${product.product_type}` : "ui.outlet.availableToExplore");
+  const descriptionFallback = t("ui.outletMenu.descriptionFallback", { outlet: outlet.name });
+  const priceLabel = t("ui.outletMenu.price", { price: Number(product.base_price).toFixed(2) });
 
   async function handleAction(kind: "add" | "buy") {
     if (action.kind !== "cart") return;
@@ -77,7 +77,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
       setAdded(true);
       if (kind === "buy") router.push("/customer/cart");
     } catch {
-      setError(t("ui.outletMenu.addError", { product: product.name, defaultValue: "We couldn't add {{product}} to your cart. Please try again." }));
+      setError(t("ui.outletMenu.addError", { product: product.name }));
     } finally {
       setWorking(null);
     }
@@ -85,11 +85,11 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
   return (
     <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
-      <Link href={detailHref} className="relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={t("ui.outletMenu.viewProduct", { product: product.name, defaultValue: "View {{product}}" })}>
+      <Link href={detailHref} className="relative block aspect-[4/3] overflow-hidden bg-secondary" aria-label={t("ui.outletMenu.viewProduct", { product: product.name })}>
         {product.cover_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        ) : fallbackImage(categoryLabel, t("ui.outlet.photoComingSoon", { defaultValue: "Experience photo coming soon" }))}
+        ) : fallbackImage(categoryLabel, t("ui.outlet.photoComingSoon"))}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-3 pt-12">
           <span className="inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
             {product.requires_booking ? <Ticket size={11} aria-hidden="true" /> : <Utensils size={11} aria-hidden="true" />}
@@ -113,12 +113,12 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
         <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex min-w-0 items-center gap-1.5 truncate"><MapPin size={13} aria-hidden="true" className="shrink-0 text-primary/70" /> {t("ui.outletMenu.availableAt", { outlet: outlet.name, defaultValue: "Available at {{outlet}}" })}</span>
+            <span className="inline-flex min-w-0 items-center gap-1.5 truncate"><MapPin size={13} aria-hidden="true" className="shrink-0 text-primary/70" /> {t("ui.outletMenu.availableAt", { outlet: outlet.name })}</span>
             {model.ratingLabel && <span className="inline-flex shrink-0 items-center gap-1 text-amber-600"><Star size={12} fill="currentColor" aria-hidden="true" /> {model.ratingLabel}</span>}
           </div>
           <span className={`inline-flex items-center gap-1.5 font-semibold ${action.kind === "details" ? "text-muted-foreground" : "text-primary"}`}>
             {product.requires_booking ? <Clock3 size={13} aria-hidden="true" /> : <ShoppingBag size={13} aria-hidden="true" />}
-            {product.available_stock === 0 ? t("ui.cart.outOfStock", { defaultValue: "Out of stock" }) : product.requires_booking ? t("ui.outlet.bookingRequired", { defaultValue: "Booking required" }) : product.available_stock != null ? t("ui.cart.inStock", { count: product.available_stock, defaultValue: "{{count}} in stock" }) : t("ui.outlet.availableToExplore", { defaultValue: "Available to explore" })}
+            {product.available_stock === 0 ? t("ui.cart.outOfStock") : product.requires_booking ? t("ui.outlet.bookingRequired") : product.available_stock != null ? t("ui.cart.inStock", { count: product.available_stock }) : t("ui.outlet.availableToExplore")}
           </span>
         </div>
 
@@ -127,15 +127,15 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
         {action.kind === "cart" ? (
           <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
             <button type="button" onClick={() => void handleAction("add")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full border border-primary/20 px-2 py-2 text-xs font-bold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
-              {added ? <><Check size={13} aria-hidden="true" /> {t("ui.states.addedToCart", { defaultValue: "Added to Cart ✓" })}</> : t(product.requires_booking ? "ui.actions.addBookingToCart" : "ui.actions.addToCart", { defaultValue: model.primaryActionLabel })}
+              {added ? <><Check size={13} aria-hidden="true" /> {t("ui.states.addedToCart")}</> : t(product.requires_booking ? "ui.actions.addBookingToCart" : "ui.actions.addToCart")}
             </button>
             <button type="button" onClick={() => void handleAction("buy")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-2 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-              {working === "buy" ? t("ui.outletMenu.adding", { defaultValue: "Adding…" }) : t(product.requires_booking ? "ui.actions.bookNow" : "ui.actions.buyNow", { defaultValue: model.secondaryActionLabel })}
+              {working === "buy" ? t("ui.outletMenu.adding") : t(product.requires_booking ? "ui.actions.bookNow" : "ui.actions.buyNow")}
             </button>
           </div>
         ) : (
           <Link href={detailHref} className="mt-auto inline-flex min-h-10 items-center justify-center rounded-full border border-primary/20 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/5">
-            {t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime" : action.reason === "out_of_stock" ? "ui.outletMenu.viewDetails" : "ui.outletMenu.chooseOptions", { defaultValue: `${getOutletDetailActionLabel(action.reason)} →` })}
+            {t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime" : action.reason === "out_of_stock" ? "ui.outletMenu.viewDetails" : "ui.outletMenu.chooseOptions")}
           </Link>
         )}
       </div>
@@ -149,19 +149,19 @@ export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet;
     <section id="full-menu" aria-labelledby="full-menu-title" className="rounded-3xl border border-primary/10 bg-card p-5 shadow-sm sm:p-7">
       <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mywisataOutlet", { defaultValue: "MyWisata outlet" })}</p>
-          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt", { defaultValue: "Available at this outlet" })}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.description", { defaultValue: "Explore the full menu and experiences available here, with the exact price and booking options for this location." })}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mywisataOutlet")}</p>
+          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt")}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.description")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">
-          <ShoppingBag size={16} aria-hidden="true" /> {t("ui.outletMenu.listingCount", { count: products.length, defaultValue: `${products.length} ${products.length === 1 ? "listing" : "listings"}` })}
+          <ShoppingBag size={16} aria-hidden="true" /> {t("ui.outletMenu.listingCount", { count: products.length })}
         </div>
       </div>
 
       {products.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-primary/20 bg-secondary/40 px-5 py-10 text-center">
-          <p className="font-semibold text-foreground">{t("ui.outletMenu.emptyTitle", { defaultValue: "The menu is being prepared" })}</p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.emptyDescription", { defaultValue: "This outlet has not published a sellable item yet. Check back soon for local favourites." })}</p>
+          <p className="font-semibold text-foreground">{t("ui.outletMenu.emptyTitle")}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.emptyDescription")}</p>
         </div>
       ) : (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">

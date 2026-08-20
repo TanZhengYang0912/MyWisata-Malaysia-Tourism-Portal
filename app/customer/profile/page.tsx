@@ -27,7 +27,8 @@ function initialStep(tier: string): number {
   return -1;
 }
 
-function ProfileCompletionCard({ percentage, missing, t }: { percentage: number; missing: string[]; t: (key: string, options?: Record<string, unknown>) => string }) {
+function ProfileCompletionCard({ percentage, missing }: { percentage: number; missing: string[] }) {
+  const { t } = useTranslation("customer");
   return (
     <section aria-label={t("ui.profileWizard.completion")} className="mb-6 rounded-xl border border-border bg-card px-4 py-3">
       <div className="flex items-center justify-between gap-3">
@@ -121,14 +122,12 @@ export default function ProfilePage() {
         body: JSON.stringify({ phone: parsedPhone.e164 }),
       });
       if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.sendOtp"));
+        throw new Error(tCustomer("ui.profileWizard.sendOtp"));
       }
       setPhonePhase("verify");
       showFeedback("success", tCustomer("ui.profileWizard.sendOtp"));
-    } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.sendOtp"));
+    } catch {
+      setPhoneError(tCustomer("ui.profileWizard.sendOtp"));
     } finally {
       setPhoneBusy(false);
     }
@@ -148,16 +147,14 @@ export default function ProfilePage() {
         body: JSON.stringify({ phone: parsedPhone.e164, code: otp.trim() }),
       });
       if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.verifyOtp"));
+        throw new Error(tCustomer("ui.profileWizard.verifyOtp"));
       }
       await refreshUser();
       setStep(1);
       showFeedback("success", tCustomer("ui.profileWizard.verifyOtp"));
       if (continuation === "/customer/checkout") router.push(continuation);
-    } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.verifyOtp"));
+    } catch {
+      setPhoneError(tCustomer("ui.profileWizard.verifyOtp"));
     } finally {
       setPhoneBusy(false);
     }
@@ -177,15 +174,13 @@ export default function ProfilePage() {
         body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: country.trim() }),
       });
       if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.saveDetails"));
+        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
       await refreshUser();
       setStep(2);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
-    } catch (err) {
-      setIdentityError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.saveDetails"));
+    } catch {
+      setIdentityError(tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setIdentityBusy(false);
     }
@@ -210,9 +205,7 @@ export default function ProfilePage() {
     try {
       const signRes = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
       if (!signRes.ok) {
-        const b = await signRes.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.avatarUploadUrlError"));
+        throw new Error(tCustomer("ui.profileWizard.avatarUploadUrlError"));
       }
       const { data: { uploadUrl, path } } = await signRes.json() as { data: { uploadUrl: string; path: string } };
 
@@ -229,15 +222,13 @@ export default function ProfilePage() {
         body: JSON.stringify({ path }),
       });
       if (!confirmRes.ok) {
-        const b = await confirmRes.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.avatarConfirmError"));
+        throw new Error(tCustomer("ui.profileWizard.avatarConfirmError"));
       }
       await refreshUser();
       setStep(3);
       showFeedback("success", tCustomer("ui.profileWizard.savePhoto"));
-    } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.savePhoto"));
+    } catch {
+      setAvatarError(tCustomer("ui.profileWizard.savePhoto"));
     } finally {
       setAvatarBusy(false);
     }
@@ -255,15 +246,13 @@ export default function ProfilePage() {
         body: JSON.stringify({ bio: bio.trim() }),
       });
       if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((b as any)?.error?.message ?? tCustomer("ui.profileWizard.saveDetails"));
+        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
       setStep(4);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
       if (continuation) router.push(continuation);
-    } catch (err) {
-      setBioError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.saveDetails"));
+    } catch {
+      setBioError(tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setBioBusy(false);
     }
@@ -287,7 +276,7 @@ export default function ProfilePage() {
         <div className="text-sm font-semibold text-primary" aria-label={tCustomer("ui.profileWizard.verificationComplete")}>
           {tCustomer("ui.profileWizard.stepOf", { current: 5, total: 5 })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: 100 })}
         </div>
-        <div className="pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} t={tCustomer} /></div>
+        <div className="pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
         {continuation && <Button asChild className="mt-4"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}
       </CustomerPageShell>
       <ProfileSections shellClassName="pt-0 sm:pt-0" showHeader={false} />
@@ -314,7 +303,7 @@ export default function ProfilePage() {
         <ChevronRight size={18} className="shrink-0 text-primary" />
       </Link>
 
-      <ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} t={tCustomer} />
+      <ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} />
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">

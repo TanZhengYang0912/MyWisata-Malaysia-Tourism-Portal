@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { BookingDayDrawer } from "@/components/customer/booking-day-drawer";
 import type { Booking, Outlet } from "@/backend/core/types";
 import { activityHref } from "@/lib/customer/activity-navigation";
-import { getBookingViewCopy, type BookingViewScope } from "@/lib/customer/booking-view";
 import { calendarDateKey, countItineraryGroupsInMonth, getHiddenItineraryGroupCount, groupBookings, groupBookingsByDay, type BookingItineraryGroup } from "@/lib/customer/itinerary-calendar";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
@@ -24,7 +23,6 @@ type BookingScope = "upcoming" | "past" | "all";
 
 function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
 function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
-function statusFallback(status: BookingItineraryGroup["status"]) { return status === "mixed" ? "Mixed status" : status === "checked_in" ? "Checked in" : status === "no_show" ? "No-show" : status.charAt(0).toUpperCase() + status.slice(1); }
 function statusClass(status: BookingItineraryGroup["status"]) { return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary"; }
 
 export default function CustomerCalendarPage({ initialScope = "upcoming" }: { initialScope?: BookingScope } = {}) {
@@ -104,12 +102,10 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
 
   const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(2024, month, 1))), [locale]);
   const weekdayOptions = useMemo(() => Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(locale, { weekday: "short" }).format(new Date(2024, 0, 1 + index))), [locale]);
-  const viewScope: BookingViewScope = scope;
-  const viewCopy = getBookingViewCopy(viewScope);
   const localizedViewCopy = {
-    eyebrow: viewCopy.eyebrow,
-    title: tCustomer(`ui.calendar.scopeTitles.${scope}`, { defaultValue: viewCopy.title }),
-    description: viewCopy.description,
+    eyebrow: tCustomer(`ui.calendar.scopeEyebrows.${scope}`),
+    title: tCustomer(`ui.calendar.scopeTitles.${scope}`),
+    description: tCustomer(`ui.calendar.scopeDescriptions.${scope}`),
   };
   const monthItineraryGroupCount = useMemo(() => monthStart ? countItineraryGroupsInMonth(filteredBookings, monthStart) : 0, [filteredBookings, monthStart]);
   const calendarYearOptions = useMemo(() => {
@@ -127,7 +123,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
   function goToToday() { setSelectedDayKey(null); setMonthStart(startOfMonth(new Date())); }
   function selectCalendarMonth(month: number) { setSelectedDayKey(null); setMonthStart(new Date(monthStart!.getFullYear(), month, 1)); }
   function selectCalendarYear(year: number) { setSelectedDayKey(null); setMonthStart(new Date(year, monthStart!.getMonth(), 1)); }
-  function statusLabel(status: BookingItineraryGroup["status"]) { return tCustomer(`ui.calendar.statuses.${status}`, { defaultValue: statusFallback(status) }); }
+  function statusLabel(status: BookingItineraryGroup["status"]) { return tCustomer(`ui.calendar.statuses.${status}`); }
   function bookingTime(value?: string) { return value ? new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(new Date(value)) : tCustomer("ui.calendar.timePending"); }
   function bookingDate(value?: string) { return value ? formatDate(value, locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : tCustomer("ui.calendar.datePending"); }
 
@@ -144,7 +140,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
         className="mb-6"
       />
       <CustomerPageShell className="pt-0 sm:pt-0">
-        <section aria-label={tCustomer("ui.booking.calendar", { defaultValue: "Booking calendar" })} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+        <section aria-label={tCustomer("ui.booking.calendar")} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="border-b border-border">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
               <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, -1)); }} aria-label={tCustomer("ui.map.previous")} className="rounded-xl p-2 text-slate-500 hover:bg-secondary hover:text-primary"><ChevronLeft size={20} /></button>
@@ -166,7 +162,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {monthOptions.map((month, index) => <button key={month} type="button" onClick={() => selectCalendarMonth(index)} aria-label={tCustomer("ui.calendar.selectMonth", { month })} aria-pressed={monthStart.getMonth() === index} className={`rounded-lg px-2 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/30 ${monthStart.getMonth() === index ? "bg-primary text-white" : "text-slate-600 hover:bg-secondary hover:text-primary"}`}>{month}</button>)}
                   </div>
-                  <button type="button" onClick={() => setMonthPickerOpen(false)} className="mt-3 w-full rounded-lg border border-primary/20 px-3 py-2 text-sm font-bold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">{tCustomer("actions.confirm", { ns: "common", defaultValue: "Done" })}</button>
+                  <button type="button" onClick={() => setMonthPickerOpen(false)} className="mt-3 w-full rounded-lg border border-primary/20 px-3 py-2 text-sm font-bold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">{tCustomer("actions.confirm", { ns: "common" })}</button>
                 </div>}
               </div>
               <button type="button" onClick={() => { setSelectedDayKey(null); setMonthStart(addMonths(monthStart, 1)); }} aria-label={tCustomer("ui.map.next")} className="rounded-xl p-2 text-slate-500 hover:bg-secondary hover:text-primary"><ChevronRight size={20} /></button>

@@ -79,7 +79,7 @@ export default function ChatThreadPage() {
             if (!cancelled) setThread(null);
             return;
           }
-          throw new Error(payload.error?.message || "Unable to load conversation");
+          throw new Error(tCustomer("ui.chat.loadingConversation"));
         }
         const normalized = normalizeApiThread(payload.data as ApiThread);
         if (cancelled) return;
@@ -88,7 +88,7 @@ export default function ChatThreadPage() {
         setMessages(normalized.messages);
         setLoadError(null);
       } catch {
-        if (!cancelled) setLoadError("We couldn't load this conversation. Please refresh and try again.");
+        if (!cancelled) setLoadError(tCustomer("ui.chat.conversationMissing"));
       }
     }
 
@@ -98,7 +98,7 @@ export default function ChatThreadPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [params.threadId]);
+  }, [params.threadId, tCustomer]);
 
   useEffect(() => {
     if (!currentUser || !thread) return;
@@ -113,7 +113,7 @@ export default function ChatThreadPage() {
     return <EmptyState title={tCustomer("ui.chat.conversationNotFound")} description={tCustomer("ui.chat.conversationMissing")} />;
   }
   if (loadError) {
-    return <EmptyState title="Unable to load conversation" description={loadError} />;
+    return <EmptyState title={tCustomer("strictMigration.chat.loadFailed")} description={loadError} />;
   }
 
   return (
@@ -136,7 +136,7 @@ export default function ChatThreadPage() {
               body: JSON.stringify({ body: text, replyToId }),
             });
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Unable to send message");
+            if (!response.ok || !payload.data) throw new Error(tCustomer("strictMigration.chat.sendFailed"));
             const row = payload.data as RawChatMessage & { thread_id?: string };
             return {
               id: row.id,

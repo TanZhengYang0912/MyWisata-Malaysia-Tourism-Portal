@@ -9,17 +9,17 @@ const instant = { requiresBooking: false } as ComputedActivity;
 
 describe("getDetailBody", () => {
   it("gives each category its own purchase language", () => {
-    expect(getDetailBody("activity").panelKicker).toBe("Ready to book");
-    expect(getDetailBody("food").panelKicker).toBe("Ready to order");
-    expect(getDetailBody("retail").panelKicker).toBe("Ready to buy");
-    expect(getDetailBody("accommodation").panelKicker).toBe("Ready to stay");
+    expect(getDetailBody("activity").panelKickerKey).toBe("strictMigration.activityDetail.readyToBook");
+    expect(getDetailBody("food").panelKickerKey).toBe("strictMigration.activityDetail.readyToOrder");
+    expect(getDetailBody("retail").panelKickerKey).toBe("strictMigration.activityDetail.readyToBuy");
+    expect(getDetailBody("accommodation").panelKickerKey).toBe("strictMigration.activityDetail.readyToStay");
   });
 
   it("counts goods as items, not persons", () => {
-    expect(getDetailBody("retail").quantityLabel(2)).toBe("2 items");
-    expect(getDetailBody("food").quantityLabel(1)).toBe("1 item");
-    expect(getDetailBody("activity").quantityLabel(2)).toBe("2 persons");
-    expect(getDetailBody("accommodation").quantityLabel(3)).toBe("3 nights");
+    expect(getDetailBody("retail").quantityLabelKey).toBe("strictMigration.activityDetail.itemCount");
+    expect(getDetailBody("food").quantityLabelKey).toBe("strictMigration.activityDetail.itemCount");
+    expect(getDetailBody("activity").quantityLabelKey).toBe("strictMigration.activityDetail.personCount");
+    expect(getDetailBody("accommodation").quantityLabelKey).toBe("strictMigration.activityDetail.nightCount");
   });
 
   it("only offers a slot picker to the categories that book a time", () => {
@@ -36,8 +36,8 @@ describe("getDetailBody", () => {
   });
 
   it("switches the activity panel title on whether the product books a slot", () => {
-    expect(getDetailBody("activity").panelTitle(bookable)).toBe("Select your visit");
-    expect(getDetailBody("activity").panelTitle(instant)).toBe("Choose your options");
+    expect(getDetailBody("activity").panelTitleKey(bookable)).toBe("strictMigration.activityDetail.selectVisit");
+    expect(getDetailBody("activity").panelTitleKey(instant)).toBe("strictMigration.activityDetail.chooseOptions");
   });
 });
 

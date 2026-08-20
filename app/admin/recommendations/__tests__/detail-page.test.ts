@@ -45,13 +45,13 @@ describe('admin recommendation detail workflow', () => {
     expect(panel).toContain('t("recommendation.aiReview.photoAssessments")');
     expect(panel).toContain('photoAssessments.map((photo, index)');
     expect(panel).toContain('t("recommendation.aiReview.photoLabel", { number: index + 1 })');
-    expect(panel).toContain('PHOTO_STATUS_LABELS[photo.status]');
+    expect(panel).toContain('t(PHOTO_STATUS_LABELS[photo.status])');
     expect(panel).toContain('{photo.message}');
-    expect(panel).toContain('FIELD_LABELS[finding.field]');
-    expect(panel).toContain('FINDING_KIND_LABELS[finding.kind]');
-    expect(panel).toContain('SEVERITY_LABELS[finding.severity]');
+    expect(panel).toContain('t(FIELD_LABELS[finding.field])');
+    expect(panel).toContain('t(FINDING_KIND_LABELS[finding.kind])');
+    expect(panel).toContain('t(SEVERITY_LABELS[finding.severity])');
     expect(panel).toContain('{finding.message}');
-    expect(panel).toContain('{finding.evidenceSummary}');
+    expect(panel).toContain('evidence: finding.evidenceSummary');
     expect(panel).toContain('finding.evidenceSummary && (');
     expect(panel).toContain('t("recommendation.aiReview.uniqueIssueCount")');
     expect(panel).toContain('new Set(');

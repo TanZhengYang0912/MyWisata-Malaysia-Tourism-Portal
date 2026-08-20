@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import type { Role, User } from "@/backend/core/types";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
 type AuthMode = "signin" | "signup" | "verify" | "forgot";
@@ -167,7 +168,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: "var(--background)" }}>
       <div className="w-full max-w-md">
-        <div className="mb-8 flex items-center justify-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary"><Globe size={18} className="text-white" /></div><span className="font-[family-name:var(--font-display)] text-xl font-bold text-foreground">MyWisata</span></div>
+        <div className="mb-8 flex items-center justify-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary"><Globe size={18} className="text-white" /></div><span className="font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{BRAND_NAME}</span></div>
         <div className="mb-3 flex items-center justify-end gap-3"><span className="text-xs text-muted-foreground">{tAuth("language.description")}</span><LanguageSwitcher compact /></div>
         <Card className="p-2"><CardContent className="px-4 pt-2">
           <h1 className="mb-1 text-lg font-bold text-foreground">{title}</h1>
@@ -208,11 +209,11 @@ export default function LoginPage() {
           <div className="mt-5 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tAuth("demo.title")}</p><span className="text-[11px] text-muted-foreground">{tAuth("demo.quickEntry")}</span></div>
           {roleCategories.length > 1 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              <button type="button" onClick={() => setRoleFilter(null)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === null ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tCommon("filters.all", { defaultValue: "All" })}</button>
-              {roleCategories.map((role) => <button key={role} type="button" onClick={() => setRoleFilter(role)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === role ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tAuth(`roles.${role}`, { defaultValue: ROLE_LABEL[role] })}</button>)}
+              <button type="button" onClick={() => setRoleFilter(null)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === null ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tCommon("filters.all")}</button>
+              {roleCategories.map((role) => <button key={role} type="button" onClick={() => setRoleFilter(role)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${roleFilter === role ? "bg-primary text-white" : "border border-border text-muted-foreground hover:bg-secondary"}`}>{tAuth(`roles.${role}`)}</button>)}
             </div>
           )}
-          <div className="mt-2 space-y-2">{visibleUsers.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{tAuth(`roles.${user.role}`, { defaultValue: ROLE_LABEL[user.role] })}</Badge></button>)}</div>
+          <div className="mt-2 space-y-2">{visibleUsers.map((user) => <button key={user.id} onClick={() => pick(user)} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-secondary"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-foreground">{user.name}</p><p className="truncate text-xs text-muted-foreground">{user.vendorName || user.outletName || user.email}</p></div><Badge variant="secondary" className="shrink-0">{tAuth(`roles.${user.role}`)}</Badge></button>)}</div>
         </CardContent></Card>
         <p className="mt-4 text-center text-xs text-muted-foreground">{tAuth("demo.disclaimer")}</p>
       </div>

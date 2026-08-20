@@ -124,7 +124,7 @@ export function ChatbotWidget() {
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
-        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: "Sorry, something went wrong. Please try again." }) }]);
+        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
       const { answer, botAnswered, messageId, language } = body.data;
@@ -147,7 +147,7 @@ export function ChatbotWidget() {
         postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
       }
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong", { defaultValue: "Sorry, something went wrong. Please try again." }) }]);
+      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
     } finally {
       setSending(false);
     }
@@ -171,14 +171,14 @@ export function ChatbotWidget() {
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
 
     try {
-      const subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest", { defaultValue: "Support request" }));
+      const subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
       });
       const result = (await res.json()) as { data: { id: string; category: string } | null };
-      const ticketErrorText = t("chatbot.ticketError", { defaultValue: "Couldn't create a ticket right now. Please try again." });
+      const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id } : m)));
         postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, openedTicket: true });
@@ -186,7 +186,7 @@ export function ChatbotWidget() {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: ticketErrorText } : m)));
       }
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError", { defaultValue: "Couldn't create a ticket right now. Please try again." }) } : m)));
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
     } finally {
       setCreatingTicketFor(null);
     }
@@ -200,12 +200,12 @@ export function ChatbotWidget() {
           style={{ height: 420 }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary text-white">
-            <span className="text-sm font-semibold">{t("chatbot.title", { defaultValue: "MyWisata Support" })}</span>
+            <span className="text-sm font-semibold">{t("chatbot.title")}</span>
             <div className="flex items-center gap-3">
               <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
-                {t("chatbot.myTickets", { defaultValue: "My Tickets" })}
+                {t("chatbot.myTickets")}
               </Link>
-              <button onClick={() => setOpen(false)} aria-label={t("chatbot.closeChat", { defaultValue: "Close chat" })}>
+              <button onClick={() => setOpen(false)} aria-label={t("chatbot.closeChat")}>
                 <X size={16} />
               </button>
             </div>
@@ -214,7 +214,7 @@ export function ChatbotWidget() {
           <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {messages.length === 0 && (
               <p className="text-xs text-muted-foreground text-center mt-8">
-                {t("chatbot.emptyPrompt", { defaultValue: "Ask about rewards, affiliate links, withdrawals, booking, or verification." })}
+                {t("chatbot.emptyPrompt")}
               </p>
             )}
             {messages.map((m, i) => {
@@ -229,20 +229,20 @@ export function ChatbotWidget() {
                   <div className="mt-1.5 max-w-[85%]">
                     {m.feedbackStage === "awaiting_helpful" && (
                       <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
-                        <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful", { defaultValue: "Was this helpful?" })}</span>
+                        <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful")}</span>
                         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
-                          {t("chatbot.yes", { defaultValue: "Yes" })}
+                          {t("chatbot.yes")}
                         </Button>
                         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
-                          {t("chatbot.no", { defaultValue: "No" })}
+                          {t("chatbot.no")}
                         </Button>
                       </div>
                     )}
-                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp", { defaultValue: "Glad I could help." })}</p>}
+                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp")}</p>}
                     {m.feedbackStage === "awaiting_ticket" && (
                       <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket", { defaultValue: "Want to open a support ticket?" })}</span>
+                          <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -250,7 +250,7 @@ export function ChatbotWidget() {
                             onClick={() => createTicket(i)}
                             disabled={creatingTicketFor === m.messageId}
                           >
-                            {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket", { defaultValue: "Creating…" }) : t("chatbot.yes", { defaultValue: "Yes" })}
+                            {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket") : t("chatbot.yes")}
                           </Button>
                           <Button
                             size="sm"
@@ -259,22 +259,20 @@ export function ChatbotWidget() {
                             onClick={() => declineTicket(i)}
                             disabled={creatingTicketFor === m.messageId}
                           >
-                            {t("chatbot.no", { defaultValue: "No" })}
+                            {t("chatbot.no")}
                           </Button>
                         </div>
                         {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
                       </div>
                     )}
-                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem", { defaultValue: "No problem. Ask me anything else." })}</p>}
+                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem")}</p>}
                     {m.feedbackStage === "ticket_created" && (
                       <div className="px-1">
                         <p className="text-xs text-muted-foreground">
-                          {t("chatbot.ticketCreatedPrefix", { defaultValue: "Done — ticket #" })}
-                          {m.ticketId?.slice(0, 8).toUpperCase()}
-                          {t("chatbot.ticketCreatedSuffix", { defaultValue: " created. Our team will reply; you'll see it under My Tickets." })}
+                          {t("strictMigration.chatbotTicketCreated", { id: m.ticketId?.slice(0, 8).toUpperCase() })}
                         </p>
                         <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
-                          {t("chatbot.viewMyTickets", { defaultValue: "View my tickets" })}
+                          {t("chatbot.viewMyTickets")}
                         </Link>
                       </div>
                     )}
@@ -292,18 +290,18 @@ export function ChatbotWidget() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") sendMessage();
               }}
-              placeholder={t("chatbot.inputPlaceholder", { defaultValue: "Ask a question…" })}
+              placeholder={t("chatbot.inputPlaceholder")}
               className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
               disabled={sending}
             />
-            <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={sendMessage} aria-label={t("chatbot.send", { defaultValue: "Send message" })} disabled={sending || !input.trim()}>
+            <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={sendMessage} aria-label={t("chatbot.send")} disabled={sending || !input.trim()}>
               <Send size={14} aria-hidden="true" />
             </Button>
           </div>
         </div>
       )}
 
-      <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen((o) => !o)} title={t("chatbot.openChat", { defaultValue: "Chat with us" })} aria-label={t("accessibility.openChat", { defaultValue: "Open chat" })}>
+      <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen((o) => !o)} title={t("chatbot.openChat")} aria-label={t("accessibility.openChat")}>
         <MessageCircle size={22} />
       </Button>
     </div>

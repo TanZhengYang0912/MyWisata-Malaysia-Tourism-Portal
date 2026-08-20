@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -110,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [currentUser?.role]);
 
   if (loading || !currentUser) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis", { defaultValue: "Loading…" })}</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
   return (
@@ -121,15 +122,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Shield size={16} className="text-white" />
           </div>
           <div>
-            <span className="font-bold text-white text-sm font-[family-name:var(--font-display)]">MyWisata</span>
-            <p className="text-[0.625rem] text-white/35">{tAdmin("shell.panel", { defaultValue: "Admin Panel" })}</p>
+            <span className="font-bold text-white text-sm font-[family-name:var(--font-display)]">{BRAND_NAME}</span>
+            <p className="text-[0.625rem] text-white/35">{tAdmin("shell.panel")}</p>
           </div>
         </div>
         <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[0.625rem] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs", { defaultValue: "Signed in as" })}</p>
+          <p className="text-[0.625rem] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs")}</p>
           <p className="text-sm font-bold text-white">{currentUser.name}</p>
           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-bold bg-gray-800 text-gray-300">
-            <Shield size={9} /> {tAdmin(`roles.${currentUser.role}`, { defaultValue: currentUser.role.replace("_", " ") })}
+            <Shield size={9} /> {tAdmin(`roles.${currentUser.role}`)}
           </div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
@@ -139,7 +140,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               href={item.href}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
             >
-              <item.icon size={15} /> {tAdmin(`navigation.${item.label}`, { defaultValue: item.label })}
+              <item.icon size={15} /> {tAdmin(`navigation.${item.label}`)}
               {item.href === "/admin/support" && unreadTickets > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
                   {unreadTickets}
@@ -157,7 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <LanguageSwitcher compact className="mb-2" />
           <AppearanceControl variant="sidebar-dark" />
           <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-white/55 transition-colors hover:bg-gray-800 hover:text-white">
-            <LogOut size={15} /> {tCommon("actions.signOut", { defaultValue: "Sign out" })}
+            <LogOut size={15} /> {tCommon("actions.signOut")}
           </button>
         </div>
       </aside>

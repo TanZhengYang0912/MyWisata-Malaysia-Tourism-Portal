@@ -69,11 +69,11 @@ export function getAllAccountRoutes(): string[] {
   return ACCOUNT_MENU_GROUPS.flatMap((group) => group.items.map((item) => item.href));
 }
 
-export function getCustomerDisplayName(user: { name?: string | null; email?: string | null }): string {
+export function getCustomerDisplayName(user: { name?: string | null; email?: string | null }, localizedFallback: string): string {
   const name = user.name?.trim();
   const email = user.email?.trim();
   if (name && name !== email) return name;
-  return email?.split("@")[0]?.trim() || name || "Account";
+  return email?.split("@")[0]?.trim() || name || localizedFallback;
 }
 
 export function isCustomerNavActive(pathname: string, href: string): boolean {

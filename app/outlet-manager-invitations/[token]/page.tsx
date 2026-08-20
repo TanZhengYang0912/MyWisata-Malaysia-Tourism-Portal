@@ -6,6 +6,7 @@ import { Building2, CheckCircle2, Globe, LockKeyhole, Mail } from "lucide-react"
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 type Invitation = {
   email: string;
@@ -95,7 +96,7 @@ export default function OutletManagerInvitationPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#f7f8fc] px-4 py-10">
       <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(1,0,102,0.12)]">
         <div className="bg-[#010066] px-6 py-8 text-white sm:px-9">
-          <div className="flex items-center gap-2 text-sm font-bold"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15"><Globe size={16} /></span> MyWisata</div>
+          <div className="flex items-center gap-2 text-sm font-bold"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15"><Globe size={16} /></span> {BRAND_NAME}</div>
           <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-[#FFCC00]">{t("outletInvitation.eyebrow")}</p>
           <h1 className="mt-2 text-3xl font-black">{t("outletInvitation.title")}</h1>
           <p className="mt-3 text-sm leading-6 text-white/75">{t("outletInvitation.description")}</p>

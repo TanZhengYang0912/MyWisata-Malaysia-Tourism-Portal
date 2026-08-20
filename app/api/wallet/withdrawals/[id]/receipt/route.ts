@@ -24,36 +24,21 @@ function maskPayoutReference(value: string | null): string | null {
   return value ? `••••••••${value.slice(-4)}` : null;
 }
 
-function getStatusGuidance(withdrawal: WithdrawalRow) {
+function getStatusGuidanceCode(withdrawal: WithdrawalRow) {
   if (withdrawal.status === 'failed') {
-    return {
-      title: 'Payout failed — funds restored',
-      message: 'The reserved amount has been returned to your available earnings. Check your payout destination before submitting a new withdrawal, or contact Support if the details are correct.',
-    };
+    return 'failed';
   }
   if (withdrawal.status === 'processing') {
-    return {
-      title: 'Payout in progress',
-      message: 'The payout provider is processing this withdrawal. No action is required unless the status does not change within the provider’s normal settlement time.',
-    };
+    return 'processing';
   }
   if (withdrawal.status === 'approved' && withdrawal.payout_failure_retryable === false) {
-    return {
-      title: 'Provider reconciliation in progress',
-      message: 'Your funds remain reserved while an administrator checks the provider transaction. Do not submit another withdrawal for the same funds; contact Support if you need an update.',
-    };
+    return 'approvedReconciliation';
   }
   if (withdrawal.status === 'approved') {
-    return {
-      title: 'Approved — payout pending',
-      message: 'Your funds remain reserved while the approved payout is prepared. No action is required from you.',
-    };
+    return 'approved';
   }
   if (withdrawal.status === 'paid' || withdrawal.status === 'completed') {
-    return {
-      title: 'Payout completed',
-      message: 'The withdrawal was sent to your selected payout destination.',
-    };
+    return 'completed';
   }
   return null;
 }
@@ -86,7 +71,7 @@ export async function GET(
     status: withdrawal.status,
     createdAt: withdrawal.created_at,
     updatedAt: withdrawal.updated_at,
-    destinationLabel: withdrawal.destination_label ?? "Selected payout destination",
+    destinationLabel: withdrawal.destination_label,
     payoutProvider: withdrawal.payout_provider ?? "stripe_connect",
     payoutReference: maskPayoutReference(
       withdrawal.payout_provider === "tng_direct_credit"
@@ -94,6 +79,6 @@ export async function GET(
         : withdrawal.stripe_payout_id,
     ),
     customerReason: withdrawal.customer_reason,
-    statusGuidance: getStatusGuidance(withdrawal),
+    statusGuidanceCode: getStatusGuidanceCode(withdrawal),
   });
 }

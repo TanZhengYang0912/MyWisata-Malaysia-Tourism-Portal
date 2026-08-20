@@ -36,14 +36,14 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.outlet.planVisit")}</p>
           <h2 id="place-activities-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {t("ui.placeActivity.title", { defaultValue: "Things to do here" })}
+            {t("ui.placeActivity.title")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {t("ui.placeActivity.summary", { experiences: t("ui.place.activityCount", { count: products.length, defaultValue: `${products.length} ${products.length === 1 ? "experience" : "experiences"}` }), providers: t("ui.place.vendorCount", { count: providerCount, defaultValue: `${providerCount} ${providerCount === 1 ? "provider" : "providers"}` }), defaultValue: "{{experiences}} from {{providers}}" })}
+            {t("ui.placeActivity.summary", { experiences: t("ui.place.activityCount", { count: products.length }), providers: t("ui.place.vendorCount", { count: providerCount }) })}
           </p>
         </div>
 
-        <div className="flex shrink-0 rounded-full border border-border bg-card p-1 shadow-sm" role="group" aria-label={t("ui.placeActivity.filterLabel", { defaultValue: "Filter experiences by type" })}>
+        <div className="flex shrink-0 rounded-full border border-border bg-card p-1 shadow-sm" role="group" aria-label={t("ui.placeActivity.filterLabel")}>
           {FILTERS.map(({ value, key, fallback }) => {
             const count = counts[value];
             const isActive = filter === value;
@@ -57,7 +57,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                   isActive ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
-                {t(key, { defaultValue: fallback })} <span className={isActive ? "text-white/75" : "text-muted-foreground/70"}>({count})</span>
+                {t(key)} <span className={isActive ? "text-white/75" : "text-muted-foreground/70"}>({count})</span>
               </button>
             );
           })}
@@ -66,9 +66,9 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
 
       {filtered.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
-          <p className="font-semibold text-foreground">{t("ui.placeActivity.empty", { defaultValue: "No experiences in this category yet." })}</p>
+          <p className="font-semibold text-foreground">{t("ui.placeActivity.empty")}</p>
           <button type="button" onClick={() => setFilter("all")} className="mt-2 text-sm font-bold text-primary hover:underline">
-            {t("ui.placeActivity.showAll", { defaultValue: "Show all experiences" })}
+            {t("ui.placeActivity.showAll")}
           </button>
         </div>
       ) : (
@@ -92,7 +92,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                   )}
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">
                     <RelationIcon relation={relation} />
-                    {t(`ui.place.relations.${relation}`, { defaultValue: relation })}
+                    {t(`ui.place.relations.${relation}`)}
                   </span>
                 </Link>
 
@@ -108,21 +108,21 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                     </div>
                     <p className="shrink-0 text-right text-sm font-bold text-foreground">
                       <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>
-                      {product.price === 0 ? t("ui.placeActivity.free", { defaultValue: "Free" }) : t("ui.placeActivity.price", { value: product.price.toFixed(2), defaultValue: "RM {{value}}" })}
+                      {product.price === 0 ? t("ui.placeActivity.free") : t("ui.placeActivity.price", { value: product.price.toFixed(2) })}
                     </p>
                   </div>
 
                   <p className="mt-3 mb-5 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                    {product.description || t("ui.place.activityFallback", { defaultValue: "Explore this experience at the destination." })}
+                    {product.description || t("ui.place.activityFallback")}
                   </p>
 
                   <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
-                    <span className="text-xs font-semibold text-muted-foreground">{t(product.requiresBooking ? "ui.place.reserveSpot" : "ui.place.availablePurchase", { defaultValue: product.requiresBooking ? "Reserve your spot" : "Available to purchase" })}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">{t(product.requiresBooking ? "ui.place.reserveSpot" : "ui.place.availablePurchase")}</span>
                     <Link
                       href={activityHref}
                       className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
-                      {product.requiresBooking ? t("ui.actions.bookNow", { defaultValue: "Book now" }) : t("ui.actions.viewDetails", { defaultValue: "Details" })}
+                      {product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.viewDetails")}
                       <ArrowUpRight size={14} aria-hidden="true" />
                     </Link>
                   </div>

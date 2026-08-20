@@ -21,6 +21,8 @@ export async function getServerTranslation(
   namespace: AppNamespace,
 ): Promise<{ locale: AppLocale; t: TFunction }> {
   const locale = await getRequestLocale();
-  const { t } = await getT(namespace, { lng: locale });
+  const { i18n } = await getT(namespace, { lng: locale });
+  i18n.options.fallbackLng = false;
+  const t = i18n.getFixedT(locale, namespace);
   return { locale, t };
 }

@@ -26,7 +26,9 @@
     "AI Assistant": "AI Assistant"
   },
   "accessibility": {
-    "unreadRecommendations": "{{count}} unread recommendations"
+    "unreadRecommendations": "{{count}} unread recommendations",
+    "unreadRecommendations_one": "{{count}} unread recommendations",
+    "unreadRecommendations_other": "{{count}} unread recommendations"
   },
   "filters": {
     "all": "All",
@@ -42,7 +44,9 @@
   },
   "selection": {
     "selected": "{{count}} selected",
-    "clear": "Clear selection"
+    "clear": "Clear selection",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected"
   },
   "batchActions": {
     "approve": "Approve",
@@ -83,11 +87,15 @@
       "openVsReviewed": "Open vs reviewed",
       "selfReferrals": "Self-referrals blocked",
       "topFlagged": "Top flagged affiliates",
-      "totalFlags": "Total flags"
+      "totalFlags": "Total flags",
+      "flagCount_one": "{{count}} flags",
+      "flagCount_other": "{{count}} flags"
     },
     "clearing": {
       "errors": ", {{count}} error(s)",
-      "result": "Cleared {{cleared}}, reversed {{reversed}}, skipped {{skipped}}{{errors}}"
+      "result": "Cleared {{cleared}}, reversed {{reversed}}, skipped {{skipped}}{{errors}}",
+      "errors_one": ", {{count}} error(s)",
+      "errors_other": ", {{count}} error(s)"
     },
     "columns": {
       "actions": "Actions",
@@ -187,7 +195,9 @@
       "flagConfirmed": "Fraud flag confirmed.",
       "flagDismissed": "Fraud flag dismissed.",
       "linkReactivated": "Affiliate link reactivated.",
-      "tierSaved": "Affiliate tier saved."
+      "tierSaved": "Affiliate tier saved.",
+      "batchFlags_one": "{{count}} fraud flags processed.",
+      "batchFlags_other": "{{count}} fraud flags processed."
     },
     "sweep": {
       "result": "Scanned {{links}} links, {{flags}} new flag(s)"
@@ -209,8 +219,14 @@
     "fraudCounters": {
       "selfReferralsBlocked": "Blocked self-referrals: {{count}}",
       "duplicatePayoutsPrevented": "Prevented duplicate payouts: {{count}}",
-      "openFlagsSummary": "Open flags to review: {{flags}} · Disabled links: {{links}}"
-    }
+      "openFlagsSummary": "Open flags to review: {{flags}} · Disabled links: {{links}}",
+      "selfReferralsBlocked_one": "Blocked self-referrals: {{count}}",
+      "selfReferralsBlocked_other": "Blocked self-referrals: {{count}}",
+      "duplicatePayoutsPrevented_one": "Prevented duplicate payouts: {{count}}",
+      "duplicatePayoutsPrevented_other": "Prevented duplicate payouts: {{count}}"
+    },
+    "referralCount_one": "{{count}} referrals",
+    "referralCount_other": "{{count}} referrals"
   },
   "aiAssistant": {
     "ask": {
@@ -295,7 +311,9 @@
       "approve": "{{entity}} approved.",
       "batchProcessed": "{{count}} catalogue items processed.",
       "change_requested": "{{entity}} returned for changes.",
-      "reject": "{{entity}} rejected."
+      "reject": "{{entity}} rejected.",
+      "batchProcessed_one": "{{count}} catalogue items processed.",
+      "batchProcessed_other": "{{count}} catalogue items processed."
     },
     "title": "Catalogue review",
     "waiting": "Waiting",
@@ -379,7 +397,9 @@
       "batchStatus": "{{count}} knowledge documents updated.",
       "created": "Knowledge document created.",
       "deactivated": "Knowledge document deactivated.",
-      "updated": "Knowledge document updated."
+      "updated": "Knowledge document updated.",
+      "batchStatus_one": "{{count}} knowledge documents updated.",
+      "batchStatus_other": "{{count}} knowledge documents updated."
     },
     "title": "Chatbot Oversight",
     "topUnanswered": {
@@ -387,7 +407,11 @@
       "empty": "Nothing unanswered yet — the KB is covering everything asked so far.",
       "title": "Top unanswered questions"
     },
-    "uncategorized": "uncategorized"
+    "uncategorized": "uncategorized",
+    "reindexErrors_one": ", {{count}} error(s)",
+    "reindexErrors_other": ", {{count}} error(s)",
+    "questionMeta_one": "×{{count}} · last asked {{date}}",
+    "questionMeta_other": "×{{count}} · last asked {{date}}"
   },
   "chatReports": {
     "accessibility": {
@@ -499,7 +523,9 @@
       "batchMarked": "{{count}} reports marked {{action}}.",
       "marked": "Report marked {{action}}.",
       "reporterBlocked": "Reporter blocked from reporting for {{days}} days.",
-      "reporterUnblocked": "Reporter unblocked."
+      "reporterUnblocked": "Reporter unblocked.",
+      "batchMarked_one": "{{count}} reports marked {{action}}.",
+      "batchMarked_other": "{{count}} reports marked {{action}}."
     },
     "tabs": {
       "pending": "Pending",
@@ -510,7 +536,11 @@
     "prompts": {
       "resolutionReason": "Resolution reason ({{reasons}}):",
       "resolutionNote": "Resolution note (optional):"
-    }
+    },
+    "threadReportCount_one": "{{count}} reports on this thread",
+    "threadReportCount_other": "{{count}} reports on this thread",
+    "separateReports_one": "This conversation has {{count}} separate reports against it.",
+    "separateReports_other": "This conversation has {{count}} separate reports against it."
   },
   "common": {
     "actions": {
@@ -570,7 +600,9 @@
       "pendingPayout": "Pending payout value",
       "reviewTarget": "Past the review target",
       "twoApprovers": "Waiting for two approvers",
-      "withdrawalRequests": "{{count}} withdrawal requests"
+      "withdrawalRequests": "{{count}} withdrawal requests",
+      "withdrawalRequests_one": "{{count}} withdrawal requests",
+      "withdrawalRequests_other": "{{count}} withdrawal requests"
     },
     "oldestWithdrawal": "Oldest withdrawal",
     "openApprovals": "Open approvals",
@@ -586,7 +618,11 @@
     "today": "Today",
     "walletClear": "The withdrawal review queue is clear.",
     "walletPending": "{{count}} requests need a decision, with {{amount}} in review.",
-    "walletShortcut": "Wallet Approval shortcut"
+    "walletShortcut": "Wallet Approval shortcut",
+    "openItems_one": "{{count}} open items",
+    "openItems_other": "{{count}} open items",
+    "walletPending_one": "{{count}} requests need a decision, with {{amount}} in review.",
+    "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review."
   },
   "kyc": {
     "accessibility": {
@@ -694,7 +730,9 @@
       "approved": "KYC submission approved.",
       "batchProcessed": "{{count}} KYC submissions processed.",
       "infoRequested": "Information request sent.",
-      "rejected": "KYC submission rejected."
+      "rejected": "KYC submission rejected.",
+      "batchProcessed_one": "{{count}} KYC submissions processed.",
+      "batchProcessed_other": "{{count}} KYC submissions processed."
     },
     "title": "KYC Review",
     "verified": {
@@ -703,7 +741,9 @@
       "count": "{{count}} accounts",
       "description": "Accounts that currently hold the verified KYC tier.",
       "empty": "No verified users yet",
-      "title": "Verified users"
+      "title": "Verified users",
+      "count_one": "{{count}} accounts",
+      "count_other": "{{count}} accounts"
     }
   },
   "payouts": {
@@ -780,7 +820,9 @@
     "units": {
       "requests": "requests",
       "thisMonth": "this month"
-    }
+    },
+    "total_one": "{{count}} total",
+    "total_other": "{{count}} total"
   },
   "rewards": {
     "columns": {
@@ -803,7 +845,9 @@
     "runNow": "Run clearance now",
     "tierRates": "Affiliate Tier Rates",
     "title": "Reward Clearance",
-    "totalValue": "Total value"
+    "totalValue": "Total value",
+    "confirmed_one": "Confirmed {{count}} attribution.",
+    "confirmed_other": "Confirmed {{count}} attribution."
   },
   "ui": {
     "actions": {
@@ -813,6 +857,7 @@
       "close": "Close",
       "discardChanges": "Discard changes",
       "reactivate": "Reactivate",
+      "unsuspend": "Reactivate",
       "refresh": "Refresh",
       "reject": "Reject",
       "request_information": "Request information",
@@ -828,7 +873,9 @@
     "batch": {
       "clearSelection": "Clear selection",
       "selectAllOnPage": "Select all on this page",
-      "selected": "{{count}} selected"
+      "selected": "{{count}} selected",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected"
     },
     "pagination": {
       "go": "Go",
@@ -838,7 +885,9 @@
       "pageOf": "Page {{page}} of {{total}}",
       "perPage": "{{count}} per page",
       "previous": "Previous",
-      "previousPage": "Previous page"
+      "previousPage": "Previous page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page"
     },
     "recommendations": {
       "allCategories": "All categories",
@@ -848,7 +897,9 @@
         "processed": "{{count}} recommendations processed.",
         "reasonError": "Batch reject/request changes requires a reason of at least 10 characters.",
         "rejectReasonPrompt": "Reason for rejecting all selected recommendations (at least 10 characters):",
-        "reviewFailed": "One or more recommendation reviews failed."
+        "reviewFailed": "One or more recommendation reviews failed.",
+        "processed_one": "{{count}} recommendations processed.",
+        "processed_other": "{{count}} recommendations processed."
       },
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
       "description": "Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.",
@@ -876,7 +927,11 @@
       "selectAllPending": "Select all visible pending recommendations",
       "selectRecommendation": "Select recommendation {{name}}",
       "subtitle": "Community-submitted vendors and hidden gems.",
-      "title": "Recommendation Moderation"
+      "title": "Recommendation Moderation",
+      "pending_one": "Pending ({{count}})",
+      "pending_other": "Pending ({{count}})",
+      "reviewed_one": "Reviewed ({{count}})",
+      "reviewed_other": "Reviewed ({{count}})"
     },
     "states": {
       "loadingEllipsis": "Loading…"
@@ -931,7 +986,13 @@
       "unansweredLower": "unanswered",
       "unreadOnly": "Unread only",
       "minutes": "{{count}} min",
-      "hours": "{{count}} hr"
+      "hours": "{{count}} hr",
+      "batchResolved_one": "{{count}} tickets marked resolved.",
+      "batchResolved_other": "{{count}} tickets marked resolved.",
+      "minutes_one": "{{count}} min",
+      "minutes_other": "{{count}} min",
+      "hours_one": "{{count}} hr",
+      "hours_other": "{{count}} hr"
     },
     "table": {
       "action": "Action",
@@ -961,12 +1022,18 @@
         "noCommonAction": "No single account action is valid for every selected user.",
         "processed": "{{count}} user accounts processed.",
         "reasonError": "A reason of at least 10 characters is required.",
-        "reasonPrompt": "Reason for this batch account action (at least 10 characters):"
+        "reasonPrompt": "Reason for this batch account action (at least 10 characters):",
+        "confirm_one": "{{action}} {{count}} selected user accounts?",
+        "confirm_other": "{{action}} {{count}} selected user accounts?",
+        "processed_one": "{{count}} user accounts processed.",
+        "processed_other": "{{count}} user accounts processed."
       },
       "bio": {
         "clear": "Bio clear",
         "locked": "Bio locked",
-        "lockedCount": "Locked ({{count}})"
+        "lockedCount": "Locked ({{count}})",
+        "lockedCount_one": "Locked ({{count}})",
+        "lockedCount_other": "Locked ({{count}})"
       },
       "copyUserId": "Copy user ID for {{name}}",
       "description": "Review ordinary user accounts, verification progress, profile completeness and account status.",
@@ -1054,7 +1121,11 @@
         "noneEligible": "No selected vendors are eligible for {{action}} right now.",
         "partial": "{{updated}} updated. {{failed}} could not be updated.",
         "reasonPrompt": "Enter one reason for this batch action:",
-        "success": "{{count}} vendors updated successfully."
+        "success": "{{count}} vendors updated successfully.",
+        "confirm_one": "{{action}} {{count}} selected vendors?",
+        "confirm_other": "{{action}} {{count}} selected vendors?",
+        "success_one": "{{count}} vendors updated successfully.",
+        "success_other": "{{count}} vendors updated successfully."
       },
       "confirm": {
         "approve": "Approve {{name}}?",
@@ -1154,7 +1225,13 @@
       "statusLabel": "Vendor status",
       "summary": "Vendor summary",
       "title": "Vendor review workspace",
-      "vendorIdCopied": "Vendor ID copied."
+      "vendorIdCopied": "Vendor ID copied.",
+      "matching_one": "{{count}} matching vendors",
+      "matching_other": "{{count}} matching vendors",
+      "outlets_one": "{{count}} outlets",
+      "outlets_other": "{{count}} outlets",
+      "listings_one": "{{count}} listings",
+      "listings_other": "{{count}} listings"
     },
     "walletSettings": {
       "audit": {
@@ -1167,7 +1244,11 @@
       "backToWithdrawals": "Back to withdrawals",
       "batch": {
         "confirmRevoke": "Revoke wallet approval access for {{count}} selected approvers?",
-        "revoked": "{{count}} wallet approvers revoked."
+        "revoked": "{{count}} wallet approvers revoked.",
+        "confirmRevoke_one": "Revoke wallet approval access for {{count}} selected approvers?",
+        "confirmRevoke_other": "Revoke wallet approval access for {{count}} selected approvers?",
+        "revoked_one": "{{count}} wallet approvers revoked.",
+        "revoked_other": "{{count}} wallet approvers revoked."
       },
       "confirm": {
         "role": {
@@ -1192,7 +1273,11 @@
         "description": "The values below are the current working configuration.",
         "existingState": "Existing withdrawal requests keep their recorded state when policy settings change.",
         "hours": "{{count}} hours",
-        "title": "Effective policy"
+        "title": "Effective policy",
+        "days_one": "{{count}} days",
+        "days_other": "{{count}} days",
+        "hours_one": "{{count}} hours",
+        "hours_other": "{{count}} hours"
       },
       "emptyApprovers": {
         "description": "Grant access to an active user above.",
@@ -1303,7 +1388,9 @@
       "nothingToReview": "Nothing to review.",
       "marking": "Marking…",
       "markReviewed": "Mark reviewed",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "openCount_one": "{{count}} open",
+      "openCount_other": "{{count}} open"
     }
   },
   "staffConduct": {
@@ -1419,7 +1506,15 @@
       "uniqueIssues": "{{count}} unique issues",
       "useReason": "Use this reason",
       "duplicateMatch": "{{count}} exact normalized-name match",
-      "duplicateMatches": "{{count}} exact normalized-name matches"
+      "duplicateMatches": "{{count}} exact normalized-name matches",
+      "uniqueIssue_one": "{{count}} unique issue",
+      "uniqueIssue_other": "{{count}} unique issue",
+      "uniqueIssues_one": "{{count}} unique issues",
+      "uniqueIssues_other": "{{count}} unique issues",
+      "duplicateMatch_one": "{{count}} exact normalized-name match",
+      "duplicateMatch_other": "{{count}} exact normalized-name match",
+      "duplicateMatches_one": "{{count}} exact normalized-name matches",
+      "duplicateMatches_other": "{{count}} exact normalized-name matches"
     },
     "detail": {
       "actions": {
@@ -1570,7 +1665,9 @@
     "reviewAction": "Review action",
     "confirmAction": "Confirm action",
     "confirmDescription": "This will apply the selected account action to {{email}}. The reason will be recorded in the audit log.",
-    "thisUser": "this user"
+    "thisUser": "this user",
+    "violations_one": "Violations: {{count}}",
+    "violations_other": "Violations: {{count}}"
   },
   "share": {
     "actions": {
@@ -1593,7 +1690,9 @@
     "age": {
       "daysHours": "{{days}}d {{hours}}h",
       "hours": "{{count}}h",
-      "lessThanHour": "<1h"
+      "lessThanHour": "<1h",
+      "hours_one": "{{count}}h",
+      "hours_other": "{{count}}h"
     },
     "accessibility": {
       "close": "Close",
@@ -1748,13 +1847,17 @@
       "batchProcessed": "{{count}} withdrawals processed.",
       "refreshAndAskSuperAdmin": "Refresh the page and try again; if it continues, ask a Super Admin to check the withdrawal record.",
       "refreshAndContactSuperAdmin": "Refresh the page and try again; if it continues, contact a Super Admin.",
-      "riskOverrideRecorded": "Risk override recorded."
+      "riskOverrideRecorded": "Risk override recorded.",
+      "batchProcessed_one": "{{count}} withdrawals processed.",
+      "batchProcessed_other": "{{count}} withdrawals processed."
     },
     "filters": {
       "allRiskLevels": "All risk levels",
       "allStatuses": "All statuses",
       "perPage": "{{count}} per page",
-      "searchCustomerOrEmail": "Search customer or email"
+      "searchCustomerOrEmail": "Search customer or email",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page"
     },
     "header": {
       "description": "Review payout requests with the amount, risk, approval progress and age visible before opening the evidence drawer.",
@@ -1809,13 +1912,17 @@
     "prompts": {
       "adminNote": "Admin note (at least 10 characters):",
       "batchConfirm": "{{action}} {{count}} selected {{itemLabel}}? Each item will still be checked by its own approval endpoint.",
-      "reasonCategory": "Reason category ({{reasons}}):"
+      "reasonCategory": "Reason category ({{reasons}}):",
+      "batchConfirm_one": "{{action}} {{count}} selected {{itemLabel}}? Each item will still be checked by its own approval endpoint.",
+      "batchConfirm_other": "{{action}} {{count}} selected {{itemLabel}}? Each item will still be checked by its own approval endpoint."
     },
     "queue": {
       "description": "Open a row when the review priority or evidence needs a closer look.",
       "noOpenRequests": "No open requests",
       "oldestRequest": "Oldest request {{age}}",
-      "title": "Review queue ({{count}})"
+      "title": "Review queue ({{count}})",
+      "title_one": "Review queue ({{count}})",
+      "title_other": "Review queue ({{count}})"
     },
     "readiness": {
       "available": "Available",
@@ -1883,7 +1990,9 @@
       "standardReview": "Standard review",
       "status": "Status",
       "waitingForSecondApprover": "Waiting for second approver",
-      "withinReviewWindow": "Within review window"
+      "withinReviewWindow": "Within review window",
+      "dualApprovals_one": "{{count}}/2 approvals",
+      "dualApprovals_other": "{{count}}/2 approvals"
     },
     "timeline": {
       "auditNote": "Every decision is recorded in the audit timeline.",
@@ -1933,6 +2042,20 @@
     "status": {
       "processed": "Processed",
       "simulated": "SIMULATED"
-    }
+    },
+    "attempt_one": "Attempt {{count}}",
+    "attempt_other": "Attempt {{count}}"
+  },
+  "strictMigration": {
+    "staffConduct": {
+      "restricted": "Staff conduct review is limited to super admins.",
+      "title": "Staff conduct",
+      "description": "Flagged admin conduct and human-submitted chat reports for super-admin review.",
+      "flagSummary": "{{admin}} · {{source}} · Target: {{target}}"
+    },
+    "moderationFlagSummary": "{{user}} · {{source}} · {{flagType}}",
+    "recommendationFindingMeta": "{{kindLabel}}: {{kind}} · {{severityLabel}}: {{severity}}",
+    "recommendationEvidence": "{{label}}: {{evidence}}",
+    "recommendationPhotoStatus": "{{photo}} · {{status}}"
   }
 }

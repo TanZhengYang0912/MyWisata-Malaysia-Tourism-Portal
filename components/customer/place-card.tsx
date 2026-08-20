@@ -6,9 +6,9 @@ import { ArrowUpRight, MapPin } from "lucide-react";
 import type { Place } from "@/backend/core/types";
 
 export function entryLabel(place: Place, t?: (key: string, options?: Record<string, unknown>) => string): { text: string; tone: string } {
-  if (place.entryFee === null) return { text: t?.("ui.place.noGate", { defaultValue: "Public access" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
-  if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { defaultValue: "Free entry" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
-  return { text: t?.("ui.place.entryFee", { price: place.entryFee, defaultValue: "RM{{price}} entry" }) ?? `RM${place.entryFee} entry`, tone: "bg-amber-100 text-amber-900" };
+  if (place.entryFee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
+  if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
+  return { text: t?.("ui.place.entryFee", { price: place.entryFee, ns: "customer" }) ?? `RM${place.entryFee} entry`, tone: "bg-amber-100 text-amber-900" };
 }
 
 /** A region or POI card in a state/region listing — productCount is precomputed by the page, not fetched here. */
@@ -19,7 +19,7 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
   return (
     <Link
       href={`/customer/place/${place.slug}`}
-      aria-label={t("ui.place.explorePlace", { name: place.name, defaultValue: "Explore {{name}}" })}
+      aria-label={t("ui.place.explorePlace", { name: place.name })}
       className="group flex h-full min-h-[390px] flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <div className="relative h-48 shrink-0 overflow-hidden bg-secondary sm:h-52">
@@ -48,14 +48,14 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
           <span className="truncate">{location}</span>
         </p>
         <p className="mt-3 line-clamp-2 min-h-[2.75rem] text-sm leading-6 text-muted-foreground">
-          {place.tagline || t("ui.place.cardFallback", { defaultValue: "Discover local stories, places and experiences worth the stop." })}
+          {place.tagline || t("ui.place.cardFallback")}
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-5">
           <span className="text-xs font-bold text-primary">
             {productCount === 0 ? t("ui.labels.freeToExplore") : t("ui.place.vendorOptions", { count: productCount })}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-bold text-white">
-            {productCount === 0 ? t("ui.actions.viewDetails") : t("ui.outletMenu.chooseOptions", { defaultValue: "View options" })}
+            {productCount === 0 ? t("ui.actions.viewDetails") : t("ui.outletMenu.chooseOptions")}
             <ArrowUpRight size={14} aria-hidden="true" />
           </span>
         </div>

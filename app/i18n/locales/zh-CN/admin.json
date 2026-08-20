@@ -26,7 +26,9 @@
     "AI Assistant": "AI 助手"
   },
   "accessibility": {
-    "unreadRecommendations": "{{count}} 条推荐未读"
+    "unreadRecommendations": "{{count}} 条推荐未读",
+    "unreadRecommendations_one": "{{count}} 条推荐未读",
+    "unreadRecommendations_other": "{{count}} 条推荐未读"
   },
   "filters": {
     "all": "全部",
@@ -42,7 +44,9 @@
   },
   "selection": {
     "selected": "已选择 {{count}} 项",
-    "clear": "清除选择"
+    "clear": "清除选择",
+    "selected_one": "已选择 {{count}} 项",
+    "selected_other": "已选择 {{count}} 项"
   },
   "batchActions": {
     "approve": "批准",
@@ -83,11 +87,15 @@
       "openVsReviewed": "开放与已审核",
       "selfReferrals": "已阻止自我推荐",
       "topFlagged": "被标记最多的联盟",
-      "totalFlags": "标记总数"
+      "totalFlags": "标记总数",
+      "flagCount_one": "{{count}} 个标记",
+      "flagCount_other": "{{count}} 个标记"
     },
     "clearing": {
       "errors": "，{{count}} 个错误",
-      "result": "已清除 {{cleared}} 个，已冲销 {{reversed}} 个，已跳过 {{skipped}} 个{{errors}}"
+      "result": "已清除 {{cleared}} 个，已冲销 {{reversed}} 个，已跳过 {{skipped}} 个{{errors}}",
+      "errors_one": "，{{count}} 个错误",
+      "errors_other": "，{{count}} 个错误"
     },
     "columns": {
       "actions": "操作",
@@ -187,7 +195,9 @@
       "flagConfirmed": "欺诈标记已确认。",
       "flagDismissed": "欺诈标记已忽略。",
       "linkReactivated": "联盟链接已重新启用。",
-      "tierSaved": "联盟等级已保存。"
+      "tierSaved": "联盟等级已保存。",
+      "batchFlags_one": "{{count}} 个欺诈标记已处理。",
+      "batchFlags_other": "{{count}} 个欺诈标记已处理。"
     },
     "sweep": {
       "result": "已扫描 {{links}} 个链接，发现 {{flags}} 个新标记"
@@ -209,8 +219,14 @@
     "fraudCounters": {
       "selfReferralsBlocked": "已拦截自我推荐：{{count}}",
       "duplicatePayoutsPrevented": "已阻止重复付款：{{count}}",
-      "openFlagsSummary": "待审核标记：{{flags}} · 已停用链接：{{links}}"
-    }
+      "openFlagsSummary": "待审核标记：{{flags}} · 已停用链接：{{links}}",
+      "selfReferralsBlocked_one": "已拦截自我推荐：{{count}}",
+      "selfReferralsBlocked_other": "已拦截自我推荐：{{count}}",
+      "duplicatePayoutsPrevented_one": "已阻止重复付款：{{count}}",
+      "duplicatePayoutsPrevented_other": "已阻止重复付款：{{count}}"
+    },
+    "referralCount_one": "{{count}} 推荐",
+    "referralCount_other": "{{count}} 推荐"
   },
   "aiAssistant": {
     "ask": {
@@ -295,7 +311,9 @@
       "approve": "{{entity}}已批准。",
       "batchProcessed": "{{count}} 个目录项目已处理。",
       "change_requested": "{{entity}}已退回修改。",
-      "reject": "{{entity}}已拒绝。"
+      "reject": "{{entity}}已拒绝。",
+      "batchProcessed_one": "{{count}} 个目录项目已处理。",
+      "batchProcessed_other": "{{count}} 个目录项目已处理。"
     },
     "title": "目录审核",
     "waiting": "等待中",
@@ -379,7 +397,9 @@
       "batchStatus": "{{count}} 个知识库文件已更新。",
       "created": "知识库文件已创建。",
       "deactivated": "知识库文件已停用。",
-      "updated": "知识库文件已更新。"
+      "updated": "知识库文件已更新。",
+      "batchStatus_one": "{{count}} 个知识库文件已更新。",
+      "batchStatus_other": "{{count}} 个知识库文件已更新。"
     },
     "title": "聊天机器人监管",
     "topUnanswered": {
@@ -387,7 +407,11 @@
       "empty": "尚无未回答问题——知识库已覆盖目前收到的所有提问。",
       "title": "最常见的未回答问题"
     },
-    "uncategorized": "未分类"
+    "uncategorized": "未分类",
+    "reindexErrors_one": "，{{count}} 个错误",
+    "reindexErrors_other": "，{{count}} 个错误",
+    "questionMeta_one": "×{{count}} · 最近提问于 {{date}}",
+    "questionMeta_other": "×{{count}} · 最近提问于 {{date}}"
   },
   "chatReports": {
     "accessibility": {
@@ -499,7 +523,9 @@
       "batchMarked": "{{count}} 条举报已标记为{{action}}。",
       "marked": "举报已标记为{{action}}。",
       "reporterBlocked": "举报人已被屏蔽 {{days}} 天，无法提交举报。",
-      "reporterUnblocked": "举报人已解除屏蔽。"
+      "reporterUnblocked": "举报人已解除屏蔽。",
+      "batchMarked_one": "{{count}} 条举报已标记为{{action}}。",
+      "batchMarked_other": "{{count}} 条举报已标记为{{action}}。"
     },
     "tabs": {
       "pending": "待处理",
@@ -510,7 +536,11 @@
     "prompts": {
       "resolutionReason": "解决原因（{{reasons}}）：",
       "resolutionNote": "解决备注（可选）："
-    }
+    },
+    "threadReportCount_one": "此会话有 {{count}} 条举报",
+    "threadReportCount_other": "此会话有 {{count}} 条举报",
+    "separateReports_one": "此对话有 {{count}} 条独立举报。",
+    "separateReports_other": "此对话有 {{count}} 条独立举报。"
   },
   "common": {
     "actions": {
@@ -570,7 +600,9 @@
       "pendingPayout": "待打款提现金额",
       "reviewTarget": "已超过审核目标",
       "twoApprovers": "等待两位审批人",
-      "withdrawalRequests": "{{count}} 个提现请求"
+      "withdrawalRequests": "{{count}} 个提现请求",
+      "withdrawalRequests_one": "{{count}} 个提现请求",
+      "withdrawalRequests_other": "{{count}} 个提现请求"
     },
     "oldestWithdrawal": "最早提现",
     "openApprovals": "开放审批",
@@ -586,7 +618,11 @@
     "today": "今天",
     "walletClear": "提现审核队列已清空。",
     "walletPending": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
-    "walletShortcut": "钱包审批快捷入口"
+    "walletShortcut": "钱包审批快捷入口",
+    "openItems_one": "{{count}} 个待处理项目",
+    "openItems_other": "{{count}} 个待处理项目",
+    "walletPending_one": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
+    "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。"
   },
   "kyc": {
     "accessibility": {
@@ -694,7 +730,9 @@
       "approved": "KYC 提交已批准。",
       "batchProcessed": "{{count}} 个 KYC 提交已处理。",
       "infoRequested": "已发送补充信息请求。",
-      "rejected": "KYC 提交已拒绝。"
+      "rejected": "KYC 提交已拒绝。",
+      "batchProcessed_one": "{{count}} 个 KYC 提交已处理。",
+      "batchProcessed_other": "{{count}} 个 KYC 提交已处理。"
     },
     "title": "KYC 审核",
     "verified": {
@@ -703,7 +741,9 @@
       "count": "{{count}} 个账户",
       "description": "当前持有已验证 KYC 等级的账户。",
       "empty": "尚无已验证用户",
-      "title": "已验证用户"
+      "title": "已验证用户",
+      "count_one": "{{count}} 个账户",
+      "count_other": "{{count}} 个账户"
     }
   },
   "payouts": {
@@ -780,7 +820,9 @@
     "units": {
       "requests": "请求",
       "thisMonth": "本月"
-    }
+    },
+    "total_one": "{{count}} 个",
+    "total_other": "{{count}} 个"
   },
   "rewards": {
     "columns": {
@@ -803,7 +845,9 @@
     "runNow": "立即运行清算",
     "tierRates": "联盟等级费率",
     "title": "奖励结算",
-    "totalValue": "总价值"
+    "totalValue": "总价值",
+    "confirmed_one": "已确认 {{count}} 条归因。",
+    "confirmed_other": "已确认 {{count}} 条归因。"
   },
   "ui": {
     "actions": {
@@ -813,6 +857,7 @@
       "close": "关闭",
       "discardChanges": "放弃更改",
       "reactivate": "重新启用",
+      "unsuspend": "重新启用",
       "refresh": "刷新",
       "reject": "拒绝",
       "request_information": "要求补充资料",
@@ -828,7 +873,9 @@
     "batch": {
       "clearSelection": "清除选择",
       "selectAllOnPage": "选择本页全部",
-      "selected": "已选择 {{count}} 项"
+      "selected": "已选择 {{count}} 项",
+      "selected_one": "已选择 {{count}} 项",
+      "selected_other": "已选择 {{count}} 项"
     },
     "pagination": {
       "go": "前往",
@@ -838,7 +885,9 @@
       "pageOf": "第 {{page}} 页，共 {{total}} 页",
       "perPage": "每页 {{count}} 项",
       "previous": "上一页",
-      "previousPage": "上一页"
+      "previousPage": "上一页",
+      "perPage_one": "每页 {{count}} 项",
+      "perPage_other": "每页 {{count}} 项"
     },
     "recommendations": {
       "allCategories": "所有类别",
@@ -848,7 +897,9 @@
         "processed": "已处理 {{count}} 条推荐。",
         "reasonError": "批量拒绝或要求修改时，理由必须至少 10 个字符。",
         "rejectReasonPrompt": "拒绝所有选中推荐的理由（至少 10 个字符）：",
-        "reviewFailed": "一个或多个推荐审核失败。"
+        "reviewFailed": "一个或多个推荐审核失败。",
+        "processed_one": "已处理 {{count}} 条推荐。",
+        "processed_other": "已处理 {{count}} 条推荐。"
       },
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
       "description": "批准优质推荐以便联系商家。批准不会发布商家；商家加入后，请从商家管理中关联已批准的推荐，以保留归属和佣金。",
@@ -876,7 +927,11 @@
       "selectAllPending": "选择所有可见的待审核推荐",
       "selectRecommendation": "选择推荐 {{name}}",
       "subtitle": "社区提交的商家和小众宝藏地点。",
-      "title": "推荐审核"
+      "title": "推荐审核",
+      "pending_one": "待审核（{{count}}）",
+      "pending_other": "待审核（{{count}}）",
+      "reviewed_one": "已审核（{{count}}）",
+      "reviewed_other": "已审核（{{count}}）"
     },
     "states": {
       "loadingEllipsis": "加载中…"
@@ -931,7 +986,13 @@
       "unansweredLower": "未回复",
       "unreadOnly": "仅未读",
       "minutes": "{{count}} 分钟",
-      "hours": "{{count}} 小时"
+      "hours": "{{count}} 小时",
+      "batchResolved_one": "已将 {{count}} 张工单标记为已解决。",
+      "batchResolved_other": "已将 {{count}} 张工单标记为已解决。",
+      "minutes_one": "{{count}} 分钟",
+      "minutes_other": "{{count}} 分钟",
+      "hours_one": "{{count}} 小时",
+      "hours_other": "{{count}} 小时"
     },
     "table": {
       "action": "操作",
@@ -961,12 +1022,18 @@
         "noCommonAction": "没有一项账户操作适用于所有选中的用户。",
         "processed": "已处理 {{count}} 个用户账户。",
         "reasonError": "理由必须至少 10 个字符。",
-        "reasonPrompt": "此批量账户操作的理由（至少 10 个字符）："
+        "reasonPrompt": "此批量账户操作的理由（至少 10 个字符）：",
+        "confirm_one": "要对选中的 {{count}} 个用户账户执行“{{action}}”吗？",
+        "confirm_other": "要对选中的 {{count}} 个用户账户执行“{{action}}”吗？",
+        "processed_one": "已处理 {{count}} 个用户账户。",
+        "processed_other": "已处理 {{count}} 个用户账户。"
       },
       "bio": {
         "clear": "简介正常",
         "locked": "简介已锁定",
-        "lockedCount": "已锁定（{{count}}）"
+        "lockedCount": "已锁定（{{count}}）",
+        "lockedCount_one": "已锁定（{{count}}）",
+        "lockedCount_other": "已锁定（{{count}}）"
       },
       "copyUserId": "复制 {{name}} 的用户 ID",
       "description": "审核普通用户账户、验证进度、资料完整度和账户状态。",
@@ -1054,7 +1121,11 @@
         "noneEligible": "当前没有选中的商家符合“{{action}}”条件。",
         "partial": "已更新 {{updated}} 个，{{failed}} 个无法更新。",
         "reasonPrompt": "请输入此批量操作的统一理由：",
-        "success": "已成功更新 {{count}} 个商家。"
+        "success": "已成功更新 {{count}} 个商家。",
+        "confirm_one": "要对选中的 {{count}} 个商家执行“{{action}}”吗？",
+        "confirm_other": "要对选中的 {{count}} 个商家执行“{{action}}”吗？",
+        "success_one": "已成功更新 {{count}} 个商家。",
+        "success_other": "已成功更新 {{count}} 个商家。"
       },
       "confirm": {
         "approve": "批准 {{name}}？",
@@ -1154,7 +1225,13 @@
       "statusLabel": "商家状态",
       "summary": "商家摘要",
       "title": "商家审核工作区",
-      "vendorIdCopied": "商家 ID 已复制。"
+      "vendorIdCopied": "商家 ID 已复制。",
+      "matching_one": "{{count}} 个匹配商家",
+      "matching_other": "{{count}} 个匹配商家",
+      "outlets_one": "{{count}} 家门店",
+      "outlets_other": "{{count}} 家门店",
+      "listings_one": "{{count}} 个商品",
+      "listings_other": "{{count}} 个商品"
     },
     "walletSettings": {
       "audit": {
@@ -1167,7 +1244,11 @@
       "backToWithdrawals": "返回提款",
       "batch": {
         "confirmRevoke": "要撤销选中的 {{count}} 名审批人的钱包审批权限吗？",
-        "revoked": "已撤销 {{count}} 名钱包审批人。"
+        "revoked": "已撤销 {{count}} 名钱包审批人。",
+        "confirmRevoke_one": "要撤销选中的 {{count}} 名审批人的钱包审批权限吗？",
+        "confirmRevoke_other": "要撤销选中的 {{count}} 名审批人的钱包审批权限吗？",
+        "revoked_one": "已撤销 {{count}} 名钱包审批人。",
+        "revoked_other": "已撤销 {{count}} 名钱包审批人。"
       },
       "confirm": {
         "role": {
@@ -1184,7 +1265,7 @@
         "saveDescription": "新数值将适用于未来的奖励和提款请求。现有请求保留其记录状态，此更改将写入审计日志。",
         "saveTitle": "保存钱包政策更改？"
       },
-    "currentStored": "以仙为单位精确存储 · 当前：{{value}}",
+      "currentStored": "以仙为单位精确存储 · 当前：{{value}}",
       "currentUnit": "当前值（{{unit}}）",
       "description": "管理付款政策、升级时限及有权批准钱包请求的人员。",
       "effective": {
@@ -1192,7 +1273,11 @@
         "description": "以下数值是当前生效的配置。",
         "existingState": "政策设置更改时，现有提款请求保留其记录状态。",
         "hours": "{{count}} 小时",
-        "title": "生效政策"
+        "title": "生效政策",
+        "days_one": "{{count}} 天",
+        "days_other": "{{count}} 天",
+        "hours_one": "{{count}} 小时",
+        "hours_other": "{{count}} 小时"
       },
       "emptyApprovers": {
         "description": "向上方的活跃用户授予权限。",
@@ -1303,7 +1388,9 @@
       "nothingToReview": "没有待审核内容。",
       "marking": "标记中…",
       "markReviewed": "标记为已审核",
-      "reviewed": "已审核"
+      "reviewed": "已审核",
+      "openCount_one": "{{count}} 个待处理",
+      "openCount_other": "{{count}} 个待处理"
     }
   },
   "staffConduct": {
@@ -1419,7 +1506,15 @@
       "uniqueIssues": "{{count}} 个唯一问题",
       "useReason": "使用此理由",
       "duplicateMatch": "{{count}} 个标准化名称匹配",
-      "duplicateMatches": "{{count}} 个标准化名称匹配"
+      "duplicateMatches": "{{count}} 个标准化名称匹配",
+      "uniqueIssue_one": "{{count}} 个唯一问题",
+      "uniqueIssue_other": "{{count}} 个唯一问题",
+      "uniqueIssues_one": "{{count}} 个唯一问题",
+      "uniqueIssues_other": "{{count}} 个唯一问题",
+      "duplicateMatch_one": "{{count}} 个标准化名称匹配",
+      "duplicateMatch_other": "{{count}} 个标准化名称匹配",
+      "duplicateMatches_one": "{{count}} 个标准化名称匹配",
+      "duplicateMatches_other": "{{count}} 个标准化名称匹配"
     },
     "detail": {
       "actions": {
@@ -1570,7 +1665,9 @@
     "reviewAction": "审核操作",
     "confirmAction": "确认操作",
     "confirmDescription": "这会对 {{email}} 执行所选账户操作。理由将记录在审计日志中。",
-    "thisUser": "此用户"
+    "thisUser": "此用户",
+    "violations_one": "违规次数：{{count}}",
+    "violations_other": "违规次数：{{count}}"
   },
   "share": {
     "actions": {
@@ -1603,7 +1700,9 @@
     "age": {
       "daysHours": "{{days}}天 {{hours}}小时",
       "hours": "{{count}}小时",
-      "lessThanHour": "不足 1 小时"
+      "lessThanHour": "不足 1 小时",
+      "hours_one": "{{count}}小时",
+      "hours_other": "{{count}}小时"
     },
     "balances": {
       "earnings": "收益",
@@ -1748,13 +1847,17 @@
       "batchProcessed": "已处理 {{count}} 笔提现。",
       "refreshAndAskSuperAdmin": "请刷新页面后重试；如果问题持续，请让超级管理员检查提现记录。",
       "refreshAndContactSuperAdmin": "请刷新页面后重试；如果问题持续，请联系超级管理员。",
-      "riskOverrideRecorded": "风险覆盖已记录。"
+      "riskOverrideRecorded": "风险覆盖已记录。",
+      "batchProcessed_one": "已处理 {{count}} 笔提现。",
+      "batchProcessed_other": "已处理 {{count}} 笔提现。"
     },
     "filters": {
       "allRiskLevels": "全部风险等级",
       "allStatuses": "全部状态",
       "perPage": "每页 {{count}} 条",
-      "searchCustomerOrEmail": "搜索客户或邮箱"
+      "searchCustomerOrEmail": "搜索客户或邮箱",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条"
     },
     "header": {
       "description": "在打开证据抽屉前，查看提现金额、风险、审批进度和申请时长。",
@@ -1809,13 +1912,17 @@
     "prompts": {
       "adminNote": "管理员备注（至少 10 个字符）：",
       "batchConfirm": "确定要对已选择的 {{count}} 个{{itemLabel}}执行“{{action}}”吗？每项仍会由各自的审批接口检查。",
-      "reasonCategory": "原因类别（{{reasons}}）："
+      "reasonCategory": "原因类别（{{reasons}}）：",
+      "batchConfirm_one": "确定要对已选择的 {{count}} 个{{itemLabel}}执行“{{action}}”吗？每项仍会由各自的审批接口检查。",
+      "batchConfirm_other": "确定要对已选择的 {{count}} 个{{itemLabel}}执行“{{action}}”吗？每项仍会由各自的审批接口检查。"
     },
     "queue": {
       "description": "当审核优先级或证据需要仔细查看时，打开对应行。",
       "noOpenRequests": "没有开放申请",
       "oldestRequest": "最早申请 {{age}}",
-      "title": "审核队列（{{count}}）"
+      "title": "审核队列（{{count}}）",
+      "title_one": "审核队列（{{count}}）",
+      "title_other": "审核队列（{{count}}）"
     },
     "readiness": {
       "available": "可用",
@@ -1883,7 +1990,9 @@
       "standardReview": "标准审核",
       "status": "状态",
       "waitingForSecondApprover": "等待第二位审批人",
-      "withinReviewWindow": "在审核时限内"
+      "withinReviewWindow": "在审核时限内",
+      "dualApprovals_one": "{{count}}/2 次审批",
+      "dualApprovals_other": "{{count}}/2 次审批"
     },
     "timeline": {
       "auditNote": "每项决策都会记录在审计时间线中。",
@@ -1933,6 +2042,20 @@
     "status": {
       "processed": "已处理",
       "simulated": "模拟"
-    }
+    },
+    "attempt_one": "第 {{count}} 次尝试",
+    "attempt_other": "第 {{count}} 次尝试"
+  },
+  "strictMigration": {
+    "staffConduct": {
+      "restricted": "员工行为审核仅限超级管理员。",
+      "title": "员工行为",
+      "description": "供超级管理员审核的管理员行为标记和人工提交的聊天举报。",
+      "flagSummary": "{{admin}} · {{source}} · 目标：{{target}}"
+    },
+    "moderationFlagSummary": "{{user}} · {{source}} · {{flagType}}",
+    "recommendationFindingMeta": "{{kindLabel}}：{{kind}} · {{severityLabel}}：{{severity}}",
+    "recommendationEvidence": "{{label}}：{{evidence}}",
+    "recommendationPhotoStatus": "{{photo}} · {{status}}"
   }
 }

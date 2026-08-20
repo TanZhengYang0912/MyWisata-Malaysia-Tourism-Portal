@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
 import type { ProfileSummary } from "@/backend/core/types";
-import { apiErrorMessage } from "@/lib/profile/api-error-message";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { parseInternationalPhone } from "@/lib/phone/international";
-import { getDiscoveryCategoryLabel } from "@/lib/customer/discovery-categories";
+import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
+import { BUDGET_RANGES, MOBILITY_NEEDS, TRAVEL_STYLES } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
@@ -19,7 +19,9 @@ type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
 const MAX_BIO_LENGTH = 200;
 
-const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
+function preferenceLabelKey(options: ReadonlyArray<{ value: string; labelKey: string }>, value: string | null | undefined) {
+  return options.find((option) => option.value === value)?.labelKey;
+}
 
 function SectionCard({ id, title, description, children }: { id?: string; title: string; description: string; children: React.ReactNode }) {
   return <section id={id} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;
@@ -58,12 +60,12 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     try {
       const response = await fetch("/api/profile/me", { cache: "no-store" });
       const body = await response.json() as { data?: ProfileSummary; error?: string };
-      if (!response.ok || !body.data) throw new Error(body.error ?? tCommon("errors.generic"));
+      if (!response.ok || !body.data) throw new Error(tCommon("errors.generic"));
       const next = body.data;
       setSummary(next);
       setFullName(next.fullName ?? ""); setCity(next.city ?? ""); setCountry(next.country ?? "Malaysia"); setBio(next.bio ?? ""); setPhone(next.phone ?? "");
       setError(null);
-    } catch (err) { setError(err instanceof Error ? err.message : tCommon("errors.generic")); }
+    } catch { setError(tCommon("errors.generic")); }
     finally { setLoading(false); }
   }
 
@@ -80,14 +82,13 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     setBusy(true); setError(null);
     try {
       const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: country.trim() }) });
-      if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? tCustomer("ui.profileWizard.saveDetails"));
+      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bio: bio.trim() }) });
       if (!bioResponse.ok) {
-        const body = await bioResponse.json().catch(() => null);
-        throw new Error(apiErrorMessage(body, tCustomer("ui.profileWizard.saveDetails")));
+        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
       await loadProfile(); await refreshUser(); setEditing(null);
-    } catch (err) { setError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.saveDetails")); }
+    } catch { setError(tCustomer("ui.profileWizard.saveDetails")); }
     finally { setBusy(false); }
   }
 
@@ -98,10 +99,10 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     setBusy(true); setError(null);
     try {
       const response = await fetch("/api/phone/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164 }) });
-      if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? tCustomer("ui.profileWizard.sendOtp"));
+      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.sendOtp"));
       setPhoneCode("");
       setPhonePhase("verify");
-    } catch (err) { setError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.sendOtp")); }
+    } catch { setError(tCustomer("ui.profileWizard.sendOtp")); }
     finally { setBusy(false); }
   }
 
@@ -112,9 +113,9 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
     setBusy(true); setError(null);
     try {
       const response = await fetch("/api/phone/verify-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: parsedPhone.e164, code: phoneCode.trim() }) });
-      if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { error?: { message?: string } }).error?.message ?? tCustomer("ui.profileWizard.verifyOtp"));
+      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.verifyOtp"));
       await loadProfile(); await refreshUser(); setEditing(null); setPhonePhase("enter"); setPhoneCode("");
-    } catch (err) { setError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.verifyOtp")); }
+    } catch { setError(tCustomer("ui.profileWizard.verifyOtp")); }
     finally { setBusy(false); }
   }
 
@@ -142,7 +143,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
       const confirmed = await fetch("/api/profile/avatar/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: data.path }) });
       if (!confirmed.ok) throw new Error(tCustomer("ui.profileWizard.savePhoto"));
       await loadProfile(); await refreshUser(); setAvatarFile(null); setAvatarPreview(null);
-    } catch (err) { setError(err instanceof Error ? err.message : tCustomer("ui.profileWizard.savePhoto")); }
+    } catch { setError(tCustomer("ui.profileWizard.savePhoto")); }
     finally { setBusy(false); }
   }
 
@@ -153,7 +154,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
       const response = await fetch("/api/account/close", { method: "POST" });
       if (!response.ok) throw new Error(tCommon("errors.generic"));
       router.replace("/login");
-    } catch (err) { setError(err instanceof Error ? err.message : tCommon("errors.generic")); setBusy(false); }
+    } catch { setError(tCommon("errors.generic")); setBusy(false); }
   }
 
   if (loading) return <CustomerPageShell><div className="py-8 text-center text-sm text-muted-foreground">{tCommon("states.loadingEllipsis")}</div></CustomerPageShell>;
@@ -191,8 +192,8 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
 
       <SectionCard id="preferences" title={tCustomer("ui.preferencesPage.eyebrow")} description={tCustomer("ui.preferencesPage.description")}>
         <div className="space-y-2 text-sm">
-          <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map(interestLabel).join(", ") : tCustomer("ui.profileSections.noInterests")}</p>
-          {summary.survey && <p className="text-muted-foreground">{summary.survey.travelStyle || tCustomer("ui.profileSections.travelStyleNotSet")} · {summary.survey.budgetRange || tCustomer("ui.profileSections.budgetNotSet")} · {summary.survey.mobilityNeeds || tCustomer("ui.profileSections.mobilityNotSet")}</p>}
+          <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map((slug) => { const key = getOptionalDiscoveryCategoryLabelKey(slug); return key ? tCustomer(key) : slug; }).join(", ") : tCustomer("ui.profileSections.noInterests")}</p>
+          {summary.survey && <p className="text-muted-foreground">{preferenceLabelKey(TRAVEL_STYLES, summary.survey.travelStyle) ? tCustomer(preferenceLabelKey(TRAVEL_STYLES, summary.survey.travelStyle)!) : tCustomer("ui.profileSections.travelStyleNotSet")} · {preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange) ? tCustomer(preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange)!) : tCustomer("ui.profileSections.budgetNotSet")} · {preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds) ? tCustomer(preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds)!) : tCustomer("ui.profileSections.mobilityNotSet")}</p>}
           <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>{tCustomer("ui.preferencesEditor.save")} <ChevronRight size={14} /></Button>
         </div>
       </SectionCard>

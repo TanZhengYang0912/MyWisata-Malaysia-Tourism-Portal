@@ -19,7 +19,7 @@
     "upload:place-images": "PLACE_IMAGES_UPLOAD=1 node scripts/upload-place-images.mjs",
     "upload:vendor-images": "VENDOR_IMAGES_UPLOAD=1 node scripts/upload-vendor-images.mjs",
     "upload:product-images": "node scripts/upload-product-images.mjs",
-    "verify:i18n": "node scripts/verify-i18n-coverage.mjs"
+    "verify:i18n": "node scripts/verify-i18n-coverage.mjs && node scripts/verify-i18n-default-values.mjs && i18next-cli -c i18next-cli.config.ts lint && i18next-cli -c i18next-cli.config.ts status"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
@@ -42,7 +42,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "i18next": "^26.3.6",
-    "i18next": "^26.3.6",
     "libphonenumber-js": "^1.13.8",
     "lucide-react": "^1.24.0",
     "maplibre-gl": "^5.24.0",
@@ -56,7 +55,6 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.81.0",
-    "react-i18next": "^17.0.11",
     "react-i18next": "^17.0.11",
     "react-international-phone": "^4.8.0",
     "react-map-gl": "^8.1.1",
@@ -74,6 +72,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "i18next-cli": "1.71.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

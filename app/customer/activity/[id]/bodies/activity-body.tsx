@@ -10,8 +10,8 @@ function ActivityOptions(props: DetailBodyProps) {
 }
 
 export const activityBody: DetailBody = {
-  panelKicker: "Ready to book",
-  panelTitle: (activity) => (activity.requiresBooking ? "Select your visit" : "Choose your options"),
-  quantityLabel: (qty) => `${qty} person${qty > 1 ? "s" : ""}`,
+  panelKickerKey: "strictMigration.activityDetail.readyToBook",
+  panelTitleKey: (activity) => (activity.requiresBooking ? "strictMigration.activityDetail.selectVisit" : "strictMigration.activityDetail.chooseOptions"),
+  quantityLabelKey: "strictMigration.activityDetail.personCount",
   Options: ActivityOptions,
 };

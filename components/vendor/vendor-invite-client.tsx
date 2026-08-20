@@ -40,7 +40,7 @@ export default function VendorInviteClient({ token }: { token: string }) {
         const code = body.error?.code ?? '';
         setState({
           status: 'error',
-          message: t(`invite.codes.${code}`, { defaultValue: body.error?.message ?? t('invite.errors.load') }),
+          message: t(`invite.codes.${code}`),
           retryable: response.status >= 500,
         });
         return;

@@ -9,9 +9,9 @@ const simulatorUrl = new URL('../page.tsx', import.meta.url);
 
 describe('customer payment simulator experience', () => {
   it('separates simulator providers and removes client-declared external success', () => {
-    expect(checkoutSource).toContain('Touch ’n Go eWallet — Simulator');
-    expect(checkoutSource).toContain('GrabPay — Simulator');
-    expect(checkoutSource).toContain('Bank transfer — Simulator');
+    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.tng"');
+    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.grabpay"');
+    expect(checkoutSource).toContain('labelKey: "strictMigration.checkout.methods.bankTransfer"');
     expect(checkoutSource).toContain('paymentProvider');
     expect(checkoutSource).toContain('simulatorUrl');
     expect(checkoutSource).not.toContain('Pay (Success)');
@@ -23,12 +23,12 @@ describe('customer payment simulator experience', () => {
     if (!existsSync(simulatorUrl)) return;
     const source = readFileSync(simulatorUrl, 'utf8');
 
-    expect(source).toContain('Sandbox / Simulated');
-    expect(source).toContain('No real money moves');
-    expect(source).toContain('Mark funds received');
-    expect(source).toContain('Simulate payment success');
-    expect(source).toContain('Simulate failure');
-    expect(source).toContain('Cancel payment');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.eyebrow")');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.notice")');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.markFundsReceived")');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.simulateSuccess")');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.simulateFailure")');
+    expect(source).toContain('tCustomer("strictMigration.paymentSimulator.cancelPayment")');
     expect(source).toContain('/api/payments/simulator/sessions/');
   });
 });

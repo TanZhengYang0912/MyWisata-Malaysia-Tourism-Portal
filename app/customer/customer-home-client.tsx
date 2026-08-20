@@ -13,6 +13,7 @@ import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { DestinationPreviewModal } from "@/components/customer/destination-preview-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ATLAS_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 const PLACEHOLDER_TEXTS = [
   "Where should we wander?",
@@ -65,8 +66,8 @@ export type DemoVendor = {
 };
 
 function formatBusinessType(value: string | null, t: TFunction) {
-  if (!value) return t("ui.vendor.localExperiencePartner");
-  const key = `ui.vendor.businessTypes.${value.replace(/-/g, "_")}`;
+  if (!value) return t("customer:ui.vendor.localExperiencePartner");
+  const key = `customer:ui.vendor.businessTypes.${value.replace(/-/g, "_")}`;
   const translated = t(key);
   return translated === key ? value.split(/[_-]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ") : translated;
 }
@@ -171,7 +172,7 @@ export function CustomerHomeClient({
 
         <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:flex lg:flex-col lg:px-8 lg:pb-8 lg:pt-4">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 lg:mb-2">
-            <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> MyWisata / Atlas</div>
+            <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-white/60"><Compass size={16} className="text-[#ffcc00]" /> {ATLAS_BRAND_NAME}</div>
             <Link href="/customer/explore" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-bold text-white/80 transition hover:border-[#ffcc00] hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">{t("ui.home.viewFullMap")} <ArrowRight size={14} /></Link>
           </div>
 
@@ -223,7 +224,7 @@ export function CustomerHomeClient({
                 <p className="mt-1 text-xs text-white/55">{t("ui.home.swipeDestinations", { count: MALAYSIA_DESTINATIONS.length })}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <div className="flex items-center gap-1" aria-label={t("ui.home.destinationCarouselControls", { defaultValue: "Destination carousel controls" })}>
+                <div className="flex items-center gap-1" aria-label={t("ui.home.destinationCarouselControls")}>
                   <button type="button" onClick={() => scrollDestinations("previous")} aria-label={t("ui.map.previous")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-[#ffcc00] hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/30">
                     <ChevronLeft size={16} />
                   </button>
@@ -268,7 +269,7 @@ export function CustomerHomeClient({
                 <h2 className="text-xl font-bold font-[family-name:var(--font-display)] flex items-center gap-2">
                   <Sparkles size={20} className="text-primary" /> {hasPersonalizedRecommendations ? t("ui.home.forYou") : t("ui.home.popularExperiences")}
                 </h2>
-                {!hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">{t("ui.home.explorationPrompt", { defaultValue: "A few places to start exploring." })}</p>}
+                {!hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">{t("ui.home.explorationPrompt")}</p>}
               </div>
               <Link href="/customer/for-you" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
             </div>

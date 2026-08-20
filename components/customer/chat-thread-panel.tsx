@@ -10,11 +10,11 @@ import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const REPORT_REASONS = [
-  { value: "scam", label: "Scam" },
-  { value: "abuse", label: "Abuse" },
-  { value: "spam", label: "Spam" },
-  { value: "other", label: "Other" },
-];
+  "scam",
+  "abuse",
+  "spam",
+  "other",
+] as const;
 
 interface ChatThreadPanelProps {
   threadId: string;
@@ -61,7 +61,7 @@ export function ChatThreadPanel({
   const [error, setError] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState(REPORT_REASONS[0].value);
+  const [reportReason, setReportReason] = useState<(typeof REPORT_REASONS)[number]>(REPORT_REASONS[0]);
   const [reportDetails, setReportDetails] = useState("");
   const [reportState, setReportState] = useState<"idle" | "sending" | "sent">("idle");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -129,7 +129,7 @@ export function ChatThreadPanel({
       setReplyingTo(null);
       onMessageSent?.(message);
     } catch {
-      setError("We couldn't send that message. Please try again.");
+      setError(t("strictMigration.chat.sendFailedRetry"));
     } finally {
       setSending(false);
     }
@@ -145,7 +145,7 @@ export function ChatThreadPanel({
       if (replyingTo) formData.append("replyToId", replyingTo.id);
       const response = await fetch(`/api/chat/${threadId}/attachments`, { method: "POST", body: formData });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error?.message || "Upload failed");
+      if (!response.ok) throw new Error(t("strictMigration.chat.attachmentFailed"));
       const { signedUrl, ...message } = payload.data as ChatMessage & { signedUrl: string | null };
       if (signedUrl) setSignedUrls((previous) => ({ ...previous, [message.id]: signedUrl }));
       onMessageSent?.(message);
@@ -153,7 +153,7 @@ export function ChatThreadPanel({
       setPendingFile(null);
       setReplyingTo(null);
     } catch {
-      setError("We couldn't send that attachment. Please try again.");
+      setError(t("strictMigration.chat.attachmentFailed"));
     } finally {
       setUploading(false);
     }
@@ -169,11 +169,11 @@ export function ChatThreadPanel({
         body: JSON.stringify({ reason: reportReason, details: reportDetails }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error?.message || "Report failed");
+      if (!response.ok) throw new Error(t("strictMigration.chat.reportFailed"));
       setReportState("sent");
-    } catch (err) {
+    } catch {
       setReportState("idle");
-      setError(err instanceof Error && err.message !== "Report failed" ? err.message : "We couldn't submit that report. Please try again.");
+      setError(t("strictMigration.chat.reportFailed"));
     }
   }
 
@@ -220,8 +220,8 @@ export function ChatThreadPanel({
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-bold text-foreground">{counterpart.name}</h2>
               {isMuted && (
-                <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title="Notifications muted for you">
-                  <BellOff size={10} /> Muted
+                <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title={t("strictMigration.chat.mutedTitle")}>
+                  <BellOff size={10} /> {t("strictMigration.chat.muted")}
                 </span>
               )}
               {counterpart.badge && (
@@ -233,7 +233,7 @@ export function ChatThreadPanel({
             {counterpart.online !== undefined ? (
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className={`h-1.5 w-1.5 rounded-full ${counterpart.online ? "bg-emerald-500" : "bg-gray-300"}`} />
-                {counterpart.online ? "Online" : "Offline"}
+                {t(counterpart.online ? "strictMigration.chat.online" : "strictMigration.chat.offline")}
                 {counterpart.subtitle && ` · ${counterpart.subtitle}`}
               </p>
             ) : counterpart.subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{counterpart.subtitle}</p>}
@@ -243,8 +243,8 @@ export function ChatThreadPanel({
               type="button"
               onClick={onToggleMute}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label={isMuted ? "Unmute conversation" : "Mute conversation"}
-              title={isMuted ? "Unmute" : "Mute notifications"}
+              aria-label={t(isMuted ? "strictMigration.chat.unmuteConversation" : "strictMigration.chat.muteConversation")}
+              title={t(isMuted ? "strictMigration.chat.unmute" : "strictMigration.chat.muteNotifications")}
             >
               {isMuted ? <BellOff size={15} /> : <Bell size={15} />}
             </button>
@@ -254,7 +254,7 @@ export function ChatThreadPanel({
               type="button"
               onClick={() => setReportOpen((open) => !open)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
-              aria-label="Report conversation"
+              aria-label={t("strictMigration.chat.reportConversation")}
             >
               <Flag size={15} />
             </button>
@@ -267,15 +267,15 @@ export function ChatThreadPanel({
                     <p className="mb-2 text-sm font-semibold text-foreground">{t("ui.chat.reportConversation")}</p>
                     <select
                       value={reportReason}
-                      onChange={(event) => setReportReason(event.target.value)}
+                      onChange={(event) => setReportReason(event.target.value as (typeof REPORT_REASONS)[number])}
                       className="mb-2 w-full rounded-xl border border-border bg-input-background px-3 py-2 text-sm"
                     >
-                      {REPORT_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{t(`strictMigration.chat.reportReasons.${reason}`)}</option>)}
                     </select>
                     <textarea
                       value={reportDetails}
                       onChange={(event) => setReportDetails(event.target.value)}
-                      placeholder="Details (optional)"
+                      placeholder={t("strictMigration.chat.detailsOptional")}
                       rows={2}
                       className="mb-2 w-full resize-none rounded-xl border border-border bg-input-background px-3 py-2 text-sm"
                     />
@@ -285,7 +285,7 @@ export function ChatThreadPanel({
                       disabled={reportState === "sending"}
                       className="w-full rounded-xl bg-destructive px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
-                      {reportState === "sending" ? "Submitting…" : "Submit report"}
+                      {reportState === "sending" ? t("ui.actions.submitting") : t("ui.actions.submit")}
                     </button>
                   </>
                 )}
@@ -320,7 +320,7 @@ export function ChatThreadPanel({
                   type="button"
                   onClick={() => setReplyingTo(message)}
                   className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-secondary hover:text-foreground group-hover:opacity-100"
-                  aria-label="Reply to this message"
+                  aria-label={t("strictMigration.chat.replyMessage")}
                 >
                   <Reply size={14} />
                 </button>
@@ -331,7 +331,7 @@ export function ChatThreadPanel({
                   <div className={`max-w-[min(82%,520px)] ${isMine ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
                     {message.replyToId && (
                       <div className="max-w-full truncate rounded-lg border-l-2 border-primary/40 bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
-                        {quoted ? truncateChatMessage(quoted.text || (quoted.attachmentUrl ? "Attachment" : ""), 60) : "Original message"}
+                        {quoted ? truncateChatMessage(quoted.text || (quoted.attachmentUrl ? t("strictMigration.chat.attachment") : ""), 60) : t("strictMigration.chat.originalMessage")}
                       </div>
                     )}
                     {message.attachmentUrl && (
@@ -339,11 +339,11 @@ export function ChatThreadPanel({
                         attachmentSrc ? (
                           <a href={attachmentSrc} target="_blank" rel="noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset */}
-                            <img src={attachmentSrc} alt="Attachment" className="max-h-64 rounded-2xl border border-border object-cover" />
+                            <img src={attachmentSrc} alt={t("strictMigration.chat.attachment")} className="max-h-64 rounded-2xl border border-border object-cover" />
                           </a>
                         ) : (
                           <div className="flex h-32 w-48 items-center justify-center rounded-2xl border border-border bg-secondary text-xs text-muted-foreground">
-                            Loading…
+                            {t("ui.states.loading")}
                           </div>
                         )
                       ) : (
@@ -353,7 +353,7 @@ export function ChatThreadPanel({
                           rel="noreferrer"
                           className={`flex items-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm ${attachmentSrc ? "hover:bg-secondary" : "pointer-events-none opacity-60"}`}
                         >
-                          <FileText size={16} className="text-primary" /> Document
+                          <FileText size={16} className="text-primary" /> {t("strictMigration.chat.document")}
                         </a>
                       )
                     )}
@@ -378,11 +378,11 @@ export function ChatThreadPanel({
                     <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
                       <span>{formatChatTimestamp(message.sentAt)}</span>
                       {isMine && (readByOthers?.has(message.id) ? (
-                        <CheckCheck size={13} className="text-primary" aria-label="Read" />
+                        <CheckCheck size={13} className="text-primary" aria-label={t("strictMigration.chat.read")} />
                       ) : deliveredByOthers?.has(message.id) ? (
-                        <CheckCheck size={13} aria-label="Delivered" />
+                        <CheckCheck size={13} aria-label={t("strictMigration.chat.delivered")} />
                       ) : (
-                        <Check size={13} aria-label="Sent" />
+                        <Check size={13} aria-label={t("strictMigration.chat.sent")} />
                       ))}
                     </div>
                   </div>
@@ -402,13 +402,13 @@ export function ChatThreadPanel({
             <div className="mx-auto mb-2 flex max-w-2xl items-center justify-between gap-2 rounded-xl bg-secondary px-3 py-2 text-xs">
               <div className="min-w-0">
                 <p className="font-semibold text-foreground">
-                  Replying to {replyingTo.senderId === currentUserId ? "yourself" : counterpart.name}
+                  {t("strictMigration.chat.replyingTo", { name: replyingTo.senderId === currentUserId ? t("strictMigration.chat.yourself") : counterpart.name })}
                 </p>
                 <p className="truncate text-muted-foreground">
-                  {truncateChatMessage(replyingTo.text || (replyingTo.attachmentUrl ? "Attachment" : ""), 80)}
+                  {truncateChatMessage(replyingTo.text || (replyingTo.attachmentUrl ? t("strictMigration.chat.attachment") : ""), 80)}
                 </p>
               </div>
-              <button type="button" onClick={() => setReplyingTo(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Cancel reply">
+              <button type="button" onClick={() => setReplyingTo(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("strictMigration.chat.cancelReply")}>
                 <X size={15} />
               </button>
             </div>
@@ -422,15 +422,15 @@ export function ChatThreadPanel({
                 <FileText size={20} className="shrink-0 text-primary" />
               )}
               <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Remove attachment">
+              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("strictMigration.chat.removeAttachment")}>
                 <X size={15} />
               </button>
             </div>
           )}
           {aiReply && <div className="mx-auto mb-3 max-w-2xl"><AiWritingAssistant
             compact
-            label="AI reply assistant"
-            buttonLabel="Suggest reply"
+            label={t("strictMigration.chat.aiReplyAssistant")}
+            buttonLabel={t("strictMigration.chat.suggestReply")}
             draft={aiReply.draft}
             busy={aiReply.busy}
             error={aiReply.error}
@@ -440,7 +440,7 @@ export function ChatThreadPanel({
           /></div>}
           <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl items-end gap-2">
             <label className="sr-only" htmlFor="chat-message">
-              Message {counterpart.name}
+              {t("strictMigration.chat.messagePerson", { name: counterpart.name })}
             </label>
             <input
               ref={fileInputRef}
@@ -454,7 +454,7 @@ export function ChatThreadPanel({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Attach a file"
+              aria-label={t("strictMigration.chat.attachFile")}
             >
               <Paperclip size={16} />
             </button>
@@ -463,7 +463,7 @@ export function ChatThreadPanel({
               value={text}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={pendingFile ? "Add a caption…" : `Message ${counterpart.name}…`}
+              placeholder={pendingFile ? t("strictMigration.chat.addCaption") : t("strictMigration.chat.messagePerson", { name: counterpart.name })}
               rows={1}
               className="min-h-11 flex-1 resize-none rounded-2xl border border-border bg-input-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
             />
@@ -477,7 +477,7 @@ export function ChatThreadPanel({
             </button>
           </form>
           <p className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-muted-foreground">
-            Phone numbers, contact details and links are hidden to keep you safe on MyWisata.
+            {t("strictMigration.chat.safetyNotice")}
           </p>
         </div>
       )}

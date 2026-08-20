@@ -7,6 +7,7 @@ import {
 import type { ComputedActivity } from "@/backend/core/types";
 
 export type DetailChip = { label: string; value: string; icon: typeof Clock; href?: string };
+type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 type FieldType = "text" | "number" | "select" | "boolean" | "list";
 
@@ -222,11 +223,14 @@ export function getActivityCommerceMode(activity: Pick<ComputedActivity, "outlet
 }
 
 /** What one unit is — "per person", "each", "per night". */
-export function getPriceUnit(categorySlug?: string | null): string {
-  return (CATEGORY_DETAILS[categorySlug ?? ""] ?? GENERIC_DETAIL).priceUnit;
+export function getPriceUnit(categorySlug?: string | null, translate?: Translate): string {
+  const unit = (CATEGORY_DETAILS[categorySlug ?? ""] ?? GENERIC_DETAIL).priceUnit;
+  if (!translate) return unit;
+  const key = unit === "per person" ? "perPerson" : unit === "per night" ? "perNight" : "each";
+  return translate(`strictMigration.activityDetail.priceUnits.${key}`);
 }
 
-function resolveValue(field: AttrField, activity: ComputedActivity): string | null {
+function resolveValue(field: AttrField, activity: ComputedActivity, translate?: Translate): string | null {
   switch (field.key) {
     case "_hours":
       return activity.outlet.hours || null;
@@ -238,8 +242,11 @@ function resolveValue(field: AttrField, activity: ComputedActivity): string | nu
       const raw = activity.attributes?.[field.key];
       if (raw === null || raw === undefined || raw === "") return null;
       if (Array.isArray(raw)) return raw.length > 0 ? raw.join(" · ") : null;
-      if (typeof raw === "boolean") return raw ? "Yes" : "No";
-      return field.unit ? `${raw} ${field.unit}` : String(raw);
+      if (typeof raw === "boolean") return translate ? translate(raw ? "strictMigration.activityDetail.yes" : "strictMigration.activityDetail.no") : raw ? "Yes" : "No";
+      if (!field.unit) return String(raw);
+      if (!translate) return `${raw} ${field.unit}`;
+      const unit = field.unit === "yrs" ? translate("strictMigration.activityDetail.units.years") : field.unit === "guests" ? translate("strictMigration.activityDetail.units.guests") : field.unit;
+      return translate("strictMigration.activityDetail.valueWithUnit", { value: raw, unit });
     }
   }
 }
@@ -249,27 +256,30 @@ function resolveValue(field: AttrField, activity: ComputedActivity): string | nu
 // cross-cutting badges (family/couple friendly — Hidden Gem already has its
 // own hero badge, so it's not repeated here) are universal, prepended ahead
 // of the category's own fields.
-export function getCategoryChips(activity: ComputedActivity): DetailChip[] {
+export function getCategoryChips(activity: ComputedActivity, translate?: Translate): DetailChip[] {
   const detail = CATEGORY_DETAILS[activity.categorySlug ?? ""] ?? GENERIC_DETAIL;
   const chips: DetailChip[] = [];
 
   if (activity.outlet.address) {
-    chips.push({ label: "Address", value: activity.outlet.address, icon: MapPin });
+    chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.address") : "Address", value: activity.outlet.address, icon: MapPin });
   }
   if (activity.typeSlugs && activity.typeSlugs.length > 0) {
-    const labels = activity.typeSlugs.map((slug) => detail.types.find((t) => t.slug === slug)?.label ?? slug);
-    chips.push({ label: "Type", value: labels.join(" · "), icon: Tag });
+    const labels = activity.typeSlugs.map((slug) => {
+      const known = detail.types.find((option) => option.slug === slug);
+      return known && translate ? translate(`strictMigration.activityDetail.types.${known.slug}`) : known?.label ?? slug;
+    });
+    chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.type") : "Type", value: labels.join(" · "), icon: Tag });
   }
-  const badgeLabels = [activity.isFamilyFriendly && "Family Friendly", activity.isCoupleFriendly && "Couple Friendly"].filter(Boolean) as string[];
+  const badgeLabels = [activity.isFamilyFriendly && (translate ? translate("strictMigration.activityDetail.familyFriendly") : "Family Friendly"), activity.isCoupleFriendly && (translate ? translate("strictMigration.activityDetail.coupleFriendly") : "Couple Friendly")].filter(Boolean) as string[];
   if (badgeLabels.length > 0) {
-    chips.push({ label: "Good For", value: badgeLabels.join(" · "), icon: Heart });
+    chips.push({ label: translate ? translate("strictMigration.activityDetail.fields.goodFor") : "Good For", value: badgeLabels.join(" · "), icon: Heart });
   }
 
   for (const field of detail.fields) {
-    const value = resolveValue(field, activity);
+    const value = resolveValue(field, activity, translate);
     if (value === null) continue;
     chips.push({
-      label: field.label,
+      label: translate ? translate(`strictMigration.activityDetail.fields.${field.key}`) : field.label,
       value,
       icon: field.icon,
       href: field.key === "_contact" ? `tel:${value}` : undefined,

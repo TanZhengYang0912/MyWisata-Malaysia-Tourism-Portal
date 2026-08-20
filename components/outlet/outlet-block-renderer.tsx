@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { ImageIcon } from 'lucide-react';
 import type { GalleryItem, HeroBlock, OutletPageBlock } from '@/lib/vendor/outlet-page-schema';
 import type { OutletRendererOutlet, OutletRendererProduct } from '@/components/outlet/outlet-block-types';
-import { getPublicOutletEmptyState } from '@/lib/customer/outlet-shop';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { density } from '@/lib/vendor/outlet-grid';
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export interface BlockRenderModel {
   id: string;
@@ -36,6 +36,31 @@ const labels: Record<string, string> = {
   hero: 'Hero banner',
 };
 
+const blockLabelKeys: Record<string, string> = {
+  intro: 'ui.outlet.blockLabels.intro',
+  text: 'ui.outlet.blockLabels.text',
+  image: 'ui.outlet.blockLabels.image',
+  image_text: 'ui.outlet.blockLabels.imageText',
+  product_grid: 'ui.outlet.blockLabels.productGrid',
+  gallery: 'ui.outlet.blockLabels.gallery',
+  hours: 'ui.outlet.blockLabels.hours',
+  contact: 'ui.outlet.blockLabels.contact',
+  voucher_banner: 'ui.outlet.blockLabels.voucherBanner',
+  cta: 'ui.outlet.blockLabels.cta',
+  review_highlight: 'ui.outlet.blockLabels.reviewHighlight',
+  social_proof: 'ui.outlet.blockLabels.socialProof',
+  hero: 'ui.outlet.blockLabels.hero',
+};
+
+interface OutletContentCopy {
+  label?: (type: string) => string;
+  defaultTitle?: string;
+  scheduleUnavailable?: string;
+  closed?: string;
+  day?: (day: string) => string;
+  verifiedReview?: string;
+}
+
 type RenderableBlock = {
   id: string;
   type: string;
@@ -47,12 +72,12 @@ type RenderableBlock = {
   buttonLink?: string;
 };
 
-export function getBlockRenderModel(block: RenderableBlock): BlockRenderModel {
+export function getBlockRenderModel(block: RenderableBlock, copy: OutletContentCopy = {}): BlockRenderModel {
   return {
     id: block.id,
     type: block.type,
-    label: labels[block.type] || block.type,
-    title: block.title || 'Discover this outlet',
+    label: copy.label?.(block.type) || labels[block.type] || block.type,
+    title: block.title || copy.defaultTitle || 'Discover this outlet',
     body: block.body || '',
     imageUrl: block.imageUrl || block.image || undefined,
     cta: block.cta,
@@ -60,13 +85,14 @@ export function getBlockRenderModel(block: RenderableBlock): BlockRenderModel {
   };
 }
 
-export function formatHours(hours: unknown) {
-  if (!hours || typeof hours !== 'object') return 'Check the outlet schedule before booking.';
+export function formatHours(hours: unknown, copy: OutletContentCopy = {}) {
+  const unavailable = copy.scheduleUnavailable || 'Check the outlet schedule before booking.';
+  if (!hours || typeof hours !== 'object') return unavailable;
   const entries = Object.entries(hours as Record<string, unknown>).filter(([, value]) => value && typeof value === 'object');
-  if (!entries.length) return 'Check the outlet schedule before booking.';
+  if (!entries.length) return unavailable;
   return entries.map(([day, value]) => {
     const schedule = value as { open?: string; close?: string; closed?: boolean };
-    return `${day.slice(0, 3).toUpperCase()}: ${schedule.closed ? 'Closed' : `${schedule.open || '—'}–${schedule.close || '—'}`}`;
+    return `${copy.day?.(day) || day.slice(0, 3).toUpperCase()}: ${schedule.closed ? copy.closed || 'Closed' : `${schedule.open || '—'}–${schedule.close || '—'}`}`;
   }).join(' · ');
 }
 
@@ -81,13 +107,14 @@ function outletAddress(outlet: OutletRendererOutlet) {
 export function resolveBlockContent(
   block: OutletPageBlock | { overrides?: { hours?: string; address?: string; phone?: string; review?: string } },
   outlet: OutletRendererOutlet,
+  copy: OutletContentCopy = {},
 ) {
   const overrides = block.overrides || {};
   return {
-    hours: overrides.hours || formatHours(outlet.operating_hours),
+    hours: overrides.hours || formatHours(outlet.operating_hours, copy),
     address: overrides.address || outletAddress(outlet),
     phone: overrides.phone || outlet.phone || '',
-    review: overrides.review || 'Verified guests recommend this outlet.',
+    review: overrides.review || copy.verifiedReview || 'Verified guests recommend this outlet.',
   };
 }
 
@@ -156,10 +183,18 @@ export function OutletHeroRenderer({ hero, brandColour = '#0f172a', mode = 'publ
 
 export function OutletBlockRenderer({ block, outlet, products = [], gallery = [], featuredIds = [], w = 4, h = 2, mode = 'public', selected = false, onSelect, onEditBlock, onEditEnd }: Props) {
   const { t } = useTranslation('customer');
-  const model = getBlockRenderModel(block);
+  const copy: OutletContentCopy = {
+    label: (type) => t(blockLabelKeys[type] || 'ui.outlet.blockLabels.custom', { type }),
+    defaultTitle: t('ui.outlet.discoverThisOutlet'),
+    scheduleUnavailable: t('ui.outlet.scheduleBeforeBooking'),
+    closed: t('ui.outlet.closed'),
+    day: (day) => t(`ui.labels.days.${day.slice(0, 3).toLowerCase()}`),
+    verifiedReview: t('ui.outlet.verifiedGuestsRecommend'),
+  };
+  const model = getBlockRenderModel(block, copy);
   const tile = density(w, h);
   // The hero variant of this union carries no overrides — pass an empty block.
-  const live = resolveBlockContent('overrides' in block ? block : {}, outlet);
+  const live = resolveBlockContent('overrides' in block ? block : {}, outlet, copy);
   const editable = mode === 'editor' && Boolean(onEditBlock);
   const isPhoto = block.type === 'image' || block.type === 'image_text';
   const isPhotoStory = block.type === 'image_text';
@@ -173,7 +208,7 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
       {(!isPhoto || isPhotoStory) && <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{model.label}</p>}
       {(!isPhoto || isPhotoStory) && editable ? (
         <input
-          aria-label={`Edit ${model.label} title`}
+          aria-label={t('ui.outlet.editBlockTitle', { label: model.label })}
           value={model.title}
           onChange={(event) => onEditBlock?.({ title: event.target.value })}
           onBlur={onEditEnd}
@@ -185,7 +220,7 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
       ) : null}
       {(!isPhoto || isPhotoStory) && editable ? (
         <textarea
-          aria-label={`Edit ${model.label} supporting copy`}
+          aria-label={t('ui.outlet.editBlockCopy', { label: model.label })}
           value={model.body}
           onChange={(event) => onEditBlock?.({ body: event.target.value })}
           onBlur={onEditEnd}
@@ -201,11 +236,11 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
       {model.imageUrl && block.type !== 'hero' && <img src={model.imageUrl} alt={model.title} className="mt-4 h-40 w-full rounded-xl object-cover" />}
       {mode === 'editor' && !model.imageUrl && ['image', 'image_text'].includes(block.type) && <div className="mt-4 flex h-40 items-center justify-center rounded-xl border-2 border-dashed border-primary/15 bg-secondary/40 text-xs font-semibold text-muted-foreground/60">{t('ui.outlet.dropImage')}</div>}
       {editable && ['image', 'image_text'].includes(block.type) && <input aria-label={t('ui.outlet.editImageUrl', { label: model.label })} value={model.imageUrl || ''} onChange={(event) => onEditBlock?.({ imageUrl: event.target.value, image: event.target.value })} onBlur={onEditEnd} onClick={(event) => event.stopPropagation()} placeholder={t('ui.outlet.pasteImageUrl')} className="mt-2 block h-9 w-full rounded-lg border border-primary/10 bg-background px-2 text-xs outline-none ring-primary/50 focus:ring-2" />}
-      {mode === 'public' && !model.imageUrl && isPhoto && <div className="mt-4 flex h-40 flex-col items-center justify-center rounded-xl border border-primary/10 bg-secondary/50 px-4 text-center text-sm text-muted-foreground"><ImageIcon size={24} className="mb-2 text-primary/50" /><p className="font-semibold">{getPublicOutletEmptyState('gallery').title}</p><p className="mt-1 text-xs">{getPublicOutletEmptyState('gallery').body}</p></div>}
+      {mode === 'public' && !model.imageUrl && isPhoto && <div className="mt-4 flex h-40 flex-col items-center justify-center rounded-xl border border-primary/10 bg-secondary/50 px-4 text-center text-sm text-muted-foreground"><ImageIcon size={24} className="mb-2 text-primary/50" /><p className="font-semibold">{t('ui.outlet.photosComingSoon')}</p><p className="mt-1 text-xs">{t('ui.outlet.galleryPreparing')}</p></div>}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {block.type === 'gallery' && (gallery.length > 0 ? <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: `repeat(${tile.columns}, minmax(0, 1fr))` }}>{gallery.slice(0, tile.items).map((item) => <img key={item.url} src={item.url} alt={item.alt || `${outlet.name} gallery`} className="aspect-[4/3] w-full rounded-xl object-cover" />)}</div> : mode === 'public' ? <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/10 bg-secondary/50 px-4 py-4 text-sm text-muted-foreground"><ImageIcon size={22} className="shrink-0 text-primary/60" /><div><p className="font-semibold">{getPublicOutletEmptyState('gallery').title}</p><p className="mt-1 text-xs">{getPublicOutletEmptyState('gallery').body}</p></div></div> : null)}
+      {block.type === 'gallery' && (gallery.length > 0 ? <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: `repeat(${tile.columns}, minmax(0, 1fr))` }}>{gallery.slice(0, tile.items).map((item) => <img key={item.url} src={item.url} alt={item.alt || t('ui.outlet.galleryAlt', { outlet: outlet.name })} className="aspect-[4/3] w-full rounded-xl object-cover" />)}</div> : mode === 'public' ? <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/10 bg-secondary/50 px-4 py-4 text-sm text-muted-foreground"><ImageIcon size={22} className="shrink-0 text-primary/60" /><div><p className="font-semibold">{t('ui.outlet.photosComingSoon')}</p><p className="mt-1 text-xs">{t('ui.outlet.galleryPreparing')}</p></div></div> : null)}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {block.type === 'product_grid' && (visibleProducts.length > 0 ? <div id="featured-products" className="mt-4 grid gap-3" style={{ gridTemplateColumns: `repeat(${tile.columns}, minmax(0, 1fr))` }}>{visibleProducts.slice(0, tile.items).map((product) => <Link key={product.id} href={`/customer/activity/${product.id}`} className="group overflow-hidden rounded-xl border border-primary/10 bg-secondary/40 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"><div className="h-36 bg-secondary">{product.cover_url ? <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-xs font-semibold text-muted-foreground/60">{t('ui.outlet.photoComingSoon')}</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><p className="font-bold text-foreground">{product.name}</p><p className="shrink-0 text-sm font-bold text-primary">RM {Number(product.base_price).toFixed(2)}</p></div>{product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description}</p>}<p className="mt-3 text-xs font-semibold text-primary">{product.requires_booking ? t('ui.outlet.bookingRequired') : t('ui.outlet.availableToExplore')} <span aria-hidden="true">→</span></p></div></Link>)}</div> : mode === 'public' ? <div id="featured-products" className="mt-4 rounded-xl border border-primary/10 bg-secondary/50 px-5 py-6"><p className="font-semibold">{getPublicOutletEmptyState('products').title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{getPublicOutletEmptyState('products').body}</p></div> : null)}
+      {block.type === 'product_grid' && (visibleProducts.length > 0 ? <div id="featured-products" className="mt-4 grid gap-3" style={{ gridTemplateColumns: `repeat(${tile.columns}, minmax(0, 1fr))` }}>{visibleProducts.slice(0, tile.items).map((product) => <Link key={product.id} href={`/customer/activity/${product.id}`} className="group overflow-hidden rounded-xl border border-primary/10 bg-secondary/40 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"><div className="h-36 bg-secondary">{product.cover_url ? <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-xs font-semibold text-muted-foreground/60">{t('ui.outlet.photoComingSoon')}</div>}</div><div className="p-4"><div className="flex items-start justify-between gap-3"><p className="font-bold text-foreground">{product.name}</p><p className="shrink-0 text-sm font-bold text-primary">{MYR_CODE} {Number(product.base_price).toFixed(2)}</p></div>{product.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description}</p>}<p className="mt-3 text-xs font-semibold text-primary">{product.requires_booking ? t('ui.outlet.bookingRequired') : t('ui.outlet.availableToExplore')} <span aria-hidden="true">→</span></p></div></Link>)}</div> : mode === 'public' ? <div id="featured-products" className="mt-4 rounded-xl border border-primary/10 bg-secondary/50 px-5 py-6"><p className="font-semibold">{t('ui.outletMenu.emptyTitle')}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{t('ui.outletMenu.emptyDescription')}</p></div> : null)}
       {mode === 'editor' && block.type === 'product_grid' && visibleProducts.length === 0 && <div className="mt-4 rounded-xl border-2 border-dashed border-primary/15 bg-secondary/40 px-4 py-6 text-center text-xs font-semibold text-muted-foreground/60">{t('ui.outlet.selectProducts')}</div>}
       {block.type === 'hours' && <p className="mt-4 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-foreground">{live.hours}</p>}
       {block.type === 'contact' && <div className="mt-4 rounded-xl bg-secondary px-4 py-3 text-sm text-foreground"><p>{live.address}</p>{live.phone && <p className="mt-1 font-semibold">{live.phone}</p>}<a className="mt-2 inline-block font-semibold text-primary hover:underline" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(', '))}`} target="_blank" rel="noreferrer">{t('ui.outlet.openDirections')}</a></div>}

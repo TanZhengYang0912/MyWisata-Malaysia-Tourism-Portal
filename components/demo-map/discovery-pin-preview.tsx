@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { Store, MapPin, X } from "lucide-react";
 import type { DiscoveryPin } from "@/lib/demo-map/discovery-pins";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 /**
  * Renders whatever is selected on the dev discovery map — a single outlet, a
@@ -19,7 +20,7 @@ export function DiscoveryPinPreview({ pins, onClose }: { pins: DiscoveryPin[]; o
     <aside className="rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h3 className="text-sm font-bold text-foreground">
-          {pins.length > 1 ? `${pins.length} ${t("ui.labels.places")}` : pins[0].kind === "outlet" ? t("ui.labels.mywisataOutlet") : t("ui.labels.placeBasedExperience")}
+          {pins.length > 1 ? `${pins.length} ${t("ui.labels.places", { ns: "customer" })}` : pins[0].kind === "outlet" ? t("ui.labels.mywisataOutlet") : t("ui.labels.placeBasedExperience")}
         </h3>
         <button type="button" onClick={onClose} aria-label={t("actions.close", { ns: "common" })} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
           <X size={16} />
@@ -51,7 +52,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
           <li key={product.id}>
             <Link href={`/customer/activity/${product.id}`} className="flex items-center justify-between gap-2 text-xs text-foreground hover:text-primary">
               <span className="truncate">{product.name}</span>
-              <span className="shrink-0 font-[family-name:var(--font-mono)] font-semibold">RM {product.price}</span>
+              <span className="shrink-0 font-[family-name:var(--font-mono)] font-semibold">{MYR_CODE} {product.price}</span>
             </Link>
           </li>
         ))}
@@ -76,7 +77,7 @@ function ActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity" }
       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin size={11} /> {pin.activity.place?.district ? `${pin.activity.place.district}, ${pin.activity.place.state}` : pin.activity.place?.state}
       </p>
-      <p className="mt-2 font-[family-name:var(--font-mono)] text-sm font-bold text-primary">RM {pin.activity.price}</p>
+      <p className="mt-2 font-[family-name:var(--font-mono)] text-sm font-bold text-primary">{MYR_CODE} {pin.activity.price}</p>
     </div>
   );
 }

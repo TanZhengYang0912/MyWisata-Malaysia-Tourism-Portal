@@ -31,13 +31,13 @@ describe('public outlet menu', () => {
 
   it('uses one detail link when a product is not ready for direct purchase', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    expect(source).toContain('getOutletDetailActionLabel(action.reason)');
+    expect(source).toContain('t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime"');
     expect(source).not.toContain('disabled={Boolean(working) || action.kind !== "cart"}');
   });
 
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
-    expect(source).toContain('t("ui.labels.location")} {outletNavigation.currentPosition} / {outletNavigation.total}');
-    expect(source).toContain('t("ui.actions.viewAll")} {t("ui.vendor.activeOutletCount", { count: outletNavigation.total })}');
+    expect(source).toContain('t("strictMigration.outletNavigation.position"');
+    expect(source).toContain('t("strictMigration.outletNavigation.viewAll"');
   });
 });

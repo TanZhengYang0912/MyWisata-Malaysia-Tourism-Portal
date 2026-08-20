@@ -22,6 +22,7 @@ import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 
 type ConnectStatus =
@@ -519,17 +520,17 @@ function WalletContent() {
           <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>{tCustomer("ui.wallet.earningsBalance")}</span>
-              <span className="font-mono">RM {(buckets?.earnings ?? 0).toFixed(2)}</span>
+              <span className="font-mono">{MYR_CODE} {(buckets?.earnings ?? 0).toFixed(2)}</span>
             </div>
             {pendingTotal > 0 && (
               <div className="flex justify-between text-amber-600">
                 <span>{tCustomer("ui.wallet.reservedRequests")}</span>
-                <span className="font-mono">RM {pendingTotal.toFixed(2)}</span>
+                <span className="font-mono">{MYR_CODE} {pendingTotal.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
               <span>{tCustomer("ui.wallet.availableWithdraw")}</span>
-              <span className="font-mono">RM {availableEarnings.toFixed(2)}</span>
+              <span className="font-mono">{MYR_CODE} {availableEarnings.toFixed(2)}</span>
             </div>
           </div>
 
@@ -707,7 +708,7 @@ function WalletContent() {
                   <p className="text-xs text-muted-foreground">{new Date(w.createdAt).toLocaleDateString(i18n.language === "en" ? "en-MY" : i18n.language)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
+                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
                   <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">{tCustomer("ui.wallet.viewReceipt")}</Link>
                 </div>
@@ -744,7 +745,7 @@ function WalletContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">RM {w.amount.toFixed(2)}</p>
+                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
                   <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">{tCustomer("ui.wallet.viewReceipt")}</Link>
                 </div>

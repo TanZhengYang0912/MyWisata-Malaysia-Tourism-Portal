@@ -361,7 +361,11 @@
       "itemsInPeriod": "此期间 {{count}} 项",
       "keepExperiencesCurrent": "保持体验信息最新",
       "voucherCampaigns": "优惠券活动",
-      "createOffers": "为旅客创建优惠"
+      "createOffers": "为旅客创建优惠",
+      "availableCount_one": "可用 {{count}} 件",
+      "availableCount_other": "可用 {{count}} 件",
+      "itemsInPeriod_one": "此期间 {{count}} 项",
+      "itemsInPeriod_other": "此期间 {{count}} 项"
     },
     "analytics": {
       "noVendor": "此账户未关联已批准的商家。",
@@ -463,7 +467,13 @@
       "entities": {
         "bookings": "预订",
         "slots": "时段"
-      }
+      },
+      "batchSummary_one": "已更新 {{count}} 个{{entity}}。",
+      "batchSummary_other": "已更新 {{count}} 个{{entity}}。",
+      "reservationCount_one": "{{count}} 个预约 · 按门店分组",
+      "reservationCount_other": "{{count}} 个预约 · 按门店分组",
+      "onThisPage_one": "本页 {{count}} 个",
+      "onThisPage_other": "本页 {{count}} 个"
     },
     "inbox": {
       "filter": {
@@ -558,7 +568,13 @@
       "standard": "标准",
       "markOrderReady": "将订单标记为准备就绪",
       "fulfilOrder": "履行订单",
-      "close": "关闭"
+      "close": "关闭",
+      "batchSummary_one": "已更新 {{count}} 个订单项目。",
+      "batchSummary_other": "已更新 {{count}} 个订单项目。",
+      "pageSummary_one": "{{count}} 个订单 · 每页 {{perPage}} 个",
+      "pageSummary_other": "{{count}} 个订单 · 每页 {{perPage}} 个",
+      "itemCount_one": "{{count}} 个项目",
+      "itemCount_other": "{{count}} 个项目"
     },
     "outlets": {
       "loadingShop": "正在加载您的店铺页面…",
@@ -604,7 +620,13 @@
       "noListings": "暂无商品",
       "manageListings": "管理商品",
       "viewDetailsFor": "查看 {{name}} 的详情",
-      "editOutletNamed": "编辑 {{name}}"
+      "editOutletNamed": "编辑 {{name}}",
+      "batchSummary_one": "已更新 {{count}} 个门店。",
+      "batchSummary_other": "已更新 {{count}} 个门店。",
+      "resultCount_one": "马来西亚共有 {{count}} 个门店",
+      "resultCount_other": "马来西亚共有 {{count}} 个门店",
+      "perPage_one": "每页 {{count}} 个",
+      "perPage_other": "每页 {{count}} 个"
     },
     "products": {
       "loadFailed": "无法加载产品",
@@ -649,7 +671,15 @@
       "archived": "产品已成功归档。",
       "archiveTryAgain": "无法归档商品。请重试。",
       "batchSummarySkipped": "已更新 {{updated}} 个，按状态跳过 {{skipped}} 个。",
-      "batchSummary": "已更新 {{count}} 个商品。"
+      "batchSummary": "已更新 {{count}} 个商品。",
+      "batchSummary_one": "已更新 {{count}} 个商品。",
+      "batchSummary_other": "已更新 {{count}} 个商品。",
+      "resultCount_one": "目录中有 {{count}} 个商品",
+      "resultCount_other": "目录中有 {{count}} 个商品",
+      "perPage_one": "每页 {{count}} 个",
+      "perPage_other": "每页 {{count}} 个",
+      "stockCount_one": "库存 {{count}}{{low}}",
+      "stockCount_other": "库存 {{count}}{{low}}"
     },
     "profile": {
       "loading": "正在加载商家资料…",
@@ -842,7 +872,21 @@
       "fixedDiscount": "减免 RM {{amount}}",
       "percentDiscount": "{{percent}}% 折扣",
       "bogoDiscount": "买 {{buy}} 送 {{free}}",
-      "offer": "优惠券优惠"
+      "offer": "优惠券优惠",
+      "generatedCodes_one": "已使用前缀 {{prefix}} 生成 {{count}} 个代码。",
+      "generatedCodes_other": "已使用前缀 {{prefix}} 生成 {{count}} 个代码。",
+      "uploadedForReview_one": "已上传 {{count}} 张优惠券，等待管理员审核。",
+      "uploadedForReview_other": "已上传 {{count}} 张优惠券，等待管理员审核。",
+      "uploaded_one": "已上传 {{count}} 张优惠券。",
+      "uploaded_other": "已上传 {{count}} 张优惠券。",
+      "batchUpdated_one": "已更新 {{count}} 张优惠券。",
+      "batchUpdated_other": "已更新 {{count}} 张优惠券。",
+      "batchActivated_one": "已启用 {{count}} 张优惠券。",
+      "batchActivated_other": "已启用 {{count}} 张优惠券。",
+      "batchDeactivated_one": "已停用 {{count}} 张优惠券。",
+      "batchDeactivated_other": "已停用 {{count}} 张优惠券。",
+      "usesCount_one": "使用 {{count}} 次",
+      "usesCount_other": "使用 {{count}} 次"
     },
     "wallet": {
       "vendorFinance": "商家财务",
@@ -928,7 +972,11 @@
         "refund": "退款",
         "adjustment_credit": "余额调整",
         "adjustment_debit": "余额调整"
-      }
+      },
+      "activeCount_one": "{{count}} 个活跃",
+      "activeCount_other": "{{count}} 个活跃",
+      "activeRequestCount_one": "{{count}} / 1",
+      "activeRequestCount_other": "{{count}} / 1"
     },
     "actions": {
       "save": "保存"
@@ -1046,7 +1094,9 @@
       "textAlignment": "文本对齐",
       "title": "标题",
       "top": "顶部",
-      "useImage": "使用图片"
+      "useImage": "使用图片",
+      "maxImages_one": "最多 {{count}} 张图片。",
+      "maxImages_other": "最多 {{count}} 张图片。"
     },
     "lastPublished": "上次发布于 {{date}}",
     "livePreview": "实时预览",
@@ -1154,7 +1204,9 @@
       "desktop": "桌面 1120px",
       "tablet": "平板 768px",
       "mobile": "移动端 390px"
-    }
+    },
+    "sectionCount_one": "{{count}} 个区块",
+    "sectionCount_other": "{{count}} 个区块"
   },
   "media": {
     "digitalAssetUploaded": "数字资产已上传。",
@@ -1255,7 +1307,9 @@
     "priorityValue": "优先级 {{value}}",
     "tiered": "阶梯数量",
     "title": "可变定价",
-    "weekend": "周末"
+    "weekend": "周末",
+    "bundleItems_one": "{{count}} 个组合商品",
+    "bundleItems_other": "{{count}} 个组合商品"
   },
   "productDetails": {
     "availability": "可用情况",
@@ -1283,7 +1337,9 @@
     "variantsHint": "管理选项、价格差额、库存数量和默认变体。",
     "variantsInventory": "变体与库存",
     "viewOnlyPricing": "您拥有此商品的查看权限。所有者或门店经理可以更新定价规则。",
-    "viewOnlyVariants": "您拥有此商品的查看权限。所有者或门店经理可以更新变体和库存。"
+    "viewOnlyVariants": "您拥有此商品的查看权限。所有者或门店经理可以更新变体和库存。",
+    "unitsAvailable_one": "可用 {{count}} 件",
+    "unitsAvailable_other": "可用 {{count}} 件"
   },
   "productForm": {
     "addTitle": "添加商品",
@@ -1346,7 +1402,11 @@
       "product": "实体商品",
       "service": "服务"
     },
-    "updated": "商品更新成功。"
+    "updated": "商品更新成功。",
+    "galleryImageAlt_one": "图库图片 {{count}}",
+    "galleryImageAlt_other": "图库图片 {{count}}",
+    "removeGalleryImage_one": "移除图库图片 {{count}}",
+    "removeGalleryImage_other": "移除图库图片 {{count}}"
   },
   "shopPreview": {
     "customerPreview": "客户预览",
@@ -1425,7 +1485,11 @@
     "allFilteredSelected": "已选择所有筛选结果",
     "clearSelection": "清除选择",
     "selectAllFiltered": "选择全部 {{count}} 条筛选结果",
-    "selected": "已选择 {{count}} 项"
+    "selected": "已选择 {{count}} 项",
+    "selected_one": "已选择 {{count}} 项",
+    "selected_other": "已选择 {{count}} 项",
+    "selectAllFiltered_one": "选择全部 {{count}} 条筛选结果",
+    "selectAllFiltered_other": "选择全部 {{count}} 条筛选结果"
   },
   "order": {
     "fulfil": "履行",
@@ -1447,7 +1511,9 @@
       "salesRevenueByOutlet": "按门店查看销售收入",
       "topOutletsGrouped": "显示前 {{count}} 家门店，其余合并",
       "total": "总计",
-      "totalPaidRevenue": "已付款总收入"
+      "totalPaidRevenue": "已付款总收入",
+      "topOutletsGrouped_one": "显示前 {{count}} 家门店，其余合并",
+      "topOutletsGrouped_other": "显示前 {{count}} 家门店，其余合并"
     },
     "sales": {
       "description": "来自 Supabase 的收入和已付款订单活动",
@@ -1461,7 +1527,9 @@
       "performance": "销售表现",
       "revenue": "收入",
       "revenueRM": "收入（RM）",
-      "timeline": "时间线"
+      "timeline": "时间线",
+      "orders_one": "{{count}} 个订单",
+      "orders_other": "{{count}} 个订单"
     }
   },
   "ranking": {
@@ -1475,7 +1543,11 @@
       "emptyInsight": "已付款产品会显示在这里。",
       "unitsSold": "已售 {{count}} 件",
       "sold": "已售 {{count}} 件",
-      "empty": "此期间没有已付款产品。"
+      "empty": "此期间没有已付款产品。",
+      "unitsSold_one": "已售 {{count}} 件",
+      "unitsSold_other": "已售 {{count}} 件",
+      "sold_one": "已售 {{count}} 件",
+      "sold_other": "已售 {{count}} 件"
     },
     "rated": {
       "eyebrow": "旅客喜爱",
@@ -1486,7 +1558,11 @@
       "emptyInsight": "已发布的评价会显示在这里。",
       "travellerReviews": "{{count}} 条旅客评价",
       "reviews": "{{count}} 条评价",
-      "empty": "此期间没有已发布的评价。"
+      "empty": "此期间没有已发布的评价。",
+      "travellerReviews_one": "{{count}} 条旅客评价",
+      "travellerReviews_other": "{{count}} 条旅客评价",
+      "reviews_one": "{{count}} 条评价",
+      "reviews_other": "{{count}} 条评价"
     }
   },
   "transactions": {
@@ -1503,7 +1579,9 @@
     "recentOrder": "最近订单",
     "status": "状态",
     "vendorTotal": "商家总额",
-    "view": "查看"
+    "view": "查看",
+    "quantityAndLines_one": "数量：{{quantity}} · {{count}} {{lineLabel}}",
+    "quantityAndLines_other": "数量：{{quantity}} · {{count}} {{lineLabel}}"
   },
   "claim": {
     "availableAfterSignIn": "登录后可用",
@@ -1666,7 +1744,11 @@
       "unlimitedPerCustomer": "每位顾客不限次数",
       "unlimitedTotalUses": "总次数不限",
       "validFrom": "生效时间",
-      "validUntil": "失效时间"
+      "validUntil": "失效时间",
+      "totalUses_one": "总共使用 {{count}} 次",
+      "totalUses_other": "总共使用 {{count}} 次",
+      "perCustomer_one": "每位顾客 {{count}} 次",
+      "perCustomer_other": "每位顾客 {{count}} 次"
     },
     "csv": {
       "addAnotherRow": "再添加一行优惠券",
@@ -1735,7 +1817,25 @@
       "validUntil": "失效时间",
       "value": "值",
       "voucherName": "优惠券名称",
-      "voucherNumber": "优惠券 {{number}}"
+      "voucherNumber": "优惠券 {{number}}",
+      "rows_one": "{{count}} 行",
+      "rows_other": "{{count}} 行",
+      "readyCount_one": "{{count}} 项就绪",
+      "readyCount_other": "{{count}} 项就绪",
+      "attentionCount_one": "{{count}} 项需要处理",
+      "attentionCount_other": "{{count}} 项需要处理",
+      "blankCodesCount_one": "{{count}} 个空代码",
+      "blankCodesCount_other": "{{count}} 个空代码",
+      "generatedPreview_one": "生成代码预览 · {{count}} 个代码",
+      "generatedPreview_other": "生成代码预览 · {{count}} 个代码"
     }
+  },
+  "strictMigration": {
+    "redemptionModeRequired": "兑换方式 *",
+    "outletMeta": "{{location}} · 编号 {{id}}",
+    "orderStatusValue": "订单状态：{{status}}",
+    "bookingReference": "{{date}} · 编号 {{reference}}",
+    "specificOutletOptional": "指定分店（可选）",
+    "dashboardTodayForVendor": "这是 {{vendor}} 今天的动态。"
   }
 }

@@ -165,6 +165,30 @@ function checkKeyParity(root, namespaces, resources, errors) {
           formatResourceError(root, localeResource.filePath, locale, namespace, key, "extra translation key"),
         );
       }
+
+      for (const key of [...englishKeys].filter((candidate) => localeKeys.has(candidate)).sort()) {
+        const englishValue = flattenLeaves(englishResource.value).get(key);
+        const localeValue = flattenLeaves(localeResource.value).get(key);
+        if (typeof englishValue !== "string" || typeof localeValue !== "string") continue;
+
+        const variables = (value) => [...value.matchAll(/\{\{\s*([^},\s]+)[^}]*\}\}/g)]
+          .map((match) => match[1])
+          .sort();
+        const englishVariables = variables(englishValue);
+        const localeVariables = variables(localeValue);
+        if (JSON.stringify(englishVariables) !== JSON.stringify(localeVariables)) {
+          errors.push(
+            formatResourceError(
+              root,
+              localeResource.filePath,
+              locale,
+              namespace,
+              key,
+              `interpolation variables differ from en (expected ${JSON.stringify(englishVariables)}, received ${JSON.stringify(localeVariables)})`,
+            ),
+          );
+        }
+      }
     }
   }
 }

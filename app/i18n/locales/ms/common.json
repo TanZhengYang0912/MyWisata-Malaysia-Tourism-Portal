@@ -49,7 +49,8 @@
     "markAllAsRead": "Tandakan semua sebagai dibaca",
     "previous": "Sebelumnya",
     "next": "Seterusnya",
-    "signOut": "Log keluar"
+    "signOut": "Log keluar",
+    "back": "Kembali"
   },
   "states": {
     "loading": "Memuatkan",
@@ -103,7 +104,8 @@
   "filters": {
     "searchByName": "Cari mengikut nama…",
     "clear": "Kosongkan",
-    "filter": "Tapis"
+    "filter": "Tapis",
+    "all": "Semua"
   },
   "notifications": {
     "title": "Pemberitahuan",
@@ -174,6 +176,15 @@
   "cart": {
     "label": "Troli beli-belah",
     "itemCount": "Troli beli-belah, {{count}} item",
-    "itemCountPlural": "Troli beli-belah, {{count}} item"
+    "itemCountPlural": "Troli beli-belah, {{count}} item",
+    "itemCount_one": "Troli beli-belah, {{count}} item",
+    "itemCount_other": "Troli beli-belah, {{count}} item",
+    "itemCountPlural_one": "Troli beli-belah, {{count}} item",
+    "itemCountPlural_other": "Troli beli-belah, {{count}} item"
+  },
+  "strictMigration": {
+    "verifiedContributor": "Penyumbang disahkan",
+    "accountFallbackName": "Akaun",
+    "chatbotTicketCreated": "Selesai — tiket #{{id}} telah dicipta. Pasukan kami akan membalas; anda boleh melihatnya di bawah Tiket Saya."
   }
 }

@@ -81,9 +81,9 @@ export default function VendorSidebar() {
   return (
       <aside className="fixed top-0 left-0 bottom-0 w-60 bg-gray-900 text-gray-200 flex flex-col z-40">
         <div className="px-5 py-5 border-b border-gray-700">
-        <p className="text-xs text-gray-400 uppercase tracking-wider">{tVendor('shell.portal', { defaultValue: 'Vendor Portal' })}</p>
-        <p className="font-semibold text-white mt-0.5">{tVendor('shell.brand', { defaultValue: 'Malaysia Tourism' })}</p>
-        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> {tVendor('shell.outletOperations', { defaultValue: 'Outlet operations' })}</p>}
+        <p className="text-xs text-gray-400 uppercase tracking-wider">{tVendor('shell.portal')}</p>
+        <p className="font-semibold text-white mt-0.5">{tVendor('shell.brand')}</p>
+        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> {tVendor('shell.outletOperations')}</p>}
         {!loading && isOutletManager && user?.activeOutletName && <p className="mt-2 truncate text-xs text-gray-400" title={user.activeOutletName}>{user.activeOutletName}</p>}
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
@@ -96,7 +96,7 @@ export default function VendorSidebar() {
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <Icon size={17} />
-            {tVendor(`navigation.${label}`, { defaultValue: label })}
+            {tVendor(`navigation.${label}`)}
             {href === '/vendor/inbox' && unreadChats > 0 && (
               <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-white">
                 {unreadChats}
@@ -113,7 +113,7 @@ export default function VendorSidebar() {
         onClick={signOut}
         className="flex items-center gap-3 px-5 py-4 text-sm text-gray-400 hover:text-red-400 border-t border-gray-700 transition-colors"
       >
-        <LogOut size={17} /> {tCommon('actions.signOut', { defaultValue: 'Sign out' })}
+        <LogOut size={17} /> {tCommon('actions.signOut')}
       </button>
     </aside>
   );

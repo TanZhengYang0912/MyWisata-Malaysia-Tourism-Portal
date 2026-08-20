@@ -49,7 +49,8 @@
     "markAllAsRead": "Mark all as read",
     "previous": "Previous",
     "next": "Next",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "back": "Back"
   },
   "states": {
     "loading": "Loading",
@@ -103,7 +104,8 @@
   "filters": {
     "searchByName": "Search by name…",
     "clear": "Clear",
-    "filter": "Filter"
+    "filter": "Filter",
+    "all": "All"
   },
   "notifications": {
     "title": "Notifications",
@@ -174,6 +176,15 @@
   "cart": {
     "label": "Shopping cart",
     "itemCount": "Shopping cart, {{count}} item",
-    "itemCountPlural": "Shopping cart, {{count}} items"
+    "itemCountPlural": "Shopping cart, {{count}} items",
+    "itemCount_one": "Shopping cart, {{count}} item",
+    "itemCount_other": "Shopping cart, {{count}} items",
+    "itemCountPlural_one": "Shopping cart, {{count}} items",
+    "itemCountPlural_other": "Shopping cart, {{count}} items"
+  },
+  "strictMigration": {
+    "verifiedContributor": "Verified contributor",
+    "accountFallbackName": "Account",
+    "chatbotTicketCreated": "Done — ticket #{{id}} created. Our team will reply; you'll see it under My Tickets."
   }
 }

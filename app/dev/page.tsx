@@ -12,6 +12,7 @@ import { getActivities } from "@/backend/domains/catalogue";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import type { Activity } from "@/backend/core/types";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export default function DevPage() {
   const { currentUser, loading } = useAuth();
@@ -82,7 +83,7 @@ export default function DevPage() {
           <div key={a.id} className="flex items-center justify-between gap-4 rounded-xl border border-border p-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{a.name}</p>
-              <p className="text-xs text-muted-foreground">RM {a.price}</p>
+              <p className="text-xs text-muted-foreground">{MYR_CODE} {a.price}</p>
             </div>
             <div className="text-right">
               <Button size="sm" disabled={busyId === a.id} onClick={() => simulate(a.id)}>
