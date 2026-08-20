@@ -21,6 +21,8 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "ui.vendors.kyc",
     "email.draft.recipientPlaceholder",
     "userManagement.fields.kyc",
+    "strictMigration.moderationFlagSummary",
+    "strictMigration.recommendationPhotoStatus",
   ]),
   ms: new Set([
     "navigation.Chatbot",
@@ -48,6 +50,10 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "withdrawals.enumValues.debit",
     "withdrawals.table.status",
     "refunds.providers.stripeSandbox",
+    "strictMigration.moderationFlagSummary",
+    "strictMigration.recommendationEvidence",
+    "strictMigration.recommendationFindingMeta",
+    "strictMigration.recommendationPhotoStatus",
   ]),
 } as const;
 

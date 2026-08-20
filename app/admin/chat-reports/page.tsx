@@ -60,9 +60,9 @@ export default function AdminChatReportsPage() {
   const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const reasonLabel = (value: string, fallback: string) => t(`chatReports.reasons.${value}`, { defaultValue: fallback });
-  const resolutionLabel = (value: string, fallback: string) => t(`chatReports.resolutions.${value}`, { defaultValue: fallback });
-  const reportStatusLabel = (value: string) => t(`chatReports.status.${value}`, { defaultValue: value });
+  const reasonLabel = (value: string, fallback: string) => t(`chatReports.reasons.${value}`);
+  const resolutionLabel = (value: string, fallback: string) => t(`chatReports.resolutions.${value}`);
+  const reportStatusLabel = (value: string) => t(`chatReports.status.${value}`);
   const [reports, setReports] = useState<ChatReport[] | null>(null);
   const [statusTab, setStatusTab] = useState<StatusTab>("open");
   const [closedStatusFilter, setClosedStatusFilter] = useState<ClosedStatusFilter>("all");
@@ -109,13 +109,13 @@ export default function AdminChatReportsPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        showFeedback("error", payload?.error?.message ?? t("chatReports.errors.saveSetting", { defaultValue: "Could not save setting." }));
+        showFeedback("error", payload?.error?.message ?? t("chatReports.errors.saveSetting"));
         return;
       }
       setArchiveDays(payload.data.archiveDays);
-      showFeedback("success", t("chatReports.success.archiveUpdated", { defaultValue: "Archive threshold updated." }));
+      showFeedback("success", t("chatReports.success.archiveUpdated"));
     } catch {
-      showFeedback("error", t("chatReports.errors.saveSettingRetry", { defaultValue: "Could not save setting. Please try again." }));
+      showFeedback("error", t("chatReports.errors.saveSettingRetry"));
     } finally {
       setSavingArchiveDays(false);
     }
@@ -184,20 +184,20 @@ export default function AdminChatReportsPage() {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        showFeedback("error", body?.error?.message ?? t("chatReports.errors.updateReport", { defaultValue: "Could not update report." }));
+        showFeedback("error", body?.error?.message ?? t("chatReports.errors.updateReport"));
         return;
       }
       setReports((prev) => prev?.map((r) => (
         r.id === report.id ? { ...r, status: action, resolution_reason: resolveReason, resolution_note: resolveNote.trim() || null } : r
       )) ?? null);
-      showFeedback("success", t("chatReports.success.marked", { defaultValue: "Report marked {{action}}.", action: resolutionLabel(action, action) }));
+      showFeedback("success", t("chatReports.success.marked", { action: resolutionLabel(action, action) }));
       setResolveTarget(null);
       // Acting from inside the view dialog leaves it showing a now-stale "open"
       // status/actions — close it too so the admin returns to the refreshed list.
       setViewReport(null);
       setThreadMessages(null);
     } catch {
-      showFeedback("error", t("chatReports.errors.updateReportRetry", { defaultValue: "Could not update report. Please try again." }));
+      showFeedback("error", t("chatReports.errors.updateReportRetry"));
     } finally {
       setUpdatingId(null);
     }
@@ -210,7 +210,7 @@ export default function AdminChatReportsPage() {
     const reasonOptions = RESOLUTION_REASONS.map((reason) => `${reason.value}: ${resolutionLabel(reason.value, reason.label)}`).join(", ");
     const enteredReason = window.prompt(t("chatReports.prompts.resolutionReason", { reasons: reasonOptions }), RESOLUTION_REASONS[0].value)?.trim();
     if (!enteredReason || !RESOLUTION_REASONS.some((reason) => reason.value === enteredReason)) {
-      showFeedback("error", t("chatReports.errors.invalidReason", { defaultValue: "Choose a valid resolution reason." }));
+      showFeedback("error", t("chatReports.errors.invalidReason"));
       return;
     }
     const note = window.prompt(t("chatReports.prompts.resolutionNote"), "")?.trim() ?? "";
@@ -224,13 +224,13 @@ export default function AdminChatReportsPage() {
       const failed = responses.find((response) => !response.ok);
       if (failed) {
         const body = await failed.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? t("chatReports.errors.batchUpdate", { defaultValue: "One or more reports could not be updated." }));
+        throw new Error(body?.error?.message ?? t("chatReports.errors.batchUpdate"));
       }
       setReports((previous) => previous?.map((report) => selected.some((item) => item.id === report.id) ? { ...report, status: action, resolution_reason: enteredReason, resolution_note: note || null } : report) ?? null);
       setSelectedIds(new Set());
-      showFeedback("success", t("chatReports.success.batchMarked", { defaultValue: "{{count}} reports marked {{action}}.", count: selected.length, action: resolutionLabel(action, action) }));
+      showFeedback("success", t("chatReports.success.batchMarked", { count: selected.length, action: resolutionLabel(action, action) }));
     } catch (error) {
-      showFeedback("error", error instanceof Error ? error.message : t("chatReports.errors.batchFailed", { defaultValue: "Batch report update failed." }));
+      showFeedback("error", error instanceof Error ? error.message : t("chatReports.errors.batchFailed"));
     } finally {
       setBatchBusy(false);
     }
@@ -255,13 +255,13 @@ export default function AdminChatReportsPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        showFeedback("error", payload?.error?.message ?? t("chatReports.errors.blockReporter", { defaultValue: "Could not block reporter." }));
+        showFeedback("error", payload?.error?.message ?? t("chatReports.errors.blockReporter"));
         return;
       }
       applyBanUpdate(reporterId, payload.data.banned_until);
-      showFeedback("success", t("chatReports.success.reporterBlocked", { defaultValue: "Reporter blocked from reporting for {{days}} days.", days }));
+      showFeedback("success", t("chatReports.success.reporterBlocked", { days }));
     } catch {
-      showFeedback("error", t("chatReports.errors.blockReporterRetry", { defaultValue: "Could not block reporter. Please try again." }));
+      showFeedback("error", t("chatReports.errors.blockReporterRetry"));
     } finally {
       setBlockingReporterId(null);
     }
@@ -274,13 +274,13 @@ export default function AdminChatReportsPage() {
       const response = await fetch(`/api/admin/report-bans/${reporterId}`, { method: "DELETE" });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        showFeedback("error", body?.error?.message ?? t("chatReports.errors.unblockReporter", { defaultValue: "Could not unblock reporter." }));
+        showFeedback("error", body?.error?.message ?? t("chatReports.errors.unblockReporter"));
         return;
       }
       applyBanUpdate(reporterId, null);
-      showFeedback("success", t("chatReports.success.reporterUnblocked", { defaultValue: "Reporter unblocked." }));
+      showFeedback("success", t("chatReports.success.reporterUnblocked"));
     } catch {
-      showFeedback("error", t("chatReports.errors.unblockReporterRetry", { defaultValue: "Could not unblock reporter. Please try again." }));
+      showFeedback("error", t("chatReports.errors.unblockReporterRetry"));
     } finally {
       setBlockingReporterId(null);
     }
@@ -288,11 +288,11 @@ export default function AdminChatReportsPage() {
 
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4 flex items-center gap-2"><Flag size={18} /> {t("chatReports.title", { defaultValue: "Chat Reports" })}</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4 flex items-center gap-2"><Flag size={18} /> {t("chatReports.title")}</h1>
 
       {archiveDays !== null && (
         <div className="mb-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-xs" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <span className="text-muted-foreground">{t("chatReports.archive.after", { defaultValue: "Auto-archive open chats after" })}</span>
+          <span className="text-muted-foreground">{t("chatReports.archive.after")}</span>
           <input
             type="number"
             min={1}
@@ -301,9 +301,9 @@ export default function AdminChatReportsPage() {
             onChange={(e) => setArchiveDaysInput(e.target.value)}
             className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
           />
-          <span className="text-muted-foreground">{t("chatReports.archive.days", { defaultValue: "days of inactivity" })}</span>
+          <span className="text-muted-foreground">{t("chatReports.archive.days")}</span>
           <Button size="sm" variant="outline" disabled={savingArchiveDays || Number(archiveDaysInput) === archiveDays} onClick={saveArchiveDays}>
-            {savingArchiveDays ? t("chatReports.saving", { defaultValue: "Saving…" }) : t("common.actions.save", { defaultValue: "Save" })}
+            {savingArchiveDays ? t("chatReports.saving") : t("common.actions.save")}
           </Button>
         </div>
       )}
@@ -312,7 +312,7 @@ export default function AdminChatReportsPage() {
         <AdminSegmentedFilter
           value={statusTab}
           ariaLabel="chatReports.accessibility.status"
-          items={[{ value: "open", label: t("chatReports.tabs.pending", { defaultValue: "Pending" }), count: openCount }, { value: "closed", label: t("chatReports.tabs.resolved", { defaultValue: "Resolved" }), count: closedCount }]}
+          items={[{ value: "open", label: t("chatReports.tabs.pending"), count: openCount }, { value: "closed", label: t("chatReports.tabs.resolved"), count: closedCount }]}
           onChange={(value) => setStatusTab(value as StatusTab)}
         />
       </div>
@@ -323,7 +323,7 @@ export default function AdminChatReportsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("chatReports.searchPlaceholder", { defaultValue: "Search outlet, reporter, details…" })}
+            placeholder={t("chatReports.searchPlaceholder")}
             className="h-8 w-full rounded-lg border border-border pl-8 pr-2 text-xs bg-background text-foreground"
           />
         </div>
@@ -333,28 +333,28 @@ export default function AdminChatReportsPage() {
             onChange={(e) => setSortKey(e.target.value as SortKey)}
             className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
           >
-            <option value="newest">{t("chatReports.sort.newest", { defaultValue: "Newest first" })}</option>
-            <option value="oldest">{t("chatReports.sort.oldest", { defaultValue: "Oldest first" })}</option>
-            <option value="reason">{t("chatReports.sort.reason", { defaultValue: "Reason" })}</option>
+            <option value="newest">{t("chatReports.sort.newest")}</option>
+            <option value="oldest">{t("chatReports.sort.oldest")}</option>
+            <option value="reason">{t("chatReports.sort.reason")}</option>
           </select>
           {statusTab === "closed" && (
             <Select value={closedStatusFilter} onValueChange={(v) => setClosedStatusFilter(v as ClosedStatusFilter)}>
               <SelectTrigger className="w-32">
-                <SelectValue placeholder={t("chatReports.filters.outcome", { defaultValue: "Outcome" })} />
+                <SelectValue placeholder={t("chatReports.filters.outcome")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("chatReports.filters.resolvedDismissed", { defaultValue: "Resolved + dismissed" })}</SelectItem>
-                <SelectItem value="resolved">{t("chatReports.filters.resolvedOnly", { defaultValue: "Resolved only" })}</SelectItem>
-                <SelectItem value="dismissed">{t("chatReports.filters.dismissedOnly", { defaultValue: "Dismissed only" })}</SelectItem>
+                <SelectItem value="all">{t("chatReports.filters.resolvedDismissed")}</SelectItem>
+                <SelectItem value={t("chatReports.resolutions.resolved")}>{t("chatReports.filters.resolvedOnly")}</SelectItem>
+                <SelectItem value={t("chatReports.resolutions.dismissed")}>{t("chatReports.filters.dismissedOnly")}</SelectItem>
               </SelectContent>
             </Select>
           )}
           <Select value={reasonFilter} onValueChange={(v) => setReasonFilter(v as ReasonFilter)}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder={t("chatReports.filters.reason", { defaultValue: "Reason" })} />
+              <SelectValue placeholder={t("chatReports.filters.reason")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("chatReports.filters.allReasons", { defaultValue: "All reasons" })}</SelectItem>
+              <SelectItem value="all">{t("chatReports.filters.allReasons")}</SelectItem>
               {Object.entries(REASON_LABEL).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{reasonLabel(value, label)}</SelectItem>
               ))}
@@ -364,16 +364,16 @@ export default function AdminChatReportsPage() {
       </div>
 
       {reports === null ? (
-        <p className="text-sm text-muted-foreground">{t("chatReports.loading", { defaultValue: "Loading…" })}</p>
+        <p className="text-sm text-muted-foreground">{t("chatReports.loading")}</p>
       ) : filtered.length === 0 ? (
-        <EmptyState title={statusTab === "open" ? t("chatReports.empty.pending", { defaultValue: "No pending reports" }) : t("chatReports.empty.resolved", { defaultValue: "No resolved reports" })} description={t("chatReports.empty.description", { defaultValue: "Reported conversations will show up here." })} />
+        <EmptyState title={statusTab === "open" ? t("chatReports.empty.pending") : t("chatReports.empty.resolved")} description={t("chatReports.empty.description")} />
       ) : (
         <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          {statusTab === "open" && <><div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("chatReports.accessibility.selectAll", { defaultValue: "Select all visible chat reports" })} checked={filtered.length > 0 && filtered.every((report) => selectedIds.has(report.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); filtered.forEach((report) => event.target.checked ? next.add(report.id) : next.delete(report.id)); return next; })} /><span className="text-muted-foreground">{t("chatReports.selectAll", { defaultValue: "Select all visible reports" })}</span></div><AdminBatchActionBar selectedCount={filtered.filter((report) => selectedIds.has(report.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved" | "dismissed")} actions={[{ value: "resolved", label: t("batchActions.resolved", { defaultValue: "Resolve" }) }, { value: "dismissed", label: t("batchActions.dismissed", { defaultValue: "Dismiss" }) }]} busy={batchBusy} /></>}
+          {statusTab === "open" && <><div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("chatReports.accessibility.selectAll")} checked={filtered.length > 0 && filtered.every((report) => selectedIds.has(report.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); filtered.forEach((report) => event.target.checked ? next.add(report.id) : next.delete(report.id)); return next; })} /><span className="text-muted-foreground">{t("chatReports.selectAll")}</span></div><AdminBatchActionBar selectedCount={filtered.filter((report) => selectedIds.has(report.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved" | "dismissed")} actions={[{ value: "resolved", label: t("batchActions.resolved") }, { value: "dismissed", label: t("batchActions.dismissed") }]} busy={batchBusy} /></>}
           <div className="divide-y divide-border">
             {filtered.map((r) => {
-              const outletName = r.chat_threads?.outlets?.name ?? t("chatReports.fallback.unknownOutlet", { defaultValue: "Unknown outlet" });
-              const reporterName = r.reporter?.full_name || r.reporter?.email || t("chatReports.fallback.unknownReporter", { defaultValue: "Unknown" });
+              const outletName = r.chat_threads?.outlets?.name ?? t("chatReports.fallback.unknownOutlet");
+              const reporterName = r.reporter?.full_name || r.reporter?.email || t("chatReports.fallback.unknownReporter");
               const isRepeatFalseReporter = r.reporterStats.total >= 3 && r.reporterStats.dismissed / r.reporterStats.total >= 0.5;
               return (
                 <div key={r.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
@@ -384,24 +384,24 @@ export default function AdminChatReportsPage() {
                       {reasonLabel(r.reason, REASON_LABEL[r.reason] ?? r.reason)} · {outletName}
                       <StatusBadge status={reportStatusLabel(r.status)} />
                       {r.sameThreadReportCount > 1 && (
-                        <Badge variant="outline" className="text-[10px]">{t("chatReports.threadReportCount", { defaultValue: "{{count}} reports on this thread", count: r.sameThreadReportCount })}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{t("chatReports.threadReportCount", { count: r.sameThreadReportCount })}</Badge>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("chatReports.reportedBy", { defaultValue: "Reported by {{name}} · {{date}}", name: reporterName, date: new Date(r.created_at).toLocaleDateString(locale) })}
+                      {t("chatReports.reportedBy", { name: reporterName, date: new Date(r.created_at).toLocaleDateString(locale) })}
                       {isRepeatFalseReporter && (
                         <span className="ml-1.5 text-destructive font-medium">
-                          · {t("chatReports.dismissedHistory", { defaultValue: "{{dismissed}}/{{total}} of their reports dismissed", dismissed: r.reporterStats.dismissed, total: r.reporterStats.total })}
+                          · {t("chatReports.dismissedHistory", { dismissed: r.reporterStats.dismissed, total: r.reporterStats.total })}
                         </span>
                       )}
                     </p>
                     {r.details && <p className="text-xs text-muted-foreground mt-1 italic">&ldquo;{r.details}&rdquo;</p>}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setViewReport(r)}>{t("chatReports.actions.view", { defaultValue: "View" })}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setViewReport(r)}>{t("chatReports.actions.view")}</Button>
                   {r.status === "open" && (
                     <>
-                      <Button size="sm" variant="outline" disabled={updatingId === r.id} onClick={() => startResolve(r, "dismissed")}>{t("batchActions.dismissed", { defaultValue: "Dismiss" })}</Button>
-                      <Button size="sm" disabled={updatingId === r.id} onClick={() => startResolve(r, "resolved")}>{t("batchActions.resolved", { defaultValue: "Resolve" })}</Button>
+                      <Button size="sm" variant="outline" disabled={updatingId === r.id} onClick={() => startResolve(r, "dismissed")}>{t("batchActions.dismissed")}</Button>
+                      <Button size="sm" disabled={updatingId === r.id} onClick={() => startResolve(r, "resolved")}>{t("batchActions.resolved")}</Button>
                     </>
                   )}
                 </div>
@@ -414,50 +414,50 @@ export default function AdminChatReportsPage() {
       <Dialog open={!!viewReport} onOpenChange={(open) => { if (!open) { setViewReport(null); setThreadMessages(null); } }}>
         <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-lg">
           <DialogHeader className="shrink-0">
-            <DialogTitle>{viewReport?.chat_threads?.outlets?.name ?? t("chatReports.dialog.title", { defaultValue: "Report details" })}</DialogTitle>
+            <DialogTitle>{viewReport?.chat_threads?.outlets?.name ?? t("chatReports.dialog.title")}</DialogTitle>
           </DialogHeader>
           {viewReport && (
             <div className="flex min-h-0 flex-1 flex-col gap-3 text-sm">
               <div className="shrink-0 space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.reason", { defaultValue: "Reason" })}</p><p className="font-semibold text-foreground">{reasonLabel(viewReport.reason, REASON_LABEL[viewReport.reason] ?? viewReport.reason)}</p></div>
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.status", { defaultValue: "Status" })}</p><StatusBadge status={reportStatusLabel(viewReport.status)} /></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.reason")}</p><p className="font-semibold text-foreground">{reasonLabel(viewReport.reason, REASON_LABEL[viewReport.reason] ?? viewReport.reason)}</p></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.status")}</p><StatusBadge status={reportStatusLabel(viewReport.status)} /></div>
                   <div>
-                    <p className="text-muted-foreground">{t("chatReports.fields.reportedBy", { defaultValue: "Reported by" })}</p>
+                    <p className="text-muted-foreground">{t("chatReports.fields.reportedBy")}</p>
                     <p className="font-semibold text-foreground">
                       {viewReport.reporter?.full_name || viewReport.reporter?.email}{" "}
                       <span className="font-normal text-muted-foreground">
-                        ({viewReport.reporter_id === viewReport.chat_threads?.customer_id ? t("chatReports.roles.customer", { defaultValue: "customer" }) : t("chatReports.roles.vendor", { defaultValue: "vendor" })})
+                        ({viewReport.reporter_id === viewReport.chat_threads?.customer_id ? t("chatReports.roles.customer") : t("chatReports.roles.vendor")})
                       </span>
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">{t("chatReports.fields.participants", { defaultValue: "Participants" })}</p>
+                    <p className="text-muted-foreground">{t("chatReports.fields.participants")}</p>
                     <p className="font-semibold text-foreground">
-                      {viewReport.chat_threads?.customer?.full_name || viewReport.chat_threads?.customer?.email || t("chatReports.fallback.customer", { defaultValue: "Customer" })}
+                      {viewReport.chat_threads?.customer?.full_name || viewReport.chat_threads?.customer?.email || t("chatReports.fallback.customer")}
                       {" ↔ "}
-                      {viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet", { defaultValue: "Outlet" })}
+                      {viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet")}
                     </p>
                   </div>
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.started", { defaultValue: "Conversation started" })}</p><p className="text-foreground">{viewReport.chat_threads?.created_at ? new Date(viewReport.chat_threads.created_at).toLocaleDateString(locale) : "—"}</p></div>
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.reporterHistory", { defaultValue: "Reporter history" })}</p><p className="text-foreground">{t("chatReports.reporterHistory", { defaultValue: "{{reports}} reports, {{dismissed}} dismissed", reports: viewReport.reporterStats.total, dismissed: viewReport.reporterStats.dismissed })}</p></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.started")}</p><p className="text-foreground">{viewReport.chat_threads?.created_at ? new Date(viewReport.chat_threads.created_at).toLocaleDateString(locale) : "—"}</p></div>
+                  <div><p className="text-muted-foreground">{t("chatReports.fields.reporterHistory")}</p><p className="text-foreground">{t("chatReports.reporterHistory", { reports: viewReport.reporterStats.total, dismissed: viewReport.reporterStats.dismissed })}</p></div>
                 </div>
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary p-2 text-xs">
                   {viewReport.reporterBannedUntil ? (
                     <>
-                      <span className="text-foreground">{t("chatReports.blockedUntil", { defaultValue: "Reporter blocked from reporting until {{date}}", date: new Date(viewReport.reporterBannedUntil).toLocaleDateString(locale) })}</span>
+                      <span className="text-foreground">{t("chatReports.blockedUntil", { date: new Date(viewReport.reporterBannedUntil).toLocaleDateString(locale) })}</span>
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={blockingReporterId === viewReport.reporter_id}
                         onClick={() => unblockReporter(viewReport.reporter_id)}
                       >
-                        {t("chatReports.actions.unblock", { defaultValue: "Unblock" })}
+                        {t("chatReports.actions.unblock")}
                       </Button>
                     </>
                   ) : (
                     <>
-                      <span className="text-muted-foreground">{t("chatReports.blockReporter", { defaultValue: "Block this reporter from filing new reports" })}</span>
+                      <span className="text-muted-foreground">{t("chatReports.blockReporter")}</span>
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
@@ -465,7 +465,7 @@ export default function AdminChatReportsPage() {
                           disabled={blockingReporterId === viewReport.reporter_id}
                           onClick={() => blockReporter(viewReport.reporter_id, 7)}
                         >
-                          {t("chatReports.days", { defaultValue: "7 days" })}
+                          {t("chatReports.days")}
                         </Button>
                         <Button
                           size="sm"
@@ -473,7 +473,7 @@ export default function AdminChatReportsPage() {
                           disabled={blockingReporterId === viewReport.reporter_id}
                           onClick={() => blockReporter(viewReport.reporter_id, 30)}
                         >
-                          {t("chatReports.daysLong", { defaultValue: "30 days" })}
+                          {t("chatReports.daysLong")}
                         </Button>
                       </div>
                     </>
@@ -481,32 +481,32 @@ export default function AdminChatReportsPage() {
                 </div>
                 {viewReport.details && <p className="text-xs bg-secondary rounded-lg p-2 text-foreground">&ldquo;{viewReport.details}&rdquo;</p>}
                 {viewReport.sameThreadReportCount > 1 && (
-                  <p className="text-xs text-amber-700">{t("chatReports.separateReports", { defaultValue: "This conversation has {{count}} separate reports against it.", count: viewReport.sameThreadReportCount })}</p>
+                  <p className="text-xs text-amber-700">{t("chatReports.separateReports", { count: viewReport.sameThreadReportCount })}</p>
                 )}
                 {viewReport.status !== "open" && (
                   <div className="rounded-lg bg-secondary p-2 text-xs">
-                    <p className="font-semibold text-foreground">{t("chatReports.resolution", { defaultValue: "Resolution: {{reason}}", reason: resolutionLabel(viewReport.resolution_reason ?? "", RESOLUTION_REASON_LABEL[viewReport.resolution_reason ?? ""] ?? viewReport.resolution_reason ?? "") })}</p>
+                    <p className="font-semibold text-foreground">{t("chatReports.resolution", { reason: resolutionLabel(viewReport.resolution_reason ?? "", RESOLUTION_REASON_LABEL[viewReport.resolution_reason ?? ""] ?? viewReport.resolution_reason ?? "") })}</p>
                     {viewReport.resolution_note && <p className="text-muted-foreground mt-1">{viewReport.resolution_note}</p>}
                   </div>
                 )}
               </div>
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border">
                 {!threadMessages || !currentUser ? (
-                  <p className="p-4 text-sm text-muted-foreground">{t("chatReports.loadingConversation", { defaultValue: "Loading conversation…" })}</p>
+                  <p className="p-4 text-sm text-muted-foreground">{t("chatReports.loadingConversation")}</p>
                 ) : (
                   <ChatThreadPanel
                     threadId={viewReport.thread_id}
                     messages={threadMessages}
                     currentUserId={currentUser.id}
-                    counterpart={{ name: viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet", { defaultValue: "Outlet" }) }}
+                    counterpart={{ name: viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet") }}
                     readOnly
                   />
                 )}
               </div>
               {viewReport.status === "open" && (
                 <div className="flex shrink-0 gap-2">
-                  <Button variant="outline" className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "dismissed")}>{t("batchActions.dismissed", { defaultValue: "Dismiss" })}</Button>
-                  <Button className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "resolved")}>{t("batchActions.resolved", { defaultValue: "Resolve" })}</Button>
+                  <Button variant="outline" className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "dismissed")}>{t("batchActions.dismissed")}</Button>
+                  <Button className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "resolved")}>{t("batchActions.resolved")}</Button>
                 </div>
               )}
             </div>
@@ -517,11 +517,11 @@ export default function AdminChatReportsPage() {
       <Dialog open={!!resolveTarget} onOpenChange={(open) => { if (!open) setResolveTarget(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{resolveTarget?.action === "resolved" ? t("chatReports.dialog.resolveTitle", { defaultValue: "Resolve report" }) : t("chatReports.dialog.dismissTitle", { defaultValue: "Dismiss report" })}</DialogTitle>
+            <DialogTitle>{resolveTarget?.action === "resolved" ? t("chatReports.dialog.resolveTitle") : t("chatReports.dialog.dismissTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("chatReports.fields.reason", { defaultValue: "Reason" })}</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("chatReports.fields.reason")}</label>
               <Select value={resolveReason} onValueChange={setResolveReason}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -530,11 +530,11 @@ export default function AdminChatReportsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("chatReports.fields.noteOptional", { defaultValue: "Note (optional)" })}</label>
-              <Textarea value={resolveNote} onChange={(e) => setResolveNote(e.target.value)} rows={3} placeholder={t("chatReports.notePlaceholder", { defaultValue: "Add context for this decision…" })} />
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("chatReports.fields.noteOptional")}</label>
+              <Textarea value={resolveNote} onChange={(e) => setResolveNote(e.target.value)} rows={3} placeholder={t("chatReports.notePlaceholder")} />
             </div>
             <Button className="w-full" disabled={!!updatingId} onClick={confirmResolve}>
-              {updatingId ? t("chatReports.saving", { defaultValue: "Saving…" }) : resolveTarget?.action === "resolved" ? t("chatReports.confirmResolve", { defaultValue: "Confirm resolve" }) : t("chatReports.confirmDismiss", { defaultValue: "Confirm dismiss" })}
+              {updatingId ? t("chatReports.saving") : resolveTarget?.action === "resolved" ? t("chatReports.confirmResolve") : t("chatReports.confirmDismiss")}
             </Button>
           </div>
         </DialogContent>

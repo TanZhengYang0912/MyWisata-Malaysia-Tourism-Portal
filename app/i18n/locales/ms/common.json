@@ -49,7 +49,8 @@
     "markAllAsRead": "Tandakan semua sebagai dibaca",
     "previous": "Sebelumnya",
     "next": "Seterusnya",
-    "signOut": "Log keluar"
+    "signOut": "Log keluar",
+    "back": "Kembali"
   },
   "states": {
     "loading": "Memuatkan",
@@ -103,7 +104,8 @@
   "filters": {
     "searchByName": "Cari mengikut nama…",
     "clear": "Kosongkan",
-    "filter": "Tapis"
+    "filter": "Tapis",
+    "all": "Semua"
   },
   "notifications": {
     "title": "Pemberitahuan",
@@ -136,6 +138,7 @@
     "you": "Anda",
     "supportTeam": "Pasukan sokongan",
     "document": "Dokumen",
+    "attachment": "Lampiran",
     "loadingAttachment": "Memuatkan…"
   },
   "chatbot": {
@@ -158,7 +161,19 @@
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
-    "supportRequest": "Permintaan sokongan"
+    "supportRequest": "Permintaan sokongan",
+    "faq": {
+      "browse": "Lihat soalan lazim",
+      "toggle": "Lihat soalan lazim",
+      "loading": "Memuatkan soalan…",
+      "error": "Tidak dapat memuatkan soalan lazim.",
+      "empty": "Tiada soalan lazim buat masa ini.",
+      "pickCategory": "Pilih topik"
+    },
+    "voice": {
+      "start": "Sebut mesej anda",
+      "stop": "Berhenti mendengar"
+    }
   },
   "account": {
     "menu": "Menu akaun",
@@ -176,6 +191,15 @@
   "cart": {
     "label": "Troli beli-belah",
     "itemCount": "Troli beli-belah, {{count}} item",
-    "itemCountPlural": "Troli beli-belah, {{count}} item"
+    "itemCountPlural": "Troli beli-belah, {{count}} item",
+    "itemCount_one": "Troli beli-belah, {{count}} item",
+    "itemCount_other": "Troli beli-belah, {{count}} item",
+    "itemCountPlural_one": "Troli beli-belah, {{count}} item",
+    "itemCountPlural_other": "Troli beli-belah, {{count}} item"
+  },
+  "strictMigration": {
+    "verifiedContributor": "Penyumbang disahkan",
+    "accountFallbackName": "Akaun",
+    "chatbotTicketCreated": "Selesai — tiket #{{id}} telah dicipta. Pasukan kami akan membalas; anda boleh melihatnya di bawah Tiket Saya."
   }
 }

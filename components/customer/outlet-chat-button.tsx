@@ -29,10 +29,10 @@ export function OutletChatButton({ outletId }: { outletId: string }) {
     <button
       type="button"
       onClick={handleChat}
-      aria-label={t("ui.labels.contactViaChat", { defaultValue: "Contact via chat" })}
+      aria-label={t("ui.labels.contactViaChat")}
       className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-secondary"
     >
-      <MessageCircle size={15} aria-hidden="true" /> {t("ui.labels.contactViaChat", { defaultValue: "Contact via chat" })}
+      <MessageCircle size={15} aria-hidden="true" /> {t("ui.labels.contactViaChat")}
     </button>
   );
 }

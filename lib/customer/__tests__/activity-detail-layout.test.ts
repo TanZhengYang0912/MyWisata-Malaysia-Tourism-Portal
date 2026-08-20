@@ -22,22 +22,22 @@ describe("activity detail booking layout", () => {
 
   it("keeps the mobile fixed add-to-cart action", () => {
     expect(source).toContain("md:hidden");
-    expect(source).toContain("Add to Cart");
+    expect(source).toContain('t("ui.actions.addToCart")');
   });
 
   it("provides a safe in-app return path and clear next steps after adding", () => {
     expect(source).toContain("useSearchParams");
     expect(source).toContain("getCustomerReturnPath");
-    expect(source).toContain("Back to results");
+    expect(source).toContain('t("ui.actions.backToResults")');
     expect(source).toContain('role="status"');
-    expect(source).toContain("View cart");
-    expect(source).toContain("Continue exploring");
+    expect(source).toContain('t("ui.actions.viewCart")');
+    expect(source).toContain('t("ui.actions.continueExploring")');
   });
 
   it("gives booking controls explicit accessible state", () => {
     expect(source).toContain('aria-pressed={selected}');
-    expect(source).toContain('aria-label="Decrease quantity"');
-    expect(source).toContain('aria-label="Increase quantity"');
+    expect(source).toContain('aria-label={t("ui.activityDetail.decreaseQuantity")}');
+    expect(source).toContain('aria-label={t("ui.activityDetail.increaseQuantity")}');
   });
 
   it("scopes scrolling to the reviews list, not the whole page", () => {
@@ -47,13 +47,13 @@ describe("activity detail booking layout", () => {
 
   it("moves the Visit vendor action into the booking aside", () => {
     const asideIndex = source.indexOf("<aside className=");
-    const visitVendorIndex = source.indexOf("Visit vendor");
+    const visitVendorIndex = source.indexOf('t("ui.actions.visitVendor")');
     expect(visitVendorIndex).toBeGreaterThan(asideIndex);
   });
 
   it("names the outlet only when the place is not the product itself", () => {
     const namesOutletIndex = source.indexOf("const namesOutlet =");
-    const visitOutletIndex = source.indexOf("Visit outlet");
+    const visitOutletIndex = source.indexOf('t("ui.actions.visitOutlet")');
     expect(namesOutletIndex).toBeGreaterThanOrEqual(0);
     expect(source).toContain("isPlaceBound");
     // The outlet name and its link are inside the namesOutlet branch.
@@ -63,12 +63,12 @@ describe("activity detail booking layout", () => {
 
   it("reads the price unit from the category instead of hardcoding per person", () => {
     expect(source).not.toContain(">per person<");
-    expect(source).toContain("getPriceUnit(activity.categorySlug)");
+    expect(source).toContain("getPriceUnit(activity.categorySlug, t)");
   });
 
   it("shows a Hidden Gem badge driven by activity.isHiddenGem", () => {
     expect(source).toContain("activity.isHiddenGem");
-    expect(source).toContain("Hidden Gem");
+    expect(source).toContain('t("ui.labels.hiddenGem")');
   });
 
   it("has no Details/Map toggle or map-only view remnants", () => {
@@ -81,7 +81,7 @@ describe("activity detail booking layout", () => {
 
   it("renders the category chips as a Details card inside the aside", () => {
     const asideIndex = source.indexOf("<aside className=");
-    const detailsCardIndex = source.indexOf(">Details<");
+    const detailsCardIndex = source.indexOf('t("ui.labels.details")');
     const chipsIndex = source.indexOf("chips.map");
     expect(detailsCardIndex).toBeGreaterThan(asideIndex);
     expect(chipsIndex).toBeGreaterThan(detailsCardIndex);

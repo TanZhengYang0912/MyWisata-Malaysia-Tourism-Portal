@@ -594,7 +594,7 @@ export async function getVoucherByCode(code: string): Promise<Voucher | undefine
 
 // Customer selectors use canonical slugs. Hidden Gem is intentionally included
 // here as a collection entry; searchActivities translates it to hiddenGemOnly.
-export const CATEGORIES = DISCOVERY_CATEGORIES.map(({ slug, label, icon }) => ({ id: slug, label, icon }));
+export const CATEGORIES = DISCOVERY_CATEGORIES.map(({ slug, label, labelKey, icon }) => ({ id: slug, label, labelKey, icon }));
 
 export const STATES_MY = [
   "All Malaysia", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",

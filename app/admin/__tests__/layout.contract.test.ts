@@ -17,7 +17,7 @@ describe('admin navigation shell', () => {
 
   it('uses a real sign-out action in the fixed footer', () => {
     expect(layoutSource).toContain('await supabase.auth.signOut();');
-    expect(layoutSource).toContain('Sign out');
+    expect(layoutSource).toContain('tCommon("actions.signOut")');
     expect(layoutSource).toContain('<button type="button"');
     expect(layoutSource).not.toContain('> Switch account</Link>');
   });

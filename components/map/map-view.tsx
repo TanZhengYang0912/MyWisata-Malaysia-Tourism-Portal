@@ -7,13 +7,18 @@ import type { MapPin } from "./maplibre-map";
 export type { MapPin };
 
 // maplibre-gl touches `window`/WebGL at import time — must be client-only, no SSR.
+function MapLoading() {
+  const { t } = useTranslation("customer");
+  return (
+    <div className="flex items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground" style={{ height: 320 }}>
+      {t("strictMigration.map.loading")}
+    </div>
+  );
+}
+
 const MaplibreMap = dynamic(() => import("./maplibre-map").then((m) => m.MaplibreMap), {
   ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground" style={{ height: 320 }}>
-      Loading map…
-    </div>
-  ),
+  loading: () => <MapLoading />,
 });
 
 export function MapView(props: {

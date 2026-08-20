@@ -6,14 +6,14 @@ const actionsSource = readFileSync(new URL("../actions.ts", import.meta.url), "u
 
 describe("trip planner layout contract", () => {
   it("defines the approved itinerary, map, and listing regions", () => {
-    expect(plannerSource).toContain("aria-label=\"Trip itinerary\"");
-    expect(plannerSource).toContain("aria-label=\"Trip map\"");
-    expect(plannerSource).toContain("aria-label=\"Places to add\"");
+    expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.itinerary")}');
+    expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.tripMap")}');
+    expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.placesToAdd")}');
   });
 
   it("renders day-based scheduling and an unscheduled queue", () => {
     expect(plannerSource).toContain("groupTripItemsByDay");
-    expect(plannerSource).toContain("Unscheduled");
+    expect(plannerSource).toContain('tCustomer("strictMigration.tripPlanner.unscheduled")');
     expect(plannerSource).toContain("scheduled_date");
     expect(plannerSource).toContain("scheduled_time");
   });

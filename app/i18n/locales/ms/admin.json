@@ -26,7 +26,9 @@
     "AI Assistant": "Pembantu AI"
   },
   "accessibility": {
-    "unreadRecommendations": "{{count}} cadangan belum dibaca"
+    "unreadRecommendations": "{{count}} cadangan belum dibaca",
+    "unreadRecommendations_one": "{{count}} cadangan belum dibaca",
+    "unreadRecommendations_other": "{{count}} cadangan belum dibaca"
   },
   "filters": {
     "all": "Semua",
@@ -42,7 +44,9 @@
   },
   "selection": {
     "selected": "{{count}} dipilih",
-    "clear": "Kosongkan pilihan"
+    "clear": "Kosongkan pilihan",
+    "selected_one": "{{count}} dipilih",
+    "selected_other": "{{count}} dipilih"
   },
   "batchActions": {
     "approve": "Luluskan",
@@ -83,11 +87,15 @@
       "openVsReviewed": "Terbuka berbanding disemak",
       "selfReferrals": "Rujukan kendiri disekat",
       "topFlagged": "Afiliasi paling banyak ditandai",
-      "totalFlags": "Jumlah bendera"
+      "totalFlags": "Jumlah bendera",
+      "flagCount_one": "{{count}} bendera",
+      "flagCount_other": "{{count}} bendera"
     },
     "clearing": {
       "errors": ", {{count}} ralat",
-      "result": "Diselesaikan {{cleared}}, diterbalikkan {{reversed}}, dilangkau {{skipped}}{{errors}}"
+      "result": "Diselesaikan {{cleared}}, diterbalikkan {{reversed}}, dilangkau {{skipped}}{{errors}}",
+      "errors_one": ", {{count}} ralat",
+      "errors_other": ", {{count}} ralat"
     },
     "columns": {
       "actions": "Tindakan",
@@ -101,7 +109,8 @@
       "status": "Status",
       "type": "Jenis",
       "user": "Pengguna",
-      "when": "Bila"
+      "when": "Bila",
+      "review": "Semakan"
     },
     "commissionTiers": "Peringkat komisen",
     "conversions": "Penukaran",
@@ -122,7 +131,9 @@
       "reviewFlagRetry": "Tidak dapat menyemak bendera penipuan. Sila cuba lagi.",
       "saveAffiliateTier": "Gagal menyimpan peringkat afiliasi.",
       "saveTier": "Gagal menyimpan peringkat.",
-      "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu."
+      "selectOpenFlags": "Pilih bendera penipuan terbuka dahulu.",
+      "accept": "Tidak dapat menerima komisen ini.",
+      "reject": "Tidak dapat menolak komisen ini."
     },
     "exporting": "Mengeksport…",
     "exportPdf": "Eksport PDF",
@@ -180,14 +191,19 @@
       "open": "Terbuka",
       "pending": "Menunggu",
       "reversed": "Diterbalikkan",
-      "reviewed": "Disemak"
+      "reviewed": "Disemak",
+      "rejected": "Ditolak"
     },
     "success": {
       "batchFlags": "{{count}} bendera penipuan diproses.",
       "flagConfirmed": "Bendera penipuan disahkan.",
       "flagDismissed": "Bendera penipuan diabaikan.",
       "linkReactivated": "Pautan afiliasi diaktifkan semula.",
-      "tierSaved": "Peringkat afiliasi disimpan."
+      "tierSaved": "Peringkat afiliasi disimpan.",
+      "batchFlags_one": "{{count}} bendera penipuan diproses.",
+      "batchFlags_other": "{{count}} bendera penipuan diproses.",
+      "accepted": "Komisen diterima.",
+      "rejected": "Komisen ditolak."
     },
     "sweep": {
       "result": "Diimbas {{links}} pautan, {{flags}} bendera baharu"
@@ -209,8 +225,16 @@
     "fraudCounters": {
       "selfReferralsBlocked": "Rujukan kendiri disekat: {{count}}",
       "duplicatePayoutsPrevented": "Bayaran pendua dicegah: {{count}}",
-      "openFlagsSummary": "Bendera untuk disemak: {{flags}} · Pautan dilumpuhkan: {{links}}"
-    }
+      "openFlagsSummary": "Bendera untuk disemak: {{flags}} · Pautan dilumpuhkan: {{links}}",
+      "selfReferralsBlocked_one": "Rujukan kendiri disekat: {{count}}",
+      "selfReferralsBlocked_other": "Rujukan kendiri disekat: {{count}}",
+      "duplicatePayoutsPrevented_one": "Bayaran pendua dicegah: {{count}}",
+      "duplicatePayoutsPrevented_other": "Bayaran pendua dicegah: {{count}}"
+    },
+    "referralCount_one": "{{count}} rujukan",
+    "referralCount_other": "{{count}} rujukan",
+    "accept": "Terima",
+    "reject": "Tolak"
   },
   "aiAssistant": {
     "ask": {
@@ -282,7 +306,9 @@
       "approve": "{{entity}} diluluskan.",
       "batchProcessed": "{{count}} item katalog diproses.",
       "change_requested": "{{entity}} dikembalikan untuk perubahan.",
-      "reject": "{{entity}} ditolak."
+      "reject": "{{entity}} ditolak.",
+      "batchProcessed_one": "{{count}} item katalog diproses.",
+      "batchProcessed_other": "{{count}} item katalog diproses."
     },
     "title": "Semakan katalog",
     "waiting": "Menunggu",
@@ -360,13 +386,15 @@
     "reindexResult": "Diimbas {{scanned}}, dibenamkan {{embedded}}, dilangkau {{skipped}}{{errors}}",
     "reindexing": "Mengindeks semula…",
     "saving": "Menyimpan…",
-      "selectAll": "Pilih semua dokumen",
+    "selectAll": "Pilih semua dokumen",
     "success": {
       "activated": "Dokumen pangkalan pengetahuan diaktifkan.",
       "batchStatus": "{{count}} dokumen pengetahuan dikemas kini.",
       "created": "Dokumen pangkalan pengetahuan dicipta.",
       "deactivated": "Dokumen pangkalan pengetahuan dinyahaktifkan.",
-      "updated": "Dokumen pangkalan pengetahuan dikemas kini."
+      "updated": "Dokumen pangkalan pengetahuan dikemas kini.",
+      "batchStatus_one": "{{count}} dokumen pengetahuan dikemas kini.",
+      "batchStatus_other": "{{count}} dokumen pengetahuan dikemas kini."
     },
     "title": "Pemantauan chatbot",
     "topUnanswered": {
@@ -374,7 +402,11 @@
       "empty": "Tiada soalan belum dijawab lagi — KB meliputi semua soalan yang ditanya setakat ini.",
       "title": "Soalan paling banyak belum dijawab"
     },
-    "uncategorized": "tidak dikategorikan"
+    "uncategorized": "tidak dikategorikan",
+    "reindexErrors_one": ", {{count}} ralat",
+    "reindexErrors_other": ", {{count}} ralat",
+    "questionMeta_one": "×{{count}} · kali terakhir ditanya {{date}}",
+    "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}"
   },
   "chatReports": {
     "accessibility": {
@@ -486,7 +518,9 @@
       "batchMarked": "{{count}} laporan ditandai {{action}}.",
       "marked": "Laporan ditandai {{action}}.",
       "reporterBlocked": "Pelapor disekat daripada membuat laporan selama {{days}} hari.",
-      "reporterUnblocked": "Pelapor dinyahsekat."
+      "reporterUnblocked": "Pelapor dinyahsekat.",
+      "batchMarked_one": "{{count}} laporan ditandai {{action}}.",
+      "batchMarked_other": "{{count}} laporan ditandai {{action}}."
     },
     "tabs": {
       "pending": "Menunggu",
@@ -497,7 +531,11 @@
     "prompts": {
       "resolutionReason": "Sebab penyelesaian ({{reasons}}):",
       "resolutionNote": "Nota penyelesaian (pilihan):"
-    }
+    },
+    "threadReportCount_one": "{{count}} laporan dalam rangkaian ini",
+    "threadReportCount_other": "{{count}} laporan dalam rangkaian ini",
+    "separateReports_one": "Perbualan ini mempunyai {{count}} laporan berasingan terhadapnya.",
+    "separateReports_other": "Perbualan ini mempunyai {{count}} laporan berasingan terhadapnya."
   },
   "common": {
     "actions": {
@@ -557,7 +595,9 @@
       "pendingPayout": "Nilai pembayaran menunggu",
       "reviewTarget": "Melepasi sasaran semakan",
       "twoApprovers": "Menunggu dua pelulus",
-      "withdrawalRequests": "{{count}} permintaan pengeluaran"
+      "withdrawalRequests": "{{count}} permintaan pengeluaran",
+      "withdrawalRequests_one": "{{count}} permintaan pengeluaran",
+      "withdrawalRequests_other": "{{count}} permintaan pengeluaran"
     },
     "oldestWithdrawal": "Pengeluaran paling lama",
     "openApprovals": "Kelulusan terbuka",
@@ -573,7 +613,11 @@
     "today": "Hari ini",
     "walletClear": "Barisan semakan pengeluaran kosong.",
     "walletPending": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
-    "walletShortcut": "Pintasan Kelulusan Dompet"
+    "walletShortcut": "Pintasan Kelulusan Dompet",
+    "openItems_one": "{{count}} item terbuka",
+    "openItems_other": "{{count}} item terbuka",
+    "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan."
   },
   "kyc": {
     "accessibility": {
@@ -681,7 +725,9 @@
       "approved": "Penyerahan KYC diluluskan.",
       "batchProcessed": "{{count}} penyerahan KYC diproses.",
       "infoRequested": "Permintaan maklumat dihantar.",
-      "rejected": "Penyerahan KYC ditolak."
+      "rejected": "Penyerahan KYC ditolak.",
+      "batchProcessed_one": "{{count}} penyerahan KYC diproses.",
+      "batchProcessed_other": "{{count}} penyerahan KYC diproses."
     },
     "title": "Semakan KYC",
     "verified": {
@@ -690,7 +736,9 @@
       "count": "{{count}} akaun",
       "description": "Akaun yang kini memegang peringkat KYC disahkan.",
       "empty": "Tiada pengguna disahkan lagi",
-      "title": "Pengguna disahkan"
+      "title": "Pengguna disahkan",
+      "count_one": "{{count}} akaun",
+      "count_other": "{{count}} akaun"
     }
   },
   "payouts": {
@@ -767,7 +815,9 @@
     "units": {
       "requests": "permintaan",
       "thisMonth": "bulan ini"
-    }
+    },
+    "total_one": "{{count}} keseluruhan",
+    "total_other": "{{count}} keseluruhan"
   },
   "rewards": {
     "columns": {
@@ -790,7 +840,9 @@
     "runNow": "Jalankan penyelesaian sekarang",
     "tierRates": "Kadar peringkat afiliasi",
     "title": "Pelepasan ganjaran",
-    "totalValue": "Jumlah nilai"
+    "totalValue": "Jumlah nilai",
+    "confirmed_one": "Atribusi {{count}} disahkan.",
+    "confirmed_other": "Atribusi {{count}} disahkan."
   },
   "ui": {
     "actions": {
@@ -800,6 +852,7 @@
       "close": "Tutup",
       "discardChanges": "Buang perubahan",
       "reactivate": "Aktifkan semula",
+      "unsuspend": "Aktifkan semula",
       "refresh": "Muat semula",
       "reject": "Tolak",
       "request_information": "Minta maklumat",
@@ -815,7 +868,9 @@
     "batch": {
       "clearSelection": "Kosongkan pilihan",
       "selectAllOnPage": "Pilih semua pada halaman ini",
-      "selected": "{{count}} dipilih"
+      "selected": "{{count}} dipilih",
+      "selected_one": "{{count}} dipilih",
+      "selected_other": "{{count}} dipilih"
     },
     "pagination": {
       "go": "Pergi",
@@ -825,7 +880,9 @@
       "pageOf": "Halaman {{page}} daripada {{total}}",
       "perPage": "{{count}} setiap halaman",
       "previous": "Sebelumnya",
-      "previousPage": "Halaman sebelumnya"
+      "previousPage": "Halaman sebelumnya",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman"
     },
     "recommendations": {
       "allCategories": "Semua kategori",
@@ -835,7 +892,9 @@
         "processed": "{{count}} cadangan telah diproses.",
         "reasonError": "Penolakan atau permintaan perubahan secara pukal memerlukan sebab sekurang-kurangnya 10 aksara.",
         "rejectReasonPrompt": "Sebab menolak semua cadangan yang dipilih (sekurang-kurangnya 10 aksara):",
-        "reviewFailed": "Satu atau lebih semakan cadangan gagal."
+        "reviewFailed": "Satu atau lebih semakan cadangan gagal.",
+        "processed_one": "{{count}} cadangan telah diproses.",
+        "processed_other": "{{count}} cadangan telah diproses."
       },
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
       "description": "Luluskan cadangan berkualiti untuk tindakan susulan. Kelulusan tidak menerbitkan vendor; pautkan cadangan yang diluluskan daripada Pengurusan Vendor selepas vendor menyertai supaya atribusi dan komisen kekal dilampirkan.",
@@ -863,7 +922,11 @@
       "selectAllPending": "Pilih semua cadangan belum selesai yang kelihatan",
       "selectRecommendation": "Pilih cadangan {{name}}",
       "subtitle": "Vendor dan lokasi menarik tersembunyi yang dihantar komuniti.",
-      "title": "Moderasi Cadangan"
+      "title": "Moderasi Cadangan",
+      "pending_one": "Belum selesai ({{count}})",
+      "pending_other": "Belum selesai ({{count}})",
+      "reviewed_one": "Disemak ({{count}})",
+      "reviewed_other": "Disemak ({{count}})"
     },
     "states": {
       "loadingEllipsis": "Memuatkan…"
@@ -894,6 +957,8 @@
       "range": "Menunjukkan {{first}}–{{last}} daripada {{total}} tiket",
       "replyPlaceholder": "Balas tiket ini…",
       "addCaption": "Tambah kapsyen…",
+      "attachFile": "Lampirkan fail",
+      "removeAttachment": "Alih keluar lampiran",
       "replySent": "Balasan sokongan dihantar.",
       "selectAllVisible": "Pilih semua tiket sokongan yang kelihatan",
       "selectTicket": "Pilih tiket sokongan {{subject}}",
@@ -919,7 +984,13 @@
       "unansweredLower": "belum dijawab",
       "unreadOnly": "Belum dibaca sahaja",
       "minutes": "{{count}} minit",
-      "hours": "{{count}} jam"
+      "hours": "{{count}} jam",
+      "batchResolved_one": "{{count}} tiket ditandai selesai.",
+      "batchResolved_other": "{{count}} tiket ditandai selesai.",
+      "minutes_one": "{{count}} minit",
+      "minutes_other": "{{count}} minit",
+      "hours_one": "{{count}} jam",
+      "hours_other": "{{count}} jam"
     },
     "table": {
       "action": "Tindakan",
@@ -949,12 +1020,18 @@
         "noCommonAction": "Tiada satu tindakan akaun yang sah untuk setiap pengguna yang dipilih.",
         "processed": "{{count}} akaun pengguna telah diproses.",
         "reasonError": "Sebab sekurang-kurangnya 10 aksara diperlukan.",
-        "reasonPrompt": "Sebab bagi tindakan akaun pukal ini (sekurang-kurangnya 10 aksara):"
+        "reasonPrompt": "Sebab bagi tindakan akaun pukal ini (sekurang-kurangnya 10 aksara):",
+        "confirm_one": "{{action}} {{count}} akaun pengguna yang dipilih?",
+        "confirm_other": "{{action}} {{count}} akaun pengguna yang dipilih?",
+        "processed_one": "{{count}} akaun pengguna telah diproses.",
+        "processed_other": "{{count}} akaun pengguna telah diproses."
       },
       "bio": {
         "clear": "Bio bersih",
         "locked": "Bio dikunci",
-        "lockedCount": "Dikunci ({{count}})"
+        "lockedCount": "Dikunci ({{count}})",
+        "lockedCount_one": "Dikunci ({{count}})",
+        "lockedCount_other": "Dikunci ({{count}})"
       },
       "copyUserId": "Salin ID pengguna untuk {{name}}",
       "description": "Semak akaun pengguna biasa, kemajuan pengesahan, kelengkapan profil dan status akaun.",
@@ -1042,7 +1119,11 @@
         "noneEligible": "Tiada vendor yang dipilih layak untuk {{action}} sekarang.",
         "partial": "{{updated}} dikemas kini. {{failed}} tidak dapat dikemas kini.",
         "reasonPrompt": "Masukkan satu sebab untuk tindakan pukal ini:",
-        "success": "{{count}} vendor berjaya dikemas kini."
+        "success": "{{count}} vendor berjaya dikemas kini.",
+        "confirm_one": "{{action}} {{count}} vendor yang dipilih?",
+        "confirm_other": "{{action}} {{count}} vendor yang dipilih?",
+        "success_one": "{{count}} vendor berjaya dikemas kini.",
+        "success_other": "{{count}} vendor berjaya dikemas kini."
       },
       "confirm": {
         "approve": "Luluskan {{name}}?",
@@ -1142,7 +1223,13 @@
       "statusLabel": "Status vendor",
       "summary": "Ringkasan vendor",
       "title": "Ruang kerja semakan vendor",
-      "vendorIdCopied": "ID vendor disalin."
+      "vendorIdCopied": "ID vendor disalin.",
+      "matching_one": "{{count}} vendor sepadan",
+      "matching_other": "{{count}} vendor sepadan",
+      "outlets_one": "{{count}} outlet",
+      "outlets_other": "{{count}} outlet",
+      "listings_one": "{{count}} penyenaraian",
+      "listings_other": "{{count}} penyenaraian"
     },
     "walletSettings": {
       "audit": {
@@ -1155,7 +1242,11 @@
       "backToWithdrawals": "Kembali ke pengeluaran",
       "batch": {
         "confirmRevoke": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
-        "revoked": "{{count}} pelulus dompet telah ditarik balik."
+        "revoked": "{{count}} pelulus dompet telah ditarik balik.",
+        "confirmRevoke_one": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
+        "confirmRevoke_other": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
+        "revoked_one": "{{count}} pelulus dompet telah ditarik balik.",
+        "revoked_other": "{{count}} pelulus dompet telah ditarik balik."
       },
       "confirm": {
         "role": {
@@ -1180,7 +1271,11 @@
         "description": "Nilai di bawah ialah konfigurasi semasa yang berkuat kuasa.",
         "existingState": "Permintaan pengeluaran sedia ada mengekalkan keadaan yang direkodkan apabila tetapan polisi berubah.",
         "hours": "{{count}} jam",
-        "title": "Polisi berkuat kuasa"
+        "title": "Polisi berkuat kuasa",
+        "days_one": "{{count}} hari",
+        "days_other": "{{count}} hari",
+        "hours_one": "{{count}} jam",
+        "hours_other": "{{count}} jam"
       },
       "emptyApprovers": {
         "description": "Berikan akses kepada pengguna aktif di atas.",
@@ -1292,7 +1387,9 @@
       "marking": "Menanda…",
       "markReviewed": "Tanda telah disemak",
       "reviewed": "Disemak",
-      "viewTicket": "Lihat tiket"
+      "viewTicket": "Lihat tiket",
+      "openCount_one": "{{count}} terbuka",
+      "openCount_other": "{{count}} terbuka"
     }
   },
   "staffConduct": {
@@ -1414,7 +1511,15 @@
       "uniqueIssues": "{{count}} isu unik",
       "useReason": "Gunakan sebab ini",
       "duplicateMatch": "{{count}} padanan nama dinormalkan",
-      "duplicateMatches": "{{count}} padanan nama dinormalkan"
+      "duplicateMatches": "{{count}} padanan nama dinormalkan",
+      "uniqueIssue_one": "{{count}} isu unik",
+      "uniqueIssue_other": "{{count}} isu unik",
+      "uniqueIssues_one": "{{count}} isu unik",
+      "uniqueIssues_other": "{{count}} isu unik",
+      "duplicateMatch_one": "{{count}} padanan nama dinormalkan",
+      "duplicateMatch_other": "{{count}} padanan nama dinormalkan",
+      "duplicateMatches_one": "{{count}} padanan nama dinormalkan",
+      "duplicateMatches_other": "{{count}} padanan nama dinormalkan"
     },
     "detail": {
       "actions": {
@@ -1565,7 +1670,9 @@
     "reviewAction": "Semak tindakan",
     "confirmAction": "Sahkan tindakan",
     "confirmDescription": "Ini akan melaksanakan tindakan akaun yang dipilih pada {{email}}. Sebab akan direkodkan dalam log audit.",
-    "thisUser": "pengguna ini"
+    "thisUser": "pengguna ini",
+    "violations_one": "Pelanggaran: {{count}}",
+    "violations_other": "Pelanggaran: {{count}}"
   },
   "share": {
     "actions": {
@@ -1588,7 +1695,9 @@
     "age": {
       "daysHours": "{{days}} hari {{hours}} jam",
       "hours": "{{count}} jam",
-      "lessThanHour": "<1 jam"
+      "lessThanHour": "<1 jam",
+      "hours_one": "{{count}} jam",
+      "hours_other": "{{count}} jam"
     },
     "accessibility": {
       "close": "Tutup",
@@ -1743,13 +1852,17 @@
       "batchProcessed": "{{count}} pengeluaran diproses.",
       "refreshAndAskSuperAdmin": "Muat semula halaman dan cuba lagi; jika berterusan, minta pentadbir super menyemak rekod pengeluaran.",
       "refreshAndContactSuperAdmin": "Muat semula halaman dan cuba lagi; jika berterusan, hubungi pentadbir super.",
-      "riskOverrideRecorded": "Penggantian risiko direkodkan."
+      "riskOverrideRecorded": "Penggantian risiko direkodkan.",
+      "batchProcessed_one": "{{count}} pengeluaran diproses.",
+      "batchProcessed_other": "{{count}} pengeluaran diproses."
     },
     "filters": {
       "allRiskLevels": "Semua tahap risiko",
       "allStatuses": "Semua status",
       "perPage": "{{count}} setiap halaman",
-      "searchCustomerOrEmail": "Cari pelanggan atau e-mel"
+      "searchCustomerOrEmail": "Cari pelanggan atau e-mel",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman"
     },
     "header": {
       "description": "Semak permintaan pembayaran dengan jumlah, risiko, kemajuan kelulusan dan umur dipaparkan sebelum membuka laci bukti.",
@@ -1804,13 +1917,17 @@
     "prompts": {
       "adminNote": "Nota pentadbir (sekurang-kurangnya 10 aksara):",
       "batchConfirm": "Laksanakan “{{action}}” pada {{count}} {{itemLabel}} yang dipilih? Setiap item masih akan disemak oleh titik akhir kelulusannya sendiri.",
-      "reasonCategory": "Kategori sebab ({{reasons}}):"
+      "reasonCategory": "Kategori sebab ({{reasons}}):",
+      "batchConfirm_one": "Laksanakan “{{action}}” pada {{count}} {{itemLabel}} yang dipilih? Setiap item masih akan disemak oleh titik akhir kelulusannya sendiri.",
+      "batchConfirm_other": "Laksanakan “{{action}}” pada {{count}} {{itemLabel}} yang dipilih? Setiap item masih akan disemak oleh titik akhir kelulusannya sendiri."
     },
     "queue": {
       "description": "Buka baris apabila keutamaan semakan atau bukti memerlukan perhatian lebih dekat.",
       "noOpenRequests": "Tiada permintaan terbuka",
       "oldestRequest": "Permintaan paling lama {{age}}",
-      "title": "Barisan semakan ({{count}})"
+      "title": "Barisan semakan ({{count}})",
+      "title_one": "Barisan semakan ({{count}})",
+      "title_other": "Barisan semakan ({{count}})"
     },
     "readiness": {
       "available": "Tersedia",
@@ -1878,7 +1995,9 @@
       "standardReview": "Semakan standard",
       "status": "Status",
       "waitingForSecondApprover": "Menunggu pelulus kedua",
-      "withinReviewWindow": "Dalam tempoh semakan"
+      "withinReviewWindow": "Dalam tempoh semakan",
+      "dualApprovals_one": "{{count}}/2 kelulusan",
+      "dualApprovals_other": "{{count}}/2 kelulusan"
     },
     "timeline": {
       "auditNote": "Setiap keputusan direkodkan dalam garis masa audit.",
@@ -1928,6 +2047,20 @@
     "status": {
       "processed": "Diproses",
       "simulated": "SIMULASI"
-    }
+    },
+    "attempt_one": "Percubaan {{count}}",
+    "attempt_other": "Percubaan {{count}}"
+  },
+  "strictMigration": {
+    "staffConduct": {
+      "restricted": "Semakan kelakuan kakitangan terhad kepada pentadbir super.",
+      "title": "Kelakuan kakitangan",
+      "description": "Kelakuan pentadbir yang ditandai dan laporan sembang yang dihantar manusia untuk semakan pentadbir super.",
+      "flagSummary": "{{admin}} · {{source}} · Sasaran: {{target}}"
+    },
+    "moderationFlagSummary": "{{user}} · {{source}} · {{flagType}}",
+    "recommendationFindingMeta": "{{kindLabel}}: {{kind}} · {{severityLabel}}: {{severity}}",
+    "recommendationEvidence": "{{label}}: {{evidence}}",
+    "recommendationPhotoStatus": "{{photo}} · {{status}}"
   }
 }

@@ -224,6 +224,15 @@
       "wheelchairAccessible": "可使用轮椅",
       "accessible": "无障碍",
       "closed": "已关闭",
+      "days": {
+        "mon": "周一",
+        "tue": "周二",
+        "wed": "周三",
+        "thu": "周四",
+        "fri": "周五",
+        "sat": "周六",
+        "sun": "周日"
+      },
       "trending": "热门",
       "verified": "已验证",
       "person": "人",
@@ -273,7 +282,8 @@
       "submitting": "提交中…",
       "preparingPayment": "正在准备安全付款…",
       "addedToCart": "已加入购物车 ✓",
-      "couldNotLoad": "无法加载此项目"
+      "couldNotLoad": "无法加载此项目",
+      "closed": "已关闭"
     },
     "checkout": {
       "title": "结账",
@@ -362,7 +372,22 @@
       "addCaption": "添加说明…",
       "removeAttachment": "移除附件",
       "attachmentError": "无法发送附件。",
-      "status": { "open": "开放", "in_progress": "处理中", "resolved": "已解决", "closed": "已关闭" }
+      "voice": {
+        "start": "语音输入回复",
+        "stop": "停止聆听",
+        "errors": {
+          "permissionDenied": "需要麦克风权限",
+          "noSpeech": "没有听清——请重试",
+          "network": "语音输入需要网络连接",
+          "unknown": "语音输入当前不可用"
+        }
+      },
+      "status": {
+        "open": "开放",
+        "in_progress": "处理中",
+        "resolved": "已解决",
+        "closed": "已关闭"
+      }
     },
     "phone": {
       "selectCountry": "选择电话国家或地区",
@@ -415,7 +440,8 @@
       "selected": "已选择",
       "badges": {
         "family_friendly": "亲子友好",
-        "couple_friendly": "情侣友好"
+        "couple_friendly": "情侣友好",
+        "hidden_gem": "隐藏宝藏"
       },
       "types": {
         "chinese": "中餐",
@@ -459,6 +485,8 @@
       "exploreMalaysia": "探索马来西亚",
       "yourTrip": "你的行程",
       "stopCount": "{{count}} 个停靠点",
+      "stopCount_one": "{{count}} 个停靠点",
+      "stopCount_other": "{{count}} 个停靠点",
       "exitFullscreen": "退出全屏",
       "fullscreenMap": "全屏地图",
       "expandTripPanel": "展开行程面板",
@@ -526,6 +554,8 @@
       "selectedState": "所选州属",
       "selectStateToExplore": "选择州属开始探索",
       "placesReady": "有 {{count}} 个地点可供探索马来西亚。",
+      "placesReady_one": "有 {{count}} 个地点可供探索马来西亚。",
+      "placesReady_other": "有 {{count}} 个地点可供探索马来西亚。",
       "noPublishedPlaces": "此区域暂时没有已发布地点，但仍可在地图中查看。",
       "categories": "类别",
       "placesToStart": "推荐先探索这些地点",
@@ -533,7 +563,15 @@
       "regions": "区域",
       "chooseStateLabel": "选择州属",
       "viewStatePlaces": "查看{{state}}的地点",
-      "previewHint": "悬停快速预览 · 点击查看详情"
+      "previewHint": "悬停快速预览 · 点击查看详情",
+      "activeFilters_one": "已启用 {{count}} 项",
+      "activeFilters_other": "已启用 {{count}} 项",
+      "placesHere_one": "此处有 {{count}} 个地点",
+      "placesHere_other": "此处有 {{count}} 个地点",
+      "destinationCount_one": "马来西亚各地共 {{count}} 个目的地",
+      "destinationCount_other": "马来西亚各地共 {{count}} 个目的地",
+      "destinationCountShort_one": "{{count}} 个目的地",
+      "destinationCountShort_other": "{{count}} 个目的地"
     },
     "guest": {
       "signIn": "登录",
@@ -593,7 +631,17 @@
       "tryAgain": "请稍后重试。",
       "savedOn": "保存于 {{date}}",
       "removePlace": "从已保存地点中移除 {{name}}",
-      "removePlaceShort": "移除已保存地点"
+      "removePlaceShort": "移除已保存地点",
+      "placeCount_one": "{{count}} 个地点",
+      "placeCount_other": "{{count}} 个地点",
+      "experienceCount_one": "{{count}} 个体验",
+      "experienceCount_other": "{{count}} 个体验",
+      "noPlaces": "还没有保存地点",
+      "savePlaces": "保存您想去的地点。",
+      "noExperiences": "还没有保存体验",
+      "saveExperiences": "保存您想预订的体验。",
+      "empty": "还没有保存任何内容",
+      "saveBoth": "保存地点和体验，建立您的旅行收藏。"
     },
     "activity": {
       "notFound": "找不到该体验",
@@ -617,7 +665,21 @@
       "loadingDashboard": "正在加载推广中心…",
       "noClicks": "过去 30 天没有点击。",
       "clicks": "点击次数",
-      "day": "第 {{label}} 天"
+      "day": "第 {{label}} 天",
+      "campaigns": {
+        "title": "推广活动",
+        "description": "为链接添加标签（例如“instagram-story-jan”），即可看出哪个推广活动带来转化，而不只是哪个平台。",
+        "namePlaceholder": "活动名称",
+        "getLink": "获取链接",
+        "copied": "已复制",
+        "untagged": "未标记",
+        "columns": {
+          "campaign": "推广活动",
+          "clicks": "点击",
+          "orders": "订单",
+          "earned": "收益"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "正在加载对话…",
@@ -631,7 +693,13 @@
       "reportSubmitted": "举报已提交，谢谢。",
       "reportConversation": "举报此对话",
       "startConversation": "开始对话",
-      "startConversationHint": "询问可用性、无障碍信息或旅途中需要了解的任何内容。"
+      "startConversationHint": "询问可用性、无障碍信息或旅途中需要了解的任何内容。",
+      "translate": {
+        "action": "翻译",
+        "showOriginal": "显示原文",
+        "working": "翻译中…",
+        "failed": "无法翻译"
+      }
     },
     "calendar": {
       "today": "今天",
@@ -681,7 +749,27 @@
       "paxCount": "{{count}} 人",
       "bookingCount": "{{count}} 个预订",
       "itemsOnDay": "当天有 {{count}} 个行程项目",
-      "guestsAcrossBookings": "{{guests}} 位旅客，共 {{bookings}} 个预订"
+      "guestsAcrossBookings": "{{guests}} 位旅客，共 {{bookings}} 个预订",
+      "itineraryItems_one": "{{count}} 个行程项目",
+      "itineraryItems_other": "{{count}} 个行程项目",
+      "paxCount_one": "{{count}} 人",
+      "paxCount_other": "{{count}} 人",
+      "showMore_one": "查看 {{date}} 的另外 {{count}} 个行程项目",
+      "showMore_other": "查看 {{date}} 的另外 {{count}} 个行程项目",
+      "more_one": "+{{count}} 个",
+      "more_other": "+{{count}} 个",
+      "bookingCount_one": "{{count}} 个预订",
+      "bookingCount_other": "{{count}} 个预订",
+      "scopeEyebrows": {
+        "upcoming": "您的行程",
+        "past": "预订记录",
+        "all": "预订总览"
+      },
+      "scopeDescriptions": {
+        "upcoming": "查看您已安排的体验。",
+        "past": "查看您已完成或错过的体验。",
+        "all": "同时查看过去和即将到来的体验。"
+      }
     },
     "outlet": {
       "verifiedMyWisata": "已认证 MyWisata 门店",
@@ -705,7 +793,31 @@
       "photoComingSoon": "体验照片即将上线",
       "bookingRequired": "需要预订",
       "availableToExplore": "可供探索",
-      "selectProducts": "在编辑器中选择产品"
+      "selectProducts": "在编辑器中选择产品",
+      "discoverThisOutlet": "探索此门店",
+      "scheduleBeforeBooking": "预订前请查看门店营业时间。",
+      "closed": "休息",
+      "editBlockTitle": "编辑{{label}}标题",
+      "editBlockCopy": "编辑{{label}}辅助文案",
+      "galleryAlt": "{{outlet}} 图库",
+      "photosComingSoon": "照片即将上线",
+      "galleryPreparing": "门店团队正在准备更多此地点的照片。",
+      "blockLabels": {
+        "intro": "门店介绍",
+        "text": "文字",
+        "image": "照片",
+        "imageText": "照片",
+        "productGrid": "产品列表",
+        "gallery": "图库",
+        "hours": "营业时间",
+        "contact": "地图与联系方式",
+        "voucherBanner": "优惠券",
+        "cta": "预订行动按钮",
+        "reviewHighlight": "宾客评价",
+        "socialProof": "口碑证明",
+        "hero": "主视觉横幅",
+        "custom": "{{type}}"
+      }
     },
     "reviews": {
       "guestReview": "访客评价",
@@ -720,7 +832,11 @@
       "closeAll": "关闭全部评价",
       "loadError": "无法加载评价",
       "pages": "评价分页",
-      "pageOf": "第 {{page}} 页，共 {{total}} 页"
+      "pageOf": "第 {{page}} 页，共 {{total}} 页",
+      "count_one": "{{count}} 条评价",
+      "count_other": "{{count}} 条评价",
+      "allReviews_one": "全部 {{count}} 条评价",
+      "allReviews_other": "全部 {{count}} 条评价"
     },
     "search": {
       "showing": "显示第 {{start}}–{{end}} 项，共 {{total}} 个{{items}}",
@@ -767,7 +883,8 @@
       "nextPlacesPage": "下一页地点",
       "searchVendors": "搜索商家…",
       "searchResults": "搜索结果",
-      "allPartners": "所有合作伙伴"
+      "allPartners": "所有合作伙伴",
+      "outletCount_one": "{{count}} 家门店"
     },
     "cart": {
       "guestTitle": "您的购物车为空",
@@ -814,7 +931,21 @@
       "discountPercent": "{{value}}% 折扣",
       "discountFixed": "减 RM {{value}}",
       "minimumSpend": "最低消费 RM {{value}}",
-      "saveEnds": "节省 RM {{amount}} · 截止 {{date}}"
+      "saveEnds": "节省 RM {{amount}} · 截止 {{date}}",
+      "inStock_one": "库存 {{count}}",
+      "inStock_other": "库存 {{count}}",
+      "selected_one": "已选择 {{count}} 项",
+      "selected_other": "已选择 {{count}} 项",
+      "selectAll_one": "全选可用项目（{{count}}）",
+      "selectAll_other": "全选可用项目（{{count}}）",
+      "availableCount_one": "可用 {{count}} 张",
+      "availableCount_other": "可用 {{count}} 张",
+      "viewAll_one": "查看全部 {{count}} 张优惠券",
+      "viewAll_other": "查看全部 {{count}} 张优惠券",
+      "subtotalSelected_one": "小计（已选择 {{count}} 项）",
+      "subtotalSelected_other": "小计（已选择 {{count}} 项）",
+      "seatsLeft_one": "剩余 {{count}} 个名额",
+      "seatsLeft_other": "剩余 {{count}} 个名额"
     },
     "preferencesPage": {
       "eyebrow": "偏好",
@@ -959,7 +1090,10 @@
         "approved": "管理员已批准；商家加入或完成关联后才会上线。",
         "rejected": "此推荐未获市场批准。",
         "converted": "商家已通过你的推荐加入，佣金归属已生效。"
-      }
+      },
+      "photosSelected_one": "已选择 {{count}} 张照片",
+      "pendingReview_one": "待审核（{{count}}）",
+      "pendingReview_other": "待审核（{{count}}）"
     },
     "profileWizard": {
       "completion": "个人资料完成度",
@@ -1103,7 +1237,21 @@
       "productPageDetails": "产品页面会显示可用情况、价格和预订要求。",
       "travellerFavourites": "旅客喜爱",
       "trustedByTravellers": "获得到访旅客的信赖",
-      "combinedScore": "综合此商家已发布项目中的公开评价得分。"
+      "combinedScore": "综合此商家已发布项目中的公开评价得分。",
+      "locationCount_one": "{{count}} 个地点",
+      "locationCount_other": "{{count}} 个地点",
+      "publishedExperienceCount_one": "{{count}} 个已发布体验",
+      "publishedExperienceCount_other": "{{count}} 个已发布体验",
+      "listingCount_one": "{{count}} 个项目",
+      "listingCount_other": "{{count}} 个项目",
+      "travellerReviewCount_one": "{{count}} 条旅客评价",
+      "travellerReviewCount_other": "{{count}} 条旅客评价",
+      "publishedListingCount_one": "{{count}} 个已发布项目",
+      "publishedListingCount_other": "{{count}} 个已发布项目",
+      "activeOutletCount_one": "{{count}} 家营业门店",
+      "activeOutletCount_other": "{{count}} 家营业门店",
+      "reviewCount_one": "{{count}} 条评价",
+      "reviewCount_other": "{{count}} 条评价"
     },
     "wallet": {
       "emptyTitle": "你的钱包为空",
@@ -1197,7 +1345,9 @@
       "setUpBankAccount": "设置银行账户",
       "ok": "确定",
       "later": "稍后",
-      "inProgress": "处理中（{{count}}）"
+      "inProgress": "处理中（{{count}}）",
+      "inProgress_one": "处理中（{{count}}）",
+      "inProgress_other": "处理中（{{count}}）"
     },
     "profileSections": {
       "contact": "联系方式",
@@ -1286,7 +1436,11 @@
       "backToOrders": "返回订单",
       "refundReasonPrompt": "请说明申请退款的原因。",
       "refundSubmitted": "退款申请已提交。",
-      "refundError": "无法提交退款申请。"
+      "refundError": "无法提交退款申请。",
+      "found_one": "找到 {{count}} 个订单",
+      "found_other": "找到 {{count}} 个订单",
+      "moreItems_one": "，另有 {{count}} 项",
+      "moreItems_other": "，另有 {{count}} 项"
     },
     "outletMenu": {
       "from": "起",
@@ -1302,7 +1456,9 @@
       "descriptionFallback": "{{outlet}} 的本地热门选择。",
       "emptyTitle": "菜单正在准备中",
       "emptyDescription": "此门店尚未发布可售项目，请稍后回来查看本地精选。",
-      "price": "RM {{price}}"
+      "price": "RM {{price}}",
+      "listingCount_one": "{{count}} 个项目",
+      "listingCount_other": "{{count}} 个项目"
     },
     "home": {
       "vendorCover": "{{vendor}} 封面",
@@ -1334,7 +1490,9 @@
       "viewPartners": "查看合作伙伴",
       "viewAllDestinations": "查看所有目的地",
       "destinationCarouselControls": "目的地轮播控制",
-      "explorationPrompt": "选择目的地开始探索"
+      "explorationPrompt": "选择目的地开始探索",
+      "swipeDestinations_one": "滑动探索全部 {{count}} 个州和联邦直辖区。",
+      "swipeDestinations_other": "滑动探索全部 {{count}} 个州和联邦直辖区。"
     },
     "destination": {
       "notFound": "未找到目的地",
@@ -1384,7 +1542,11 @@
       "addedToTrip": "已加入行程！",
       "addToTrip": "+ 加入行程",
       "total": "总计",
-      "noPaymentUntilConfirmed": "确认预订前不会收取费用。"
+      "noPaymentUntilConfirmed": "确认预订前不会收取费用。",
+      "reviewCount_one": "{{count}} 条评价",
+      "reviewCount_other": "{{count}} 条评价",
+      "slotsLeft_one": "剩余 {{count}} 个",
+      "slotsLeft_other": "剩余 {{count}} 个"
     },
     "explore": {
       "eyebrow": "探索马来西亚",
@@ -1399,7 +1561,9 @@
       "categoryExperiences": "{{category}}体验",
       "allExperiences": "全部体验",
       "results": "{{count}} 个结果",
-      "noExperiences": "未找到此类别的体验。"
+      "noExperiences": "未找到此类别的体验。",
+      "results_one": "{{count}} 个结果",
+      "results_other": "{{count}} 个结果"
     },
     "place": {
       "notFound": "未找到地点",
@@ -1452,7 +1616,12 @@
         "admission": "包含入场",
         "guide_service": "导览服务 · 免费入场",
         "addon": "附加服务"
-      }
+      },
+      "placesToVisit_one": "{{count}} 个可游览地点",
+      "bookableCount_one": "{{count}} 个可预订地点",
+      "vendorOptions_one": "{{count}} 个商家选项",
+      "activityCount_one": "{{count}} 项活动",
+      "vendorCount_one": "{{count}} 个商家"
     },
     "saved": {
       "metadataTitle": "已保存 — MyWisata",
@@ -1484,7 +1653,9 @@
       "metaDescription": "探索 {{name}} 的商品和体验。",
       "heroTitle": "你的本地一天从这里开始",
       "verified": "MyWisata 已验证门店",
-      "by": "由"
+      "by": "由",
+      "introTitle": "难忘的在地一天",
+      "introBody": "探索位于 {{city}} 的 {{vendor}}：品尝当地人气美食、认识热情主人，并体验为此地精心设计的活动。"
     },
     "pagination": {
       "showing": "显示第 {{from}}–{{to}} 个，共 {{total}} 个{{items}}",
@@ -1507,7 +1678,9 @@
       "filterType": "按类型筛选附近商家",
       "filterDistance": "按距离筛选附近商家",
       "within": "范围",
-      "emptyHint": "请扩大范围或清除类别筛选。"
+      "emptyHint": "请扩大范围或清除类别筛选。",
+      "summary_one": "{{radius}} 公里内有 {{count}} 家商家",
+      "summary_other": "{{radius}} 公里内有 {{count}} 家商家"
     },
     "discovery": {
       "searchLabel": "搜索地点和体验"
@@ -1546,10 +1719,30 @@
       "placeholder3": "试试“兰卡威跳岛游”……",
       "placeholder4": "试试“马六甲文化路线”……",
       "placeholder5": "试试“婆罗洲雨林”……",
-      "guide0": { "label": "城市导览", "eyebrow": "从必看重点开始", "description": "跟随本地合作伙伴认识城市，先确定第一站，再自由探索。", "detail": "商家可在你选择体验前，帮你找到合适的门店。" },
-      "guide1": { "label": "交通与接送", "eyebrow": "按你的节奏点到点出行", "description": "通过本地接送伙伴和适合你的路线，让一整天顺畅进行。", "detail": "比较合作伙伴发布的配套，并在结账前确认可用情况。" },
-      "guide2": { "label": "周末小旅行", "eyebrow": "留一点时间慢慢体验", "description": "围绕一个地区规划短途旅行，再选择能让路线成行的商家和门店。", "detail": "决定前先查看服务所选目的地的本地合作伙伴。" },
-      "guide3": { "label": "本地主人", "eyebrow": "认识地方故事的传承者", "description": "先选择地方背后的人，再探索他们的门店、活动和本地精选。", "detail": "从商家资料开始，清楚查看每家门店的具体信息。" },
+      "guide0": {
+        "label": "城市导览",
+        "eyebrow": "从必看重点开始",
+        "description": "跟随本地合作伙伴认识城市，先确定第一站，再自由探索。",
+        "detail": "商家可在你选择体验前，帮你找到合适的门店。"
+      },
+      "guide1": {
+        "label": "交通与接送",
+        "eyebrow": "按你的节奏点到点出行",
+        "description": "通过本地接送伙伴和适合你的路线，让一整天顺畅进行。",
+        "detail": "比较合作伙伴发布的配套，并在结账前确认可用情况。"
+      },
+      "guide2": {
+        "label": "周末小旅行",
+        "eyebrow": "留一点时间慢慢体验",
+        "description": "围绕一个地区规划短途旅行，再选择能让路线成行的商家和门店。",
+        "detail": "决定前先查看服务所选目的地的本地合作伙伴。"
+      },
+      "guide3": {
+        "label": "本地主人",
+        "eyebrow": "认识地方故事的传承者",
+        "description": "先选择地方背后的人，再探索他们的门店、活动和本地精选。",
+        "detail": "从商家资料开始，清楚查看每家门店的具体信息。"
+      },
       "firstStep": "实用的第一步",
       "planTitle": "与本地合作伙伴一起规划。",
       "planDescription": "先决定想怎样度过这一天，再认识商家、选择门店，并在购买前查看准确配套。",
@@ -1596,7 +1789,9 @@
       "nextMove": "选择你的下一步。",
       "browseMap": "浏览地图",
       "buildRoute": "规划路线",
-      "savedPlaces": "已保存地点"
+      "savedPlaces": "已保存地点",
+      "approvedVendors_one": "{{count}} 家已批准商家",
+      "approvedVendors_other": "{{count}} 家已批准商家"
     },
     "voucherHub": {
       "eyebrow": "MyWisata 优惠券",
@@ -1613,7 +1808,12 @@
       "helpStep2": "确认可使用的地点和时间。",
       "helpStep3": "结账时使用，或在门店出示。",
       "filterLabel": "按类型筛选优惠券",
-      "filters": { "all": "全部", "percent": "百分比折扣", "fixed": "固定金额", "bogo": "买一送一" },
+      "filters": {
+        "all": "全部",
+        "percent": "百分比折扣",
+        "fixed": "固定金额",
+        "bogo": "买一送一"
+      },
       "searchLabel": "搜索优惠券",
       "searchPlaceholder": "搜索优惠券或合作伙伴",
       "tryAgain": "重试",
@@ -1644,8 +1844,504 @@
       "saved": "已保存",
       "claimLater": "现在领取，稍后使用",
       "useNow": "立即使用",
-      "redemption": { "both": "线上或门店", "in_store": "门店使用", "online": "线上使用" },
-      "actions": { "claim": "领取", "redeemed": "已兑换", "expired": "已过期", "claimed": "已领取" }
+      "redemption": {
+        "both": "线上或门店",
+        "in_store": "门店使用",
+        "online": "线上使用"
+      },
+      "actions": {
+        "claim": "领取",
+        "redeemed": "已兑换",
+        "expired": "已过期",
+        "claimed": "已领取"
+      },
+      "remaining_one": "剩余 {{count}} 张",
+      "remaining_other": "剩余 {{count}} 张",
+      "productsAvailable_one": "{{count}} 件商品适用",
+      "productsAvailable_other": "{{count}} 件商品适用",
+      "moreProducts_one": "另有 {{count}} 件",
+      "moreProducts_other": "另有 {{count}} 件"
+    }
+  },
+  "strictMigration": {
+    "home": {
+      "exploreByState": "按州探索",
+      "destinationCount": "马来西亚共有 {{count}} 个目的地",
+      "chooseRoute": "选择您的路线",
+      "routeHint": "直接进入区域，无需逐一浏览每个州。",
+      "closeStateMenu": "关闭州属菜单",
+      "browseByCategory": "按类别浏览",
+      "categoryPrompt": "您想寻找哪一类体验？",
+      "resultsCount": "{{count}} 个结果",
+      "experiencePages": "体验分页",
+      "showingExperiences": "显示第 {{first}}–{{last}} 项，共 {{total}} 项体验",
+      "guidePlan": "{{guide}} 计划",
+      "forYou": "为您推荐",
+      "topPicks": "精选推荐",
+      "recommendedForYou": "为您推荐",
+      "popularRightNow": "目前热门",
+      "tunePreferences": "调整偏好",
+      "viewAll": "查看全部",
+      "noExperiencesMatch": "暂无匹配的体验",
+      "tryDifferentStateCategory": "请尝试其他州属或类别。",
+      "regions": {
+        "north": "马来西亚北部",
+        "central": "马来西亚中部",
+        "south": "马来西亚南部",
+        "eastCoast": "东海岸",
+        "borneo": "马来西亚婆罗洲"
+      },
+      "destinationCount_one": "马来西亚共有 {{count}} 个目的地",
+      "destinationCount_other": "马来西亚共有 {{count}} 个目的地",
+      "resultsCount_one": "{{count}} 个结果",
+      "resultsCount_other": "{{count}} 个结果",
+      "allExperiences": "所有体验",
+      "experiencesIn": "{{state}}的体验",
+      "searchFilter": "搜索与筛选",
+      "noExperiencesFound": "找不到体验",
+      "clearFiltersHint": "请尝试清除州属或类别筛选。"
+    },
+    "search": {
+      "noResultsFor": "找不到“{{query}}”的结果。",
+      "verifiedPartner": "已验证合作伙伴",
+      "placeholder": "搜索目的地、体验或合作伙伴……"
+    },
+    "googleMaps": {
+      "location": "Google 地图位置",
+      "picker": "Google 地图位置选择器",
+      "hint": "搜索地点，或点击地图放置图钉。",
+      "loadError": "无法加载 Google 地图，请稍后再试。",
+      "notConfigured": "Google 地图尚未配置。",
+      "droppedPin": "已放置的图钉",
+      "searchLabel": "搜索 Google 地图位置",
+      "searchPlaceholder": "搜索地点或地址"
+    },
+    "map": {
+      "loading": "正在加载地图……",
+      "regionPlaceCount": "16 个区域 · 64 个地点",
+      "selectState": "选择一个州开始探索。",
+      "scaleNotice": "西马与东马分别缩放以填满地图，并非真实相对比例。"
+    },
+    "chat": {
+      "mutedTitle": "您已将通知静音",
+      "muted": "已静音",
+      "reportConversation": "举报对话",
+      "detailsOptional": "详情（可选）",
+      "replyMessage": "回复此消息",
+      "attachment": "附件",
+      "originalMessage": "原始消息",
+      "document": "文件",
+      "replyingTo": "正在回复 {{name}}",
+      "yourself": "自己",
+      "cancelReply": "取消回复",
+      "removeAttachment": "移除附件",
+      "messagePerson": "发送消息给 {{name}}",
+      "attachFile": "附加文件",
+      "safetyNotice": "为保障您在 MyWisata 上的安全，电话号码、联系方式和链接将被隐藏。",
+      "loadingConversations": "正在加载对话……",
+      "conversationCount": "{{count}} 个对话",
+      "unreadCount": "{{count}} 个未读",
+      "replyNeededCount": "{{count}} 个等待您的回复",
+      "search": "搜索对话",
+      "noMatches": "没有匹配的对话",
+      "tryAnother": "请尝试其他搜索词或筛选条件。",
+      "selectConversation": "选择一个对话",
+      "selectConversationHint": "选择商家对话以查看消息并继续规划旅程。",
+      "online": "在线",
+      "offline": "离线",
+      "unmuteConversation": "取消对话静音",
+      "muteConversation": "将对话静音",
+      "unmute": "取消静音",
+      "muteNotifications": "将通知静音",
+      "reportReasons": {
+        "scam": "诈骗",
+        "abuse": "辱骂",
+        "spam": "垃圾信息",
+        "other": "其他"
+      },
+      "read": "已读",
+      "delivered": "已送达",
+      "sent": "已发送",
+      "aiReplyAssistant": "AI 回复助手",
+      "suggestReply": "建议回复",
+      "addCaption": "添加说明……",
+      "filters": {
+        "all": "全部",
+        "unread": "未读",
+        "needsReply": "需要您的回复"
+      },
+      "loadFailed": "无法加载消息",
+      "noConversations": "还没有对话",
+      "noConversationsHint": "打开体验详情页并选择“聊天”，即可向商家发送消息。",
+      "vendorFallback": "商家",
+      "sendFailed": "无法发送消息",
+      "sendFailedRetry": "无法发送该消息，请重试。",
+      "attachmentFailed": "无法发送该附件，请重试。",
+      "reportFailed": "无法提交举报，请重试。",
+      "conversationCount_one": "{{count}} 个对话",
+      "conversationCount_other": "{{count}} 个对话",
+      "unreadCount_one": "{{count}} 个未读",
+      "unreadCount_other": "{{count}} 个未读",
+      "replyNeededCount_one": "{{count}} 个等待您的回复",
+      "replyNeededCount_other": "{{count}} 个等待您的回复",
+      "yourLastMessage": "您的最后一条消息"
+    },
+    "bookingDay": {
+      "itineraryCount": "当天有 {{count}} 个行程项目",
+      "itineraryCount_other": "当天有 {{count}} 个行程项目",
+      "guestBookingCount": "{{bookings}} 笔预订，共 {{guests}} 位宾客",
+      "itineraryCount_one": "当天有 {{count}} 个行程项目"
+    },
+    "cart": {
+      "discountValue": "−{{amount}}",
+      "proceedSelected": "前往结账（{{count}}）",
+      "proceedSelected_one": "前往结账（{{count}}）",
+      "proceedSelected_other": "前往结账（{{count}}）",
+      "voucherCodePlaceholder": "例如 WELCOME10"
+    },
+    "affiliate": {
+      "verifyUnlock": "验证账户以启用推广分享和收益功能。",
+      "peopleOrdered": "已下单人数",
+      "clearsIn": "{{count}} 天后结算",
+      "clearsIn_other": "{{count}} 天后结算",
+      "earnToWithdraw": "通过分享赚取佣金后即可提款",
+      "confirmedReferrals": "{{count}} 个已确认推荐",
+      "confirmedReferrals_other": "{{count}} 个已确认推荐",
+      "noLink": "您还没有推广链接。",
+      "funnel": "转化漏斗",
+      "noSharedActivity": "尚未分享任何体验。",
+      "clicksLast30Days": "点击量 — 过去 30 天",
+      "earningsHistory": "收益记录",
+      "thisMonth": "本月",
+      "thisYear": "今年",
+      "allTime": "全部时间",
+      "noCommissions": "尚无佣金。",
+      "rate": "{{percent}}% 比率",
+      "createLinkFailed": "无法创建推广链接，请重试。",
+      "linkReady": "推广链接已可分享。",
+      "clearsIn_one": "{{count}} 天后结算",
+      "confirmedReferrals_one": "{{count}} 个已确认推荐",
+      "signInRequired": "需要登录",
+      "signInDescription": "登录后查看您的联盟推广面板。",
+      "eligibilityDescription": "分享您喜爱的活动；有人通过您的链接预订时，您可赚取佣金。",
+      "verifyAccount": "验证我的账户",
+      "loadFailed": "加载联盟推广面板时出现问题，请刷新页面后重试。",
+      "description": "分享您喜爱的本地体验，并追踪通过推荐链接产生的奖励。",
+      "cashOut": "提现",
+      "nextTier": " · 再有 {{count}} 个推荐即可达到 {{tier}}（{{percent}}%）",
+      "nextTier_one": " · 再有 {{count}} 个推荐即可达到 {{tier}}（{{percent}}%）",
+      "nextTier_other": " · 再有 {{count}} 个推荐即可达到 {{tier}}（{{percent}}%）",
+      "topTier": " · 您已达到最高等级",
+      "copied": "已复制",
+      "copy": "复制",
+      "myLink": "我的联盟推广链接",
+      "generating": "正在生成…",
+      "generateLink": "生成我的链接"
+    },
+    "tripPlanner": {
+      "scheduledFor": "安排于 {{date}}",
+      "plannerViews": "规划视图",
+      "itinerary": "旅程行程表",
+      "planned": "已规划 {{scheduled}}/{{total}}",
+      "buildRoute": "规划您的路线",
+      "tripMap": "旅程地图",
+      "placesToAdd": "可添加的地点",
+      "placesReady": "有 {{count}} 个地点可添加",
+      "toggleVendorPins": "切换商家图钉",
+      "distance": "距离",
+      "priceMeta": "{{distance}} · {{price}}",
+      "itineraryTab": "行程",
+      "mapTab": "地图",
+      "placesTab": "地点",
+      "timeFor": "{{item}}的时间",
+      "editItem": "编辑{{item}}",
+      "removeItem": "移除{{item}}",
+      "showOnMap": "在地图上显示{{item}}",
+      "dayNumber": "第 {{number}} 天",
+      "planDays": "规划每一天",
+      "dropStopHint": "将停靠点拖到这里，或从右侧面板添加。",
+      "addPlacesHint": "从右侧面板添加地点以开始规划。",
+      "unscheduled": "未安排",
+      "allAssigned": "所有地点都已安排到具体日期。",
+      "placesReady_one": "有 {{count}} 个地点可添加",
+      "placesReady_other": "有 {{count}} 个地点可添加",
+      "searchNewLocation": "搜索新地点…"
+    },
+    "paymentSimulator": {
+      "eyebrow": "沙盒／模拟付款",
+      "notice": "这是模拟付款流程，不会转移真实资金。",
+      "providers": {
+        "tng": "Touch ’n Go 电子钱包",
+        "grabpay": "GrabPay",
+        "bankTransfer": "银行转账"
+      },
+      "bankInstruction": "使用此参考编号模拟银行转账。",
+      "scanQr": "扫描模拟二维码",
+      "qrInstruction": "使用下方控制项选择模拟结果。",
+      "markFundsReceived": "标记为已收到款项",
+      "simulateSuccess": "模拟付款成功",
+      "simulateFailure": "模拟付款失败",
+      "cancelPayment": "取消付款",
+      "expireSession": "使会话过期",
+      "backToCheckout": "返回结账",
+      "statuses": {
+        "pending": "待处理",
+        "paid": "已付款",
+        "failed": "失败",
+        "cancelled": "已取消",
+        "expired": "已过期"
+      }
+    },
+    "bookingReceipt": {
+      "eyebrow": "我的预订",
+      "description": "这里只显示这笔预订，其他预订仍保留在日历中。",
+      "guests": "{{count}} 位宾客",
+      "guests_other": "{{count}} 位宾客",
+      "reference": "预订编号：{{reference}}",
+      "viewFullReceipt": "查看完整收据",
+      "guests_one": "{{count}} 位宾客"
+    },
+    "activityDetail": {
+      "availableAtOutlets": "可在 {{count}} 家门店使用",
+      "reviewCount": "（{{count}} 条评价）",
+      "viewOutlet": "查看门店 · {{name}}",
+      "availableAtChoose": "可在 {{count}} 家门店使用 — 请选择一家",
+      "availableAtChoose_other": "可在 {{count}} 家门店使用 — 请选择一家",
+      "availableAtOutlets_one": "可在 {{count}} 家门店使用",
+      "availableAtOutlets_other": "可在 {{count}} 家门店使用",
+      "reviewCount_one": "（{{count}} 条评价）",
+      "reviewCount_other": "（{{count}} 条评价）",
+      "availableAtChoose_one": "可在 {{count}} 家门店使用 — 请选择一家",
+      "readyToBook": "准备预订",
+      "readyToOrder": "准备点餐",
+      "readyToBuy": "准备购买",
+      "readyToStay": "准备入住",
+      "selectVisit": "选择到访时间",
+      "chooseOptions": "选择选项",
+      "selectDates": "选择日期",
+      "chooseRoom": "选择房型",
+      "personCount": "{{count}} 人",
+      "personCount_one": "{{count}} 人",
+      "personCount_other": "{{count}} 人",
+      "itemCount": "{{count}} 件",
+      "itemCount_one": "{{count}} 件",
+      "itemCount_other": "{{count}} 件",
+      "nightCount": "{{count}} 晚",
+      "nightCount_one": "{{count}} 晚",
+      "nightCount_other": "{{count}} 晚",
+      "noVendorRequired": "无需商家",
+      "placeDetails": "地点详情",
+      "localVendor": "本地商家",
+      "familyFriendly": "适合家庭",
+      "coupleFriendly": "适合情侣",
+      "yes": "是",
+      "no": "否",
+      "valueWithUnit": "{{value}} {{unit}}",
+      "priceUnits": {
+        "perPerson": "每人",
+        "perNight": "每晚",
+        "each": "每件"
+      },
+      "units": {
+        "years": "岁",
+        "guests": "位住客"
+      },
+      "fields": {
+        "address": "地址",
+        "type": "类型",
+        "goodFor": "适合",
+        "_hours": "营业时间",
+        "_tags": "标签",
+        "_contact": "联系方式",
+        "halalCertified": "清真认证",
+        "vegetarianOptions": "素食选项",
+        "veganOptions": "纯素选项",
+        "porkFree": "无猪肉",
+        "mealPeriods": "供应时段",
+        "serviceType": "服务方式",
+        "signatureDishes": "招牌菜",
+        "menuHighlights": "菜单亮点",
+        "spiceLevel": "辣度",
+        "alcoholServed": "供应酒类",
+        "seatingCapacity": "座位容量",
+        "reservationNeeded": "是否需要预订",
+        "difficulty": "难度",
+        "durationEstimate": "预计时长",
+        "sessionLength": "活动时长",
+        "distanceKm": "路线距离",
+        "elevationGainM": "累计爬升",
+        "terrain": "地形",
+        "indoorOutdoor": "室内／户外",
+        "facilities": "设施",
+        "minAge": "最低年龄",
+        "ageRange": "年龄范围",
+        "ageLimit": "年龄限制",
+        "fitnessLevel": "体能要求",
+        "groupSize": "团体人数",
+        "guideIncluded": "包含导游",
+        "guideLanguage": "导游／语言",
+        "equipmentProvided": "提供装备",
+        "whatToBring": "需携带物品",
+        "meetingPoint": "集合地点",
+        "bestSeason": "最佳季节",
+        "bestTimeToVisit": "最佳游览时间",
+        "safetyNote": "安全／保险",
+        "entryFee": "入场票",
+        "coverCharge": "入场／最低消费",
+        "dressCode": "着装要求",
+        "historicalEra": "历史时期",
+        "musicGenre": "音乐类型",
+        "reservation": "预订",
+        "byAppointment": "需预约",
+        "servicesOffered": "提供服务",
+        "amenities": "便利设施",
+        "included": "包含项目",
+        "genderPolicy": "性别限制",
+        "roomTypes": "房型",
+        "numberOfRooms": "房间数量",
+        "maxGuests": "最多住客",
+        "checkInOut": "入住／退房",
+        "pricePerNight": "每晚价格",
+        "cancellationPolicy": "取消政策",
+        "petFriendly": "宠物友好",
+        "wheelchairAccessible": "轮椅无障碍",
+        "nearbyLandmarks": "附近地标",
+        "productCategories": "产品类别",
+        "signatureProducts": "招牌产品",
+        "paymentMethods": "付款方式",
+        "certification": "认证",
+        "madeLocally": "本地制造／手作",
+        "customisationAvailable": "可定制",
+        "shippingAvailable": "配送服务",
+        "priceBand": "价格区间",
+        "numberOfStores": "店铺数量",
+        "anchorTenants": "主力店",
+        "parking": "停车设施",
+        "directoryFloors": "楼层"
+      },
+      "types": {
+        "chinese": "中式",
+        "malay": "马来式",
+        "nyonya": "娘惹／土生华人",
+        "indian": "印度式",
+        "mamak": "嘛嘛档／街头美食",
+        "western": "西式",
+        "seafood": "海鲜",
+        "cafe-dessert": "咖啡馆／甜点",
+        "fusion": "融合料理",
+        "nature": "自然",
+        "adventure": "探险",
+        "cultural": "文化／遗产",
+        "nightlife": "夜生活",
+        "wellness": "养生／水疗",
+        "water": "水上活动",
+        "sightseeing": "观光／导览",
+        "5-star": "五星级",
+        "4-star": "四星级",
+        "3-star": "三星级",
+        "boutique": "精品酒店",
+        "homestay": "民宿",
+        "hostel": "青年旅舍",
+        "resort": "度假村",
+        "handicrafts": "手工艺品",
+        "souvenirs": "纪念品",
+        "batik-textiles": "蜡染／纺织品",
+        "fashion": "时尚",
+        "jewellery": "珠宝",
+        "local-produce": "本地农产／食品",
+        "art-prints": "艺术品／印刷品",
+        "shopping-mall": "购物中心／商业综合体",
+        "market-bazaar": "市集／夜市",
+        "duty-free": "免税"
+      }
+    },
+    "walletReceipt": {
+      "backToWallet": "返回钱包",
+      "eyebrow": "MyWisata 钱包",
+      "title": "提款收据",
+      "payoutDestination": "收款账户",
+      "defaultDestination": "所选收款账户",
+      "payoutReference": "付款编号：{{reference}}",
+      "reviewNote": "审核备注",
+      "settlementNotice": "此收据记录了 MyWisata 中的提款申请。到账时间取决于所选付款服务商（{{provider}}）。",
+      "guidance": {
+        "failed": {
+          "title": "付款失败 — 资金已退回",
+          "message": "预留金额已退回您的可用收益。请检查收款账户后重新申请提款；若资料无误，请联系支持团队。"
+        },
+        "processing": {
+          "title": "正在付款",
+          "message": "付款服务商正在处理这笔提款。除非状态超过服务商正常到账时间仍未改变，否则无需操作。"
+        },
+        "approvedReconciliation": {
+          "title": "正在核对服务商交易",
+          "message": "管理员核对服务商交易期间，资金会继续保留。请勿用同一笔资金重复申请提款；如需进度，请联系支持团队。"
+        },
+        "approved": {
+          "title": "已批准 — 等待付款",
+          "message": "准备付款期间，资金会继续保留，您无需操作。"
+        },
+        "completed": {
+          "title": "付款已完成",
+          "message": "提款已发送至您选择的收款账户。"
+        }
+      }
+    },
+    "checkout": {
+      "discountWithCode": "折扣（{{code}}）",
+      "returnToCart": "返回购物车",
+      "payByCard": "使用银行卡付款",
+      "methods": {
+        "stripeCard": "银行卡（Stripe 测试模式）",
+        "tng": "Touch ’n Go 电子钱包 — 模拟器",
+        "grabpay": "GrabPay — 模拟器",
+        "bankTransfer": "银行转账 — 模拟器",
+        "wallet": "MyWisata 钱包余额",
+        "walletSplit": "优先使用钱包，余额由银行卡支付"
+      },
+      "signInTitle": "登录后结账",
+      "signInDescription": "您选择的项目会保持私密；结账需要已验证的账户。"
+    },
+    "kyc": {
+      "fileMeta": "{{size}} MB · {{type}}"
+    },
+    "guestPublic": {
+      "backListings": "返回列表",
+      "experience": "体验",
+      "experienceFallback": "探索这项马来西亚体验。",
+      "viewVendor": "查看商家",
+      "signInBook": "登录后预订",
+      "signInPurchase": "登录后购买",
+      "upcomingAvailability": "即将开放的时段",
+      "availableSessions": "有 {{count}} 个可用时段。登录后选择时间。",
+      "availableSessions_other": "有 {{count}} 个可用时段。登录后选择时间。",
+      "guestReviews": "宾客评价",
+      "noReviews": "尚无公开评价。",
+      "guestReview": "宾客评价",
+      "verifiedVendor": "已验证的 MyWisata 商家",
+      "browseListings": "浏览项目",
+      "locations": "地点",
+      "activeOutlets": "营业中的门店",
+      "outletCount": "{{count}} 家门店",
+      "outletCount_other": "{{count}} 家门店",
+      "noOutlets": "尚无公开门店。",
+      "price": "价格",
+      "outletCount_one": "{{count}} 家门店",
+      "availableSessions_one": "有 {{count}} 个可用时段。登录后选择时间。"
+    },
+    "place": {
+      "entry": "入场"
+    },
+    "bookingPanel": {
+      "availableTimesCount": "有 {{count}} 个可用时段。",
+      "availableTimesCount_one": "有 {{count}} 个可用时段。",
+      "availableTimesCount_other": "有 {{count}} 个可用时段。"
+    },
+    "outletNavigation": {
+      "position": "地点 {{current}} / {{total}} · {{outlet}}",
+      "viewAll": "查看全部 {{count}}",
+      "viewAll_one": "查看全部 {{count}}",
+      "viewAll_other": "查看全部 {{count}}"
     }
   }
 }

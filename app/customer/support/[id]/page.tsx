@@ -17,12 +17,13 @@ import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 
 // CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
-// the chatbot widget's and chat-thread-panel's mic buttons.
-const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
-  "permission-denied": "Microphone access needed",
-  "no-speech": "Didn't catch that — try again",
-  network: "Voice input needs a connection",
-  unknown: "Voice input isn't available right now",
+// the chatbot widget's and chat-thread-panel's mic buttons — keys, not
+// literals, since systemwide localization forbids untranslated UI strings.
+const SPEECH_ERROR_KEY: Record<SpeechInputErrorKind, string> = {
+  "permission-denied": "ui.support.voice.errors.permissionDenied",
+  "no-speech": "ui.support.voice.errors.noSpeech",
+  network: "ui.support.voice.errors.network",
+  unknown: "ui.support.voice.errors.unknown",
 };
 
 interface TicketDetail {
@@ -96,12 +97,12 @@ export default function CustomerTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.replyError", { defaultValue: "Could not send reply." })); return; }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.replyError")); return; }
       setReply("");
-      showFeedback("success", tCustomer("ui.support.replySent", { defaultValue: "Reply sent." }));
+      showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.replyRetry", { defaultValue: "Could not send reply. Please try again." }));
+      showFeedback("error", tCustomer("ui.support.replyRetry"));
     } finally {
       setSending(false);
     }
@@ -122,13 +123,13 @@ export default function CustomerTicketDetailPage() {
       formData.append("file", pendingFile);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${id}/attachments`, { method: "POST", body: formData });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.attachmentError", { defaultValue: "Could not send attachment." })); return; }
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.attachmentError")); return; }
       setReply("");
       setPendingFile(null);
-      showFeedback("success", tCustomer("ui.support.replySent", { defaultValue: "Reply sent." }));
+      showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.attachmentError", { defaultValue: "Could not send attachment." }));
+      showFeedback("error", tCustomer("ui.support.attachmentError"));
     } finally {
       setUploading(false);
     }
@@ -144,7 +145,7 @@ export default function CustomerTicketDetailPage() {
       if (!res.ok) throw new Error();
     } catch {
       setTicket((t) => (t ? { ...t, muted: !nextMuted } : t));
-      showFeedback("error", tCustomer("ui.support.muteError", { defaultValue: "Could not update notification setting." }));
+      showFeedback("error", tCustomer("ui.support.muteError"));
     } finally {
       setMuting(false);
     }
@@ -155,49 +156,49 @@ export default function CustomerTicketDetailPage() {
     setReopening(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/reopen`, { method: "POST" });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.reopenError", { defaultValue: "Could not reopen ticket." })); return; }
-      showFeedback("success", tCustomer("ui.support.ticketReopened", { defaultValue: "Ticket reopened." }));
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.reopenError")); return; }
+      showFeedback("success", tCustomer("ui.support.ticketReopened"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.reopenRetry", { defaultValue: "Could not reopen ticket. Please try again." }));
+      showFeedback("error", tCustomer("ui.support.reopenRetry"));
     } finally {
       setReopening(false);
     }
   }
 
   if (ticket === undefined || !currentUser) {
-    return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading", { defaultValue: "Loading…" })}</div>;
+    return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   }
   if (ticket === null) {
-    return <EmptyState title={tCustomer("ui.support.ticketLoadError", { defaultValue: "Couldn't load this ticket" })} description={tCustomer("ui.support.ticketNotFound", { defaultValue: "It may not exist, or it's not yours." })} />;
+    return <EmptyState title={tCustomer("ui.support.ticketLoadError")} description={tCustomer("ui.support.ticketNotFound")} />;
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <Link href="/customer/support" className="text-xs text-muted-foreground flex items-center gap-1 mb-4 hover:opacity-70">
-        <ArrowLeft size={13} aria-hidden="true" /> {tCustomer("ui.support.myTickets", { defaultValue: "My Tickets" })}
+        <ArrowLeft size={13} aria-hidden="true" /> {tCustomer("ui.support.myTickets")}
       </Link>
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
           {ticket.muted && (
-            <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title={tCustomer("ui.support.mutedHint", { defaultValue: "Notifications muted for you" })}>
-              <BellOff size={10} /> {tCustomer("ui.support.muted", { defaultValue: "Muted" })}
+            <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title={tCustomer("ui.support.mutedHint")}>
+              <BellOff size={10} /> {tCustomer("ui.support.muted")}
             </span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 bg-muted text-muted-foreground">
-            {tCustomer(`ui.support.status.${ticket.status}`, { defaultValue: STATUS_LABEL[ticket.status] ?? ticket.status })}
+            {tCustomer(`ui.support.status.${ticket.status}`)}
           </span>
           <button
             type="button"
             onClick={toggleMute}
             disabled={muting}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={ticket.muted ? tCustomer("ui.support.unmute", { defaultValue: "Unmute ticket" }) : tCustomer("ui.support.mute", { defaultValue: "Mute ticket" })}
-            title={ticket.muted ? tCustomer("ui.support.unmute", { defaultValue: "Unmute" }) : tCustomer("ui.support.muteHint", { defaultValue: "Mute notifications" })}
+            aria-label={ticket.muted ? tCustomer("ui.support.unmute") : tCustomer("ui.support.mute")}
+            title={ticket.muted ? tCustomer("ui.support.unmute") : tCustomer("ui.support.muteHint")}
           >
             {ticket.muted ? <BellOff size={14} /> : <Bell size={14} />}
           </button>
@@ -205,7 +206,7 @@ export default function CustomerTicketDetailPage() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-6">
-        {ticket.category} · {tCustomer("ui.support.opened", { defaultValue: "opened" })} {new Date(ticket.createdAt).toLocaleDateString(i18n.resolvedLanguage || undefined)}
+        {ticket.category} · {tCustomer("ui.support.opened")} {new Date(ticket.createdAt).toLocaleDateString(i18n.resolvedLanguage || undefined)}
       </p>
 
       <div className="rounded-xl border border-border overflow-hidden mb-4">
@@ -225,21 +226,21 @@ export default function CustomerTicketDetailPage() {
       {LOCKED_STATUSES.has(ticket.status) ? (
         <div className="rounded-xl border border-border bg-muted px-4 py-3 text-center">
           <p className="text-sm text-muted-foreground mb-2">
-            {tCustomer("ui.support.resolved", { defaultValue: "This ticket is resolved." })}{" "}
+            {tCustomer("ui.support.resolved")}{" "}
             <button onClick={reopenTicket} disabled={reopening} className="text-primary underline font-medium">
-              {reopening ? tCustomer("ui.support.reopening", { defaultValue: "Reopening…" }) : tCustomer("ui.support.reopen", { defaultValue: "Reopen ticket" })}
+              {reopening ? tCustomer("ui.support.reopening") : tCustomer("ui.support.reopen")}
             </button>{" "}
-            {tCustomer("ui.support.startNew", { defaultValue: "or start a new one." })}
+            {tCustomer("ui.support.startNew")}
           </p>
         </div>
       ) : (
         <div>
-          {speech.error && <p className="mb-1.5 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+          {speech.error && <p className="mb-1.5 text-xs text-destructive">{tCustomer(SPEECH_ERROR_KEY[speech.error])}</p>}
           {pendingFile && (
             <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
               <FileText size={18} className="shrink-0 text-primary" />
               <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment", { defaultValue: "Remove attachment" })}>
+              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment")}>
                 <X size={14} />
               </button>
             </div>
@@ -251,7 +252,7 @@ export default function CustomerTicketDetailPage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label={tCustomer("ui.support.attachFile", { defaultValue: "Attach a file" })}
+              aria-label={tCustomer("ui.support.attachFile")}
             >
               <Paperclip size={15} />
             </button>
@@ -261,8 +262,8 @@ export default function CustomerTicketDetailPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") sendReply();
               }}
-              aria-label={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket" })}
-              placeholder={pendingFile ? tCustomer("ui.support.addCaption", { defaultValue: "Add a caption…" }) : tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket…" })}
+              aria-label={tCustomer("ui.support.reply")}
+              placeholder={pendingFile ? tCustomer("ui.support.addCaption") : tCustomer("ui.support.reply")}
               className="flex-1 min-w-0 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
               disabled={sending || uploading}
             />
@@ -271,8 +272,8 @@ export default function CustomerTicketDetailPage() {
                 type="button"
                 onClick={() => (speech.isListening ? speech.stop() : speech.start())}
                 disabled={sending || uploading}
-                aria-label={speech.isListening ? "Stop listening" : "Speak your reply"}
-                title={speech.isListening ? "Stop listening" : "Speak your reply"}
+                aria-label={speech.isListening ? tCustomer("ui.support.voice.stop") : tCustomer("ui.support.voice.start")}
+                title={speech.isListening ? tCustomer("ui.support.voice.stop") : tCustomer("ui.support.voice.start")}
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   speech.isListening
                     ? "border-destructive bg-destructive/10 text-destructive animate-pulse"

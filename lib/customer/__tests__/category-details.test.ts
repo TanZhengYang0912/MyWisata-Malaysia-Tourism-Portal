@@ -96,6 +96,15 @@ describe("getCategoryChips", () => {
     expect(chips.find((c) => c.label === "Tags")?.value).toBe("halal · spicy");
     expect(chips.find((c) => c.label === "Contact")).toMatchObject({ value: "+60111222333", href: "tel:+60111222333" });
   });
+
+  it("localizes fixed labels while preserving unknown database type values", () => {
+    const translate = (key: string) => ({
+      "strictMigration.activityDetail.fields.type": "类型",
+      "strictMigration.activityDetail.types.chinese": "中式",
+    })[key] ?? key;
+    const chips = getCategoryChips(makeActivity({ categorySlug: "food", typeSlugs: ["chinese", "vendor-special"], attributes: {} }), translate);
+    expect(chips.find((chip) => chip.label === "类型")?.value).toBe("中式 · vendor-special");
+  });
 });
 
 describe("isPlaceBound", () => {
@@ -157,5 +166,9 @@ describe("getPriceUnit", () => {
   it("never calls an unknown category's unit 'per person'", () => {
     expect(getPriceUnit("some-future-category")).toBe("each");
     expect(getPriceUnit(undefined)).toBe("each");
+  });
+
+  it("uses the active locale for the displayed unit", () => {
+    expect(getPriceUnit("activity", (key) => key === "strictMigration.activityDetail.priceUnits.perPerson" ? "每人" : key)).toBe("每人");
   });
 });

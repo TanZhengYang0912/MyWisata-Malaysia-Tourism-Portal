@@ -45,9 +45,9 @@ describe("customer header navigation", () => {
   });
 
   it("uses a profile name and falls back to an email local part", () => {
-    expect(getCustomerDisplayName({ name: "Aisha Lim", email: "aisha@example.com" })).toBe("Aisha Lim");
-    expect(getCustomerDisplayName({ name: "mock_cf_7@example.com", email: "mock_cf_7@example.com" })).toBe("mock_cf_7");
-    expect(getCustomerDisplayName({ name: "", email: "" })).toBe("Account");
+    expect(getCustomerDisplayName({ name: "Aisha Lim", email: "aisha@example.com" }, "账户")).toBe("Aisha Lim");
+    expect(getCustomerDisplayName({ name: "mock_cf_7@example.com", email: "mock_cf_7@example.com" }, "账户")).toBe("mock_cf_7");
+    expect(getCustomerDisplayName({ name: "", email: "" }, "账户")).toBe("账户");
   });
 
   it("matches navigation items by their pathname even when a link has a query", () => {

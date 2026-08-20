@@ -68,10 +68,10 @@ interface Props {
 
 export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props) {
   const { t } = useTranslation('vendor');
-  const groupLabel = (id: string, fallback: string) => t(`builder.palette.groups.${id}.label`, { defaultValue: fallback });
-  const groupHint = (id: string, fallback: string) => t(`builder.palette.groups.${id}.hint`, { defaultValue: fallback });
-  const itemLabel = (type: string, fallback: string) => t(`builder.palette.items.${type}.label`, { defaultValue: fallback });
-  const itemHint = (type: string, fallback: string) => t(`builder.palette.items.${type}.hint`, { defaultValue: fallback });
+  const groupLabel = (id: string, fallback: string) => t(`builder.palette.groups.${id}.label`);
+  const groupHint = (id: string, fallback: string) => t(`builder.palette.groups.${id}.hint`);
+  const itemLabel = (type: string, fallback: string) => t(`builder.palette.items.${type}.label`);
+  const itemHint = (type: string, fallback: string) => t(`builder.palette.items.${type}.hint`);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(BUILDER_PALETTE_GROUPS.map((group) => [group.id, Boolean(group.defaultOpen)])),
   );

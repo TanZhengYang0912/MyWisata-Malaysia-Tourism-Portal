@@ -3,6 +3,8 @@ import { APP_NAMESPACES, AppNamespace, loadLocaleResources } from "./lib/i18n/re
 
 const i18nConfig = {
   supportedLngs: APP_LOCALES,
+  // next-i18next requires a detection default. getServerTranslation disables
+  // the underlying i18next fallback before returning its fixed translator.
   fallbackLng: "en",
   localeInPath: false,
   ns: APP_NAMESPACES,

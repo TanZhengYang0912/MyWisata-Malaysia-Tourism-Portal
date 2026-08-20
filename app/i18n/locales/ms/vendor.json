@@ -361,7 +361,11 @@
       "itemsInPeriod": "{{count}} item dalam tempoh ini",
       "keepExperiencesCurrent": "Pastikan pengalaman anda terkini",
       "voucherCampaigns": "Kempen baucar",
-      "createOffers": "Cipta tawaran untuk pelancong"
+      "createOffers": "Cipta tawaran untuk pelancong",
+      "availableCount_one": "{{count}} tersedia",
+      "availableCount_other": "{{count}} tersedia",
+      "itemsInPeriod_one": "{{count}} item dalam tempoh ini",
+      "itemsInPeriod_other": "{{count}} item dalam tempoh ini"
     },
     "analytics": {
       "noVendor": "Tiada vendor diluluskan dipautkan kepada akaun ini.",
@@ -463,7 +467,13 @@
       "entities": {
         "bookings": "tempahan",
         "slots": "slot"
-      }
+      },
+      "batchSummary_one": "{{count}} {{entity}} dikemas kini.",
+      "batchSummary_other": "{{count}} {{entity}} dikemas kini.",
+      "reservationCount_one": "{{count}} tempahan · dikumpulkan mengikut cawangan",
+      "reservationCount_other": "{{count}} tempahan · dikumpulkan mengikut cawangan",
+      "onThisPage_one": "{{count}} pada halaman ini",
+      "onThisPage_other": "{{count}} pada halaman ini"
     },
     "inbox": {
       "filter": {
@@ -558,7 +568,13 @@
       "standard": "Standard",
       "markOrderReady": "Tandakan pesanan sedia",
       "fulfilOrder": "Penuhi pesanan",
-      "close": "Tutup"
+      "close": "Tutup",
+      "batchSummary_one": "{{count}} item pesanan dikemas kini.",
+      "batchSummary_other": "{{count}} item pesanan dikemas kini.",
+      "pageSummary_one": "{{count}} pesanan · {{perPage}} setiap halaman",
+      "pageSummary_other": "{{count}} pesanan · {{perPage}} setiap halaman",
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} item"
     },
     "outlets": {
       "loadingShop": "Memuatkan halaman kedai anda…",
@@ -604,7 +620,13 @@
       "noListings": "Belum ada senarai",
       "manageListings": "Urus senarai",
       "viewDetailsFor": "Lihat butiran untuk {{name}}",
-      "editOutletNamed": "Edit {{name}}"
+      "editOutletNamed": "Edit {{name}}",
+      "batchSummary_one": "{{count}} cawangan dikemas kini.",
+      "batchSummary_other": "{{count}} cawangan dikemas kini.",
+      "resultCount_one": "{{count}} cawangan di seluruh Malaysia",
+      "resultCount_other": "{{count}} cawangan di seluruh Malaysia",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman"
     },
     "products": {
       "loadFailed": "Produk tidak dapat dimuatkan",
@@ -649,7 +671,15 @@
       "archived": "Produk berjaya diarkibkan.",
       "archiveTryAgain": "Tidak dapat mengarkibkan penyenaraian. Sila cuba lagi.",
       "batchSummarySkipped": "{{updated}} dikemas kini, {{skipped}} dilangkau mengikut status.",
-      "batchSummary": "{{count}} penyenaraian dikemas kini."
+      "batchSummary": "{{count}} penyenaraian dikemas kini.",
+      "batchSummary_one": "{{count}} penyenaraian dikemas kini.",
+      "batchSummary_other": "{{count}} penyenaraian dikemas kini.",
+      "resultCount_one": "{{count}} penyenaraian dalam katalog anda",
+      "resultCount_other": "{{count}} penyenaraian dalam katalog anda",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
+      "stockCount_one": "{{count}} dalam stok{{low}}",
+      "stockCount_other": "{{count}} dalam stok{{low}}"
     },
     "profile": {
       "loading": "Memuatkan profil perniagaan…",
@@ -842,7 +872,21 @@
       "fixedDiscount": "Diskaun RM {{amount}}",
       "percentDiscount": "Diskaun {{percent}}%",
       "bogoDiscount": "Beli {{buy}} Percuma {{free}}",
-      "offer": "Tawaran baucar"
+      "offer": "Tawaran baucar",
+      "generatedCodes_one": "{{count}} kod dijana dengan awalan {{prefix}}.",
+      "generatedCodes_other": "{{count}} kod dijana dengan awalan {{prefix}}.",
+      "uploadedForReview_one": "{{count}} baucar dimuat naik untuk semakan pentadbir.",
+      "uploadedForReview_other": "{{count}} baucar dimuat naik untuk semakan pentadbir.",
+      "uploaded_one": "{{count}} baucar dimuat naik.",
+      "uploaded_other": "{{count}} baucar dimuat naik.",
+      "batchUpdated_one": "{{count}} baucar dikemas kini.",
+      "batchUpdated_other": "{{count}} baucar dikemas kini.",
+      "batchActivated_one": "{{count}} baucar diaktifkan.",
+      "batchActivated_other": "{{count}} baucar diaktifkan.",
+      "batchDeactivated_one": "{{count}} baucar dinyahaktifkan.",
+      "batchDeactivated_other": "{{count}} baucar dinyahaktifkan.",
+      "usesCount_one": "{{count}} penggunaan",
+      "usesCount_other": "{{count}} penggunaan"
     },
     "wallet": {
       "vendorFinance": "Kewangan vendor",
@@ -928,7 +972,11 @@
         "refund": "Bayaran balik",
         "adjustment_credit": "Pelarasan baki",
         "adjustment_debit": "Pelarasan baki"
-      }
+      },
+      "activeCount_one": "{{count}} aktif",
+      "activeCount_other": "{{count}} aktif",
+      "activeRequestCount_one": "{{count}} daripada 1",
+      "activeRequestCount_other": "{{count}} daripada 1"
     },
     "actions": {
       "save": "Simpan"
@@ -1046,7 +1094,9 @@
       "textAlignment": "Penjajaran teks",
       "title": "Tajuk",
       "top": "Atas",
-      "useImage": "Guna imej"
+      "useImage": "Guna imej",
+      "maxImages_one": "Maksimum {{count}} imej.",
+      "maxImages_other": "Maksimum {{count}} imej."
     },
     "lastPublished": "Terakhir diterbitkan {{date}}",
     "livePreview": "Pratonton langsung",
@@ -1154,7 +1204,9 @@
       "desktop": "Desktop 1120px",
       "tablet": "Tablet 768px",
       "mobile": "Mudah alih 390px"
-    }
+    },
+    "sectionCount_one": "{{count}} bahagian",
+    "sectionCount_other": "{{count}} bahagian"
   },
   "media": {
     "digitalAssetUploaded": "Aset digital dimuat naik.",
@@ -1255,7 +1307,9 @@
     "priorityValue": "keutamaan {{value}}",
     "tiered": "Kuantiti bertingkat",
     "title": "Harga berubah",
-    "weekend": "Hujung minggu"
+    "weekend": "Hujung minggu",
+    "bundleItems_one": "{{count}} item pakej",
+    "bundleItems_other": "{{count}} item pakej"
   },
   "productDetails": {
     "availability": "Ketersediaan",
@@ -1283,7 +1337,9 @@
     "variantsHint": "Urus pilihan, perbezaan harga, kuantiti stok dan varian lalai.",
     "variantsInventory": "Varian & inventori",
     "viewOnlyPricing": "Anda mempunyai akses melihat penyenaraian ini. Pemilik atau pengurus outlet boleh mengemas kini peraturan harga.",
-    "viewOnlyVariants": "Anda mempunyai akses melihat penyenaraian ini. Pemilik atau pengurus outlet boleh mengemas kini varian dan inventori."
+    "viewOnlyVariants": "Anda mempunyai akses melihat penyenaraian ini. Pemilik atau pengurus outlet boleh mengemas kini varian dan inventori.",
+    "unitsAvailable_one": "{{count}} unit tersedia",
+    "unitsAvailable_other": "{{count}} unit tersedia"
   },
   "productForm": {
     "addTitle": "Tambah Produk",
@@ -1346,7 +1402,11 @@
       "product": "Produk Fizikal",
       "service": "Perkhidmatan"
     },
-    "updated": "Produk berjaya dikemas kini."
+    "updated": "Produk berjaya dikemas kini.",
+    "galleryImageAlt_one": "Imej galeri {{count}}",
+    "galleryImageAlt_other": "Imej galeri {{count}}",
+    "removeGalleryImage_one": "Buang imej galeri {{count}}",
+    "removeGalleryImage_other": "Buang imej galeri {{count}}"
   },
   "shopPreview": {
     "customerPreview": "Pratonton pelanggan",
@@ -1425,7 +1485,11 @@
     "allFilteredSelected": "Semua hasil yang ditapis dipilih",
     "clearSelection": "Kosongkan pilihan",
     "selectAllFiltered": "Pilih semua {{count}} hasil yang ditapis",
-    "selected": "{{count}} dipilih"
+    "selected": "{{count}} dipilih",
+    "selected_one": "{{count}} dipilih",
+    "selected_other": "{{count}} dipilih",
+    "selectAllFiltered_one": "Pilih semua {{count}} hasil yang ditapis",
+    "selectAllFiltered_other": "Pilih semua {{count}} hasil yang ditapis"
   },
   "order": {
     "fulfil": "Penuhi",
@@ -1447,7 +1511,9 @@
       "salesRevenueByOutlet": "Hasil jualan mengikut outlet",
       "topOutletsGrouped": "Menunjukkan {{count}} outlet teratas · lain-lain digabungkan",
       "total": "jumlah",
-      "totalPaidRevenue": "Jumlah hasil berbayar"
+      "totalPaidRevenue": "Jumlah hasil berbayar",
+      "topOutletsGrouped_one": "Menunjukkan {{count}} outlet teratas · lain-lain digabungkan",
+      "topOutletsGrouped_other": "Menunjukkan {{count}} outlet teratas · lain-lain digabungkan"
     },
     "sales": {
       "description": "Aktiviti hasil dan pesanan berbayar daripada Supabase",
@@ -1461,7 +1527,9 @@
       "performance": "Prestasi jualan",
       "revenue": "Hasil",
       "revenueRM": "Hasil (RM)",
-      "timeline": "Garis masa"
+      "timeline": "Garis masa",
+      "orders_one": "{{count}} pesanan",
+      "orders_other": "{{count}} pesanan"
     }
   },
   "ranking": {
@@ -1475,7 +1543,11 @@
       "emptyInsight": "Produk berbayar akan muncul di sini.",
       "unitsSold": "{{count}} unit terjual",
       "sold": "{{count}} terjual",
-      "empty": "Tiada produk berbayar dalam tempoh ini."
+      "empty": "Tiada produk berbayar dalam tempoh ini.",
+      "unitsSold_one": "{{count}} unit terjual",
+      "unitsSold_other": "{{count}} unit terjual",
+      "sold_one": "{{count}} terjual",
+      "sold_other": "{{count}} terjual"
     },
     "rated": {
       "eyebrow": "KEGEMARAN PELANCONG",
@@ -1486,7 +1558,11 @@
       "emptyInsight": "Ulasan yang diterbitkan akan muncul di sini.",
       "travellerReviews": "{{count}} ulasan pelancong",
       "reviews": "{{count}} ulasan",
-      "empty": "Tiada ulasan diterbitkan dalam tempoh ini."
+      "empty": "Tiada ulasan diterbitkan dalam tempoh ini.",
+      "travellerReviews_one": "{{count}} ulasan pelancong",
+      "travellerReviews_other": "{{count}} ulasan pelancong",
+      "reviews_one": "{{count}} ulasan",
+      "reviews_other": "{{count}} ulasan"
     }
   },
   "transactions": {
@@ -1503,7 +1579,9 @@
     "recentOrder": "Pesanan terkini",
     "status": "Status",
     "vendorTotal": "Jumlah vendor",
-    "view": "Lihat"
+    "view": "Lihat",
+    "quantityAndLines_one": "Kuantiti: {{quantity}} · {{count}} {{lineLabel}}",
+    "quantityAndLines_other": "Kuantiti: {{quantity}} · {{count}} {{lineLabel}}"
   },
   "claim": {
     "availableAfterSignIn": "Tersedia selepas log masuk",
@@ -1666,7 +1744,11 @@
       "unlimitedPerCustomer": "Tanpa had setiap pelanggan",
       "unlimitedTotalUses": "Jumlah penggunaan tanpa had",
       "validFrom": "Sah dari",
-      "validUntil": "Sah sehingga"
+      "validUntil": "Sah sehingga",
+      "totalUses_one": "{{count}} jumlah penggunaan",
+      "totalUses_other": "{{count}} jumlah penggunaan",
+      "perCustomer_one": "{{count}} setiap pelanggan",
+      "perCustomer_other": "{{count}} setiap pelanggan"
     },
     "csv": {
       "addAnotherRow": "Tambah baris baucar lain",
@@ -1735,7 +1817,25 @@
       "validUntil": "Sah sehingga",
       "value": "Nilai",
       "voucherName": "Nama baucar",
-      "voucherNumber": "Baucar {{number}}"
+      "voucherNumber": "Baucar {{number}}",
+      "rows_one": "{{count}} baris",
+      "rows_other": "{{count}} baris",
+      "readyCount_one": "{{count}} sedia",
+      "readyCount_other": "{{count}} sedia",
+      "attentionCount_one": "{{count}} perlu diberi perhatian",
+      "attentionCount_other": "{{count}} perlu diberi perhatian",
+      "blankCodesCount_one": "{{count}} kod kosong",
+      "blankCodesCount_other": "{{count}} kod kosong",
+      "generatedPreview_one": "Pratonton kod dijana · {{count}} kod",
+      "generatedPreview_other": "Pratonton kod dijana · {{count}} kod"
     }
+  },
+  "strictMigration": {
+    "redemptionModeRequired": "Mod penebusan *",
+    "outletMeta": "{{location}} · ID {{id}}",
+    "orderStatusValue": "Status pesanan: {{status}}",
+    "bookingReference": "{{date}} · #{{reference}}",
+    "specificOutletOptional": "Cawangan tertentu (pilihan)",
+    "dashboardTodayForVendor": "Inilah perkembangan {{vendor}} hari ini."
   }
 }

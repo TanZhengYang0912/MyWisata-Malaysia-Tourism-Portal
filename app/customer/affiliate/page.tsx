@@ -24,6 +24,7 @@ import type { AffiliateCampaignStat, AffiliateCommission, AffiliateDailyClicks, 
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 interface StatsResponse {
   affiliateCode: string | null;
@@ -133,11 +134,11 @@ export default function AffiliateDashboardPage() {
     setGenerating(true);
     try {
       const response = await fetch("/api/affiliate/link", { method: "POST" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) { showFeedback("error", payload.error?.message ?? "Could not create affiliate link."); return; }
-      showFeedback("success", "Affiliate link is ready to share.");
+      await response.json().catch(() => ({}));
+      if (!response.ok) { showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed")); return; }
+      showFeedback("success", tCustomer("strictMigration.affiliate.linkReady"));
     } catch {
-      showFeedback("error", "Could not create affiliate link. Please try again.");
+      showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed"));
     } finally {
       setGenerating(false);
       loadStats();
@@ -179,7 +180,7 @@ export default function AffiliateDashboardPage() {
   }
 
   if (!currentUser) {
-    return <CustomerPageShell><EmptyState title="Sign in required" description="Sign in to see your affiliate dashboard." /></CustomerPageShell>;
+    return <CustomerPageShell><EmptyState title={tCustomer("strictMigration.affiliate.signInRequired")} description={tCustomer("strictMigration.affiliate.signInDescription")} /></CustomerPageShell>;
   }
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —
@@ -188,9 +189,9 @@ export default function AffiliateDashboardPage() {
     return (
       <>
         <CustomerPageTitle
-          eyebrow="Community"
-          title="Earn & Share"
-          description="Share activities you love and earn commission when someone books through your link."
+          eyebrow={tCustomer("ui.recommendations.community")}
+          title={tCustomer("accountItems.earnShare.label")}
+          description={tCustomer("strictMigration.affiliate.eligibilityDescription")}
           icon={<Gift size={14} />}
         />
         <CustomerPageShell className="pt-0 sm:pt-0">
@@ -198,9 +199,9 @@ export default function AffiliateDashboardPage() {
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Gift size={24} className="text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground mb-6">Verify your account to unlock affiliate sharing and earnings.</p>
+            <p className="text-sm text-muted-foreground mb-6">{tCustomer("strictMigration.affiliate.verifyUnlock")}</p>
             <Button asChild>
-              <Link href="/customer/kyc">Verify my account</Link>
+              <Link href="/customer/kyc">{tCustomer("strictMigration.affiliate.verifyAccount")}</Link>
             </Button>
           </div>
         </CustomerPageShell>
@@ -211,8 +212,8 @@ export default function AffiliateDashboardPage() {
   if (stats === null) {
     return (
       <CustomerPageShell><EmptyState
-        title="Couldn't load your stats"
-        description="Something went wrong loading your affiliate dashboard. Try refreshing the page."
+        title={tCustomer("ui.states.noStats")}
+        description={tCustomer("strictMigration.affiliate.loadFailed")}
       /></CustomerPageShell>
     );
   }
@@ -224,9 +225,9 @@ export default function AffiliateDashboardPage() {
   return (
     <>
       <CustomerPageTitle
-        eyebrow="Community"
-        title="Earn & Share"
-        description="Share local experiences you love and track the rewards generated through your referral link."
+        eyebrow={tCustomer("ui.recommendations.community")}
+        title={tCustomer("accountItems.earnShare.label")}
+        description={tCustomer("strictMigration.affiliate.description")}
         icon={<Gift size={14} />}
       />
 
@@ -234,37 +235,37 @@ export default function AffiliateDashboardPage() {
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Clicks</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.affiliate.clicks")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.clicks}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">People who ordered</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("strictMigration.affiliate.peopleOrdered")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.referrals}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Pending</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.wallet.destinationStatus.pending")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
-            RM {stats.totals.pendingEarnings.toFixed(2)}
+            {MYR_CODE} {stats.totals.pendingEarnings.toFixed(2)}
           </p>
           {Number.isFinite(nearestClearsInDays) && (
             <p className="text-[0.625rem] text-muted-foreground mt-0.5">
-              clears in {nearestClearsInDays} day{nearestClearsInDays === 1 ? "" : "s"}
+              {tCustomer("strictMigration.affiliate.clearsIn", { count: nearestClearsInDays })}
             </p>
           )}
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">Available</p>
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.booking.available")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
-            RM {stats.totals.availableToWithdraw.toFixed(2)}
+            {MYR_CODE} {stats.totals.availableToWithdraw.toFixed(2)}
           </p>
           {stats.totals.availableToWithdraw > 0 ? (
             <Button size="sm" asChild className="h-6 text-[0.6875rem] px-2">
               <Link href="/customer/wallet">
-                <Wallet size={11} /> Cash Out
+                <Wallet size={11} /> {tCustomer("strictMigration.affiliate.cashOut")}
               </Link>
             </Button>
           ) : (
-            <p className="text-[0.625rem] text-muted-foreground">Earn commission by sharing to withdraw</p>
+            <p className="text-[0.625rem] text-muted-foreground">{tCustomer("strictMigration.affiliate.earnToWithdraw")}</p>
           )}
         </div>
       </div>
@@ -274,10 +275,10 @@ export default function AffiliateDashboardPage() {
           <p className="text-sm font-bold text-foreground capitalize">{stats.tier.tierName} · {(stats.tier.rate * 100).toFixed(0)}%</p>
         </div>
         <p className="text-xs text-muted-foreground mb-2">
-          {stats.tier.referralCount} confirmed referral{stats.tier.referralCount === 1 ? "" : "s"}
+          {tCustomer("strictMigration.affiliate.confirmedReferrals", { count: stats.tier.referralCount })}
           {stats.tier.nextTier
-            ? ` · ${stats.tier.referralsToNext} more to reach ${stats.tier.nextTier.tierName} (${(stats.tier.nextTier.rate * 100).toFixed(0)}%)`
-            : " · you're at the top tier"}
+            ? tCustomer("strictMigration.affiliate.nextTier", { count: stats.tier.referralsToNext, tier: stats.tier.nextTier.tierName, percent: (stats.tier.nextTier.rate * 100).toFixed(0) })
+            : tCustomer("strictMigration.affiliate.topTier")}
         </p>
         {stats.tier.nextTier && (
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -304,24 +305,24 @@ export default function AffiliateDashboardPage() {
               {stats.affiliateUrl}
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">You don&apos;t have an affiliate link yet.</span>
+            <span className="text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.noLink")}</span>
           )}
         </div>
         {stats.affiliateCode ? (
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={copyLink}>
-              <Copy size={14} /> {copied ? "Copied" : "Copy"}
+              <Copy size={14} /> {copied ? tCustomer("strictMigration.affiliate.copied") : tCustomer("strictMigration.affiliate.copy")}
             </Button>
             {/* CLAUDE-P4-EXTRAS-2.md Extra 4: the generic "my code" QR — no
                 slug, same URL the Copy button copies. Eligibility is already
                 enforced by this page's own gate above (an ineligible user
                 never reaches this section), unlike the per-product QR on
                 ShareButton, which has to resolve eligibility itself. */}
-            <AffiliateQrCode resolveUrl={() => stats.affiliateUrl!} label="My affiliate link" />
+            <AffiliateQrCode resolveUrl={() => stats.affiliateUrl!} label={tCustomer("strictMigration.affiliate.myLink")} />
           </div>
         ) : (
           <Button size="sm" onClick={generateLink} disabled={generating} className="shrink-0">
-            {generating ? "Generating…" : "Generate my link"}
+            {generating ? tCustomer("strictMigration.affiliate.generating") : tCustomer("strictMigration.affiliate.generateLink")}
           </Button>
         )}
       </div>
@@ -332,22 +333,22 @@ export default function AffiliateDashboardPage() {
       {stats.affiliateCode && (
         <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
-            <Megaphone size={13} /> Campaigns
+            <Megaphone size={13} /> {tCustomer("ui.affiliate.campaigns.title")}
           </p>
           <p className="text-xs text-muted-foreground mb-3">
-            Label a link (e.g. &ldquo;instagram-story-jan&rdquo;) to see which campaign converts, not just which platform.
+            {tCustomer("ui.affiliate.campaigns.description")}
           </p>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <input
               type="text"
               value={campaignInput}
               onChange={(e) => setCampaignInput(e.target.value)}
-              placeholder="Campaign name"
+              placeholder={tCustomer("ui.affiliate.campaigns.namePlaceholder")}
               maxLength={50}
               className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
             />
             <Button size="sm" onClick={() => copyCampaignLink(campaignInput)} disabled={!sanitizeCampaign(campaignInput)}>
-              <Copy size={14} /> {campaignCopied ? "Copied" : "Get link"}
+              <Copy size={14} /> {campaignCopied ? tCustomer("ui.affiliate.campaigns.copied") : tCustomer("ui.affiliate.campaigns.getLink")}
             </Button>
           </div>
           {recentCampaigns.length > 0 && (
@@ -369,19 +370,19 @@ export default function AffiliateDashboardPage() {
               <table className="w-full text-xs">
                 <thead className="bg-muted text-muted-foreground uppercase tracking-wide">
                   <tr>
-                    <th className="text-left px-3 py-2 font-semibold">Campaign</th>
-                    <th className="text-right px-3 py-2 font-semibold">Clicks</th>
-                    <th className="text-right px-3 py-2 font-semibold">Orders</th>
-                    <th className="text-right px-3 py-2 font-semibold">Earned</th>
+                    <th className="text-left px-3 py-2 font-semibold">{tCustomer("ui.affiliate.campaigns.columns.campaign")}</th>
+                    <th className="text-right px-3 py-2 font-semibold">{tCustomer("ui.affiliate.campaigns.columns.clicks")}</th>
+                    <th className="text-right px-3 py-2 font-semibold">{tCustomer("ui.affiliate.campaigns.columns.orders")}</th>
+                    <th className="text-right px-3 py-2 font-semibold">{tCustomer("ui.affiliate.campaigns.columns.earned")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.byCampaign.map((row) => (
                     <tr key={row.campaign ?? "untagged"} className="border-t border-border">
-                      <td className="px-3 py-2 font-medium text-foreground">{row.campaign ?? "Untagged"}</td>
+                      <td className="px-3 py-2 font-medium text-foreground">{row.campaign ?? tCustomer("ui.affiliate.campaigns.untagged")}</td>
                       <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.clicks}</td>
                       <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.referrals}</td>
-                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">RM {row.earnings.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{MYR_CODE} {row.earnings.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -393,9 +394,9 @@ export default function AffiliateDashboardPage() {
 
       <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
-          <Share2 size={13} /> Funnel
+          <Share2 size={13} /> {tCustomer("strictMigration.affiliate.funnel")}
         </p>
-        <AffiliateFunnelSection funnel={stats.funnel} conversionLabel="Bookings" />
+        <AffiliateFunnelSection funnel={stats.funnel} conversionLabel={tCustomer("ui.labels.bookings")} />
       </div>
 
       <div className="mb-8">
@@ -406,7 +407,7 @@ export default function AffiliateDashboardPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
-              <th className="text-left px-4 py-2.5 font-semibold">Activity</th>
+              <th className="text-left px-4 py-2.5 font-semibold">{tCustomer("categories.activity")}</th>
               {(["shares", "clicks", "referrals", "earnings"] as SortKey[]).map((key) => (
                 <th key={key} className="text-right px-4 py-2.5 font-semibold">
                   <button onClick={() => toggleSort(key)} className="uppercase tracking-wide">
@@ -421,7 +422,7 @@ export default function AffiliateDashboardPage() {
             {sortedProducts.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No activity shared yet.
+                  {tCustomer("strictMigration.affiliate.noSharedActivity")}
                 </td>
               </tr>
             ) : (
@@ -432,7 +433,7 @@ export default function AffiliateDashboardPage() {
                   <td className="px-4 py-2.5 text-right text-foreground">{p.clicks}</td>
                   <td className="px-4 py-2.5 text-right text-foreground">{p.referrals}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
-                    RM {p.earnings.toFixed(2)}
+                    {MYR_CODE} {p.earnings.toFixed(2)}
                   </td>
                 </tr>
               ))
@@ -442,22 +443,22 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="my-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Clicks — last 30 days</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">{tCustomer("strictMigration.affiliate.clicksLast30Days")}</p>
         <AffiliateClicksChart data={stats.clicksByDay} />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
         <div className="px-4 py-2.5 bg-muted flex items-center justify-between flex-wrap gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Earnings history</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{tCustomer("strictMigration.affiliate.earningsHistory")}</p>
           <div className="flex items-center gap-2">
             <select
               value={exportRange}
               onChange={(e) => setExportRange(e.target.value as EarningsExportRange)}
               className="h-7 rounded-lg border border-border px-2 text-[0.6875rem] bg-background text-foreground"
             >
-              <option value="month">This month</option>
-              <option value="year">This year</option>
-              <option value="all">All time</option>
+              <option value="month">{tCustomer("strictMigration.affiliate.thisMonth")}</option>
+              <option value="year">{tCustomer("strictMigration.affiliate.thisYear")}</option>
+              <option value="all">{tCustomer("strictMigration.affiliate.allTime")}</option>
             </select>
             <Button size="sm" variant="outline" className="h-7 text-[0.6875rem] px-2" onClick={downloadEarnings} disabled={exporting}>
               <Download size={12} /> {exporting ? "Exporting…" : "Download earnings (CSV)"}
@@ -466,7 +467,7 @@ export default function AffiliateDashboardPage() {
         </div>
         <div className="divide-y divide-border">
           {stats.commissions.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">No commissions yet.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.noCommissions")}</p>
           ) : (
             stats.commissions.map((c) => (
               <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-3">
@@ -474,7 +475,7 @@ export default function AffiliateDashboardPage() {
                   <p className="text-sm font-medium text-foreground truncate">{c.productName ?? "Referral"}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(c.createdAt).toLocaleDateString()}
-                    {c.orderAmount !== null && ` · order RM ${c.orderAmount.toFixed(2)}`} · {(c.rate * 100).toFixed(0)}% rate
+                    {c.orderAmount !== null && ` · order RM ${c.orderAmount.toFixed(2)}`} · {tCustomer("strictMigration.affiliate.rate", { percent: (c.rate * 100).toFixed(0) })}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {c.status === "confirmed" && "Cleared to wallet"}
@@ -487,7 +488,7 @@ export default function AffiliateDashboardPage() {
                 <p
                   className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
                 >
-                  RM {c.amount.toFixed(2)}
+                  {MYR_CODE} {c.amount.toFixed(2)}
                 </p>
               </div>
             ))

@@ -112,6 +112,26 @@ describe("verifyI18nCoverage", () => {
     expect(result.errors.join("\n")).toContain("empty translation value");
   });
 
+  it("reports interpolation variables that differ from English", async () => {
+    const root = createMiniRepository();
+    writeJson(root, "app/i18n/locales/en/common.json", {
+      ui: { greeting: "Hello {{name}}", tagline: "Explore {{count}} places" },
+    });
+    writeJson(root, "app/i18n/locales/zh-CN/common.json", {
+      ui: { greeting: "你好 {{user}}", tagline: "探索 {{count}} 个地点" },
+    });
+    writeJson(root, "app/i18n/locales/ms/common.json", {
+      ui: { greeting: "Hai {{name}}", tagline: "Terokai {{count}} tempat" },
+    });
+
+    const result = await verify(root);
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join("\n")).toContain("locale=zh-CN");
+    expect(result.errors.join("\n")).toContain("key=ui.greeting");
+    expect(result.errors.join("\n")).toContain("interpolation variables differ from en");
+  });
+
   it("reports a tracked UI inventory file that is missing", async () => {
     const root = createMiniRepository();
     unlinkSync(join(root, "app/customer/page.tsx"));
@@ -127,5 +147,5 @@ describe("verifyI18nCoverage", () => {
     expect(existsSync(scriptPath)).toBe(true);
     const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
     expect(result.status).toBe(0);
-  });
+  }, 15_000);
 });

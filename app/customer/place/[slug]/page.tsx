@@ -22,6 +22,7 @@ import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export default async function PlacePage({ params }: Props) {
         <div className="relative flex min-h-[330px] flex-col justify-end p-5 sm:min-h-[390px] sm:p-8">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-              {t(`ui.place.levels.${place.level}`, { defaultValue: place.level })}
+              {t(`ui.place.levels.${place.level}`)}
             </span>
             <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${entry.tone}`}>
               {entry.text}
@@ -135,27 +136,27 @@ export default async function PlacePage({ params }: Props) {
             <div className="flex items-start gap-2.5">
               <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Location</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("ui.labels.location")}</p>
                 <p className="mt-1 font-semibold text-foreground">{place.district ? `${place.district}, ${place.state}` : place.state}</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 text-base font-bold text-primary" aria-hidden="true">RM</span>
+              <span className="mt-0.5 text-base font-bold text-primary" aria-hidden="true">{MYR_CODE}</span>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Entry</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("strictMigration.place.entry")}</p>
                 <p className="mt-1 font-semibold text-foreground">{entry.text}</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
               <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Local partner</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("ui.search.localPartner")}</p>
                 <p className="mt-1 font-semibold text-foreground">{operator?.name ?? "Open destination"}</p>
               </div>
             </div>
           </div>
           <a href={directionsHref} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-            Get directions <ArrowUpRight size={15} aria-hidden="true" />
+            {t("ui.actions.getDirections")} <ArrowUpRight size={15} aria-hidden="true" />
           </a>
         </div>
       </section>

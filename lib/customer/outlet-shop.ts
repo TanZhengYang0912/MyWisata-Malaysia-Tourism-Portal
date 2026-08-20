@@ -13,6 +13,8 @@ export interface PublicOutletProfileInput {
   phone?: string | null;
   email?: string | null;
   operatingHours?: unknown;
+  introTitle?: string;
+  introBody?: string;
 }
 
 export interface PublicOutletProfile {
@@ -113,8 +115,8 @@ export function buildPublicOutletProfile(input: PublicOutletProfileInput): Publi
     operatingHours: input.operatingHours && typeof input.operatingHours === 'object'
       ? input.operatingHours
       : DEFAULT_OPERATING_HOURS,
-    introTitle: 'A local day, made memorable',
-    introBody: `Discover ${vendorName} in ${city}: local favourites, thoughtful hosts and experiences designed around this place.`,
+    introTitle: clean(input.introTitle) || 'A local day, made memorable',
+    introBody: clean(input.introBody) || `Discover ${vendorName} in ${city}: local favourites, thoughtful hosts and experiences designed around this place.`,
   };
 }
 

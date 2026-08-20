@@ -13,7 +13,7 @@ describe('voucher CSV builder layout', () => {
     expect(componentSource).toContain('min-w-0 max-h-[96vh]');
     expect(componentSource).toContain('min-w-0 flex-1 overflow-y-auto');
     expect(componentSource).toContain('min-w-[1748px]');
-    expect(componentSource).toContain('Scroll horizontally to see more fields');
+    expect(componentSource).toContain("t('voucher.csv.scrollFields')");
     expect(componentSource).not.toContain('min-w-[2050px]');
   });
 });

@@ -109,21 +109,21 @@ export default function RecommendationsPage() {
     if (!currentUser) return;
     setError("");
 
-    if (form.name.trim().length < 3) { setError(tCustomer("ui.recommendations.vendorNameMin", { defaultValue: "Please enter a vendor or business name with at least 3 characters." })); return; }
-    if (form.description.trim().length < 20 || form.whyRecommend.trim().length < 20) { setError(tCustomer("ui.recommendations.descriptionMin", { defaultValue: "Please enter a description and recommendation reason with at least 20 characters." })); return; }
+    if (form.name.trim().length < 3) { setError(tCustomer("ui.recommendations.vendorNameMin")); return; }
+    if (form.description.trim().length < 20 || form.whyRecommend.trim().length < 20) { setError(tCustomer("ui.recommendations.descriptionMin")); return; }
     const selectedCategory = categories.find((category) => category.id === form.category);
-    if (!selectedCategory) { setError(tCustomer("ui.recommendations.selectCategory", { defaultValue: "Select a recommendation category." })); return; }
-    if (!location) { setError(tCustomer("ui.recommendations.selectLocation", { defaultValue: "Select the place from Google Maps." })); return; }
-    if (images.length < 1) { setError(tCustomer("ui.recommendations.addPhoto", { defaultValue: "Add 1 to 5 photos." })); return; }
-    if (!form.phone.trim() && !form.email.trim() && !form.website.trim()) { setError(tCustomer("ui.recommendations.addContact", { defaultValue: "Add at least one contact method." })); return; }
-    if (!form.imageAttested) { setError(tCustomer("ui.recommendations.attestPhotos", { defaultValue: "Confirm that you have permission to publish these images." })); return; }
+    if (!selectedCategory) { setError(tCustomer("ui.recommendations.selectCategory")); return; }
+    if (!location) { setError(tCustomer("ui.recommendations.selectLocation")); return; }
+    if (images.length < 1) { setError(tCustomer("ui.recommendations.addPhoto")); return; }
+    if (!form.phone.trim() && !form.email.trim() && !form.website.trim()) { setError(tCustomer("ui.recommendations.addContact")); return; }
+    if (!form.imageAttested) { setError(tCustomer("ui.recommendations.attestPhotos")); return; }
 
     setSubmitting(true);
     try {
       const stagedImageIds = await Promise.all(images.map(async (image) => {
         const upload = await fetch('/api/recommendations/images', { method: 'POST', body: (() => { const data = new FormData(); data.append('image', image); return data; })() });
         const uploadBody = await upload.json().catch(() => ({}));
-        if (!upload.ok) throw new Error(uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError", { defaultValue: "Unable to upload image." }));
+        if (!upload.ok) throw new Error(uploadBody?.error?.message ?? tCustomer("ui.recommendations.uploadError"));
         return uploadBody.data.stagedImageId as string;
       }));
       const res = await fetch('/api/recommendations', {
@@ -142,7 +142,7 @@ export default function RecommendationsPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError", { defaultValue: "Failed to submit." }), (key) => tCustomer(key)));
+        setError(recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError"), (key) => tCustomer(key)));
         return;
       }
       const newRec: VendorRecommendation = {
@@ -159,9 +159,9 @@ export default function RecommendationsPage() {
       setShowForm(false);
       setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false });
       setLocation(null); setImages([]);
-      showFeedback("success", tCustomer("ui.recommendations.submitted", { defaultValue: "Vendor recommendation submitted for review." }));
+      showFeedback("success", tCustomer("ui.recommendations.submitted"));
     } catch (err) {
-      const message = err instanceof Error ? err.message : tCustomer("ui.recommendations.submitError", { defaultValue: "Failed to submit." });
+      const message = err instanceof Error ? err.message : tCustomer("ui.recommendations.submitError");
       setError(message);
       showFeedback("error", message);
     } finally {
@@ -179,12 +179,12 @@ export default function RecommendationsPage() {
   return (
     <>
       <CustomerPageTitle
-        eyebrow={tCustomer("ui.recommendations.community", { defaultValue: "Community" })}
-        title={tCustomer("ui.recommendations.title", { defaultValue: "Recommend a Vendor" })}
-        description={tCustomer("ui.recommendations.description", { defaultValue: "Know a great local experience that deserves to be on MyWisata? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation." })}
+        eyebrow={tCustomer("ui.recommendations.community")}
+        title={tCustomer("ui.recommendations.title")}
+        description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
         actions={<Button onClick={() => setShowForm((v) => !v)} className="flex items-center gap-2">
-          <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend", { defaultValue: "Recommend" })}
+          <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend")}
         </Button>}
       />
 
@@ -192,28 +192,28 @@ export default function RecommendationsPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
-          <h2 className="font-bold text-foreground">{tCustomer("ui.recommendations.new", { defaultValue: "New Recommendation" })}</h2>
+          <h2 className="font-bold text-foreground">{tCustomer("ui.recommendations.new")}</h2>
 
           <div className="space-y-1">
-            <label htmlFor="recommendation-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.vendorBusinessName", { defaultValue: "Vendor / Business Name" })}</label>
+            <label htmlFor="recommendation-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.vendorBusinessName")}</label>
             <input
               id="recommendation-name"
               required
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder={tCustomer("ui.recommendations.vendorNamePlaceholder", { defaultValue: "e.g. Aunty Lim's Nyonya Kitchen" })}
+              placeholder={tCustomer("ui.recommendations.vendorNamePlaceholder")}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="recommendation-description" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.descriptionLabel", { defaultValue: "Description" })}</label>
+            <label htmlFor="recommendation-description" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.descriptionLabel")}</label>
             <textarea
               id="recommendation-description"
               required
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder={tCustomer("ui.recommendations.descriptionPlaceholder", { defaultValue: "Describe what makes this vendor special (at least 20 characters)…" })}
+              placeholder={tCustomer("ui.recommendations.descriptionPlaceholder")}
               rows={3}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
@@ -221,14 +221,14 @@ export default function RecommendationsPage() {
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="why-recommend" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.why", { defaultValue: "Why do you recommend this place?" })}</label>
-            <textarea id="why-recommend" required value={form.whyRecommend} onChange={(e) => setForm((f) => ({ ...f, whyRecommend: e.target.value }))} placeholder={tCustomer("ui.recommendations.whyPlaceholder", { defaultValue: "Share why travellers should discover this place…" })} rows={3} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30" />
+            <label htmlFor="why-recommend" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.why")}</label>
+            <textarea id="why-recommend" required value={form.whyRecommend} onChange={(e) => setForm((f) => ({ ...f, whyRecommend: e.target.value }))} placeholder={tCustomer("ui.recommendations.whyPlaceholder")} rows={3} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30" />
             <p className="text-[10px] text-muted-foreground text-right">{form.whyRecommend.length}/2000</p>
           </div>
 
           <div className="space-y-1">
             <div className="space-y-1">
-              <label htmlFor="recommendation-category" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.category", { defaultValue: "Category" })}</label>
+              <label htmlFor="recommendation-category" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.category")}</label>
               <select
                 id="recommendation-category"
                 required
@@ -237,10 +237,10 @@ export default function RecommendationsPage() {
                 disabled={categories.length === 0}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               >
-                <option value="">{tCustomer("ui.recommendations.selectCategoryOption", { defaultValue: "Select category..." })}</option>
+                <option value="">{tCustomer("ui.recommendations.selectCategoryOption")}</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              {categories.length === 0 && <p className="text-xs text-destructive">{tCustomer("ui.recommendations.noCategories", { defaultValue: "No recommendation categories are available. Please contact support." })}</p>}
+              {categories.length === 0 && <p className="text-xs text-destructive">{tCustomer("ui.recommendations.noCategories")}</p>}
             </div>
 
           </div>
@@ -248,29 +248,29 @@ export default function RecommendationsPage() {
           <GooglePlacePicker value={location} onChange={setLocation} />
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.recommendations.photos", { defaultValue: "Add 1 to 5 photos" })}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.recommendations.photos")}</p>
             <label className="group flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] px-4 py-6 text-center transition hover:border-primary hover:bg-primary/[0.07]">
               <ImagePlus size={26} aria-hidden="true" className="mb-2 text-primary transition-transform group-hover:scale-110" />
-              <span className="text-sm font-semibold text-primary">{tCustomer("ui.recommendations.choosePhotos", { defaultValue: "Choose photos" })}</span>
-              <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint", { defaultValue: "JPEG, PNG or WebP · up to 5 MB each" })}</span>
-              <input aria-label={tCustomer("ui.recommendations.photosLabel", { defaultValue: "Add 1 to 5 photos" })} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { setImages(Array.from(event.target.files ?? []).slice(0, 5)); event.currentTarget.value = ""; }} className="sr-only" />
+              <span className="text-sm font-semibold text-primary">{tCustomer("ui.recommendations.choosePhotos")}</span>
+              <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint")}</span>
+              <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { setImages(Array.from(event.target.files ?? []).slice(0, 5)); event.currentTarget.value = ""; }} className="sr-only" />
             </label>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={tCustomer("ui.recommendations.removePhoto", { name: file.name, defaultValue: "Remove {{name}}" })} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} aria-hidden="true" /></button><p className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}
-            <p className="text-xs text-muted-foreground">{images.length > 0 ? tCustomer("ui.recommendations.photosSelected", { count: images.length, defaultValue: "{{count}} photo{{suffix}} selected" , suffix: images.length === 1 ? "" : "s" }) : tCustomer("ui.recommendations.uploadHint", { defaultValue: "Click the upload area to add photos." })}</p>
+            {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={tCustomer("ui.recommendations.removePhoto", { name: file.name })} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} aria-hidden="true" /></button><p className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}
+            <p className="text-xs text-muted-foreground">{images.length > 0 ? tCustomer("ui.recommendations.photosSelected", { count: images.length, suffix: images.length === 1 ? "" : "s" }) : tCustomer("ui.recommendations.uploadHint")}</p>
           </div>
 
-          <div className="space-y-2"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.contact", { defaultValue: "Add at least one contact method" })}</p><div className="grid gap-2 sm:grid-cols-3"><input aria-label={tCustomer("ui.recommendations.phone", { defaultValue: "Phone" })} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={tCustomer("ui.recommendations.phone", { defaultValue: "Phone" })} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.email", { defaultValue: "Email" })} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder={tCustomer("ui.recommendations.email", { defaultValue: "Email" })} type="email" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.website", { defaultValue: "Website" })} value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder={tCustomer("ui.recommendations.website", { defaultValue: "Website" })} type="url" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div></div>
+          <div className="space-y-2"><p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.recommendations.contact")}</p><div className="grid gap-2 sm:grid-cols-3"><input aria-label={tCustomer("ui.recommendations.phone")} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={tCustomer("ui.recommendations.phone")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.email")} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder={tCustomer("ui.recommendations.email")} type="email" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input aria-label={tCustomer("ui.recommendations.website")} value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} placeholder={tCustomer("ui.recommendations.website")} type="url" className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div></div>
 
-          <label className="flex items-start gap-2 text-xs text-muted-foreground"><input aria-label={tCustomer("ui.recommendations.imagePermission", { defaultValue: "I own these images or have permission to publish them" })} type="checkbox" checked={form.imageAttested} onChange={(e) => setForm((f) => ({ ...f, imageAttested: e.target.checked }))} className="mt-0.5" /><span>{tCustomer("ui.recommendations.imagePermission", { defaultValue: "I own these images or have permission to publish them" })}</span></label>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground"><input aria-label={tCustomer("ui.recommendations.imagePermission")} type="checkbox" checked={form.imageAttested} onChange={(e) => setForm((f) => ({ ...f, imageAttested: e.target.checked }))} className="mt-0.5" /><span>{tCustomer("ui.recommendations.imagePermission")}</span></label>
 
           {error && <p role="alert" aria-live="assertive" className="text-xs text-red-500">{error}</p>}
 
           <div className="flex gap-2">
             <Button type="submit" disabled={submitting || categories.length === 0} className="flex-1">
-              {submitting ? tCustomer("ui.states.submitting", { defaultValue: "Submitting…" }) : tCustomer("ui.recommendations.submit", { defaultValue: "Submit Recommendation" })}
+              {submitting ? tCustomer("ui.states.submitting") : tCustomer("ui.recommendations.submit")}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>{tCustomer("ui.actions.cancel", { defaultValue: "Cancel" })}</Button>
+            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>{tCustomer("ui.actions.cancel")}</Button>
           </div>
         </form>
       )}
@@ -279,7 +279,7 @@ export default function RecommendationsPage() {
         <CustomerPanel className="mb-6 overflow-hidden !p-0 sm:!p-0">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
             <Clock size={14} aria-hidden="true" className="text-accent" />
-            <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.recommendations.pendingReview", { count: pending.length, defaultValue: "Pending Review ({{count}})" })}</h2>
+            <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.recommendations.pendingReview", { count: pending.length })}</h2>
           </div>
           <div className="divide-y divide-border">
             {pending.map((r) => (
@@ -287,10 +287,10 @@ export default function RecommendationsPage() {
                 <div>
                   <p className="text-sm font-semibold text-foreground">{r.name}</p>
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`, { defaultValue: getRecommendationStatus(r.status).description })}</p>
-                  {r.status === "pending" && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.notEditable", { defaultValue: "Pending recommendations cannot be edited." })}</p>}
-                  {r.status === "changes_requested" && <button type="button" onClick={() => setShowForm(true)} className="mt-1 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.updateDetails", { defaultValue: "Update the requested details" })}</button>}
-                  {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor", { defaultValue: "View contributor profile" })}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                  <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
+                  {r.status === "pending" && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.notEditable")}</p>}
+                  {r.status === "changes_requested" && <button type="button" onClick={() => setShowForm(true)} className="mt-1 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.updateDetails")}</button>}
+                  {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -301,18 +301,18 @@ export default function RecommendationsPage() {
 
       <CustomerPanel className="overflow-hidden !p-0 sm:!p-0">
         <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.recommendations.myRecommendations", { defaultValue: "My Recommendations" })}</h2>
+          <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.recommendations.myRecommendations")}</h2>
         </div>
         {(recs ?? []).length === 0 ? (
           <div className="px-5 py-8 text-center">
             <Star size={32} aria-hidden="true" className="text-muted-foreground mx-auto mb-3 opacity-40" />
-            <p className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneYet", { defaultValue: "You haven&apos;t recommended any vendors yet." })}</p>
+            <p className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneYet")}</p>
             <button onClick={() => setShowForm(true)} className="mt-3 text-sm font-semibold text-primary">
-              {tCustomer("ui.recommendations.makeFirst", { defaultValue: "Make your first recommendation →" })}
+              {tCustomer("ui.recommendations.makeFirst")}
             </button>
           </div>
         ) : reviewed.length === 0 ? (
-          <div className="px-5 py-5 text-center text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneReviewed", { defaultValue: "No reviewed recommendations yet." })}</div>
+          <div className="px-5 py-5 text-center text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneReviewed")}</div>
         ) : (
           <div className="divide-y divide-border">
             {reviewed.map((r) => (
@@ -326,8 +326,8 @@ export default function RecommendationsPage() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{r.name}</p>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`, { defaultValue: getRecommendationStatus(r.status).description })}</p>
-                    {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor", { defaultValue: "View contributor profile" })}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                    <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
+                    {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
                   </div>
                 </div>
                 <StatusBadge status={r.status} />

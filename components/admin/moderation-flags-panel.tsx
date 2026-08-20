@@ -103,9 +103,8 @@ export function ModerationFlagsPanel() {
           <div key={f.id} className="flex items-start justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
             <div>
               <p className="text-foreground">
-                <span className="font-semibold">{f.userName}</span>{" "}
                 <span className="capitalize text-muted-foreground font-normal">
-                  · {t(SOURCE_LABEL[f.sourceType])} · {t(FLAG_TYPE_LABEL[f.flagType] ?? "moderation.flagTypes.unknown", { defaultValue: f.flagType })}
+                  {t("strictMigration.moderationFlagSummary", { user: f.userName, source: t(SOURCE_LABEL[f.sourceType]), flagType: t(FLAG_TYPE_LABEL[f.flagType] ?? "moderation.flagTypes.unknown") })}
                 </span>
               </p>
               {f.originalExcerpt && (

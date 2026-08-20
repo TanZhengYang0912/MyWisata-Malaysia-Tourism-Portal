@@ -214,9 +214,8 @@ export function StaffConductPanel() {
                 {t("staffConduct.kindLabel.flag")}
               </span>
             )}
-            <span className="font-semibold">{f.flaggedAdminName}</span>{" "}
             <span className="capitalize text-muted-foreground font-normal">
-              · {t(SOURCE_LABEL[f.source])} · {t("staffConduct.targetPrefix")} {f.targetUserName ?? "—"}
+              {t("strictMigration.staffConduct.flagSummary", { admin: f.flaggedAdminName, source: t(SOURCE_LABEL[f.source]), target: f.targetUserName ?? "—" })}
             </span>{" "}
             <span className={`rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase ${SEVERITY_STYLE[f.severity]}`}>
               {t(SEVERITY_LABEL[f.severity])}

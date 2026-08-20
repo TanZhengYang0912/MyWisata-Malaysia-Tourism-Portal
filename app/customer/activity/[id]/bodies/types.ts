@@ -19,10 +19,10 @@ export interface DetailBodyProps {
  */
 export interface DetailBody {
   /** Kicker above the purchase panel heading. */
-  panelKicker: string;
-  panelTitle: (activity: ComputedActivity) => string;
+  panelKickerKey: string;
+  panelTitleKey: (activity: ComputedActivity) => string;
   /** Line in the mobile bar, e.g. "2 persons" / "2 items". */
-  quantityLabel: (qty: number) => string;
+  quantityLabelKey: string;
   /** Category-specific options between the outlet picker and the quantity row. */
   Options: ComponentType<DetailBodyProps> | null;
 }

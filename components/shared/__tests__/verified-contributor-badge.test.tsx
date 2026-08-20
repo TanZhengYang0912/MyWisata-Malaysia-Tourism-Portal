@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key === "strictMigration.verifiedContributor" ? "Verified Contributor" : key,
+  }),
+}));
 
 describe("VerifiedContributorBadge", () => {
   it("renders an accessible badge only for verified contributors", () => {

@@ -7,7 +7,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 export async function PlaceBreadcrumb({ trail }: { trail: Place[] }) {
   const { t } = await getServerTranslation("customer");
   return (
-    <nav aria-label={t("ui.place.breadcrumb", { defaultValue: "Breadcrumb" })} className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+    <nav aria-label={t("ui.place.breadcrumb")} className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
       <Link href="/customer/explore" className="font-semibold hover:text-foreground">
         {t("ui.place.all")}
       </Link>

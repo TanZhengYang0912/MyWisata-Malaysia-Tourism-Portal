@@ -14,6 +14,13 @@ function flattenJson(value: unknown, prefix = "", entries = new Map<string, unkn
   return entries;
 }
 
+function interpolationVariables(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  return [...value.matchAll(/\{\{\s*([^},\s]+)[^}]*\}\}/g)]
+    .map((match) => match[1])
+    .sort();
+}
+
 describe("translation resources", () => {
   it("keeps every non-English namespace in parity with English", async () => {
     const resources = Object.fromEntries(
@@ -31,9 +38,13 @@ describe("translation resources", () => {
         for (const [key, value] of localeEntries) {
           if (typeof value === "string") {
             expect(value.trim(), `${locale}/${namespace}/${key} should not be empty`).not.toBe("");
+            expect(
+              interpolationVariables(value),
+              `${locale}/${namespace}/${key} interpolation parity`,
+            ).toEqual(interpolationVariables(flattenJson(englishResources[namespace]).get(key)));
           }
         }
       }
     }
-  });
+  }, 15_000);
 });

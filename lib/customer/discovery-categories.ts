@@ -47,8 +47,15 @@ export function getDiscoveryCategoryLabel(slug: string | null | undefined): stri
 }
 
 export function getDiscoveryCategoryLabelKey(slug: string | null | undefined): string {
-  const canonical = canonicalCategorySlug(slug);
-  return DISCOVERY_CATEGORIES.find((category) => category.slug === canonical)?.labelKey ?? "categories.activity";
+  return getOptionalDiscoveryCategoryLabelKey(slug) ?? "categories.activity";
+}
+
+/** Returns a translation key only for known system categories. Unknown database values remain user-authored content. */
+export function getOptionalDiscoveryCategoryLabelKey(slug: string | null | undefined): string | null {
+  const normalized = slug?.trim().toLowerCase();
+  if (normalized === "hidden_gem") return "categories.hiddenGem";
+  const canonical = canonicalCategorySlug(normalized);
+  return DISCOVERY_CATEGORIES.find((category) => category.slug === canonical)?.labelKey ?? null;
 }
 
 export function isRealCategorySlug(slug: string | null | undefined): slug is RealCategorySlug {

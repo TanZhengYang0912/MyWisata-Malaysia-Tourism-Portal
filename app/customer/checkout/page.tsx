@@ -15,6 +15,7 @@ import type { Voucher } from "@/backend/core/types";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY, resolveCustomerAccess } from "@/lib/auth/customer-capabilities";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
 function attributeCheckout(orderId: string) {
@@ -27,7 +28,7 @@ function attributeCheckout(orderId: string) {
 
 type PaymentChoice = {
   id: string;
-  label: string;
+  labelKey: string;
   icon: typeof CreditCard;
   paymentMethod: "stripe_card" | "ewallet" | "bank_transfer" | "wallet" | "wallet_split";
   paymentProvider: "tng_ewallet_simulator" | "grabpay_simulator" | "bank_transfer_simulator" | null;
@@ -35,12 +36,12 @@ type PaymentChoice = {
 };
 
 const ALL_METHODS = [
-  { id: "stripe_card", label: "Card via Stripe Test Mode", icon: CreditCard, paymentMethod: "stripe_card", paymentProvider: null },
-  { id: "tng_ewallet", label: "Touch ’n Go eWallet — Simulator", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "tng_ewallet_simulator", simulated: true },
-  { id: "grabpay", label: "GrabPay — Simulator", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "grabpay_simulator", simulated: true },
-  { id: "bank_transfer", label: "Bank transfer — Simulator", icon: CreditCard, paymentMethod: "bank_transfer", paymentProvider: "bank_transfer_simulator", simulated: true },
-  { id: "wallet", label: "MyWisata Wallet Balance", icon: Wallet, paymentMethod: "wallet", paymentProvider: null },
-  { id: "wallet_split", label: "Wallet first + card remainder", icon: Wallet, paymentMethod: "wallet_split", paymentProvider: null },
+  { id: "stripe_card", labelKey: "strictMigration.checkout.methods.stripeCard", icon: CreditCard, paymentMethod: "stripe_card", paymentProvider: null },
+  { id: "tng_ewallet", labelKey: "strictMigration.checkout.methods.tng", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "tng_ewallet_simulator", simulated: true },
+  { id: "grabpay", labelKey: "strictMigration.checkout.methods.grabpay", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "grabpay_simulator", simulated: true },
+  { id: "bank_transfer", labelKey: "strictMigration.checkout.methods.bankTransfer", icon: CreditCard, paymentMethod: "bank_transfer", paymentProvider: "bank_transfer_simulator", simulated: true },
+  { id: "wallet", labelKey: "strictMigration.checkout.methods.wallet", icon: Wallet, paymentMethod: "wallet", paymentProvider: null },
+  { id: "wallet_split", labelKey: "strictMigration.checkout.methods.walletSplit", icon: Wallet, paymentMethod: "wallet_split", paymentProvider: null },
 ] satisfies PaymentChoice[];
 
 const METHODS: PaymentChoice[] = ALL_METHODS.filter(
@@ -137,7 +138,7 @@ export default function CheckoutPage() {
   const selectedMethod = METHODS.find((choice) => choice.id === methodId) ?? METHODS[0]!;
 
   if (!currentUser) {
-    return <div className="mx-auto max-w-lg px-4 py-10 sm:px-6"><GuestAccountEmptyState title="Sign in to check out" description="Your selected items stay private and checkout requires a verified account." nextPath="/customer/checkout" /></div>;
+    return <div className="mx-auto max-w-lg px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("strictMigration.checkout.signInTitle")} description={tCustomer("strictMigration.checkout.signInDescription")} nextPath="/customer/checkout" /></div>;
   }
 
   if (!checkoutAllowed) {
@@ -145,7 +146,7 @@ export default function CheckoutPage() {
   }
 
   if (selectedItems.length === 0) {
-    return <EmptyState title={tCustomer("ui.checkout.nothing", { defaultValue: "Nothing to check out" })} description={tCustomer("ui.checkout.selectItems")} action={<Link href="/customer/cart" className="font-semibold text-primary hover:underline">{tCustomer("ui.actions.backToCart", { defaultValue: "Back to cart" })}</Link>} />;
+    return <EmptyState title={tCustomer("ui.checkout.nothing")} description={tCustomer("ui.checkout.selectItems")} action={<Link href="/customer/cart" className="font-semibold text-primary hover:underline">{tCustomer("ui.actions.backToCart")}</Link>} />;
   }
 
   async function handlePay() {
@@ -199,10 +200,10 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
-      <Link href="/customer/cart" className="mb-5 inline-flex items-center text-sm font-semibold text-primary hover:underline">← {tCustomer("ui.actions.backToCart", { defaultValue: "Back to cart" })}</Link>
+      <Link href="/customer/cart" className="mb-5 inline-flex items-center text-sm font-semibold text-primary hover:underline">← {tCustomer("ui.actions.backToCart")}</Link>
       <h1 className="text-2xl font-bold text-foreground mb-2 font-[family-name:var(--font-display)]">{tCustomer("ui.checkout.title")}</h1>
       <nav aria-label={tCustomer("ui.checkout.progress")} className="mb-5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        <Link href="/customer/cart" className="text-primary hover:underline">Cart</Link>
+        <Link href="/customer/cart" className="text-primary hover:underline">{tCustomer("ui.cart.title")}</Link>
         <span aria-hidden="true">→</span>
         <span className="text-foreground" aria-current="step">{tCustomer("ui.checkout.title")}</span>
         <span aria-hidden="true">→</span>
@@ -215,17 +216,17 @@ export default function CheckoutPage() {
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
-          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">RM {subtotal.toFixed(2)}</span>
+          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {subtotal.toFixed(2)}</span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Discount ({voucherCode})</span>
-            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">− RM {discount.toFixed(2)}</span>
+            <span className="text-muted-foreground">{tCustomer("strictMigration.checkout.discountWithCode", { code: voucherCode })}</span>
+            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: `${MYR_CODE} ${discount.toFixed(2)}` })}</span>
           </div>
         )}
         <div className="flex justify-between text-base pt-2 border-t border-border">
           <span className="font-bold text-foreground">{tCustomer("ui.checkout.total")}</span>
-          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">RM {total.toFixed(2)}</span>
+          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {total.toFixed(2)}</span>
         </div>
       </div>
 
@@ -241,10 +242,10 @@ export default function CheckoutPage() {
              style={{ borderColor: methodId === m.id ? "var(--primary)" : "var(--border)", backgroundColor: methodId === m.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent" }}
           >
             <m.icon size={16} className="text-teal shrink-0" />
-            <span className="text-sm font-medium text-foreground flex-1">{m.label}</span>
+            <span className="text-sm font-medium text-foreground flex-1">{tCustomer(m.labelKey)}</span>
             {m.id === "wallet" && walletSummaryLoaded && (
               <span className="text-xs text-muted-foreground font-[family-name:var(--font-mono)]">
-                RM {(walletSpendableSen / 100).toFixed(2)}
+                {MYR_CODE} {(walletSpendableSen / 100).toFixed(2)}
               </span>
             )}
           </button>
@@ -268,12 +269,12 @@ export default function CheckoutPage() {
             onClick={() => router.push("/customer/cart")}
             className="mt-2 pl-6 text-xs font-semibold underline underline-offset-2"
           >
-            Return to cart
+            {tCustomer("strictMigration.checkout.returnToCart")}
           </button>
           {checkoutError.includes("Wallet balance is no longer sufficient") && (
             <div className="mt-3 flex gap-2 pl-6">
-              <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>Top Up</Button>
-               <Button type="button" size="sm" variant="outline" onClick={() => { setMethodId("stripe_card"); setCheckoutError(null); }}>Pay by card</Button>
+              <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>{tCustomer("ui.wallet.topUp")}</Button>
+               <Button type="button" size="sm" variant="outline" onClick={() => { setMethodId("stripe_card"); setCheckoutError(null); }}>{tCustomer("strictMigration.checkout.payByCard")}</Button>
             </div>
           )}
         </div>
@@ -283,7 +284,7 @@ export default function CheckoutPage() {
          {paying
            ? tCustomer("ui.states.preparingPayment")
            : selectedMethod.simulated
-             ? "Continue to payment simulator"
+             ? tCustomer("ui.checkout.continueSimulator")
              : selectedMethod.paymentMethod === "wallet"
              ? tCustomer("ui.checkout.payWallet")
                : tCustomer("ui.checkout.continueStripe")}

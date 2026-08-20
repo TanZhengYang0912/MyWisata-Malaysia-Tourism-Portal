@@ -39,17 +39,17 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
-              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{tAdmin(title, { defaultValue: title })}</h2>
-              <button type="button" aria-label={tCommon("accessibility.closeConfirmation", { defaultValue: "Close confirmation" })} onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
+              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{tAdmin(title)}</h2>
+              <button type="button" aria-label={tCommon("accessibility.closeConfirmation")} onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
                 <X size={17} />
               </button>
             </div>
-            <p id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">{tAdmin(description, { defaultValue: description })}</p>
+            <p id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">{tAdmin(description)}</p>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel", { defaultValue: "Cancel" })}</Button>
-          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis", { defaultValue: "Processing…" }) : tAdmin(confirmLabel, { defaultValue: confirmLabel })}</Button>
+          <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
+          <Button variant={confirmVariant} onClick={onConfirm} disabled={busy}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>
         </div>
       </div>
     </div>

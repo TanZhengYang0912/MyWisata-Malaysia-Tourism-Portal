@@ -10,9 +10,9 @@ export default function PreferencesPage() {
   return (
     <>
       <CustomerPageTitle
-        eyebrow={t("ui.preferencesPage.eyebrow", { defaultValue: "Preferences" })}
-        title={t("ui.preferencesPage.title", { defaultValue: "Your travel preferences" })}
-        description={t("ui.preferencesPage.description", { defaultValue: "These shape your “Recommended For You” feed. Update them anytime — the more we know, the better the suggestions." })}
+        eyebrow={t("ui.preferencesPage.eyebrow")}
+        title={t("ui.preferencesPage.title")}
+        description={t("ui.preferencesPage.description")}
         icon={<SlidersHorizontal size={14} />}
       />
       <CustomerPageShell className="pt-0 sm:pt-0">

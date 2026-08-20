@@ -71,6 +71,8 @@ export default async function VendorOutletPage({ params }: Props) {
     phone: outlet.phone,
     email: outlet.email,
     operatingHours: outlet.operating_hours,
+    introTitle: t("ui.outletPage.introTitle"),
+    introBody: t("ui.outletPage.introBody", { vendor: vendor?.name || outlet.name, city: outlet.city || t("ui.labels.malaysia") }),
   });
   const publicOutlet = {
     ...outlet,
@@ -186,9 +188,9 @@ export default async function VendorOutletPage({ params }: Props) {
         <div className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("ui.outlet.exploreOutlet")}</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{t("ui.labels.location")} {outletNavigation.currentPosition} / {outletNavigation.total} · {outlet.name}</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{t("strictMigration.outletNavigation.position", { current: outletNavigation.currentPosition, total: outletNavigation.total, outlet: outlet.name })}</p>
           </div>
-          <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("ui.actions.viewAll")} {t("ui.vendor.activeOutletCount", { count: outletNavigation.total })} <ArrowRight size={15} /></a>
+          <a href={`/customer/vendor/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
         </div>
       </div>}
       <OutletPageRenderer document={publicDocument} outlet={publicOutlet} products={menuProducts} mode="public" />

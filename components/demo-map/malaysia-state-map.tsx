@@ -213,7 +213,7 @@ export function MalaysiaStateMap({
             <p className="mt-1 max-w-2xl text-[10px] text-muted-foreground 2xl:text-sm">{t("ui.map.chooseState")}</p>
           </div>
           <div className="hidden shrink-0 text-right text-[10px] text-muted-foreground lg:block 2xl:text-xs">
-            <p className="font-bold text-foreground">16 regions · 64 places</p>
+            <p className="font-bold text-foreground">{t("strictMigration.map.regionPlaceCount")}</p>
             <p className="mt-1">{t("ui.map.openDistrictPrompt")}</p>
           </div>
         </div>
@@ -256,7 +256,7 @@ export function MalaysiaStateMap({
       </svg>
 
       <div data-state-label-layer className="pointer-events-none absolute inset-0 z-10" aria-label={t("ui.map.allStatesTerritories")}>
-        <p className="sr-only">Select a state to explore.</p>
+        <p className="sr-only">{t("strictMigration.map.selectState")}</p>
         {visibleStates.map((state) => {
           const region = regionForState(state.id);
           const point = projected({ lat: state.label[1], lng: state.label[0] }, region);

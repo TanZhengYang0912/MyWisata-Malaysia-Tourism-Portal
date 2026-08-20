@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Search as SearchIcon, MapPin, Building2, Ticket, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { GlobalSearchResult } from "@/backend/domains/search";
 
 export function GlobalSearch() {
+  const { t } = useTranslation("customer");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalSearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +63,7 @@ export function GlobalSearch() {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search destinations, experiences, or partners..."
+          placeholder={t("strictMigration.search.placeholder")}
           className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-500"
         />
         {isLoading && <Loader2 size={14} className="animate-spin text-primary shrink-0" />}
@@ -72,7 +74,7 @@ export function GlobalSearch() {
           {!isLoading && !hasResults && (
             <div className="p-6 text-center text-sm text-slate-500">
               {/* eslint-disable-next-line react/no-unescaped-entities */}
-              No results found for "{query}".
+              {t("strictMigration.search.noResultsFor", { query })}
             </div>
           )}
 
@@ -82,7 +84,7 @@ export function GlobalSearch() {
               {results.destinations.length > 0 && (
                 <div className="mb-4">
                   <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Destinations
+                    {t("ui.explore.destinations")}
                   </div>
                   {results.destinations.map((dest) => (
                     <Link
@@ -104,7 +106,7 @@ export function GlobalSearch() {
               {results.experiences.length > 0 && (
                 <div className="mb-4">
                   <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Experiences
+                    {t("ui.explore.experiences")}
                   </div>
                   {results.experiences.map((exp) => (
                     <Link
@@ -129,7 +131,7 @@ export function GlobalSearch() {
               {results.vendors.length > 0 && (
                 <div>
                   <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Local Partners
+                    {t("ui.destination.localPartners")}
                   </div>
                   {results.vendors.map((vendor) => (
                     <Link
@@ -143,7 +145,7 @@ export function GlobalSearch() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-sm text-slate-700">{vendor.name}</p>
-                        <p className="truncate text-xs text-slate-500">Verified Partner</p>
+                        <p className="truncate text-xs text-slate-500">{t("strictMigration.search.verifiedPartner")}</p>
                       </div>
                     </Link>
                   ))}

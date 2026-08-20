@@ -12,6 +12,7 @@ import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 function dateTimeLabel(value: string, locale: string) {
   return new Date(value).toLocaleString(locale === "en" ? "en-MY" : locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -40,15 +41,15 @@ export default function OrderDetailPage() {
 
   async function requestRefund() {
     if (!order || requestingRefund) return;
-    const reason = window.prompt(tCustomer("ui.orders.refundReasonPrompt", { defaultValue: "Why would you like to request a refund?" }));
+    const reason = window.prompt(tCustomer("ui.orders.refundReasonPrompt"));
     if (!reason || reason.trim().length < 5) return;
     setRequestingRefund(true);
     try {
       const response = await fetch(`/api/orders/${order.id}/refund`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) });
       const payload = await response.json().catch(() => ({}));
-      setRefundMessage(response.ok ? tCustomer("ui.orders.refundSubmitted", { defaultValue: "Refund request submitted for admin review." }) : payload.error?.message ?? tCustomer("ui.orders.refundError", { defaultValue: "Unable to submit refund request." }));
+      setRefundMessage(response.ok ? tCustomer("ui.orders.refundSubmitted") : payload.error?.message ?? tCustomer("ui.orders.refundError"));
     } catch {
-      setRefundMessage(tCustomer("ui.orders.refundError", { defaultValue: "Unable to submit refund request." }));
+      setRefundMessage(tCustomer("ui.orders.refundError"));
     } finally {
       setRequestingRefund(false);
     }
@@ -64,7 +65,7 @@ export default function OrderDetailPage() {
   return (
     <div className="order-receipt-page mx-auto max-w-3xl px-4 py-8 sm:px-6 print:max-w-none print:px-0 print:py-0">
       <div className="mb-8">
-        <Link href="/customer/activity?tab=orders" className="text-sm font-semibold text-primary hover:underline mb-4 inline-block print:hidden">← {tCustomer("ui.orders.backToOrders", { defaultValue: "Back to Orders" })}</Link>
+        <Link href="/customer/activity?tab=orders" className="text-sm font-semibold text-primary hover:underline mb-4 inline-block print:hidden">← {tCustomer("ui.orders.backToOrders")}</Link>
         {order.status === "PAID" || order.status === "COMPLETED" ? (
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center bg-primary/15">
@@ -96,21 +97,21 @@ export default function OrderDetailPage() {
                 <p className="font-semibold text-foreground text-base">{item.activityName}</p>
                 <p className="text-muted-foreground">{item.qty}× {item.variantLabel}</p>
               </div>
-              <span className="font-bold text-foreground text-base font-[family-name:var(--font-mono)]">RM {(item.unitPrice * item.qty).toFixed(2)}</span>
+              <span className="font-bold text-foreground text-base font-[family-name:var(--font-mono)]">{MYR_CODE} {(item.unitPrice * item.qty).toFixed(2)}</span>
             </div>
           ))}
         </div>
         <div className="pt-4 border-t border-border space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{tCustomer("ui.checkout.subtotal")}</span><span>RM {order.subtotal.toFixed(2)}</span>
+            <span>{tCustomer("ui.checkout.subtotal")}</span><span>{MYR_CODE} {order.subtotal.toFixed(2)}</span>
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{tCustomer("ui.checkout.discount")} {order.voucherCode && `(${order.voucherCode})`}</span><span>− RM {order.discount.toFixed(2)}</span>
+              <span>{tCustomer("ui.checkout.discount")} {order.voucherCode && `(${order.voucherCode})`}</span><span>{tCustomer("strictMigration.cart.discountValue", { amount: `${MYR_CODE} ${order.discount.toFixed(2)}` })}</span>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold text-foreground pt-2">
-            <span>{tCustomer("ui.checkout.total")}</span><span className="text-primary font-[family-name:var(--font-mono)]">RM {order.total.toFixed(2)}</span>
+            <span>{tCustomer("ui.checkout.total")}</span><span className="text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {order.total.toFixed(2)}</span>
           </div>
         </div>
       </div>

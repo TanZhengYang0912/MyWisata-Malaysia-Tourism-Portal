@@ -170,7 +170,7 @@ export default function OutletBuilderCanvas({
                 />}
                 {document.blocks.map((block) => {
                   const selected = selectedBlockId === block.id;
-                  const blockLabel = block.title || t(`builder.blockTypes.${block.type}`, { defaultValue: block.type.replace('_', ' ') });
+                  const blockLabel = block.title || t(`builder.blockTypes.${block.type}`);
                   return <div
                     key={block.id}
                     ref={(element) => { blockRefs.current[block.id] = element; }}
@@ -250,9 +250,9 @@ export default function OutletBuilderCanvas({
                       className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title="Resize"><Maximize2 size={14} /></button>
-                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title="Duplicate"><Copy size={14} /></button>
-                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title="Delete"><Trash2 size={14} /></button>
+                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title={t("builder.resize")}><Maximize2 size={14} /></button>
+                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title={t("builder.duplicate")}><Copy size={14} /></button>
+                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title={t("builder.delete")}><Trash2 size={14} /></button>
                     </div>
 
                     {sizeMenuId === block.id && <>

@@ -35,8 +35,8 @@ export function GuestAccountEmptyState({
         description={description}
         action={(
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild><Link href={signInHref}>{t("ui.guest.signIn", { defaultValue: "Sign in" })}</Link></Button>
-            <Button asChild variant="outline"><Link href={createHref}>{t("ui.guest.createAccount", { defaultValue: "Create account" })}</Link></Button>
+            <Button asChild><Link href={signInHref}>{t("ui.guest.signIn")}</Link></Button>
+            <Button asChild variant="outline"><Link href={createHref}>{t("ui.guest.createAccount")}</Link></Button>
           </div>
         )}
       />

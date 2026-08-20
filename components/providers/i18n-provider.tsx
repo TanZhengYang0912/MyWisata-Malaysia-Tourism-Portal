@@ -40,7 +40,7 @@ export function AppI18nProvider({ locale, resources, children }: AppI18nProvider
       supportedLngs: [...APP_LOCALES],
       ns: [...APP_NAMESPACES],
       defaultNS: 'common',
-      fallbackLng: 'en',
+      fallbackLng: false,
       fallbackNS: 'common',
       interpolation: { escapeValue: false },
       react: { useSuspense: false },

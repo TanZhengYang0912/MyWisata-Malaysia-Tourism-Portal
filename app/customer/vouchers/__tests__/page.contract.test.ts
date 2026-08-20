@@ -80,7 +80,7 @@ describe("customer voucher hub UI contract", () => {
   it("places the desktop My Vouchers action after the cart in the customer header", () => {
     const source = read("app/customer/layout.tsx");
     const cartPosition = source.indexOf('href="/customer/cart"');
-    const vouchersPosition = source.indexOf('href="/customer/vouchers" aria-label="My Vouchers"');
+    const vouchersPosition = source.indexOf('href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")}');
     expect(cartPosition).toBeGreaterThanOrEqual(0);
     expect(vouchersPosition).toBeGreaterThan(cartPosition);
   });

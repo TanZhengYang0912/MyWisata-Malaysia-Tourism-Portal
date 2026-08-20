@@ -12,6 +12,7 @@ import type { Trip, TripItem } from "@/backend/domains/trips";
 import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 import { groupTripItemsByDay, formatTripDay } from "@/lib/customer/trip-planner";
 import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
+import { DISTANCE_UNIT_KM, MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export interface TripStop {
   id: string; // e.g., experience_id or custom id
@@ -510,10 +511,10 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
                 autoFocus
                 value={isLocation ? startInput : editStopInput}
                 onChange={(event) => isLocation ? setStartInput(event.target.value) : setEditStopInput(event.target.value)}
-                placeholder="Search a new location…"
+                placeholder={tCustomer("strictMigration.tripPlanner.searchNewLocation")}
                 className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
-              <button onClick={() => isLocation ? setEditingStart(false) : setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label="Cancel edit">
+              <button onClick={() => isLocation ? setEditingStart(false) : setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={tCustomer("ui.map.cancelEdit")}>
                 <X size={14} />
               </button>
             </div>
@@ -547,20 +548,20 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
               type="time"
               value={item.scheduled_time ?? ""}
               onChange={(event) => trip.schedule(item.id, item.scheduled_date, event.target.value || null)}
-              aria-label={"Time for " + item.label}
+              aria-label={tCustomer("strictMigration.tripPlanner.timeFor", { item: item.label })}
               className="w-[86px] rounded-lg border border-border bg-background px-1.5 py-1 text-[11px] text-foreground"
             />
-            {item.scheduled_date && <span className="sr-only">Scheduled for {item.scheduled_date}</span>}
+            {item.scheduled_date && <span className="sr-only">{tCustomer("strictMigration.tripPlanner.scheduledFor", { date: item.scheduled_date })}</span>}
             {(isLocation || isCustom) && (
               <button
                 onClick={() => isLocation ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
                 className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-primary"
-                aria-label={"Edit " + item.label}
+                aria-label={tCustomer("strictMigration.tripPlanner.editItem", { item: item.label })}
               >
                 <Pencil size={13} />
               </button>
             )}
-            <button onClick={() => trip.remove(item.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={"Remove " + item.label}>
+            <button onClick={() => trip.remove(item.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={tCustomer("strictMigration.tripPlanner.removeItem", { item: item.label })}>
               <X size={14} />
             </button>
           </div>
@@ -582,7 +583,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-primary">{title}</h2>
             {date && <p className="mt-0.5 text-[11px] text-muted-foreground">{formatTripDay(date)}</p>}
           </div>
-          <span className="rounded-full bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground">{items.length} {items.length === 1 ? "stop" : "stops"}</span>
+          <span className="rounded-full bg-background px-2 py-1 text-[10px] font-bold text-muted-foreground">{tCustomer("ui.map.stopCount", { count: items.length })}</span>
         </div>
         {items.length > 0 ? <ul className="flex flex-col gap-2">{items.map(renderStopRow)}</ul> : <p className="rounded-xl border border-dashed border-border bg-background/70 px-3 py-3 text-center text-xs text-muted-foreground">{emptyCopy}</p>}
       </section>
@@ -591,16 +592,16 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
 
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background">
-      <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label="Planner views">
+      <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
         {(["itinerary", "map", "places"] as const).map((panel) => (
           <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-lg px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
-            {panel === "places" ? tCustomer("ui.map.addPlace") : panel}
+            {panel === "itinerary" ? tCustomer("strictMigration.tripPlanner.itineraryTab") : panel === "map" ? tCustomer("strictMigration.tripPlanner.mapTab") : tCustomer("strictMigration.tripPlanner.placesTab")}
           </button>
         ))}
       </div>
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[360px_minmax(0,1fr)_360px]">
-        <aside aria-label="Trip itinerary" className={(activePanel === "itinerary" ? "flex" : "hidden") + " min-h-0 flex-col border-r border-border bg-card md:flex"}>
+        <aside aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className={(activePanel === "itinerary" ? "flex" : "hidden") + " min-h-0 flex-col border-r border-border bg-card md:flex"}>
           <header className="shrink-0 border-b border-border px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -608,13 +609,13 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
                 <h1 className="mt-1 truncate text-lg font-bold text-foreground">{tripData.name}</h1>
                 <p className="mt-1 text-xs text-muted-foreground">{formatTripRange(tripData)}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold text-primary">{scheduledItemCount}/{trip.items.length} planned</span>
+              <span className="shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold text-primary">{tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</span>
             </div>
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold text-foreground">Build your route</p>
+              <p className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.buildRoute")}</p>
               <button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
                 {showAllVendors ? <Eye size={13} className="text-primary" /> : <EyeOff size={13} />}
                 {showAllVendors ? tCustomer("ui.map.showingAllVendors") : tCustomer("ui.map.showAllVendors")}
@@ -635,8 +636,8 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             )}
 
             <div className="space-y-3">
-              {groupedItems.days.length > 0 ? groupedItems.days.map((day, index) => renderDaySection("Day " + (index + 1), day.date, day.items, "Drop a stop here or add one from the right panel.", index)) : renderDaySection("Plan your days", null, groupedItems.unscheduled, "Add places from the right panel to start planning.")}
-              {groupedItems.days.length > 0 && renderDaySection("Unscheduled", null, groupedItems.unscheduled, "All your places are assigned to a day.")}
+              {groupedItems.days.length > 0 ? groupedItems.days.map((day, index) => renderDaySection(tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 }), day.date, day.items, tCustomer("strictMigration.tripPlanner.dropStopHint"), index)) : renderDaySection(tCustomer("strictMigration.tripPlanner.planDays"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.addPlacesHint"))}
+              {groupedItems.days.length > 0 && renderDaySection(tCustomer("strictMigration.tripPlanner.unscheduled"), null, groupedItems.unscheduled, tCustomer("strictMigration.tripPlanner.allAssigned"))}
             </div>
 
             <div className="mt-3">
@@ -667,7 +668,7 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{tCustomer("ui.map.routeOptions")}</p>
                 {activeRoutes.map((route, index) => (
                   <button key={index} onClick={() => setSelectedRouteIdx(index)} className="flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left text-[11px]" style={{ borderColor: index === selectedRouteIdx ? "var(--travel-blue)" : "var(--border)", backgroundColor: index === selectedRouteIdx ? "var(--secondary, #dbe6ff)" : "transparent" }}>
-                    <span className="font-bold">{formatDuration(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} km</span></span>
+                    <span className="font-bold">{formatDuration(route.durationMin)} <span className="font-semibold text-muted-foreground">· {route.distanceKm} {DISTANCE_UNIT_KM}</span></span>
                     <span className="flex items-center gap-1">{index === 0 && <span className="rounded-full bg-nature-green/10 px-1.5 py-0.5 text-[9px] font-bold text-[#16A34A]">{tCustomer("ui.map.fastest")}</span>}{route.hasTolls && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{tCustomer("ui.map.toll")}</span>}</span>
                   </button>
                 ))}
@@ -681,24 +682,24 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
           </footer>
         </aside>
 
-        <main aria-label="Trip map" className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 bg-muted md:flex"}>
+        <main aria-label={tCustomer("strictMigration.tripPlanner.tripMap")} className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 bg-muted md:flex"}>
           <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near ? [near.lat, near.lng] : undefined} radiusKm={near ? radiusKm : undefined} onAddStop={toggleStop} stopIds={trip.stops.map((stop) => stop.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx }))} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} />
-          {near && <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-card p-1 shadow-lg">{RADIUS_OPTIONS_KM.map((radius) => <button key={radius} onClick={() => setRadiusKm(radius)} className={"rounded-full px-3 py-1 text-[11px] font-bold " + (radiusKm === radius ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>{radius} km</button>)}</div>}
+          {near && <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-border bg-card p-1 shadow-lg">{RADIUS_OPTIONS_KM.map((radius) => <button key={radius} onClick={() => setRadiusKm(radius)} className={"rounded-full px-3 py-1 text-[11px] font-bold " + (radiusKm === radius ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>{radius} {DISTANCE_UNIT_KM}</button>)}</div>}
         </main>
 
-        <aside aria-label="Places to add" className={(activePanel === "places" ? "flex" : "hidden") + " min-h-0 flex-col border-l border-border bg-card md:flex"}>
+        <aside aria-label={tCustomer("strictMigration.tripPlanner.placesToAdd")} className={(activePanel === "places" ? "flex" : "hidden") + " min-h-0 flex-col border-l border-border bg-card md:flex"}>
           <header className="shrink-0 border-b border-border px-4 py-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("ui.map.nearbyToAdd")}</p>
-            <div className="mt-1 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-foreground">{tCustomer("ui.map.addPlace")}</h2><p className="mt-1 text-xs text-muted-foreground">{filteredActivities.length} places ready to add</p></div><button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" title="Toggle vendor pins">{showAllVendors ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
+            <div className="mt-1 flex items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-foreground">{tCustomer("ui.map.addPlace")}</h2><p className="mt-1 text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.placesReady", { count: filteredActivities.length })}</p></div><button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-primary" title={tCustomer("strictMigration.tripPlanner.toggleVendorPins")}>{showAllVendors ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
             <label className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 focus-within:border-primary"><Search size={15} className="text-muted-foreground" /><span className="sr-only">{tCustomer("ui.map.searchExperience")}</span><input value={listingQuery} onChange={(event) => setListingQuery(event.target.value)} placeholder={tCustomer("ui.map.searchExperience")} className="min-w-0 flex-1 bg-transparent text-xs outline-none" /></label>
-            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><label className="sr-only" htmlFor="planner-category">Category</label><select id="planner-category" value={category ?? ""} onChange={(event) => setCategory(event.target.value || null)} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary"><option value="">{tCustomer("ui.map.allCategories")}</option>{CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select><label className="sr-only" htmlFor="planner-radius">Distance</label><select id="planner-radius" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary">{RADIUS_OPTIONS_KM.map((radius) => <option key={radius} value={radius}>{radius} km</option>)}</select></div>
+            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><label className="sr-only" htmlFor="planner-category">{tCustomer("ui.recommendations.category")}</label><select id="planner-category" value={category ?? ""} onChange={(event) => setCategory(event.target.value || null)} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary"><option value="">{tCustomer("ui.map.allCategories")}</option>{CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{tCustomer(entry.labelKey)}</option>)}</select><label className="sr-only" htmlFor="planner-radius">{tCustomer("strictMigration.tripPlanner.distance")}</label><select id="planner-radius" value={radiusKm} onChange={(event) => setRadiusKm(Number(event.target.value))} className="rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold outline-none focus:border-primary">{RADIUS_OPTIONS_KM.map((radius) => <option key={radius} value={radius}>{radius} {DISTANCE_UNIT_KM}</option>)}</select></div>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <ul className="flex flex-col gap-2">
               {filteredActivities.slice(0, 24).map((activity) => {
                 const added = trip.has(activity.id);
                 // eslint-disable-next-line @next/next/no-img-element
-                return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={"Show " + activity.name + " on map"}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? activity.distanceKm.toFixed(1) + " km" : activity.outlet.city} · RM {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: "RM " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("ui.actions.addToTrip")}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">{tCustomer("ui.actions.viewDetails")}</a></div></div></div></li>;
+                return <li key={activity.id} className={"rounded-2xl border p-2.5 transition " + (added ? "border-[#16A34A]/40 bg-[#16A34A]/5" : "border-border hover:border-primary/40")}><div className="flex gap-2.5"><button type="button" onClick={() => focusPin({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: MYR_CODE + " " + activity.price + " · " + activity.outlet.city, href: "/customer/activity/" + activity.id })} className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary" aria-label={tCustomer("strictMigration.tripPlanner.showOnMap", { item: activity.name })}>{activity.image ? <img src={activity.image} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-muted-foreground"><ImageOff size={17} /></span>}</button><div className="min-w-0 flex-1"><h3 className="truncate text-xs font-bold text-foreground">{activity.name}</h3><p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"><Star size={10} fill="var(--highlight-yellow)" stroke="none" /> {activity.rating} · {near && activity.distanceKm !== undefined ? tCustomer("ui.map.distanceKm", { distance: activity.distanceKm.toFixed(1) }) : activity.outlet.city} · {MYR_CODE} {activity.price}</p><div className="mt-2 flex items-center gap-2"><button onClick={() => toggleStop({ id: activity.id, lat: activity.outlet.lat, lng: activity.outlet.lng, label: activity.name, sublabel: MYR_CODE + " " + activity.price + " · " + activity.outlet.city })} className={"rounded-lg px-2.5 py-1 text-[11px] font-bold " + (added ? "bg-[#16A34A] text-white" : "bg-primary text-white")}>{added ? tCustomer("ui.map.removeFromTrip") : tCustomer("ui.actions.addToTrip")}</button><a href={"/customer/activity/" + activity.id} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">{tCustomer("ui.actions.viewDetails")}</a></div></div></div></li>;
               })}
             </ul>
             {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">{tCustomer("ui.map.noPlacesRadius")}</p><p className="mt-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p></div>}

@@ -14,7 +14,7 @@ import {
   INTEREST_OPTIONS, TRAVEL_STYLES, GROUP_COMPOSITIONS,
   BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
 } from "@/backend/domains/preferences";
-import { getDiscoveryCategoryLabel, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
+import { getOptionalDiscoveryCategoryLabelKey, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 
 type SurveyResponse = {
   interests: string[] | null;
@@ -27,8 +27,6 @@ type SurveyResponse = {
   notes: string | null;
   learned_affinity: Record<string, number> | null;
 } | null;
-
-const interestLabel = (slug: string) => getDiscoveryCategoryLabel(slug);
 
 export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => void; submitLabel?: string }) {
   const { t } = useTranslation("customer");
@@ -87,13 +85,12 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
         }),
       });
       if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        throw new Error((b as { error?: { message?: string } })?.error?.message ?? t("ui.preferencesEditor.saveError"));
+        throw new Error(t("ui.preferencesEditor.saveError"));
       }
       setSaved(true);
       onSaved?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("ui.preferencesEditor.saveError"));
+    } catch {
+      setError(t("ui.preferencesEditor.saveError"));
     } finally {
       setBusy(false);
     }
@@ -108,46 +105,46 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
       {topLearned.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles size={13} /> {t("ui.preferencesEditor.basedOnActivity")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t("ui.preferencesEditor.learnedHint", { interests: topLearned.map(([slug]) => interestLabel(slug)).join(", ") })}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("ui.preferencesEditor.learnedHint", { interests: topLearned.map(([slug]) => { const key = getOptionalDiscoveryCategoryLabelKey(slug); return key ? t(key) : slug; }).join(", ") })}</p>
         </div>
       )}
 
       <Field label={t("ui.preferencesEditor.interests")}>
         <div className="flex flex-wrap gap-2">
-          {INTEREST_OPTIONS.map(({ slug, label }) => {
+          {INTEREST_OPTIONS.map(({ slug, labelKey }) => {
             const sel = interests.includes(slug);
-            return <Chip key={slug} selected={sel} onClick={() => toggle(interests, setInterests, slug)}>{label}</Chip>;
+            return <Chip key={slug} selected={sel} onClick={() => toggle(interests, setInterests, slug)}>{t(labelKey)}</Chip>;
           })}
         </div>
       </Field>
 
       <Field label={t("ui.preferencesEditor.travelStyle")}>
         <div className="grid grid-cols-2 gap-2">
-          {TRAVEL_STYLES.map(({ value, label }) => <Option key={value} selected={travelStyle === value} onClick={() => setTravelStyle(value)}>{label}</Option>)}
+          {TRAVEL_STYLES.map(({ value, labelKey }) => <Option key={value} selected={travelStyle === value} onClick={() => setTravelStyle(value)}>{t(labelKey)}</Option>)}
         </div>
       </Field>
 
       <Field label={t("ui.preferencesEditor.travelling")}>
         <div className="flex flex-wrap gap-2">
-          {GROUP_COMPOSITIONS.map(({ value, label }) => <Chip key={value} selected={group.includes(value)} onClick={() => toggle(group, setGroup, value)}>{label}</Chip>)}
+          {GROUP_COMPOSITIONS.map(({ value, labelKey }) => <Chip key={value} selected={group.includes(value)} onClick={() => toggle(group, setGroup, value)}>{t(labelKey)}</Chip>)}
         </div>
       </Field>
 
       <Field label={t("ui.preferencesEditor.budgetRange")}>
         <div className="space-y-1.5">
-          {BUDGET_RANGES.map(({ value, label }) => <Row key={value} selected={budgetRange === value} onClick={() => setBudgetRange(value)}>{label}</Row>)}
+          {BUDGET_RANGES.map(({ value, labelKey }) => <Row key={value} selected={budgetRange === value} onClick={() => setBudgetRange(value)}>{t(labelKey)}</Row>)}
         </div>
       </Field>
 
       <Field label={t("ui.preferencesEditor.preferredDistance")}>
         <div className="grid grid-cols-2 gap-2">
-          {DISTANCE_OPTIONS.map(({ value, label }) => <Option key={value} selected={radiusKm === value} onClick={() => setRadiusKm(value)}>{label}</Option>)}
+          {DISTANCE_OPTIONS.map(({ value, labelKey }) => <Option key={value} selected={radiusKm === value} onClick={() => setRadiusKm(value)}>{t(labelKey)}</Option>)}
         </div>
       </Field>
 
       <Field label={t("ui.preferencesEditor.mobilityAccessibility")}>
         <div className="space-y-1.5">
-          {MOBILITY_NEEDS.map(({ value, label }) => <Row key={value} selected={mobilityNeeds === value} onClick={() => setMobilityNeeds(value)}>{label}</Row>)}
+          {MOBILITY_NEEDS.map(({ value, labelKey }) => <Row key={value} selected={mobilityNeeds === value} onClick={() => setMobilityNeeds(value)}>{t(labelKey)}</Row>)}
         </div>
         <button
           type="button"

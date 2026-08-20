@@ -60,7 +60,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary"><Landmark size={15} /> {t('ui.dashboard.partnerPortal')}</div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-950">{isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{isOutletManager ? t('ui.dashboard.assignedOutletMoving') : <>{t('ui.dashboard.happeningWith')} <span className="font-semibold text-gray-800">{data.vendor.name}</span> {t('ui.dashboard.today')}</>}</p>
+          <p className="mt-1 text-sm text-gray-500">{isOutletManager ? t('ui.dashboard.assignedOutletMoving') : t('strictMigration.dashboardTodayForVendor', { vendor: data.vendor.name })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DashboardFilterControl />

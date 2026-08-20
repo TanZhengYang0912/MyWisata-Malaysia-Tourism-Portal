@@ -3,6 +3,7 @@
 // Contract #1: AuthContext — { currentUser, roles, activeVendorId, activeOutletIds }.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { setCurrentUserId } from "@/backend/domains/current-user";
 import { isAppLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +24,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { t: tAuth } = useTranslation("auth");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
@@ -35,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select("id,email,full_name,city,country,preferred_locale,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
       .eq("id", authUserId)
       .maybeSingle();
-    if (error) throw new Error(error.message || "Unable to load your account profile");
+    if (error) throw new Error(tAuth("errors.generic"));
 
     const assignments = row?.user_roles ?? [];
     const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
@@ -43,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
     const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
-    const name = row?.full_name ?? row?.email ?? "User";
+    const name = row?.full_name ?? row?.email ?? tAuth("userFallback");
     const user: User | null = row ? {
       id: row.id,
       name,
@@ -62,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(user ?? null);
     if (user) setCurrentUserId(authUserId);
     return user ?? null;
-  }, [supabase]);
+  }, [supabase, tAuth]);
 
   useEffect(() => {
     let active = true;
@@ -120,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchUser = useCallback(async (id: string, selectedUser?: User) => {
     const user = selectedUser;
-    if (!user || user.id !== id) throw new Error('Demo account is unavailable');
+    if (!user || user.id !== id) throw new Error(tAuth('errors.demoLoad'));
 
     const response = await fetch('/api/auth/demo-signin', {
       method: 'POST',
@@ -128,12 +130,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email: user.email }),
     });
     const result = await response.json() as { error?: string };
-    if (!response.ok) throw new Error(result.error || 'Unable to sign in');
+    if (!response.ok) throw new Error(tAuth('signIn.error'));
 
     const loadedUser = await loadSupabaseUser(id);
     setLoading(false);
     return loadedUser;
-  }, [loadSupabaseUser]);
+  }, [loadSupabaseUser, tAuth]);
 
   const refreshUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();

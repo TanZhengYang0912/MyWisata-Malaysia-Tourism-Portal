@@ -8,6 +8,7 @@ import { DEMO_STATES } from "@/lib/demo-map/data";
 import { getDistricts } from "@/lib/demo-map/districts";
 import { featureToPath, geometryBounds, projectPoint, type GeoBounds, type GeoJsonGeometry } from "@/lib/demo-map/geo";
 import { districtLabelWidth, layoutDistrictLabels, type DistrictLabelLayout } from "@/lib/demo-map/district-label-layout";
+import { NORTH_LATITUDE_SUFFIX } from "@/lib/i18n/invariant-tokens";
 
 const MAX_WIDTH = 1080;
 const MAX_HEIGHT = 760;
@@ -262,7 +263,7 @@ export function MalaysiaDistrictMap({
           </h2>
           {!stateId && (
             <p className="mt-0.5 text-[13px] text-muted-foreground">
-              West and East Malaysia scaled independently to fill the plate — not true relative scale.
+              {t("strictMigration.map.scaleNotice")}
             </p>
           )}
         </div>
@@ -325,7 +326,7 @@ export function MalaysiaDistrictMap({
               fill={COAST}
               opacity={0.75}
             >
-              SOUTH CHINA SEA · NOT TO SCALE
+              {t("ui.map.southChinaSeaScale")}
             </text>
 
             {([["Peninsular", WEST_GEO, WEST_STEP, nationalLayout.west.offsetX], ["Borneo", EAST_GEO, EAST_STEP, nationalLayout.east.offsetX]] as const).map(
@@ -484,7 +485,7 @@ export function MalaysiaDistrictMap({
             <g fill={COAST} className="text-[9px]" style={{ fontVariantNumeric: "tabular-nums" }}>
               {ticks(bounds.minLat, bounds.maxLat, graticuleStep(bounds)).map((lat) => {
                 const { y } = projectPoint([bounds.minLng, lat], bounds, core);
-                return <text key={`lat${lat}`} x={5} y={y - 3} opacity={0.8}>{lat}°N</text>;
+                return <text key={`lat${lat}`} x={5} y={y - 3} opacity={0.8}>{lat}{NORTH_LATITUDE_SUFFIX}</text>;
               })}
             </g>
 
@@ -613,19 +614,19 @@ export function MalaysiaDistrictMap({
           <>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--highlight-yellow, #D97706)" /></svg>
-              Has listings
+              {t("ui.map.hasListings")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="3.5" fill="#ffffff" stroke={COAST} strokeWidth="1.2" /></svg>
-              No listings yet
+              {t("ui.map.noListingsYet")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--primary)" /></svg>
-              Selected
+              {t("ui.map.selected")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--highlight-yellow, #D97706)" stroke="#ffffff" strokeWidth="1.6" /></svg>
-              Outlet
+              {t("ui.map.outlet")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="12" height="12" aria-hidden="true"><rect x="2.5" y="2.5" width="7" height="7" rx="1" fill="var(--highlight-yellow, #D97706)" stroke="#ffffff" strokeWidth="1.4" transform="rotate(45 6 6)" /></svg>
@@ -637,7 +638,7 @@ export function MalaysiaDistrictMap({
           <>
             <span className="inline-flex items-center gap-1.5">
               <svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" rx="2" fill={LAND} stroke={COAST} strokeWidth="0.8" /></svg>
-              Has listings
+              {t("ui.map.hasListings")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <svg width="14" height="10" aria-hidden="true"><rect width="14" height="10" rx="2" fill={LAND_QUIET} /></svg>

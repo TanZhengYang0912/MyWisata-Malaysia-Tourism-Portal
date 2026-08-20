@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
+import { getServerTranslation } from "@/lib/i18n/server";
 
 type GuestVendorPageProps = { params: Promise<{ vendorId: string }> };
 
@@ -51,6 +52,7 @@ export default async function GuestVendorPage({ params }: GuestVendorPageProps) 
   const { vendorId } = await params;
   const vendor = await getGuestVendor(vendorId);
   if (!vendor) notFound();
+  const { t } = await getServerTranslation("customer");
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url });
 
   const db = await createClient();
@@ -62,15 +64,15 @@ export default async function GuestVendorPage({ params }: GuestVendorPageProps) 
     .order("name");
 
   return <main className="mx-auto max-w-5xl px-6 py-10">
-    <Link href="/guest/explore" className="text-sm font-semibold text-primary underline underline-offset-4">← Back to listings</Link>
+    <Link href="/guest/explore" className="text-sm font-semibold text-primary underline underline-offset-4">← {t("strictMigration.guestPublic.backListings")}</Link>
     <section className="mt-6 overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
       {vendorVisual.coverUrl ? <>
         {/* Guest vendor pages support uploaded cover URLs, which are not statically enumerable for next/image. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={vendorVisual.coverUrl} alt="" className="h-56 w-full object-cover" />
       </> : null}
-      <div className="p-7"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Verified MyWisata vendor</p><h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold">{vendor.name}</h1>{vendor.description ? <p className="mt-3 max-w-3xl text-muted-foreground">{vendor.description}</p> : null}<Link href="/guest/explore" className="mt-6 inline-flex rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">Browse listings</Link></div>
+      <div className="p-7"><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("strictMigration.guestPublic.verifiedVendor")}</p><h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold">{vendor.name}</h1>{vendor.description ? <p className="mt-3 max-w-3xl text-muted-foreground">{vendor.description}</p> : null}<Link href="/guest/explore" className="mt-6 inline-flex rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground">{t("strictMigration.guestPublic.browseListings")}</Link></div>
     </section>
-    <section className="mt-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Locations</p><h2 className="mt-2 text-2xl font-bold">Active outlets</h2></div><p className="text-sm text-muted-foreground">{outlets?.length ?? 0} outlet{outlets?.length === 1 ? "" : "s"}</p></div>{!outlets?.length ? <p className="mt-5 rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">No public outlets yet.</p> : <div className="mt-5 grid gap-4 sm:grid-cols-2">{outlets.map((outlet) => <article key={outlet.id} className="rounded-2xl border border-border bg-card p-5"><h3 className="font-bold">{outlet.name}</h3><p className="mt-2 text-sm text-muted-foreground">{[outlet.city, outlet.state].filter(Boolean).join(", ") || "Malaysia"}</p>{outlet.address ? <p className="mt-1 text-sm text-muted-foreground">{outlet.address}</p> : null}</article>)}</div>}</section>
+    <section className="mt-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("strictMigration.guestPublic.locations")}</p><h2 className="mt-2 text-2xl font-bold">{t("strictMigration.guestPublic.activeOutlets")}</h2></div><p className="text-sm text-muted-foreground">{t("strictMigration.guestPublic.outletCount", { count: outlets?.length ?? 0 })}</p></div>{!outlets?.length ? <p className="mt-5 rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">{t("strictMigration.guestPublic.noOutlets")}</p> : <div className="mt-5 grid gap-4 sm:grid-cols-2">{outlets.map((outlet) => <article key={outlet.id} className="rounded-2xl border border-border bg-card p-5"><h3 className="font-bold">{outlet.name}</h3><p className="mt-2 text-sm text-muted-foreground">{[outlet.city, outlet.state].filter(Boolean).join(", ") || t("ui.labels.malaysia")}</p>{outlet.address ? <p className="mt-1 text-sm text-muted-foreground">{outlet.address}</p> : null}</article>)}</div>}</section>
   </main>;
 }

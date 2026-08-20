@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 interface VariantData {
   id: string;
@@ -124,7 +125,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  {v.price_offset >= 0 ? '+' : ''}{v.price_offset} RM
+                  {v.price_offset >= 0 ? '+' : ''}{v.price_offset} {MYR_CODE}
                 </td>
                 {!requiresBooking && (
                   <td className="px-3 py-2 text-right">

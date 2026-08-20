@@ -12,8 +12,8 @@ describe("booking panel availability calendar contract", () => {
   });
 
   it("communicates the date states in the calendar UI", () => {
-    expect(source).toContain("Available");
-    expect(source).toContain("Full");
-    expect(source).toContain("Unavailable");
+    expect(source).toContain('t("ui.booking.available")');
+    expect(source).toContain('t("ui.booking.full")');
+    expect(source).toContain('t("ui.booking.unavailable")');
   });
 });

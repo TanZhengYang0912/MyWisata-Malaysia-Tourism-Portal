@@ -224,6 +224,15 @@
       "wheelchairAccessible": "Boleh diakses kerusi roda",
       "accessible": "Mudah diakses",
       "closed": "Ditutup",
+      "days": {
+        "mon": "Isn",
+        "tue": "Sel",
+        "wed": "Rab",
+        "thu": "Kha",
+        "fri": "Jum",
+        "sat": "Sab",
+        "sun": "Ahd"
+      },
       "trending": "Sóhor kini",
       "verified": "Disahkan",
       "person": "orang",
@@ -273,7 +282,8 @@
       "submitting": "Menghantar…",
       "preparingPayment": "Menyediakan bayaran selamat…",
       "addedToCart": "Ditambah ke troli ✓",
-      "couldNotLoad": "Tidak dapat memuatkan item ini"
+      "couldNotLoad": "Tidak dapat memuatkan item ini",
+      "closed": "Ditutup"
     },
     "checkout": {
       "title": "Pembayaran",
@@ -362,7 +372,22 @@
       "addCaption": "Tambah kapsyen…",
       "removeAttachment": "Alih keluar lampiran",
       "attachmentError": "Tidak dapat menghantar lampiran.",
-      "status": { "open": "Terbuka", "in_progress": "Sedang diproses", "resolved": "Diselesaikan", "closed": "Ditutup" }
+      "voice": {
+        "start": "Sebut balasan anda",
+        "stop": "Berhenti mendengar",
+        "errors": {
+          "permissionDenied": "Akses mikrofon diperlukan",
+          "noSpeech": "Tidak dapat menangkapnya — cuba lagi",
+          "network": "Input suara memerlukan sambungan",
+          "unknown": "Input suara tidak tersedia buat masa ini"
+        }
+      },
+      "status": {
+        "open": "Terbuka",
+        "in_progress": "Sedang diproses",
+        "resolved": "Diselesaikan",
+        "closed": "Ditutup"
+      }
     },
     "phone": {
       "selectCountry": "Pilih negara atau wilayah telefon",
@@ -415,7 +440,8 @@
       "selected": "Dipilih",
       "badges": {
         "family_friendly": "Mesra keluarga",
-        "couple_friendly": "Mesra pasangan"
+        "couple_friendly": "Mesra pasangan",
+        "hidden_gem": "Permata tersembunyi"
       },
       "types": {
         "chinese": "Cina",
@@ -459,6 +485,8 @@
       "exploreMalaysia": "Terokai Malaysia",
       "yourTrip": "Perjalanan Anda",
       "stopCount": "{{count}} hentian",
+      "stopCount_one": "{{count}} hentian",
+      "stopCount_other": "{{count}} hentian",
       "exitFullscreen": "Keluar skrin penuh",
       "fullscreenMap": "Peta skrin penuh",
       "expandTripPanel": "Kembangkan panel perjalanan",
@@ -526,6 +554,8 @@
       "selectedState": "Negeri dipilih",
       "selectStateToExplore": "Pilih negeri untuk diterokai",
       "placesReady": "{{count}} tempat sedia untuk pengalaman Malaysia anda yang seterusnya.",
+      "placesReady_one": "{{count}} tempat sedia untuk pengalaman Malaysia anda yang seterusnya.",
+      "placesReady_other": "{{count}} tempat sedia untuk pengalaman Malaysia anda yang seterusnya.",
       "noPublishedPlaces": "Belum ada tempat diterbitkan di sini, tetapi wilayah ini masih dipaparkan pada peta.",
       "categories": "Kategori",
       "placesToStart": "Beberapa tempat untuk bermula",
@@ -533,7 +563,15 @@
       "regions": "Wilayah",
       "chooseStateLabel": "Pilih negeri",
       "viewStatePlaces": "Lihat tempat di {{state}}",
-      "previewHint": "Tuding untuk pratonton · klik untuk butiran"
+      "previewHint": "Tuding untuk pratonton · klik untuk butiran",
+      "activeFilters_one": "{{count}} aktif",
+      "activeFilters_other": "{{count}} aktif",
+      "placesHere_one": "{{count}} tempat di sini",
+      "placesHere_other": "{{count}} tempat di sini",
+      "destinationCount_one": "{{count}} destinasi di seluruh Malaysia",
+      "destinationCount_other": "{{count}} destinasi di seluruh Malaysia",
+      "destinationCountShort_one": "{{count}} destinasi",
+      "destinationCountShort_other": "{{count}} destinasi"
     },
     "guest": {
       "signIn": "Log masuk",
@@ -593,7 +631,17 @@
       "tryAgain": "Sila cuba lagi sebentar nanti.",
       "savedOn": "Disimpan pada {{date}}",
       "removePlace": "Alih keluar {{name}} daripada tempat disimpan",
-      "removePlaceShort": "Alih keluar tempat disimpan"
+      "removePlaceShort": "Alih keluar tempat disimpan",
+      "placeCount_one": "{{count}} tempat",
+      "placeCount_other": "{{count}} tempat",
+      "experienceCount_one": "{{count}} pengalaman",
+      "experienceCount_other": "{{count}} pengalaman",
+      "noPlaces": "Belum ada tempat disimpan",
+      "savePlaces": "Simpan tempat yang ingin anda lawati.",
+      "noExperiences": "Belum ada pengalaman disimpan",
+      "saveExperiences": "Simpan pengalaman yang ingin anda tempah.",
+      "empty": "Belum ada apa-apa yang disimpan",
+      "saveBoth": "Simpan tempat dan pengalaman untuk membina senarai pilihan anda."
     },
     "activity": {
       "notFound": "Pengalaman tidak ditemui",
@@ -617,7 +665,21 @@
       "loadingDashboard": "Memuatkan papan pemuka ahli gabungan…",
       "noClicks": "Tiada klik dalam 30 hari terakhir.",
       "clicks": "Klik",
-      "day": "Hari {{label}}"
+      "day": "Hari {{label}}",
+      "campaigns": {
+        "title": "Kempen",
+        "description": "Labelkan pautan (cth. “instagram-story-jan”) untuk melihat kempen mana yang menukar, bukan sekadar platform mana.",
+        "namePlaceholder": "Nama kempen",
+        "getLink": "Dapatkan pautan",
+        "copied": "Disalin",
+        "untagged": "Tanpa label",
+        "columns": {
+          "campaign": "Kempen",
+          "clicks": "Klik",
+          "orders": "Pesanan",
+          "earned": "Diperoleh"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "Memuatkan perbualan…",
@@ -631,7 +693,13 @@
       "reportSubmitted": "Laporan dihantar. Terima kasih.",
       "reportConversation": "Laporkan perbualan ini",
       "startConversation": "Mulakan perbualan",
-      "startConversationHint": "Tanya tentang ketersediaan, kebolehcapaian atau apa-apa yang anda perlukan untuk perjalanan anda."
+      "startConversationHint": "Tanya tentang ketersediaan, kebolehcapaian atau apa-apa yang anda perlukan untuk perjalanan anda.",
+      "translate": {
+        "action": "Terjemah",
+        "showOriginal": "Tunjukkan asal",
+        "working": "Menterjemah…",
+        "failed": "Tidak dapat menterjemah"
+      }
     },
     "calendar": {
       "today": "Hari ini",
@@ -681,7 +749,27 @@
       "paxCount": "{{count}} orang",
       "bookingCount": "{{count}} tempahan",
       "itemsOnDay": "{{count}} item jadual perjalanan pada hari ini",
-      "guestsAcrossBookings": "{{guests}} tetamu dalam {{bookings}} tempahan"
+      "guestsAcrossBookings": "{{guests}} tetamu dalam {{bookings}} tempahan",
+      "itineraryItems_one": "{{count}} item jadual perjalanan",
+      "itineraryItems_other": "{{count}} item jadual perjalanan",
+      "paxCount_one": "{{count}} orang",
+      "paxCount_other": "{{count}} orang",
+      "showMore_one": "Tunjukkan {{count}} item jadual perjalanan lagi untuk {{date}}",
+      "showMore_other": "Tunjukkan {{count}} item jadual perjalanan lagi untuk {{date}}",
+      "more_one": "+{{count}} lagi",
+      "more_other": "+{{count}} lagi",
+      "bookingCount_one": "{{count}} tempahan",
+      "bookingCount_other": "{{count}} tempahan",
+      "scopeEyebrows": {
+        "upcoming": "Itinerari anda",
+        "past": "Sejarah tempahan",
+        "all": "Gambaran keseluruhan tempahan"
+      },
+      "scopeDescriptions": {
+        "upcoming": "Lihat pengalaman yang telah anda rancang.",
+        "past": "Semak pengalaman yang telah anda selesaikan atau terlepas.",
+        "all": "Lihat pengalaman lalu dan akan datang bersama-sama."
+      }
     },
     "outlet": {
       "verifiedMyWisata": "Cawangan MyWisata disahkan",
@@ -705,7 +793,31 @@
       "photoComingSoon": "Foto pengalaman akan datang",
       "bookingRequired": "Tempahan diperlukan",
       "availableToExplore": "Tersedia untuk diteroka",
-      "selectProducts": "Pilih produk dalam editor"
+      "selectProducts": "Pilih produk dalam editor",
+      "discoverThisOutlet": "Teroka cawangan ini",
+      "scheduleBeforeBooking": "Semak jadual cawangan sebelum membuat tempahan.",
+      "closed": "Tutup",
+      "editBlockTitle": "Edit tajuk {{label}}",
+      "editBlockCopy": "Edit teks sokongan {{label}}",
+      "galleryAlt": "Galeri {{outlet}}",
+      "photosComingSoon": "Foto akan datang",
+      "galleryPreparing": "Pasukan cawangan sedang menyediakan pandangan lebih dekat tentang tempat ini.",
+      "blockLabels": {
+        "intro": "Pengenalan cawangan",
+        "text": "Teks",
+        "image": "Foto",
+        "imageText": "Foto",
+        "productGrid": "Grid produk",
+        "gallery": "Galeri",
+        "hours": "Waktu operasi",
+        "contact": "Peta dan hubungan",
+        "voucherBanner": "Baucar",
+        "cta": "Seruan tindakan tempahan",
+        "reviewHighlight": "Ulasan tetamu",
+        "socialProof": "Bukti sosial",
+        "hero": "Sepanduk utama",
+        "custom": "{{type}}"
+      }
     },
     "reviews": {
       "guestReview": "Ulasan tetamu",
@@ -720,7 +832,11 @@
       "closeAll": "Tutup semua ulasan",
       "loadError": "Tidak dapat memuatkan ulasan",
       "pages": "Halaman ulasan",
-      "pageOf": "Halaman {{page}} daripada {{total}}"
+      "pageOf": "Halaman {{page}} daripada {{total}}",
+      "count_one": "{{count}} ulasan",
+      "count_other": "{{count}} ulasan",
+      "allReviews_one": "Semua {{count}} ulasan",
+      "allReviews_other": "Semua {{count}} ulasan"
     },
     "search": {
       "showing": "Menunjukkan {{start}}–{{end}} daripada {{total}} {{items}}",
@@ -767,7 +883,8 @@
       "nextPlacesPage": "Halaman tempat seterusnya",
       "searchVendors": "Cari vendor…",
       "searchResults": "Hasil carian",
-      "allPartners": "Semua rakan kongsi"
+      "allPartners": "Semua rakan kongsi",
+      "outletCount_one": "{{count}} cawangan"
     },
     "cart": {
       "guestTitle": "Troli anda kosong",
@@ -814,7 +931,21 @@
       "discountPercent": "Diskaun {{value}}%",
       "discountFixed": "Diskaun RM {{value}}",
       "minimumSpend": "Minimum RM {{value}}",
-      "saveEnds": "Jimat RM {{amount}} · Tamat {{date}}"
+      "saveEnds": "Jimat RM {{amount}} · Tamat {{date}}",
+      "inStock_one": "{{count}} dalam stok",
+      "inStock_other": "{{count}} dalam stok",
+      "selected_one": "{{count}} dipilih",
+      "selected_other": "{{count}} dipilih",
+      "selectAll_one": "Pilih semua yang tersedia ({{count}})",
+      "selectAll_other": "Pilih semua yang tersedia ({{count}})",
+      "availableCount_one": "{{count}} tersedia",
+      "availableCount_other": "{{count}} tersedia",
+      "viewAll_one": "Lihat semua {{count}} baucar",
+      "viewAll_other": "Lihat semua {{count}} baucar",
+      "subtotalSelected_one": "Jumlah kecil ({{count}} dipilih)",
+      "subtotalSelected_other": "Jumlah kecil ({{count}} dipilih)",
+      "seatsLeft_one": "{{count}} tempat tinggal",
+      "seatsLeft_other": "{{count}} tempat tinggal"
     },
     "preferencesPage": {
       "eyebrow": "Keutamaan",
@@ -959,7 +1090,10 @@
         "approved": "Pentadbir telah meluluskan; vendor masih perlu menyertai atau dipautkan sebelum disiarkan.",
         "rejected": "Cadangan ini tidak diluluskan untuk pasaran.",
         "converted": "Vendor menyertai melalui cadangan anda dan atribusi komisen kini aktif."
-      }
+      },
+      "photosSelected_one": "{{count}} foto dipilih",
+      "pendingReview_one": "Menunggu semakan ({{count}})",
+      "pendingReview_other": "Menunggu semakan ({{count}})"
     },
     "profileWizard": {
       "completion": "Kelengkapan profil",
@@ -1103,7 +1237,21 @@
       "productPageDetails": "Halaman produk memaparkan ketersediaan, harga dan keperluan tempahan.",
       "travellerFavourites": "Pilihan pengembara",
       "trustedByTravellers": "Dipercayai oleh mereka yang pernah berkunjung",
-      "combinedScore": "Skor gabungan daripada ulasan yang dipaparkan bagi penyenaraian vendor ini."
+      "combinedScore": "Skor gabungan daripada ulasan yang dipaparkan bagi penyenaraian vendor ini.",
+      "locationCount_one": "{{count}} lokasi",
+      "locationCount_other": "{{count}} lokasi",
+      "publishedExperienceCount_one": "{{count}} pengalaman diterbitkan",
+      "publishedExperienceCount_other": "{{count}} pengalaman diterbitkan",
+      "listingCount_one": "{{count}} penyenaraian",
+      "listingCount_other": "{{count}} penyenaraian",
+      "travellerReviewCount_one": "{{count}} ulasan pengembara",
+      "travellerReviewCount_other": "{{count}} ulasan pengembara",
+      "publishedListingCount_one": "{{count}} penyenaraian diterbitkan",
+      "publishedListingCount_other": "{{count}} penyenaraian diterbitkan",
+      "activeOutletCount_one": "{{count}} cawangan aktif",
+      "activeOutletCount_other": "{{count}} cawangan aktif",
+      "reviewCount_one": "{{count}} ulasan",
+      "reviewCount_other": "{{count}} ulasan"
     },
     "wallet": {
       "emptyTitle": "Dompet anda kosong",
@@ -1197,7 +1345,9 @@
       "setUpBankAccount": "Sediakan Akaun Bank",
       "ok": "OK",
       "later": "Kemudian",
-      "inProgress": "Sedang Diproses ({{count}})"
+      "inProgress": "Sedang Diproses ({{count}})",
+      "inProgress_one": "Sedang Diproses ({{count}})",
+      "inProgress_other": "Sedang Diproses ({{count}})"
     },
     "profileSections": {
       "contact": "Butiran hubungan",
@@ -1286,7 +1436,11 @@
       "backToOrders": "Kembali ke pesanan",
       "refundReasonPrompt": "Mengapakah anda memohon bayaran balik?",
       "refundSubmitted": "Permohonan bayaran balik telah dihantar.",
-      "refundError": "Permohonan bayaran balik tidak dapat dihantar."
+      "refundError": "Permohonan bayaran balik tidak dapat dihantar.",
+      "found_one": "{{count}} pesanan ditemui",
+      "found_other": "{{count}} pesanan ditemui",
+      "moreItems_one": " +{{count}} lagi",
+      "moreItems_other": " +{{count}} lagi"
     },
     "outletMenu": {
       "from": "Daripada",
@@ -1302,7 +1456,9 @@
       "descriptionFallback": "Pilihan tempatan popular dari {{outlet}}.",
       "emptyTitle": "Menu sedang disediakan",
       "emptyDescription": "Cawangan ini belum menerbitkan item untuk dijual. Semak semula tidak lama lagi.",
-      "price": "RM {{price}}"
+      "price": "RM {{price}}",
+      "listingCount_one": "{{count}} penyenaraian",
+      "listingCount_other": "{{count}} penyenaraian"
     },
     "home": {
       "vendorCover": "Kulit {{vendor}}",
@@ -1334,7 +1490,9 @@
       "viewPartners": "Lihat rakan",
       "viewAllDestinations": "Lihat semua destinasi",
       "destinationCarouselControls": "Kawalan karusel destinasi",
-      "explorationPrompt": "Pilih destinasi untuk mula meneroka"
+      "explorationPrompt": "Pilih destinasi untuk mula meneroka",
+      "swipeDestinations_one": "Leret untuk meneroka semua {{count}} negeri.",
+      "swipeDestinations_other": "Leret untuk meneroka semua {{count}} negeri."
     },
     "destination": {
       "notFound": "Destinasi tidak ditemui",
@@ -1384,7 +1542,11 @@
       "addedToTrip": "Ditambah ke Perjalanan!",
       "addToTrip": "+ Tambah ke Perjalanan",
       "total": "Jumlah",
-      "noPaymentUntilConfirmed": "Tiada bayaran dikenakan sehingga tempahan disahkan."
+      "noPaymentUntilConfirmed": "Tiada bayaran dikenakan sehingga tempahan disahkan.",
+      "reviewCount_one": "{{count}} ulasan",
+      "reviewCount_other": "{{count}} ulasan",
+      "slotsLeft_one": "{{count}} lagi",
+      "slotsLeft_other": "{{count}} lagi"
     },
     "explore": {
       "eyebrow": "Teroka Malaysia",
@@ -1399,7 +1561,9 @@
       "categoryExperiences": "Pengalaman {{category}}",
       "allExperiences": "Semua Pengalaman",
       "results": "{{count}} hasil",
-      "noExperiences": "Tiada pengalaman ditemui untuk kategori ini."
+      "noExperiences": "Tiada pengalaman ditemui untuk kategori ini.",
+      "results_one": "{{count}} hasil",
+      "results_other": "{{count}} hasil"
     },
     "place": {
       "notFound": "Tempat tidak ditemui",
@@ -1452,7 +1616,12 @@
         "admission": "Termasuk kemasukan",
         "guide_service": "Perkhidmatan pemandu · kemasukan percuma",
         "addon": "Perkhidmatan tambahan"
-      }
+      },
+      "placesToVisit_one": "{{count}} tempat untuk dilawati",
+      "bookableCount_one": "{{count}} tempat boleh ditempah",
+      "vendorOptions_one": "{{count}} pilihan vendor",
+      "activityCount_one": "{{count}} aktiviti",
+      "vendorCount_one": "{{count}} vendor"
     },
     "saved": {
       "metadataTitle": "Disimpan — MyWisata",
@@ -1484,7 +1653,9 @@
       "metaDescription": "Teroka produk dan pengalaman di {{name}}.",
       "heroTitle": "Hari tempatan anda bermula di sini",
       "verified": "Cawangan MyWisata disahkan",
-      "by": "oleh"
+      "by": "oleh",
+      "introTitle": "Hari tempatan yang sukar dilupakan",
+      "introBody": "Terokai {{vendor}} di {{city}}: kegemaran tempatan, tuan rumah yang prihatin dan pengalaman yang direka khas untuk tempat ini."
     },
     "pagination": {
       "showing": "Menunjukkan {{from}}–{{to}} daripada {{total}} {{items}}",
@@ -1507,7 +1678,9 @@
       "filterType": "Tapis perniagaan berdekatan mengikut jenis",
       "filterDistance": "Tapis perniagaan berdekatan mengikut jarak",
       "within": "Dalam lingkungan",
-      "emptyHint": "Cuba radius yang lebih luas atau kosongkan penapis kategori."
+      "emptyHint": "Cuba radius yang lebih luas atau kosongkan penapis kategori.",
+      "summary_one": "{{count}} perniagaan dalam lingkungan {{radius}} km",
+      "summary_other": "{{count}} perniagaan dalam lingkungan {{radius}} km"
     },
     "discovery": {
       "searchLabel": "Cari tempat dan pengalaman"
@@ -1546,10 +1719,30 @@
       "placeholder3": "Cuba 'jelajah pulau Langkawi'...",
       "placeholder4": "Cuba 'laluan warisan Melaka'...",
       "placeholder5": "Cuba 'hutan hujan Borneo'...",
-      "guide0": { "label": "Panduan bandar", "eyebrow": "Mulakan dengan perkara penting", "description": "Lihat bandar melalui rakan kongsi tempatan, dengan persinggahan pertama yang jelas dan ruang untuk meneroka.", "detail": "Vendor boleh memadankan anda dengan cawangan yang tepat sebelum anda memilih pengalaman." },
-      "guide1": { "label": "Pengangkutan & pemindahan", "eyebrow": "Dari pintu ke pintu mengikut rentak anda", "description": "Teruskan perjalanan dengan rakan pemindahan tempatan dan laluan yang sesuai dengan rentak anda.", "detail": "Bandingkan pakej rakan kongsi dan sahkan ketersediaan sebelum pembayaran." },
-      "guide2": { "label": "Percutian hujung minggu", "eyebrow": "Luangkan masa untuk menikmati", "description": "Rancang percutian singkat di satu wilayah, kemudian pilih vendor dan cawangan yang melengkapkan laluan.", "detail": "Lihat rakan kongsi tempatan yang berkhidmat di destinasi pilihan sebelum membuat keputusan." },
-      "guide3": { "label": "Hos tempatan", "eyebrow": "Temui penjaga cerita", "description": "Pilih insan di sebalik tempat terlebih dahulu, kemudian temui cawangan, aktiviti dan kegemaran tempatan mereka.", "detail": "Mulakan di profil vendor yang memaparkan butiran khusus cawangan dengan jelas." },
+      "guide0": {
+        "label": "Panduan bandar",
+        "eyebrow": "Mulakan dengan perkara penting",
+        "description": "Lihat bandar melalui rakan kongsi tempatan, dengan persinggahan pertama yang jelas dan ruang untuk meneroka.",
+        "detail": "Vendor boleh memadankan anda dengan cawangan yang tepat sebelum anda memilih pengalaman."
+      },
+      "guide1": {
+        "label": "Pengangkutan & pemindahan",
+        "eyebrow": "Dari pintu ke pintu mengikut rentak anda",
+        "description": "Teruskan perjalanan dengan rakan pemindahan tempatan dan laluan yang sesuai dengan rentak anda.",
+        "detail": "Bandingkan pakej rakan kongsi dan sahkan ketersediaan sebelum pembayaran."
+      },
+      "guide2": {
+        "label": "Percutian hujung minggu",
+        "eyebrow": "Luangkan masa untuk menikmati",
+        "description": "Rancang percutian singkat di satu wilayah, kemudian pilih vendor dan cawangan yang melengkapkan laluan.",
+        "detail": "Lihat rakan kongsi tempatan yang berkhidmat di destinasi pilihan sebelum membuat keputusan."
+      },
+      "guide3": {
+        "label": "Hos tempatan",
+        "eyebrow": "Temui penjaga cerita",
+        "description": "Pilih insan di sebalik tempat terlebih dahulu, kemudian temui cawangan, aktiviti dan kegemaran tempatan mereka.",
+        "detail": "Mulakan di profil vendor yang memaparkan butiran khusus cawangan dengan jelas."
+      },
       "firstStep": "Langkah pertama yang berguna",
       "planTitle": "Rancang bersama rakan kongsi tempatan.",
       "planDescription": "Mulakan dengan jenis hari yang anda inginkan. Kemudian temui vendor, pilih cawangan dan lihat pakej tepat sebelum membeli.",
@@ -1596,7 +1789,9 @@
       "nextMove": "Pilih langkah seterusnya.",
       "browseMap": "Lihat peta",
       "buildRoute": "Bina laluan",
-      "savedPlaces": "Tempat disimpan"
+      "savedPlaces": "Tempat disimpan",
+      "approvedVendors_one": "{{count}} vendor diluluskan",
+      "approvedVendors_other": "{{count}} vendor diluluskan"
     },
     "voucherHub": {
       "eyebrow": "Baucar MyWisata",
@@ -1613,7 +1808,12 @@
       "helpStep2": "Semak lokasi dan masa penebusan.",
       "helpStep3": "Gunakan semasa pembayaran atau tunjukkan di kedai.",
       "filterLabel": "Tapis baucar mengikut jenis",
-      "filters": { "all": "Semua", "percent": "Peratus", "fixed": "Amaun tetap", "bogo": "Beli satu, percuma satu" },
+      "filters": {
+        "all": "Semua",
+        "percent": "Peratus",
+        "fixed": "Amaun tetap",
+        "bogo": "Beli satu, percuma satu"
+      },
       "searchLabel": "Cari baucar",
       "searchPlaceholder": "Cari baucar atau rakan kongsi",
       "tryAgain": "Cuba lagi",
@@ -1644,8 +1844,504 @@
       "saved": "Disimpan",
       "claimLater": "Tuntut sekarang, guna kemudian",
       "useNow": "Guna sekarang",
-      "redemption": { "both": "Dalam talian atau di kedai", "in_store": "Di kedai", "online": "Dalam talian" },
-      "actions": { "claim": "Tuntut", "redeemed": "Ditebus", "expired": "Tamat tempoh", "claimed": "Dituntut" }
+      "redemption": {
+        "both": "Dalam talian atau di kedai",
+        "in_store": "Di kedai",
+        "online": "Dalam talian"
+      },
+      "actions": {
+        "claim": "Tuntut",
+        "redeemed": "Ditebus",
+        "expired": "Tamat tempoh",
+        "claimed": "Dituntut"
+      },
+      "remaining_one": "{{count}} berbaki",
+      "remaining_other": "{{count}} berbaki",
+      "productsAvailable_one": "{{count}} produk tersedia",
+      "productsAvailable_other": "{{count}} produk tersedia",
+      "moreProducts_one": "+{{count}} lagi",
+      "moreProducts_other": "+{{count}} lagi"
+    }
+  },
+  "strictMigration": {
+    "home": {
+      "exploreByState": "Terokai mengikut negeri",
+      "destinationCount": "{{count}} destinasi di seluruh Malaysia",
+      "chooseRoute": "Pilih laluan anda",
+      "routeHint": "Terus ke rantau tanpa meneliti setiap negeri.",
+      "closeStateMenu": "Tutup menu negeri",
+      "browseByCategory": "Semak imbas mengikut kategori",
+      "categoryPrompt": "Apakah jenis pengalaman yang anda cari?",
+      "resultsCount": "{{count}} hasil",
+      "experiencePages": "Halaman pengalaman",
+      "showingExperiences": "Menunjukkan {{first}}–{{last}} daripada {{total}} pengalaman",
+      "guidePlan": "Pelan {{guide}}",
+      "forYou": "Untuk Anda",
+      "topPicks": "Pilihan Utama",
+      "recommendedForYou": "Disyorkan untuk Anda",
+      "popularRightNow": "Popular Sekarang",
+      "tunePreferences": "Laraskan pilihan",
+      "viewAll": "Lihat semua",
+      "noExperiencesMatch": "Tiada pengalaman yang sepadan",
+      "tryDifferentStateCategory": "Cuba negeri atau kategori lain.",
+      "regions": {
+        "north": "Malaysia Utara",
+        "central": "Malaysia Tengah",
+        "south": "Malaysia Selatan",
+        "eastCoast": "Pantai Timur",
+        "borneo": "Malaysia Borneo"
+      },
+      "destinationCount_one": "{{count}} destinasi di seluruh Malaysia",
+      "destinationCount_other": "{{count}} destinasi di seluruh Malaysia",
+      "resultsCount_one": "{{count}} hasil",
+      "resultsCount_other": "{{count}} hasil",
+      "allExperiences": "Semua Pengalaman",
+      "experiencesIn": "Pengalaman di {{state}}",
+      "searchFilter": "Cari & Tapis",
+      "noExperiencesFound": "Tiada pengalaman ditemui",
+      "clearFiltersHint": "Cuba kosongkan penapis negeri atau kategori."
+    },
+    "search": {
+      "noResultsFor": "Tiada hasil ditemui untuk “{{query}}”.",
+      "verifiedPartner": "Rakan kongsi disahkan",
+      "placeholder": "Cari destinasi, pengalaman atau rakan kongsi…"
+    },
+    "googleMaps": {
+      "location": "Lokasi daripada Google Maps",
+      "picker": "Pemilih lokasi Google Maps",
+      "hint": "Cari tempat atau klik peta untuk meletakkan pin.",
+      "loadError": "Google Maps tidak dapat dimuatkan. Sila cuba lagi kemudian.",
+      "notConfigured": "Google Maps belum dikonfigurasi.",
+      "droppedPin": "Pin diletakkan",
+      "searchLabel": "Cari lokasi Google Maps",
+      "searchPlaceholder": "Cari tempat atau alamat"
+    },
+    "map": {
+      "loading": "Memuatkan peta…",
+      "regionPlaceCount": "16 rantau · 64 tempat",
+      "selectState": "Pilih negeri untuk diterokai.",
+      "scaleNotice": "Malaysia Barat dan Timur diskalakan secara berasingan untuk memenuhi peta; ini bukan skala relatif sebenar."
+    },
+    "chat": {
+      "mutedTitle": "Pemberitahuan dibisukan untuk anda",
+      "muted": "Dibisukan",
+      "reportConversation": "Laporkan perbualan",
+      "detailsOptional": "Butiran (pilihan)",
+      "replyMessage": "Balas mesej ini",
+      "attachment": "Lampiran",
+      "originalMessage": "Mesej asal",
+      "document": "Dokumen",
+      "replyingTo": "Membalas {{name}}",
+      "yourself": "diri sendiri",
+      "cancelReply": "Batalkan balasan",
+      "removeAttachment": "Alih keluar lampiran",
+      "messagePerson": "Hantar mesej kepada {{name}}",
+      "attachFile": "Lampirkan fail",
+      "safetyNotice": "Nombor telefon, butiran hubungan dan pautan disembunyikan demi keselamatan anda di MyWisata.",
+      "loadingConversations": "Memuatkan perbualan…",
+      "conversationCount": "{{count}} perbualan",
+      "unreadCount": "{{count}} belum dibaca",
+      "replyNeededCount": "{{count}} memerlukan balasan anda",
+      "search": "Cari perbualan",
+      "noMatches": "Tiada perbualan yang sepadan",
+      "tryAnother": "Cuba carian atau penapis lain.",
+      "selectConversation": "Pilih perbualan",
+      "selectConversationHint": "Pilih perbualan vendor untuk melihat mesej dan meneruskan perancangan perjalanan anda.",
+      "online": "Dalam talian",
+      "offline": "Luar talian",
+      "unmuteConversation": "Nyahbisukan perbualan",
+      "muteConversation": "Bisukan perbualan",
+      "unmute": "Nyahbisukan",
+      "muteNotifications": "Bisukan pemberitahuan",
+      "reportReasons": {
+        "scam": "Penipuan",
+        "abuse": "Penyalahgunaan",
+        "spam": "Spam",
+        "other": "Lain-lain"
+      },
+      "read": "Dibaca",
+      "delivered": "Dihantar",
+      "sent": "Dihantar",
+      "aiReplyAssistant": "Pembantu balasan AI",
+      "suggestReply": "Cadangkan balasan",
+      "addCaption": "Tambah kapsyen…",
+      "filters": {
+        "all": "Semua",
+        "unread": "Belum dibaca",
+        "needsReply": "Memerlukan balasan anda"
+      },
+      "loadFailed": "Tidak dapat memuatkan mesej",
+      "noConversations": "Belum ada perbualan",
+      "noConversationsHint": "Buka halaman pengalaman dan pilih Sembang untuk menghantar mesej kepada vendor.",
+      "vendorFallback": "Vendor",
+      "sendFailed": "Tidak dapat menghantar mesej",
+      "sendFailedRetry": "Kami tidak dapat menghantar mesej itu. Sila cuba lagi.",
+      "attachmentFailed": "Kami tidak dapat menghantar lampiran itu. Sila cuba lagi.",
+      "reportFailed": "Kami tidak dapat menghantar laporan itu. Sila cuba lagi.",
+      "conversationCount_one": "{{count}} perbualan",
+      "conversationCount_other": "{{count}} perbualan",
+      "unreadCount_one": "{{count}} belum dibaca",
+      "unreadCount_other": "{{count}} belum dibaca",
+      "replyNeededCount_one": "{{count}} memerlukan balasan anda",
+      "replyNeededCount_other": "{{count}} memerlukan balasan anda",
+      "yourLastMessage": "Mesej terakhir anda"
+    },
+    "bookingDay": {
+      "itineraryCount": "{{count}} item jadual perjalanan pada hari ini",
+      "itineraryCount_other": "{{count}} item jadual perjalanan pada hari ini",
+      "guestBookingCount": "{{guests}} tetamu merentasi {{bookings}} tempahan",
+      "itineraryCount_one": "{{count}} item jadual perjalanan pada hari ini"
+    },
+    "cart": {
+      "discountValue": "−{{amount}}",
+      "proceedSelected": "Teruskan ke pembayaran ({{count}})",
+      "proceedSelected_one": "Teruskan ke pembayaran ({{count}})",
+      "proceedSelected_other": "Teruskan ke pembayaran ({{count}})",
+      "voucherCodePlaceholder": "cth. WELCOME10"
+    },
+    "affiliate": {
+      "verifyUnlock": "Sahkan akaun anda untuk membuka perkongsian afiliasi dan pendapatan.",
+      "peopleOrdered": "Orang yang membuat pesanan",
+      "clearsIn": "Dijelaskan dalam {{count}} hari",
+      "clearsIn_other": "Dijelaskan dalam {{count}} hari",
+      "earnToWithdraw": "Peroleh komisen melalui perkongsian untuk membuat pengeluaran",
+      "confirmedReferrals": "{{count}} rujukan disahkan",
+      "confirmedReferrals_other": "{{count}} rujukan disahkan",
+      "noLink": "Anda belum mempunyai pautan afiliasi.",
+      "funnel": "Corong",
+      "noSharedActivity": "Belum ada aktiviti dikongsi.",
+      "clicksLast30Days": "Klik — 30 hari terakhir",
+      "earningsHistory": "Sejarah pendapatan",
+      "thisMonth": "Bulan ini",
+      "thisYear": "Tahun ini",
+      "allTime": "Sepanjang masa",
+      "noCommissions": "Belum ada komisen.",
+      "rate": "Kadar {{percent}}%",
+      "createLinkFailed": "Tidak dapat mencipta pautan afiliasi. Sila cuba lagi.",
+      "linkReady": "Pautan afiliasi sedia untuk dikongsi.",
+      "clearsIn_one": "Dijelaskan dalam {{count}} hari",
+      "confirmedReferrals_one": "{{count}} rujukan disahkan",
+      "signInRequired": "Log masuk diperlukan",
+      "signInDescription": "Log masuk untuk melihat papan pemuka ahli gabungan anda.",
+      "eligibilityDescription": "Kongsi aktiviti kegemaran anda dan dapatkan komisen apabila seseorang menempah melalui pautan anda.",
+      "verifyAccount": "Sahkan akaun saya",
+      "loadFailed": "Masalah berlaku semasa memuatkan papan pemuka ahli gabungan. Cuba muat semula halaman.",
+      "description": "Kongsi pengalaman tempatan kegemaran anda dan jejaki ganjaran daripada pautan rujukan.",
+      "cashOut": "Keluarkan Wang",
+      "nextTier": " · {{count}} lagi untuk mencapai {{tier}} ({{percent}}%)",
+      "nextTier_one": " · {{count}} lagi untuk mencapai {{tier}} ({{percent}}%)",
+      "nextTier_other": " · {{count}} lagi untuk mencapai {{tier}} ({{percent}}%)",
+      "topTier": " · anda berada pada tahap tertinggi",
+      "copied": "Disalin",
+      "copy": "Salin",
+      "myLink": "Pautan ahli gabungan saya",
+      "generating": "Sedang menjana…",
+      "generateLink": "Jana pautan saya"
+    },
+    "tripPlanner": {
+      "scheduledFor": "Dijadualkan pada {{date}}",
+      "plannerViews": "Paparan perancang",
+      "itinerary": "Jadual perjalanan",
+      "planned": "{{scheduled}}/{{total}} dirancang",
+      "buildRoute": "Bina laluan anda",
+      "tripMap": "Peta perjalanan",
+      "placesToAdd": "Tempat untuk ditambah",
+      "placesReady": "{{count}} tempat sedia ditambah",
+      "toggleVendorPins": "Togol pin vendor",
+      "distance": "Jarak",
+      "priceMeta": "{{distance}} · {{price}}",
+      "itineraryTab": "Jadual perjalanan",
+      "mapTab": "Peta",
+      "placesTab": "Tempat",
+      "timeFor": "Masa untuk {{item}}",
+      "editItem": "Sunting {{item}}",
+      "removeItem": "Buang {{item}}",
+      "showOnMap": "Tunjukkan {{item}} pada peta",
+      "dayNumber": "Hari {{number}}",
+      "planDays": "Rancang hari anda",
+      "dropStopHint": "Letakkan hentian di sini atau tambah dari panel kanan.",
+      "addPlacesHint": "Tambah tempat dari panel kanan untuk mula merancang.",
+      "unscheduled": "Belum dijadualkan",
+      "allAssigned": "Semua tempat anda telah ditetapkan pada satu hari.",
+      "placesReady_one": "{{count}} tempat sedia ditambah",
+      "placesReady_other": "{{count}} tempat sedia ditambah",
+      "searchNewLocation": "Cari lokasi baharu…"
+    },
+    "paymentSimulator": {
+      "eyebrow": "Kotak pasir / Simulasi",
+      "notice": "Ini aliran pembayaran simulasi. Tiada wang sebenar dipindahkan.",
+      "providers": {
+        "tng": "Touch ’n Go eWallet",
+        "grabpay": "GrabPay",
+        "bankTransfer": "Pindahan bank"
+      },
+      "bankInstruction": "Gunakan rujukan ini untuk mensimulasikan pindahan bank.",
+      "scanQr": "Imbas QR simulasi",
+      "qrInstruction": "Gunakan kawalan di bawah untuk memilih hasil simulasi.",
+      "markFundsReceived": "Tandakan dana diterima",
+      "simulateSuccess": "Simulasikan pembayaran berjaya",
+      "simulateFailure": "Simulasikan kegagalan",
+      "cancelPayment": "Batalkan pembayaran",
+      "expireSession": "Tamatkan tempoh sesi",
+      "backToCheckout": "Kembali ke daftar keluar",
+      "statuses": {
+        "pending": "Belum selesai",
+        "paid": "Dibayar",
+        "failed": "Gagal",
+        "cancelled": "Dibatalkan",
+        "expired": "Tamat tempoh"
+      }
+    },
+    "bookingReceipt": {
+      "eyebrow": "Tempahan saya",
+      "description": "Hanya tempahan ini dipaparkan di sini. Tempahan lain kekal dalam kalendar.",
+      "guests": "{{count}} tetamu",
+      "guests_other": "{{count}} tetamu",
+      "reference": "Rujukan tempahan: {{reference}}",
+      "viewFullReceipt": "Lihat resit penuh",
+      "guests_one": "{{count}} tetamu"
+    },
+    "activityDetail": {
+      "availableAtOutlets": "Tersedia di {{count}} cawangan",
+      "reviewCount": "({{count}} ulasan)",
+      "viewOutlet": "Lihat cawangan · {{name}}",
+      "availableAtChoose": "Tersedia di {{count}} cawangan — pilih satu",
+      "availableAtChoose_other": "Tersedia di {{count}} cawangan — pilih satu",
+      "availableAtOutlets_one": "Tersedia di {{count}} cawangan",
+      "availableAtOutlets_other": "Tersedia di {{count}} cawangan",
+      "reviewCount_one": "({{count}} ulasan)",
+      "reviewCount_other": "({{count}} ulasan)",
+      "availableAtChoose_one": "Tersedia di {{count}} cawangan — pilih satu",
+      "readyToBook": "Sedia untuk ditempah",
+      "readyToOrder": "Sedia untuk dipesan",
+      "readyToBuy": "Sedia untuk dibeli",
+      "readyToStay": "Sedia untuk menginap",
+      "selectVisit": "Pilih waktu lawatan",
+      "chooseOptions": "Pilih pilihan anda",
+      "selectDates": "Pilih tarikh anda",
+      "chooseRoom": "Pilih bilik anda",
+      "personCount": "{{count}} orang",
+      "personCount_one": "{{count}} orang",
+      "personCount_other": "{{count}} orang",
+      "itemCount": "{{count}} item",
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} item",
+      "nightCount": "{{count}} malam",
+      "nightCount_one": "{{count}} malam",
+      "nightCount_other": "{{count}} malam",
+      "noVendorRequired": "Vendor tidak diperlukan",
+      "placeDetails": "Butiran tempat",
+      "localVendor": "Vendor tempatan",
+      "familyFriendly": "Mesra Keluarga",
+      "coupleFriendly": "Mesra Pasangan",
+      "yes": "Ya",
+      "no": "Tidak",
+      "valueWithUnit": "{{value}} {{unit}}",
+      "priceUnits": {
+        "perPerson": "setiap orang",
+        "perNight": "setiap malam",
+        "each": "setiap satu"
+      },
+      "units": {
+        "years": "tahun",
+        "guests": "tetamu"
+      },
+      "fields": {
+        "address": "Alamat",
+        "type": "Jenis",
+        "goodFor": "Sesuai untuk",
+        "_hours": "Waktu operasi",
+        "_tags": "Tag",
+        "_contact": "Hubungan",
+        "halalCertified": "Disahkan Halal",
+        "vegetarianOptions": "Pilihan Vegetarian",
+        "veganOptions": "Pilihan Vegan",
+        "porkFree": "Tanpa Daging Babi",
+        "mealPeriods": "Waktu Hidangan",
+        "serviceType": "Jenis Perkhidmatan",
+        "signatureDishes": "Hidangan Istimewa",
+        "menuHighlights": "Sorotan Menu",
+        "spiceLevel": "Tahap Kepedasan",
+        "alcoholServed": "Alkohol Disediakan",
+        "seatingCapacity": "Kapasiti Tempat Duduk",
+        "reservationNeeded": "Tempahan Diperlukan",
+        "difficulty": "Tahap Kesukaran",
+        "durationEstimate": "Tempoh",
+        "sessionLength": "Tempoh Sesi",
+        "distanceKm": "Jarak Laluan",
+        "elevationGainM": "Kenaikan Altitud",
+        "terrain": "Bentuk Muka Bumi",
+        "indoorOutdoor": "Dalaman / Luaran",
+        "facilities": "Kemudahan",
+        "minAge": "Umur Minimum",
+        "ageRange": "Julat Umur",
+        "ageLimit": "Had Umur",
+        "fitnessLevel": "Tahap Kecergasan",
+        "groupSize": "Saiz Kumpulan",
+        "guideIncluded": "Pemandu Disertakan",
+        "guideLanguage": "Pemandu / Bahasa",
+        "equipmentProvided": "Peralatan Disediakan",
+        "whatToBring": "Barang untuk Dibawa",
+        "meetingPoint": "Tempat Berkumpul",
+        "bestSeason": "Musim Terbaik",
+        "bestTimeToVisit": "Masa Terbaik untuk Melawat",
+        "safetyNote": "Keselamatan / Insurans",
+        "entryFee": "Tiket Masuk",
+        "coverCharge": "Bayaran Masuk",
+        "dressCode": "Kod Pakaian",
+        "historicalEra": "Era Sejarah",
+        "musicGenre": "Genre Muzik",
+        "reservation": "Tempahan",
+        "byAppointment": "Mengikut Janji Temu",
+        "servicesOffered": "Perkhidmatan Ditawarkan",
+        "amenities": "Kemudahan",
+        "included": "Yang Termasuk",
+        "genderPolicy": "Jantina",
+        "roomTypes": "Jenis Bilik",
+        "numberOfRooms": "Bilangan Bilik",
+        "maxGuests": "Tetamu Maksimum",
+        "checkInOut": "Daftar Masuk / Keluar",
+        "pricePerNight": "Harga Semalam",
+        "cancellationPolicy": "Polisi Pembatalan",
+        "petFriendly": "Mesra Haiwan Peliharaan",
+        "wheelchairAccessible": "Akses Kerusi Roda",
+        "nearbyLandmarks": "Mercu Tanda Berdekatan",
+        "productCategories": "Kategori Produk",
+        "signatureProducts": "Produk Istimewa",
+        "paymentMethods": "Kaedah Pembayaran",
+        "certification": "Pensijilan",
+        "madeLocally": "Buatan Tempatan / Artisan",
+        "customisationAvailable": "Pengubahsuaian Tersedia",
+        "shippingAvailable": "Penghantaran Tersedia",
+        "priceBand": "Julat Harga",
+        "numberOfStores": "Bilangan Kedai",
+        "anchorTenants": "Penyewa Utama",
+        "parking": "Tempat Letak Kereta",
+        "directoryFloors": "Tingkat"
+      },
+      "types": {
+        "chinese": "Cina",
+        "malay": "Melayu",
+        "nyonya": "Nyonya / Peranakan",
+        "indian": "India",
+        "mamak": "Mamak / Jalanan",
+        "western": "Barat",
+        "seafood": "Makanan Laut",
+        "cafe-dessert": "Kafe / Pencuci Mulut",
+        "fusion": "Fusion",
+        "nature": "Alam Semula Jadi",
+        "adventure": "Pengembaraan",
+        "cultural": "Budaya / Warisan",
+        "nightlife": "Kehidupan Malam",
+        "wellness": "Kesihatan / Spa",
+        "water": "Aktiviti Air",
+        "sightseeing": "Persiaran / Lawatan",
+        "5-star": "5 Bintang",
+        "4-star": "4 Bintang",
+        "3-star": "3 Bintang",
+        "boutique": "Butik",
+        "homestay": "Inap Desa",
+        "hostel": "Hostel",
+        "resort": "Resort",
+        "handicrafts": "Kraftangan",
+        "souvenirs": "Cenderamata",
+        "batik-textiles": "Batik / Tekstil",
+        "fashion": "Fesyen",
+        "jewellery": "Barang Kemas",
+        "local-produce": "Hasil Tempatan / Makanan",
+        "art-prints": "Seni & Cetakan",
+        "shopping-mall": "Pusat Beli-belah / Kompleks",
+        "market-bazaar": "Pasar / Bazar / Pasar Malam",
+        "duty-free": "Bebas Cukai"
+      }
+    },
+    "walletReceipt": {
+      "backToWallet": "Kembali ke dompet",
+      "eyebrow": "Dompet MyWisata",
+      "title": "Resit pengeluaran",
+      "payoutDestination": "Destinasi pembayaran",
+      "defaultDestination": "Destinasi pembayaran yang dipilih",
+      "payoutReference": "Rujukan pembayaran: {{reference}}",
+      "reviewNote": "Nota semakan",
+      "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MyWisata. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
+      "guidance": {
+        "failed": {
+          "title": "Pembayaran gagal — dana dipulihkan",
+          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pembayaran sebelum membuat pengeluaran baharu, atau hubungi Sokongan jika butirannya betul."
+        },
+        "processing": {
+          "title": "Pembayaran sedang diproses",
+          "message": "Penyedia pembayaran sedang memproses pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
+        },
+        "approvedReconciliation": {
+          "title": "Penyelarasan penyedia sedang dijalankan",
+          "message": "Dana anda kekal dirizab sementara pentadbir menyemak transaksi penyedia. Jangan buat pengeluaran lain untuk dana yang sama; hubungi Sokongan jika anda memerlukan kemas kini."
+        },
+        "approved": {
+          "title": "Diluluskan — pembayaran belum selesai",
+          "message": "Dana anda kekal dirizab sementara pembayaran yang diluluskan disediakan. Tiada tindakan diperlukan daripada anda."
+        },
+        "completed": {
+          "title": "Pembayaran selesai",
+          "message": "Pengeluaran telah dihantar ke destinasi pembayaran pilihan anda."
+        }
+      }
+    },
+    "checkout": {
+      "discountWithCode": "Diskaun ({{code}})",
+      "returnToCart": "Kembali ke troli",
+      "payByCard": "Bayar dengan kad",
+      "methods": {
+        "stripeCard": "Kad melalui mod ujian Stripe",
+        "tng": "Touch ’n Go eWallet — simulator",
+        "grabpay": "GrabPay — simulator",
+        "bankTransfer": "Pindahan bank — simulator",
+        "wallet": "Baki dompet MyWisata",
+        "walletSplit": "Dompet dahulu + baki melalui kad"
+      },
+      "signInTitle": "Log masuk untuk membuat pembayaran",
+      "signInDescription": "Item pilihan anda kekal peribadi dan pembayaran memerlukan akaun yang disahkan."
+    },
+    "kyc": {
+      "fileMeta": "{{size}} MB · {{type}}"
+    },
+    "guestPublic": {
+      "backListings": "Kembali ke senarai",
+      "experience": "Pengalaman",
+      "experienceFallback": "Temui pengalaman Malaysia ini.",
+      "viewVendor": "Lihat vendor",
+      "signInBook": "Daftar masuk untuk menempah",
+      "signInPurchase": "Daftar masuk untuk membeli",
+      "upcomingAvailability": "Ketersediaan akan datang",
+      "availableSessions": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa.",
+      "availableSessions_other": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa.",
+      "guestReviews": "Ulasan tetamu",
+      "noReviews": "Belum ada ulasan awam.",
+      "guestReview": "Ulasan tetamu",
+      "verifiedVendor": "Vendor MyWisata disahkan",
+      "browseListings": "Semak imbas senarai",
+      "locations": "Lokasi",
+      "activeOutlets": "Cawangan aktif",
+      "outletCount": "{{count}} cawangan",
+      "outletCount_other": "{{count}} cawangan",
+      "noOutlets": "Belum ada cawangan awam.",
+      "price": "Harga",
+      "outletCount_one": "{{count}} cawangan",
+      "availableSessions_one": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa."
+    },
+    "place": {
+      "entry": "Masuk"
+    },
+    "bookingPanel": {
+      "availableTimesCount": "{{count}} masa tersedia.",
+      "availableTimesCount_one": "{{count}} masa tersedia.",
+      "availableTimesCount_other": "{{count}} masa tersedia."
+    },
+    "outletNavigation": {
+      "position": "Lokasi {{current}} / {{total}} · {{outlet}}",
+      "viewAll": "Lihat semua {{count}}",
+      "viewAll_one": "Lihat semua {{count}}",
+      "viewAll_other": "Lihat semua {{count}}"
     }
   }
 }

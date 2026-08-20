@@ -529,7 +529,7 @@ function AdminSupportContent() {
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
                     <FileText size={16} className="shrink-0 text-primary" />
                     <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-                    <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Remove attachment">
+                    <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.support.removeAttachment")}>
                       <X size={13} />
                     </button>
                   </div>
@@ -541,7 +541,7 @@ function AdminSupportContent() {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Attach a file"
+                    aria-label={t("ui.support.attachFile")}
                   >
                     <Paperclip size={14} />
                   </button>
@@ -551,7 +551,7 @@ function AdminSupportContent() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") sendReply();
                     }}
-                    placeholder={pendingFile ? t("ui.support.addCaption", { defaultValue: "Add a caption…" }) : t("ui.support.replyPlaceholder")}
+                    placeholder={pendingFile ? t("ui.support.addCaption") : t("ui.support.replyPlaceholder")}
                     className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
                     disabled={sending || uploading}
                   />

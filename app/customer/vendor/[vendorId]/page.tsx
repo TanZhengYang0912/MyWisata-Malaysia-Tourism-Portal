@@ -11,6 +11,7 @@ import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { getServerTranslation } from '@/lib/i18n/server';
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = 'force-dynamic';
 
@@ -46,8 +47,8 @@ type LocationSummary = OutletRecord & {
 };
 
 function formatBusinessType(value: string | null, t: TFunction) {
-  if (!value) return t('ui.vendor.localExperiencePartner');
-  const key = `ui.vendor.businessTypes.${value.replace(/-/g, '_')}`;
+  if (!value) return t('customer:ui.vendor.localExperiencePartner');
+  const key = `customer:ui.vendor.businessTypes.${value.replace(/-/g, '_')}`;
   const translated = t(key);
   return translated === key ? value.split(/[_-]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' & ') : translated;
 }
@@ -130,10 +131,10 @@ function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vend
     <div className="mw-card-media h-48 aspect-auto bg-secondary">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
-      <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`, { defaultValue: getVendorProductTypeLabel(product.productType) })}</span>
+      <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`)}</span>
     </div>
     <div className="mw-card-body p-4">
-      <div className="flex items-start justify-between gap-3"><h3 className="mw-card-title min-w-0 flex-1 font-bold text-foreground" title={product.name}>{product.name}</h3><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span>RM {product.fromPrice.toFixed(2)}</p></div>
+      <div className="flex items-start justify-between gap-3"><h3 className="mw-card-title min-w-0 flex-1 font-bold text-foreground" title={product.name}>{product.name}</h3><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span>{MYR_CODE} {product.fromPrice.toFixed(2)}</p></div>
       <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description}</p>}</div>
       <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <span className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></span>}</div>
     </div>

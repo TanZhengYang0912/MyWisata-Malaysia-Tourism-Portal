@@ -13,10 +13,10 @@ import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
 
 type ChatFilter = "all" | "unread" | "needs_reply";
 
-const FILTERS: { value: ChatFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "unread", label: "Unread" },
-  { value: "needs_reply", label: "Needs your reply" },
+const FILTERS: { value: ChatFilter; labelKey: string }[] = [
+  { value: "all", labelKey: "strictMigration.chat.filters.all" },
+  { value: "unread", labelKey: "strictMigration.chat.filters.unread" },
+  { value: "needs_reply", labelKey: "strictMigration.chat.filters.needsReply" },
 ];
 
 type ChatOutlet = Pick<Outlet, "id" | "name" | "city" | "state">;
@@ -97,7 +97,7 @@ export default function ChatListPage() {
       try {
         const response = await fetch("/api/customer/chat", { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error?.message || "Unable to load conversations");
+        if (!response.ok) throw new Error(tCustomer("strictMigration.chat.loadFailed"));
         const rawThreads = Array.isArray(payload.data?.threads) ? payload.data.threads : [];
         const normalized: ReturnType<typeof normalizeThread>[] = rawThreads.map((row: ApiThread) => normalizeThread(row));
         
@@ -113,7 +113,7 @@ export default function ChatListPage() {
         setMutedThreadIds(new Set((mutesRes.data ?? []) as string[]));
         setLoadError(null);
       } catch {
-        if (!cancelled) setLoadError("We couldn't load your conversations. Please refresh and try again.");
+        if (!cancelled) setLoadError(tCustomer("strictMigration.chat.loadFailed"));
       }
     }
 
@@ -124,7 +124,7 @@ export default function ChatListPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [currentUser]);
+  }, [currentUser, tCustomer]);
 
   async function toggleMute(threadId: string) {
     const currentlyMuted = mutedThreadIds.has(threadId);
@@ -210,19 +210,19 @@ export default function ChatListPage() {
   }
 
   if (!currentUser || threads === null) {
-    return <div className="mx-auto max-w-7xl px-4 py-16 text-sm text-muted-foreground sm:px-6">Loading conversations…</div>;
+    return <div className="mx-auto max-w-7xl px-4 py-16 text-sm text-muted-foreground sm:px-6">{tCustomer("strictMigration.chat.loadingConversations")}</div>;
   }
 
   if (loadError) {
-    return <EmptyState icon={<MessageCircle size={40} />} title="Unable to load messages" description={loadError} />;
+    return <EmptyState icon={<MessageCircle size={40} />} title={tCustomer("strictMigration.chat.loadFailed")} description={loadError} />;
   }
 
   if (threads.length === 0) {
     return (
       <EmptyState
         icon={<MessageCircle size={40} />}
-        title="No conversations yet"
-        description="Open an experience's detail page and tap Chat to message a vendor."
+        title={tCustomer("strictMigration.chat.noConversations")}
+        description={tCustomer("strictMigration.chat.noConversationsHint")}
       />
     );
   }
@@ -236,9 +236,9 @@ export default function ChatListPage() {
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">{tCustomer("ui.chat.inboxDescription")}</p>
         </div>
         <div className="flex items-center gap-5 text-xs text-muted-foreground">
-          <span><strong className="text-foreground">{threads.length}</strong> conversations</span>
-          <span><strong className="text-foreground">{unreadTotal}</strong> unread</span>
-          <span><strong className="text-foreground">{needsReplyTotal}</strong> need your reply</span>
+          <span>{tCustomer("strictMigration.chat.conversationCount", { count: threads.length })}</span>
+          <span>{tCustomer("strictMigration.chat.unreadCount", { count: unreadTotal })}</span>
+          <span>{tCustomer("strictMigration.chat.replyNeededCount", { count: needsReplyTotal })}</span>
         </div>
       </header>
 
@@ -247,12 +247,12 @@ export default function ChatListPage() {
           <div className="border-b border-border p-4 sm:p-5">
             <div className="relative">
               <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <label className="sr-only" htmlFor="conversation-search">Search conversations</label>
+              <label className="sr-only" htmlFor="conversation-search">{tCustomer("strictMigration.chat.search")}</label>
               <input
                 id="conversation-search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search conversations"
+                placeholder={tCustomer("strictMigration.chat.search")}
                 className="h-11 w-full rounded-2xl border border-border bg-input-background pl-10 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
               />
             </div>
@@ -267,7 +267,7 @@ export default function ChatListPage() {
                     filter === option.value ? "bg-primary text-white" : "bg-secondary text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {option.label}
+                  {tCustomer(option.labelKey)}
                 </button>
               ))}
             </div>
@@ -277,8 +277,8 @@ export default function ChatListPage() {
             {visibleThreads.length === 0 ? (
               <div className="flex h-full min-h-56 flex-col items-center justify-center px-6 text-center">
                 <Search size={20} className="mb-3 text-muted-foreground" />
-                <p className="text-sm font-semibold text-foreground">No matching conversations</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Try another search or filter.</p>
+                <p className="text-sm font-semibold text-foreground">{tCustomer("strictMigration.chat.noMatches")}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{tCustomer("strictMigration.chat.tryAnother")}</p>
               </div>
             ) : (
               visibleThreads.map((thread) => {
@@ -287,7 +287,7 @@ export default function ChatListPage() {
                 const latest = messages[messages.length - 1];
                 const unreadCount = unreadByThread.get(thread.id) ?? 0;
                 const isSelected = thread.id === selectedId;
-                const name = outlet?.name ?? "Vendor";
+                const name = outlet?.name ?? tCustomer("strictMigration.chat.vendorFallback");
                 return (
                   <Link
                     key={thread.id}
@@ -304,7 +304,7 @@ export default function ChatListPage() {
                         <div className="flex items-start justify-between gap-2">
                           <p className={`flex min-w-0 items-center gap-1 truncate text-sm ${unreadCount > 0 ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
                             <span className="truncate">{name}</span>
-                            {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-muted-foreground" aria-label="Muted" />}
+                            {mutedThreadIds.has(thread.id) && <BellOff size={12} className="shrink-0 text-muted-foreground" aria-label={tCustomer("strictMigration.chat.muted")} />}
                           </p>
                           <span className="shrink-0 text-[11px] text-muted-foreground">{formatChatTimestamp(thread.lastMessageAt)}</span>
                         </div>
@@ -316,7 +316,7 @@ export default function ChatListPage() {
                             {unreadCount > 0 ? (
                               <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">{unreadCount}</span>
                             ) : (
-                              <CheckCheck size={13} className="text-primary" aria-label="Your last message" />
+                              <CheckCheck size={13} className="text-primary" aria-label={tCustomer("strictMigration.chat.yourLastMessage")} />
                             )}
                           </div>
                         )}
@@ -337,9 +337,9 @@ export default function ChatListPage() {
               messages={selectedMessages}
               currentUserId={currentUser.id}
               counterpart={{
-                name: selectedOutlet?.name ?? "Vendor conversation",
+                name: selectedOutlet?.name ?? tCustomer("ui.chat.vendorConversation"),
                 subtitle: `${selectedOutlet?.city || "Malaysia"}${selectedOutlet?.state ? `, ${selectedOutlet.state}` : ""}`,
-                badge: "Vendor",
+                badge: tCustomer("ui.chat.vendor"),
               }}
               onSend={async (text, replyToId) => {
                 const response = await fetch(`/api/customer/chat/${selectedThread.id}/messages`, {
@@ -348,7 +348,7 @@ export default function ChatListPage() {
                   body: JSON.stringify({ body: text, replyToId }),
                 });
                 const payload = await response.json().catch(() => ({}));
-                if (!response.ok || !payload.data) throw new Error(payload.error?.message || "Unable to send message");
+                if (!response.ok || !payload.data) throw new Error(tCustomer("strictMigration.chat.sendFailed"));
                 return toChatMessage({ ...payload.data, thread_id: selectedThread.id }, {
                   id: selectedThread.id,
                   customer_id: currentUser.id,
@@ -369,8 +369,8 @@ export default function ChatListPage() {
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-secondary text-primary">
                 <MessageCircle size={28} />
               </div>
-              <h2 className="text-lg font-bold text-foreground">Select a conversation</h2>
-              <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">Choose a vendor conversation to view messages and continue planning your trip.</p>
+              <h2 className="text-lg font-bold text-foreground">{tCustomer("strictMigration.chat.selectConversation")}</h2>
+              <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{tCustomer("strictMigration.chat.selectConversationHint")}</p>
             </div>
           )}
         </section>

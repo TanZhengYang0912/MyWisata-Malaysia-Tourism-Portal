@@ -94,7 +94,7 @@ function AskPanel() {
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
-        setMessages((m) => [...m, { role: "bot", text: body.error?.message ?? t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }) }]);
+        setMessages((m) => [...m, { role: "bot", text: body.error?.message ?? t("aiAssistant.errors.unavailable") }]);
         return;
       }
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
@@ -103,7 +103,7 @@ function AskPanel() {
       }
       setMessages((m) => [...m, { role: "bot", text: body.data!.answer }]);
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }) }]);
+      setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable") }]);
     } finally {
       setSending(false);
       requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }));
@@ -115,13 +115,13 @@ function AskPanel() {
       <CardContent className="p-4 flex flex-col" style={{ height: 640 }}>
         <div className="flex items-center gap-2 mb-3">
           <Bot size={16} className="text-primary" />
-          <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title", { defaultValue: "Ask about platform metrics" })}</h2>
+          <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title")}</h2>
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring", { defaultValue: "Restoring conversation…" })}</p>}
+          {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring")}</p>}
           {!loadingHistory && messages.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              {t("aiAssistant.ask.empty", { defaultValue: "e.g. “How many recommendations are pending this week?” or “Show me withdrawals over 500”. Answers only come from registered aggregate queries — never raw customer data." })}
+              {t("aiAssistant.ask.empty")}
             </p>
           )}
           {messages.map((m, i) => (
@@ -138,7 +138,7 @@ function AskPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder={t("aiAssistant.ask.placeholder", { defaultValue: "Ask a question…" })}
+            placeholder={t("aiAssistant.ask.placeholder")}
             className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
             disabled={sending}
           />
@@ -159,7 +159,7 @@ export default function AdminAiAssistantPage() {
     return (
       <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Shield size={16} /> {t("aiAssistant.restricted", { defaultValue: "The AI assistant is limited to super admins." })}
+          <Shield size={16} /> {t("aiAssistant.restricted")}
         </div>
       </div>
     );
@@ -168,9 +168,9 @@ export default function AdminAiAssistantPage() {
   return (
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("aiAssistant.title", { defaultValue: "AI Assistant" })}</h1>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("aiAssistant.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          {t("aiAssistant.description", { defaultValue: "Platform analytics. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries." })}
+          {t("aiAssistant.description")}
         </p>
       </div>
       <div className="max-w-4xl">

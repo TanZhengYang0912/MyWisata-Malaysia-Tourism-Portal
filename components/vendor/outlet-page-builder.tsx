@@ -53,6 +53,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
 import { isAppLocale } from "@/lib/i18n/locale";
 import { formatDateTime } from "@/lib/i18n/format";
+import { FONT_FAMILY_LABELS } from "@/lib/i18n/invariant-tokens";
 
 interface Props {
   vendorId: string;
@@ -791,10 +792,10 @@ export default function OutletPageBuilder({
                     }
                     className="mt-1 h-9 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
                   >
-                    <option>Plus Jakarta Sans</option>
-                    <option>Fraunces</option>
-                    <option>IBM Plex Mono</option>
-                    <option>Georgia</option>
+                    <option>{FONT_FAMILY_LABELS.plusJakartaSans}</option>
+                    <option>{FONT_FAMILY_LABELS.fraunces}</option>
+                    <option>{FONT_FAMILY_LABELS.ibmPlexMono}</option>
+                    <option>{FONT_FAMILY_LABELS.georgia}</option>
                   </select>
                 </label>
                 <label className="block text-xs font-semibold text-gray-600">
@@ -843,7 +844,7 @@ export default function OutletPageBuilder({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold text-gray-400">
-                  {t(`builder.viewport.${view}`, { defaultValue: viewportConfig.label })}
+                  {t(`builder.viewport.${view}`)}
                 </span>
                 <div className="flex rounded-xl bg-secondary p-1">
                 <button

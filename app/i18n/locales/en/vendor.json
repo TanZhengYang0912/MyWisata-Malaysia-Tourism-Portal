@@ -361,7 +361,11 @@
       "itemsInPeriod": "{{count}} items in this period",
       "keepExperiencesCurrent": "Keep your experiences current",
       "voucherCampaigns": "Voucher campaigns",
-      "createOffers": "Create offers for travellers"
+      "createOffers": "Create offers for travellers",
+      "availableCount_one": "{{count}} available",
+      "availableCount_other": "{{count}} available",
+      "itemsInPeriod_one": "{{count}} items in this period",
+      "itemsInPeriod_other": "{{count}} items in this period"
     },
     "analytics": {
       "noVendor": "No approved vendor is linked to this account.",
@@ -463,7 +467,13 @@
       "entities": {
         "bookings": "bookings",
         "slots": "slots"
-      }
+      },
+      "batchSummary_one": "{{count}} {{entity}} updated.",
+      "batchSummary_other": "{{count}} {{entity}} updated.",
+      "reservationCount_one": "{{count}} reservations · grouped by outlet",
+      "reservationCount_other": "{{count}} reservations · grouped by outlet",
+      "onThisPage_one": "本页 {{count}} 个",
+      "onThisPage_other": "本页 {{count}} 个"
     },
     "inbox": {
       "filter": {
@@ -558,7 +568,13 @@
       "standard": "Standard",
       "markOrderReady": "Mark order ready",
       "fulfilOrder": "Fulfil order",
-      "close": "Close"
+      "close": "Close",
+      "batchSummary_one": "{{count}} order items updated.",
+      "batchSummary_other": "{{count}} order items updated.",
+      "pageSummary_one": "{{count}} orders · {{perPage}} per page",
+      "pageSummary_other": "{{count}} orders · {{perPage}} per page",
+      "itemCount_one": "{{count}} item(s)",
+      "itemCount_other": "{{count}} item(s)"
     },
     "outlets": {
       "loadingShop": "Loading your shop page…",
@@ -604,7 +620,13 @@
       "noListings": "No listings yet",
       "manageListings": "Manage listings",
       "viewDetailsFor": "View details for {{name}}",
-      "editOutletNamed": "Edit {{name}}"
+      "editOutletNamed": "Edit {{name}}",
+      "batchSummary_one": "{{count}} outlets updated.",
+      "batchSummary_other": "{{count}} outlets updated.",
+      "resultCount_one": "{{count}} outlets across Malaysia",
+      "resultCount_other": "{{count}} outlets across Malaysia",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page"
     },
     "products": {
       "loadFailed": "Could not load products",
@@ -649,7 +671,15 @@
       "archived": "Product archived successfully.",
       "archiveTryAgain": "Could not archive listing. Please try again.",
       "batchSummarySkipped": "{{updated}} updated, {{skipped}} skipped by status.",
-      "batchSummary": "{{count}} listings updated."
+      "batchSummary": "{{count}} listings updated.",
+      "batchSummary_one": "{{count}} listings updated.",
+      "batchSummary_other": "{{count}} listings updated.",
+      "resultCount_one": "{{count}} listings in your catalogue",
+      "resultCount_other": "{{count}} listings in your catalogue",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
+      "stockCount_one": "{{count}} in stock{{low}}",
+      "stockCount_other": "{{count}} in stock{{low}}"
     },
     "profile": {
       "loading": "Loading business profile…",
@@ -842,7 +872,21 @@
       "fixedDiscount": "RM {{amount}} off",
       "percentDiscount": "{{percent}}% off",
       "bogoDiscount": "Buy {{buy}} Get {{free}}",
-      "offer": "Voucher offer"
+      "offer": "Voucher offer",
+      "generatedCodes_one": "{{count}} codes generated with prefix {{prefix}}.",
+      "generatedCodes_other": "{{count}} codes generated with prefix {{prefix}}.",
+      "uploadedForReview_one": "{{count}} vouchers uploaded for admin review.",
+      "uploadedForReview_other": "{{count}} vouchers uploaded for admin review.",
+      "uploaded_one": "{{count}} vouchers uploaded.",
+      "uploaded_other": "{{count}} vouchers uploaded.",
+      "batchUpdated_one": "{{count}} vouchers updated.",
+      "batchUpdated_other": "{{count}} vouchers updated.",
+      "batchActivated_one": "{{count}} vouchers activated.",
+      "batchActivated_other": "{{count}} vouchers activated.",
+      "batchDeactivated_one": "{{count}} vouchers deactivated.",
+      "batchDeactivated_other": "{{count}} vouchers deactivated.",
+      "usesCount_one": "{{count}} uses",
+      "usesCount_other": "{{count}} uses"
     },
     "wallet": {
       "vendorFinance": "Vendor finance",
@@ -928,7 +972,11 @@
         "refund": "Refund",
         "adjustment_credit": "Balance adjustment",
         "adjustment_debit": "Balance adjustment"
-      }
+      },
+      "activeCount_one": "{{count}} active",
+      "activeCount_other": "{{count}} active",
+      "activeRequestCount_one": "{{count}} of 1",
+      "activeRequestCount_other": "{{count}} of 1"
     },
     "actions": {
       "save": "Save"
@@ -1046,7 +1094,9 @@
       "textAlignment": "Text alignment",
       "title": "Title",
       "top": "Top",
-      "useImage": "Use image"
+      "useImage": "Use image",
+      "maxImages_one": "Maximum {{count}} images.",
+      "maxImages_other": "Maximum {{count}} images."
     },
     "lastPublished": "Last published {{date}}",
     "livePreview": "Live preview",
@@ -1154,7 +1204,9 @@
       "desktop": "Desktop 1120px",
       "tablet": "Tablet 768px",
       "mobile": "Mobile 390px"
-    }
+    },
+    "sectionCount_one": "{{count}} sections",
+    "sectionCount_other": "{{count}} sections"
   },
   "media": {
     "digitalAssetUploaded": "Digital asset uploaded.",
@@ -1255,7 +1307,9 @@
     "priorityValue": "priority {{value}}",
     "tiered": "Tiered quantity",
     "title": "Variable pricing",
-    "weekend": "Weekend"
+    "weekend": "Weekend",
+    "bundleItems_one": "{{count}} bundle items",
+    "bundleItems_other": "{{count}} bundle items"
   },
   "productDetails": {
     "availability": "Availability",
@@ -1283,7 +1337,9 @@
     "variantsHint": "Manage options, price offsets, stock quantity, and the default variant.",
     "variantsInventory": "Variants & inventory",
     "viewOnlyPricing": "You have view access to this listing. An owner or outlet manager can update pricing rules.",
-    "viewOnlyVariants": "You have view access to this listing. An owner or outlet manager can update variants and inventory."
+    "viewOnlyVariants": "You have view access to this listing. An owner or outlet manager can update variants and inventory.",
+    "unitsAvailable_one": "{{count}} units available",
+    "unitsAvailable_other": "{{count}} units available"
   },
   "productForm": {
     "addTitle": "Add Product",
@@ -1346,7 +1402,11 @@
       "product": "Physical Product",
       "service": "Service"
     },
-    "updated": "Product updated successfully."
+    "updated": "Product updated successfully.",
+    "galleryImageAlt_one": "Gallery image {{count}}",
+    "galleryImageAlt_other": "Gallery image {{count}}",
+    "removeGalleryImage_one": "Remove gallery image {{count}}",
+    "removeGalleryImage_other": "Remove gallery image {{count}}"
   },
   "shopPreview": {
     "customerPreview": "Customer preview",
@@ -1425,7 +1485,11 @@
     "allFilteredSelected": "All filtered results selected",
     "clearSelection": "Clear selection",
     "selectAllFiltered": "Select all {{count}} filtered results",
-    "selected": "{{count}} selected"
+    "selected": "{{count}} selected",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "selectAllFiltered_one": "Select all {{count}} filtered results",
+    "selectAllFiltered_other": "Select all {{count}} filtered results"
   },
   "order": {
     "fulfil": "Fulfil",
@@ -1447,7 +1511,9 @@
       "salesRevenueByOutlet": "Sales revenue by outlet",
       "topOutletsGrouped": "Showing top {{count}} outlets · others grouped",
       "total": "total",
-      "totalPaidRevenue": "Total paid revenue"
+      "totalPaidRevenue": "Total paid revenue",
+      "topOutletsGrouped_one": "Showing top {{count}} outlets · others grouped",
+      "topOutletsGrouped_other": "Showing top {{count}} outlets · others grouped"
     },
     "sales": {
       "description": "Revenue and paid order activity from Supabase",
@@ -1461,7 +1527,9 @@
       "performance": "Sales performance",
       "revenue": "Revenue",
       "revenueRM": "Revenue (RM)",
-      "timeline": "Timeline"
+      "timeline": "Timeline",
+      "orders_one": "{{count}} orders",
+      "orders_other": "{{count}} orders"
     }
   },
   "ranking": {
@@ -1475,7 +1543,11 @@
       "emptyInsight": "Paid products will appear here.",
       "unitsSold": "{{count}} units sold",
       "sold": "{{count}} sold",
-      "empty": "No paid products in this period."
+      "empty": "No paid products in this period.",
+      "unitsSold_one": "{{count}} units sold",
+      "unitsSold_other": "{{count}} units sold",
+      "sold_one": "{{count}} sold",
+      "sold_other": "{{count}} sold"
     },
     "rated": {
       "eyebrow": "TRAVELLER FAVOURITES",
@@ -1486,7 +1558,11 @@
       "emptyInsight": "Published reviews will appear here.",
       "travellerReviews": "{{count}} traveller reviews",
       "reviews": "{{count}} reviews",
-      "empty": "No published reviews in this period."
+      "empty": "No published reviews in this period.",
+      "travellerReviews_one": "{{count}} traveller reviews",
+      "travellerReviews_other": "{{count}} traveller reviews",
+      "reviews_one": "{{count}} reviews",
+      "reviews_other": "{{count}} reviews"
     }
   },
   "transactions": {
@@ -1503,7 +1579,9 @@
     "recentOrder": "Recent order",
     "status": "Status",
     "vendorTotal": "Vendor total",
-    "view": "View"
+    "view": "View",
+    "quantityAndLines_one": "Qty: {{quantity}} · {{count}} {{lineLabel}}",
+    "quantityAndLines_other": "Qty: {{quantity}} · {{count}} {{lineLabel}}"
   },
   "claim": {
     "availableAfterSignIn": "Available after sign in",
@@ -1666,7 +1744,11 @@
       "unlimitedPerCustomer": "Unlimited per customer",
       "unlimitedTotalUses": "Unlimited total uses",
       "validFrom": "Valid from",
-      "validUntil": "Valid until"
+      "validUntil": "Valid until",
+      "totalUses_one": "{{count}} total uses",
+      "totalUses_other": "{{count}} total uses",
+      "perCustomer_one": "{{count}} per customer",
+      "perCustomer_other": "{{count}} per customer"
     },
     "csv": {
       "addAnotherRow": "Add another voucher row",
@@ -1735,7 +1817,25 @@
       "validUntil": "Valid until",
       "value": "Value",
       "voucherName": "Voucher name",
-      "voucherNumber": "Voucher {{number}}"
+      "voucherNumber": "Voucher {{number}}",
+      "rows_one": "{{count}} rows",
+      "rows_other": "{{count}} rows",
+      "readyCount_one": "{{count}} ready",
+      "readyCount_other": "{{count}} ready",
+      "attentionCount_one": "{{count}} need attention",
+      "attentionCount_other": "{{count}} need attention",
+      "blankCodesCount_one": "{{count}} blank codes",
+      "blankCodesCount_other": "{{count}} blank codes",
+      "generatedPreview_one": "Generated code preview · {{count}} codes",
+      "generatedPreview_other": "Generated code preview · {{count}} codes"
     }
+  },
+  "strictMigration": {
+    "redemptionModeRequired": "Redemption mode *",
+    "outletMeta": "{{location}} · ID {{id}}",
+    "orderStatusValue": "Order status: {{status}}",
+    "bookingReference": "{{date}} · #{{reference}}",
+    "specificOutletOptional": "Specific outlet (optional)",
+    "dashboardTodayForVendor": "Here's what's happening with {{vendor}} today."
   }
 }

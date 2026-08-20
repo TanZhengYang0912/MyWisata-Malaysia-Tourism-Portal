@@ -108,10 +108,10 @@ export default function AdminChatbotPage() {
         setReindexResult(t("chatbot.reindexResult", { scanned: body.data.scanned, embedded: body.data.reindexed, skipped: body.data.skipped, errors: body.data.errors.length ? t("chatbot.reindexErrors", { count: body.data.errors.length }) : "" }));
         await loadDocs();
       } else {
-        setReindexResult(body.error?.message ?? t("chatbot.errors.reindex", { defaultValue: "Reindex failed." }));
+        setReindexResult(body.error?.message ?? t("chatbot.errors.reindex"));
       }
     } catch {
-      setReindexResult(t("chatbot.errors.reindex", { defaultValue: "Reindex failed." }));
+      setReindexResult(t("chatbot.errors.reindex"));
     } finally {
       setReindexing(false);
     }
@@ -156,7 +156,7 @@ export default function AdminChatbotPage() {
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
-        showFeedback("error", body.error?.message ?? t("chatbot.errors.draft", { defaultValue: "Could not draft a KB entry right now." }));
+        showFeedback("error", body.error?.message ?? t("chatbot.errors.draft"));
         return;
       }
       // category is classifyTicket(question) from the route — a pre-fill,
@@ -175,7 +175,7 @@ export default function AdminChatbotPage() {
       setFormError(null);
       setEditingId("new");
     } catch {
-      showFeedback("error", t("chatbot.errors.draft", { defaultValue: "Could not draft a KB entry right now." }));
+      showFeedback("error", t("chatbot.errors.draft"));
     } finally {
       setDraftingQuestion(null);
     }
@@ -225,15 +225,15 @@ export default function AdminChatbotPage() {
       });
       const body = (await res.json()) as { error: { message: string } | null };
       if (!res.ok) {
-        setFormError(body.error?.message ?? t("chatbot.errors.save", { defaultValue: "Failed to save." }));
+        setFormError(body.error?.message ?? t("chatbot.errors.save"));
         return;
       }
       setEditingId(null);
-      showFeedback("success", editingId === "new" ? t("chatbot.success.created", { defaultValue: "Knowledge document created." }) : t("chatbot.success.updated", { defaultValue: "Knowledge document updated." }));
+      showFeedback("success", editingId === "new" ? t("chatbot.success.created") : t("chatbot.success.updated"));
       await loadDocs();
     } catch {
-      setFormError(t("chatbot.errors.save", { defaultValue: "Failed to save." }));
-      showFeedback("error", t("chatbot.errors.saveRetry", { defaultValue: "Knowledge document could not be saved. Please try again." }));
+      setFormError(t("chatbot.errors.save"));
+      showFeedback("error", t("chatbot.errors.saveRetry"));
     } finally {
       setSaving(false);
     }
@@ -242,17 +242,17 @@ export default function AdminChatbotPage() {
   async function toggleActive(doc: KbDoc) {
     try {
       const response = await fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !doc.isActive }) });
-      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("chatbot.errors.status", { defaultValue: "Could not update document status." })); return; }
-      showFeedback("success", doc.isActive ? t("chatbot.success.deactivated", { defaultValue: "Knowledge document deactivated." }) : t("chatbot.success.activated", { defaultValue: "Knowledge document activated." }));
+      if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("chatbot.errors.status")); return; }
+      showFeedback("success", doc.isActive ? t("chatbot.success.deactivated") : t("chatbot.success.activated"));
       await loadDocs();
-    } catch { showFeedback("error", t("chatbot.errors.statusRetry", { defaultValue: "Could not update document status. Please try again." })); }
+    } catch { showFeedback("error", t("chatbot.errors.statusRetry")); }
   }
 
   async function applyBatch(action: "activate" | "deactivate") {
     if (batchBusy) return;
     const selected = sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && (action === "activate" ? !doc.isActive : doc.isActive));
     if (!selected.length || selected.length !== selectedDocIds.size) {
-      showFeedback("error", t("chatbot.errors.sameStatus", { defaultValue: "Select documents with the same current status before applying this action." }));
+      showFeedback("error", t("chatbot.errors.sameStatus"));
       return;
     }
     setBatchBusy(true);
@@ -261,13 +261,13 @@ export default function AdminChatbotPage() {
       const failed = responses.find((response) => !response.ok);
       if (failed) {
         const body = await failed.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? t("chatbot.errors.batchUpdate", { defaultValue: "One or more knowledge documents could not be updated." }));
+        throw new Error(body?.error?.message ?? t("chatbot.errors.batchUpdate"));
       }
       setSelectedDocIds(new Set());
-      showFeedback("success", t("chatbot.success.batchStatus", { defaultValue: "{{count}} knowledge documents updated.", count: selected.length }));
+      showFeedback("success", t("chatbot.success.batchStatus", { count: selected.length }));
       await loadDocs();
     } catch (error) {
-      showFeedback("error", error instanceof Error ? error.message : t("chatbot.errors.batchFailed", { defaultValue: "Batch knowledge document update failed." }));
+      showFeedback("error", error instanceof Error ? error.message : t("chatbot.errors.batchFailed"));
     } finally {
       setBatchBusy(false);
     }
@@ -276,13 +276,13 @@ export default function AdminChatbotPage() {
   const sortedDocs = docs ? [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title)) : [];
 
   if (stats === undefined || docs === undefined) {
-    return <div className="p-8 text-sm text-muted-foreground">{t("chatbot.loading", { defaultValue: "Loading…" })}</div>;
+    return <div className="p-8 text-sm text-muted-foreground">{t("chatbot.loading")}</div>;
   }
   if (stats === null || docs === null) {
     return (
       <EmptyState
-        title={t("chatbot.errors.loadTitle", { defaultValue: "Couldn't load chatbot stats" })}
-        description={t("chatbot.errors.loadDescription", { defaultValue: "Something went wrong loading the chatbot overview. Try refreshing the page." })}
+        title={t("chatbot.errors.loadTitle")}
+        description={t("chatbot.errors.loadDescription")}
       />
     );
   }
@@ -291,11 +291,11 @@ export default function AdminChatbotPage() {
     <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl flex items-center gap-2">
-          <Bot size={18} /> {t("chatbot.title", { defaultValue: "Chatbot Oversight" })}
+          <Bot size={18} /> {t("chatbot.title")}
         </h1>
         <div className="text-right">
           <Button size="sm" variant="outline" onClick={runReindex} disabled={reindexing}>
-            <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? t("chatbot.reindexing", { defaultValue: "Reindexing…" }) : t("chatbot.reindex", { defaultValue: "Reindex KB" })}
+            <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? t("chatbot.reindexing") : t("chatbot.reindex")}
           </Button>
           {reindexResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
         </div>
@@ -303,27 +303,27 @@ export default function AdminChatbotPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-w-2xl">
         <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.questions", { defaultValue: "Questions asked" })}</p>
+          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.questions")}</p>
           <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{stats.totalQuestions}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.answerRate", { defaultValue: "Answer rate" })}</p>
+          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.answerRate")}</p>
           <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.escalationRate", { defaultValue: "Escalation rate" })}</p>
+          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.escalationRate")}</p>
           <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
-          <p className="text-[0.625rem] text-muted-foreground mt-0.5">{t("chatbot.metrics.escalationNote", { defaultValue: "of failed answers became a ticket" })}</p>
+          <p className="text-[0.625rem] text-muted-foreground mt-0.5">{t("chatbot.metrics.escalationNote")}</p>
         </div>
       </div>
 
       <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
-          <TrendingUp size={13} /> {t("chatbot.topUnanswered.title", { defaultValue: "Top unanswered questions" })}
+          <TrendingUp size={13} /> {t("chatbot.topUnanswered.title")}
         </p>
-        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topUnanswered.description", { defaultValue: "No KB doc covers these at all." })}</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topUnanswered.description")}</p>
         {stats.topUnanswered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("chatbot.topUnanswered.empty", { defaultValue: "Nothing unanswered yet — the KB is covering everything asked so far." })}</p>
+          <p className="text-sm text-muted-foreground">{t("chatbot.topUnanswered.empty")}</p>
         ) : (
           <div className="space-y-2">
             {stats.topUnanswered.map((q, i) => (
@@ -334,15 +334,15 @@ export default function AdminChatbotPage() {
                     <span className="truncate">{q.question}</span>
                   </span>
                   <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
-                    {t("chatbot.questionMeta", { defaultValue: "×{{count}} · last asked {{date}}", count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
+                    {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Button size="sm" variant="outline" onClick={() => addToKb(q.question)}>
-                    <Sparkles size={12} /> {t("chatbot.actions.addToKb", { defaultValue: "Add to KB" })}
+                    <Sparkles size={12} /> {t("chatbot.actions.addToKb")}
                   </Button>
                   <Button size="sm" variant="outline" disabled={draftingQuestion === q.question} onClick={() => draftAnswer(q.question)}>
-                    <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting", { defaultValue: "Drafting…" }) : t("chatbot.actions.aiDraft", { defaultValue: "AI: draft a KB answer" })}
+                    <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting") : t("chatbot.actions.aiDraft")}
                   </Button>
                 </div>
               </div>
@@ -353,11 +353,11 @@ export default function AdminChatbotPage() {
 
       <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
-          <TrendingUp size={13} /> {t("chatbot.notHelpful.title", { defaultValue: "Answered, but not helpful" })}
+          <TrendingUp size={13} /> {t("chatbot.notHelpful.title")}
         </p>
-        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.notHelpful.description", { defaultValue: "A KB doc matched, but customers said it didn’t help — the doc needs improving, not creating." })}</p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.notHelpful.description")}</p>
         {stats.notHelpfulAnswered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("chatbot.notHelpful.empty", { defaultValue: "No thumbs-down yet on an answered question." })}</p>
+          <p className="text-sm text-muted-foreground">{t("chatbot.notHelpful.empty")}</p>
         ) : (
           <div className="space-y-2">
             {stats.notHelpfulAnswered.map((q, i) => (
@@ -368,7 +368,7 @@ export default function AdminChatbotPage() {
                     <span className="truncate">{q.question}</span>
                   </span>
                   <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
-                    {t("chatbot.questionMeta", { defaultValue: "×{{count}} · last asked {{date}}", count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
+                    {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
                 <Button
@@ -378,7 +378,7 @@ export default function AdminChatbotPage() {
                   disabled={draftingQuestion === q.question}
                   onClick={() => draftAnswer(q.question)}
                 >
-                  <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting", { defaultValue: "Drafting…" }) : t("chatbot.actions.aiDraft", { defaultValue: "AI: draft a KB answer" })}
+                  <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting") : t("chatbot.actions.aiDraft")}
                 </Button>
               </div>
             ))}
@@ -387,25 +387,25 @@ export default function AdminChatbotPage() {
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("chatbot.knowledgeBase", { defaultValue: "Knowledge base" })}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("chatbot.knowledgeBase")}</p>
         <Button size="sm" onClick={startNew}>
-          <Plus size={14} /> {t("chatbot.actions.newDoc", { defaultValue: "New doc" })}
+          <Plus size={14} /> {t("chatbot.actions.newDoc")}
         </Button>
       </div>
 
       {editingId && (
         <div ref={kbFormRef} className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? t("chatbot.form.newTitle", { defaultValue: "New KB document" }) : t("chatbot.form.editTitle", { defaultValue: "Edit KB document" })}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? t("chatbot.form.newTitle") : t("chatbot.form.editTitle")}</p>
           <input
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder={t("chatbot.form.title", { defaultValue: "Title" })}
+            placeholder={t("chatbot.form.title")}
             className="w-full h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
           />
           <textarea
             value={form.body}
             onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-            placeholder={t("chatbot.form.body", { defaultValue: "Body — the fact the bot is allowed to answer from" })}
+            placeholder={t("chatbot.form.body")}
             rows={4}
             className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-foreground"
           />
@@ -413,7 +413,7 @@ export default function AdminChatbotPage() {
             <input
               value={form.keywords}
               onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
-              placeholder={t("chatbot.form.keywords", { defaultValue: "Keywords, comma-separated (used by the keyword fallback)" })}
+              placeholder={t("chatbot.form.keywords")}
               className="flex-1 min-w-[200px] h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
             />
             {/* CLAUDE-P4-EXTRAS-2.md: fixed dropdown, not free text — the
@@ -435,50 +435,50 @@ export default function AdminChatbotPage() {
                 ...(form.category && !(TICKET_CATEGORIES as string[]).includes(form.category) ? [form.category] : []),
               ].map((c) => (
                 <option key={c} value={c}>
-                  {t(`chatbot.categories.${c}`, { defaultValue: c })}
+                  {t(`chatbot.categories.${c}`)}
                 </option>
               ))}
             </select>
             <label className="flex items-center gap-1.5 text-sm text-foreground">
               <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />
-              {t("chatbot.form.active", { defaultValue: "Active" })}
+              {t("chatbot.form.active")}
             </label>
           </div>
           {formError && <p className="text-[0.6875rem] text-destructive">{formError}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={saveDoc} disabled={saving || !form.title.trim() || !form.body.trim()}>
-              {saving ? t("chatbot.saving", { defaultValue: "Saving…" }) : t("common.actions.save", { defaultValue: "Save" })}
+              {saving ? t("chatbot.saving") : t("common.actions.save")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setEditingId(null)} disabled={saving}>
-              {t("common.actions.cancel", { defaultValue: "Cancel" })}
+              {t("common.actions.cancel")}
             </Button>
           </div>
         </div>
       )}
 
       <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll", { defaultValue: "Select all knowledge documents" })} checked={sortedDocs.length > 0 && sortedDocs.every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll", { defaultValue: "Select all documents" })}</span></div>
-        <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id)).length} onClear={() => setSelectedDocIds(new Set())} onApply={(action) => void applyBatch(action as "activate" | "deactivate")} actions={[{ value: "activate", label: t("batchActions.activate", { defaultValue: "Activate" }) }, { value: "deactivate", label: t("batchActions.deactivate", { defaultValue: "Deactivate" }) }]} busy={batchBusy} />
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll")} checked={sortedDocs.length > 0 && sortedDocs.every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll")}</span></div>
+        <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id)).length} onClear={() => setSelectedDocIds(new Set())} onApply={(action) => void applyBatch(action as "activate" | "deactivate")} actions={[{ value: "activate", label: t("batchActions.activate") }, { value: "deactivate", label: t("batchActions.deactivate") }]} busy={batchBusy} />
         {sortedDocs.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("chatbot.emptyDocuments", { defaultValue: "No KB documents yet." })}</p>
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("chatbot.emptyDocuments")}</p>
         ) : (
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { defaultValue: "Select knowledge document {{title}}", title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
+                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(d.id) : next.delete(d.id); return next; })} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
-                    {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive", { defaultValue: "inactive" })})</span>}
+                    {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {d.category ? t(`chatbot.categories.${d.category}`, { defaultValue: d.category }) : t("chatbot.uncategorized", { defaultValue: "uncategorized" })} · {d.hasEmbedding ? t("chatbot.embedded", { defaultValue: "embedded" }) : t("chatbot.notEmbedded", { defaultValue: "not embedded (keyword-only)" })}
+                    {d.category ? t(`chatbot.categories.${d.category}`) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => startEdit(d)}>
-                  {t("chatbot.actions.edit", { defaultValue: "Edit" })}
+                  {t("chatbot.actions.edit")}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => toggleActive(d)}>
-                  {d.isActive ? t("batchActions.deactivate", { defaultValue: "Deactivate" }) : t("batchActions.activate", { defaultValue: "Activate" })}
+                  {d.isActive ? t("batchActions.deactivate") : t("batchActions.activate")}
                 </Button>
               </div>
             ))}

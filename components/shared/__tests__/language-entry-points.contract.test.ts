@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function source(path: string) {
-  return execFileSync("git", ["show", `:${path}`], { encoding: "utf8" });
+  return readFileSync(resolve(process.cwd(), path), "utf8");
 }
 
 const entryPoints = [
@@ -59,12 +60,16 @@ describe("shared language entry points", () => {
     }
   });
 
-  it("derives customer navigation translations from stable route keys", () => {
+  it("renders customer navigation and account copy from declared translation keys", () => {
     const customer = source("app/customer/layout.tsx");
-    expect(customer).toContain("function customerNavigationKey");
-    expect(customer).toContain('href.split("?")[0].replace("/customer/", "")');
-    expect(customer).toContain("customerNavigationKey(item.href)");
-    expect(customer).not.toContain("navigation.${item.label}");
+    expect(customer).not.toContain("function customerNavigationKey");
+    expect(customer).toContain("tCustomer(item.labelKey)");
+    expect(customer).toContain("tCustomer(group.labelKey)");
+    expect(customer).toContain('tCustomer(`${item.labelKey}.label`)');
+    expect(customer).toContain('tCustomer(`${item.labelKey}.description`)');
+    expect(customer).toContain('tCustomer("accountItems.vouchers.label")');
+    expect(customer).toContain('aria-label={tCustomer("accountItems.vouchers.label")}');
+    expect(customer).not.toContain('aria-label="My Vouchers"');
   });
 
   it("translates guest and admin accessibility copy through resources", () => {

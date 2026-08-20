@@ -11,31 +11,35 @@ import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
+import { formatDate, formatMYR } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 type VoucherOption = {
   voucher: Voucher;
   discountAmount: number;
 };
 
-function voucherDiscountLabel(voucher: Voucher) {
-  if (voucher.type === "percent") return `${voucher.value}% off`;
-  if (voucher.type === "fixed") return `RM ${voucher.value.toFixed(2)} off`;
-  return "Buy one, get one";
+function voucherDiscountLabel(voucher: Voucher, t: ReturnType<typeof useTranslation>["t"]) {
+  if (voucher.type === "percent") return t("ui.cart.discountPercent", { value: voucher.value, ns: "customer" });
+  if (voucher.type === "fixed") return t("ui.cart.discountFixed", { value: voucher.value.toFixed(2), ns: "customer" });
+  return t("ui.cart.buyOneGetOne", { ns: "customer" });
 }
 
 function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption; applied: boolean; onApply: () => void }) {
-  const { t: tCustomer } = useTranslation("customer");
+  const { t: tCustomer, i18n } = useTranslation("customer");
   const { voucher, discountAmount } = option;
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-3">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-foreground">{voucher.name ?? voucher.code}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {voucherDiscountLabel(voucher)}
-          {voucher.minSpend > 0 ? ` · Min RM ${voucher.minSpend.toFixed(2)}` : ""}
+          {voucherDiscountLabel(voucher, tCustomer)}
+          {voucher.minSpend > 0 ? ` · ${tCustomer("ui.cart.minimumSpend", { value: voucher.minSpend.toFixed(2) })}` : ""}
         </p>
         <p className="mt-0.5 text-[11px] text-primary">
-          Save RM {discountAmount.toFixed(2)} · Ends {new Date(voucher.expiresAt).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+          {tCustomer("ui.cart.saveEnds", { amount: discountAmount.toFixed(2), date: formatDate(voucher.expiresAt, locale, { day: "numeric", month: "short" }) })}
         </p>
       </div>
       <Button type="button" variant="outline" onClick={onApply} disabled={applied} className="shrink-0 rounded-full px-3 text-xs">
@@ -46,6 +50,8 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
 }
 
 export default function CartPage() {
+  const { t: tCustomer, i18n } = useTranslation("customer");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const [code, setCode] = useState("");
@@ -269,14 +275,14 @@ export default function CartPage() {
     return (
       <EmptyState
         icon={<ShoppingCart size={40} />}
-        title="Your cart is empty"
-        description="Browse experiences and add a booking or product to get started."
+        title={tCustomer("ui.cart.guestTitle")}
+        description={tCustomer("ui.cart.emptyDescription")}
         action={
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/customer">
-              <Button>Explore Experiences</Button>
+              <Button>{tCustomer("ui.cart.explore")}</Button>
             </Link>
-            <Link href="/customer" className="text-sm font-semibold text-primary hover:underline">Continue shopping</Link>
+            <Link href="/customer" className="text-sm font-semibold text-primary hover:underline">{tCustomer("ui.cart.continueShopping")}</Link>
           </div>
         }
       />
@@ -287,8 +293,8 @@ export default function CartPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">Your Cart</h1>
-          <Link href="/customer" className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline">Continue shopping</Link>
+          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">{tCustomer("ui.cart.title")}</h1>
+          <Link href="/customer" className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline">{tCustomer("ui.cart.continueShopping")}</Link>
         </div>
       </div>
 
@@ -302,9 +308,9 @@ export default function CartPage() {
             onChange={(event) => setAllSelected(event.target.checked, selectableKeys)}
             className="h-4 w-4 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
           />
-          Select all available ({selectableKeys.length})
+          {tCustomer("ui.cart.selectAll", { count: selectableKeys.length })}
         </label>
-        <span className="text-xs text-muted-foreground">{selectedSelectableCount} selected</span>
+        <span className="text-xs text-muted-foreground">{tCustomer("ui.cart.selected", { count: selectedSelectableCount })}</span>
       </div>
 
       <div className="space-y-4 mb-6">
@@ -327,7 +333,7 @@ export default function CartPage() {
                 href={`/customer/outlet/${group.outletId}`}
                 className="shrink-0 text-xs font-semibold text-primary hover:underline"
               >
-                View outlet
+                {tCustomer("ui.cart.viewOutlet")}
               </Link>
             </header>
             <div className="space-y-3 p-3">
@@ -382,7 +388,7 @@ export default function CartPage() {
                       : seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
                   </p>
                 )}
-                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">RM {price.toFixed(2)} × {item.qty}</p>
+                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">{MYR_CODE} {price.toFixed(2)} × {item.qty}</p>
                 {stockLimit !== undefined && (
                   <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700" : "text-emerald-700"}`}>
                     {stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}
@@ -390,7 +396,7 @@ export default function CartPage() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">RM {lineTotal.toFixed(2)}</p>
+                <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {lineTotal.toFixed(2)}</p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => updateQty(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
@@ -402,7 +408,7 @@ export default function CartPage() {
                     +
                   </button>
                 </div>
-                <button onClick={() => removeItem(index)} className="text-destructive" title="Remove">
+                <button onClick={() => removeItem(index)} className="text-destructive" title={tCustomer("ui.cart.remove")}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -411,8 +417,8 @@ export default function CartPage() {
         })}
             </div>
             <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
-              <span className="text-xs text-muted-foreground">Outlet subtotal</span>
-              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">RM {group.groupSubtotal.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground">{tCustomer("ui.cart.outletSubtotal")}</span>
+              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {group.groupSubtotal.toFixed(2)}</span>
             </footer>
           </section>
         ))}
@@ -422,24 +428,24 @@ export default function CartPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Tag size={14} className="text-primary" />
-            <span className="text-sm font-semibold text-foreground">Available vouchers</span>
+            <span className="text-sm font-semibold text-foreground">{tCustomer("ui.cart.availableVouchers")}</span>
           </div>
           <span className="text-xs text-muted-foreground">
-            {selectedItems.length === 0 ? "Select items to see eligible offers" : `${voucherOptions.length} available`}
+            {selectedItems.length === 0 ? tCustomer("ui.cart.selectItemsOffers") : tCustomer("ui.cart.availableCount", { count: voucherOptions.length })}
           </span>
         </div>
 
         {appliedVoucher && !voucherError && (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 font-semibold text-primary"><Check size={14} /> {appliedVoucher.code} applied</span>
-            <button type="button" onClick={() => { setAppliedVoucher(null); setAppliedClaimId(null); }} className="font-semibold text-muted-foreground hover:text-foreground">Remove</button>
+            <span className="flex items-center gap-2 font-semibold text-primary"><Check size={14} /> {tCustomer("ui.cart.applied", { code: appliedVoucher.code })}</span>
+            <button type="button" onClick={() => { setAppliedVoucher(null); setAppliedClaimId(null); }} className="font-semibold text-muted-foreground hover:text-foreground">{tCustomer("ui.cart.remove")}</button>
           </div>
         )}
 
         {selectedItems.length > 0 && (
           <div className="mt-3">
             {loadingVouchers ? (
-              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">Checking eligible vouchers…</p>
+              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">{tCustomer("ui.cart.checkEligible")}</p>
             ) : voucherOptions.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {topVoucherOptions.map((option) => (
@@ -452,24 +458,24 @@ export default function CartPage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">No vouchers match the selected items right now.</p>
+              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">{tCustomer("ui.cart.noEligible")}</p>
             )}
             {voucherOptions.length > 3 && (
               <button type="button" onClick={() => setShowAllVouchers(true)} className="mt-3 inline-flex items-center text-xs font-semibold text-primary hover:underline">
-                View all {voucherOptions.length} vouchers
+                {tCustomer("ui.cart.viewAll", { count: voucherOptions.length })}
               </button>
             )}
           </div>
         )}
 
         <button type="button" onClick={() => setShowManualVoucher((visible) => !visible)} className="mt-3 flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-          Have a voucher code? <ChevronDown size={14} className={`transition-transform ${showManualVoucher ? "rotate-180" : ""}`} />
+          {tCustomer("ui.cart.haveCode")} <ChevronDown size={14} className={`transition-transform ${showManualVoucher ? "rotate-180" : ""}`} />
         </button>
         {showManualVoucher && (
           <div className="mt-3 flex gap-2">
-            <label className="sr-only" htmlFor="voucher-code">Voucher code</label>
-            <input id="voucher-code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="e.g. WELCOME10" className="min-w-0 flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-            <Button type="button" variant="outline" onClick={() => void applyVoucherCode(code)} disabled={!code.trim()}>Apply</Button>
+            <label className="sr-only" htmlFor="voucher-code">{tCustomer("ui.cart.voucherCode")}</label>
+            <input id="voucher-code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder={tCustomer("strictMigration.cart.voucherCodePlaceholder")} className="min-w-0 flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+            <Button type="button" variant="outline" onClick={() => void applyVoucherCode(code)} disabled={!code.trim()}>{tCustomer("ui.actions.apply")}</Button>
           </div>
         )}
         {voucherError && <p className="mt-2 text-xs text-destructive">{voucherError}</p>}
@@ -480,29 +486,29 @@ export default function CartPage() {
           <div className="flex max-h-[min(720px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Eligible for your cart</p>
-                <h2 id="all-vouchers-title" className="mt-1 text-lg font-bold text-foreground">All available vouchers</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{tCustomer("ui.cart.availableVouchers")}</p>
+                <h2 id="all-vouchers-title" className="mt-1 text-lg font-bold text-foreground">{tCustomer("ui.cart.viewAll", { count: voucherOptions.length })}</h2>
               </div>
-              <button type="button" onClick={() => setShowAllVouchers(false)} className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Close vouchers">
+              <button type="button" onClick={() => setShowAllVouchers(false)} className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label={tCustomer("ui.cart.closeVouchers")}>
                 <X size={18} />
               </button>
             </div>
             <div className="grid gap-2 border-b border-border px-5 py-4 sm:grid-cols-[minmax(0,1fr)_160px]">
               <label className="relative">
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <span className="sr-only">Search vouchers</span>
-                <input value={voucherSearch} onChange={(event) => setVoucherSearch(event.target.value)} placeholder="Search voucher name or code" className="h-10 w-full rounded-lg border border-border bg-input-background pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary" />
+                <span className="sr-only">{tCustomer("ui.voucherHub.searchLabel")}</span>
+                <input value={voucherSearch} onChange={(event) => setVoucherSearch(event.target.value)} placeholder={tCustomer("ui.cart.searchVouchers")} className="h-10 w-full rounded-lg border border-border bg-input-background pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary" />
               </label>
-              <select value={voucherTypeFilter} onChange={(event) => setVoucherTypeFilter(event.target.value as "all" | Voucher["type"])} className="h-10 rounded-lg border border-border bg-input-background px-3 text-sm text-foreground outline-none focus:border-primary" aria-label="Filter voucher type">
-                <option value="all">All types</option>
-                <option value="percent">Percentage off</option>
-                <option value="fixed">Fixed amount</option>
-                <option value="bogo">Buy one, get one</option>
+              <select value={voucherTypeFilter} onChange={(event) => setVoucherTypeFilter(event.target.value as "all" | Voucher["type"])} className="h-10 rounded-lg border border-border bg-input-background px-3 text-sm text-foreground outline-none focus:border-primary" aria-label={tCustomer("ui.cart.filterVoucherType")}>
+                <option value="all">{tCustomer("ui.cart.allTypes")}</option>
+                <option value="percent">{tCustomer("ui.cart.percentageOff")}</option>
+                <option value="fixed">{tCustomer("ui.cart.fixedAmount")}</option>
+                <option value="bogo">{tCustomer("ui.cart.buyOneGetOne")}</option>
               </select>
             </div>
             <div className="min-h-0 space-y-2 overflow-y-auto px-5 py-4">
               {allVoucherOptions.length === 0 ? (
-                <p className="rounded-lg bg-secondary px-3 py-6 text-center text-sm text-muted-foreground">No vouchers match your search.</p>
+                <p className="rounded-lg bg-secondary px-3 py-6 text-center text-sm text-muted-foreground">{tCustomer("ui.cart.noMatch")}</p>
               ) : (
                 allVoucherOptions.map((option) => (
                   <VoucherOptionCard
@@ -520,18 +526,18 @@ export default function CartPage() {
 
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal ({selectedKeys.size} selected)</span>
-          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">RM {subtotal.toFixed(2)}</span>
+          <span className="text-muted-foreground">{tCustomer("ui.cart.subtotalSelected", { count: selectedKeys.size })}</span>
+          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {subtotal.toFixed(2)}</span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Discount</span>
-            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">− RM {discount.toFixed(2)}</span>
+            <span className="text-muted-foreground">{tCustomer("ui.cart.discount")}</span>
+            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: formatMYR(discount, locale) })}</span>
           </div>
         )}
         <div className="flex justify-between text-base pt-2 border-t border-border">
-          <span className="font-bold text-foreground">Total</span>
-          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">RM {total.toFixed(2)}</span>
+          <span className="font-bold text-foreground">{tCustomer("ui.cart.total")}</span>
+          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {total.toFixed(2)}</span>
         </div>
       </div>
 
@@ -540,11 +546,11 @@ export default function CartPage() {
           href={appliedVoucher ? `/customer/checkout?voucher=${encodeURIComponent(appliedVoucher.code)}${appliedClaimId ? `&claim=${encodeURIComponent(appliedClaimId)}` : ""}` : "/customer/checkout"}
           className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-base font-medium text-primary-foreground transition-all hover:bg-primary/90"
         >
-          Proceed to Checkout ({selectedKeys.size})
+          {tCustomer("strictMigration.cart.proceedSelected", { count: selectedKeys.size })}
         </a>
       ) : (
         <Button type="button" className="h-12 w-full rounded-full text-base" disabled>
-          Proceed to Checkout
+          {tCustomer("ui.actions.proceedCheckout")}
         </Button>
       )}
     </div>

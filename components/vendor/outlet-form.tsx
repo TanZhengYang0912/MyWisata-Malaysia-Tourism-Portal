@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import AddressAutocomplete, { type AddressSelection } from '@/components/vendor/address-autocomplete';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
+import { SAMPLE_MY_PHONE } from '@/lib/i18n/invariant-tokens';
 
 interface Props {
   vendorId: string;
@@ -120,7 +121,7 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.phone')}</label>
-            <Input {...register('phone')} placeholder="+60 12-345 6789" />
+            <Input {...register('phone')} placeholder={SAMPLE_MY_PHONE} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('outletForm.email')}</label>

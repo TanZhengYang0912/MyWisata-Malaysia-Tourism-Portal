@@ -19,7 +19,7 @@ describe("For You discovery layout contract", () => {
 
   it("provides a visible route back to the customer home", () => {
     expect(source).toContain('href="/customer"');
-    expect(source).toContain("Back to Home");
+    expect(source).toContain("t('ui.forYou.backHome')");
     expect(source).toContain("ArrowLeft");
   });
 });

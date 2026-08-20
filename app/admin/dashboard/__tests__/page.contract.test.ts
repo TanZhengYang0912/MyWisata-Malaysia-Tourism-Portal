@@ -9,25 +9,25 @@ const pageSource = readFileSync(
 
 describe('admin approval overview workbench', () => {
   it('surfaces money, urgency, and dual-approval context', () => {
-    expect(pageSource).toContain('Needs attention');
-    expect(pageSource).toContain('Pending payout value');
-    expect(pageSource).toContain('Overdue withdrawals');
-    expect(pageSource).toContain('Dual approval');
+    expect(pageSource).toContain('t("dashboard.metrics.needsAttention")');
+    expect(pageSource).toContain('t("dashboard.metrics.pendingPayout")');
+    expect(pageSource).toContain('t("dashboard.metrics.overdue")');
+    expect(pageSource).toContain('t("dashboard.metrics.dualApproval")');
     expect(pageSource).toContain('RM');
   });
 
   it('provides an action centre with direct queue links', () => {
-    expect(pageSource).toContain('Action centre');
-    expect(pageSource).toContain('Review withdrawals');
-    expect(pageSource).toContain('Open KYC queue');
-    expect(pageSource).toContain('Open support queue');
+    expect(pageSource).toContain('t("dashboard.actionCentre")');
+    expect(pageSource).toContain('t("dashboard.lanes.withdrawals.cta")');
+    expect(pageSource).toContain('t("dashboard.lanes.kyc.cta")');
+    expect(pageSource).toContain('t("dashboard.lanes.support.cta")');
     expect(pageSource).toContain('href="/admin/withdrawals"');
   });
 
   it('explains data freshness and operational health', () => {
-    expect(pageSource).toContain('Last refreshed');
-    expect(pageSource).toContain('Queue health');
-    expect(pageSource).toContain('All sources responding');
-    expect(pageSource).toContain('Queue activity');
+    expect(pageSource).toContain('t("dashboard.lastRefreshed")');
+    expect(pageSource).toContain('t("dashboard.queueHealth")');
+    expect(pageSource).toContain('t("dashboard.allSources")');
+    expect(pageSource).toContain('t("dashboard.queueActivity")');
   });
 });

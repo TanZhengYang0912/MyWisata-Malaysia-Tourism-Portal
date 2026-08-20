@@ -117,9 +117,6 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
 
     const response = await GET(new Request('http://localhost'), { params: Promise.resolve({ id: withdrawalId }) });
     const body = await response.json();
-    expect(body.data.statusGuidance).toEqual({
-      title: 'Payout failed — funds restored',
-      message: 'The reserved amount has been returned to your available earnings. Check your payout destination before submitting a new withdrawal, or contact Support if the details are correct.',
-    });
+    expect(body.data.statusGuidanceCode).toBe('failed');
   });
 });

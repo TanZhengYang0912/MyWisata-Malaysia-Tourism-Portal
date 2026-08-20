@@ -224,6 +224,15 @@
       "wheelchairAccessible": "Wheelchair accessible",
       "accessible": "Accessible",
       "closed": "Closed",
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
       "trending": "Trending",
       "verified": "Verified",
       "person": "person",
@@ -273,7 +282,8 @@
       "submitting": "Submitting…",
       "preparingPayment": "Preparing secure payment…",
       "addedToCart": "Added to Cart ✓",
-      "couldNotLoad": "Couldn't load this item"
+      "couldNotLoad": "Couldn't load this item",
+      "closed": "Closed"
     },
     "checkout": {
       "title": "Checkout",
@@ -362,7 +372,22 @@
       "addCaption": "Add a caption…",
       "removeAttachment": "Remove attachment",
       "attachmentError": "Could not send attachment.",
-      "status": { "open": "Open", "in_progress": "In progress", "resolved": "Resolved", "closed": "Closed" }
+      "voice": {
+        "start": "Speak your reply",
+        "stop": "Stop listening",
+        "errors": {
+          "permissionDenied": "Microphone access needed",
+          "noSpeech": "Didn't catch that — try again",
+          "network": "Voice input needs a connection",
+          "unknown": "Voice input isn't available right now"
+        }
+      },
+      "status": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      }
     },
     "phone": {
       "selectCountry": "Select phone country or territory",
@@ -415,7 +440,8 @@
       "selected": "Selected",
       "badges": {
         "family_friendly": "Family friendly",
-        "couple_friendly": "Couple friendly"
+        "couple_friendly": "Couple friendly",
+        "hidden_gem": "Hidden gem"
       },
       "types": {
         "chinese": "Chinese",
@@ -459,6 +485,8 @@
       "exploreMalaysia": "Explore Malaysia",
       "yourTrip": "Your Trip",
       "stopCount": "{{count}} stops",
+      "stopCount_one": "{{count}} stop",
+      "stopCount_other": "{{count}} stops",
       "exitFullscreen": "Exit fullscreen",
       "fullscreenMap": "Fullscreen map",
       "expandTripPanel": "Expand trip panel",
@@ -526,6 +554,8 @@
       "selectedState": "Selected state",
       "selectStateToExplore": "Select a state to explore",
       "placesReady": "{{count}} places ready for your next Malaysia experience.",
+      "placesReady_one": "{{count}} place ready for your next Malaysia experience.",
+      "placesReady_other": "{{count}} places ready for your next Malaysia experience.",
       "noPublishedPlaces": "There are no published places here yet, but this region is still part of the map.",
       "categories": "Categories",
       "placesToStart": "A few places to start",
@@ -533,7 +563,15 @@
       "regions": "Regions",
       "chooseStateLabel": "Choose a state",
       "viewStatePlaces": "View {{state}} places",
-      "previewHint": "Hover for a quick preview · click for details"
+      "previewHint": "Hover for a quick preview · click for details",
+      "activeFilters_one": "{{count}} active",
+      "activeFilters_other": "{{count}} active",
+      "placesHere_one": "{{count}} places here",
+      "placesHere_other": "{{count}} places here",
+      "destinationCount_one": "{{count}} destinations across Malaysia",
+      "destinationCount_other": "{{count}} destinations across Malaysia",
+      "destinationCountShort_one": "{{count}} destinations",
+      "destinationCountShort_other": "{{count}} destinations"
     },
     "guest": {
       "signIn": "Sign in",
@@ -593,7 +631,17 @@
       "tryAgain": "Please try again in a moment.",
       "savedOn": "Saved {{date}}",
       "removePlace": "Remove {{name}} from saved places",
-      "removePlaceShort": "Remove saved place"
+      "removePlaceShort": "Remove saved place",
+      "placeCount_one": "{{count}} places",
+      "placeCount_other": "{{count}} places",
+      "experienceCount_one": "{{count}} experiences",
+      "experienceCount_other": "{{count}} experiences",
+      "noPlaces": "No saved places yet",
+      "savePlaces": "Save places you want to visit.",
+      "noExperiences": "No saved experiences yet",
+      "saveExperiences": "Save experiences you want to book.",
+      "empty": "Nothing saved yet",
+      "saveBoth": "Save places and experiences to build your shortlist."
     },
     "activity": {
       "notFound": "Experience not found",
@@ -617,7 +665,21 @@
       "loadingDashboard": "Loading affiliate dashboard…",
       "noClicks": "No clicks in the last 30 days.",
       "clicks": "Clicks",
-      "day": "Day {{label}}"
+      "day": "Day {{label}}",
+      "campaigns": {
+        "title": "Campaigns",
+        "description": "Label a link (e.g. “instagram-story-jan”) to see which campaign converts, not just which platform.",
+        "namePlaceholder": "Campaign name",
+        "getLink": "Get link",
+        "copied": "Copied",
+        "untagged": "Untagged",
+        "columns": {
+          "campaign": "Campaign",
+          "clicks": "Clicks",
+          "orders": "Orders",
+          "earned": "Earned"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "Loading conversation…",
@@ -631,7 +693,13 @@
       "reportSubmitted": "Report submitted. Thank you.",
       "reportConversation": "Report this conversation",
       "startConversation": "Start the conversation",
-      "startConversationHint": "Ask about availability, accessibility, or anything you need for your trip."
+      "startConversationHint": "Ask about availability, accessibility, or anything you need for your trip.",
+      "translate": {
+        "action": "Translate",
+        "showOriginal": "Show original",
+        "working": "Translating…",
+        "failed": "Couldn't translate"
+      }
     },
     "calendar": {
       "today": "Today",
@@ -681,7 +749,27 @@
       "paxCount": "{{count}} pax",
       "bookingCount": "{{count}} bookings",
       "itemsOnDay": "{{count}} itinerary items on this day",
-      "guestsAcrossBookings": "{{guests}} guests across {{bookings}} bookings"
+      "guestsAcrossBookings": "{{guests}} guests across {{bookings}} bookings",
+      "itineraryItems_one": "{{count}} itinerary items",
+      "itineraryItems_other": "{{count}} itinerary items",
+      "paxCount_one": "{{count}} pax",
+      "paxCount_other": "{{count}} pax",
+      "showMore_one": "Show {{count}} more itinerary items for {{date}}",
+      "showMore_other": "Show {{count}} more itinerary items for {{date}}",
+      "more_one": "+{{count}} more",
+      "more_other": "+{{count}} more",
+      "bookingCount_one": "{{count}} bookings",
+      "bookingCount_other": "{{count}} bookings",
+      "scopeEyebrows": {
+        "upcoming": "Your itinerary",
+        "past": "Booking history",
+        "all": "Booking overview"
+      },
+      "scopeDescriptions": {
+        "upcoming": "See the experiences you have planned ahead.",
+        "past": "Review the experiences you have completed or missed.",
+        "all": "See past and upcoming experiences together."
+      }
     },
     "outlet": {
       "verifiedMyWisata": "Verified MyWisata outlet",
@@ -705,7 +793,31 @@
       "photoComingSoon": "Experience photo coming soon",
       "bookingRequired": "Booking required",
       "availableToExplore": "Available to explore",
-      "selectProducts": "Select products in the editor"
+      "selectProducts": "Select products in the editor",
+      "discoverThisOutlet": "Discover this outlet",
+      "scheduleBeforeBooking": "Check the outlet schedule before booking.",
+      "closed": "Closed",
+      "editBlockTitle": "Edit {{label}} title",
+      "editBlockCopy": "Edit {{label}} supporting copy",
+      "galleryAlt": "{{outlet}} gallery",
+      "photosComingSoon": "Photos coming soon",
+      "galleryPreparing": "The outlet team is preparing a closer look at this place.",
+      "blockLabels": {
+        "intro": "Outlet introduction",
+        "text": "Text",
+        "image": "Photo",
+        "imageText": "Photo",
+        "productGrid": "Product grid",
+        "gallery": "Gallery",
+        "hours": "Opening hours",
+        "contact": "Map and contact",
+        "voucherBanner": "Voucher",
+        "cta": "Booking call-to-action",
+        "reviewHighlight": "Guest review",
+        "socialProof": "Social proof",
+        "hero": "Hero banner",
+        "custom": "{{type}}"
+      }
     },
     "reviews": {
       "guestReview": "Guest review",
@@ -720,7 +832,11 @@
       "closeAll": "Close all reviews",
       "loadError": "Could not load reviews",
       "pages": "Review pages",
-      "pageOf": "Page {{page}} of {{total}}"
+      "pageOf": "Page {{page}} of {{total}}",
+      "count_one": "{{count}} reviews",
+      "count_other": "{{count}} reviews",
+      "allReviews_one": "All {{count}} reviews",
+      "allReviews_other": "All {{count}} reviews"
     },
     "search": {
       "showing": "Showing {{start}}–{{end}} of {{total}} {{items}}",
@@ -767,7 +883,8 @@
       "nextPlacesPage": "Next places page",
       "searchVendors": "Search vendors…",
       "searchResults": "Search results",
-      "allPartners": "All partners"
+      "allPartners": "All partners",
+      "outletCount_one": "{{count}} outlet"
     },
     "cart": {
       "guestTitle": "Your cart is empty",
@@ -814,7 +931,21 @@
       "discountPercent": "{{value}}% off",
       "discountFixed": "RM {{value}} off",
       "minimumSpend": "Min RM {{value}}",
-      "saveEnds": "Save RM {{amount}} · Ends {{date}}"
+      "saveEnds": "Save RM {{amount}} · Ends {{date}}",
+      "inStock_one": "{{count}} in stock",
+      "inStock_other": "{{count}} in stock",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
+      "selectAll_one": "Select all available ({{count}})",
+      "selectAll_other": "Select all available ({{count}})",
+      "availableCount_one": "{{count}} available",
+      "availableCount_other": "{{count}} available",
+      "viewAll_one": "View all {{count}} vouchers",
+      "viewAll_other": "View all {{count}} vouchers",
+      "subtotalSelected_one": "Subtotal ({{count}} selected)",
+      "subtotalSelected_other": "Subtotal ({{count}} selected)",
+      "seatsLeft_one": "{{count}} seats left",
+      "seatsLeft_other": "{{count}} seats left"
     },
     "preferencesPage": {
       "eyebrow": "Preferences",
@@ -959,7 +1090,10 @@
         "approved": "Admin approved it; the vendor still needs to join or be linked before going live.",
         "rejected": "This recommendation was not approved for the marketplace.",
         "converted": "The vendor joined through your recommendation and commission attribution is active."
-      }
+      },
+      "photosSelected_one": "{{count}} photo selected",
+      "pendingReview_one": "Pending review ({{count}})",
+      "pendingReview_other": "Pending review ({{count}})"
     },
     "profileWizard": {
       "completion": "Profile completion",
@@ -1103,7 +1237,21 @@
       "productPageDetails": "Product pages show availability, price and booking requirements.",
       "travellerFavourites": "Traveller favourites",
       "trustedByTravellers": "Trusted by people who have been there",
-      "combinedScore": "A combined score from visible reviews across this vendor's published listings."
+      "combinedScore": "A combined score from visible reviews across this vendor's published listings.",
+      "locationCount_one": "{{count}} locations",
+      "locationCount_other": "{{count}} locations",
+      "publishedExperienceCount_one": "{{count}} published experiences",
+      "publishedExperienceCount_other": "{{count}} published experiences",
+      "listingCount_one": "{{count}} listings",
+      "listingCount_other": "{{count}} listings",
+      "travellerReviewCount_one": "{{count}} traveller reviews",
+      "travellerReviewCount_other": "{{count}} traveller reviews",
+      "publishedListingCount_one": "{{count}} published listings",
+      "publishedListingCount_other": "{{count}} published listings",
+      "activeOutletCount_one": "{{count}} active outlets",
+      "activeOutletCount_other": "{{count}} active outlets",
+      "reviewCount_one": "{{count}} reviews",
+      "reviewCount_other": "{{count}} reviews"
     },
     "wallet": {
       "emptyTitle": "Your wallet is empty",
@@ -1197,7 +1345,9 @@
       "setUpBankAccount": "Set Up Bank Account",
       "ok": "OK",
       "later": "Later",
-      "inProgress": "In Progress ({{count}})"
+      "inProgress": "In Progress ({{count}})",
+      "inProgress_one": "In Progress ({{count}})",
+      "inProgress_other": "In Progress ({{count}})"
     },
     "profileSections": {
       "contact": "Contact details",
@@ -1286,7 +1436,11 @@
       "backToOrders": "Back to orders",
       "refundReasonPrompt": "Why are you requesting a refund?",
       "refundSubmitted": "Refund request submitted.",
-      "refundError": "Could not submit the refund request."
+      "refundError": "Could not submit the refund request.",
+      "found_one": "{{count}} orders found",
+      "found_other": "{{count}} orders found",
+      "moreItems_one": " +{{count}} more",
+      "moreItems_other": " +{{count}} more"
     },
     "outletMenu": {
       "from": "From",
@@ -1302,7 +1456,9 @@
       "descriptionFallback": "A local favourite from {{outlet}}.",
       "emptyTitle": "The menu is being prepared",
       "emptyDescription": "This outlet has not published a sellable item yet. Check back soon for local favourites.",
-      "price": "RM {{price}}"
+      "price": "RM {{price}}",
+      "listingCount_one": "{{count}} listings",
+      "listingCount_other": "{{count}} listings"
     },
     "home": {
       "vendorCover": "{{vendor}} cover",
@@ -1334,7 +1490,9 @@
       "viewPartners": "View partners",
       "viewAllDestinations": "View all destinations",
       "destinationCarouselControls": "Destination carousel controls",
-      "explorationPrompt": "Choose a destination to start exploring"
+      "explorationPrompt": "Choose a destination to start exploring",
+      "swipeDestinations_one": "Swipe to explore all {{count}} states.",
+      "swipeDestinations_other": "Swipe to explore all {{count}} states."
     },
     "destination": {
       "notFound": "Destination not found",
@@ -1384,7 +1542,11 @@
       "addedToTrip": "Added to Trip!",
       "addToTrip": "+ Add to Trip",
       "total": "Total",
-      "noPaymentUntilConfirmed": "No payment charged until booking is confirmed."
+      "noPaymentUntilConfirmed": "No payment charged until booking is confirmed.",
+      "reviewCount_one": "{{count}} reviews",
+      "reviewCount_other": "{{count}} reviews",
+      "slotsLeft_one": "{{count}} left",
+      "slotsLeft_other": "{{count}} left"
     },
     "explore": {
       "eyebrow": "Explore Malaysia",
@@ -1399,7 +1561,9 @@
       "categoryExperiences": "{{category}} Experiences",
       "allExperiences": "All Experiences",
       "results": "{{count}} results",
-      "noExperiences": "No experiences found for this category."
+      "noExperiences": "No experiences found for this category.",
+      "results_one": "{{count}} results",
+      "results_other": "{{count}} results"
     },
     "place": {
       "notFound": "Place not found",
@@ -1452,7 +1616,12 @@
         "admission": "Includes entry",
         "guide_service": "Guide service · entry is free",
         "addon": "Add-on service"
-      }
+      },
+      "placesToVisit_one": "{{count}} place to visit",
+      "bookableCount_one": "{{count}} bookable place",
+      "vendorOptions_one": "{{count}} vendor option",
+      "activityCount_one": "{{count}} activity",
+      "vendorCount_one": "{{count}} vendor"
     },
     "saved": {
       "metadataTitle": "Saved — MyWisata",
@@ -1484,7 +1653,9 @@
       "metaDescription": "Explore products and experiences at {{name}}.",
       "heroTitle": "Your local day starts here",
       "verified": "Verified MyWisata outlet",
-      "by": "by"
+      "by": "by",
+      "introTitle": "A local day, made memorable",
+      "introBody": "Discover {{vendor}} in {{city}}: local favourites, thoughtful hosts and experiences designed around this place."
     },
     "pagination": {
       "showing": "Showing {{from}}–{{to}} of {{total}} {{items}}",
@@ -1507,7 +1678,9 @@
       "filterType": "Filter nearby businesses by type",
       "filterDistance": "Filter nearby businesses by distance",
       "within": "Within",
-      "emptyHint": "Try a wider radius or clear the category filter."
+      "emptyHint": "Try a wider radius or clear the category filter.",
+      "summary_one": "{{count}} businesses within {{radius}} km",
+      "summary_other": "{{count}} businesses within {{radius}} km"
     },
     "discovery": {
       "searchLabel": "Search places and experiences"
@@ -1546,10 +1719,30 @@
       "placeholder3": "Try 'Langkawi island hopping'...",
       "placeholder4": "Try 'Melaka heritage trail'...",
       "placeholder5": "Try 'Borneo rainforest'...",
-      "guide0": { "label": "City guide", "eyebrow": "Start with the essentials", "description": "See the city through a local partner, with a clear first stop and room to follow your curiosity.", "detail": "A vendor can match you with the right outlet before you choose an experience." },
-      "guide1": { "label": "Transport & transfers", "eyebrow": "Door to door, your pace", "description": "Keep the day moving with a local transfer partner and a route that fits your pace.", "detail": "Compare published partner packages and confirm availability before checkout." },
-      "guide2": { "label": "Weekend escape", "eyebrow": "Leave room to linger", "description": "Build a short break around one region, then pick the vendor and outlet that make the route work.", "detail": "See the local partners serving your chosen destination before you commit." },
-      "guide3": { "label": "Local host", "eyebrow": "Meet the storykeepers", "description": "Choose the people behind the place first, then find their outlets, activities and local favourites.", "detail": "Start at the vendor profile, where outlet-specific details stay clear." },
+      "guide0": {
+        "label": "City guide",
+        "eyebrow": "Start with the essentials",
+        "description": "See the city through a local partner, with a clear first stop and room to follow your curiosity.",
+        "detail": "A vendor can match you with the right outlet before you choose an experience."
+      },
+      "guide1": {
+        "label": "Transport & transfers",
+        "eyebrow": "Door to door, your pace",
+        "description": "Keep the day moving with a local transfer partner and a route that fits your pace.",
+        "detail": "Compare published partner packages and confirm availability before checkout."
+      },
+      "guide2": {
+        "label": "Weekend escape",
+        "eyebrow": "Leave room to linger",
+        "description": "Build a short break around one region, then pick the vendor and outlet that make the route work.",
+        "detail": "See the local partners serving your chosen destination before you commit."
+      },
+      "guide3": {
+        "label": "Local host",
+        "eyebrow": "Meet the storykeepers",
+        "description": "Choose the people behind the place first, then find their outlets, activities and local favourites.",
+        "detail": "Start at the vendor profile, where outlet-specific details stay clear."
+      },
       "firstStep": "A useful first step",
       "planTitle": "Plan with a local partner.",
       "planDescription": "Start with the kind of day you want. Then meet the vendor, choose the outlet, and see the exact package before you buy.",
@@ -1596,7 +1789,9 @@
       "nextMove": "Choose your next move.",
       "browseMap": "Browse the map",
       "buildRoute": "Build a route",
-      "savedPlaces": "Saved places"
+      "savedPlaces": "Saved places",
+      "approvedVendors_one": "{{count}} approved vendors",
+      "approvedVendors_other": "{{count}} approved vendors"
     },
     "voucherHub": {
       "eyebrow": "MyWisata vouchers",
@@ -1613,7 +1808,12 @@
       "helpStep2": "Check where and when it can be redeemed.",
       "helpStep3": "Use it at checkout or show it in store.",
       "filterLabel": "Filter vouchers by type",
-      "filters": { "all": "All", "percent": "Percentage", "fixed": "Fixed amount", "bogo": "Buy one, get one" },
+      "filters": {
+        "all": "All",
+        "percent": "Percentage",
+        "fixed": "Fixed amount",
+        "bogo": "Buy one, get one"
+      },
       "searchLabel": "Search vouchers",
       "searchPlaceholder": "Search vouchers or partners",
       "tryAgain": "Try again",
@@ -1644,8 +1844,504 @@
       "saved": "Saved",
       "claimLater": "Claim now, use later",
       "useNow": "Use now",
-      "redemption": { "both": "Online or in store", "in_store": "In store", "online": "Online" },
-      "actions": { "claim": "Claim", "redeemed": "Redeemed", "expired": "Expired", "claimed": "Claimed" }
+      "redemption": {
+        "both": "Online or in store",
+        "in_store": "In store",
+        "online": "Online"
+      },
+      "actions": {
+        "claim": "Claim",
+        "redeemed": "Redeemed",
+        "expired": "Expired",
+        "claimed": "Claimed"
+      },
+      "remaining_one": "{{count}} remaining",
+      "remaining_other": "{{count}} remaining",
+      "productsAvailable_one": "{{count}} products available",
+      "productsAvailable_other": "{{count}} products available",
+      "moreProducts_one": "+{{count}} more",
+      "moreProducts_other": "+{{count}} more"
+    }
+  },
+  "strictMigration": {
+    "home": {
+      "exploreByState": "Explore by state",
+      "destinationCount": "{{count}} destinations across Malaysia",
+      "chooseRoute": "Choose your route",
+      "routeHint": "Jump into a region without scanning every state.",
+      "closeStateMenu": "Close state menu",
+      "browseByCategory": "Browse by category",
+      "categoryPrompt": "What kind of experience are you looking for?",
+      "resultsCount": "{{count}} results",
+      "experiencePages": "Experience pages",
+      "showingExperiences": "Showing {{first}}–{{last}} of {{total}} experiences",
+      "guidePlan": "{{guide}} plan",
+      "forYou": "For You",
+      "topPicks": "Top Picks",
+      "recommendedForYou": "Recommended For You",
+      "popularRightNow": "Popular Right Now",
+      "tunePreferences": "Tune preferences",
+      "viewAll": "View all",
+      "noExperiencesMatch": "No experiences match yet",
+      "tryDifferentStateCategory": "Try a different state or category.",
+      "regions": {
+        "north": "Northern Malaysia",
+        "central": "Central Malaysia",
+        "south": "Southern Malaysia",
+        "eastCoast": "East Coast",
+        "borneo": "Borneo Malaysia"
+      },
+      "destinationCount_one": "{{count}} destinations across Malaysia",
+      "destinationCount_other": "{{count}} destinations across Malaysia",
+      "resultsCount_one": "{{count}} results",
+      "resultsCount_other": "{{count}} results",
+      "allExperiences": "All Experiences",
+      "experiencesIn": "Experiences in {{state}}",
+      "searchFilter": "Search & Filter",
+      "noExperiencesFound": "No experiences found",
+      "clearFiltersHint": "Try clearing your state or category filter."
+    },
+    "search": {
+      "noResultsFor": "No results found for “{{query}}”.",
+      "verifiedPartner": "Verified partner",
+      "placeholder": "Search destinations, experiences, or partners…"
+    },
+    "googleMaps": {
+      "location": "Location from Google Maps",
+      "picker": "Google Maps location picker",
+      "hint": "Search for a place, or click the map to drop a pin.",
+      "loadError": "Google Maps could not be loaded. Please try again later.",
+      "notConfigured": "Google Maps is not configured yet.",
+      "droppedPin": "Dropped pin",
+      "searchLabel": "Search Google Maps location",
+      "searchPlaceholder": "Search a place or address"
+    },
+    "map": {
+      "loading": "Loading map…",
+      "regionPlaceCount": "16 regions · 64 places",
+      "selectState": "Select a state to explore.",
+      "scaleNotice": "West and East Malaysia are scaled independently to fill the map; this is not their true relative scale."
+    },
+    "chat": {
+      "mutedTitle": "Notifications are muted for you",
+      "muted": "Muted",
+      "reportConversation": "Report conversation",
+      "detailsOptional": "Details (optional)",
+      "replyMessage": "Reply to this message",
+      "attachment": "Attachment",
+      "originalMessage": "Original message",
+      "document": "Document",
+      "replyingTo": "Replying to {{name}}",
+      "yourself": "yourself",
+      "cancelReply": "Cancel reply",
+      "removeAttachment": "Remove attachment",
+      "messagePerson": "Message {{name}}",
+      "attachFile": "Attach a file",
+      "safetyNotice": "Phone numbers, contact details and links are hidden to keep you safe on MyWisata.",
+      "loadingConversations": "Loading conversations…",
+      "conversationCount": "{{count}} conversations",
+      "unreadCount": "{{count}} unread",
+      "replyNeededCount": "{{count}} need your reply",
+      "search": "Search conversations",
+      "noMatches": "No matching conversations",
+      "tryAnother": "Try another search or filter.",
+      "selectConversation": "Select a conversation",
+      "selectConversationHint": "Choose a vendor conversation to view messages and continue planning your trip.",
+      "online": "Online",
+      "offline": "Offline",
+      "unmuteConversation": "Unmute conversation",
+      "muteConversation": "Mute conversation",
+      "unmute": "Unmute",
+      "muteNotifications": "Mute notifications",
+      "reportReasons": {
+        "scam": "Scam",
+        "abuse": "Abuse",
+        "spam": "Spam",
+        "other": "Other"
+      },
+      "read": "Read",
+      "delivered": "Delivered",
+      "sent": "Sent",
+      "aiReplyAssistant": "AI reply assistant",
+      "suggestReply": "Suggest reply",
+      "addCaption": "Add a caption…",
+      "filters": {
+        "all": "All",
+        "unread": "Unread",
+        "needsReply": "Needs your reply"
+      },
+      "loadFailed": "Unable to load messages",
+      "noConversations": "No conversations yet",
+      "noConversationsHint": "Open an experience page and select Chat to message a vendor.",
+      "vendorFallback": "Vendor",
+      "sendFailed": "Unable to send message",
+      "sendFailedRetry": "We couldn't send that message. Please try again.",
+      "attachmentFailed": "We couldn't send that attachment. Please try again.",
+      "reportFailed": "We couldn't submit that report. Please try again.",
+      "conversationCount_one": "{{count}} conversations",
+      "conversationCount_other": "{{count}} conversations",
+      "unreadCount_one": "{{count}} unread",
+      "unreadCount_other": "{{count}} unread",
+      "replyNeededCount_one": "{{count}} need your reply",
+      "replyNeededCount_other": "{{count}} need your reply",
+      "yourLastMessage": "Your last message"
+    },
+    "bookingDay": {
+      "itineraryCount": "{{count}} itinerary item on this day",
+      "itineraryCount_other": "{{count}} itinerary items on this day",
+      "guestBookingCount": "{{guests}} guests across {{bookings}} bookings",
+      "itineraryCount_one": "{{count}} itinerary item on this day"
+    },
+    "cart": {
+      "discountValue": "−{{amount}}",
+      "proceedSelected": "Proceed to checkout ({{count}})",
+      "proceedSelected_one": "Proceed to checkout ({{count}})",
+      "proceedSelected_other": "Proceed to checkout ({{count}})",
+      "voucherCodePlaceholder": "e.g. WELCOME10"
+    },
+    "affiliate": {
+      "verifyUnlock": "Verify your account to unlock affiliate sharing and earnings.",
+      "peopleOrdered": "People who ordered",
+      "clearsIn": "Clears in {{count}} day",
+      "clearsIn_other": "Clears in {{count}} days",
+      "earnToWithdraw": "Earn commission by sharing to withdraw",
+      "confirmedReferrals": "{{count}} confirmed referral",
+      "confirmedReferrals_other": "{{count}} confirmed referrals",
+      "noLink": "You don't have an affiliate link yet.",
+      "funnel": "Funnel",
+      "noSharedActivity": "No activity shared yet.",
+      "clicksLast30Days": "Clicks — last 30 days",
+      "earningsHistory": "Earnings history",
+      "thisMonth": "This month",
+      "thisYear": "This year",
+      "allTime": "All time",
+      "noCommissions": "No commissions yet.",
+      "rate": "{{percent}}% rate",
+      "createLinkFailed": "Could not create the affiliate link. Please try again.",
+      "linkReady": "Affiliate link is ready to share.",
+      "clearsIn_one": "Clears in {{count}} day",
+      "confirmedReferrals_one": "{{count}} confirmed referral",
+      "signInRequired": "Sign in required",
+      "signInDescription": "Sign in to see your affiliate dashboard.",
+      "eligibilityDescription": "Share activities you love and earn commission when someone books through your link.",
+      "verifyAccount": "Verify my account",
+      "loadFailed": "Something went wrong loading your affiliate dashboard. Try refreshing the page.",
+      "description": "Share local experiences you love and track the rewards generated through your referral link.",
+      "cashOut": "Cash Out",
+      "nextTier": " · {{count}} more to reach {{tier}} ({{percent}}%)",
+      "nextTier_one": " · {{count}} more to reach {{tier}} ({{percent}}%)",
+      "nextTier_other": " · {{count}} more to reach {{tier}} ({{percent}}%)",
+      "topTier": " · you're at the top tier",
+      "copied": "Copied",
+      "copy": "Copy",
+      "myLink": "My affiliate link",
+      "generating": "Generating…",
+      "generateLink": "Generate my link"
+    },
+    "tripPlanner": {
+      "scheduledFor": "Scheduled for {{date}}",
+      "plannerViews": "Planner views",
+      "itinerary": "Trip itinerary",
+      "planned": "{{scheduled}}/{{total}} planned",
+      "buildRoute": "Build your route",
+      "tripMap": "Trip map",
+      "placesToAdd": "Places to add",
+      "placesReady": "{{count}} places ready to add",
+      "toggleVendorPins": "Toggle vendor pins",
+      "distance": "Distance",
+      "priceMeta": "{{distance}} · {{price}}",
+      "itineraryTab": "Itinerary",
+      "mapTab": "Map",
+      "placesTab": "Places",
+      "timeFor": "Time for {{item}}",
+      "editItem": "Edit {{item}}",
+      "removeItem": "Remove {{item}}",
+      "showOnMap": "Show {{item}} on map",
+      "dayNumber": "Day {{number}}",
+      "planDays": "Plan your days",
+      "dropStopHint": "Drop a stop here or add one from the right panel.",
+      "addPlacesHint": "Add places from the right panel to start planning.",
+      "unscheduled": "Unscheduled",
+      "allAssigned": "All your places are assigned to a day.",
+      "placesReady_one": "{{count}} places ready to add",
+      "placesReady_other": "{{count}} places ready to add",
+      "searchNewLocation": "Search a new location…"
+    },
+    "paymentSimulator": {
+      "eyebrow": "Sandbox / Simulated",
+      "notice": "This is a simulated payment flow. No real money moves.",
+      "providers": {
+        "tng": "Touch ’n Go eWallet",
+        "grabpay": "GrabPay",
+        "bankTransfer": "Bank transfer"
+      },
+      "bankInstruction": "Use this reference to simulate a bank transfer.",
+      "scanQr": "Scan simulated QR",
+      "qrInstruction": "Use the controls below to choose the simulated outcome.",
+      "markFundsReceived": "Mark funds received",
+      "simulateSuccess": "Simulate payment success",
+      "simulateFailure": "Simulate failure",
+      "cancelPayment": "Cancel payment",
+      "expireSession": "Expire session",
+      "backToCheckout": "Back to checkout",
+      "statuses": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "expired": "Expired"
+      }
+    },
+    "bookingReceipt": {
+      "eyebrow": "My booking",
+      "description": "Only this booking is shown here. Your other bookings remain in the calendar.",
+      "guests": "{{count}} guest",
+      "guests_other": "{{count}} guests",
+      "reference": "Booking reference: {{reference}}",
+      "viewFullReceipt": "View full receipt",
+      "guests_one": "{{count}} guest"
+    },
+    "activityDetail": {
+      "availableAtOutlets": "Available at {{count}} outlets",
+      "reviewCount": "({{count}} reviews)",
+      "viewOutlet": "View outlet · {{name}}",
+      "availableAtChoose": "Available at {{count}} outlet — choose one",
+      "availableAtChoose_other": "Available at {{count}} outlets — choose one",
+      "availableAtOutlets_one": "Available at {{count}} outlets",
+      "availableAtOutlets_other": "Available at {{count}} outlets",
+      "reviewCount_one": "({{count}} reviews)",
+      "reviewCount_other": "({{count}} reviews)",
+      "availableAtChoose_one": "Available at {{count}} outlet — choose one",
+      "readyToBook": "Ready to book",
+      "readyToOrder": "Ready to order",
+      "readyToBuy": "Ready to buy",
+      "readyToStay": "Ready to stay",
+      "selectVisit": "Select your visit",
+      "chooseOptions": "Choose your options",
+      "selectDates": "Select your dates",
+      "chooseRoom": "Choose your room",
+      "personCount": "{{count}} person",
+      "personCount_one": "{{count}} person",
+      "personCount_other": "{{count}} people",
+      "itemCount": "{{count}} item",
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} items",
+      "nightCount": "{{count}} night",
+      "nightCount_one": "{{count}} night",
+      "nightCount_other": "{{count}} nights",
+      "noVendorRequired": "No vendor required",
+      "placeDetails": "Place details",
+      "localVendor": "Local vendor",
+      "familyFriendly": "Family Friendly",
+      "coupleFriendly": "Couple Friendly",
+      "yes": "Yes",
+      "no": "No",
+      "valueWithUnit": "{{value}} {{unit}}",
+      "priceUnits": {
+        "perPerson": "per person",
+        "perNight": "per night",
+        "each": "each"
+      },
+      "units": {
+        "years": "yrs",
+        "guests": "guests"
+      },
+      "fields": {
+        "address": "Address",
+        "type": "Type",
+        "goodFor": "Good For",
+        "_hours": "Hours",
+        "_tags": "Tags",
+        "_contact": "Contact",
+        "halalCertified": "Halal Certified",
+        "vegetarianOptions": "Vegetarian Options",
+        "veganOptions": "Vegan Options",
+        "porkFree": "Pork-Free",
+        "mealPeriods": "Meal Periods",
+        "serviceType": "Service",
+        "signatureDishes": "Signature Dishes",
+        "menuHighlights": "Menu Highlights",
+        "spiceLevel": "Spice Level",
+        "alcoholServed": "Alcohol Served",
+        "seatingCapacity": "Seating Capacity",
+        "reservationNeeded": "Reservation Needed",
+        "difficulty": "Difficulty",
+        "durationEstimate": "Duration",
+        "sessionLength": "Session Length",
+        "distanceKm": "Trail Distance",
+        "elevationGainM": "Elevation Gain",
+        "terrain": "Terrain",
+        "indoorOutdoor": "Indoor / Outdoor",
+        "facilities": "Facilities",
+        "minAge": "Minimum Age",
+        "ageRange": "Age Range",
+        "ageLimit": "Age Limit",
+        "fitnessLevel": "Fitness Level",
+        "groupSize": "Group Size",
+        "guideIncluded": "Guide Included",
+        "guideLanguage": "Guide / Language",
+        "equipmentProvided": "Equipment Provided",
+        "whatToBring": "What to Bring",
+        "meetingPoint": "Meeting Point",
+        "bestSeason": "Best Season",
+        "bestTimeToVisit": "Best Time to Visit",
+        "safetyNote": "Safety / Insurance",
+        "entryFee": "Entry Ticket",
+        "coverCharge": "Entry / Cover",
+        "dressCode": "Dress Code",
+        "historicalEra": "Historical Era",
+        "musicGenre": "Music Genre",
+        "reservation": "Reservation",
+        "byAppointment": "By Appointment",
+        "servicesOffered": "Services Offered",
+        "amenities": "Amenities",
+        "included": "What's Included",
+        "genderPolicy": "Gender",
+        "roomTypes": "Room Types",
+        "numberOfRooms": "Number of Rooms",
+        "maxGuests": "Max Guests",
+        "checkInOut": "Check-in / Check-out",
+        "pricePerNight": "Price per Night",
+        "cancellationPolicy": "Cancellation Policy",
+        "petFriendly": "Pet Friendly",
+        "wheelchairAccessible": "Wheelchair Accessible",
+        "nearbyLandmarks": "Nearby Landmarks",
+        "productCategories": "Product Categories",
+        "signatureProducts": "Signature Products",
+        "paymentMethods": "Payment Methods",
+        "certification": "Certification",
+        "madeLocally": "Made Locally / Artisan",
+        "customisationAvailable": "Customisation Available",
+        "shippingAvailable": "Shipping / Delivery",
+        "priceBand": "Price Band",
+        "numberOfStores": "Number of Stores",
+        "anchorTenants": "Anchor Tenants",
+        "parking": "Parking",
+        "directoryFloors": "Floors"
+      },
+      "types": {
+        "chinese": "Chinese",
+        "malay": "Malay",
+        "nyonya": "Nyonya / Peranakan",
+        "indian": "Indian",
+        "mamak": "Mamak / Street",
+        "western": "Western",
+        "seafood": "Seafood",
+        "cafe-dessert": "Café / Dessert",
+        "fusion": "Fusion",
+        "nature": "Nature",
+        "adventure": "Adventure",
+        "cultural": "Cultural / Heritage",
+        "nightlife": "Nightlife",
+        "wellness": "Wellness / Spa",
+        "water": "Water",
+        "sightseeing": "Sightseeing / Tours",
+        "5-star": "5-Star",
+        "4-star": "4-Star",
+        "3-star": "3-Star",
+        "boutique": "Boutique",
+        "homestay": "Homestay",
+        "hostel": "Hostel",
+        "resort": "Resort",
+        "handicrafts": "Handicrafts",
+        "souvenirs": "Souvenirs",
+        "batik-textiles": "Batik / Textiles",
+        "fashion": "Fashion",
+        "jewellery": "Jewellery",
+        "local-produce": "Local Produce / Food",
+        "art-prints": "Art & Prints",
+        "shopping-mall": "Shopping Mall / Complex",
+        "market-bazaar": "Market / Bazaar / Night Market",
+        "duty-free": "Duty-Free"
+      }
+    },
+    "walletReceipt": {
+      "backToWallet": "Back to wallet",
+      "eyebrow": "MyWisata Wallet",
+      "title": "Withdrawal receipt",
+      "payoutDestination": "Payout destination",
+      "defaultDestination": "Selected payout destination",
+      "payoutReference": "Payout reference: {{reference}}",
+      "reviewNote": "Review note",
+      "settlementNotice": "This receipt records the withdrawal request in MyWisata. Settlement timing depends on the selected payout provider ({{provider}}).",
+      "guidance": {
+        "failed": {
+          "title": "Payout failed — funds restored",
+          "message": "The reserved amount has been returned to your available earnings. Check your payout destination before submitting a new withdrawal, or contact Support if the details are correct."
+        },
+        "processing": {
+          "title": "Payout in progress",
+          "message": "The payout provider is processing this withdrawal. No action is required unless the status does not change within the provider’s normal settlement time."
+        },
+        "approvedReconciliation": {
+          "title": "Provider reconciliation in progress",
+          "message": "Your funds remain reserved while an administrator checks the provider transaction. Do not submit another withdrawal for the same funds; contact Support if you need an update."
+        },
+        "approved": {
+          "title": "Approved — payout pending",
+          "message": "Your funds remain reserved while the approved payout is prepared. No action is required from you."
+        },
+        "completed": {
+          "title": "Payout completed",
+          "message": "The withdrawal was sent to your selected payout destination."
+        }
+      }
+    },
+    "checkout": {
+      "discountWithCode": "Discount ({{code}})",
+      "returnToCart": "Return to cart",
+      "payByCard": "Pay by card",
+      "methods": {
+        "stripeCard": "Card via Stripe test mode",
+        "tng": "Touch ’n Go eWallet — simulator",
+        "grabpay": "GrabPay — simulator",
+        "bankTransfer": "Bank transfer — simulator",
+        "wallet": "MyWisata wallet balance",
+        "walletSplit": "Wallet first + card remainder"
+      },
+      "signInTitle": "Sign in to check out",
+      "signInDescription": "Your selected items stay private and checkout requires a verified account."
+    },
+    "kyc": {
+      "fileMeta": "{{size}} MB · {{type}}"
+    },
+    "guestPublic": {
+      "backListings": "Back to listings",
+      "experience": "Experience",
+      "experienceFallback": "Discover this Malaysian experience.",
+      "viewVendor": "View vendor",
+      "signInBook": "Sign in to book",
+      "signInPurchase": "Sign in to purchase",
+      "upcomingAvailability": "Upcoming availability",
+      "availableSessions": "{{count}} available session. Sign in to choose a time.",
+      "availableSessions_other": "{{count}} available sessions. Sign in to choose a time.",
+      "guestReviews": "Guest reviews",
+      "noReviews": "No public reviews yet.",
+      "guestReview": "Guest review",
+      "verifiedVendor": "Verified MyWisata vendor",
+      "browseListings": "Browse listings",
+      "locations": "Locations",
+      "activeOutlets": "Active outlets",
+      "outletCount": "{{count}} outlet",
+      "outletCount_other": "{{count}} outlets",
+      "noOutlets": "No public outlets yet.",
+      "price": "Price",
+      "outletCount_one": "{{count}} outlet",
+      "availableSessions_one": "{{count}} available session. Sign in to choose a time."
+    },
+    "place": {
+      "entry": "Entry"
+    },
+    "bookingPanel": {
+      "availableTimesCount": "{{count}} available times.",
+      "availableTimesCount_one": "{{count}} available times.",
+      "availableTimesCount_other": "{{count}} available times."
+    },
+    "outletNavigation": {
+      "position": "Location {{current}} / {{total}} · {{outlet}}",
+      "viewAll": "View all {{count}}",
+      "viewAll_one": "View all {{count}}",
+      "viewAll_other": "View all {{count}}"
     }
   }
 }

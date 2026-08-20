@@ -129,7 +129,7 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
   }, [items.map((i) => i.key).join(","), ticketId]);
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet", { defaultValue: "No messages yet." })}</p>;
+    return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet")}</p>;
   }
 
   return (
@@ -141,19 +141,19 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
         const attachmentSrc = item.attachmentUrl ? signedUrls[item.key] : undefined;
         return (
           <div key={item.key} className={isMine ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
-            {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot", { defaultValue: "Bot" })}</p>}
-            {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you", { defaultValue: "You" }) : t("ticket.supportTeam", { defaultValue: item.label })}</p>}
+            {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot")}</p>}
+            {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you") : t("ticket.supportTeam")}</p>}
             {item.attachmentUrl && (
               <div className="mb-1">
                 {isImage ? (
                   attachmentSrc ? (
                     <a href={attachmentSrc} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset */}
-                      <img src={attachmentSrc} alt="Attachment" className="max-h-56 rounded-xl border border-border object-cover" />
+                      <img src={attachmentSrc} alt={t("ticket.attachment")} className="max-h-56 rounded-xl border border-border object-cover" />
                     </a>
                   ) : (
                     <div className="flex h-28 w-40 items-center justify-center rounded-xl border border-border bg-secondary text-xs text-muted-foreground">
-                      {t("ticket.loadingAttachment", { defaultValue: "Loading…" })}
+                      {t("ticket.loadingAttachment")}
                     </div>
                   )
                 ) : (
@@ -163,7 +163,7 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
                     rel="noreferrer"
                     className={`flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm ${attachmentSrc ? "hover:bg-secondary" : "pointer-events-none opacity-60"}`}
                   >
-                    <FileText size={15} className="text-primary" /> {t("ticket.document", { defaultValue: "Document" })}
+                    <FileText size={15} className="text-primary" /> {t("ticket.document")}
                   </a>
                 )}
               </div>
