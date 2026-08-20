@@ -89,7 +89,7 @@ export default function LoginPage() {
       startResendCooldown();
       return;
     }
-    router.push(requestedNext() ?? "/"); router.refresh();
+    router.push(`/auth/callback?next=${encodeURIComponent(requestedNext() ?? "/")}`); router.refresh();
   }
 
   async function enterGuestMode() {
@@ -116,7 +116,7 @@ export default function LoginPage() {
     });
     setBusy(false);
      if (signUpError) { setError(GENERIC_ERROR); return; }
-    if (data.session && data.user?.email_confirmed_at) { router.push(next); router.refresh(); return; }
+    if (data.session && data.user?.email_confirmed_at) { router.push(`/auth/callback?next=${encodeURIComponent(next)}`); router.refresh(); return; }
     setMode("verify"); startResendCooldown();
     setMessage(tAuth("signUp.verificationSent"));
   }
@@ -128,7 +128,7 @@ export default function LoginPage() {
     const { error: verifyError } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp, type: "signup" });
     setBusy(false);
     if (verifyError) { setError(GENERIC_ERROR); return; }
-    router.push(requestedNext() ?? "/customer/explore"); router.refresh();
+    router.push(`/auth/callback?next=${encodeURIComponent(requestedNext() ?? "/customer/explore")}`); router.refresh();
   }
 
   async function resendOtp() {
