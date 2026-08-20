@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-20
 
-**Status:** Approved direction; awaiting written-spec review
+**Status:** Approved
 **Product:** MyWisata Malaysia Tourism Portal
 
 ## Context
