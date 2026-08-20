@@ -21,13 +21,45 @@
 // rendered exactly as returned, while this widget's fixed chrome follows the
 // app translation runtime.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, Send, X } from "lucide-react";
+import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import type { FaqCategory } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useSupportChat } from "@/components/providers/support-chat";
+import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+
+// CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
+// error/exception reaching this UI (the hook itself already guarantees
+// that; this is just the last-mile string).
+const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
+  "permission-denied": "Microphone access needed",
+  "no-speech": "Didn't catch that — try again",
+  network: "Voice input needs a connection",
+  unknown: "Voice input isn't available right now",
+};
+
+// Display labels for the KB's own `category` values (the live set today:
+// account, affiliate, booking, general, payment, rewards, vendor, wallet).
+// Admins can add new categories from the KB editor at any time, so an
+// unmapped value falls back to its own capitalised name rather than
+// disappearing from the FAQ browser.
+const FAQ_CATEGORY_LABEL: Record<string, string> = {
+  account: "Account",
+  affiliate: "Affiliate",
+  booking: "Booking",
+  general: "General",
+  payment: "Payment",
+  rewards: "Rewards",
+  vendor: "Vendor",
+  wallet: "Wallet",
+};
+
+function faqCategoryLabel(category: string): string {
+  return FAQ_CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
+}
 
 type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
@@ -102,16 +134,67 @@ export function ChatbotWidget() {
   const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // FAQ shortcuts: category chips -> question list -> tap to ask. Loaded
+  // lazily the first time the panel is opened (undefined = never fetched,
+  // null = fetch failed), so the widget's normal open/close costs nothing
+  // extra for users who never touch it.
+  const [faq, setFaq] = useState<FaqCategory[] | null | undefined>(undefined);
+  const [faqOpen, setFaqOpen] = useState(false);
+  const [faqCategory, setFaqCategory] = useState<string | null>(null);
+
+  async function loadFaq() {
+    try {
+      const res = await fetch("/api/chatbot/faq");
+      const body = (await res.json()) as { data: { categories: FaqCategory[] } | null };
+      setFaq(res.ok && body.data ? body.data.categories : null);
+    } catch {
+      setFaq(null);
+    }
+  }
+
+  function toggleFaq() {
+    setFaqOpen((wasOpen) => {
+      if (!wasOpen && faq === undefined) void loadFaq();
+      if (wasOpen) setFaqCategory(null); // reset to the category list for next time
+      return !wasOpen;
+    });
+  }
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  async function sendMessage() {
-    const question = input.trim();
+  // CLAUDE-VOICE-INPUT.md Part 2: "current language" = the most recent bot
+  // reply's detected language (the only per-conversation language signal
+  // this widget already tracks — see the file header's trilingual note),
+  // falling back to English before any reply has arrived.
+  const currentLanguage = useMemo<ChatLanguage>(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "bot" && m.language) return m.language;
+    }
+    return "en";
+  }, [messages]);
+  // Populate the input directly from the hook's onTranscriptChange callback
+  // (fires only while a real recognition result comes in) rather than a
+  // useEffect watching the returned transcript value — the idiomatic fix,
+  // see that option's doc comment in hooks/use-speech-input.ts. This also
+  // means the user's own typed edits after stopping are never at risk of
+  // being clobbered by a stray effect re-run.
+  const speech = useSpeechInput({ lang: resolveRecognitionLang(currentLanguage), onTranscriptChange: setInput });
+
+  /**
+   * `explicitQuestion` is the FAQ path — an exact, curated KB question the
+   * user tapped, sent as-is. The typed path (no argument) reads and clears
+   * the composer as before; a FAQ tap deliberately leaves whatever the user
+   * had typed untouched, since it never came from the composer.
+   */
+  async function sendMessage(explicitQuestion?: string) {
+    const question = (explicitQuestion ?? input).trim();
     if (!question || sending) return;
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
-    setInput("");
+    if (explicitQuestion === undefined) setInput("");
 
     try {
       const res = await fetch("/api/chatbot/ask", {
@@ -213,9 +296,20 @@ export function ChatbotWidget() {
 
           <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {messages.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center mt-8">
-                {t("chatbot.emptyPrompt", { defaultValue: "Ask about rewards, affiliate links, withdrawals, booking, or verification." })}
-              </p>
+              <div className="mt-8 flex flex-col items-center gap-2.5">
+                <p className="text-xs text-muted-foreground text-center">
+                  {t("chatbot.emptyPrompt", { defaultValue: "Ask about rewards, affiliate links, withdrawals, booking, or verification." })}
+                </p>
+                {!faqOpen && (
+                  <button
+                    type="button"
+                    onClick={toggleFaq}
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    <HelpCircle size={13} /> {t("chatbot.faq.browse", { defaultValue: "Browse common questions" })}
+                  </button>
+                )}
+              </div>
             )}
             {messages.map((m, i) => {
               return (
@@ -285,7 +379,72 @@ export function ChatbotWidget() {
             })}
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-border">
+          {/* FAQ shortcuts — category chips, then that category's real KB
+              questions. Tapping a question asks it exactly as written. */}
+          {faqOpen && (
+            <div className="max-h-52 overflow-y-auto border-t border-border bg-muted/40 px-3 py-2.5">
+              {faq === undefined && (
+                <p className="text-xs text-muted-foreground">{t("chatbot.faq.loading", { defaultValue: "Loading questions…" })}</p>
+              )}
+              {faq === null && (
+                <p className="text-xs text-destructive">{t("chatbot.faq.error", { defaultValue: "Couldn't load common questions." })}</p>
+              )}
+              {faq && faq.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty", { defaultValue: "No common questions yet." })}</p>
+              )}
+              {faq && faq.length > 0 && faqCategory === null && (
+                <>
+                  <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("chatbot.faq.pickCategory", { defaultValue: "Pick a topic" })}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {faq.map((c) => (
+                      <button
+                        key={c.category}
+                        type="button"
+                        onClick={() => setFaqCategory(c.category)}
+                        className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
+                      >
+                        {faqCategoryLabel(c.category)}
+                        <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {faq && faqCategory !== null && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFaqCategory(null)}
+                    className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory)}
+                  </button>
+                  <div className="flex flex-col gap-1">
+                    {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
+                      <button
+                        key={q.id}
+                        type="button"
+                        disabled={sending}
+                        onClick={() => {
+                          setFaqOpen(false);
+                          setFaqCategory(null);
+                          void sendMessage(q.question);
+                        }}
+                        className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {q.question}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {speech.error && <p className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+          <div className={`flex items-center gap-2 px-3 py-3 ${speech.error ? "" : "border-t border-border"}`}>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -293,10 +452,40 @@ export function ChatbotWidget() {
                 if (e.key === "Enter") sendMessage();
               }}
               placeholder={t("chatbot.inputPlaceholder", { defaultValue: "Ask a question…" })}
-              className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
+              className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
               disabled={sending}
             />
-            <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={sendMessage} aria-label={t("chatbot.send", { defaultValue: "Send message" })} disabled={sending || !input.trim()}>
+            <button
+              type="button"
+              onClick={toggleFaq}
+              aria-label={t("chatbot.faq.toggle", { defaultValue: "Browse common questions" })}
+              aria-expanded={faqOpen}
+              title={t("chatbot.faq.toggle", { defaultValue: "Browse common questions" })}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                faqOpen
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <HelpCircle size={15} />
+            </button>
+            {speech.isSupported && (
+              <button
+                type="button"
+                onClick={() => (speech.isListening ? speech.stop() : speech.start())}
+                disabled={sending}
+                aria-label={speech.isListening ? "Stop listening" : "Speak your message"}
+                title={speech.isListening ? "Stop listening" : "Speak your message"}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  speech.isListening
+                    ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+              </button>
+            )}
+            <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send", { defaultValue: "Send message" })} disabled={sending || !input.trim()}>
               <Send size={14} aria-hidden="true" />
             </Button>
           </div>

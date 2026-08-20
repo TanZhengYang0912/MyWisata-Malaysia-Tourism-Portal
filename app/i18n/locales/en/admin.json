@@ -219,20 +219,7 @@
       "restoring": "Restoring conversation…",
       "title": "Ask about platform metrics"
     },
-    "description": "Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries, and drafts use only what you type in.",
-    "draft": {
-      "contextPlaceholder": "e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality.",
-      "description": "You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you.",
-      "drafting": "Drafting…",
-      "generate": "Generate draft",
-      "title": "Draft a staff message",
-      "types": {
-        "approval": "Approval message",
-        "custom": "Custom",
-        "onboarding": "Vendor onboarding",
-        "rejection": "Rejection notice"
-      }
-    },
+    "description": "Platform analytics. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries.",
     "errors": {
       "unavailable": "Assistant unavailable right now."
     },
@@ -906,6 +893,7 @@
       "pagination": "Support ticket pagination",
       "range": "Showing {{first}}–{{last}} of {{total}} tickets",
       "replyPlaceholder": "Reply to this ticket…",
+      "addCaption": "Add a caption…",
       "replySent": "Support reply sent.",
       "selectAllVisible": "Select all visible support tickets",
       "selectTicket": "Select support ticket {{subject}}",
@@ -1303,17 +1291,23 @@
       "nothingToReview": "Nothing to review.",
       "marking": "Marking…",
       "markReviewed": "Mark reviewed",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "viewTicket": "View ticket"
     }
   },
   "staffConduct": {
     "title": "Staff conduct review",
     "tabs": {
+      "all": "All",
       "flaggedConduct": "Flagged Conduct",
       "reportedChat": "Reported Chat"
     },
     "filters": {
       "showReviewed": "Show reviewed"
+    },
+    "kindLabel": {
+      "flag": "Flagged",
+      "report": "Reported"
     },
     "sources": {
       "ticketReply": "Ticket reply",
@@ -1341,7 +1335,8 @@
       "allFlagsReviewed": "All flags reviewed.",
       "nothingToReview": "Nothing to review.",
       "allReportsReviewed": "All reports reviewed.",
-      "noReportedChats": "No chats have been reported."
+      "noReportedChats": "No chats have been reported.",
+      "allReviewed": "Everything has been reviewed."
     },
     "actions": {
       "viewLog": "View log",

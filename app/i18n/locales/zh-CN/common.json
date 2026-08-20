@@ -134,7 +134,9 @@
     "noMessagesYet": "暂无消息。",
     "bot": "机器人",
     "you": "您",
-    "supportTeam": "客服团队"
+    "supportTeam": "客服团队",
+    "document": "文件",
+    "loadingAttachment": "加载中…"
   },
   "chatbot": {
     "title": "MyWisata 客服",

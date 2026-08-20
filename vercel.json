@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/wallet-maintenance",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/clear-affiliate-commissions",
+      "schedule": "0 2 * * *"
     }
   ]
 }

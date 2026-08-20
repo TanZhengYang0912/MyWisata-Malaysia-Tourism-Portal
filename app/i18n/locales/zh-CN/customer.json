@@ -352,6 +352,16 @@
       "reopening": "正在重新开启…",
       "reopen": "重新开启工单",
       "orStartNew": "或新建一个工单。",
+      "mute": "静音工单",
+      "unmute": "取消静音",
+      "muteHint": "关闭通知",
+      "muted": "已静音",
+      "mutedHint": "已为您关闭此工单的通知",
+      "muteError": "无法更新通知设置。",
+      "attachFile": "添加附件",
+      "addCaption": "添加说明…",
+      "removeAttachment": "移除附件",
+      "attachmentError": "无法发送附件。",
       "status": { "open": "开放", "in_progress": "处理中", "resolved": "已解决", "closed": "已关闭" }
     },
     "phone": {

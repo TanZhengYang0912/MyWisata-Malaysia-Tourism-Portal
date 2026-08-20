@@ -3,10 +3,32 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, MessageCircle, Paperclip, Reply, Send, Tag, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, Languages, MessageCircle, Mic, MicOff, Paperclip, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
+import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+
+// CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 3 — matches lib/chatbot/language.ts's
+// vocabulary (kept as a literal union here, not imported, to avoid pulling a
+// chatbot-module type into this file for one string type).
+type TranslateTarget = "en" | "bm" | "zh";
+
+interface TranslationState {
+  text: string;
+  loading: boolean;
+  error: boolean;
+}
+
+// CLAUDE-VOICE-INPUT.md Part 3. Same friendly copy as the chatbot widget's
+// mic button (components/shared/chatbot-widget.tsx) — kept as a small local
+// const rather than a shared export, since it's just four short strings.
+const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
+  "permission-denied": "Microphone access needed",
+  "no-speech": "Didn't catch that — try again",
+  network: "Voice input needs a connection",
+  unknown: "Voice input isn't available right now",
+};
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const REPORT_REASONS = [
@@ -69,6 +91,52 @@ export function ChatThreadPanel({
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Feature 3: per-message translation cache (client-side, this session
+  // only — the server already caches by messageId+targetLang, so a remount
+  // just re-fetches once from that cache, no LLM call). One shared target
+  // language per viewer, derived from their browser locale.
+  const [translations, setTranslations] = useState<Record<string, TranslationState>>({});
+  const [showTranslated, setShowTranslated] = useState<Record<string, boolean>>({});
+  const targetLang = useMemo<TranslateTarget>(() => {
+    if (typeof navigator === "undefined") return "en";
+    const locale = navigator.language.toLowerCase();
+    if (locale.startsWith("ms")) return "bm";
+    if (locale.startsWith("zh")) return "zh";
+    return "en";
+  }, []);
+
+  // CLAUDE-VOICE-INPUT.md Part 3: same shared hook as the chatbot widget
+  // (Part 2), reusing the browser-locale signal Feature 3 already computes
+  // above — no separate language detection. onTranscriptChange populates
+  // the composer directly (the idiomatic non-effect pattern — see the
+  // hook's own doc comment), never auto-sends.
+  const speech = useSpeechInput({ lang: resolveRecognitionLang(targetLang), onTranscriptChange: setText });
+
+  async function toggleTranslate(message: ChatMessage) {
+    if (showTranslated[message.id]) {
+      setShowTranslated((s) => ({ ...s, [message.id]: false }));
+      return;
+    }
+    if (translations[message.id]?.text) {
+      setShowTranslated((s) => ({ ...s, [message.id]: true }));
+      return;
+    }
+    setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: true, error: false } }));
+    try {
+      const response = await fetch("/api/chat/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: message.id, targetLang }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.data) throw new Error("translate failed");
+      setTranslations((t) => ({ ...t, [message.id]: { text: payload.data.translatedText, loading: false, error: false } }));
+      setShowTranslated((s) => ({ ...s, [message.id]: true }));
+    } catch {
+      setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: false, error: true } }));
+    }
+  }
 
   const messagesById = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
 
@@ -365,15 +433,35 @@ export function ChatThreadPanel({
                         <Tag size={12} /> {message.text}
                       </Link>
                     ) : message.text && (
-                      <div
-                        className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
-                          isMine
-                            ? "rounded-br-md bg-primary text-white"
-                            : "rounded-bl-md border border-border bg-card text-foreground"
-                        }`}
-                      >
-                        {message.text}
-                      </div>
+                      <>
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
+                            isMine
+                              ? "rounded-br-md bg-primary text-white"
+                              : "rounded-bl-md border border-border bg-card text-foreground"
+                          }`}
+                        >
+                          {showTranslated[message.id] && translations[message.id]?.text ? translations[message.id].text : message.text}
+                        </div>
+                        {!isMine && (
+                          <div className="px-1">
+                            {translations[message.id]?.loading ? (
+                              <span className="text-[11px] text-muted-foreground">Translating…</span>
+                            ) : translations[message.id]?.error ? (
+                              <span className="text-[11px] text-destructive">Couldn&apos;t translate</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => toggleTranslate(message)}
+                                className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                              >
+                                <Languages size={11} />
+                                {showTranslated[message.id] ? "Show original" : "Translate"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                     <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
                       <span>{formatChatTimestamp(message.sentAt)}</span>
@@ -398,6 +486,7 @@ export function ChatThreadPanel({
       {!readOnly && (
         <div className="border-t border-border bg-background px-5 py-4 sm:px-7">
           {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+          {speech.error && <p className="mb-2 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
           {replyingTo && (
             <div className="mx-auto mb-2 flex max-w-2xl items-center justify-between gap-2 rounded-xl bg-secondary px-3 py-2 text-xs">
               <div className="min-w-0">
@@ -465,8 +554,24 @@ export function ChatThreadPanel({
               onKeyDown={handleKeyDown}
               placeholder={pendingFile ? "Add a caption…" : `Message ${counterpart.name}…`}
               rows={1}
-              className="min-h-11 flex-1 resize-none rounded-2xl border border-border bg-input-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              className="min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-input-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
             />
+            {speech.isSupported && (
+              <button
+                type="button"
+                onClick={() => (speech.isListening ? speech.stop() : speech.start())}
+                disabled={sending || uploading}
+                aria-label={speech.isListening ? "Stop listening" : "Speak your message"}
+                title={speech.isListening ? "Stop listening" : "Speak your message"}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  speech.isListening
+                    ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                {speech.isListening ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
+            )}
             <button
               type="submit"
               disabled={sending || uploading || (!text.trim() && !pendingFile)}

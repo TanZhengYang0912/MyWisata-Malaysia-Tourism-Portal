@@ -276,7 +276,7 @@ const openTicketsByCategory: QueryDef<z.infer<typeof emptySchema>> = {
 
 const affiliateCommissionTotal: QueryDef<z.infer<typeof daysWindowSchema>> = {
   name: 'affiliate_commission_total',
-  description: 'Sum of affiliate commission_amount over a window (default: all time), broken down by status (pending/confirmed/reversed). Params: {"days"?: number}.',
+  description: 'Sum of affiliate commission_amount over a window (default: all time), broken down by status (pending/confirmed/reversed/rejected). Params: {"days"?: number}.',
   paramsSchema: daysWindowSchema,
   async run(service, { days }) {
     let q = service.from('affiliate_attributions').select('commission_amount,status');
@@ -284,7 +284,7 @@ const affiliateCommissionTotal: QueryDef<z.infer<typeof daysWindowSchema>> = {
     if (since) q = q.gte('created_at', since);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
-    const totals: Record<string, number> = { pending: 0, confirmed: 0, reversed: 0 };
+    const totals: Record<string, number> = { pending: 0, confirmed: 0, reversed: 0, rejected: 0 };
     for (const row of data ?? []) {
       totals[row.status] = (totals[row.status] ?? 0) + Number(row.commission_amount);
     }
@@ -292,6 +292,7 @@ const affiliateCommissionTotal: QueryDef<z.infer<typeof daysWindowSchema>> = {
       pendingRM: Number(totals.pending.toFixed(2)),
       confirmedRM: Number(totals.confirmed.toFixed(2)),
       reversedRM: Number(totals.reversed.toFixed(2)),
+      rejectedRM: Number(totals.rejected.toFixed(2)),
       windowDays: days ?? null,
     };
   },

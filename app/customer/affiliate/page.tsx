@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Download, Gift, Link2, Share2, Wallet } from "lucide-react";
+import { Copy, Download, Gift, Link2, Megaphone, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { isAffiliateEligible } from "@/lib/affiliate/verification";
+import { sanitizeCampaign } from "@/lib/affiliate/campaign";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -19,7 +20,7 @@ import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/cust
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import type { AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } from "@/lib/affiliate/stats";
+import type { AffiliateCampaignStat, AffiliateCommission, AffiliateDailyClicks, AffiliateProductStat } from "@/lib/affiliate/stats";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
@@ -29,6 +30,7 @@ interface StatsResponse {
   affiliateUrl: string | null;
   totals: { clicks: number; referrals: number; pendingEarnings: number; availableToWithdraw: number };
   byProduct: AffiliateProductStat[];
+  byCampaign: AffiliateCampaignStat[];
   clicksByDay: AffiliateDailyClicks[];
   commissions: AffiliateCommission[];
   funnel: Funnel;
@@ -46,6 +48,10 @@ export default function AffiliateDashboardPage() {
   const [copied, setCopied] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("clicks");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1.
+  const [campaignInput, setCampaignInput] = useState("");
+  const [campaignCopied, setCampaignCopied] = useState(false);
 
   // CLAUDE-P4-EXTRAS-2.md Extra 6.
   const [exportRange, setExportRange] = useState<EarningsExportRange>("all");
@@ -106,6 +112,13 @@ export default function AffiliateDashboardPage() {
     });
   }, [stats, sortKey, sortDir]);
 
+  // Feature 1's "quick pick of recent campaigns" — campaigns this affiliate
+  // has already used, tap to reuse the name instead of retyping it.
+  const recentCampaigns = useMemo(
+    () => (stats?.byCampaign ?? []).map((c) => c.campaign).filter((c): c is string => c !== null),
+    [stats],
+  );
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -139,6 +152,25 @@ export default function AffiliateDashboardPage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // best-effort — nothing more to do if clipboard access is denied
+    }
+  }
+
+  // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: builds `?utm_campaign=`
+  // onto the existing affiliate link and copies it — same URL the plain Copy
+  // button produces, plus the tag. Sanitized client-side only for an honest
+  // preview of what will be stored; lib/affiliate/redirect.ts re-sanitizes
+  // server-side, which is the enforcement that actually matters.
+  async function copyCampaignLink(label: string) {
+    if (!stats?.affiliateUrl) return;
+    const campaign = sanitizeCampaign(label);
+    if (!campaign) return;
+    const url = `${stats.affiliateUrl}?utm_campaign=${campaign}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCampaignCopied(true);
+      setTimeout(() => setCampaignCopied(false), 2000);
+    } catch {
+      showFeedback("error", "Couldn't copy link");
     }
   }
 
@@ -294,6 +326,71 @@ export default function AffiliateDashboardPage() {
         )}
       </div>
 
+      {/* CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: campaign/UTM tagging.
+          Only shown once the affiliate has a link to tag — matches the "My
+          link" section's own gating just above. */}
+      {stats.affiliateCode && (
+        <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+            <Megaphone size={13} /> Campaigns
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Label a link (e.g. &ldquo;instagram-story-jan&rdquo;) to see which campaign converts, not just which platform.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <input
+              type="text"
+              value={campaignInput}
+              onChange={(e) => setCampaignInput(e.target.value)}
+              placeholder="Campaign name"
+              maxLength={50}
+              className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+            />
+            <Button size="sm" onClick={() => copyCampaignLink(campaignInput)} disabled={!sanitizeCampaign(campaignInput)}>
+              <Copy size={14} /> {campaignCopied ? "Copied" : "Get link"}
+            </Button>
+          </div>
+          {recentCampaigns.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {recentCampaigns.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCampaignInput(c)}
+                  className="rounded-full border border-border bg-muted px-2.5 py-1 text-[0.6875rem] text-muted-foreground hover:text-foreground"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          {stats.byCampaign.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted text-muted-foreground uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold">Campaign</th>
+                    <th className="text-right px-3 py-2 font-semibold">Clicks</th>
+                    <th className="text-right px-3 py-2 font-semibold">Orders</th>
+                    <th className="text-right px-3 py-2 font-semibold">Earned</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.byCampaign.map((row) => (
+                    <tr key={row.campaign ?? "untagged"} className="border-t border-border">
+                      <td className="px-3 py-2 font-medium text-foreground">{row.campaign ?? "Untagged"}</td>
+                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.clicks}</td>
+                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.referrals}</td>
+                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">RM {row.earnings.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <Share2 size={13} /> Funnel
@@ -384,10 +481,11 @@ export default function AffiliateDashboardPage() {
                     {c.status === "pending" &&
                       (c.clearsInDays === 0 ? "Pending · clears today" : `Pending · clears in ${c.clearsInDays} day${c.clearsInDays === 1 ? "" : "s"}`)}
                     {c.status === "reversed" && "Reversed — order was cancelled or refunded"}
+                    {c.status === "rejected" && "Not approved after review"}
                   </p>
                 </div>
                 <p
-                  className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" ? "text-muted-foreground line-through" : "text-foreground"}`}
+                  className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
                 >
                   RM {c.amount.toFixed(2)}
                 </p>

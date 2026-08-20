@@ -4,12 +4,20 @@
 // Capability 1 (ask) reuses the customer chatbot widget's interaction shape
 // (message bubbles, input + send) as a full panel rather than a floating
 // bubble — admin analytics answers read better with room, and this page
-// sits inside the admin shell already. Capability 2 (draft) lives alongside
-// it since neither is usable standalone without some UI. Capability 3 (AI
-// review) lives on the recommendations screen itself, not here.
+// sits inside the admin shell already. Capability 3 (AI review) lives on
+// the recommendations screen itself, not here.
+//
+// Capability 2 (a generic "draft a staff message" panel) was removed
+// 2026-08-21 — since built, that drafting need has been mounted directly
+// into its own real flows instead (lib/vendors/approval-draft.ts on the
+// vendor approval/rejection screen, lib/recommendations/invite-draft.ts on
+// the recommendation invite flow), each with real context already loaded
+// rather than an admin re-typing it into a generic textarea here. See git
+// history for the removed DraftPanel component, POST /api/admin-ai/draft,
+// and lib/admin-ai/draft.ts if this generic version is ever needed again.
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Send, Shield, Sparkles } from "lucide-react";
+import { Bot, Send, Shield } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,12 +30,6 @@ interface ChatMessage {
 
 const SESSION_STORAGE_KEY = "mw_admin_ai_session";
 const DRAFT_QUESTION_KEY = "mw_admin_ai_draft_question";
-const DRAFT_TYPES = [
-  { value: "onboarding", label: "Vendor onboarding" },
-  { value: "rejection", label: "Rejection notice" },
-  { value: "approval", label: "Approval message" },
-  { value: "custom", label: "Custom" },
-] as const;
 
 /** Synchronous localStorage read — lazy initializer, not an effect (matches components/shared/chatbot-widget.tsx). */
 function readLocalStorage(key: string): string {
@@ -110,7 +112,7 @@ function AskPanel() {
 
   return (
     <Card>
-      <CardContent className="p-4 flex flex-col" style={{ height: 420 }}>
+      <CardContent className="p-4 flex flex-col" style={{ height: 640 }}>
         <div className="flex items-center gap-2 mb-3">
           <Bot size={16} className="text-primary" />
           <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title", { defaultValue: "Ask about platform metrics" })}</h2>
@@ -149,102 +151,6 @@ function AskPanel() {
   );
 }
 
-const DRAFT_TYPE_KEY = "mw_admin_ai_draft_type";
-const DRAFT_CONTEXT_KEY = "mw_admin_ai_draft_context";
-const DRAFT_OUTPUT_KEY = "mw_admin_ai_draft_output";
-
-function DraftPanel() {
-  const { t } = useTranslation("admin");
-  // Fix 4: all three fields (the type picker, the unsent context, and the
-  // last generated draft) survive navigation — same lazy-read /
-  // write-on-change pattern as AskPanel's question input.
-  const [type, setTypeState] = useState<(typeof DRAFT_TYPES)[number]["value"]>(
-    () => (readLocalStorage(DRAFT_TYPE_KEY) || "onboarding") as (typeof DRAFT_TYPES)[number]["value"],
-  );
-  const [context, setContextState] = useState<string>(() => readLocalStorage(DRAFT_CONTEXT_KEY));
-  const [draft, setDraftState] = useState<string>(() => readLocalStorage(DRAFT_OUTPUT_KEY));
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function setType(value: (typeof DRAFT_TYPES)[number]["value"]) {
-    setTypeState(value);
-    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_TYPE_KEY, value);
-  }
-  function setContext(value: string) {
-    setContextState(value);
-    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_CONTEXT_KEY, value);
-  }
-  function setDraft(value: string) {
-    setDraftState(value);
-    if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_OUTPUT_KEY, value);
-  }
-
-  async function generate() {
-    if (!context.trim() || generating) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin-ai/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, context: context.trim() }),
-      });
-      const body = (await res.json()) as { data: { draft: string } | null; error: { message: string } | null };
-      if (!res.ok || !body.data) {
-        setError(body.error?.message ?? t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }));
-        return;
-      }
-      setDraft(body.data.draft);
-    } catch {
-      setError(t("aiAssistant.errors.unavailable", { defaultValue: "Assistant unavailable right now." }));
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-primary" />
-          <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.draft.title", { defaultValue: "Draft a staff message" })}</h2>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {t("aiAssistant.draft.description", { defaultValue: "You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you." })}
-        </p>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as typeof type)}
-          className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground"
-        >
-          {DRAFT_TYPES.map((draftType) => (
-            <option key={draftType.value} value={draftType.value}>{t(`aiAssistant.draft.types.${draftType.value}`, { defaultValue: draftType.label })}</option>
-          ))}
-        </select>
-        <textarea
-          value={context}
-          onChange={(e) => setContext(e.target.value)}
-          placeholder={t("aiAssistant.draft.contextPlaceholder", { defaultValue: "e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality." })}
-          rows={3}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-        />
-        <Button size="sm" onClick={generate} disabled={generating || !context.trim()}>
-          {generating ? t("aiAssistant.draft.drafting", { defaultValue: "Drafting…" }) : t("aiAssistant.draft.generate", { defaultValue: "Generate draft" })}
-        </Button>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        {draft && (
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={8}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-          />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function AdminAiAssistantPage() {
   const { currentUser } = useAuth();
   const { t } = useTranslation("admin");
@@ -264,12 +170,11 @@ export default function AdminAiAssistantPage() {
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("aiAssistant.title", { defaultValue: "AI Assistant" })}</h1>
         <p className="text-sm text-muted-foreground">
-          {t("aiAssistant.description", { defaultValue: "Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries, and drafts use only what you type in." })}
+          {t("aiAssistant.description", { defaultValue: "Platform analytics. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries." })}
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="max-w-4xl">
         <AskPanel />
-        <DraftPanel />
       </div>
     </div>
   );

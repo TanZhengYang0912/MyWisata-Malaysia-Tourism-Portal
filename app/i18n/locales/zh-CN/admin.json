@@ -219,20 +219,7 @@
       "restoring": "正在恢复对话…",
       "title": "询问平台指标"
     },
-    "description": "平台分析和员工消息起草。不会读取原始客户记录——指标来自一组固定的已注册聚合查询，草稿只使用你输入的内容。",
-    "draft": {
-      "contextPlaceholder": "例如：商家：Sunset Kayak Tours。提交的照片模糊，无法验证商品信息质量。",
-      "description": "你提供具体信息——助手不会自行获取商家或客户数据。请手动编辑并发送；不会代你发送。",
-      "drafting": "起草中…",
-      "generate": "生成草稿",
-      "title": "起草员工消息",
-      "types": {
-        "approval": "批准消息",
-        "custom": "自定义",
-        "onboarding": "商家入驻",
-        "rejection": "拒绝通知"
-      }
-    },
+    "description": "平台分析。不会读取原始客户记录——指标来自一组固定的已注册聚合查询。",
     "errors": {
       "unavailable": "助手目前不可用。"
     },
@@ -906,6 +893,7 @@
       "pagination": "支持工单分页",
       "range": "显示第 {{first}}–{{last}} 张，共 {{total}} 张工单",
       "replyPlaceholder": "回复此工单…",
+      "addCaption": "添加说明…",
       "replySent": "支持回复已发送。",
       "selectAllVisible": "选择所有可见支持工单",
       "selectTicket": "选择支持工单 {{subject}}",
@@ -1303,17 +1291,23 @@
       "nothingToReview": "没有待审核内容。",
       "marking": "标记中…",
       "markReviewed": "标记为已审核",
-      "reviewed": "已审核"
+      "reviewed": "已审核",
+      "viewTicket": "查看工单"
     }
   },
   "staffConduct": {
     "title": "员工行为审核",
     "tabs": {
+      "all": "全部",
       "flaggedConduct": "已标记的行为",
       "reportedChat": "被举报的聊天"
     },
     "filters": {
       "showReviewed": "显示已审核"
+    },
+    "kindLabel": {
+      "flag": "已标记",
+      "report": "已举报"
     },
     "sources": {
       "ticketReply": "工单回复",
@@ -1341,7 +1335,8 @@
       "allFlagsReviewed": "所有标记均已审核。",
       "nothingToReview": "没有待审核内容。",
       "allReportsReviewed": "所有举报均已审核。",
-      "noReportedChats": "暂无被举报的聊天。"
+      "noReportedChats": "暂无被举报的聊天。",
+      "allReviewed": "所有内容均已审核。"
     },
     "actions": {
       "viewLog": "查看记录",

@@ -62,3 +62,11 @@ export const attributeCheckoutSchema = z.object({
 }).strict();
 
 export type AttributeCheckoutInput = z.infer<typeof attributeCheckoutSchema>;
+
+// ── Admin per-attribution review (Accept/Reject a single pending commission) ─
+
+export const rejectAttributionSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+}).strict();
+
+export type RejectAttributionInput = z.infer<typeof rejectAttributionSchema>;

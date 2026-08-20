@@ -219,20 +219,7 @@
       "restoring": "Memulihkan perbualan…",
       "title": "Tanya tentang metrik platform"
     },
-    "description": "Analitik platform dan penggubalan mesej kakitangan. Tidak pernah melihat rekod pelanggan mentah — metrik datang daripada set pertanyaan agregat berdaftar yang tetap, dan draf hanya menggunakan perkara yang anda taip.",
-    "draft": {
-      "contextPlaceholder": "cth. Vendor: Sunset Kayak Tours. Foto yang dihantar kabur, kualiti penyenaraian tidak dapat disahkan.",
-      "description": "Anda membekalkan butiran — pembantu tidak mengambil data vendor atau pelanggan sendiri. Sunting dan hantar secara manual; tiada apa-apa dihantar bagi pihak anda.",
-      "drafting": "Merangka…",
-      "generate": "Jana draf",
-      "title": "Rangka mesej kakitangan",
-      "types": {
-        "approval": "Mesej kelulusan",
-        "custom": "Tersuai",
-        "onboarding": "Pendaftaran vendor",
-        "rejection": "Notis penolakan"
-      }
-    },
+    "description": "Analitik platform. Tidak pernah melihat rekod pelanggan mentah — metrik datang daripada set pertanyaan agregat berdaftar yang tetap.",
     "errors": {
       "unavailable": "Pembantu tidak tersedia buat masa ini."
     },
@@ -906,6 +893,7 @@
       "pagination": "Penomboran halaman tiket sokongan",
       "range": "Menunjukkan {{first}}–{{last}} daripada {{total}} tiket",
       "replyPlaceholder": "Balas tiket ini…",
+      "addCaption": "Tambah kapsyen…",
       "replySent": "Balasan sokongan dihantar.",
       "selectAllVisible": "Pilih semua tiket sokongan yang kelihatan",
       "selectTicket": "Pilih tiket sokongan {{subject}}",
@@ -1303,17 +1291,23 @@
       "nothingToReview": "Tiada perkara untuk disemak.",
       "marking": "Menanda…",
       "markReviewed": "Tanda telah disemak",
-      "reviewed": "Disemak"
+      "reviewed": "Disemak",
+      "viewTicket": "Lihat tiket"
     }
   },
   "staffConduct": {
     "title": "Semakan kelakuan staf",
     "tabs": {
+      "all": "Semua",
       "flaggedConduct": "Kelakuan ditandai",
       "reportedChat": "Sembang dilaporkan"
     },
     "filters": {
       "showReviewed": "Tunjukkan yang disemak"
+    },
+    "kindLabel": {
+      "flag": "Ditanda",
+      "report": "Dilaporkan"
     },
     "sources": {
       "ticketReply": "Balasan tiket",
@@ -1341,7 +1335,8 @@
       "allFlagsReviewed": "Semua tanda telah disemak.",
       "nothingToReview": "Tiada perkara untuk disemak.",
       "allReportsReviewed": "Semua laporan telah disemak.",
-      "noReportedChats": "Tiada sembang dilaporkan."
+      "noReportedChats": "Tiada sembang dilaporkan.",
+      "allReviewed": "Semuanya telah disemak."
     },
     "actions": {
       "viewLog": "Lihat log",

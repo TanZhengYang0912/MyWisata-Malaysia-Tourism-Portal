@@ -6,9 +6,9 @@
 // routes rather than identity.ts::getSupportTickets() (that function's
 // `category` field is stale — see Step 8's note).
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, MessageSquare, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,15 @@ import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
 import { useTranslation } from "react-i18next";
+import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+
+// CLAUDE-VOICE-INPUT.md, mounted on the admin ticket reply composer too.
+const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
+  "permission-denied": "Microphone access needed",
+  "no-speech": "Didn't catch that — try again",
+  network: "Voice input needs a connection",
+  unknown: "Voice input isn't available right now",
+};
 
 interface AdminTicket {
   id: string;
@@ -85,7 +94,7 @@ function AdminSupportContent() {
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -98,7 +107,11 @@ function AdminSupportContent() {
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [reply, setReply] = useState("");
+  const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
   const [sending, setSending] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
@@ -259,6 +272,7 @@ function AdminSupportContent() {
   }
 
   async function sendReply() {
+    if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending || !openTicketId) return;
     setSending(true);
@@ -277,6 +291,34 @@ function AdminSupportContent() {
       showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
     } finally {
       setSending(false);
+    }
+  }
+
+  function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploading) return;
+    setPendingFile(file);
+  }
+
+  async function sendAttachment() {
+    if (!pendingFile || uploading || !openTicketId) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", pendingFile);
+      if (reply.trim()) formData.append("caption", reply.trim());
+      const res = await fetch(`/api/support/tickets/${openTicketId}/attachments`, { method: "POST", body: formData });
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
+      setReply("");
+      setPendingFile(null);
+      showFeedback("success", t("ui.support.replySent"));
+      await loadDetail(openTicketId);
+      await loadTickets();
+    } catch {
+      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -441,6 +483,7 @@ function AdminSupportContent() {
             setOpenTicketId(null);
             setDetail(null);
             setReply("");
+            setPendingFile(null);
           }
         }}
       >
@@ -470,6 +513,7 @@ function AdminSupportContent() {
             <>
               <div className="max-h-80 overflow-y-auto">
                 <TicketThread
+                  ticketId={openTicketId ?? undefined}
                   currentUserId={currentUser.id}
                   ticketOwnerId={detail.userId}
                   ticketBody={detail.body}
@@ -479,20 +523,58 @@ function AdminSupportContent() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <input
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendReply();
-                  }}
-                  placeholder={t("ui.support.replyPlaceholder")}
-                  className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
-                  disabled={sending}
-                />
-                <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={sendReply} disabled={sending || !reply.trim()}>
-                  <Send size={14} />
-                </Button>
+              <div className="pt-2 border-t border-border">
+                {speech.error && <p className="mb-1.5 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+                {pendingFile && (
+                  <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
+                    <FileText size={16} className="shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
+                    <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Remove attachment">
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={handleFileSelected} className="hidden" />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Attach a file"
+                  >
+                    <Paperclip size={14} />
+                  </button>
+                  <input
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendReply();
+                    }}
+                    placeholder={pendingFile ? t("ui.support.addCaption", { defaultValue: "Add a caption…" }) : t("ui.support.replyPlaceholder")}
+                    className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
+                    disabled={sending || uploading}
+                  />
+                  {speech.isSupported && (
+                    <button
+                      type="button"
+                      onClick={() => (speech.isListening ? speech.stop() : speech.start())}
+                      disabled={sending || uploading}
+                      aria-label={speech.isListening ? "Stop listening" : "Speak your reply"}
+                      title={speech.isListening ? "Stop listening" : "Speak your reply"}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        speech.isListening
+                          ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                          : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                    >
+                      {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                    </button>
+                  )}
+                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={sendReply} disabled={sending || uploading || (!reply.trim() && !pendingFile)}>
+                    <Send size={14} />
+                  </Button>
+                </div>
               </div>
             </>
           )}

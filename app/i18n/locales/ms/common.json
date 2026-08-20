@@ -134,7 +134,9 @@
     "noMessagesYet": "Belum ada mesej.",
     "bot": "Bot",
     "you": "Anda",
-    "supportTeam": "Pasukan sokongan"
+    "supportTeam": "Pasukan sokongan",
+    "document": "Dokumen",
+    "loadingAttachment": "Memuatkan…"
   },
   "chatbot": {
     "title": "Sokongan MyWisata",

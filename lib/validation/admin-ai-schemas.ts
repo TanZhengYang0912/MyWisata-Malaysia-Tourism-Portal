@@ -3,13 +3,6 @@
 
 import { z } from 'zod';
 
-export const adminAiDraftSchema = z.object({
-  type: z.enum(['onboarding', 'rejection', 'approval', 'custom']),
-  context: z.string().trim().min(1).max(2000),
-}).strict();
-
-export type AdminAiDraftInput = z.infer<typeof adminAiDraftSchema>;
-
 export const adminAiAskSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
   question: z.string().trim().min(1).max(500),

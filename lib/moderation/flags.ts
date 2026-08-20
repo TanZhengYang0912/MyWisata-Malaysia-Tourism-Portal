@@ -32,6 +32,8 @@ export interface ModerationFlagRow {
   id: string;
   sourceType: ModerationSourceType;
   sourceId: string;
+  /** support_tickets.id to deep-link into /admin/support?ticket= — null for chatbot_message (no ticket). */
+  ticketId: string | null;
   userId: string | null;
   userName: string;
   flagType: string;
@@ -59,10 +61,21 @@ export async function getModerationFlags(service: SupabaseClient): Promise<Moder
     : { data: [] as { id: string; full_name: string | null; email: string }[] };
   const usersById = new Map((usersData ?? []).map((u) => [u.id, u]));
 
+  // ticket_reply flags store the reply's own id as source_id (see the
+  // POST /replies route), not the ticket's — resolve reply -> ticket_id so
+  // the admin panel can deep-link into /admin/support?ticket= regardless of
+  // which of the two source types produced the flag.
+  const replyIds = flags.filter((f) => f.source_type === 'ticket_reply').map((f) => f.source_id);
+  const { data: repliesData } = replyIds.length
+    ? await service.from('support_ticket_replies').select('id, ticket_id').in('id', replyIds)
+    : { data: [] as { id: string; ticket_id: string }[] };
+  const ticketIdByReplyId = new Map((repliesData ?? []).map((r) => [r.id, r.ticket_id]));
+
   return flags.map((f) => ({
     id: f.id,
     sourceType: f.source_type,
     sourceId: f.source_id,
+    ticketId: f.source_type === 'ticket' ? f.source_id : f.source_type === 'ticket_reply' ? ticketIdByReplyId.get(f.source_id) ?? null : null,
     userId: f.user_id,
     userName: f.user_id ? userDisplayName(usersById.get(f.user_id)) : 'Unknown user',
     flagType: f.flag_type,

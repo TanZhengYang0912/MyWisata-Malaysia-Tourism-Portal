@@ -85,6 +85,21 @@ export async function notifyCommissionCleared(
   });
 }
 
+/** Fired from lib/affiliate/clearing.ts::rejectAttribution(), an admin manually declining a still-pending commission. */
+export async function notifyCommissionRejected(
+  service: SupabaseClient,
+  opts: { userId: string; amountRM: number; attributionId: string; reason?: string },
+): Promise<void> {
+  await insertNotification(service, {
+    userId: opts.userId,
+    type: 'affiliate_commission_rejected',
+    title: 'Commission not approved',
+    body: `A pending commission of ${toRM(opts.amountRM)} was reviewed and was not approved${opts.reason ? `: ${opts.reason}` : '.'}`,
+    link: '/customer/affiliate',
+    eventKey: `affiliate_commission_rejected:${opts.attributionId}`,
+  });
+}
+
 /**
  * Fired from the same clearing step, only when a clearance just pushed the
  * affiliate's CONFIRMED-referral count past a tier threshold (before/after

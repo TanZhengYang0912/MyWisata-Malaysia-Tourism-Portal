@@ -352,6 +352,16 @@
       "reopening": "Reopening…",
       "reopen": "Reopen ticket",
       "orStartNew": "or start a new one.",
+      "mute": "Mute ticket",
+      "unmute": "Unmute ticket",
+      "muteHint": "Mute notifications",
+      "muted": "Muted",
+      "mutedHint": "Notifications muted for you",
+      "muteError": "Could not update notification setting.",
+      "attachFile": "Attach a file",
+      "addCaption": "Add a caption…",
+      "removeAttachment": "Remove attachment",
+      "attachmentError": "Could not send attachment.",
       "status": { "open": "Open", "in_progress": "In progress", "resolved": "Resolved", "closed": "Closed" }
     },
     "phone": {

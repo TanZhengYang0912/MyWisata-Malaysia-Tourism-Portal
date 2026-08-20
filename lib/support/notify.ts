@@ -49,6 +49,14 @@ export async function notifyTicketReply(
 
     if (senderRole === 'admin') {
       if (!ticket.user_id) return; // guest ticket — no account to notify
+
+      // The mute toggle (POST/DELETE /api/support/tickets/[id]/mute) only
+      // ever gated the small in-thread "Muted" badge — this is the actual
+      // suppression: skip the general notification-bell insert too, the
+      // thing muting is actually supposed to silence.
+      const { data: muteRow } = await service.from('ticket_mutes').select('id').eq('ticket_id', ticket.id).eq('user_id', ticket.user_id).maybeSingle();
+      if (muteRow) return;
+
       await service.from('notifications').insert({
         user_id: ticket.user_id,
         type: 'support_reply',
@@ -75,10 +83,14 @@ export async function notifyTicketReply(
   }
 }
 
-/** Notifies the customer when their ticket is marked resolved. No-op for guest tickets. */
+/** Notifies the customer when their ticket is marked resolved. No-op for guest tickets, and for a ticket the customer has muted. */
 export async function notifyTicketResolved(service: SupabaseClient, ticket: TicketForNotify): Promise<void> {
   try {
     if (!ticket.user_id) return;
+
+    const { data: muteRow } = await service.from('ticket_mutes').select('id').eq('ticket_id', ticket.id).eq('user_id', ticket.user_id).maybeSingle();
+    if (muteRow) return;
+
     await service.from('notifications').insert({
       user_id: ticket.user_id,
       type: 'support_ticket_resolved',

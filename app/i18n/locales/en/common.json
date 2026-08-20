@@ -134,7 +134,9 @@
     "noMessagesYet": "No messages yet.",
     "bot": "Bot",
     "you": "You",
-    "supportTeam": "Support team"
+    "supportTeam": "Support team",
+    "document": "Document",
+    "loadingAttachment": "Loading…"
   },
   "chatbot": {
     "title": "MyWisata Support",

@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Globe } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { useTranslation } from "react-i18next";
+import { guestLoginHref, guestPathToCustomerPath } from "@/lib/auth/guest-mode";
 
 export default function GuestLayout({ children }: { children: React.ReactNode }) {
   const { t: tCommon } = useTranslation("common");
+  // Live-found gap: this header's Sign In link was a bare `/login` with no
+  // `next`, so a visitor referred here by an affiliate link (mw_ref cookie
+  // already set — that survives login regardless) lost their place and
+  // landed on their role's home page after signing in, instead of back on
+  // the product/vendor page they came from. Every other guest sign-in CTA
+  // (app/guest/activity/[id]/page.tsx) already carries `next` correctly —
+  // this was the one gap, and it's the most-visible entry point on the page.
+  const pathname = usePathname();
+  const signInHref = guestLoginHref(guestPathToCustomerPath(pathname));
 
   return (
     <>
@@ -20,7 +31,7 @@ export default function GuestLayout({ children }: { children: React.ReactNode })
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <LanguageSwitcher compact className="min-w-0 sm:w-auto" />
             <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">{tCommon("guest.mode")}</span>
-            <Link href="/login" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{tCommon("account.signIn")}</Link>
+            <Link href={signInHref} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{tCommon("account.signIn")}</Link>
           </div>
         </div>
       </header>

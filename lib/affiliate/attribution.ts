@@ -37,6 +37,7 @@
 // payout left no trace anywhere. See lib/affiliate/fraud.ts.
 
 import { cookies } from 'next/headers';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
 import { applyPercent } from '@/lib/money';
 import { getAttributionCookieDays } from './settings';
@@ -47,6 +48,41 @@ import { getVendorIneligibleRole } from './vendor-role-guard';
 
 const MW_REF_COOKIE = 'mw_ref';
 const LIMITED_MONTHLY_COMMISSION_CAP_RM = 100;
+
+interface OrderPurchaseDetail {
+  /** order_items.product_name is a name SNAPSHOT taken at purchase time — accurate even if the product's since been renamed/deleted. */
+  productNames: string[];
+  /** Resolved from order_items.vendor_id -> vendors.name — the seller(s), not the buyer. */
+  vendorNames: string[];
+  /** orders.paid_at, falling back to created_at for an order that never went through a "paid" transition (shouldn't normally happen by the time a guard runs, but never leave this blank if avoidable). */
+  purchasedAt: string | null;
+}
+
+/**
+ * "What item, from which seller, and when" for a fraud-flag's `detail`
+ * column — every guard in onOrderPaid() already has orderId in scope, so
+ * this is one extra pair of queries (order_items -> vendors) shared across
+ * whichever guard actually trips, not duplicated per guard.
+ */
+async function resolveOrderPurchaseDetail(
+  service: SupabaseClient,
+  orderId: string,
+  paidAt: string | null,
+  createdAt: string | null,
+): Promise<OrderPurchaseDetail> {
+  const { data: itemsData } = await service.from('order_items').select('product_name, vendor_id').eq('order_id', orderId);
+  const items = itemsData ?? [];
+  const vendorIds = [...new Set(items.map((i) => i.vendor_id))];
+  const { data: vendorsData } = vendorIds.length
+    ? await service.from('vendors').select('id, name').in('id', vendorIds)
+    : { data: [] as { id: string; name: string }[] };
+  const vendorNameById = new Map((vendorsData ?? []).map((v) => [v.id, v.name]));
+  return {
+    productNames: items.map((i) => i.product_name),
+    vendorNames: [...new Set(items.map((i) => vendorNameById.get(i.vendor_id) ?? 'Unknown vendor'))],
+    purchasedAt: paidAt ?? createdAt ?? null,
+  };
+}
 
 /** Best-effort cookie read — returns null (not throws) outside a request-scoped context. */
 async function tryReadClickIdCookie(): Promise<string | null> {
@@ -85,10 +121,21 @@ export async function onOrderPaid(orderId: string): Promise<void> {
     // header), the mw_ref cookie only as a fallback.
     const { data: order } = await service
       .from('orders')
-      .select('id, user_id, status, total_amount, affiliate_click_id')
+      .select('id, user_id, status, total_amount, affiliate_click_id, paid_at, created_at')
       .eq('id', orderId)
       .maybeSingle();
     if (!order) return;
+
+    // Lazy + memoized: only queried the first time a guard actually needs
+    // it (the common happy-path attribution never touches order_items or
+    // vendors at all), and only once even if somehow read twice.
+    let purchaseDetailCache: OrderPurchaseDetail | null = null;
+    async function purchaseDetail(): Promise<OrderPurchaseDetail> {
+      if (!purchaseDetailCache) {
+        purchaseDetailCache = await resolveOrderPurchaseDetail(service, orderId, order!.paid_at, order!.created_at);
+      }
+      return purchaseDetailCache;
+    }
 
     const clickId = order.affiliate_click_id ?? (await tryReadClickIdCookie());
     if (!clickId) return; // nobody referred them
@@ -102,11 +149,31 @@ export async function onOrderPaid(orderId: string): Promise<void> {
 
     const { data: link } = await service
       .from('affiliate_links')
-      .select('user_id')
+      .select('user_id, is_active')
       .eq('id', click.link_id)
       .maybeSingle();
     if (!link) return;
     const linkOwnerId = link.user_id as string;
+
+    // LINK-DISABLED GUARD — live-found gap (2026-08-20): the link may have
+    // been disabled AFTER this click but BEFORE this order paid (e.g. an
+    // admin confirmed an unrelated fraud flag on this link in between, or
+    // the vendor-ineligibility/fraud-sweep auto-disable path ran). A click
+    // this old still has its mw_ref cookie sitting in a legitimate buyer's
+    // browser regardless — "Confirm & disable" is meant to stop ALL future
+    // payouts from this link, not just future clicks, so that purchase must
+    // not still pay out just because the click predates the disable.
+    if (link.is_active === false) {
+      await logFraudFlag(service, {
+        linkId: click.link_id,
+        userId: linkOwnerId,
+        orderId,
+        flagType: 'link_disabled_at_payout',
+        severity: 'low', // not new evidence — the link was already flagged/disabled by the time this ran
+        detail: { clickId: click.id, ...(await purchaseDetail()) },
+      });
+      return;
+    }
 
     // EXPIRY GUARD
     const cookieDays = await getAttributionCookieDays(service);
@@ -118,7 +185,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         orderId,
         flagType: 'expired_attribution',
         severity: 'low',
-        detail: { clickId: click.id, clickCreatedAt: click.created_at, cookieDays, clickAgeDays: Math.floor(clickAgeMs / 86_400_000) },
+        detail: { clickId: click.id, clickCreatedAt: click.created_at, cookieDays, clickAgeDays: Math.floor(clickAgeMs / 86_400_000), ...(await purchaseDetail()) },
       });
       return;
     }
@@ -133,7 +200,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         orderId,
         flagType: 'self_referral',
         severity: 'high',
-        detail: { buyerId: order.user_id, linkOwnerId, clickId: click.id },
+        detail: { buyerId: order.user_id, linkOwnerId, clickId: click.id, ...(await purchaseDetail()) },
       });
       return;
     }
@@ -153,7 +220,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
         orderId,
         flagType: 'vendor_ineligible',
         severity: 'low', // ineligible, not abusive — same tone as click_cap_reached
-        detail: { role: ineligibleRole, buyerId: order.user_id },
+        detail: { role: ineligibleRole, buyerId: order.user_id, ...(await purchaseDetail()) },
       });
       // Bonus immediate cleanup — we've just confirmed vendor status anyway,
       // so deactivate right here rather than waiting for the next sweep.
@@ -213,7 +280,7 @@ export async function onOrderPaid(orderId: string): Promise<void> {
           orderId,
           flagType: 'duplicate_attribution',
           severity: 'medium',
-          detail: { clickId: click.id, orderId, pgErrorCode: attrErr.code },
+          detail: { clickId: click.id, orderId, pgErrorCode: attrErr.code, ...(await purchaseDetail()) },
         });
         return;
       }

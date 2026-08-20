@@ -3,10 +3,10 @@
 // P4 — Member 4: customer ticket detail + reply thread. CLAUDE-FIXES.md Fix 2,
 // bubble rendering delegated to the shared <TicketThread> per CLAUDE-FIXES-2.md item 2.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, FileText, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,16 @@ import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/compo
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
+import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+
+// CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
+// the chatbot widget's and chat-thread-panel's mic buttons.
+const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
+  "permission-denied": "Microphone access needed",
+  "no-speech": "Didn't catch that — try again",
+  network: "Voice input needs a connection",
+  unknown: "Voice input isn't available right now",
+};
 
 interface TicketDetail {
   id: string;
@@ -24,6 +34,7 @@ interface TicketDetail {
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
   resolvedAt: string | null;
+  muted: boolean;
   transcript: TranscriptMessage[];
   replies: ReplyMessage[];
 }
@@ -46,6 +57,11 @@ export default function CustomerTicketDetailPage() {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [muting, setMuting] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
 
   async function loadTicket() {
     try {
@@ -70,6 +86,7 @@ export default function CustomerTicketDetailPage() {
   }, [id]);
 
   async function sendReply() {
+    if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending) return;
     setSending(true);
@@ -87,6 +104,49 @@ export default function CustomerTicketDetailPage() {
       showFeedback("error", tCustomer("ui.support.replyRetry", { defaultValue: "Could not send reply. Please try again." }));
     } finally {
       setSending(false);
+    }
+  }
+
+  function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploading) return;
+    setPendingFile(file);
+  }
+
+  async function sendAttachment() {
+    if (!pendingFile || uploading) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", pendingFile);
+      if (reply.trim()) formData.append("caption", reply.trim());
+      const res = await fetch(`/api/support/tickets/${id}/attachments`, { method: "POST", body: formData });
+      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.attachmentError", { defaultValue: "Could not send attachment." })); return; }
+      setReply("");
+      setPendingFile(null);
+      showFeedback("success", tCustomer("ui.support.replySent", { defaultValue: "Reply sent." }));
+      await loadTicket();
+    } catch {
+      showFeedback("error", tCustomer("ui.support.attachmentError", { defaultValue: "Could not send attachment." }));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function toggleMute() {
+    if (!ticket || muting) return;
+    const nextMuted = !ticket.muted;
+    setMuting(true);
+    setTicket((t) => (t ? { ...t, muted: nextMuted } : t));
+    try {
+      const res = await fetch(`/api/support/tickets/${id}/mute`, { method: nextMuted ? "POST" : "DELETE" });
+      if (!res.ok) throw new Error();
+    } catch {
+      setTicket((t) => (t ? { ...t, muted: !nextMuted } : t));
+      showFeedback("error", tCustomer("ui.support.muteError", { defaultValue: "Could not update notification setting." }));
+    } finally {
+      setMuting(false);
     }
   }
 
@@ -119,11 +179,28 @@ export default function CustomerTicketDetailPage() {
       </Link>
 
       <div className="flex items-start justify-between gap-3 mb-1">
-        <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
+          {ticket.muted && (
+            <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title={tCustomer("ui.support.mutedHint", { defaultValue: "Notifications muted for you" })}>
+              <BellOff size={10} /> {tCustomer("ui.support.muted", { defaultValue: "Muted" })}
+            </span>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs font-semibold rounded-full px-3 py-1.5 bg-muted text-muted-foreground">
             {tCustomer(`ui.support.status.${ticket.status}`, { defaultValue: STATUS_LABEL[ticket.status] ?? ticket.status })}
           </span>
+          <button
+            type="button"
+            onClick={toggleMute}
+            disabled={muting}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={ticket.muted ? tCustomer("ui.support.unmute", { defaultValue: "Unmute ticket" }) : tCustomer("ui.support.mute", { defaultValue: "Mute ticket" })}
+            title={ticket.muted ? tCustomer("ui.support.unmute", { defaultValue: "Unmute" }) : tCustomer("ui.support.muteHint", { defaultValue: "Mute notifications" })}
+          >
+            {ticket.muted ? <BellOff size={14} /> : <Bell size={14} />}
+          </button>
           <ReportChatButton chatType="user_admin" threadId={ticket.id} />
         </div>
       </div>
@@ -134,6 +211,7 @@ export default function CustomerTicketDetailPage() {
       <div className="rounded-xl border border-border overflow-hidden mb-4">
         <div className="max-h-[50vh] overflow-y-auto px-4 py-4">
           <TicketThread
+            ticketId={ticket.id}
             currentUserId={currentUser.id}
             ticketOwnerId={ticket.userId}
             ticketBody={ticket.body}
@@ -155,21 +233,59 @@ export default function CustomerTicketDetailPage() {
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <input
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") sendReply();
-            }}
-            aria-label={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket" })}
-            placeholder={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket…" })}
-            className="flex-1 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
-            disabled={sending}
-          />
-          <Button size="icon" className="h-10 w-10 rounded-full shrink-0" onClick={sendReply} disabled={sending || !reply.trim()}>
-            <Send size={14} aria-hidden="true" />
-          </Button>
+        <div>
+          {speech.error && <p className="mb-1.5 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+          {pendingFile && (
+            <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
+              <FileText size={18} className="shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
+              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment", { defaultValue: "Remove attachment" })}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={handleFileSelected} className="hidden" />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={tCustomer("ui.support.attachFile", { defaultValue: "Attach a file" })}
+            >
+              <Paperclip size={15} />
+            </button>
+            <input
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendReply();
+              }}
+              aria-label={tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket" })}
+              placeholder={pendingFile ? tCustomer("ui.support.addCaption", { defaultValue: "Add a caption…" }) : tCustomer("ui.support.reply", { defaultValue: "Reply to this ticket…" })}
+              className="flex-1 min-w-0 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
+              disabled={sending || uploading}
+            />
+            {speech.isSupported && (
+              <button
+                type="button"
+                onClick={() => (speech.isListening ? speech.stop() : speech.start())}
+                disabled={sending || uploading}
+                aria-label={speech.isListening ? "Stop listening" : "Speak your reply"}
+                title={speech.isListening ? "Stop listening" : "Speak your reply"}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  speech.isListening
+                    ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+              </button>
+            )}
+            <Button size="icon" className="h-10 w-10 rounded-full shrink-0" onClick={sendReply} disabled={sending || uploading || (!reply.trim() && !pendingFile)}>
+              <Send size={14} aria-hidden="true" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

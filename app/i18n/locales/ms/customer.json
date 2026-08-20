@@ -352,6 +352,16 @@
       "reopening": "Membuka semula…",
       "reopen": "Buka semula tiket",
       "orStartNew": "atau buka tiket baharu.",
+      "mute": "Redamkan tiket",
+      "unmute": "Nyahredam tiket",
+      "muteHint": "Redamkan pemberitahuan",
+      "muted": "Diredamkan",
+      "mutedHint": "Pemberitahuan diredamkan untuk anda",
+      "muteError": "Tidak dapat mengemas kini tetapan pemberitahuan.",
+      "attachFile": "Lampirkan fail",
+      "addCaption": "Tambah kapsyen…",
+      "removeAttachment": "Alih keluar lampiran",
+      "attachmentError": "Tidak dapat menghantar lampiran.",
       "status": { "open": "Terbuka", "in_progress": "Sedang diproses", "resolved": "Diselesaikan", "closed": "Ditutup" }
     },
     "phone": {

@@ -53,6 +53,19 @@ export interface AffiliateProductStat {
   earnings: number;
 }
 
+/**
+ * CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: clicks/referrals/earnings
+ * grouped by the click's `campaign` label (migration 20260820000000).
+ * `campaign: null` is the "Untagged" bucket — every click before this
+ * feature shipped, plus any share where the affiliate left the field blank.
+ */
+export interface AffiliateCampaignStat {
+  campaign: string | null;
+  clicks: number;
+  referrals: number;
+  earnings: number;
+}
+
 export interface AffiliateDailyClicks {
   date: string; // YYYY-MM-DD
   clicks: number;
@@ -65,7 +78,7 @@ export interface AffiliateCommission {
   /** The rate stamped onto this attribution at the time it was created — never recomputed from the current tier. */
   rate: number;
   amount: number;
-  status: 'pending' | 'confirmed' | 'reversed';
+  status: 'pending' | 'confirmed' | 'reversed' | 'rejected';
   createdAt: string;
   clearedAt: string | null;
   /** Days until this clears, floored at 0. null once it's no longer pending. */
@@ -81,6 +94,7 @@ export interface AffiliateStats {
     availableToWithdraw: number;
   };
   byProduct: AffiliateProductStat[];
+  byCampaign: AffiliateCampaignStat[];
   clicksByDay: AffiliateDailyClicks[];
   commissions: AffiliateCommission[];
   /**
@@ -110,6 +124,7 @@ function emptyStats(tier: TierInfo): AffiliateStats {
     affiliateCode: null,
     totals: { clicks: 0, referrals: 0, pendingEarnings: 0, availableToWithdraw: 0 },
     byProduct: [],
+    byCampaign: [],
     clicksByDay: zeroFilledDays(),
     commissions: [],
     funnel: computeFunnel([], [], []),
@@ -136,7 +151,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
   if (!link) return emptyStats(tier);
 
   const [{ data: clicksData }, { data: sharesData }, { data: walletData }] = await Promise.all([
-    service.from('affiliate_clicks').select('id, target_type, target_id, source, created_at').eq('link_id', link.id),
+    service.from('affiliate_clicks').select('id, target_type, target_id, source, campaign, created_at').eq('link_id', link.id),
     service.from('share_events').select('content_type, content_id, platform').eq('affiliate_id', link.id),
     service.from('wallets').select('earnings_sen').eq('user_id', userId).maybeSingle(),
   ]);
@@ -159,7 +174,10 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
         }[],
       };
   const attributionRows = attributionsData ?? [];
-  const activeAttributions = attributionRows.filter((a) => a.status !== 'reversed');
+  // 'rejected' (admin manually declined) counts as inactive here alongside
+  // 'reversed' (order cancelled/refunded) — neither should count toward
+  // referrals/tier/earnings, they just got there by different paths.
+  const activeAttributions = attributionRows.filter((a) => a.status !== 'reversed' && a.status !== 'rejected');
   const clearanceDays = await getClearanceDays(service);
 
   const pendingEarnings = attributionRows
@@ -201,6 +219,29 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
     entry.earnings = add(entry.earnings, Number(attribution.commission_amount));
     byProductMap.set(productId, entry);
   }
+
+  // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: same shape as byProduct
+  // above, grouped by click.campaign instead of click target. `null` is its
+  // own real bucket here (rendered as "Untagged" by the dashboard) rather
+  // than being filtered out, so untagged clicks aren't silently dropped from
+  // the breakdown.
+  const clickCampaign = new Map(clickRows.map((c) => [c.id, c.campaign as string | null]));
+  const byCampaignMap = new Map<string | null, { clicks: number; referrals: number; earnings: number }>();
+  for (const click of clickRows) {
+    const entry = byCampaignMap.get(click.campaign) ?? { clicks: 0, referrals: 0, earnings: 0 };
+    entry.clicks += 1;
+    byCampaignMap.set(click.campaign, entry);
+  }
+  for (const attribution of activeAttributions) {
+    const campaign = clickCampaign.get(attribution.click_id) ?? null;
+    const entry = byCampaignMap.get(campaign) ?? { clicks: 0, referrals: 0, earnings: 0 };
+    entry.referrals += 1;
+    entry.earnings = add(entry.earnings, Number(attribution.commission_amount));
+    byCampaignMap.set(campaign, entry);
+  }
+  const byCampaign: AffiliateCampaignStat[] = [...byCampaignMap.entries()]
+    .map(([campaign, v]) => ({ campaign, clicks: v.clicks, referrals: v.referrals, earnings: v.earnings }))
+    .sort((a, b) => b.earnings - a.earnings);
 
   const productIds = [...byProductMap.keys()];
   const productNames = await resolveProductNames(productIds);
@@ -263,6 +304,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
       availableToWithdraw,
     },
     byProduct,
+    byCampaign,
     clicksByDay,
     commissions,
     funnel,

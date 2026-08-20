@@ -73,7 +73,10 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
   const clickById = new Map(clicks.map((c) => [c.id, c]));
   const linkById = new Map(links.map((l) => [l.id, l]));
 
-  const activeAttributions = attributions.filter((a) => a.status !== 'reversed');
+  // 'rejected' (admin manually declined) is inactive here too, same as
+  // 'reversed' — see lib/affiliate/clearing.ts's file header for the
+  // distinction between the two.
+  const activeAttributions = attributions.filter((a) => a.status !== 'reversed' && a.status !== 'rejected');
   const totalCommission = activeAttributions.reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
 
   // ── Referral counts per link (commission comes from rankByCommission below) ──
