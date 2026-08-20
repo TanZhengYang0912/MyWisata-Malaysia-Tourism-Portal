@@ -1255,7 +1255,7 @@
       "minimumWithdrawal": "Pengeluaran minimum ialah RM {{amount}}.",
       "submitWithdrawalError": "Gagal menghantar permintaan pengeluaran.",
       "submitError": "Gagal menghantar.",
-      "minimumTopUp": "Tambah nilai minimum ialah RM 1.00.",
+      "minimumTopUp": "Tambah nilai minimum ialah RM {{amount}}.",
       "topUpError": "Gagal memulakan tambah nilai.",
       "bankWithdrawalsEnabled": "Pengeluaran bank diaktifkan",
       "completePayoutDetails": "Sila lengkapkan butiran pembayaran anda",

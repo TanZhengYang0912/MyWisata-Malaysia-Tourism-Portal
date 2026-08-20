@@ -1255,7 +1255,7 @@
       "minimumWithdrawal": "Minimum withdrawal is RM {{amount}}.",
       "submitWithdrawalError": "Failed to submit withdrawal.",
       "submitError": "Failed to submit.",
-      "minimumTopUp": "Minimum top-up is RM 1.00.",
+      "minimumTopUp": "Minimum top-up is RM {{amount}}.",
       "topUpError": "Failed to initiate top-up.",
       "bankWithdrawalsEnabled": "Bank withdrawals enabled",
       "completePayoutDetails": "Please complete your payout details",

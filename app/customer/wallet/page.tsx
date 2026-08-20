@@ -19,6 +19,7 @@ import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { normalizeTngDestinationIdentifier, selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
+import { STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -319,7 +320,7 @@ function WalletContent() {
     setTopUpError("");
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0) { setTopUpError(tCustomer("ui.wallet.validAmount")); return; }
-    if (amount < 1)              { setTopUpError(tCustomer("ui.wallet.minimumTopUp")); return; }
+    if (amount < STRIPE_TOP_UP_MINIMUM_RM) { setTopUpError(tCustomer("ui.wallet.minimumTopUp", { amount: STRIPE_TOP_UP_MINIMUM_RM.toFixed(2) })); return; }
     setToppingUp(true);
     try {
       const res  = await fetch("/api/stripe/create-checkout", {
@@ -493,7 +494,7 @@ function WalletContent() {
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.wallet.amountRm")}</label>
             <input
-              type="number" min="1" step="0.01" required
+              type="number" min={STRIPE_TOP_UP_MINIMUM_RM} step="0.01" required
               value={topUpAmount}
               onChange={(e) => setTopUpAmount(e.target.value)}
               placeholder={tCustomer("ui.wallet.amountPlaceholder")}

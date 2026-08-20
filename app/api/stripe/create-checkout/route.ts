@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { STRIPE_TOP_UP_MINIMUM_RM } from '@/lib/stripe/top-up-limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +27,10 @@ export async function POST(req: Request) {
   if (!amountRM || amountRM <= 0 || !Number.isFinite(amountRM)) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
   }
-  const amountSen = Math.round(amountRM * 100);
-  if (amountSen < 100) {
-    return NextResponse.json({ error: 'Minimum top-up is RM 1.00' }, { status: 400 });
+  if (amountRM < STRIPE_TOP_UP_MINIMUM_RM) {
+    return NextResponse.json({ error: `Minimum top-up is RM ${STRIPE_TOP_UP_MINIMUM_RM.toFixed(2)}` }, { status: 400 });
   }
+  const amountSen = Math.round(amountRM * 100);
 
   const { data: userRow, error: userErr } = await db
     .from('users')

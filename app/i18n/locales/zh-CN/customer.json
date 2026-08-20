@@ -1255,7 +1255,7 @@
       "minimumWithdrawal": "最低提现金额为 RM {{amount}}。",
       "submitWithdrawalError": "提现申请提交失败。",
       "submitError": "提交失败。",
-      "minimumTopUp": "最低充值金额为 RM 1.00。",
+      "minimumTopUp": "最低充值金额为 RM {{amount}}。",
       "topUpError": "无法发起充值。",
       "bankWithdrawalsEnabled": "银行提款已启用",
       "completePayoutDetails": "请完成收款资料",
