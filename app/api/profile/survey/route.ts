@@ -11,15 +11,13 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, travelStyle, budgetRange, mobilityNeeds, groupComposition, petFriendly, preferredRadiusKm, notes } = parsed.data;
+  const { interests, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
 
   const { error } = await supabase.rpc('complete_preference_survey', {
     p_user_id:             user.id,
     p_interests:           interests,
-    p_travel_style:        travelStyle,
     p_budget_range:        budgetRange,
     p_mobility_needs:      mobilityNeeds,
-    p_group_composition:   groupComposition,
     p_pet_friendly:        petFriendly,
     p_preferred_radius_km: preferredRadiusKm,
     p_notes:               notes ?? null,
@@ -44,16 +42,14 @@ export async function PUT(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, travelStyle, budgetRange, mobilityNeeds, groupComposition, petFriendly, preferredRadiusKm, notes } = parsed.data;
+  const { interests, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
 
   const { error } = await supabase
     .from('preference_survey_responses')
     .update({
       interests,
-      travel_style:        travelStyle,
       budget_range:        budgetRange,
       mobility_needs:      mobilityNeeds,
-      group_composition:   groupComposition,
       pet_friendly:        petFriendly,
       preferred_radius_km: preferredRadiusKm,
       notes:               notes ?? null,
@@ -74,7 +70,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('preference_survey_responses')
-    .select('interests, travel_style, budget_range, mobility_needs, group_composition, pet_friendly, preferred_radius_km, notes, learned_affinity, created_at, updated_at')
+    .select('interests, budget_range, mobility_needs, pet_friendly, preferred_radius_km, notes, learned_affinity, created_at, updated_at')
     .eq('user_id', user.id)
     .single();
 

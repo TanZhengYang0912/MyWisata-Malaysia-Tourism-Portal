@@ -12,22 +12,6 @@ export const INTEREST_OPTIONS = DISCOVERY_CATEGORIES
 export type InterestSlug = (typeof REAL_CATEGORY_SLUGS)[number];
 export const INTEREST_SLUGS = INTEREST_OPTIONS.map((o) => o.slug) as InterestSlug[];
 
-export const TRAVEL_STYLES = [
-  { value: "budget_backpacker", label: "Budget Backpacker", labelKey: "preferences.travelStyles.budget_backpacker" },
-  { value: "mid_range",         label: "Mid-Range Explorer", labelKey: "preferences.travelStyles.mid_range" },
-  { value: "luxury",            label: "Luxury Traveller", labelKey: "preferences.travelStyles.luxury" },
-  { value: "business",          label: "Business Traveller", labelKey: "preferences.travelStyles.business" },
-  { value: "family_group",      label: "Family Group", labelKey: "preferences.travelStyles.family_group" },
-] as const;
-
-export const GROUP_COMPOSITIONS = [
-  { value: "solo",    label: "Solo", labelKey: "preferences.groupCompositions.solo" },
-  { value: "couple",  label: "Couple", labelKey: "preferences.groupCompositions.couple" },
-  { value: "friends", label: "Friends Group", labelKey: "preferences.groupCompositions.friends" },
-  { value: "family",  label: "Family with Kids", labelKey: "preferences.groupCompositions.family" },
-  { value: "senior",  label: "Senior Group", labelKey: "preferences.groupCompositions.senior" },
-] as const;
-
 export const BUDGET_RANGES = [
   { value: "budget",    label: "Budget (< RM 100/day)", labelKey: "preferences.budgetRanges.budget" },
   { value: "mid_range", label: "Mid-range (RM 100–500/day)", labelKey: "preferences.budgetRanges.mid_range" },
@@ -48,6 +32,5 @@ export const DISTANCE_OPTIONS = [
   { value: 0,   label: "Any distance", labelKey: "preferences.distance.any" },
 ] as const;
 
-export type TravelStyle = (typeof TRAVEL_STYLES)[number]["value"];
 export type BudgetRange = (typeof BUDGET_RANGES)[number]["value"];
 export type MobilityNeed = (typeof MOBILITY_NEEDS)[number]["value"];

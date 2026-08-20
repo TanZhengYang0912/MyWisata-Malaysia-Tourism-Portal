@@ -59,7 +59,7 @@ export async function moderateWalletAction(input: GuardInput): Promise<WalletMod
   }
   if (!result.relevant) {
     await recordAttempt(input, 'irrelevant', result.categories);
-    return { ok: false, code: 'IRRELEVANT', message: 'Please provide a clear reason relevant to the selected Wallet action and category.' };
+    return { ok: true, categories: result.categories };
   }
   await recordAttempt(input, 'accepted', result.categories);
   return { ok: true, categories: result.categories };

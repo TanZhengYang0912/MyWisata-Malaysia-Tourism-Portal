@@ -19,7 +19,7 @@ import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { normalizeTngDestinationIdentifier, selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
-import { STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
+import { STRIPE_TOP_UP_MAXIMUM_RM, STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -62,6 +62,7 @@ function WalletContent() {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing]     = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);
   const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState("");
   const [showAddTngDestination, setShowAddTngDestination] = useState(false);
@@ -94,6 +95,10 @@ function WalletContent() {
     withdrawRequested: withdrawSetupRequested,
     returningFromOnboarding,
   });
+  const topUpMaximumAmountLabel = STRIPE_TOP_UP_MAXIMUM_RM.toLocaleString(
+    i18n.language === "en" ? "en-MY" : i18n.language,
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+  );
 
   const refreshConnectStatus = useCallback(async (): Promise<ConnectStatus> => {
     if (!currentUser) return "idle";
@@ -200,6 +205,7 @@ function WalletContent() {
 
   async function openWithdraw() {
     if (!gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
+    setWithdrawalSubmitted(false);
     const selectedDestination = destinations.find((destination) => destination.id === selectedDestinationId);
     setShowTopUp(false);
     setWithdrawError("");
@@ -275,6 +281,7 @@ function WalletContent() {
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
+    if (showAddTngDestination) return;
     setWithdrawError("");
     const amount    = parseFloat(withdrawAmount);
     const available = availableEarnings;
@@ -305,6 +312,14 @@ function WalletContent() {
         reservedEarnings: summary.reservedEarningsSen / 100,
         withdrawnEarnings: summary.withdrawnEarningsSen / 100,
       });
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("topup");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
+      );
+      setWithdrawalSubmitted(true);
       setShowWithdraw(false);
       setWithdrawAmount("");
     } catch (err) {
@@ -319,8 +334,9 @@ function WalletContent() {
     if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/wallet")) return;
     setTopUpError("");
     const amount = parseFloat(topUpAmount);
-    if (!amount || amount <= 0) { setTopUpError(tCustomer("ui.wallet.validAmount")); return; }
+    if (!amount || amount <= 0 || !Number.isFinite(amount)) { setTopUpError(tCustomer("ui.wallet.validAmount")); return; }
     if (amount < STRIPE_TOP_UP_MINIMUM_RM) { setTopUpError(tCustomer("ui.wallet.minimumTopUp", { amount: STRIPE_TOP_UP_MINIMUM_RM.toFixed(2) })); return; }
+    if (amount > STRIPE_TOP_UP_MAXIMUM_RM) { setTopUpError(tCustomer("ui.wallet.maximumTopUp", { amount: topUpMaximumAmountLabel })); return; }
     setToppingUp(true);
     try {
       const res  = await fetch("/api/stripe/create-checkout", {
@@ -354,7 +370,12 @@ function WalletContent() {
       <CustomerPageShell className="pt-0 sm:pt-0">
 
       {/* ── Banners ── */}
-      {topupSuccess && (
+      {withdrawalSubmitted ? (
+        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
+          <CheckCircle2 size={16} className="shrink-0" />
+          <span>{tCustomer("ui.wallet.withdrawalSubmitted")}</span>
+        </div>
+      ) : topupSuccess && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-3 text-emerald-800 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.topupSuccess")}</span>
@@ -494,12 +515,18 @@ function WalletContent() {
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.wallet.amountRm")}</label>
             <input
-              type="number" min={STRIPE_TOP_UP_MINIMUM_RM} step="0.01" required
+              type="number" min={STRIPE_TOP_UP_MINIMUM_RM} max={STRIPE_TOP_UP_MAXIMUM_RM} step="0.01" required
               value={topUpAmount}
-              onChange={(e) => setTopUpAmount(e.target.value)}
+              onChange={(e) => { setTopUpAmount(e.target.value); setTopUpError(""); }}
+              onInvalid={(e) => {
+                if (e.currentTarget.validity.rangeOverflow) {
+                  setTopUpError(tCustomer("ui.wallet.maximumTopUp", { amount: topUpMaximumAmountLabel }));
+                }
+              }}
               placeholder={tCustomer("ui.wallet.amountPlaceholder")}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             />
+            <p className="text-xs text-muted-foreground">{tCustomer("ui.wallet.maximumTopUp", { amount: topUpMaximumAmountLabel })}</p>
           </div>
           <p className="text-xs text-muted-foreground">{tCustomer("ui.wallet.stripeRedirect")}</p>
           {topUpError && <p className="text-xs text-red-500">{topUpError}</p>}
@@ -629,7 +656,7 @@ function WalletContent() {
           )}
           {withdrawError && <p role="alert" className="text-xs text-red-500">{withdrawError}</p>}
           <div className="flex gap-2">
-            <Button type="submit" disabled={withdrawing || !walletReady || resolvedAvailableEarnings <= 0} className="flex-1">
+            <Button type="submit" disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0} className="flex-1">
               {withdrawing ? tCustomer("ui.states.submitting") : tCustomer("ui.wallet.submitRequest")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setShowWithdraw(false)}>{tCustomer("ui.wallet.cancel")}</Button>
@@ -703,7 +730,11 @@ function WalletContent() {
           </div>
           <div className="divide-y divide-border">
             {pending.map((w) => (
-              <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
+              <Link
+                key={w.id}
+                href={`/customer/wallet/withdrawals/${w.id}`}
+                className="px-5 py-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+              >
                 <div>
                   <p className="text-sm font-semibold text-foreground">{w.destination}</p>
                   <p className="text-xs text-muted-foreground">{new Date(w.createdAt).toLocaleDateString(i18n.language === "en" ? "en-MY" : i18n.language)}</p>
@@ -711,9 +742,8 @@ function WalletContent() {
                 <div className="text-right">
                   <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
-                  <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">{tCustomer("ui.wallet.viewReceipt")}</Link>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -731,7 +761,11 @@ function WalletContent() {
         ) : (
           <div className="divide-y divide-border">
             {history.map((w) => (
-              <div key={w.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
+              <Link
+                key={w.id}
+                href={`/customer/wallet/withdrawals/${w.id}`}
+                className="px-5 py-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+              >
                 <div className="flex items-center gap-3">
                   {w.status === "completed" || w.status === "paid" || w.status === "approved" ? (
                     <CheckCircle2 size={16} className="text-primary shrink-0" />
@@ -748,9 +782,8 @@ function WalletContent() {
                 <div className="text-right">
                   <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
                   <StatusBadge status={w.status} />
-                  <Link href={`/customer/wallet/withdrawals/${w.id}`} className="mt-1 block text-xs text-primary hover:underline">{tCustomer("ui.wallet.viewReceipt")}</Link>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

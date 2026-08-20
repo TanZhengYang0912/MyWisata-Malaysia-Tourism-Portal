@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Star, Plus, CheckCircle2, Clock, XCircle, ImagePlus, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
+import { allowRecommendationImageSelection, appendSelectedRecommendationImages } from "@/lib/recommendations/submission";
 import { useTranslation } from "react-i18next";
 
 type RecommendationResponse = {
@@ -69,6 +70,7 @@ export default function RecommendationsPage() {
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const replacementConfirmedRef = useRef(false);
 
   const imagePreviews = useMemo(() => images.map((image) => ({ file: image, url: URL.createObjectURL(image) })), [images]);
   useEffect(() => () => imagePreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [imagePreviews]);
@@ -173,6 +175,30 @@ export default function RecommendationsPage() {
     setImages((current) => current.filter((_, imageIndex) => imageIndex !== index));
   }
 
+  function confirmPhotoReplacement() {
+    return window.confirm(tCustomer("ui.recommendations.photoReplacementConfirm"));
+  }
+
+  function handlePhotoPickerClick(event: React.MouseEvent<HTMLInputElement>) {
+    replacementConfirmedRef.current = false;
+    const allowed = allowRecommendationImageSelection(images.length, 0, confirmPhotoReplacement);
+    if (!allowed) {
+      event.preventDefault();
+      return;
+    }
+    replacementConfirmedRef.current = images.length >= 5;
+  }
+
+  function handlePhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.currentTarget.files ?? []);
+    const replacementAlreadyConfirmed = replacementConfirmedRef.current;
+    replacementConfirmedRef.current = false;
+    const allowed = replacementAlreadyConfirmed
+      || allowRecommendationImageSelection(images.length, selected.length, confirmPhotoReplacement);
+    if (allowed) appendSelectedRecommendationImages(selected, setImages);
+    event.currentTarget.value = "";
+  }
+
   const pending  = (recs ?? []).filter((r) => r.status === "pending" || r.status === "changes_requested");
   const reviewed = (recs ?? []).filter((r) => r.status !== "pending");
 
@@ -253,7 +279,7 @@ export default function RecommendationsPage() {
               <ImagePlus size={26} aria-hidden="true" className="mb-2 text-primary transition-transform group-hover:scale-110" />
               <span className="text-sm font-semibold text-primary">{tCustomer("ui.recommendations.choosePhotos")}</span>
               <span className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.photoHint")}</span>
-              <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { setImages(Array.from(event.target.files ?? []).slice(0, 5)); event.currentTarget.value = ""; }} className="sr-only" />
+              <input aria-label={tCustomer("ui.recommendations.photosLabel")} type="file" accept="image/jpeg,image/png,image/webp" multiple onClick={handlePhotoPickerClick} onChange={handlePhotoSelection} className="sr-only" />
             </label>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {imagePreviews.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{imagePreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative overflow-hidden rounded-xl border border-border bg-secondary"><img src={url} alt={file.name} className="h-28 w-full object-cover" /><button type="button" onClick={() => removeImage(index)} aria-label={tCustomer("ui.recommendations.removePhoto", { name: file.name })} className="absolute right-2 top-2 rounded-full bg-foreground/75 p-1.5 text-background opacity-0 transition group-hover:opacity-100 focus:opacity-100"><X size={14} aria-hidden="true" /></button><p className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">{file.name}</p></div>)}</div>}

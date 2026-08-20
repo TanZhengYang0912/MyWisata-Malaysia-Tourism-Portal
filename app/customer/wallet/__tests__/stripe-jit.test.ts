@@ -26,7 +26,38 @@ describe('customer wallet Stripe JIT contract', () => {
     expect(page).toContain('tCustomer("ui.wallet.stripePrivacy")');
   });
 
-  it('disables withdrawal submission until available earnings exist', () => {
-    expect(page).toContain('disabled={withdrawing || !walletReady || resolvedAvailableEarnings <= 0}');
+  it('blocks withdrawal submission while the TNG destination editor is unfinished', () => {
+    expect(page).toContain('if (showAddTngDestination) return;');
+    expect(page).toContain(
+      'disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0}',
+    );
+  });
+
+  it('replaces stale top-up feedback with localized withdrawal success feedback', () => {
+    const openWithdraw = page.match(/async function openWithdraw[\s\S]*?async function handleAddTngDestination/)?.[0] ?? '';
+    const handleWithdraw = page.match(/async function handleWithdraw[\s\S]*?async function handleTopUp/)?.[0] ?? '';
+    expect(page).toContain('const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);');
+    expect(openWithdraw).toContain('setWithdrawalSubmitted(false);');
+    expect(handleWithdraw).toContain('setWithdrawalSubmitted(true);');
+    expect(handleWithdraw).toContain('nextUrl.searchParams.delete("topup");');
+    expect(handleWithdraw).toContain('window.history.replaceState(');
+    expect(page).toContain('tCustomer("ui.wallet.withdrawalSubmitted")');
+    expect(page).toContain('withdrawalSubmitted ? (');
+    expect(page).toContain(': topupSuccess && (');
+  });
+
+  it('provides withdrawal-submitted feedback in every customer locale', () => {
+    const expected = {
+      en: 'Withdrawal request submitted successfully. It is now pending review.',
+      ms: 'Permintaan pengeluaran berjaya dihantar. Permintaan ini kini menunggu semakan.',
+      'zh-CN': '提现申请已成功提交，现正等待审核。',
+    };
+
+    for (const [locale, message] of Object.entries(expected)) {
+      const resources = JSON.parse(readFileSync(`app/i18n/locales/${locale}/customer.json`, 'utf8')) as {
+        ui: { wallet: { withdrawalSubmitted?: string } };
+      };
+      expect(resources.ui.wallet.withdrawalSubmitted).toBe(message);
+    }
   });
 });

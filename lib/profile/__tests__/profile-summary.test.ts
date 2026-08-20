@@ -23,9 +23,9 @@ describe("profile summary", () => {
       },
       {
         interests: ["food"],
-        travel_style: "solo",
         budget_range: "mid_range",
         mobility_needs: "none",
+        preferred_radius_km: 20,
       },
       [
         { status: "rejected", review_reason_code: "document_incomplete", review_reason_detail: "Upload both sides.", reviewed_at: "2026-07-14T00:00:00Z", created_at: "2026-07-13T00:00:00Z" },
@@ -43,7 +43,7 @@ describe("profile summary", () => {
       emailVerified: true,
       phoneVerified: true,
       profileComplete: true,
-      survey: { interests: ["food"], travelStyle: "solo", budgetRange: "mid_range", mobilityNeeds: "none" },
+      survey: { interests: ["food"], budgetRange: "mid_range", mobilityNeeds: "none", preferredRadiusKm: 20 },
       latestKycReview: { status: "pending", reasonCode: null, reasonDetail: null },
     });
   });

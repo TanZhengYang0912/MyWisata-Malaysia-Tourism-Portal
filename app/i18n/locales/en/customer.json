@@ -105,20 +105,6 @@
     "hiddenGem": "Hidden Gem"
   },
   "preferences": {
-    "travelStyles": {
-      "budget_backpacker": "Budget Backpacker",
-      "mid_range": "Mid-Range Explorer",
-      "luxury": "Luxury Traveller",
-      "business": "Business Traveller",
-      "family_group": "Family Group"
-    },
-    "groupCompositions": {
-      "solo": "Solo",
-      "couple": "Couple",
-      "friends": "Friends Group",
-      "family": "Family with Kids",
-      "senior": "Senior Group"
-    },
     "budgetRanges": {
       "budget": "Budget (< RM 100/day)",
       "mid_range": "Mid-range (RM 100–500/day)",
@@ -921,8 +907,6 @@
       "notesPlaceholder": "e.g. I love street food, avoid crowded malls, always travel with my dog…",
       "basedOnActivity": "Based on your activity",
       "interests": "Interests (select all that apply)",
-      "travelStyle": "Travel style",
-      "travelling": "Who's travelling (select all that apply)",
       "budgetRange": "Budget range",
       "preferredDistance": "Preferred distance",
       "mobilityAccessibility": "Mobility & accessibility",
@@ -1026,6 +1010,7 @@
       "photoHint": "JPEG, PNG or WebP · up to 5 MB each",
       "photosLabel": "Add 1 to 5 photos",
       "uploadHint": "Click the upload area to add photos.",
+      "photoReplacementConfirm": "You already have 5 photos. Adding more will replace the oldest photos with your newest selection. Continue?",
       "contact": "Add at least one contact method",
       "imagePermission": "I own these images or have permission to publish them",
       "submit": "Submit recommendation",
@@ -1219,6 +1204,7 @@
       "title": "My Wallet",
       "description": "Manage your spendable balance, earnings, and payout withdrawals.",
       "topupSuccess": "Top-up initiated! Your balance will update once the payment clears (usually within a minute).",
+      "withdrawalSubmitted": "Withdrawal request submitted successfully. It is now pending review.",
       "bankSetupSubmitted": "Bank account setup submitted. Stripe will verify your details — this may take a few minutes.",
       "setupExpired": "Setup link expired. Please try again.",
       "topupBalance": "Top-up balance",
@@ -1256,6 +1242,7 @@
       "submitWithdrawalError": "Failed to submit withdrawal.",
       "submitError": "Failed to submit.",
       "minimumTopUp": "Minimum top-up is RM {{amount}}.",
+      "maximumTopUp": "Maximum top-up is RM {{amount}}.",
       "topUpError": "Failed to initiate top-up.",
       "bankWithdrawalsEnabled": "Bank withdrawals enabled",
       "completePayoutDetails": "Please complete your payout details",
@@ -1340,7 +1327,6 @@
       "deletePlaceholder": "Type DELETE to confirm",
       "closeAccount": "Close account",
       "noInterests": "No interests selected yet",
-      "travelStyleNotSet": "Travel style not set",
       "budgetNotSet": "Budget not set",
       "mobilityNotSet": "Mobility not set",
       "support": "Support",

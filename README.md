@@ -32,6 +32,7 @@ Design ported from the Figma-Make prototype in [`Docs/User greeting/`](Docs/User
 
 - Node.js ≥ 20 LTS
 - npm
+- [Stripe CLI](https://docs.stripe.com/stripe-cli) logged in to the project's Sandbox account (required only for local Stripe payments)
 
 ## First-time setup
 
@@ -49,9 +50,43 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start the dev server |
+| `npm run dev:stripe` | Sync the local Stripe webhook secret, then start Stripe CLI and the dev server together |
 | `npm run build` / `npm run start` | Production build / serve |
 | `npm test` | Run unit tests (money, voucher, distance, order-state helpers) |
+| `npm run test:dev-stripe` | Test the local Stripe secret and listener launcher |
 | `npm run lint` | Lint |
+
+## Local Stripe payments
+
+After installing Stripe CLI, authenticate it once with `stripe login`. For
+normal local payment development, use one command:
+
+```bash
+npm run dev:stripe
+```
+
+The launcher starts one Stripe listener, captures that same listener's signing
+secret without printing it, updates only `STRIPE_WEBHOOK_SECRET` in the ignored
+`.env.local`, and then starts Next.js. Listener output is filtered so signing
+secrets are redacted. Press Ctrl+C once to stop both processes. The command
+refuses to start if the same local listener or another launcher is already
+running. For a shared development database, nominate one machine as the
+listener owner instead of running this command on several machines.
+
+If the listener was offline when a Sandbox payment completed, restart with the
+command above and replay the original event once:
+
+```bash
+stripe events resend <event-id> --confirm
+```
+
+Confirm that the listener reports HTTP 200. Wallet credits are idempotent by
+Stripe event ID, so replaying the same event cannot credit the balance twice.
+
+Staging and Production do not use this local launcher. Register the fixed
+`https://<host>/api/stripe/webhook` endpoint in Stripe Dashboard and store that
+endpoint's `STRIPE_WEBHOOK_SECRET` in the deployment environment. Stripe then
+delivers and retries events without a developer machine or Stripe CLI running.
 
 ## Demo accounts
 

@@ -23,7 +23,6 @@ export interface FeedItem {
 
 type PrefRow = {
   interests: string[] | null;
-  travel_style: string | null;
   budget_range: string | null;
   mobility_needs: string | null;
   pet_friendly: boolean | null;
@@ -36,7 +35,6 @@ function toPrefs(row: PrefRow): UserPrefs {
   const mobility = (["none", "limited", "wheelchair"].includes(row.mobility_needs ?? "") ? row.mobility_needs : "none") as UserPrefs["mobilityNeeds"];
   return {
     interests: normalizeCategorySlugs(row.interests),
-    travelStyle: row.travel_style ?? "mid_range",
     budgetRange: budget,
     mobilityNeeds: mobility,
     petFriendly: Boolean(row.pet_friendly),
@@ -70,7 +68,7 @@ export async function getRecommendedFeed(
 
   const { data: prefRow } = await db
     .from("preference_survey_responses")
-    .select("interests,travel_style,budget_range,mobility_needs,pet_friendly,preferred_radius_km,learned_affinity")
+    .select("interests,budget_range,mobility_needs,pet_friendly,preferred_radius_km,learned_affinity")
     .eq("user_id", userId)
     .maybeSingle();
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bioSchema, preferenceSurveySchema } from '../profile-schemas';
 
 const validSurvey = {
-  interests: ['food'], travelStyle: 'mid_range', budgetRange: 'mid_range', mobilityNeeds: 'none', preferredRadiusKm: 5,
+  interests: ['food'], budgetRange: 'mid_range', mobilityNeeds: 'none', preferredRadiusKm: 5,
 };
 
 describe('preferenceSurveySchema', () => {
@@ -18,6 +18,11 @@ describe('preferenceSurveySchema', () => {
 
   it('rejects an interest outside the shared category vocabulary', () => {
     expect(() => preferenceSurveySchema.parse({ ...validSurvey, interests: ['skydiving'] })).toThrow();
+  });
+
+  it('rejects removed travel style and group composition fields', () => {
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, travelStyle: 'mid_range' })).toThrow();
+    expect(() => preferenceSurveySchema.parse({ ...validSurvey, groupComposition: ['solo'] })).toThrow();
   });
 });
 

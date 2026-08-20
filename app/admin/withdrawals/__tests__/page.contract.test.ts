@@ -83,6 +83,11 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('t("withdrawals.confirmation.cancel")');
   });
 
+  it('clears stale errors and confirmation payloads when decision inputs change', () => {
+    expect(pageSource).toContain('onChange={(e) => { setReasonCategory(e.target.value); setError(""); setPendingConfirmation(null); }}');
+    expect(pageSource).toContain('onChange={(e) => { setReason(e.target.value); setError(""); setPendingConfirmation(null); }}');
+  });
+
   it('shows decision-ready context in the queue before opening a detail drawer', () => {
     expect(pageSource).toContain('t("withdrawals.metrics.pendingPayoutValue")');
     expect(pageSource).toContain('t("withdrawals.table.approvalProgress")');

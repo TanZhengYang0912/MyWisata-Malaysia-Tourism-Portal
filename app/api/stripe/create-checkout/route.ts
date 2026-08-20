@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
-import { STRIPE_TOP_UP_MINIMUM_RM } from '@/lib/stripe/top-up-limits';
+import {
+  STRIPE_TOP_UP_MAXIMUM_RM,
+  STRIPE_TOP_UP_MAXIMUM_SEN,
+  STRIPE_TOP_UP_MINIMUM_RM,
+} from '@/lib/stripe/top-up-limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +35,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Minimum top-up is RM ${STRIPE_TOP_UP_MINIMUM_RM.toFixed(2)}` }, { status: 400 });
   }
   const amountSen = Math.round(amountRM * 100);
+  if (!Number.isSafeInteger(amountSen) || amountSen > STRIPE_TOP_UP_MAXIMUM_SEN) {
+    const maximum = STRIPE_TOP_UP_MAXIMUM_RM.toLocaleString('en-MY', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return NextResponse.json({ error: `Maximum top-up is RM ${maximum}` }, { status: 400 });
+  }
 
   const { data: userRow, error: userErr } = await db
     .from('users')

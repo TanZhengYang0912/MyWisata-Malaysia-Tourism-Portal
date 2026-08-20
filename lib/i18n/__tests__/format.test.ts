@@ -7,10 +7,8 @@ import { STATUS_LABEL_KEYS } from "@/components/shared/status-badge";
 import {
   BUDGET_RANGES,
   DISTANCE_OPTIONS,
-  GROUP_COMPOSITIONS,
   INTEREST_OPTIONS,
   MOBILITY_NEEDS,
-  TRAVEL_STYLES,
 } from "@/backend/domains/preferences";
 
 describe("locale-aware formatters", () => {
@@ -57,8 +55,6 @@ describe("shared translation-key contracts", () => {
   it("keeps discovery and preference presentation keys separate from stored values", () => {
     expect(DISCOVERY_CATEGORIES.every((category) => category.labelKey.startsWith("categories."))).toBe(true);
     expect(INTEREST_OPTIONS.every((option) => option.labelKey.startsWith("categories."))).toBe(true);
-    expect(TRAVEL_STYLES.every((option) => option.labelKey.startsWith("preferences.travelStyles."))).toBe(true);
-    expect(GROUP_COMPOSITIONS.every((option) => option.labelKey.startsWith("preferences.groupCompositions."))).toBe(true);
     expect(BUDGET_RANGES.every((option) => option.labelKey.startsWith("preferences.budgetRanges."))).toBe(true);
     expect(MOBILITY_NEEDS.every((option) => option.labelKey.startsWith("preferences.mobilityNeeds."))).toBe(true);
     expect(DISTANCE_OPTIONS.every((option) => option.labelKey.startsWith("preferences.distance."))).toBe(true);
@@ -73,8 +69,6 @@ describe("shared translation-key contracts", () => {
       ...ACCOUNT_MENU_GROUPS.flatMap((group) => group.items.map((item) => ["customer", item.labelKey] as ["customer", string])),
       ...DISCOVERY_CATEGORIES.map((category) => ["customer", category.labelKey] as ["customer", string]),
       ...INTEREST_OPTIONS.map((option) => ["customer", option.labelKey] as ["customer", string]),
-      ...TRAVEL_STYLES.map((option) => ["customer", option.labelKey] as ["customer", string]),
-      ...GROUP_COMPOSITIONS.map((option) => ["customer", option.labelKey] as ["customer", string]),
       ...BUDGET_RANGES.map((option) => ["customer", option.labelKey] as ["customer", string]),
       ...MOBILITY_NEEDS.map((option) => ["customer", option.labelKey] as ["customer", string]),
       ...DISTANCE_OPTIONS.map((option) => ["customer", option.labelKey] as ["customer", string]),

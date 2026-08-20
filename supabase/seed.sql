@@ -280,15 +280,15 @@ ON CONFLICT DO NOTHING;
 -- ── Preference profiles (§11.1, unified table) ───────────────
 -- interests use the canonical real category slugs.
 INSERT INTO preference_survey_responses
-  (user_id, interests, travel_style, budget_range, mobility_needs, group_composition, pet_friendly, preferred_radius_km) VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000005', ARRAY['food','activity'], 'mid_range',         'mid_range', 'none',       ARRAY['couple'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000006', ARRAY['activity'],        'budget_backpacker', 'budget',    'none',       ARRAY['solo'],    TRUE,  10),
-  ('aaaaaaaa-0000-0000-0000-000000000007', ARRAY['food','retail'],    'mid_range',         'mid_range', 'none',       ARRAY['friends'], FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000008', ARRAY['food','activity'], 'luxury',            'luxury',    'none',       ARRAY['couple'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000009', ARRAY['activity'],        'mid_range',         'mid_range', 'limited',    ARRAY['family'],  FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000010', ARRAY['activity'],        'family_group',      'mid_range', 'wheelchair', ARRAY['family','senior'], FALSE, 5),
-  ('aaaaaaaa-0000-0000-0000-000000000011', ARRAY['activity','food'], 'budget_backpacker', 'budget',    'none',       ARRAY['friends'], FALSE, 20),
-  ('aaaaaaaa-0000-0000-0000-000000000012', ARRAY['activity'],        'luxury',            'luxury',    'none',       ARRAY['couple'],  TRUE,  20)
+  (user_id, interests, budget_range, mobility_needs, pet_friendly, preferred_radius_km) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000005', ARRAY['food','activity'], 'mid_range', 'none',       FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000006', ARRAY['activity'],        'budget',    'none',       TRUE,  10),
+  ('aaaaaaaa-0000-0000-0000-000000000007', ARRAY['food','retail'],    'mid_range', 'none',       FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000008', ARRAY['food','activity'], 'luxury',    'none',       FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000009', ARRAY['activity'],        'mid_range', 'limited',    FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000010', ARRAY['activity'],        'mid_range', 'wheelchair', FALSE, 5),
+  ('aaaaaaaa-0000-0000-0000-000000000011', ARRAY['activity','food'], 'budget',    'none',       FALSE, 20),
+  ('aaaaaaaa-0000-0000-0000-000000000012', ARRAY['activity'],        'luxury',    'none',       TRUE,  20)
 ON CONFLICT (user_id) DO NOTHING;
 
 -- ── Mock interaction signals (§11.2.2 collaborative + §11.2.7 feedback) ───────
