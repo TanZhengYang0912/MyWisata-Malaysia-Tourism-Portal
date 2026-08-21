@@ -563,14 +563,16 @@ DECLARE
   v_provider TEXT;
   v_payout_id TEXT;
   v_terminal_email_type TEXT;
+  v_is_approver BOOLEAN;
 BEGIN
   IF v_actor IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
+  v_is_approver := public.is_approver(v_actor);
 
   SELECT * INTO v_request
     FROM public.withdrawal_requests
    WHERE id = p_withdrawal_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'withdrawal_not_found'; END IF;
-  IF v_request.user_id IS DISTINCT FROM v_actor AND NOT public.is_approver(v_actor) THEN
+  IF v_request.user_id IS DISTINCT FROM v_actor AND NOT v_is_approver THEN
     RAISE EXCEPTION 'withdrawal_proof_forbidden';
   END IF;
 
@@ -636,7 +638,7 @@ BEGIN
       WHERE transaction.withdrawal_id = p_withdrawal_id
         AND transaction.type IN ('withdrawal_reserve', 'withdrawal_complete', 'withdrawal_cancel')
     ), '[]'::jsonb),
-    'delivery', CASE WHEN v_outbox.id IS NULL THEN NULL ELSE jsonb_build_object(
+    'delivery', CASE WHEN NOT v_is_approver OR v_outbox.id IS NULL THEN NULL ELSE jsonb_build_object(
       'status', v_outbox.status,
       'attempts', v_outbox.attempt_count,
       'deliveredAt', v_outbox.delivered_at,
@@ -646,7 +648,7 @@ BEGIN
         OR (v_request.status = 'processing' AND v_outbox.updated_at < now() - interval '5 minutes')
       )
     ) END,
-    'notification', CASE WHEN v_terminal_email_type IS NULL THEN NULL ELSE (
+    'notification', CASE WHEN NOT v_is_approver OR v_terminal_email_type IS NULL THEN NULL ELSE (
       SELECT jsonb_build_object(
         'eventType', email.event_type,
         'emailStatus', email.status,

@@ -76,6 +76,13 @@ export async function GET(
     });
   }
 
+  const { data: proofData, error: proofError } = await db.rpc('get_withdrawal_settlement_proof', {
+    p_withdrawal_id: withdrawalId,
+  });
+  if (proofError) {
+    console.warn('[admin/withdrawals] settlement proof unavailable', { withdrawalId });
+  }
+
   const r = row as Record<string, unknown>;
   const u = r.users as Record<string, unknown>;
   const w = r.wallets as Record<string, unknown>;
@@ -143,6 +150,7 @@ export async function GET(
       locked: Boolean(r.payout_execution_claim_token),
       claimedAt: r.payout_execution_claimed_at as string | null,
     },
+    settlementProof: proofData as WithdrawalReviewDetail['settlementProof'] ?? null,
   };
 
   return apiOk(detail);

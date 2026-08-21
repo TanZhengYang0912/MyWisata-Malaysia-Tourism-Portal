@@ -18,4 +18,11 @@ describe('GET /api/admin/withdrawals/:id relationship contract', () => {
     expect(routeSource).toContain("get_withdrawal_review_sources");
     expect(routeSource).toContain('reviewSources');
   });
+
+  it('loads authorization-aware settlement proof without direct provider-event reads', () => {
+    expect(routeSource).toContain('get_withdrawal_settlement_proof');
+    expect(routeSource).toContain('settlementProof');
+    expect(routeSource).not.toContain("from('payout_provider_events')");
+    expect(routeSource).not.toContain("from('tng_mock_callback_outbox')");
+  });
 });

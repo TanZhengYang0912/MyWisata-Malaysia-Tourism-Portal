@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   query: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { getUser: mocks.getUser } }),
+  createClient: async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc }),
 }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ single: mocks.query }) }) }) }) }),
@@ -21,6 +22,7 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: actor } });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
   });
 
   it("requires an authenticated customer", async () => {
@@ -34,6 +36,7 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
     mocks.query.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: withdrawalId }) });
     expect(response.status).toBe(404);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("returns a safe receipt with a masked Stripe reference", async () => {
@@ -71,7 +74,24 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
     expect(JSON.stringify(body.data)).not.toContain("po_1234567890abcdef");
   });
 
-  it("returns a safe TNG receipt without exposing its provider event id", async () => {
+  it("returns safe TNG proof without exposing the provider payout id or Admin diagnostics", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        state: 'paid',
+        provider: 'tng_direct_credit',
+        providerPayoutReference: '••••••••cdef',
+        event: {
+          id: 'tng_evt_safe_001', status: 'paid', amountSen: 7000, currency: 'MYR',
+          providerOccurredAt: '2026-07-18T02:04:58.000Z', receivedAt: '2026-07-18T02:05:00.000Z',
+          signatureVerified: true, payloadSha256: 'a'.repeat(64),
+        },
+        moneyMovement: { amountSen: 7000, from: 'reserved_earnings', to: 'withdrawn_earnings' },
+        ledger: [],
+        delivery: { status: 'delivered', attempts: 1, deliveredAt: '2026-07-18T02:05:00.000Z', lastErrorCode: null, needsReconciliation: false },
+        notification: { eventType: 'withdrawal_paid', emailStatus: 'pending', queuedAt: '2026-07-18T02:05:01.000Z', sentAt: null },
+      },
+      error: null,
+    });
     mocks.query.mockResolvedValue({
       data: {
         id: withdrawalId,
@@ -101,6 +121,13 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
       destinationLabel: "Touch 'n Go eWallet •••• 2908",
     });
     expect(JSON.stringify(body.data)).not.toContain("tng_payout_0123456789abcdef");
+    expect(body.data.settlementProof).toMatchObject({
+      event: { id: 'tng_evt_safe_001', amountSen: 7000, signatureVerified: true },
+      moneyMovement: { from: 'reserved_earnings', to: 'withdrawn_earnings' },
+    });
+    expect(body.data.settlementProof).not.toHaveProperty('delivery');
+    expect(body.data.settlementProof).not.toHaveProperty('notification');
+    expect(mocks.rpc).toHaveBeenCalledWith('get_withdrawal_settlement_proof', { p_withdrawal_id: withdrawalId });
   });
 
   it('explains restored funds and the next step for a failed payout', async () => {

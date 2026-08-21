@@ -50,6 +50,9 @@ describe('automatic TNG callback proof migration', () => {
     expect(sql).toContain('auth.uid()');
     expect(sql).toContain('public.is_approver(v_actor)');
     expect(sql).toContain("RAISE EXCEPTION 'withdrawal_proof_forbidden'");
+    expect(sql).toContain('v_is_approver := public.is_approver(v_actor)');
+    expect(sql).toContain("'delivery', CASE WHEN NOT v_is_approver");
+    expect(sql).toContain("'notification', CASE WHEN NOT v_is_approver");
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_withdrawal_settlement_proof\(UUID\)\s+TO authenticated/i);
     expect(sql).not.toMatch(/DROP TRIGGER[\s\S]+payout_provider_events_append_only/);
   });

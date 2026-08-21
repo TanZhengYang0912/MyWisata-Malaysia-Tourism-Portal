@@ -84,6 +84,17 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
     vi.clearAllMocks();
     const rpc = vi.fn((name: string) => {
       if (name === 'is_approver') return Promise.resolve({ data: true, error: null });
+      if (name === 'get_withdrawal_settlement_proof') return Promise.resolve({
+        data: {
+          state: 'processing', provider: 'tng_direct_credit', providerPayoutReference: '••••••••cdef',
+          event: null,
+          moneyMovement: { amountSen: 10000, from: 'reserved_earnings', to: null },
+          ledger: [],
+          delivery: { status: 'pending', attempts: 0, deliveredAt: null, lastErrorCode: null, needsReconciliation: false },
+          notification: null,
+        },
+        error: null,
+      });
       return Promise.resolve({ data: null, error: { message: 'function get_withdrawal_review_sources does not exist' } });
     });
     mocks.createClient.mockResolvedValue({
@@ -105,5 +116,9 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
       fraudFlags: [],
     });
     expect(body.data.payoutExecution).toEqual({ locked: true, claimedAt: '2026-07-22T00:01:00.000Z' });
+    expect(body.data.settlementProof).toMatchObject({
+      provider: 'tng_direct_credit',
+      delivery: { status: 'pending', attempts: 0 },
+    });
   });
 });
