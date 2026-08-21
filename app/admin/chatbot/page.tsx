@@ -12,6 +12,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { useTranslation } from "react-i18next";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 interface TopQuestion { question: string; count: number; lastAskedAt: string }
 
@@ -276,48 +277,33 @@ export default function AdminChatbotPage() {
   const sortedDocs = docs ? [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title)) : [];
 
   if (stats === undefined || docs === undefined) {
-    return <div className="p-8 text-sm text-muted-foreground">{t("chatbot.loading")}</div>;
+    return <AdminPageShell><p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p></AdminPageShell>;
   }
   if (stats === null || docs === null) {
     return (
-      <EmptyState
+      <AdminPageShell><EmptyState
         title={t("chatbot.errors.loadTitle")}
         description={t("chatbot.errors.loadDescription")}
-      />
+      /></AdminPageShell>
     );
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl flex items-center gap-2">
-          <Bot size={18} /> {t("chatbot.title")}
-        </h1>
-        <div className="text-right">
+    <AdminPageShell>
+      <AdminPageHeader
+        eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("chatbot.title")}</span>}
+        title={t("chatbot.title")}
+        actions={<div className="text-right">
           <Button size="sm" variant="outline" onClick={runReindex} disabled={reindexing}>
             <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? t("chatbot.reindexing") : t("chatbot.reindex")}
           </Button>
           {reindexResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
-        </div>
-      </div>
+        </div>}
+      />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-w-2xl">
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.questions")}</p>
-          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{stats.totalQuestions}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.answerRate")}</p>
-          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.answerRate * 100).toFixed(0)}%</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <p className="text-sm font-semibold text-muted-foreground">{t("chatbot.metrics.escalationRate")}</p>
-          <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{(stats.escalationRate * 100).toFixed(0)}%</p>
-          <p className="text-[0.625rem] text-muted-foreground mt-0.5">{t("chatbot.metrics.escalationNote")}</p>
-        </div>
-      </div>
+      <AdminMetricGrid items={[{ label: t("chatbot.metrics.questions"), value: stats.totalQuestions }, { label: t("chatbot.metrics.answerRate"), value: `${(stats.answerRate * 100).toFixed(0)}%` }, { label: t("chatbot.metrics.escalationRate"), value: `${(stats.escalationRate * 100).toFixed(0)}%`, detail: t("chatbot.metrics.escalationNote") }]} />
 
-      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+      <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.topUnanswered.title")}
         </p>
@@ -351,7 +337,7 @@ export default function AdminChatbotPage() {
         )}
       </div>
 
-      <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+      <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.notHelpful.title")}
         </p>
@@ -394,7 +380,7 @@ export default function AdminChatbotPage() {
       </div>
 
       {editingId && (
-        <div ref={kbFormRef} className="rounded-xl bg-card p-4 mb-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div ref={kbFormRef} className="rounded-2xl border border-border bg-card p-4 space-y-2" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? t("chatbot.form.newTitle") : t("chatbot.form.editTitle")}</p>
           <input
             value={form.title}
@@ -456,7 +442,7 @@ export default function AdminChatbotPage() {
         </div>
       )}
 
-      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll")} checked={sortedDocs.length > 0 && sortedDocs.every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll")}</span></div>
         <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id)).length} onClear={() => setSelectedDocIds(new Set())} onApply={(action) => void applyBatch(action as "activate" | "deactivate")} actions={[{ value: "activate", label: t("batchActions.activate") }, { value: "deactivate", label: t("batchActions.deactivate") }]} busy={batchBusy} />
         {sortedDocs.length === 0 ? (
@@ -485,6 +471,6 @@ export default function AdminChatbotPage() {
           </div>
         )}
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

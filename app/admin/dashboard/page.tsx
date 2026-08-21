@@ -10,6 +10,7 @@ import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { isWithdrawalReviewableStatus } from "@/lib/wallet/withdrawal-display";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 type DashboardData = {
   vendors: number;
@@ -105,16 +106,13 @@ export default function AdminDashboardPage() {
   ] as const : [];
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <div className="w-full space-y-6">
-        <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div>
-            <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><Shield size={14} /> {t("dashboard.eyebrow")}</p>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("dashboard.title")}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("dashboard.description")}</p>
-          </div>
-          <button type="button" onClick={() => void loadDashboard()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><RefreshCw size={15} /> {t("dashboard.refresh")}</button>
-        </header>
+    <AdminPageShell>
+      <AdminPageHeader
+        eyebrow={<span className="flex items-center gap-2"><Shield size={14} /> {t("dashboard.eyebrow")}</span>}
+        title={t("dashboard.title")}
+        description={t("dashboard.description")}
+        actions={<button type="button" onClick={() => void loadDashboard()} className="inline-flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><RefreshCw size={15} /> {t("dashboard.refresh")}</button>}
+      />
 
         {loadError && <div role="alert" className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><AlertCircle size={17} /> {loadError}</div>}
 
@@ -166,7 +164,6 @@ export default function AdminDashboardPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] px-5 py-4 text-sm"><div><span className="font-semibold text-foreground">{t("dashboard.walletShortcut")}</span><span className="ml-2 text-muted-foreground">{data.withdrawals > 0 ? t("dashboard.walletPending", { count: data.withdrawals, amount: formatRM(data.pendingPayoutValue, locale) }) : t("dashboard.walletClear")}</span></div><Link href="/admin/withdrawals" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{t("dashboard.openApprovals")} <ArrowUpRight size={15} /></Link></div>
         </>}
-      </div>
-    </div>
+    </AdminPageShell>
   );
 }

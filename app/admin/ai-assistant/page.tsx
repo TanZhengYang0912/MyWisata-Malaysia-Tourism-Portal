@@ -22,6 +22,7 @@ import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -127,7 +128,7 @@ function AskPanel() {
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
+              className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
             >
               {m.text}
             </div>
@@ -157,25 +158,20 @@ export default function AdminAiAssistantPage() {
 
   if (currentUser && currentUser.role !== "super_admin") {
     return (
-      <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+      <AdminPageShell>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Shield size={16} /> {t("aiAssistant.restricted")}
         </div>
-      </div>
+      </AdminPageShell>
     );
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("aiAssistant.title")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("aiAssistant.description")}
-        </p>
-      </div>
+    <AdminPageShell>
+      <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("aiAssistant.title")}</span>} title={t("aiAssistant.title")} description={t("aiAssistant.description")} />
       <div className="max-w-4xl">
         <AskPanel />
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

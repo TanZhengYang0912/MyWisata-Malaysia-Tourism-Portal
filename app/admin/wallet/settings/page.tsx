@@ -12,6 +12,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { WALLET_REASON_CATEGORIES } from "@/lib/validation/wallet-reason-schemas";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 type Settings = { clearanceDays: number; minAmountSen: number; dualApprovalThresholdSen: number; escalationHours: number; holdEscalationHours: number; updatedAt?: string | null; updatedBy?: string | null };
 type Approver = { id: string; email: string; name: string; accountStatus: string; active: boolean; grantedAt: string | null };
@@ -142,9 +143,9 @@ export default function WalletSettingsPage() {
   const filteredEligible = eligibleUsers.filter((user) => `${user.name} ${user.email}`.toLowerCase().includes(approverSearch.toLowerCase()));
   const dirty = !sameSettings(settings, savedSettings);
 
-  return <main className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-    <Link href="/admin/withdrawals" className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> {t("ui.walletSettings.backToWithdrawals")}</Link>
-    <header><div className="flex items-center gap-2 text-primary"><ShieldCheck size={18} /><p className="text-xs font-semibold uppercase tracking-[0.18em]">{t("ui.walletSettings.eyebrow")}</p></div><h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("ui.walletSettings.title")}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("ui.walletSettings.description")}</p></header>
+  return <AdminPageShell>
+    <Link href="/admin/withdrawals" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> {t("ui.walletSettings.backToWallet")}</Link>
+    <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><ShieldCheck size={14} /> {t("ui.walletSettings.eyebrow")}</span>} title={t("ui.walletSettings.title")} description={t("ui.walletSettings.description")} />
     {error && <p role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle size={16} /> {error}</p>}
       {loading ? <p className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">{t("ui.walletSettings.loading")}</p> : <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
@@ -158,7 +159,7 @@ export default function WalletSettingsPage() {
     </div>}
     <AdminConfirmDialog open={confirmSettings} title={t("ui.walletSettings.confirm.saveTitle")} description={t("ui.walletSettings.confirm.saveDescription")} confirmLabel={t("ui.actions.saveSettings")} busy={saving} onCancel={() => setConfirmSettings(false)} onConfirm={() => void saveSettings()} />
     <AdminConfirmDialog open={Boolean(pendingRoleAction)} title={pendingRoleAction ? t(`ui.walletSettings.confirm.role.${pendingRoleAction.action}.title`) : ""} description={pendingRoleAction ? t("ui.walletSettings.confirm.role.description", { action: t(`ui.walletSettings.roleActions.${pendingRoleAction.action}`), name: pendingRoleAction.name }) : ""} confirmLabel={pendingRoleAction ? t(`ui.walletSettings.confirm.role.${pendingRoleAction.action}.confirm`) : ""} confirmVariant={pendingRoleAction?.action === "revoke" ? "destructive" : "default"} busy={saving} onCancel={() => setPendingRoleAction(null)} onConfirm={() => void changeRole()} />
-  </main>;
+  </AdminPageShell>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

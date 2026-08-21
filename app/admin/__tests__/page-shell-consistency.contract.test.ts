@@ -26,15 +26,21 @@ const ADMIN_ROUTE_PAGES = [
 // Each rollout task appends only the routes it migrates; Task 6 requires all 18.
 const MIGRATED_ADMIN_ROUTE_PAGES: readonly (typeof ADMIN_ROUTE_PAGES)[number][] = [
   "app/admin/affiliate/page.tsx",
+  "app/admin/ai-assistant/page.tsx",
   "app/admin/catalogue/page.tsx",
   "app/admin/chat-reports/page.tsx",
+  "app/admin/chatbot/page.tsx",
+  "app/admin/dashboard/page.tsx",
   "app/admin/kyc/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/refunds/page.tsx",
+  "app/admin/reports/payouts/page.tsx",
+  "app/admin/rewards/page.tsx",
   "app/admin/staff-conduct/page.tsx",
   "app/admin/support/page.tsx",
   "app/admin/users/page.tsx",
   "app/admin/vendors/page.tsx",
+  "app/admin/wallet/settings/page.tsx",
   "app/admin/withdrawals/page.tsx",
 ];
 
