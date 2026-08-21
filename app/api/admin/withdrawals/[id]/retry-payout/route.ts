@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
+import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
@@ -86,5 +87,9 @@ export async function POST(
     amountRm: Number(withdrawal.amount),
   });
   if (!execution.ok) return execution.response;
-  return apiOk(execution.data);
+  const { callbackJobId, callbackAvailableAt, ...publicResult } = execution.data;
+  if (callbackJobId && callbackAvailableAt) {
+    scheduleTngMockCallbackAcceleration(callbackJobId, callbackAvailableAt);
+  }
+  return apiOk(publicResult);
 }

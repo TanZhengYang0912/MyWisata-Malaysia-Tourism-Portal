@@ -19,6 +19,8 @@ type ExecutionSuccess = {
     provider: 'stripe_connect' | 'tng_direct_credit';
     transfer_id?: string;
     payout_id?: string;
+    callbackJobId?: string;
+    callbackAvailableAt?: string;
   };
 };
 
@@ -157,23 +159,18 @@ export async function executeApprovedWithdrawalPayout({
         });
       }
       providerPayoutId = payoutResult.providerEventId;
-      const { error: recordError } = await db.rpc('record_tng_payout', {
-        p_withdrawal_id: withdrawalId,
-        p_provider_payout_id: providerPayoutId,
-      });
-      if (recordError) {
-        console.error('[payout-execution] record_tng_payout:', recordError);
-        return persistFailure({ code: 'TNG_PAYOUT_STATE_FAILED', message: 'TNG created the payout, but MyWisata could not record its reference. Do not retry; reconcile the TNG payout first.', status: 502, retryable: false });
-      }
     }
 
-    const { error: processingError } = await db.rpc('mark_provider_withdrawal_processing', {
+    const callbackAvailableAt = new Date(Date.now() + 3_000).toISOString();
+    const { data: startData, error: processingError } = await db.rpc('start_tng_mock_payout', {
       p_withdrawal_id: withdrawalId,
-      p_provider: 'tng_direct_credit',
       p_provider_payout_id: providerPayoutId,
+      p_available_at: callbackAvailableAt,
+      p_outcome: 'paid',
     });
-    if (processingError) {
-      console.error('[payout-execution] mark_provider_withdrawal_processing:', processingError);
+    const callback = startData as { outbox_id?: string; available_at?: string } | null;
+    if (processingError || !callback?.outbox_id || !callback.available_at) {
+      console.error('[payout-execution] start_tng_mock_payout:', processingError ? 'database_error' : 'invalid_result');
       return persistFailure({ code: 'PROCESSING_STATE_FAILED', message: 'TNG created the payout, but MyWisata could not record it. Do not retry; reconcile the provider payout first.', status: 502, retryable: false });
     }
 
@@ -183,7 +180,15 @@ export async function executeApprovedWithdrawalPayout({
     if (clearFailureError) console.error('[payout-execution] clear execution failure:', clearFailureError);
 
     await enqueueApprovedEmail(withdrawalId, userId, amountRm);
-    return { ok: true, data: { status: 'processing', provider: 'tng_direct_credit' } };
+    return {
+      ok: true,
+      data: {
+        status: 'processing',
+        provider: 'tng_direct_credit',
+        callbackJobId: callback.outbox_id,
+        callbackAvailableAt: callback.available_at,
+      },
+    };
   }
 
   const connectAccountId = (userRow as { stripe_connect_account_id?: string | null } | null)

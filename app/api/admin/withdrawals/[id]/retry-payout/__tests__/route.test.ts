@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   execute: vi.fn(),
   moderate: vi.fn(),
+  schedule: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.from, rpc: mocks.serviceRpc })),
 }));
 vi.mock('@/lib/payouts/execute-approved-withdrawal', () => ({ executeApprovedWithdrawalPayout: mocks.execute }));
+vi.mock('@/lib/payouts/tng-mock-callbacks', () => ({ scheduleTngMockCallbackAcceleration: mocks.schedule }));
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderate }));
 
 import { POST } from '../route';
@@ -43,7 +45,15 @@ describe('POST /api/admin/withdrawals/:id/retry-payout', () => {
     const select = vi.fn().mockReturnValue({ eq });
     mocks.from.mockReturnValue({ select });
     mocks.serviceRpc.mockResolvedValue({ data: { status: 'approved' }, error: null });
-    mocks.execute.mockResolvedValue({ ok: true, data: { status: 'processing', provider: 'tng_direct_credit' } });
+    mocks.execute.mockResolvedValue({
+      ok: true,
+      data: {
+        status: 'processing',
+        provider: 'tng_direct_credit',
+        callbackJobId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        callbackAvailableAt: '2026-08-21T05:00:03.000Z',
+      },
+    });
   });
 
   it('requires approver access', async () => {
@@ -55,6 +65,7 @@ describe('POST /api/admin/withdrawals/:id/retry-payout', () => {
 
   it('retries provider execution for an approved withdrawal without approving again', async () => {
     const response = await POST(request(), { params: Promise.resolve({ id: withdrawalId }) });
+    const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(mocks.authRpc).toHaveBeenCalledWith('is_approver', { uid: actorId });
@@ -65,6 +76,12 @@ describe('POST /api/admin/withdrawals/:id/retry-payout', () => {
       p_reason_category: 'payout_ready',
     }));
     expect(mocks.execute).toHaveBeenCalledWith({ withdrawalId, userId, amountRm: 50 });
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      '2026-08-21T05:00:03.000Z',
+    );
+    expect(body.data).not.toHaveProperty('callbackJobId');
+    expect(body.data).not.toHaveProperty('callbackAvailableAt');
   });
 
   it('rejects retry when the request is not at the approved checkpoint', async () => {
