@@ -13,6 +13,7 @@ import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { useTranslation } from "react-i18next";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 
 interface TopQuestion { question: string; count: number; lastAskedAt: string }
 
@@ -277,11 +278,11 @@ export default function AdminChatbotPage() {
   const sortedDocs = docs ? [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title)) : [];
 
   if (stats === undefined || docs === undefined) {
-    return <AdminPageShell><p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p></AdminPageShell>;
+    return <AdminPageShell><AdminPageHeader title={t("chatbot.title")} /><p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p></AdminPageShell>;
   }
   if (stats === null || docs === null) {
     return (
-      <AdminPageShell><EmptyState
+      <AdminPageShell><AdminPageHeader title={t("chatbot.title")} /><EmptyState
         title={t("chatbot.errors.loadTitle")}
         description={t("chatbot.errors.loadDescription")}
       /></AdminPageShell>
@@ -386,21 +387,21 @@ export default function AdminChatbotPage() {
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder={t("chatbot.form.title")}
-            className="w-full h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
+            className={`${adminFilterControlClassName} w-full`}
           />
           <textarea
             value={form.body}
             onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
             placeholder={t("chatbot.form.body")}
             rows={4}
-            className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-background text-foreground"
+            className={`${adminFilterControlClassName} min-h-24 w-full py-2`}
           />
           <div className="flex gap-2 flex-wrap">
             <input
               value={form.keywords}
               onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
               placeholder={t("chatbot.form.keywords")}
-              className="flex-1 min-w-[200px] h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
+              className={`${adminFilterControlClassName} min-w-[200px] flex-1`}
             />
             {/* CLAUDE-P4-EXTRAS-2.md: fixed dropdown, not free text — the
                 same TICKET_CATEGORIES set support tickets classify into
@@ -414,7 +415,7 @@ export default function AdminChatbotPage() {
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              className="w-40 h-9 rounded-lg border border-border px-3 text-sm bg-background text-foreground"
+              className={`${adminFilterControlClassName} w-40`}
             >
               {[
                 ...TICKET_CATEGORIES,

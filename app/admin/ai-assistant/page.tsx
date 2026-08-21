@@ -22,6 +22,7 @@ import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 interface ChatMessage {
@@ -140,7 +141,7 @@ function AskPanel() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder={t("aiAssistant.ask.placeholder")}
-            className="flex-1 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
+            className={`${adminFilterControlClassName} flex-1`}
             disabled={sending}
           />
           <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={send} disabled={sending || !input.trim()}>
@@ -159,6 +160,7 @@ export default function AdminAiAssistantPage() {
   if (currentUser && currentUser.role !== "super_admin") {
     return (
       <AdminPageShell>
+        <AdminPageHeader title={t("aiAssistant.title")} />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Shield size={16} /> {t("aiAssistant.restricted")}
         </div>
