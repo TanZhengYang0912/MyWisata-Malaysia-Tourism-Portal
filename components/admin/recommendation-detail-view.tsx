@@ -285,7 +285,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
       {error && <div className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="space-y-6">
+        <div className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-bold text-foreground">{t("recommendation.detail.submissionEvidence")}</h2>
             <div className="mt-5 grid gap-5">
@@ -355,7 +355,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             </section>
           )}
 
-        </main>
+        </div>
 
         <aside className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-5">

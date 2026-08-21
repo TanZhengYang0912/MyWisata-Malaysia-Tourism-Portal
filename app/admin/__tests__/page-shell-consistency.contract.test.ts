@@ -32,6 +32,7 @@ const MIGRATED_ADMIN_ROUTE_PAGES: readonly (typeof ADMIN_ROUTE_PAGES)[number][] 
   "app/admin/chatbot/page.tsx",
   "app/admin/dashboard/page.tsx",
   "app/admin/kyc/page.tsx",
+  "app/admin/recommendations/[id]/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/refunds/page.tsx",
   "app/admin/reports/payouts/page.tsx",
@@ -62,5 +63,9 @@ describe("admin page-shell consistency contract", () => {
       expect(source, `${route} must import AdminPageShell`).toMatch(/import[\s\S]*AdminPageShell[\s\S]*from[\s\S]*admin-page-shell/);
       expect(source, `${route} must render AdminPageShell`).toContain("<AdminPageShell");
     }
+  });
+
+  it("migrates every Admin route to the shared shell", () => {
+    expect([...MIGRATED_ADMIN_ROUTE_PAGES].sort()).toEqual([...ADMIN_ROUTE_PAGES].sort());
   });
 });
