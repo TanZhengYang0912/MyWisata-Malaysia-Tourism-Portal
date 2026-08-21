@@ -2290,7 +2290,7 @@
         "amount": "金额",
         "providerTime": "服务商时间",
         "receivedTime": "MyWisata 接收时间",
-        "payloadHash": "Payload SHA-256",
+        "payloadHash": "载荷 SHA-256",
         "immutableNotice": "此不可篡改证明记录付款服务商报告的结果，客户和管理员均无法修改。"
       },
       "guidance": {

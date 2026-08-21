@@ -7,9 +7,10 @@ describe('customer wallet Stripe JIT contract', () => {
   it('uses the JIT visibility policy instead of loading Connect with wallet data', () => {
     expect(page).toContain('shouldExposeStripePayoutSetup');
     expect(page).toContain('withdrawSetupRequested');
-    const walletLoadEffect = page.match(/useEffect\(\(\) => \{([\s\S]*?)\}, \[currentUser\]\);/)?.[1] ?? '';
-    expect(walletLoadEffect).toContain('getMyWithdrawals(currentUser.id)');
-    expect(walletLoadEffect).not.toContain('refreshConnectStatus');
+    const refreshWalletState = page.match(/const refreshWalletState = useCallback\(async \(\) => \{([\s\S]*?)\}, \[currentUser\]\);/)?.[1] ?? '';
+    expect(refreshWalletState).toContain('getMyWithdrawals(currentUser.id)');
+    expect(refreshWalletState).not.toContain('refreshConnectStatus');
+    expect(page).toContain('void refreshWalletState();');
   });
 
   it('shows accurate Stripe requirement states', () => {

@@ -1919,7 +1919,7 @@
       "providerTime": "服务商时间",
       "receivedTime": "MyWisata 接收时间",
       "signatureVerified": "签名已验证",
-      "payloadHash": "Payload SHA-256",
+      "payloadHash": "载荷 SHA-256",
       "deliveryStatus": "Callback 投递状态",
       "attempts": "投递次数",
       "emailStatus": "电邮通知",
