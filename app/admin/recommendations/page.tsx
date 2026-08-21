@@ -123,6 +123,8 @@ export default function AdminRecommendationsPage() {
   });
   const pending  = filteredRecs.filter((r) => r.status === "pending");
   const reviewed = filteredRecs.filter((r) => r.status !== "pending");
+  const approved = filteredRecs.filter((r) => r.status === "approved").length;
+  const rejected = filteredRecs.filter((r) => r.status === "rejected").length;
   const pendingPageCount = Math.max(1, Math.ceil(pending.length / PENDING_PAGE_SIZE));
   const reviewedPageCount = Math.max(1, Math.ceil(reviewed.length / PENDING_PAGE_SIZE));
   const activePendingPage = Math.min(pendingPage, pendingPageCount);
@@ -157,6 +159,8 @@ export default function AdminRecommendationsPage() {
       <AdminMetricGrid items={[
         { label: t("ui.recommendations.pending", { count: pending.length }), value: pending.length },
         { label: t("ui.recommendations.reviewed", { count: reviewed.length }), value: reviewed.length },
+        { label: t("filters.approved"), value: approved },
+        { label: t("filters.rejected"), value: rejected },
       ]} />
 
       {error && (
