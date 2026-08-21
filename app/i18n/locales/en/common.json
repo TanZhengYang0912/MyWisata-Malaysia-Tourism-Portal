@@ -136,7 +136,10 @@
     "noMessagesYet": "No messages yet.",
     "bot": "Bot",
     "you": "You",
-    "supportTeam": "Support team"
+    "supportTeam": "Support team",
+    "document": "Document",
+    "attachment": "Attachment",
+    "loadingAttachment": "Loading…"
   },
   "chatbot": {
     "title": "MyWisata Support",
@@ -158,7 +161,19 @@
     "viewMyTickets": "View my tickets",
     "ticketError": "Couldn't create a ticket right now. Please try again.",
     "somethingWrong": "Sorry, something went wrong. Please try again.",
-    "supportRequest": "Support request"
+    "supportRequest": "Support request",
+    "faq": {
+      "browse": "Browse common questions",
+      "toggle": "Browse common questions",
+      "loading": "Loading questions…",
+      "error": "Couldn't load common questions.",
+      "empty": "No common questions yet.",
+      "pickCategory": "Pick a topic"
+    },
+    "voice": {
+      "start": "Speak your message",
+      "stop": "Stop listening"
+    }
   },
   "account": {
     "menu": "Account menu",

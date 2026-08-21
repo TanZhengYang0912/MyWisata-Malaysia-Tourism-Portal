@@ -136,7 +136,10 @@
     "noMessagesYet": "暂无消息。",
     "bot": "机器人",
     "you": "您",
-    "supportTeam": "客服团队"
+    "supportTeam": "客服团队",
+    "document": "文件",
+    "attachment": "附件",
+    "loadingAttachment": "加载中…"
   },
   "chatbot": {
     "title": "MyWisata 客服",
@@ -158,7 +161,19 @@
     "viewMyTickets": "查看我的工单",
     "ticketError": "暂时无法创建工单，请重试。",
     "somethingWrong": "抱歉，出了点问题，请重试。",
-    "supportRequest": "支持请求"
+    "supportRequest": "支持请求",
+    "faq": {
+      "browse": "浏览常见问题",
+      "toggle": "浏览常见问题",
+      "loading": "正在加载问题…",
+      "error": "无法加载常见问题。",
+      "empty": "暂无常见问题。",
+      "pickCategory": "选择主题"
+    },
+    "voice": {
+      "start": "语音输入消息",
+      "stop": "停止聆听"
+    }
   },
   "account": {
     "menu": "账户菜单",

@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { hashVisitorId } from './click';
+import { sanitizeCampaign } from './campaign';
 import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
 import { logFraudFlag, hasRecentOpenFlag } from './fraud';
 import { GUEST_EXPLORE_PATH, guestVendorHref } from '@/lib/auth/guest-mode';
@@ -43,6 +44,15 @@ const KNOWN_SHARE_SOURCES = new Set(['native', 'copy_link', 'image_share', 'imag
 function parseKnownSource(searchParams: URLSearchParams): string | null {
   const src = searchParams.get('src');
   return src && KNOWN_SHARE_SOURCES.has(src) ? src : null;
+}
+
+// CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: `?utm_campaign=` alongside
+// the existing `?src=` platform tag — same click row, separate column, so an
+// affiliate can see "insta-jan: 40 clicks, 5 bookings" without losing the
+// existing per-platform breakdown. Sanitized here (not just trusted from the
+// query string) since this is the actual write path.
+function parseCampaign(searchParams: URLSearchParams): string | null {
+  return sanitizeCampaign(searchParams.get('utm_campaign'));
 }
 
 // CLAUDE-SHARE-SURFACES.md Surface 4: `?type=` tells the redirect what the
@@ -286,8 +296,19 @@ export async function handleAffiliateRedirect(
     const authClient = await createClient();
     const { data: { user } } = await authClient.auth.getUser();
 
+    // Self-click guard: the link owner opening their own link (logged in as
+    // themselves) must not inflate their own click count, click-cap window,
+    // or funnel rate — and must not set mw_ref, since onOrderPaid()'s
+    // self-referral guard would reject the commission anyway. Only catches
+    // it when the owner is actually logged in as themselves; an anonymous/
+    // incognito self-click is indistinguishable from real traffic at click
+    // time, same inherent limitation the commission-side guard has (it only
+    // catches self-referral at purchase time, via the buyer's account).
+    const isOwnLink = Boolean(user?.id) && user!.id === link.user_id;
+
     const visitorId = request.cookies.get(MW_VISITOR_COOKIE)?.value ?? crypto.randomUUID();
     const source = parseKnownSource(request.nextUrl.searchParams);
+    const campaign = parseCampaign(request.nextUrl.searchParams);
 
     // Limited-tier affiliates (anything short of full KYC-verified) get a
     // deliberately small trial click allowance, §8.3. Full affiliates are
@@ -321,7 +342,7 @@ export async function handleAffiliateRedirect(
       limitedCapReached = clicksThisWindow >= monthlyClickCap;
     }
 
-    const { data: click, error: clickErr } = limitedCapReached
+    const { data: click, error: clickErr } = (limitedCapReached || isOwnLink)
       ? { data: null, error: null }
       : await service
         .from('affiliate_clicks')
@@ -332,6 +353,7 @@ export async function handleAffiliateRedirect(
           target_id: target?.targetId ?? null,
           ip_hash: hashVisitorId(visitorId),
           source,
+          campaign,
         })
         .select('id')
         .single();

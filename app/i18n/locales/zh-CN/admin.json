@@ -109,7 +109,8 @@
       "status": "状态",
       "type": "类型",
       "user": "用户",
-      "when": "时间"
+      "when": "时间",
+      "review": "审核"
     },
     "commissionTiers": "佣金等级",
     "conversions": "转化",
@@ -130,7 +131,9 @@
       "reviewFlagRetry": "无法审核欺诈标记。请重试。",
       "saveAffiliateTier": "无法保存联盟等级。",
       "saveTier": "无法保存等级。",
-      "selectOpenFlags": "请先选择开放的欺诈标记。"
+      "selectOpenFlags": "请先选择开放的欺诈标记。",
+      "accept": "无法通过此佣金。",
+      "reject": "无法拒绝此佣金。"
     },
     "exporting": "导出中…",
     "exportPdf": "导出 PDF",
@@ -188,7 +191,8 @@
       "open": "开放",
       "pending": "待处理",
       "reversed": "已冲销",
-      "reviewed": "已审核"
+      "reviewed": "已审核",
+      "rejected": "已拒绝"
     },
     "success": {
       "batchFlags": "{{count}} 个欺诈标记已处理。",
@@ -197,7 +201,9 @@
       "linkReactivated": "联盟链接已重新启用。",
       "tierSaved": "联盟等级已保存。",
       "batchFlags_one": "{{count}} 个欺诈标记已处理。",
-      "batchFlags_other": "{{count}} 个欺诈标记已处理。"
+      "batchFlags_other": "{{count}} 个欺诈标记已处理。",
+      "accepted": "佣金已通过。",
+      "rejected": "佣金已拒绝。"
     },
     "sweep": {
       "result": "已扫描 {{links}} 个链接，发现 {{flags}} 个新标记"
@@ -226,7 +232,9 @@
       "duplicatePayoutsPrevented_other": "已阻止重复付款：{{count}}"
     },
     "referralCount_one": "{{count}} 推荐",
-    "referralCount_other": "{{count}} 推荐"
+    "referralCount_other": "{{count}} 推荐",
+    "accept": "通过",
+    "reject": "拒绝"
   },
   "aiAssistant": {
     "ask": {
@@ -235,20 +243,7 @@
       "restoring": "正在恢复对话…",
       "title": "询问平台指标"
     },
-    "description": "平台分析和员工消息起草。不会读取原始客户记录——指标来自一组固定的已注册聚合查询，草稿只使用你输入的内容。",
-    "draft": {
-      "contextPlaceholder": "例如：商家：Sunset Kayak Tours。提交的照片模糊，无法验证商品信息质量。",
-      "description": "你提供具体信息——助手不会自行获取商家或客户数据。请手动编辑并发送；不会代你发送。",
-      "drafting": "起草中…",
-      "generate": "生成草稿",
-      "title": "起草员工消息",
-      "types": {
-        "approval": "批准消息",
-        "custom": "自定义",
-        "onboarding": "商家入驻",
-        "rejection": "拒绝通知"
-      }
-    },
+    "description": "平台分析。不会读取原始客户记录——指标来自一组固定的已注册聚合查询。",
     "errors": {
       "unavailable": "助手目前不可用。"
     },
@@ -961,6 +956,9 @@
       "pagination": "支持工单分页",
       "range": "显示第 {{first}}–{{last}} 张，共 {{total}} 张工单",
       "replyPlaceholder": "回复此工单…",
+      "addCaption": "添加说明…",
+      "attachFile": "添加附件",
+      "removeAttachment": "移除附件",
       "replySent": "支持回复已发送。",
       "selectAllVisible": "选择所有可见支持工单",
       "selectTicket": "选择支持工单 {{subject}}",
@@ -1389,6 +1387,7 @@
       "marking": "标记中…",
       "markReviewed": "标记为已审核",
       "reviewed": "已审核",
+      "viewTicket": "查看工单",
       "openCount_one": "{{count}} 个待处理",
       "openCount_other": "{{count}} 个待处理"
     }
@@ -1396,11 +1395,16 @@
   "staffConduct": {
     "title": "员工行为审核",
     "tabs": {
+      "all": "全部",
       "flaggedConduct": "已标记的行为",
       "reportedChat": "被举报的聊天"
     },
     "filters": {
       "showReviewed": "显示已审核"
+    },
+    "kindLabel": {
+      "flag": "已标记",
+      "report": "已举报"
     },
     "sources": {
       "ticketReply": "工单回复",
@@ -1428,7 +1432,8 @@
       "allFlagsReviewed": "所有标记均已审核。",
       "nothingToReview": "没有待审核内容。",
       "allReportsReviewed": "所有举报均已审核。",
-      "noReportedChats": "暂无被举报的聊天。"
+      "noReportedChats": "暂无被举报的聊天。",
+      "allReviewed": "所有内容均已审核。"
     },
     "actions": {
       "viewLog": "查看记录",

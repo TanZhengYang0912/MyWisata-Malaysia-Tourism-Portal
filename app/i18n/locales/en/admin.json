@@ -109,7 +109,8 @@
       "status": "Status",
       "type": "Type",
       "user": "User",
-      "when": "When"
+      "when": "When",
+      "review": "Review"
     },
     "commissionTiers": "Commission tiers",
     "conversions": "Conversions",
@@ -130,7 +131,9 @@
       "reviewFlagRetry": "Could not review fraud flag. Please try again.",
       "saveAffiliateTier": "Failed to save affiliate tier.",
       "saveTier": "Failed to save tier.",
-      "selectOpenFlags": "Select open fraud flags first."
+      "selectOpenFlags": "Select open fraud flags first.",
+      "accept": "Could not accept this commission.",
+      "reject": "Could not reject this commission."
     },
     "exporting": "Exporting…",
     "exportPdf": "Export PDF",
@@ -188,7 +191,8 @@
       "open": "Open",
       "pending": "Pending",
       "reversed": "Reversed",
-      "reviewed": "Reviewed"
+      "reviewed": "Reviewed",
+      "rejected": "Rejected"
     },
     "success": {
       "batchFlags": "{{count}} fraud flags processed.",
@@ -197,7 +201,9 @@
       "linkReactivated": "Affiliate link reactivated.",
       "tierSaved": "Affiliate tier saved.",
       "batchFlags_one": "{{count}} fraud flags processed.",
-      "batchFlags_other": "{{count}} fraud flags processed."
+      "batchFlags_other": "{{count}} fraud flags processed.",
+      "accepted": "Commission accepted.",
+      "rejected": "Commission rejected."
     },
     "sweep": {
       "result": "Scanned {{links}} links, {{flags}} new flag(s)"
@@ -226,7 +232,9 @@
       "duplicatePayoutsPrevented_other": "Prevented duplicate payouts: {{count}}"
     },
     "referralCount_one": "{{count}} referrals",
-    "referralCount_other": "{{count}} referrals"
+    "referralCount_other": "{{count}} referrals",
+    "accept": "Accept",
+    "reject": "Reject"
   },
   "aiAssistant": {
     "ask": {
@@ -235,20 +243,7 @@
       "restoring": "Restoring conversation…",
       "title": "Ask about platform metrics"
     },
-    "description": "Platform analytics and staff message drafting. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries, and drafts use only what you type in.",
-    "draft": {
-      "contextPlaceholder": "e.g. Vendor: Sunset Kayak Tours. Photos submitted were blurry, cannot verify listing quality.",
-      "description": "You supply the specifics — the assistant never fetches vendor or customer data itself. Edit and send manually; nothing is sent for you.",
-      "drafting": "Drafting…",
-      "generate": "Generate draft",
-      "title": "Draft a staff message",
-      "types": {
-        "approval": "Approval message",
-        "custom": "Custom",
-        "onboarding": "Vendor onboarding",
-        "rejection": "Rejection notice"
-      }
-    },
+    "description": "Platform analytics. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries.",
     "errors": {
       "unavailable": "Assistant unavailable right now."
     },
@@ -961,6 +956,9 @@
       "pagination": "Support ticket pagination",
       "range": "Showing {{first}}–{{last}} of {{total}} tickets",
       "replyPlaceholder": "Reply to this ticket…",
+      "addCaption": "Add a caption…",
+      "attachFile": "Attach a file",
+      "removeAttachment": "Remove attachment",
       "replySent": "Support reply sent.",
       "selectAllVisible": "Select all visible support tickets",
       "selectTicket": "Select support ticket {{subject}}",
@@ -1389,6 +1387,7 @@
       "marking": "Marking…",
       "markReviewed": "Mark reviewed",
       "reviewed": "Reviewed",
+      "viewTicket": "View ticket",
       "openCount_one": "{{count}} open",
       "openCount_other": "{{count}} open"
     }
@@ -1396,11 +1395,16 @@
   "staffConduct": {
     "title": "Staff conduct review",
     "tabs": {
+      "all": "All",
       "flaggedConduct": "Flagged Conduct",
       "reportedChat": "Reported Chat"
     },
     "filters": {
       "showReviewed": "Show reviewed"
+    },
+    "kindLabel": {
+      "flag": "Flagged",
+      "report": "Reported"
     },
     "sources": {
       "ticketReply": "Ticket reply",
@@ -1428,7 +1432,8 @@
       "allFlagsReviewed": "All flags reviewed.",
       "nothingToReview": "Nothing to review.",
       "allReportsReviewed": "All reports reviewed.",
-      "noReportedChats": "No chats have been reported."
+      "noReportedChats": "No chats have been reported.",
+      "allReviewed": "Everything has been reviewed."
     },
     "actions": {
       "viewLog": "View log",

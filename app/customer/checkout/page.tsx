@@ -101,8 +101,20 @@ export default function CheckoutPage() {
   }, [checkoutAllowed, currentUser]);
 
   useEffect(() => {
+    // Live-found gap: `?stripe_session_id=` on its own already proves we're
+    // returning from a real Stripe checkout for an order that /api/checkout/prepare
+    // already created (its prepare_checkout RPC consumes the selected cart
+    // items server-side as part of creating that order). By the time the
+    // browser reloads fresh here, the cart is CORRECTLY empty — that's not
+    // a reason to skip confirmation, it's proof the order was already made.
+    // The old `selectedItems.length === 0` guard treated stale/empty cart
+    // state as "nothing to confirm," so this effect silently never called
+    // confirm-stripe (and therefore never attributed the affiliate referral
+    // or generated a receipt) for exactly the common case: a single-item,
+    // straight-to-checkout purchase, where the cart has nothing left over
+    // once that one item is consumed.
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
-    if (!sessionId || !currentUser || !checkoutAllowed || selectedItems.length === 0 || paying) return;
+    if (!sessionId || !currentUser || !checkoutAllowed || paying) return;
     setPaying(true);
     fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
@@ -117,7 +129,7 @@ export default function CheckoutPage() {
         setCheckoutError("Stripe payment confirmation could not be completed. Please check your order status or try again.");
         setPaying(false);
       });
-  }, [checkoutAllowed, currentUser, selectedItems.length, selectedKeys, paying, router, voucherCode]);
+  }, [checkoutAllowed, currentUser, paying, router]);
 
   const { subtotal, discount, total } = totals(voucher);
   const totalSen = Math.round(total * 100);

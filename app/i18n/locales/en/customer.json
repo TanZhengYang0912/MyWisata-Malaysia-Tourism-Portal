@@ -348,6 +348,26 @@
       "reopening": "Reopening…",
       "reopen": "Reopen ticket",
       "orStartNew": "or start a new one.",
+      "mute": "Mute ticket",
+      "unmute": "Unmute ticket",
+      "muteHint": "Mute notifications",
+      "muted": "Muted",
+      "mutedHint": "Notifications muted for you",
+      "muteError": "Could not update notification setting.",
+      "attachFile": "Attach a file",
+      "addCaption": "Add a caption…",
+      "removeAttachment": "Remove attachment",
+      "attachmentError": "Could not send attachment.",
+      "voice": {
+        "start": "Speak your reply",
+        "stop": "Stop listening",
+        "errors": {
+          "permissionDenied": "Microphone access needed",
+          "noSpeech": "Didn't catch that — try again",
+          "network": "Voice input needs a connection",
+          "unknown": "Voice input isn't available right now"
+        }
+      },
       "status": {
         "open": "Open",
         "in_progress": "In progress",
@@ -631,7 +651,21 @@
       "loadingDashboard": "Loading affiliate dashboard…",
       "noClicks": "No clicks in the last 30 days.",
       "clicks": "Clicks",
-      "day": "Day {{label}}"
+      "day": "Day {{label}}",
+      "campaigns": {
+        "title": "Campaigns",
+        "description": "Label a link (e.g. “instagram-story-jan”) to see which campaign converts, not just which platform.",
+        "namePlaceholder": "Campaign name",
+        "getLink": "Get link",
+        "copied": "Copied",
+        "untagged": "Untagged",
+        "columns": {
+          "campaign": "Campaign",
+          "clicks": "Clicks",
+          "orders": "Orders",
+          "earned": "Earned"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "Loading conversation…",
@@ -645,7 +679,13 @@
       "reportSubmitted": "Report submitted. Thank you.",
       "reportConversation": "Report this conversation",
       "startConversation": "Start the conversation",
-      "startConversationHint": "Ask about availability, accessibility, or anything you need for your trip."
+      "startConversationHint": "Ask about availability, accessibility, or anything you need for your trip.",
+      "translate": {
+        "action": "Translate",
+        "showOriginal": "Show original",
+        "working": "Translating…",
+        "failed": "Couldn't translate"
+      }
     },
     "calendar": {
       "today": "Today",
@@ -2211,11 +2251,26 @@
       "reviewNote": "Review note",
       "settlementNotice": "This receipt records the withdrawal request in MyWisata. Settlement timing depends on the selected payout provider ({{provider}}).",
       "guidance": {
-        "failed": { "title": "Payout failed — funds restored", "message": "The reserved amount has been returned to your available earnings. Check your payout destination before submitting a new withdrawal, or contact Support if the details are correct." },
-        "processing": { "title": "Payout in progress", "message": "The payout provider is processing this withdrawal. No action is required unless the status does not change within the provider’s normal settlement time." },
-        "approvedReconciliation": { "title": "Provider reconciliation in progress", "message": "Your funds remain reserved while an administrator checks the provider transaction. Do not submit another withdrawal for the same funds; contact Support if you need an update." },
-        "approved": { "title": "Approved — payout pending", "message": "Your funds remain reserved while the approved payout is prepared. No action is required from you." },
-        "completed": { "title": "Payout completed", "message": "The withdrawal was sent to your selected payout destination." }
+        "failed": {
+          "title": "Payout failed — funds restored",
+          "message": "The reserved amount has been returned to your available earnings. Check your payout destination before submitting a new withdrawal, or contact Support if the details are correct."
+        },
+        "processing": {
+          "title": "Payout in progress",
+          "message": "The payout provider is processing this withdrawal. No action is required unless the status does not change within the provider’s normal settlement time."
+        },
+        "approvedReconciliation": {
+          "title": "Provider reconciliation in progress",
+          "message": "Your funds remain reserved while an administrator checks the provider transaction. Do not submit another withdrawal for the same funds; contact Support if you need an update."
+        },
+        "approved": {
+          "title": "Approved — payout pending",
+          "message": "Your funds remain reserved while the approved payout is prepared. No action is required from you."
+        },
+        "completed": {
+          "title": "Payout completed",
+          "message": "The withdrawal was sent to your selected payout destination."
+        }
       }
     },
     "checkout": {

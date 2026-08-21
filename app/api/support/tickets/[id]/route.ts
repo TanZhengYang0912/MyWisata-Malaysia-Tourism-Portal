@@ -67,9 +67,14 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data: replies } = await supabase
     .from('support_ticket_replies')
-    .select('id, sender_id, sender_role, body, created_at')
+    .select('id, sender_id, sender_role, body, attachment_url, created_at')
     .eq('ticket_id', id)
     .order('created_at', { ascending: true });
+
+  // ticket_mutes' own RLS already scopes this to the caller's own row — an
+  // admin viewing someone else's ticket just gets no row, which is correct
+  // (mute is "user side" only, an admin's own read of it is never relevant).
+  const { data: muteRow } = await supabase.from('ticket_mutes').select('id').eq('ticket_id', id).eq('user_id', user.id).maybeSingle();
 
   return apiOk({
     id: ticket.id,
@@ -83,6 +88,7 @@ export async function GET(_request: Request, { params }: Props) {
     createdAt: ticket.created_at,
     resolvedAt: ticket.resolved_at,
     lastActivityAt: ticket.last_reply_at ?? ticket.created_at,
+    muted: Boolean(muteRow),
     transcript,
     replies: replies ?? [],
   });

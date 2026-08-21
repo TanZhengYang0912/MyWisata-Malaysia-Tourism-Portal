@@ -38,7 +38,7 @@ export function rankByCommission(
 ): LeaderboardEntry[] {
   const commissionByLink = new Map<string, number>();
   for (const a of attributions) {
-    if (a.status === 'reversed') continue;
+    if (a.status === 'reversed' || a.status === 'rejected') continue;
     const linkId = clickToLink.get(a.click_id);
     if (!linkId) continue;
     commissionByLink.set(linkId, add(commissionByLink.get(linkId) ?? 0, Number(a.commission_amount)));

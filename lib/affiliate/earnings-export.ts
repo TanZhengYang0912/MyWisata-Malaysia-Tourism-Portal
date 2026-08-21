@@ -27,7 +27,7 @@ export interface EarningsExportRow {
    *  tier (and therefore rate) has since changed. Fraction, e.g. 0.04. */
   commissionRate: number;
   commissionAmount: number;
-  status: 'pending' | 'confirmed' | 'reversed';
+  status: 'pending' | 'confirmed' | 'reversed' | 'rejected';
   clearedAt: string | null; // ISO, null while still pending/reversed
 }
 

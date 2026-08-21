@@ -8,6 +8,7 @@
 // support/chatbot surface.
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ interface ModerationFlag {
   id: string;
   sourceType: "chatbot_message" | "ticket" | "ticket_reply";
   sourceId: string;
+  ticketId: string | null;
   userId: string | null;
   userName: string;
   flagType: string;
@@ -110,13 +112,20 @@ export function ModerationFlagsPanel() {
               )}
               <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString(locale)}</p>
             </div>
-            {f.status === "open" ? (
-              <Button size="sm" variant="outline" disabled={reviewingId === f.id} onClick={() => markReviewed(f.id)}>
-                {reviewingId === f.id ? t("moderation.flags.marking") : t("moderation.flags.markReviewed")}
-              </Button>
-            ) : (
-              <span className="text-[0.625rem] text-muted-foreground shrink-0">{t("moderation.flags.reviewed")}</span>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {f.ticketId && (
+                <Link href={`/admin/support?ticket=${f.ticketId}`} className="text-xs font-semibold text-primary hover:underline">
+                  {t("moderation.flags.viewTicket")}
+                </Link>
+              )}
+              {f.status === "open" ? (
+                <Button size="sm" variant="outline" disabled={reviewingId === f.id} onClick={() => markReviewed(f.id)}>
+                  {reviewingId === f.id ? t("moderation.flags.marking") : t("moderation.flags.markReviewed")}
+                </Button>
+              ) : (
+                <span className="text-[0.625rem] text-muted-foreground">{t("moderation.flags.reviewed")}</span>
+              )}
+            </div>
           </div>
         ))}
       </div>

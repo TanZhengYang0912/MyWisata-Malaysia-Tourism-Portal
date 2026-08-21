@@ -21,6 +21,7 @@ import { aggregateReviewMetrics } from '@/backend/domains/review-metrics';
 import { toRM } from '@/lib/money';
 import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
+import { productImageUrl } from '@/lib/storage/product-image';
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export const runtime = 'edge';
@@ -80,7 +81,12 @@ async function loadListing(type: ShareType, id: string): Promise<CardData | null
 
     return {
       name: product.name,
-      coverUrl: product.cover_url,
+      // next/og's <img> requires an absolute URL — products.cover_url is a
+      // bucket-relative storage path (e.g. "chaiwalla-cheese-naan.jpg"),
+      // same as everywhere else this column is rendered as an <img> src.
+      // Live-found: this route crashed with "Image source must be an
+      // absolute URL" for every product before this fix.
+      coverUrl: productImageUrl(product.cover_url),
       priceLabel: product.base_price != null ? toRM(Number(product.base_price)) : null,
       rating: metric && metric.reviews > 0 ? metric.rating : null,
       reviewCount: metric?.reviews ?? 0,

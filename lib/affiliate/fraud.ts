@@ -59,7 +59,14 @@ export type FraudFlagType =
   // earn affiliate commission. Not abuse either — an ineligible account,
   // not a malicious one — logged so a blocked commission is provable, same
   // reasoning as click_cap_reached. See lib/affiliate/vendor-role-guard.ts.
-  | 'vendor_ineligible';
+  | 'vendor_ineligible'
+  // Live-found gap (2026-08-20): an admin confirming a fraud flag disables
+  // the link (autoDisableLink()), but a click made BEFORE the disable can
+  // still have its mw_ref cookie sitting in a different, legitimate buyer's
+  // browser — that purchase completing afterward must not still pay out.
+  // "Confirm & disable" means stop ALL future payouts from this link, not
+  // just future clicks. See the LINK-DISABLED GUARD in attribution.ts.
+  | 'link_disabled_at_payout';
 
 export type FraudSeverity = 'low' | 'medium' | 'high';
 export type FraudFlagStatus = 'open' | 'reviewed' | 'dismissed';

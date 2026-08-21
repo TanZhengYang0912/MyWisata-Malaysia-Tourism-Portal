@@ -18,7 +18,7 @@ export async function validateChatAttachment(file: UploadFile): Promise<ChatAtta
   return { ok: true, buffer };
 }
 
-function extensionForMime(mimeType: string): string {
+export function extensionForMime(mimeType: string): string {
   const byType: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',

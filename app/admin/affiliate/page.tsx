@@ -88,6 +88,7 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
   zero_conversion: "Many clicks, zero referrals",
   click_cap_reached: "Limited-tier monthly click cap reached",
   vendor_ineligible: "Vendor/outlet manager ineligible for commission",
+  link_disabled_at_payout: "Payout blocked — link was disabled before order paid",
 };
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -112,6 +113,7 @@ export default function AdminAffiliatePage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [clearing, setClearing] = useState(false);
   const [clearingResult, setClearingResult] = useState<string | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [tierDrafts, setTierDrafts] = useState<Record<string, { ratePercent: string; minReferrals: string }>>({});
   const [savingTierId, setSavingTierId] = useState<string | null>(null);
   const [tierError, setTierError] = useState<string | null>(null);
@@ -336,6 +338,45 @@ export default function AdminAffiliatePage() {
       showFeedback("error", error instanceof Error ? error.message : t("affiliate.errors.batchFlagUpdate"));
     } finally {
       setBatchBusy(false);
+    }
+  }
+
+  async function reviewAttribution(id: string, action: "accept" | "reject") {
+    if (reviewingId) return;
+    setReviewingId(id);
+    try {
+      const res = await fetch(`/api/admin/affiliate/attributions/${id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showFeedback(
+          "error",
+          body.error?.message ??
+            (action === "accept"
+              ? t("affiliate.errors.accept")
+              : t("affiliate.errors.reject")),
+        );
+        return;
+      }
+      showFeedback(
+        "success",
+        action === "accept"
+          ? t("affiliate.success.accepted")
+          : t("affiliate.success.rejected"),
+      );
+      await loadStats();
+    } catch {
+      showFeedback(
+        "error",
+        action === "accept"
+          ? t("affiliate.errors.accept")
+          : t("affiliate.errors.reject"),
+      );
+    } finally {
+      setReviewingId(null);
     }
   }
 
@@ -787,6 +828,7 @@ export default function AdminAffiliatePage() {
             <option value="pending">{t("affiliate.status.pending")}</option>
             <option value="confirmed">{t("affiliate.status.confirmed")}</option>
             <option value="reversed">{t("affiliate.status.reversed")}</option>
+            <option value="rejected">{t("affiliate.status.rejected")}</option>
           </select>
         </div>
       </div>
@@ -811,12 +853,13 @@ export default function AdminAffiliatePage() {
                 </th>
               ))}
               <th className="text-right px-4 py-2.5 font-semibold">{t("affiliate.columns.commission")}</th>
+              <th className="text-right px-4 py-2.5 font-semibold">{t("affiliate.columns.review")}</th>
             </tr>
           </thead>
           <tbody>
             {filteredAttributions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                   {t("affiliate.noAttributions")}
                 </td>
               </tr>
@@ -829,6 +872,32 @@ export default function AdminAffiliatePage() {
                   <td className="px-4 py-2.5 text-foreground capitalize">{t(`affiliate.status.${r.status}`)}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
                     {MYR_CODE} {r.commissionAmount.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    {r.status === "pending" ? (
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs"
+                          disabled={reviewingId === r.id}
+                          onClick={() => reviewAttribution(r.id, "accept")}
+                        >
+                          {t("affiliate.accept")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs text-destructive hover:text-destructive"
+                          disabled={reviewingId === r.id}
+                          onClick={() => reviewAttribution(r.id, "reject")}
+                        >
+                          {t("affiliate.reject")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               ))

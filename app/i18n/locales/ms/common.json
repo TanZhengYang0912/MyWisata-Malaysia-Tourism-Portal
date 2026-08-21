@@ -136,7 +136,10 @@
     "noMessagesYet": "Belum ada mesej.",
     "bot": "Bot",
     "you": "Anda",
-    "supportTeam": "Pasukan sokongan"
+    "supportTeam": "Pasukan sokongan",
+    "document": "Dokumen",
+    "attachment": "Lampiran",
+    "loadingAttachment": "Memuatkan…"
   },
   "chatbot": {
     "title": "Sokongan MyWisata",
@@ -158,7 +161,19 @@
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
-    "supportRequest": "Permintaan sokongan"
+    "supportRequest": "Permintaan sokongan",
+    "faq": {
+      "browse": "Lihat soalan lazim",
+      "toggle": "Lihat soalan lazim",
+      "loading": "Memuatkan soalan…",
+      "error": "Tidak dapat memuatkan soalan lazim.",
+      "empty": "Tiada soalan lazim buat masa ini.",
+      "pickCategory": "Pilih topik"
+    },
+    "voice": {
+      "start": "Sebut mesej anda",
+      "stop": "Berhenti mendengar"
+    }
   },
   "account": {
     "menu": "Menu akaun",

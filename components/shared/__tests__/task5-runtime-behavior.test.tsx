@@ -12,7 +12,13 @@ vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
 vi.mock("next/link", () => ({ default: (props: { children?: React.ReactNode }) => <a {...props} /> }));
 vi.mock("lucide-react", () => {
   const Icon = (props: Record<string, unknown>) => <svg {...props} />;
-  return { AlertTriangle: Icon, Bell: Icon, CheckCheck: Icon, MessageCircle: Icon, Send: Icon, X: Icon };
+  // Mic/MicOff (voice input) and ChevronLeft/HelpCircle (FAQ shortcuts) are
+  // also reachable from ChatbotWidget — the mock must cover every icon the
+  // component can render, not only the ones it rendered when this was written.
+  return {
+    AlertTriangle: Icon, Bell: Icon, CheckCheck: Icon, ChevronLeft: Icon, HelpCircle: Icon,
+    MessageCircle: Icon, Mic: Icon, MicOff: Icon, Send: Icon, X: Icon,
+  };
 });
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));
 vi.mock("@/components/utils", () => ({ cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }));

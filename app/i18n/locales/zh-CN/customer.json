@@ -348,6 +348,26 @@
       "reopening": "正在重新开启…",
       "reopen": "重新开启工单",
       "orStartNew": "或新建一个工单。",
+      "mute": "静音工单",
+      "unmute": "取消静音",
+      "muteHint": "关闭通知",
+      "muted": "已静音",
+      "mutedHint": "已为您关闭此工单的通知",
+      "muteError": "无法更新通知设置。",
+      "attachFile": "添加附件",
+      "addCaption": "添加说明…",
+      "removeAttachment": "移除附件",
+      "attachmentError": "无法发送附件。",
+      "voice": {
+        "start": "语音输入回复",
+        "stop": "停止聆听",
+        "errors": {
+          "permissionDenied": "需要麦克风权限",
+          "noSpeech": "没有听清——请重试",
+          "network": "语音输入需要网络连接",
+          "unknown": "语音输入当前不可用"
+        }
+      },
       "status": {
         "open": "开放",
         "in_progress": "处理中",
@@ -631,7 +651,21 @@
       "loadingDashboard": "正在加载推广中心…",
       "noClicks": "过去 30 天没有点击。",
       "clicks": "点击次数",
-      "day": "第 {{label}} 天"
+      "day": "第 {{label}} 天",
+      "campaigns": {
+        "title": "推广活动",
+        "description": "为链接添加标签（例如“instagram-story-jan”），即可看出哪个推广活动带来转化，而不只是哪个平台。",
+        "namePlaceholder": "活动名称",
+        "getLink": "获取链接",
+        "copied": "已复制",
+        "untagged": "未标记",
+        "columns": {
+          "campaign": "推广活动",
+          "clicks": "点击",
+          "orders": "订单",
+          "earned": "收益"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "正在加载对话…",
@@ -645,7 +679,13 @@
       "reportSubmitted": "举报已提交，谢谢。",
       "reportConversation": "举报此对话",
       "startConversation": "开始对话",
-      "startConversationHint": "询问可用性、无障碍信息或旅途中需要了解的任何内容。"
+      "startConversationHint": "询问可用性、无障碍信息或旅途中需要了解的任何内容。",
+      "translate": {
+        "action": "翻译",
+        "showOriginal": "显示原文",
+        "working": "翻译中…",
+        "failed": "无法翻译"
+      }
     },
     "calendar": {
       "today": "今天",
@@ -2211,11 +2251,26 @@
       "reviewNote": "审核备注",
       "settlementNotice": "此收据记录了 MyWisata 中的提款申请。到账时间取决于所选付款服务商（{{provider}}）。",
       "guidance": {
-        "failed": { "title": "付款失败 — 资金已退回", "message": "预留金额已退回您的可用收益。请检查收款账户后重新申请提款；若资料无误，请联系支持团队。" },
-        "processing": { "title": "正在付款", "message": "付款服务商正在处理这笔提款。除非状态超过服务商正常到账时间仍未改变，否则无需操作。" },
-        "approvedReconciliation": { "title": "正在核对服务商交易", "message": "管理员核对服务商交易期间，资金会继续保留。请勿用同一笔资金重复申请提款；如需进度，请联系支持团队。" },
-        "approved": { "title": "已批准 — 等待付款", "message": "准备付款期间，资金会继续保留，您无需操作。" },
-        "completed": { "title": "付款已完成", "message": "提款已发送至您选择的收款账户。" }
+        "failed": {
+          "title": "付款失败 — 资金已退回",
+          "message": "预留金额已退回您的可用收益。请检查收款账户后重新申请提款；若资料无误，请联系支持团队。"
+        },
+        "processing": {
+          "title": "正在付款",
+          "message": "付款服务商正在处理这笔提款。除非状态超过服务商正常到账时间仍未改变，否则无需操作。"
+        },
+        "approvedReconciliation": {
+          "title": "正在核对服务商交易",
+          "message": "管理员核对服务商交易期间，资金会继续保留。请勿用同一笔资金重复申请提款；如需进度，请联系支持团队。"
+        },
+        "approved": {
+          "title": "已批准 — 等待付款",
+          "message": "准备付款期间，资金会继续保留，您无需操作。"
+        },
+        "completed": {
+          "title": "付款已完成",
+          "message": "提款已发送至您选择的收款账户。"
+        }
       }
     },
     "checkout": {

@@ -348,6 +348,26 @@
       "reopening": "Membuka semula…",
       "reopen": "Buka semula tiket",
       "orStartNew": "atau buka tiket baharu.",
+      "mute": "Redamkan tiket",
+      "unmute": "Nyahredam tiket",
+      "muteHint": "Redamkan pemberitahuan",
+      "muted": "Diredamkan",
+      "mutedHint": "Pemberitahuan diredamkan untuk anda",
+      "muteError": "Tidak dapat mengemas kini tetapan pemberitahuan.",
+      "attachFile": "Lampirkan fail",
+      "addCaption": "Tambah kapsyen…",
+      "removeAttachment": "Alih keluar lampiran",
+      "attachmentError": "Tidak dapat menghantar lampiran.",
+      "voice": {
+        "start": "Sebut balasan anda",
+        "stop": "Berhenti mendengar",
+        "errors": {
+          "permissionDenied": "Akses mikrofon diperlukan",
+          "noSpeech": "Tidak dapat menangkapnya — cuba lagi",
+          "network": "Input suara memerlukan sambungan",
+          "unknown": "Input suara tidak tersedia buat masa ini"
+        }
+      },
       "status": {
         "open": "Terbuka",
         "in_progress": "Sedang diproses",
@@ -631,7 +651,21 @@
       "loadingDashboard": "Memuatkan papan pemuka ahli gabungan…",
       "noClicks": "Tiada klik dalam 30 hari terakhir.",
       "clicks": "Klik",
-      "day": "Hari {{label}}"
+      "day": "Hari {{label}}",
+      "campaigns": {
+        "title": "Kempen",
+        "description": "Labelkan pautan (cth. “instagram-story-jan”) untuk melihat kempen mana yang menukar, bukan sekadar platform mana.",
+        "namePlaceholder": "Nama kempen",
+        "getLink": "Dapatkan pautan",
+        "copied": "Disalin",
+        "untagged": "Tanpa label",
+        "columns": {
+          "campaign": "Kempen",
+          "clicks": "Klik",
+          "orders": "Pesanan",
+          "earned": "Diperoleh"
+        }
+      }
     },
     "chat": {
       "loadingConversation": "Memuatkan perbualan…",
@@ -645,7 +679,13 @@
       "reportSubmitted": "Laporan dihantar. Terima kasih.",
       "reportConversation": "Laporkan perbualan ini",
       "startConversation": "Mulakan perbualan",
-      "startConversationHint": "Tanya tentang ketersediaan, kebolehcapaian atau apa-apa yang anda perlukan untuk perjalanan anda."
+      "startConversationHint": "Tanya tentang ketersediaan, kebolehcapaian atau apa-apa yang anda perlukan untuk perjalanan anda.",
+      "translate": {
+        "action": "Terjemah",
+        "showOriginal": "Tunjukkan asal",
+        "working": "Menterjemah…",
+        "failed": "Tidak dapat menterjemah"
+      }
     },
     "calendar": {
       "today": "Hari ini",
@@ -2211,11 +2251,26 @@
       "reviewNote": "Nota semakan",
       "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MyWisata. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
       "guidance": {
-        "failed": { "title": "Pembayaran gagal — dana dipulihkan", "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pembayaran sebelum membuat pengeluaran baharu, atau hubungi Sokongan jika butirannya betul." },
-        "processing": { "title": "Pembayaran sedang diproses", "message": "Penyedia pembayaran sedang memproses pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia." },
-        "approvedReconciliation": { "title": "Penyelarasan penyedia sedang dijalankan", "message": "Dana anda kekal dirizab sementara pentadbir menyemak transaksi penyedia. Jangan buat pengeluaran lain untuk dana yang sama; hubungi Sokongan jika anda memerlukan kemas kini." },
-        "approved": { "title": "Diluluskan — pembayaran belum selesai", "message": "Dana anda kekal dirizab sementara pembayaran yang diluluskan disediakan. Tiada tindakan diperlukan daripada anda." },
-        "completed": { "title": "Pembayaran selesai", "message": "Pengeluaran telah dihantar ke destinasi pembayaran pilihan anda." }
+        "failed": {
+          "title": "Pembayaran gagal — dana dipulihkan",
+          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pembayaran sebelum membuat pengeluaran baharu, atau hubungi Sokongan jika butirannya betul."
+        },
+        "processing": {
+          "title": "Pembayaran sedang diproses",
+          "message": "Penyedia pembayaran sedang memproses pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
+        },
+        "approvedReconciliation": {
+          "title": "Penyelarasan penyedia sedang dijalankan",
+          "message": "Dana anda kekal dirizab sementara pentadbir menyemak transaksi penyedia. Jangan buat pengeluaran lain untuk dana yang sama; hubungi Sokongan jika anda memerlukan kemas kini."
+        },
+        "approved": {
+          "title": "Diluluskan — pembayaran belum selesai",
+          "message": "Dana anda kekal dirizab sementara pembayaran yang diluluskan disediakan. Tiada tindakan diperlukan daripada anda."
+        },
+        "completed": {
+          "title": "Pembayaran selesai",
+          "message": "Pengeluaran telah dihantar ke destinasi pembayaran pilihan anda."
+        }
       }
     },
     "checkout": {
