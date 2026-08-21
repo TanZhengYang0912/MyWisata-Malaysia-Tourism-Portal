@@ -66,7 +66,7 @@ vendor_recommendations (
 2. The server derives a non-authoritative internal Place candidate from the Google address and coordinates. It does not turn a Google `place_id` into a MyWisata Place ID.
 3. A Super Admin verifies the business and confirms, changes, or clears the suggested Area/POI. The recommendation may remain geographically unresolved.
 4. After approval, the Super Admin requests Chinese and Malay drafts from the existing server-side AI provider abstraction.
-5. The translation prompt receives only the field value, source language, target locale, content type, and a rule to retain registered/brand names unless a natural local display form is clear. It never receives the recommender identity, phone, email, website, images, or storage paths.
+5. The translation prompt receives only a bounded, PII-redacted field value, source language, target locale, content type, and a rule to retain registered/brand names unless a natural local display form is clear. It never receives the recommender identity, phone, email, website, images, or storage paths.
 6. Each result is stored as `draft`. The administrator can edit and approve it; after a vendor claims the recommendation, the vendor may propose edits but cannot self-approve public copy.
 7. Public display resolves an approved translation for the active locale and the current source hash. If none exists or it is stale, it shows the original source value.
 8. When a recommendation is converted to a vendor, translation records are copied only when the final vendor field exactly equals the recommendation source. Otherwise the new vendor field receives fresh drafts.
@@ -84,7 +84,8 @@ vendor_recommendations (
 - A vendor owner can submit a replacement draft only for their own vendor/outlet/product; a Super Admin approves it.
 - Customer reads are limited to `approved` translations for public entities; drafts are not exposed through public API responses.
 - Translation endpoints use the existing server-side AI provider; client code never receives provider credentials.
-- Calls have a per-entity/locale/source-hash idempotency boundary so refreshes cannot create duplicate billable requests.
+- Calls reserve a per-entity/locale/source-hash idempotency boundary before the provider is called, so concurrent refreshes cannot create duplicate billable requests.
+- Direct client writes to `content_translations`, `suggested_place_id`, and `resolved_place_id` are forbidden. The server calculates suggestions; a Super Admin route/RPC validates active internal Place IDs and records final resolution.
 - Provider outages leave the original text visible and show a retryable admin error; they never block recommendation approval.
 
 ## Delivery Phases

@@ -52,6 +52,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [localizationBusy, setLocalizationBusy] = useState(false);
+  const [translationEdits, setTranslationEdits] = useState<Record<string, string>>({});
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -160,6 +162,50 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
     }
   }
 
+  async function submitLocalization(action: "suggest_place" | "confirm_place" | "clear_place" | "generate", placeId?: string) {
+    if (localizationBusy) return;
+    setLocalizationBusy(true);
+    try {
+      const response = await fetch(`/api/admin/recommendations/${recommendationId}/localization`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, placeId }),
+      });
+      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      if (!response.ok) throw new Error(body?.error?.message ?? t("recommendation.detail.errors.localizationFailed"));
+      showFeedback("success", action === "generate" ? t("recommendation.detail.localization.draftsGenerated") : t("recommendation.detail.localization.placeUpdated"));
+      await loadDetail();
+    } catch (localizationError) {
+      const message = localizationError instanceof Error ? localizationError.message : t("recommendation.detail.errors.localizationFailed");
+      setError(message);
+      showFeedback("error", message);
+    } finally {
+      setLocalizationBusy(false);
+    }
+  }
+
+  async function reviewTranslation(translationId: string, status: "approved" | "rejected", fallbackText: string) {
+    if (localizationBusy) return;
+    setLocalizationBusy(true);
+    try {
+      const response = await fetch(`/api/admin/recommendations/${recommendationId}/localization`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ translationId, status, translatedText: translationEdits[translationId] ?? fallbackText }),
+      });
+      const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      if (!response.ok) throw new Error(body?.error?.message ?? t("recommendation.detail.errors.localizationFailed"));
+      showFeedback("success", status === "approved" ? t("recommendation.detail.localization.draftApproved") : t("recommendation.detail.localization.draftRejected"));
+      await loadDetail();
+    } catch (localizationError) {
+      const message = localizationError instanceof Error ? localizationError.message : t("recommendation.detail.errors.localizationFailed");
+      setError(message);
+      showFeedback("error", message);
+    } finally {
+      setLocalizationBusy(false);
+    }
+  }
+
   if (loading) {
     return <div className="p-6 text-sm text-muted-foreground sm:p-8">{t("recommendation.detail.loading")}</div>;
   }
@@ -179,6 +225,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
   const isPending = detail.status === "pending";
   const isApproved = detail.status === "approved";
+  const canManageLocalization = currentUser?.role === "super_admin";
   const reasonAction = action === "reject" || action === "request_changes";
   const reviewDecision = isPending ? (
     <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
@@ -282,6 +329,31 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
               </p>
             )}
           </section>
+
+          {canManageLocalization && (
+            <section className="rounded-2xl border border-border bg-card p-5">
+              <h2 className="font-bold text-foreground">{t("recommendation.detail.localization.title")}</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("recommendation.detail.localization.hint")}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled={localizationBusy} onClick={() => submitLocalization("suggest_place")}>{t("recommendation.detail.localization.suggestPlace")}</Button>
+                {detail.localization.suggestedPlace && !detail.localization.resolvedPlace && <Button size="sm" disabled={localizationBusy} onClick={() => submitLocalization("confirm_place", detail.localization.suggestedPlace?.id)}>{t("recommendation.detail.localization.confirmPlace", { name: detail.localization.suggestedPlace.name })}</Button>}
+                {detail.localization.resolvedPlace && <Button size="sm" variant="outline" disabled={localizationBusy} onClick={() => submitLocalization("clear_place")}>{t("recommendation.detail.localization.clearPlace")}</Button>}
+                {isApproved && <Button size="sm" disabled={localizationBusy} onClick={() => submitLocalization("generate")}>{t("recommendation.detail.localization.generate")}</Button>}
+              </div>
+              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div><dt className="text-xs font-semibold text-muted-foreground">{t("recommendation.detail.localization.suggested")}</dt><dd className="mt-1 font-medium">{detail.localization.suggestedPlace?.name ?? t("recommendation.detail.notProvided")}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted-foreground">{t("recommendation.detail.localization.confirmed")}</dt><dd className="mt-1 font-medium">{detail.localization.resolvedPlace?.name ?? t("recommendation.detail.notProvided")}</dd></div>
+              </dl>
+              {detail.localization.translations.length > 0 && <div className="mt-5 space-y-4 border-t border-border pt-4">
+                {detail.localization.translations.map((translation) => <div key={translation.id} className="rounded-xl bg-muted/50 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">{t("recommendation.detail.localization.draftLabel", { field: t(`recommendation.detail.localization.fields.${translation.field}`), locale: translation.locale })}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{translation.sourceText}</p>
+                  <textarea value={translationEdits[translation.id] ?? translation.translatedText} onChange={(event) => setTranslationEdits((current) => ({ ...current, [translation.id]: event.target.value }))} readOnly={translation.status !== "draft"} maxLength={2000} className="mt-2 w-full rounded-lg border border-border bg-background p-2 text-sm" />
+                  <div className="mt-2 flex items-center justify-between gap-2"><span className="text-xs font-semibold text-muted-foreground">{t(`recommendation.detail.localization.status.${translation.status}`)}</span><span className="flex gap-2">{translation.status === "draft" && <><Button size="sm" disabled={localizationBusy} onClick={() => reviewTranslation(translation.id, "approved", translation.translatedText)}>{t("recommendation.detail.localization.approveDraft")}</Button><Button size="sm" variant="outline" disabled={localizationBusy} onClick={() => reviewTranslation(translation.id, "rejected", translation.translatedText)}>{t("recommendation.detail.localization.rejectDraft")}</Button></>}</span></div>
+                </div>)}
+              </div>}
+            </section>
+          )}
 
         </main>
 

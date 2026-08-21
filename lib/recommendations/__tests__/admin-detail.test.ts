@@ -110,4 +110,24 @@ describe('buildAdminRecommendationDetail', () => {
     expect(detail.images).toEqual([]);
     expect(detail.author.name).toBe('MyWisata member');
   });
+
+  it('exposes only translation drafts and internal Place summaries to the authorized admin view', () => {
+    const detail = buildAdminRecommendationDetail({
+      recommendation: {
+        id: 'rec-1', recommender_id: 'user-1', vendor_name: 'Kedai Amanah', description: null, why_recommend: null,
+        category_id: null, state: null, vendor_address: null, google_place_id: 'google-place-id', location_name: 'Kedai Amanah', formatted_address: '1 Jalan Example', latitude: 4.6, longitude: 101.08,
+        contact_phone: '+60123456789', contact_email: 'vendor@example.com', contact_website: null, image_attested_at: null, status: 'approved', reviewer_id: null, reviewed_at: null,
+        rejection_reason: null, changes_requested_at: null, changes_requested_reason: null, converted_vendor_id: null, created_at: '2026-08-07T00:00:00Z', categories: null,
+      },
+      recommender: null, reviewer: null, convertedVendor: null, images: [],
+      suggestedPlace: { id: 'internal-place-1', name: 'Ipoh Railway Station', level: 'poi' },
+      resolvedPlace: null,
+      translations: [{ id: 'translation-1', field: 'name', locale: 'zh-CN', source_text: 'Kedai Amanah', translated_text: '诚信咖啡店', status: 'draft' }],
+    });
+
+    expect(detail.localization.suggestedPlace).toEqual({ id: 'internal-place-1', name: 'Ipoh Railway Station', level: 'poi' });
+    expect(detail.localization.translations).toEqual([{ id: 'translation-1', field: 'name', locale: 'zh-CN', sourceText: 'Kedai Amanah', translatedText: '诚信咖啡店', status: 'draft' }]);
+    expect(JSON.stringify(detail.localization)).not.toContain('google-place-id');
+    expect(JSON.stringify(detail.localization)).not.toContain('vendor@example.com');
+  });
 });

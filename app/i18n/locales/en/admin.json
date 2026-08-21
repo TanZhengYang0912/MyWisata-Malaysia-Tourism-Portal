@@ -1536,6 +1536,7 @@
       "emailUnavailable": "Email unavailable",
       "errors": {
         "loadFailed": "Unable to load recommendation.",
+        "localizationFailed": "Unable to update recommendation localization.",
         "reasonTooShort": "Please explain the decision in at least 10 characters.",
         "reviewFailed": "Review failed."
       },
@@ -1583,6 +1584,25 @@
       "vendorConversion": "Vendor conversion",
       "vendorOutreach": "Vendor outreach",
       "vendorOutreachHint": "Draft an invitation with AI, review the message, then send it to the vendor.",
+      "localization": {
+        "title": "Location and language drafts",
+        "hint": "Google location is external evidence. Confirm an internal Area before it is used by the platform; translation drafts stay private until approved.",
+        "suggestPlace": "Suggest Area",
+        "confirmPlace": "Confirm {{name}}",
+        "clearPlace": "Clear confirmed Area",
+        "generate": "Generate Chinese & Malay drafts",
+        "suggested": "Suggested Area",
+        "confirmed": "Confirmed Area",
+        "draftLabel": "{{field}} · {{locale}}",
+        "approveDraft": "Approve draft",
+        "rejectDraft": "Reject draft",
+        "draftsGenerated": "Chinese and Malay drafts generated.",
+        "placeUpdated": "Area resolution updated.",
+        "draftApproved": "Translation draft approved.",
+        "draftRejected": "Translation draft rejected.",
+        "fields": { "name": "Business name", "description": "Description" },
+        "status": { "draft": "Draft", "approved": "Approved", "rejected": "Rejected", "stale": "Stale" }
+      },
       "confirm": {
         "approveTitle": "Approve recommendation?",
         "rejectTitle": "Reject recommendation?",

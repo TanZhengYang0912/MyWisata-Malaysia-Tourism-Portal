@@ -1536,6 +1536,7 @@
       "emailUnavailable": "E-mel tidak tersedia",
       "errors": {
         "loadFailed": "Tidak dapat memuatkan cadangan.",
+        "localizationFailed": "Tidak dapat mengemas kini lokasi atau terjemahan cadangan.",
         "reasonTooShort": "Jelaskan keputusan dengan sekurang-kurangnya 10 aksara.",
         "reviewFailed": "Semakan gagal."
       },
@@ -1583,6 +1584,25 @@
       "vendorConversion": "Penukaran vendor",
       "vendorOutreach": "Hubungan vendor",
       "vendorOutreachHint": "Rangka jemputan dengan AI, semak mesej, kemudian hantarkannya kepada vendor.",
+      "localization": {
+        "title": "Draf lokasi dan bahasa",
+        "hint": "Lokasi Google ialah bukti luaran. Sahkan Kawasan dalaman sebelum digunakan oleh platform; draf terjemahan kekal peribadi sehingga diluluskan.",
+        "suggestPlace": "Cadangkan Kawasan",
+        "confirmPlace": "Sahkan {{name}}",
+        "clearPlace": "Kosongkan Kawasan disahkan",
+        "generate": "Jana draf Cina & Melayu",
+        "suggested": "Kawasan dicadangkan",
+        "confirmed": "Kawasan disahkan",
+        "draftLabel": "{{field}} · {{locale}}",
+        "approveDraft": "Luluskan draf",
+        "rejectDraft": "Tolak draf",
+        "draftsGenerated": "Draf Cina dan Melayu dijana.",
+        "placeUpdated": "Resolusi Kawasan dikemas kini.",
+        "draftApproved": "Draf terjemahan diluluskan.",
+        "draftRejected": "Draf terjemahan ditolak.",
+        "fields": { "name": "Nama perniagaan", "description": "Penerangan" },
+        "status": { "draft": "Draf", "approved": "Diluluskan", "rejected": "Ditolak", "stale": "Lapuk" }
+      },
       "confirm": {
         "approveTitle": "Luluskan cadangan?",
         "rejectTitle": "Tolak cadangan?",

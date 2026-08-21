@@ -51,9 +51,9 @@
 - `POST /api/admin/recommendations/:id/localization` accepts `{ action: 'suggest_place' | 'confirm_place' | 'clear_place' | 'generate' }` and uses only `is_super_admin` authorization.
 - `PATCH /api/admin/recommendations/:id/localization` accepts `{ translationId, translatedText, status: 'approved' | 'rejected' }`.
 
-- [ ] Write route tests for unauthenticated (401), non-super-admin (403), `confirm_place` with an internal UUID only, generation rejected before recommendation approval (409), and a prompt that excludes phone/email/website/images/Google IDs.
+- [ ] Write route tests for unauthenticated (401), non-super-admin (403), `confirm_place` with an active internal UUID only, generation rejected before recommendation approval (409), and a prompt that excludes/redacts phone/email/website/images/Google IDs.
 - [ ] Run the route and helper tests; confirm they fail because the localization route and source-hash helper do not exist.
-- [ ] Implement the shared hash/prompt helpers, the Super Admin-only route, idempotent upsert of name/description drafts for `zh-CN` and `ms`, and edit/approval state transitions. Return provider-unavailable as a retryable error without changing recommendation approval.
+- [ ] Implement the shared hash/prompt helpers, PII redaction, Super Admin-only route, a pre-provider advisory lock, idempotent upsert of name/description drafts for `zh-CN` and `ms`, and edit/approval state transitions. Return provider-unavailable as a retryable error without changing recommendation approval.
 - [ ] Extend the existing admin detail DTO/query to return non-sensitive `suggestedPlace`, `resolvedPlace`, and translation drafts only after the existing admin authorization check.
 - [ ] Re-run all Task 2 focused tests and confirm they pass.
 

@@ -1536,6 +1536,7 @@
       "emailUnavailable": "邮箱不可用",
       "errors": {
         "loadFailed": "无法加载推荐。",
+        "localizationFailed": "无法更新推荐的地点或翻译。",
         "reasonTooShort": "请至少用 10 个字符说明决定理由。",
         "reviewFailed": "审核失败。"
       },
@@ -1583,6 +1584,25 @@
       "vendorConversion": "商家转化",
       "vendorOutreach": "联系商家",
       "vendorOutreachHint": "使用 AI 起草邀请，审核消息后发送给商家。",
+      "localization": {
+        "title": "地点与语言草稿",
+        "hint": "Google 地点是外部证据。请先确认内部区域，翻译草稿在审核前不会公开。",
+        "suggestPlace": "建议区域",
+        "confirmPlace": "确认 {{name}}",
+        "clearPlace": "清除已确认区域",
+        "generate": "生成中文和马来文草稿",
+        "suggested": "建议区域",
+        "confirmed": "已确认区域",
+        "draftLabel": "{{field}} · {{locale}}",
+        "approveDraft": "批准草稿",
+        "rejectDraft": "拒绝草稿",
+        "draftsGenerated": "已生成中文和马来文草稿。",
+        "placeUpdated": "区域关联已更新。",
+        "draftApproved": "翻译草稿已批准。",
+        "draftRejected": "翻译草稿已拒绝。",
+        "fields": { "name": "商家名称", "description": "描述" },
+        "status": { "draft": "草稿", "approved": "已批准", "rejected": "已拒绝", "stale": "已过期" }
+      },
       "confirm": {
         "approveTitle": "批准推荐？",
         "rejectTitle": "拒绝推荐？",

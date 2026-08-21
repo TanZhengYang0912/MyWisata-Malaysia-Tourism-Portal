@@ -23,6 +23,7 @@ export async function GET(
 
   const { data: isAdmin, error: roleError } = await db.rpc('is_admin', { uid: user.id });
   if (roleError || !isAdmin) return apiFail('FORBIDDEN', 'Admin access required', 403);
+  const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
 
   const service = createServiceClient();
   const { data: recommendation, error: recommendationError } = await service
@@ -33,7 +34,7 @@ export async function GET(
       formatted_address, latitude, longitude, contact_phone, contact_email,
       contact_website, image_attested_at, status, reviewer_id, reviewed_at,
       rejection_reason, changes_requested_at, changes_requested_reason,
-      converted_vendor_id, created_at, categories(name)
+      converted_vendor_id, suggested_place_id, resolved_place_id, created_at, categories(name)
     `)
     .eq('id', id)
     .maybeSingle();
@@ -46,8 +47,11 @@ export async function GET(
   const userIds = [row.recommender_id, row.reviewer_id].filter(
     (value): value is string => Boolean(value),
   );
+  const placeIds = isSuperAdmin ? [row.suggested_place_id, row.resolved_place_id].filter(
+    (value): value is string => Boolean(value),
+  ) : [];
 
-  const [{ data: users }, { data: imageRows }, convertedVendorResult] = await Promise.all([
+  const [{ data: users }, { data: imageRows }, convertedVendorResult, { data: places }, { data: translations }] = await Promise.all([
     userIds.length > 0
       ? service.from('users').select('id,full_name,email,kyc_status').in('id', userIds)
       : Promise.resolve({ data: [] }),
@@ -61,6 +65,18 @@ export async function GET(
     row.converted_vendor_id
       ? service.from('vendors').select('id,name').eq('id', row.converted_vendor_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    placeIds.length > 0
+      ? service.from('places').select('id,name,level').in('id', placeIds)
+      : Promise.resolve({ data: [] }),
+    isSuperAdmin
+      ? service
+      .from('content_translations')
+      .select('id,field,locale,source_text,translated_text,status')
+      .eq('entity_type', 'vendor_recommendation')
+      .eq('entity_id', id)
+      .in('field', ['name', 'description'])
+      .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [] }),
   ]);
 
   const signedImages = await Promise.all(
@@ -95,5 +111,15 @@ export async function GET(
     reviewer: userRows.find((entry) => entry.id === row.reviewer_id) ?? null,
     convertedVendor: convertedVendorResult.data as { id: string; name: string | null } | null,
     images: signedImages.filter((image): image is NonNullable<typeof image> => image != null),
+    suggestedPlace: (places ?? []).find((place) => place.id === row.suggested_place_id) as { id: string; name: string; level: string } | null,
+    resolvedPlace: (places ?? []).find((place) => place.id === row.resolved_place_id) as { id: string; name: string; level: string } | null,
+    translations: (translations ?? []) as Array<{
+      id: string;
+      field: 'name' | 'description';
+      locale: 'zh-CN' | 'ms';
+      source_text: string;
+      translated_text: string;
+      status: 'draft' | 'approved' | 'rejected' | 'stale';
+    }>,
   }));
 }

@@ -119,4 +119,13 @@ describe('admin recommendation detail workflow', () => {
     expect(source).toContain("['reject', 'request_changes'].includes(action)");
     expect(source).toContain("reason.trim().length < 10");
   });
+
+  it('keeps geographic resolution and translation review in the protected detail screen', () => {
+    const detail = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
+
+    expect(detail).toContain('recommendation.detail.localization');
+    expect(detail).toContain('submitLocalization("suggest_place")');
+    expect(detail).toContain('submitLocalization("generate")');
+    expect(detail).toContain('method: "PATCH"');
+  });
 });

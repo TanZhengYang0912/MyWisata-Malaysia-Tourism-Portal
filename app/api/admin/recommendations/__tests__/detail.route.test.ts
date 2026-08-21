@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +31,12 @@ describe('GET /api/admin/recommendations/:id', () => {
 
   it('has a dedicated protected detail route', () => {
     expect(existsSync(routePath)).toBe(true);
+  });
+
+  it('does not load localization drafts unless the caller is a Super Admin', () => {
+    const routeSource = readFileSync(routePath, 'utf8');
+    expect(routeSource).toContain("db.rpc('is_super_admin', { uid: user.id })");
+    expect(routeSource).toContain('isSuperAdmin\n      ? service');
   });
 
   it('rejects unauthenticated callers before accessing private evidence', async () => {

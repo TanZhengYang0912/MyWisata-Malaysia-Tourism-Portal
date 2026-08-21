@@ -1,8 +1,36 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 import { computeProfileCompletion } from '@/lib/verification/eligibility';
 import { recommendationSubmissionSchema } from '@/lib/recommendations/submission';
+import { selectSuggestedPlace } from '@/lib/recommendations/place-resolution';
+
+async function storeSuggestedPlace(recommendationId: string, latitude: number, longitude: number) {
+  try {
+    const service = createServiceClient();
+    const { data: places, error } = await service
+      .from('places')
+      .select('id,name,level,lat,lng')
+      .eq('status', 'active');
+    if (error) throw error;
+    const suggestion = selectSuggestedPlace(latitude, longitude, (places ?? []).map((place) => ({
+      id: place.id,
+      name: place.name,
+      level: place.level,
+      latitude: Number(place.lat),
+      longitude: Number(place.lng),
+    })));
+    if (!suggestion) return;
+    const { error: updateError } = await service
+      .from('vendor_recommendations')
+      .update({ suggested_place_id: suggestion.id, place_resolution_status: 'suggested' })
+      .eq('id', recommendationId);
+    if (updateError) throw updateError;
+  } catch (error) {
+    console.warn('[recommendations] place suggestion failed', error instanceof Error ? error.message : error);
+  }
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -59,6 +87,8 @@ export async function POST(request: Request) {
       return apiFail('DUPLICATE', 'You already recommended a vendor with this name', 409);
     return apiFail('DB_ERROR', error.message, 500);
   }
+
+  await storeSuggestedPlace(data, value.location.latitude, value.location.longitude);
 
   return apiOk({ id: data, vendor_name: value.vendorName, status: 'pending' }, { status: 201 });
 }
