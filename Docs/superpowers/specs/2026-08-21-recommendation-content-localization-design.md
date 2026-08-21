@@ -13,7 +13,8 @@
 - The submitted English name remains the immutable source value for recommendation matching and audit.
 - Machine translation produces Chinese (`zh-CN`) and Malay (`ms`) **drafts**, never a public replacement by itself.
 - Brand and registered names default to the source value. A draft may provide a local display form or transliteration, but it must be approved by an administrator or the claimed vendor before customers see it.
-- System labels and canonical state names continue using static i18n resources; they do not enter the AI translation pipeline.
+- System labels and canonical state names continue using static i18n resources; they do not enter the AI translation pipeline. For example, English `Penang` resolves to Chinese `槟城` and Malay `Pulau Pinang` before public content is rendered.
+- Geographic hierarchy is translated independently from commercial content. A `place` is platform-maintained geography/editorial content; it can have approved translations for its POI name, tagline, and introduction. A vendor, outlet, or product is only linked to that place by IDs and never supplies, inherits, or overwrites the place translation.
 - Translation generation starts only after an administrator has approved a recommendation. This prevents spending AI calls on spam, duplicates, rejected submissions, and private contact data.
 - The first delivery uses an administrator-triggered “Generate translations” action after approval. It can later be invoked by a scheduler without changing the data model.
 
@@ -52,6 +53,13 @@ content_translations (
 5. Public display resolves an approved translation for the active locale and the current source hash. If none exists or it is stale, it shows the original source value.
 6. When a recommendation is converted to a vendor, translation records are copied only when the final vendor field exactly equals the recommendation source. Otherwise the new vendor field receives fresh drafts.
 
+## Geographic Display Rules
+
+1. Canonical Malaysian states and other fixed geographic labels use static locale resources. They must not depend on an AI provider or a vendor record.
+2. `places` stores the source name and editorial content for the state, region, or POI. For non-canonical content such as POI names, taglines, and introductions, approved `content_translations` rows with `entity_type = 'place'` provide the Chinese and Malay display text.
+3. A Place page first resolves its own geographic translation, then renders linked activities through `product_places` and nearby outlets by location. It does not derive the Place name from a vendor or activity.
+4. A translated vendor, outlet, or product remains its own record. Its association to a Place remains an ID relation, so changing any translation cannot change discovery, search identity, or the geographic hierarchy.
+
 ## Boundaries and Security
 
 - Only Super Admins can generate, approve, reject, or list review drafts across entities.
@@ -65,7 +73,7 @@ content_translations (
 
 1. **Recommendation drafts:** migration, Super Admin generation/review UI, and tests for source preservation, authorization, idempotency, and no-private-data prompt content.
 2. **Public resolver:** reusable server/client resolver for approved `vendor_recommendation` and `vendor` names, with locale fallback tests.
-3. **Broadened content:** reuse the same table and resolver for outlet, product, and place names/descriptions after their owner/admin editing policy is approved.
+3. **Broadened content:** add reviewed place POI/tagline/intro translations, then reuse the same table and resolver for outlet and product names/descriptions after their owner/admin editing policy is approved. Canonical state labels remain static i18n from the start.
 
 ## Out of Scope
 
