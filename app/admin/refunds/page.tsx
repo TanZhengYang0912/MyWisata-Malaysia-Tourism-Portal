@@ -146,9 +146,6 @@ export default function AdminRefundsPage() {
     (total, refund) => total + refund.amountRm,
     0,
   );
-  const simulatedCount = filteredRefunds.filter(
-    (refund) => refund.provider && SIMULATOR_PROVIDERS.has(refund.provider),
-  ).length;
   const processedCount = filteredRefunds.filter(
     (refund) => refund.status === "processed",
   ).length;
@@ -262,11 +259,6 @@ export default function AdminRefundsPage() {
             {
               label: t("refunds.metrics.pendingRefundValue"),
               value: formatRM(visiblePendingValue),
-              detail: t("refunds.metrics.visiblePageTotal"),
-            },
-            {
-              label: t("refunds.metrics.simulatedProviders"),
-              value: simulatedCount,
               detail: t("refunds.metrics.visiblePageTotal"),
             },
             {
