@@ -128,7 +128,7 @@ export default function AdminUsersPage() {
     <AdminFilterBar>
       <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center">
         <form onSubmit={submitSearch} className="flex min-w-0 flex-1 gap-2">
-          <div className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("ui.users.searchPlaceholder")} className={`${adminFilterControlClassName} w-full pl-9 pr-3`} /></div>
+          <div className="relative min-w-[220px] flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("ui.users.searchPlaceholder")} className={`${adminFilterControlClassName} w-full pl-9 pr-3`} /></div>
           <Button type="submit" size="sm">{t("ui.actions.search")}</Button>
         </form>
         <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto">

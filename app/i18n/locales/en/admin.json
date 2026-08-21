@@ -674,6 +674,11 @@
       "noSubmission": "No submission data",
       "notAvailable": "Not available"
     },
+    "filters": {
+      "allStatuses": "All review statuses",
+      "search": "Search name, email or document type",
+      "status": "Filter by review status"
+    },
     "metrics": {
       "infoRequested": "Information requested",
       "infoRequestedNote": "Waiting for customer action",

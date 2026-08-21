@@ -160,10 +160,10 @@ export default function AdminKycPage() {
     <AdminFilterBar>
       <label className="relative min-w-[220px] flex-1">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("ui.actions.search")} aria-label={t("ui.actions.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("kyc.filters.search")} aria-label={t("kyc.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
       </label>
-      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "pending" | "info_requested")} aria-label={t("ui.users.filters.kycLabel")} className={adminFilterControlClassName}>
-        <option value="all">{t("ui.users.filters.allStatuses")}</option>
+      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "pending" | "info_requested")} aria-label={t("kyc.filters.status")} className={adminFilterControlClassName}>
+        <option value="all">{t("kyc.filters.allStatuses")}</option>
         <option value="pending">{t("kyc.metrics.pending")}</option>
         <option value="info_requested">{t("kyc.status.infoRequested")}</option>
       </select>

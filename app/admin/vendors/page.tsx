@@ -413,9 +413,9 @@ export default function AdminVendorsPage() {
           </div>
 
           <AdminFilterBar className="rounded-none border-x-0 border-t-0">
-            <label className="relative min-w-0 flex-1">
+            <label className="relative min-w-[220px] flex-1">
               <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder={t('ui.vendors.searchPlaceholder')} className={`${adminFilterControlClassName} min-w-[220px] w-full pl-10 pr-4`} />
+              <input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder={t('ui.vendors.searchPlaceholder')} className={`${adminFilterControlClassName} w-full pl-10 pr-4`} />
             </label>
             <div className="flex shrink-0 flex-wrap gap-3">
               <label className="relative">

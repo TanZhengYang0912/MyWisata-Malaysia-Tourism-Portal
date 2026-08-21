@@ -33,6 +33,8 @@ describe("admin filter consistency contract", () => {
   it("keeps KYC's action queue behind the shared filter bar", () => {
     const source = read("app/admin/kyc/page.tsx");
     expect(source).toContain("AdminFilterBar");
+    expect(source).toContain("kyc.filters.search");
+    expect(source).toContain("kyc.filters.status");
     expect(source).toContain("kyc.queue.oldestFirst");
     expect(source).toContain("kyc.accessibility.reason");
   });
@@ -51,5 +53,20 @@ describe("admin filter consistency contract", () => {
     expect(affiliate).toContain("min-w-[220px] flex-1");
     expect(affiliate).not.toContain("adminFilterControlClassName} w-56");
     expect(payouts).toContain("min-w-[220px] flex-1");
+  });
+
+  it("keeps Task 2 search wrappers flexible and native filter controls non-shrinking", () => {
+    for (const file of [
+      "app/admin/vendors/page.tsx",
+      "app/admin/users/page.tsx",
+      "app/admin/kyc/page.tsx",
+      "app/admin/withdrawals/page.tsx",
+      "app/admin/recommendations/page.tsx",
+      "components/admin/staff-conduct-panel.tsx",
+    ]) {
+      expect(read(file), `${file} must use a flexible search wrapper`).toContain("min-w-[220px] flex-1");
+    }
+
+    expect(read("components/admin/filter-bar.tsx")).toContain("shrink-0");
   });
 });

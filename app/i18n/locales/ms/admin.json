@@ -674,6 +674,11 @@
       "noSubmission": "Tiada data penyerahan",
       "notAvailable": "Tidak tersedia"
     },
+    "filters": {
+      "allStatuses": "Semua status semakan",
+      "search": "Cari nama, e-mel atau jenis dokumen",
+      "status": "Tapis mengikut status semakan"
+    },
     "metrics": {
       "infoRequested": "Maklumat diminta",
       "infoRequestedNote": "Menunggu tindakan pelanggan",

@@ -674,6 +674,11 @@
       "noSubmission": "没有提交数据",
       "notAvailable": "不可用"
     },
+    "filters": {
+      "allStatuses": "所有审核状态",
+      "search": "搜索姓名、邮箱或证件类型",
+      "status": "按审核状态筛选"
+    },
     "metrics": {
       "infoRequested": "已请求补充信息",
       "infoRequestedNote": "等待客户操作",

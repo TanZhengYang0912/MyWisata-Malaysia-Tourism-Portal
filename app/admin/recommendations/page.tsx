@@ -164,7 +164,7 @@ export default function AdminRecommendationsPage() {
       )}
 
       <AdminFilterBar className="mb-6">
-        <label className="relative min-w-0 flex-1">
+        <label className="relative min-w-[220px] flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
