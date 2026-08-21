@@ -126,6 +126,7 @@ export default function AdminAffiliatePage() {
   const [fraudTypeFilter, setFraudTypeFilter] = useState("all");
   const [fraudSeverityFilter, setFraudSeverityFilter] = useState("all");
   const [fraudStatusFilter, setFraudStatusFilter] = useState("open");
+  const [fraudSearch, setFraudSearch] = useState("");
   const [sweeping, setSweeping] = useState(false);
   const [sweepResult, setSweepResult] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -428,7 +429,9 @@ export default function AdminAffiliatePage() {
   const filteredFraudFlags = (fraudFlags ?? []).filter((flag) =>
     (fraudTypeFilter === "all" || flag.flagType === fraudTypeFilter)
     && (fraudSeverityFilter === "all" || flag.severity === fraudSeverityFilter)
-    && (fraudStatusFilter === "all" || flag.status === fraudStatusFilter),
+    && (fraudStatusFilter === "all" || flag.status === fraudStatusFilter)
+    && (!fraudSearch.trim() || [flag.userName, flag.affiliateCode ?? "", flag.orderId ?? "", flag.flagType]
+      .some((value) => value.toLowerCase().includes(fraudSearch.trim().toLowerCase()))),
   );
 
   function toggleSort(key: SortKey) {
@@ -679,7 +682,13 @@ export default function AdminAffiliatePage() {
       )}
 
       <AdminFilterBar className="mb-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.fraudFlags")}</p>
+        <input
+          value={fraudSearch}
+          onChange={(event) => setFraudSearch(event.target.value)}
+          placeholder={t("affiliate.searchPlaceholder")}
+          aria-label={t("affiliate.searchPlaceholder")}
+          className={`${adminFilterControlClassName} min-w-[220px] flex-1`}
+        />
         <div className="flex items-center gap-2">
           <select
             value={fraudTypeFilter}

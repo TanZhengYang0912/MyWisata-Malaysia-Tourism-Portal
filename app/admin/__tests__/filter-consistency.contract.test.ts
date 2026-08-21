@@ -50,7 +50,9 @@ describe("admin filter consistency contract", () => {
   it("keeps long-form search controls flexible instead of fixed-width", () => {
     const affiliate = read("app/admin/affiliate/page.tsx");
     const payouts = read("app/admin/reports/payouts/page.tsx");
+    const support = read("app/admin/support/page.tsx");
     expect(affiliate).toContain("min-w-[220px] flex-1");
+    expect(support).toContain("min-w-[220px] flex-1");
     expect(affiliate).not.toContain("adminFilterControlClassName} w-56");
     expect(payouts).toContain("min-w-[220px] flex-1");
   });

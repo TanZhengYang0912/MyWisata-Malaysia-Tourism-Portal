@@ -973,6 +973,7 @@
       "replySent": "Support reply sent.",
       "selectAllVisible": "Select all visible support tickets",
       "selectTicket": "Select support ticket {{subject}}",
+      "searchPlaceholder": "Search tickets, customer or category…",
       "sort": {
         "category": "Category",
         "dateCreated": "Date created",

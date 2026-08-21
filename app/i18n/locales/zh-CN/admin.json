@@ -971,6 +971,7 @@
       "replySent": "支持回复已发送。",
       "selectAllVisible": "选择所有可见支持工单",
       "selectTicket": "选择支持工单 {{subject}}",
+      "searchPlaceholder": "搜索工单、客户或类别…",
       "sort": {
         "category": "类别",
         "dateCreated": "创建日期",

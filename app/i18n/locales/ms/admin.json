@@ -973,6 +973,7 @@
       "replySent": "Balasan sokongan dihantar.",
       "selectAllVisible": "Pilih semua tiket sokongan yang kelihatan",
       "selectTicket": "Pilih tiket sokongan {{subject}}",
+      "searchPlaceholder": "Cari tiket, pelanggan atau kategori…",
       "sort": {
         "category": "Kategori",
         "dateCreated": "Tarikh dicipta",

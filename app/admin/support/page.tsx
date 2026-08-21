@@ -103,6 +103,7 @@ function AdminSupportContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assignedToMeFilter, setAssignedToMeFilter] = useState(false);
   const [unreadOnlyFilter, setUnreadOnlyFilter] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("default");
   const [ticketPage, setTicketPage] = useState(1);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -145,7 +146,13 @@ function AdminSupportContent() {
   // within that group) — "that's the real work queue" (CLAUDE-FIXES-2.md
   // item 3). Every other sort option is a plain single-key comparator.
   const sortedTickets = tickets
-    ? [...tickets].sort((a, b) => {
+    ? tickets
+        .filter((ticket) => {
+          const query = searchQuery.trim().toLowerCase();
+          return !query || [ticket.subject, ticket.body, ticket.userName, ticket.category]
+            .some((value) => value.toLowerCase().includes(query));
+        })
+        .sort((a, b) => {
         if (sortKey === "default") {
           if (a.unanswered !== b.unanswered) return a.unanswered ? -1 : 1;
           return a.createdAt < b.createdAt ? -1 : 1;
@@ -347,6 +354,13 @@ function AdminSupportContent() {
       )}
 
       <AdminFilterBar className="mb-6">
+        <input
+          value={searchQuery}
+          onChange={(event) => { setSearchQuery(event.target.value); setTicketPage(1); }}
+          placeholder={t("ui.support.searchPlaceholder")}
+          aria-label={t("ui.support.searchPlaceholder")}
+          className={`${adminFilterControlClassName} min-w-[220px] flex-1`}
+        />
         <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-foreground">
             <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); }} />
