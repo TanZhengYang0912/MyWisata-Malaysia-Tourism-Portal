@@ -197,8 +197,8 @@ function SettlementProofSection({ proof, locale, formatAmount }: { proof: AdminS
     ? `${proof.event.payloadSha256.slice(0, 12)}…${proof.event.payloadSha256.slice(-8)}`
     : null;
   const notification = proof.notification;
-  return <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 text-sm">
-    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{t("withdrawals.settlementProof.title")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.settlementProof.noFurtherAction")}</p></div>{proof.event?.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800"><ShieldCheck size={13} />{t("withdrawals.settlementProof.signatureVerified")}</span>}</div>
+  return <section className="mt-4 rounded-xl border border-nature-green/30 bg-nature-green/5 p-4 text-sm">
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{t("withdrawals.settlementProof.title")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.settlementProof.noFurtherAction")}</p></div>{proof.event?.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-nature-green/15 px-2 py-1 text-xs font-semibold text-nature-green-ink"><ShieldCheck size={13} />{t("withdrawals.settlementProof.signatureVerified")}</span>}</div>
     <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
       <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.provider")}</dt><dd>{proof.provider}</dd></div>
       <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.payoutReference")}</dt><dd className="break-all font-mono">{proof.providerPayoutReference ?? "—"}</dd></div>
@@ -206,7 +206,7 @@ function SettlementProofSection({ proof, locale, formatAmount }: { proof: AdminS
       {proof.delivery && <><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.deliveryStatus")}</dt><dd>{proof.delivery.status}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.attempts")}</dt><dd>{proof.delivery.attempts}</dd></div></>}
       {notification && <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.emailStatus")}</dt><dd>{notification.emailStatus}</dd></div>}
     </dl>
-    {proof.delivery?.needsReconciliation && <div role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950"><p className="font-semibold">{t("withdrawals.settlementProof.reconciliationTitle")}</p><p className="mt-1 text-xs">{t("withdrawals.settlementProof.reconciliationMessage")}</p></div>}
+    {proof.delivery?.needsReconciliation && <div role="alert" className="mt-3 rounded-lg border border-accent bg-accent/10 p-3 text-accent-foreground"><p className="font-semibold">{t("withdrawals.settlementProof.reconciliationTitle")}</p><p className="mt-1 text-xs">{t("withdrawals.settlementProof.reconciliationMessage")}</p></div>}
     <div className="mt-3"><p className="text-xs font-semibold">{t("withdrawals.settlementProof.ledgerTitle")}</p>{proof.ledger.length === 0 ? <p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.settlementProof.noLedger")}</p> : <div className="mt-2 space-y-1">{proof.ledger.map((row) => <div key={row.id} className="flex justify-between gap-3 text-xs"><span>{row.type} · {row.direction}</span><span className="font-mono">{formatAmount(row.amountSen)}</span></div>)}</div>}</div>
     <p className="mt-3 text-xs text-muted-foreground">{t("withdrawals.settlementProof.immutableNotice")}</p>
   </section>;

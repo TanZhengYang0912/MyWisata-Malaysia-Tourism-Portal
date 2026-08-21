@@ -115,15 +115,15 @@ export default function WithdrawalReceiptPage() {
       {proof && <section className="mt-4 rounded-xl border border-border p-4 text-sm">
         <h2 className="font-semibold">{tCustomer("strictMigration.walletReceipt.timeline.title")}</h2>
         <ol className="mt-3 space-y-2 text-xs text-muted-foreground">
-          <li className="flex gap-2"><CheckCircle2 size={14} className="text-emerald-600" />{tCustomer("strictMigration.walletReceipt.timeline.requested")}</li>
-          <li className="flex gap-2"><CheckCircle2 size={14} className="text-emerald-600" />{tCustomer("strictMigration.walletReceipt.timeline.submitted")}</li>
-          <li className="flex gap-2"><CheckCircle2 size={14} className={proof.event ? "text-emerald-600" : "text-muted-foreground"} />{tCustomer("strictMigration.walletReceipt.timeline.callbackVerified")}</li>
-          <li className="flex gap-2"><CheckCircle2 size={14} className={movement?.to ? "text-emerald-600" : "text-muted-foreground"} />{tCustomer("strictMigration.walletReceipt.timeline.ledgerSettled")}</li>
+          <li className="flex gap-2"><CheckCircle2 size={14} className="text-nature-green" />{tCustomer("strictMigration.walletReceipt.timeline.requested")}</li>
+          <li className="flex gap-2"><CheckCircle2 size={14} className="text-nature-green" />{tCustomer("strictMigration.walletReceipt.timeline.submitted")}</li>
+          <li className="flex gap-2"><CheckCircle2 size={14} className={proof.event ? "text-nature-green" : "text-muted-foreground"} />{tCustomer("strictMigration.walletReceipt.timeline.callbackVerified")}</li>
+          <li className="flex gap-2"><CheckCircle2 size={14} className={movement?.to ? "text-nature-green" : "text-muted-foreground"} />{tCustomer("strictMigration.walletReceipt.timeline.ledgerSettled")}</li>
         </ol>
       </section>}
 
-      {proof?.event && <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-sm">
-        <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{tCustomer("strictMigration.walletReceipt.proof.title")}</h2>{proof.event.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800"><ShieldCheck size={13} />{tCustomer("strictMigration.walletReceipt.proof.verified")}</span>}</div>
+      {proof?.event && <section className="mt-4 rounded-xl border border-nature-green/30 bg-nature-green/5 p-4 text-sm">
+        <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{tCustomer("strictMigration.walletReceipt.proof.title")}</h2>{proof.event.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-nature-green/15 px-2 py-1 text-xs font-semibold text-nature-green-ink"><ShieldCheck size={13} />{tCustomer("strictMigration.walletReceipt.proof.verified")}</span>}</div>
         <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.eventId")}</dt><dd className="break-all font-mono">{proof.event.id}</dd></div><div><dt className="text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.amount")}</dt><dd>{formatAmount(proof.event.amountSen)} {proof.event.currency}</dd></div><div><dt className="text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.providerTime")}</dt><dd>{new Date(proof.event.providerOccurredAt).toLocaleString(i18n.resolvedLanguage)}</dd></div><div><dt className="text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.receivedTime")}</dt><dd>{new Date(proof.event.receivedAt).toLocaleString(i18n.resolvedLanguage)}</dd></div>{eventHash && <div className="sm:col-span-2"><dt className="text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.payloadHash")}</dt><dd className="font-mono">{eventHash}</dd></div>}</dl>
         <p className="mt-3 text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.proof.immutableNotice")}</p>
       </section>}

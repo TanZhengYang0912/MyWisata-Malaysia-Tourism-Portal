@@ -1,17 +1,7 @@
-export type WithdrawalSettlementState =
-  | 'pending'
-  | 'pending_second_approval'
-  | 'hold'
-  | 'overdue'
-  | 'approved'
-  | 'processing'
-  | 'paid'
-  | 'completed'
-  | 'failed'
-  | 'rejected';
+import type { WithdrawalStatus } from '@/lib/constants';
 
 export type SettlementProof = {
-  state: WithdrawalSettlementState;
+  state: WithdrawalStatus;
   provider: 'tng_direct_credit' | 'stripe_connect';
   providerPayoutReference: string | null;
   event: null | {
