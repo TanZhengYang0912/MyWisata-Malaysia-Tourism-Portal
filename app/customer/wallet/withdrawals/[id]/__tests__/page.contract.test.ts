@@ -15,4 +15,23 @@ describe('withdrawal receipt provider presentation', () => {
     expect(source).toContain('role="alert"');
     expect(source).toContain('strictMigration.walletReceipt.backToWallet');
   });
+
+  it('renders immutable settlement proof and explicit money movement', () => {
+    expect(source).toContain('settlementProof');
+    expect(source).toContain('moneyMovement');
+    expect(source).toContain('strictMigration.walletReceipt.moneyMovement.title');
+    expect(source).toContain('strictMigration.walletReceipt.proof.title');
+    expect(source).toContain('signatureVerified');
+    expect(source).toContain('payloadSha256');
+    expect(source).not.toContain('Mark Paid');
+    expect(source).not.toContain('Simulate Paid');
+    expect(source).not.toContain('I received the money');
+  });
+
+  it('polls only non-terminal receipts and cleans up the timer', () => {
+    expect(source).toContain('loadReceipt');
+    expect(source).toContain('setInterval');
+    expect(source).toContain('clearInterval');
+    expect(source).toContain('["approved", "processing"].includes(receipt.status)');
+  });
 });

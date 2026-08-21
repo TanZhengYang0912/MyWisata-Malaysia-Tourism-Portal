@@ -1908,6 +1908,27 @@
         "retryable": "确认服务商和收款目的地可用，然后使用“重试打款”。现有批准状态会保留。"
       }
     },
+    "settlementProof": {
+      "title": "结算证明",
+      "noFurtherAction": "已收到付款服务商结果，无需再次批准付款。",
+      "provider": "付款服务商",
+      "payoutReference": "付款编号",
+      "eventId": "服务商事件",
+      "eventStatus": "服务商状态",
+      "amount": "金额",
+      "providerTime": "服务商时间",
+      "receivedTime": "MyWisata 接收时间",
+      "signatureVerified": "签名已验证",
+      "payloadHash": "Payload SHA-256",
+      "deliveryStatus": "Callback 投递状态",
+      "attempts": "投递次数",
+      "emailStatus": "电邮通知",
+      "ledgerTitle": "钱包账本流向",
+      "noLedger": "暂无结算账本记录。",
+      "reconciliationTitle": "需要对账",
+      "reconciliationMessage": "Callback 任务需要对账。在服务商事件完成核对前，请勿重试或再次批准此付款。",
+      "immutableNotice": "此服务商事件及其结算账本为不可篡改的审计证据。"
+    },
     "priority": {
       "highRisk": "高风险",
       "needsAction": "需要操作",

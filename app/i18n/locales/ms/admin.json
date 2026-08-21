@@ -1908,6 +1908,27 @@
         "retryable": "Sahkan penyedia dan destinasi pembayaran tersedia, kemudian gunakan Cuba semula pembayaran. Kelulusan sedia ada akan dikekalkan."
       }
     },
+    "settlementProof": {
+      "title": "Bukti penyelesaian",
+      "noFurtherAction": "Keputusan penyedia telah diterima. Tiada kelulusan pembayaran lanjut diperlukan.",
+      "provider": "Penyedia",
+      "payoutReference": "Rujukan pembayaran",
+      "eventId": "Peristiwa penyedia",
+      "eventStatus": "Status penyedia",
+      "amount": "Amaun",
+      "providerTime": "Masa penyedia",
+      "receivedTime": "Diterima MyWisata",
+      "signatureVerified": "Tandatangan disahkan",
+      "payloadHash": "SHA-256 muatan",
+      "deliveryStatus": "Penghantaran panggilan balik",
+      "attempts": "Percubaan penghantaran",
+      "emailStatus": "Pemberitahuan e-mel",
+      "ledgerTitle": "Pergerakan lejar dompet",
+      "noLedger": "Belum ada catatan lejar penyelesaian.",
+      "reconciliationTitle": "Penyelarasan diperlukan",
+      "reconciliationMessage": "Tugasan panggilan balik memerlukan penyelarasan. Jangan cuba semula atau meluluskan pembayaran ini lagi sehingga peristiwa penyedia diselaraskan.",
+      "immutableNotice": "Peristiwa penyedia dan lejar penyelesaiannya ialah bukti audit yang tidak boleh diubah."
+    },
     "priority": {
       "highRisk": "Risiko tinggi",
       "needsAction": "Perlu tindakan",

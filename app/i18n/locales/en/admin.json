@@ -1908,6 +1908,27 @@
         "retryable": "Confirm the provider and payout destination are available, then use Retry payout. The existing approval will be preserved."
       }
     },
+    "settlementProof": {
+      "title": "Settlement proof",
+      "noFurtherAction": "Provider result received. No further payout approval is required.",
+      "provider": "Provider",
+      "payoutReference": "Payout reference",
+      "eventId": "Provider event",
+      "eventStatus": "Provider status",
+      "amount": "Amount",
+      "providerTime": "Provider time",
+      "receivedTime": "MyWisata received",
+      "signatureVerified": "Signature verified",
+      "payloadHash": "Payload SHA-256",
+      "deliveryStatus": "Callback delivery",
+      "attempts": "Delivery attempts",
+      "emailStatus": "Email notification",
+      "ledgerTitle": "Wallet ledger movement",
+      "noLedger": "No settlement ledger entry yet.",
+      "reconciliationTitle": "Reconciliation required",
+      "reconciliationMessage": "The callback job needs reconciliation. Do not retry or approve this payout again until the provider event is reconciled.",
+      "immutableNotice": "This provider event and its settlement ledger are immutable audit evidence."
+    },
     "priority": {
       "highRisk": "High risk",
       "needsAction": "Needs action",

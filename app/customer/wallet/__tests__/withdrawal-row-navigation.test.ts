@@ -18,4 +18,11 @@ describe('customer wallet withdrawal row navigation', () => {
     expect(pageSource.match(/hover:bg-muted\/40/g) ?? []).toHaveLength(2);
     expect(pageSource.match(/focus-visible:ring-2/g) ?? []).toHaveLength(2);
   });
+
+  it('refreshes wallet buckets while a payout is awaiting provider settlement', () => {
+    expect(pageSource).toContain('refreshWalletState');
+    expect(pageSource).toContain('setInterval');
+    expect(pageSource).toContain('clearInterval');
+    expect(pageSource).toContain("['approved', 'processing'].includes(withdrawal.status)");
+  });
 });

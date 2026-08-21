@@ -2269,6 +2269,30 @@
       "payoutReference": "付款编号：{{reference}}",
       "reviewNote": "审核备注",
       "settlementNotice": "此收据记录了 MyWisata 中的提款申请。到账时间取决于所选付款服务商（{{provider}}）。",
+      "moneyMovement": {
+        "title": "资金流向",
+        "reserved": "已预留收益",
+        "withdrawn": "已提现收益",
+        "earnings": "可用收益",
+        "pending": "等待付款服务商"
+      },
+      "timeline": {
+        "title": "结算时间线",
+        "requested": "已提交提现并预留资金",
+        "submitted": "已将获批付款提交给服务商",
+        "callbackVerified": "已收到服务商 callback 并验证签名",
+        "ledgerSettled": "钱包账本已结算"
+      },
+      "proof": {
+        "title": "付款证明",
+        "verified": "签名已验证",
+        "eventId": "服务商事件",
+        "amount": "金额",
+        "providerTime": "服务商时间",
+        "receivedTime": "MyWisata 接收时间",
+        "payloadHash": "Payload SHA-256",
+        "immutableNotice": "此不可篡改证明记录付款服务商报告的结果，客户和管理员均无法修改。"
+      },
       "guidance": {
         "failed": {
           "title": "付款失败 — 资金已退回",

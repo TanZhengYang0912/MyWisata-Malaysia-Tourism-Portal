@@ -2269,6 +2269,30 @@
       "payoutReference": "Rujukan pembayaran: {{reference}}",
       "reviewNote": "Nota semakan",
       "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MyWisata. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
+      "moneyMovement": {
+        "title": "Pergerakan wang",
+        "reserved": "Pendapatan dirizab",
+        "withdrawn": "Pendapatan dikeluarkan",
+        "earnings": "Pendapatan tersedia",
+        "pending": "Menunggu penyedia"
+      },
+      "timeline": {
+        "title": "Garis masa penyelesaian",
+        "requested": "Pengeluaran diminta dan dana dirizab",
+        "submitted": "Pembayaran diluluskan dihantar kepada penyedia",
+        "callbackVerified": "Panggilan balik penyedia diterima dan tandatangan disahkan",
+        "ledgerSettled": "Lejar dompet diselesaikan"
+      },
+      "proof": {
+        "title": "Bukti pembayaran",
+        "verified": "Tandatangan disahkan",
+        "eventId": "Peristiwa penyedia",
+        "amount": "Amaun",
+        "providerTime": "Masa penyedia",
+        "receivedTime": "Diterima MyWisata",
+        "payloadHash": "SHA-256 muatan",
+        "immutableNotice": "Bukti kekal ini merekodkan keputusan yang dilaporkan oleh penyedia. Pelanggan dan pentadbir tidak boleh mengubahnya."
+      },
       "guidance": {
         "failed": {
           "title": "Pembayaran gagal — dana dipulihkan",

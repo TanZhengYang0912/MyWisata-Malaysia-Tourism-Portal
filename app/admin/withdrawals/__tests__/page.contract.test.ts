@@ -54,6 +54,23 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('detail.payoutFailure');
   });
 
+  it('renders provider proof, ledger evidence, and reconciliation state without a paid action', () => {
+    expect(pageSource).toContain('detail.settlementProof');
+    expect(pageSource).toContain('withdrawals.settlementProof.noFurtherAction');
+    expect(pageSource).toContain('withdrawals.settlementProof.signatureVerified');
+    expect(pageSource).toContain('needsReconciliation');
+    expect(pageSource).toContain('notification.emailStatus');
+    expect(pageSource).not.toContain('Mark Paid');
+    expect(pageSource).not.toContain('Simulate Paid');
+  });
+
+  it('silently refreshes processing detail until terminal settlement', () => {
+    expect(pageSource).toContain('refreshDetail');
+    expect(pageSource).toContain('setInterval');
+    expect(pageSource).toContain('clearInterval');
+    expect(pageSource).toContain('["approved", "processing"].includes(detail.status)');
+  });
+
   it('shows decision-specific reason options only after a decision is selected', () => {
     expect(pageSource).toContain('t("withdrawals.decision.reasonLabel")');
     expect(pageSource).toContain('selectedDecision');
