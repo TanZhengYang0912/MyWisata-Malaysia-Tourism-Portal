@@ -411,6 +411,16 @@ export default function AdminRefundsPage() {
                             <p className="mt-1 truncate text-xs text-muted-foreground">
                               {refund.reason ?? t("refunds.detail.noReason")}
                             </p>
+                            {refund.failureCode && (
+                              <p className="mt-1 truncate font-[family-name:var(--font-mono)] text-[11px] font-semibold text-destructive">
+                                {refund.failureCode}
+                              </p>
+                            )}
+                            {refund.failureMessage && (
+                              <p className="mt-1 truncate text-[11px] text-destructive">
+                                {refund.failureMessage}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div>
