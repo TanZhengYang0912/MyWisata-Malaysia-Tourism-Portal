@@ -23,9 +23,13 @@
     "Chat Reports": "Laporan sembang",
     "Affiliate": "Afiliasi",
     "Chatbot": "Chatbot",
-    "AI Assistant": "Pembantu AI"
+    "AI Assistant": "Pembantu AI",
+    "Staff Conduct": "Kelakuan kakitangan"
   },
   "accessibility": {
+    "pendingItems": "{{count}} item perlu tindakan",
+    "pendingItems_one": "{{count}} item perlu tindakan",
+    "pendingItems_other": "{{count}} item perlu tindakan",
     "unreadRecommendations": "{{count}} cadangan belum dibaca",
     "unreadRecommendations_one": "{{count}} cadangan belum dibaca",
     "unreadRecommendations_other": "{{count}} cadangan belum dibaca"
@@ -760,7 +764,7 @@
       "pending_withdrawal_amount_rm": "Menunggu pengeluaran RM",
       "reserved_amount_rm": "Dikhaskan RM"
     },
-    "backToWithdrawals": "Kembali ke pengeluaran",
+    "backToWallet": "Kembali ke dompet",
     "balance": {
       "available": "Tersedia",
       "pendingEarnings": "Pendapatan tertunda",
@@ -884,6 +888,8 @@
       "pageNumber": "Nombor halaman",
       "pageOf": "Halaman {{page}} daripada {{total}}",
       "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
       "previous": "Sebelumnya",
       "previousPage": "Halaman sebelumnya",
       "perPage_one": "{{count}} setiap halaman",
@@ -1244,7 +1250,7 @@
         "reasonPlaceholder": "Terangkan perubahan polisi dan sebabnya.",
         "title": "Rekod audit"
       },
-      "backToWithdrawals": "Kembali ke pengeluaran",
+      "backToWallet": "Kembali ke dompet",
       "batch": {
         "confirmRevoke": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
         "revoked": "{{count}} pelulus dompet telah ditarik balik.",
@@ -1405,7 +1411,31 @@
       "reportedChat": "Sembang dilaporkan"
     },
     "filters": {
-      "showReviewed": "Tunjukkan yang disemak"
+      "showReviewed": "Tunjukkan yang disemak",
+      "search": "Cari rekod kelakuan",
+      "reviewState": "Status semakan",
+      "needsReview": "Perlu disemak",
+      "reviewed": "Disemak",
+      "allStatuses": "Semua status",
+      "recordType": "Jenis rekod",
+      "allRecordTypes": "Semua jenis rekod",
+      "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
+      "perPageAriaLabel": "Baris setiap halaman",
+      "previousPage": "Halaman sebelumnya",
+      "nextPage": "Halaman seterusnya",
+      "pageOf": "Halaman {{page}} daripada {{total}}"
+    },
+    "metrics": {
+      "ariaLabel": "Ringkasan semakan kelakuan",
+      "needsAction": "Perlu tindakan",
+      "flaggedConduct": "Kelakuan ditandai",
+      "reportedChat": "Sembang dilaporkan",
+      "highSeverity": "Keterukan tinggi",
+      "reviewed": "Disemak",
+      "openRecords": "Rekod terbuka",
+      "reviewedRecords": "Rekod disemak"
     },
     "kindLabel": {
       "flag": "Ditanda",
@@ -1438,7 +1468,8 @@
       "nothingToReview": "Tiada perkara untuk disemak.",
       "allReportsReviewed": "Semua laporan telah disemak.",
       "noReportedChats": "Tiada sembang dilaporkan.",
-      "allReviewed": "Semuanya telah disemak."
+      "allReviewed": "Semuanya telah disemak.",
+      "noMatchingRecords": "Tiada rekod kelakuan sepadan dengan penapis ini."
     },
     "actions": {
       "viewLog": "Lihat log",
@@ -2066,6 +2097,7 @@
     },
     "empty": {
       "description": "Permintaan bayaran balik pelanggan baharu akan muncul di sini.",
+      "noMatches": "Tiada permintaan bayaran balik sepadan dengan penapis anda.",
       "title": "Tiada permintaan bayaran balik"
     },
     "errors": {
@@ -2076,9 +2108,34 @@
     "header": {
       "description": "Luluskan atau tolak bayaran balik pelanggan. Penyedia simulator kekal tidak segerak sehingga keputusan bertandatangan diterima.",
       "eyebrow": "Pembayaran",
+      "oldestFirst": "Paling lama dahulu",
+      "queueClear": "Barisan kosong",
+      "reviewPriority": "Keutamaan semakan",
       "title": "Permintaan Bayaran Balik"
     },
+    "age": {
+      "daysHours": "{{days}}h {{hours}}j",
+      "hours": "{{count}}j",
+      "lessThanHour": "<1j"
+    },
+    "filters": {
+      "allStatuses": "Semua status",
+      "perPage": "{{count}} setiap halaman",
+      "searchOrderOrProvider": "Cari pesanan atau penyedia"
+    },
     "loading": "Memuatkan permintaan bayaran balik…",
+    "metrics": {
+      "awaitingProvider": "Menunggu penyedia",
+      "completed": "Selesai",
+      "failed": "Gagal",
+      "needsAction": "Perlu tindakan",
+      "needsAttention": "Perlu perhatian",
+      "pendingRefundValue": "Nilai bayaran balik tertunda",
+      "processed": "Diproses",
+      "requestsInQueue": "Permintaan dalam barisan ini",
+      "simulatedProviders": "Penyedia simulasi",
+      "visiblePageTotal": "Jumlah halaman yang kelihatan"
+    },
     "providers": {
       "bankTransferSimulator": "Pindahan bank — Simulasi",
       "grabpaySimulator": "GrabPay — Simulasi",
@@ -2091,9 +2148,28 @@
       "description": "Kawalan penyedia di bawah menguji webhook bertandatangan, idempotensi, lejar dan mesin keadaan bayaran balik. Tiada wang sebenar bergerak.",
       "label": "Sandbox / Simulasi:"
     },
+    "queue": {
+      "description": "Buka satu baris apabila status bayaran balik atau bukti penyedia memerlukan semakan lanjut.",
+      "noOpenRequests": "Tiada permintaan terbuka",
+      "oldestRequest": "Permintaan paling lama {{age}}",
+      "title": "Barisan semakan ({{count}})"
+    },
     "status": {
+      "approved": "Diluluskan",
+      "failed": "Gagal",
+      "pending": "Menunggu",
       "processed": "Diproses",
+      "rejected": "Ditolak",
       "simulated": "SIMULASI"
+    },
+    "table": {
+      "actions": "Tindakan",
+      "age": "Umur",
+      "amount": "Jumlah",
+      "attempts": "Percubaan",
+      "provider": "Penyedia",
+      "request": "Permintaan",
+      "status": "Status"
     },
     "attempt_one": "Percubaan {{count}}",
     "attempt_other": "Percubaan {{count}}"

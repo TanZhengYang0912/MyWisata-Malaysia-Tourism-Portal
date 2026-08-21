@@ -23,9 +23,13 @@
     "Chat Reports": "Chat Reports",
     "Affiliate": "Affiliate",
     "Chatbot": "Chatbot",
-    "AI Assistant": "AI Assistant"
+    "AI Assistant": "AI Assistant",
+    "Staff Conduct": "Staff Conduct"
   },
   "accessibility": {
+    "pendingItems": "{{count}} items needing attention",
+    "pendingItems_one": "{{count}} item needing attention",
+    "pendingItems_other": "{{count}} items needing attention",
     "unreadRecommendations": "{{count}} unread recommendations",
     "unreadRecommendations_one": "{{count}} unread recommendations",
     "unreadRecommendations_other": "{{count}} unread recommendations"
@@ -760,7 +764,7 @@
       "pending_withdrawal_amount_rm": "Pending withdrawal RM",
       "reserved_amount_rm": "Reserved RM"
     },
-    "backToWithdrawals": "Back to withdrawals",
+    "backToWallet": "Back to wallet",
     "balance": {
       "available": "Available",
       "pendingEarnings": "Pending earnings",
@@ -884,6 +888,8 @@
       "pageNumber": "Page number",
       "pageOf": "Page {{page}} of {{total}}",
       "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
       "previous": "Previous",
       "previousPage": "Previous page",
       "perPage_one": "{{count}} per page",
@@ -1244,7 +1250,7 @@
         "reasonPlaceholder": "Describe the policy change and its reason.",
         "title": "Audit record"
       },
-      "backToWithdrawals": "Back to withdrawals",
+      "backToWallet": "Back to wallet",
       "batch": {
         "confirmRevoke": "Revoke wallet approval access for {{count}} selected approvers?",
         "revoked": "{{count}} wallet approvers revoked.",
@@ -1405,7 +1411,31 @@
       "reportedChat": "Reported Chat"
     },
     "filters": {
-      "showReviewed": "Show reviewed"
+      "showReviewed": "Show reviewed",
+      "search": "Search conduct records",
+      "reviewState": "Review status",
+      "needsReview": "Needs review",
+      "reviewed": "Reviewed",
+      "allStatuses": "All statuses",
+      "recordType": "Record type",
+      "allRecordTypes": "All record types",
+      "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
+      "perPageAriaLabel": "Rows per page",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "pageOf": "Page {{page}} of {{total}}"
+    },
+    "metrics": {
+      "ariaLabel": "Conduct review summary",
+      "needsAction": "Needs action",
+      "flaggedConduct": "Flagged conduct",
+      "reportedChat": "Reported chat",
+      "highSeverity": "High severity",
+      "reviewed": "Reviewed",
+      "openRecords": "Open records",
+      "reviewedRecords": "Reviewed records"
     },
     "kindLabel": {
       "flag": "Flagged",
@@ -1438,7 +1468,8 @@
       "nothingToReview": "Nothing to review.",
       "allReportsReviewed": "All reports reviewed.",
       "noReportedChats": "No chats have been reported.",
-      "allReviewed": "Everything has been reviewed."
+      "allReviewed": "Everything has been reviewed.",
+      "noMatchingRecords": "No conduct records match these filters."
     },
     "actions": {
       "viewLog": "View log",
@@ -2066,6 +2097,7 @@
     },
     "empty": {
       "description": "New customer refund requests will appear here.",
+      "noMatches": "No refund requests match your filters.",
       "title": "No refund requests"
     },
     "errors": {
@@ -2076,9 +2108,34 @@
     "header": {
       "description": "Approve or reject customer refunds. Simulator providers remain asynchronous until a signed result is received.",
       "eyebrow": "Payments",
+      "oldestFirst": "Oldest first",
+      "queueClear": "Queue clear",
+      "reviewPriority": "Review priority",
       "title": "Refund Requests"
     },
     "loading": "Loading refund requests…",
+    "age": {
+      "daysHours": "{{days}}d {{hours}}h",
+      "hours": "{{count}}h",
+      "lessThanHour": "<1h"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "perPage": "{{count}} per page",
+      "searchOrderOrProvider": "Search order or provider"
+    },
+    "metrics": {
+      "awaitingProvider": "Awaiting provider",
+      "completed": "Completed",
+      "failed": "Failed",
+      "needsAction": "Needs action",
+      "needsAttention": "Needs attention",
+      "pendingRefundValue": "Pending refund value",
+      "processed": "Processed",
+      "requestsInQueue": "Requests in this queue",
+      "simulatedProviders": "Simulated providers",
+      "visiblePageTotal": "Visible page total"
+    },
     "providers": {
       "bankTransferSimulator": "Bank transfer — Simulator",
       "grabpaySimulator": "GrabPay — Simulator",
@@ -2091,9 +2148,28 @@
       "description": "Provider controls below exercise the signed webhook, idempotency, ledger and refund state machine. No real money moves.",
       "label": "Sandbox / Simulated:"
     },
+    "queue": {
+      "description": "Open a row when the refund status or provider evidence needs a closer look.",
+      "noOpenRequests": "No open requests",
+      "oldestRequest": "Oldest request {{age}}",
+      "title": "Review queue ({{count}})"
+    },
     "status": {
+      "approved": "Approved",
+      "failed": "Failed",
+      "pending": "Pending",
       "processed": "Processed",
+      "rejected": "Rejected",
       "simulated": "SIMULATED"
+    },
+    "table": {
+      "actions": "Actions",
+      "age": "Age",
+      "amount": "Amount",
+      "attempts": "Attempts",
+      "provider": "Provider",
+      "request": "Request",
+      "status": "Status"
     },
     "attempt_one": "Attempt {{count}}",
     "attempt_other": "Attempt {{count}}"

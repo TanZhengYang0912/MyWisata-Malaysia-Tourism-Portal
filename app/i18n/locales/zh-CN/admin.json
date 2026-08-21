@@ -23,9 +23,13 @@
     "Chat Reports": "聊天举报",
     "Affiliate": "联盟",
     "Chatbot": "聊天机器人",
-    "AI Assistant": "AI 助手"
+    "AI Assistant": "AI 助手",
+    "Staff Conduct": "员工行为"
   },
   "accessibility": {
+    "pendingItems": "{{count}} 项待处理",
+    "pendingItems_one": "{{count}} 项待处理",
+    "pendingItems_other": "{{count}} 项待处理",
     "unreadRecommendations": "{{count}} 条推荐未读",
     "unreadRecommendations_one": "{{count}} 条推荐未读",
     "unreadRecommendations_other": "{{count}} 条推荐未读"
@@ -760,7 +764,7 @@
       "pending_withdrawal_amount_rm": "待处理提现 RM",
       "reserved_amount_rm": "预留 RM"
     },
-    "backToWithdrawals": "返回提现",
+    "backToWallet": "返回钱包",
     "balance": {
       "available": "可用",
       "pendingEarnings": "待处理收益",
@@ -1244,7 +1248,7 @@
         "reasonPlaceholder": "说明政策更改及其理由。",
         "title": "审计记录"
       },
-      "backToWithdrawals": "返回提款",
+      "backToWallet": "返回钱包",
       "batch": {
         "confirmRevoke": "要撤销选中的 {{count}} 名审批人的钱包审批权限吗？",
         "revoked": "已撤销 {{count}} 名钱包审批人。",
@@ -1405,7 +1409,31 @@
       "reportedChat": "被举报的聊天"
     },
     "filters": {
-      "showReviewed": "显示已审核"
+      "showReviewed": "显示已审核",
+      "search": "搜索行为记录",
+      "reviewState": "审核状态",
+      "needsReview": "待审核",
+      "reviewed": "已审核",
+      "allStatuses": "全部状态",
+      "recordType": "记录类型",
+      "allRecordTypes": "全部记录类型",
+      "perPage": "每页 {{count}} 条",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
+      "perPageAriaLabel": "每页行数",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
+      "pageOf": "第 {{page}} 页，共 {{total}} 页"
+    },
+    "metrics": {
+      "ariaLabel": "行为审核摘要",
+      "needsAction": "需要处理",
+      "flaggedConduct": "已标记行为",
+      "reportedChat": "被举报聊天",
+      "highSeverity": "高严重性",
+      "reviewed": "已审核",
+      "openRecords": "待处理记录",
+      "reviewedRecords": "已审核记录"
     },
     "kindLabel": {
       "flag": "已标记",
@@ -1438,7 +1466,8 @@
       "nothingToReview": "没有待审核内容。",
       "allReportsReviewed": "所有举报均已审核。",
       "noReportedChats": "暂无被举报的聊天。",
-      "allReviewed": "所有内容均已审核。"
+      "allReviewed": "所有内容均已审核。",
+      "noMatchingRecords": "没有符合这些筛选条件的行为记录。"
     },
     "actions": {
       "viewLog": "查看记录",
@@ -2066,6 +2095,7 @@
     },
     "empty": {
       "description": "新的客户退款申请会显示在这里。",
+      "noMatches": "没有符合筛选条件的退款申请。",
       "title": "没有退款申请"
     },
     "errors": {
@@ -2076,9 +2106,34 @@
     "header": {
       "description": "批准或拒绝客户退款。模拟服务商会保持异步，直到收到签名结果。",
       "eyebrow": "支付",
+      "oldestFirst": "最早优先",
+      "queueClear": "队列为空",
+      "reviewPriority": "审核优先级",
       "title": "退款申请"
     },
+    "age": {
+      "daysHours": "{{days}}天 {{hours}}小时",
+      "hours": "{{count}}小时",
+      "lessThanHour": "少于 1 小时"
+    },
+    "filters": {
+      "allStatuses": "全部状态",
+      "perPage": "每页 {{count}} 条",
+      "searchOrderOrProvider": "搜索订单或服务商"
+    },
     "loading": "正在加载退款申请…",
+    "metrics": {
+      "awaitingProvider": "等待服务商",
+      "completed": "已完成",
+      "failed": "失败",
+      "needsAction": "需要操作",
+      "needsAttention": "需要关注",
+      "pendingRefundValue": "待退款金额",
+      "processed": "已处理",
+      "requestsInQueue": "队列中的申请",
+      "simulatedProviders": "模拟服务商",
+      "visiblePageTotal": "当前页总数"
+    },
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
@@ -2091,9 +2146,28 @@
       "description": "下方服务商控制项会演练签名 webhook、幂等性、账本和退款状态机。不会发生真实资金流动。",
       "label": "沙盒 / 模拟："
     },
+    "queue": {
+      "description": "当退款状态或服务商证据需要进一步查看时，打开对应行。",
+      "noOpenRequests": "没有开放申请",
+      "oldestRequest": "最早申请 {{age}}",
+      "title": "审核队列（{{count}}）"
+    },
     "status": {
+      "approved": "已批准",
+      "failed": "失败",
+      "pending": "待处理",
       "processed": "已处理",
+      "rejected": "已拒绝",
       "simulated": "模拟"
+    },
+    "table": {
+      "actions": "操作",
+      "age": "时长",
+      "amount": "金额",
+      "attempts": "尝试次数",
+      "provider": "服务商",
+      "request": "申请",
+      "status": "状态"
     },
     "attempt_one": "第 {{count}} 次尝试",
     "attempt_other": "第 {{count}} 次尝试"
