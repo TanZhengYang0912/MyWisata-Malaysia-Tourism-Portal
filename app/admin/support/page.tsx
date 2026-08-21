@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -323,25 +325,18 @@ function AdminSupportContent() {
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4">{t("ui.support.title")}</h1>
+    <AdminPageShell>
+      <AdminPageHeader title={t("ui.support.title")} />
 
       <ModerationFlagsPanel />
 
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {[
-            { label: t("ui.support.status.open"), value: stats.open, alert: false },
-            { label: t("ui.support.status.inProgress"), value: stats.inProgress, alert: false },
-            { label: t("ui.support.status.resolved"), value: stats.resolved, alert: false },
-            { label: t("ui.support.unanswered"), value: stats.unanswered, alert: stats.unanswered > 0 },
-          ].map((card) => (
-            <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-              <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
-              <p className={`mt-4 text-3xl font-bold tracking-[-0.05em] ${card.alert ? "text-destructive" : "text-foreground"}`}>{card.value}</p>
-            </div>
-          ))}
-        </div>
+        <AdminMetricGrid items={[
+          { label: t("ui.support.status.open"), value: stats.open },
+          { label: t("ui.support.status.inProgress"), value: stats.inProgress },
+          { label: t("ui.support.status.resolved"), value: stats.resolved },
+          { label: t("ui.support.unanswered"), value: stats.unanswered, tone: stats.unanswered > 0 ? "text-destructive" : undefined },
+        ]} />
       )}
       {stats?.avgFirstResponseHours !== null && stats?.avgFirstResponseHours !== undefined && (
         <p className="text-xs text-muted-foreground mb-4">
@@ -351,7 +346,7 @@ function AdminSupportContent() {
         </p>
       )}
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <AdminFilterBar className="mb-6">
         <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-foreground">
             <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); }} />
@@ -366,14 +361,14 @@ function AdminSupportContent() {
           <select
             value={sortKey}
             onChange={(e) => { setSortKey(e.target.value as SortKey); setTicketPage(1); }}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
               <option key={k} value={k}>{t(SORT_LABEL[k])}</option>
             ))}
           </select>
           <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setTicketPage(1); }}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className={`${adminFilterControlClassName} w-40`}>
               <SelectValue placeholder={t("ui.support.category")} />
             </SelectTrigger>
             <SelectContent>
@@ -384,7 +379,7 @@ function AdminSupportContent() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setTicketPage(1); }}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className={`${adminFilterControlClassName} w-36`}>
               <SelectValue placeholder={t("ui.support.statusLabel")} />
             </SelectTrigger>
             <SelectContent>
@@ -395,14 +390,14 @@ function AdminSupportContent() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </AdminFilterBar>
 
       {tickets === null ? (
         <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
       ) : tickets.length === 0 ? (
         <EmptyState title={t("ui.support.empty")} />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("ui.support.selectAllVisible")} checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">{t("ui.batch.selectAllOnPage")}</span></div>
           <AdminBatchActionBar selectedCount={visibleTickets.filter((ticket) => selectedIds.has(ticket.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved")} actions={[{ value: "resolved", label: t("ui.support.markResolved") }]} busy={batchBusy} />
           <div className="divide-y divide-border">
@@ -580,7 +575,7 @@ function AdminSupportContent() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageShell>
   );
 }
 

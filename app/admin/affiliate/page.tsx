@@ -12,6 +12,8 @@ import { FraudTypeBarChart, FraudSeverityDonut } from "@/components/shared/fraud
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { FraudAnalytics, FraudAnalyticsRange } from "@/lib/affiliate/fraud-analytics";
 import { useTranslation } from "react-i18next";
@@ -439,22 +441,17 @@ export default function AdminAffiliatePage() {
   }
 
   if (stats === undefined) {
-    return <div className="p-8 text-sm text-muted-foreground">{t("affiliate.loading")}</div>;
+    return <AdminPageShell><AdminPageHeader title={t("affiliate.title")} /><p className="text-sm text-muted-foreground">{t("affiliate.loading")}</p></AdminPageShell>;
   }
   if (stats === null) {
-    return (
-      <EmptyState
-        title={t("affiliate.errors.loadTitle")}
-        description={t("affiliate.errors.loadDescription")}
-      />
-    );
+    return <AdminPageShell><AdminPageHeader title={t("affiliate.title")} /><EmptyState title={t("affiliate.errors.loadTitle")} description={t("affiliate.errors.loadDescription")} /></AdminPageShell>;
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-1">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("affiliate.title")}</h1>
-        <div className="text-right flex items-start gap-2">
+    <AdminPageShell>
+      <AdminPageHeader
+        title={t("affiliate.title")}
+        actions={<div className="flex items-start gap-2 text-right">
           <div>
             <Button size="sm" variant="outline" onClick={exportPdf} disabled={exportingPdf}>
               <Download size={13} /> {exportingPdf ? t("affiliate.exporting") : t("affiliate.exportPdf")}
@@ -472,8 +469,8 @@ export default function AdminAffiliatePage() {
             </Button>
             {sweepResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[220px]">{sweepResult}</p>}
           </div>
-        </div>
-      </div>
+        </div>}
+      />
       <div className="rounded-xl bg-card p-4 mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">{t("affiliate.commissionTiers")}</p>
         <div className="space-y-2">
@@ -522,19 +519,12 @@ export default function AdminAffiliatePage() {
         {tierError && <p className="text-[0.6875rem] text-destructive mt-2">{tierError}</p>}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {[
+      <AdminMetricGrid items={[
           { label: t("affiliate.metrics.affiliates"), value: String(stats.totals.totalAffiliates) },
           { label: t("affiliate.metrics.clicks"), value: String(stats.totals.totalClicks) },
           { label: t("affiliate.metrics.referrals"), value: String(stats.totals.totalReferrals) },
           { label: t("affiliate.metrics.commission"), value: `RM ${stats.totals.totalCommission.toFixed(2)}` },
-        ].map((card) => (
-          <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-            <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
-            <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{card.value}</p>
-          </div>
-        ))}
-      </div>
+      ]} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
@@ -635,8 +625,7 @@ export default function AdminAffiliatePage() {
         <p className="text-sm text-muted-foreground mb-6">{t("affiliate.errors.loadFraudAnalytics")}</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-            {[
+          <AdminMetricGrid items={[
               { label: t("affiliate.analytics.totalFlags"), value: String(fraudAnalytics.headline.totalFlags) },
               { label: t("affiliate.analytics.selfReferrals"), value: String(fraudAnalytics.headline.selfReferralsBlocked) },
               { label: t("affiliate.analytics.duplicatePayouts"), value: String(fraudAnalytics.headline.duplicatePayoutsPrevented) },
@@ -647,13 +636,7 @@ export default function AdminAffiliatePage() {
                   ? t("affiliate.analytics.openPercentage", { percent: Math.round((fraudAnalytics.headline.openFlags / fraudAnalytics.headline.totalFlags) * 100) })
                   : "—",
               },
-            ].map((card) => (
-              <div key={card.label} className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-                <p className="text-sm font-semibold text-muted-foreground">{card.label}</p>
-                <p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{card.value}</p>
-              </div>
-            ))}
-          </div>
+          ]} />
 
           <div className="rounded-xl bg-card p-4 mb-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
             <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">{t("affiliate.analytics.flagsOverTime")}</p>
@@ -695,13 +678,13 @@ export default function AdminAffiliatePage() {
         </>
       )}
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <AdminFilterBar className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.fraudFlags")}</p>
         <div className="flex items-center gap-2">
           <select
             value={fraudTypeFilter}
             onChange={(e) => setFraudTypeFilter(e.target.value)}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allTypes")}</option>
             {Object.entries(FLAG_TYPE_LABEL).map(([key, label]) => (
@@ -713,7 +696,7 @@ export default function AdminAffiliatePage() {
           <select
             value={fraudSeverityFilter}
             onChange={(e) => setFraudSeverityFilter(e.target.value)}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allSeverities")}</option>
             <option value="high">{t("affiliate.severity.high")}</option>
@@ -723,17 +706,17 @@ export default function AdminAffiliatePage() {
           <select
             value={fraudStatusFilter}
             onChange={(e) => setFraudStatusFilter(e.target.value)}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allStatuses")}</option>
             <option value="open">{t("filters.open")}</option>
             <option value="reviewed">{t("affiliate.status.reviewed")}</option>
-            <option value={t("chatReports.resolutions.dismissed")}>{t("filters.dismissed")}</option>
+            <option value="dismissed">{t("filters.dismissed")}</option>
           </select>
         </div>
-      </div>
+      </AdminFilterBar>
 
-      <div className="rounded-xl overflow-hidden bg-card mb-6" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+      <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("affiliate.accessibility.selectAllFlags")} checked={filteredFraudFlags.length > 0 && filteredFraudFlags.filter((flag) => flag.status === "open").every((flag) => selectedFlagIds.has(flag.id))} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); filteredFraudFlags.filter((flag) => flag.status === "open").forEach((flag) => event.target.checked ? next.add(flag.id) : next.delete(flag.id)); return next; })} /><span className="text-muted-foreground">{t("affiliate.selectAllOpen")}</span></div>
         <AdminBatchActionBar selectedCount={filteredFraudFlags.filter((flag) => selectedFlagIds.has(flag.id)).length} onClear={() => setSelectedFlagIds(new Set())} onApply={(action) => void applyFlagBatch(action as "dismiss" | "confirm")} actions={[{ value: "dismiss", label: t("batchActions.dismiss") }, { value: "confirm", label: t("batchActions.confirm") }]} busy={batchBusy} />
         <table className="w-full text-sm">
@@ -810,19 +793,19 @@ export default function AdminAffiliatePage() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <AdminFilterBar className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.allAttributions")}</p>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-[220px] flex-1 items-center gap-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("affiliate.searchPlaceholder")}
-            className="h-8 rounded-lg border border-border px-3 text-xs bg-background text-foreground"
+            className={`${adminFilterControlClassName} min-w-0 flex-1`}
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             <option value="all">{t("affiliate.filters.allStatuses")}</option>
             <option value="pending">{t("affiliate.status.pending")}</option>
@@ -831,9 +814,9 @@ export default function AdminAffiliatePage() {
             <option value="rejected">{t("affiliate.status.rejected")}</option>
           </select>
         </div>
-      </div>
+      </AdminFilterBar>
 
-      <div className="rounded-xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
@@ -905,6 +888,6 @@ export default function AdminAffiliatePage() {
           </tbody>
         </table>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

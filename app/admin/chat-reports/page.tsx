@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Flag, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { Textarea } from "@/components/ui/textarea";
@@ -287,8 +289,13 @@ export default function AdminChatReportsPage() {
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl mb-4 flex items-center gap-2"><Flag size={18} /> {t("chatReports.title")}</h1>
+    <AdminPageShell>
+      <AdminPageHeader title={t("chatReports.title")} />
+
+      <AdminMetricGrid items={[
+        { label: t("chatReports.tabs.pending"), value: openCount },
+        { label: t("chatReports.tabs.resolved"), value: closedCount },
+      ]} />
 
       {archiveDays !== null && (
         <div className="mb-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-3 text-xs" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
@@ -317,21 +324,21 @@ export default function AdminChatReportsPage() {
         />
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
-        <div className="relative w-64">
+      <AdminFilterBar className="mb-6">
+        <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("chatReports.searchPlaceholder")}
-            className="h-8 w-full rounded-lg border border-border pl-8 pr-2 text-xs bg-background text-foreground"
+            className={`${adminFilterControlClassName} w-full pl-8`}
           />
         </div>
         <div className="flex items-center gap-2">
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-8 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+            className={adminFilterControlClassName}
           >
             <option value="newest">{t("chatReports.sort.newest")}</option>
             <option value="oldest">{t("chatReports.sort.oldest")}</option>
@@ -339,18 +346,18 @@ export default function AdminChatReportsPage() {
           </select>
           {statusTab === "closed" && (
             <Select value={closedStatusFilter} onValueChange={(v) => setClosedStatusFilter(v as ClosedStatusFilter)}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className={`${adminFilterControlClassName} w-32`}>
                 <SelectValue placeholder={t("chatReports.filters.outcome")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("chatReports.filters.resolvedDismissed")}</SelectItem>
-                <SelectItem value={t("chatReports.resolutions.resolved")}>{t("chatReports.filters.resolvedOnly")}</SelectItem>
-                <SelectItem value={t("chatReports.resolutions.dismissed")}>{t("chatReports.filters.dismissedOnly")}</SelectItem>
+                <SelectItem value="resolved">{t("chatReports.filters.resolvedOnly")}</SelectItem>
+                <SelectItem value="dismissed">{t("chatReports.filters.dismissedOnly")}</SelectItem>
               </SelectContent>
             </Select>
           )}
           <Select value={reasonFilter} onValueChange={(v) => setReasonFilter(v as ReasonFilter)}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className={`${adminFilterControlClassName} w-36`}>
               <SelectValue placeholder={t("chatReports.filters.reason")} />
             </SelectTrigger>
             <SelectContent>
@@ -361,7 +368,7 @@ export default function AdminChatReportsPage() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </AdminFilterBar>
 
       {reports === null ? (
         <p className="text-sm text-muted-foreground">{t("chatReports.loading")}</p>
@@ -539,6 +546,6 @@ export default function AdminChatReportsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageShell>
   );
 }
