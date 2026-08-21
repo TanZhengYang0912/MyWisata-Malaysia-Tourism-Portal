@@ -8,6 +8,8 @@
 
 `vendor_recommendations.vendor_name`, `vendors.name`, `outlets.name`, and `products.name` store one source-language value. The UI locale files can translate system-owned labels, but cannot translate an arbitrary recommendation or business name. Replacing the source field with AI output would break search, deduplication, vendor identity, and brand names.
 
+A recommendation currently collects a Google Maps place or dropped pin (`google_place_id`, formatted address, latitude, and longitude), not a MyWisata `places` record. Google identifies the real-world business location; it must not be mistaken for the platform's curated state, region, or POI hierarchy.
+
 ## Decisions
 
 - The submitted English name remains the immutable source value for recommendation matching and audit.
@@ -15,6 +17,8 @@
 - Brand and registered names default to the source value. A draft may provide a local display form or transliteration, but it must be approved by an administrator or the claimed vendor before customers see it.
 - System labels and canonical state names continue using static i18n resources; they do not enter the AI translation pipeline. For example, English `Penang` resolves to Chinese `槟城` and Malay `Pulau Pinang` before public content is rendered.
 - Geographic hierarchy is translated independently from commercial content. A `place` is platform-maintained geography/editorial content; it can have approved translations for its POI name, tagline, and introduction. A vendor, outlet, or product is only linked to that place by IDs and never supplies, inherits, or overwrites the place translation.
+- A recommender selects a Google location, never an internal Area. The system may derive a candidate MyWisata Place from the address and coordinates, but a Super Admin must confirm or clear that candidate before it becomes the recommendation's internal geographic association.
+- Google `place_id` and MyWisata `places.id` are separate identifiers. The former is external location evidence; the latter is curated platform geography.
 - Translation generation starts only after an administrator has approved a recommendation. This prevents spending AI calls on spam, duplicates, rejected submissions, and private contact data.
 - The first delivery uses an administrator-triggered “Generate translations” action after approval. It can later be invoked by a scheduler without changing the data model.
 
@@ -44,14 +48,28 @@ content_translations (
 
 `source_hash` marks a draft stale when a vendor edits its English source text. The table stores no contact details, storage paths, or full recommendation evidence.
 
+The recommendation migration adds an optional, auditable internal geographic resolution:
+
+```sql
+vendor_recommendations (
+  suggested_place_id uuid references places(id) on delete set null,
+  resolved_place_id uuid references places(id) on delete set null,
+  place_resolution_status text check (place_resolution_status in ('unresolved','suggested','confirmed','cleared'))
+)
+```
+
+`suggested_place_id` is a non-authoritative server calculation from the Google address/coordinates. `resolved_place_id` changes only through Super Admin review. A valid recommendation may remain unresolved when no appropriate Area or POI exists.
+
 ## Workflow
 
 1. A customer submits a recommendation in English. The existing recommendation RPC stores only the original value and returns normally; submission is never delayed by an AI call.
-2. A Super Admin approves the recommendation, verifies it is a real business, then requests Chinese and Malay drafts from the existing server-side AI provider abstraction.
-3. The translation prompt receives only the field value, source language, target locale, content type, and a rule to retain registered/brand names unless a natural local display form is clear. It never receives the recommender identity, phone, email, website, images, or storage paths.
-4. Each result is stored as `draft`. The administrator can edit and approve it; after a vendor claims the recommendation, the vendor may propose edits but cannot self-approve public copy.
-5. Public display resolves an approved translation for the active locale and the current source hash. If none exists or it is stale, it shows the original source value.
-6. When a recommendation is converted to a vendor, translation records are copied only when the final vendor field exactly equals the recommendation source. Otherwise the new vendor field receives fresh drafts.
+2. The server derives a non-authoritative internal Place candidate from the Google address and coordinates. It does not turn a Google `place_id` into a MyWisata Place ID.
+3. A Super Admin verifies the business and confirms, changes, or clears the suggested Area/POI. The recommendation may remain geographically unresolved.
+4. After approval, the Super Admin requests Chinese and Malay drafts from the existing server-side AI provider abstraction.
+5. The translation prompt receives only the field value, source language, target locale, content type, and a rule to retain registered/brand names unless a natural local display form is clear. It never receives the recommender identity, phone, email, website, images, or storage paths.
+6. Each result is stored as `draft`. The administrator can edit and approve it; after a vendor claims the recommendation, the vendor may propose edits but cannot self-approve public copy.
+7. Public display resolves an approved translation for the active locale and the current source hash. If none exists or it is stale, it shows the original source value.
+8. When a recommendation is converted to a vendor, translation records are copied only when the final vendor field exactly equals the recommendation source. Otherwise the new vendor field receives fresh drafts.
 
 ## Geographic Display Rules
 
@@ -71,7 +89,7 @@ content_translations (
 
 ## Delivery Phases
 
-1. **Recommendation drafts:** migration, Super Admin generation/review UI, and tests for source preservation, authorization, idempotency, and no-private-data prompt content.
+1. **Recommendation geography and drafts:** migration for internal Place candidates/resolution, Super Admin resolution and translation-review UI, and tests for source preservation, authorization, idempotency, no-private-data prompt content, and no Google-to-Place identifier conflation.
 2. **Public resolver:** reusable server/client resolver for approved `vendor_recommendation` and `vendor` names, with locale fallback tests.
 3. **Broadened content:** add reviewed place POI/tagline/intro translations, then reuse the same table and resolver for outlet and product names/descriptions after their owner/admin editing policy is approved. Canonical state labels remain static i18n from the start.
 
