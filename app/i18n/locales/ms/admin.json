@@ -23,9 +23,13 @@
     "Chat Reports": "Laporan sembang",
     "Affiliate": "Afiliasi",
     "Chatbot": "Chatbot",
-    "AI Assistant": "Pembantu AI"
+    "AI Assistant": "Pembantu AI",
+    "Staff Conduct": "Kelakuan kakitangan"
   },
   "accessibility": {
+    "pendingItems": "{{count}} item perlu tindakan",
+    "pendingItems_one": "{{count}} item perlu tindakan",
+    "pendingItems_other": "{{count}} item perlu tindakan",
     "unreadRecommendations": "{{count}} cadangan belum dibaca",
     "unreadRecommendations_one": "{{count}} cadangan belum dibaca",
     "unreadRecommendations_other": "{{count}} cadangan belum dibaca"
@@ -69,6 +73,7 @@
     "revoke": "Tarik balik"
   },
   "affiliate": {
+    "eyebrow": "Perkongsian pasaran",
     "accessibility": {
       "selectAllFlags": "Pilih semua bendera penipuan terbuka yang kelihatan",
       "selectFlag": "Pilih bendera penipuan untuk {{name}}"
@@ -409,6 +414,7 @@
     "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}"
   },
   "chatReports": {
+    "eyebrow": "Kepercayaan & keselamatan",
     "accessibility": {
       "selectReport": "Pilih laporan sembang {{id}}",
       "selectAll": "Pilih semua laporan sembang yang kelihatan",
@@ -674,6 +680,11 @@
       "noSubmission": "Tiada data penyerahan",
       "notAvailable": "Tidak tersedia"
     },
+    "filters": {
+      "allStatuses": "Semua status semakan",
+      "search": "Cari nama, e-mel atau jenis dokumen",
+      "status": "Tapis mengikut status semakan"
+    },
     "metrics": {
       "infoRequested": "Maklumat diminta",
       "infoRequestedNote": "Menunggu tindakan pelanggan",
@@ -755,7 +766,7 @@
       "pending_withdrawal_amount_rm": "Menunggu pengeluaran RM",
       "reserved_amount_rm": "Dikhaskan RM"
     },
-    "backToWithdrawals": "Kembali ke pengeluaran",
+    "backToWallet": "Kembali ke dompet",
     "balance": {
       "available": "Tersedia",
       "pendingEarnings": "Pendapatan tertunda",
@@ -879,6 +890,8 @@
       "pageNumber": "Nombor halaman",
       "pageOf": "Halaman {{page}} daripada {{total}}",
       "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
       "previous": "Sebelumnya",
       "previousPage": "Halaman sebelumnya",
       "perPage_one": "{{count}} setiap halaman",
@@ -897,7 +910,7 @@
         "processed_other": "{{count}} cadangan telah diproses."
       },
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
-      "description": "Luluskan cadangan berkualiti untuk tindakan susulan. Kelulusan tidak menerbitkan vendor; pautkan cadangan yang diluluskan daripada Pengurusan Vendor selepas vendor menyertai supaya atribusi dan komisen kekal dilampirkan.",
+      "description": "Semak cadangan komuniti sebelum menghubungi vendor.",
       "duplicate": "Pendua",
       "member": "Ahli MyWisata",
       "noPending": "Tiada cadangan belum selesai",
@@ -923,6 +936,7 @@
       "selectRecommendation": "Pilih cadangan {{name}}",
       "subtitle": "Vendor dan lokasi menarik tersembunyi yang dihantar komuniti.",
       "title": "Moderasi Cadangan",
+      "eyebrow": "Operasi pasaran",
       "pending_one": "Belum selesai ({{count}})",
       "pending_other": "Belum selesai ({{count}})",
       "reviewed_one": "Disemak ({{count}})",
@@ -932,6 +946,7 @@
       "loadingEllipsis": "Memuatkan…"
     },
     "support": {
+      "eyebrow": "Sokongan pelanggan",
       "allCategories": "Semua kategori",
       "allStatuses": "Semua status",
       "assignedToMe": "Ditugaskan kepada saya",
@@ -962,6 +977,7 @@
       "replySent": "Balasan sokongan dihantar.",
       "selectAllVisible": "Pilih semua tiket sokongan yang kelihatan",
       "selectTicket": "Pilih tiket sokongan {{subject}}",
+      "searchPlaceholder": "Cari tiket, pelanggan atau kategori…",
       "sort": {
         "category": "Kategori",
         "dateCreated": "Tarikh dicipta",
@@ -1239,7 +1255,7 @@
         "reasonPlaceholder": "Terangkan perubahan polisi dan sebabnya.",
         "title": "Rekod audit"
       },
-      "backToWithdrawals": "Kembali ke pengeluaran",
+      "backToWallet": "Kembali ke dompet",
       "batch": {
         "confirmRevoke": "Tarik balik akses kelulusan dompet untuk {{count}} pelulus yang dipilih?",
         "revoked": "{{count}} pelulus dompet telah ditarik balik.",
@@ -1388,6 +1404,9 @@
       "markReviewed": "Tanda telah disemak",
       "reviewed": "Disemak",
       "viewTicket": "Lihat tiket",
+      "flagsCount": "{{count}} bendera",
+      "showDetails": "Tunjukkan butiran",
+      "hideDetails": "Sembunyikan butiran",
       "openCount_one": "{{count}} terbuka",
       "openCount_other": "{{count}} terbuka"
     }
@@ -1400,7 +1419,31 @@
       "reportedChat": "Sembang dilaporkan"
     },
     "filters": {
-      "showReviewed": "Tunjukkan yang disemak"
+      "showReviewed": "Tunjukkan yang disemak",
+      "search": "Cari rekod kelakuan",
+      "reviewState": "Status semakan",
+      "needsReview": "Perlu disemak",
+      "reviewed": "Disemak",
+      "allStatuses": "Semua status",
+      "recordType": "Jenis rekod",
+      "allRecordTypes": "Semua jenis rekod",
+      "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
+      "perPageAriaLabel": "Baris setiap halaman",
+      "previousPage": "Halaman sebelumnya",
+      "nextPage": "Halaman seterusnya",
+      "pageOf": "Halaman {{page}} daripada {{total}}"
+    },
+    "metrics": {
+      "ariaLabel": "Ringkasan semakan kelakuan",
+      "needsAction": "Perlu tindakan",
+      "flaggedConduct": "Kelakuan ditandai",
+      "reportedChat": "Sembang dilaporkan",
+      "highSeverity": "Keterukan tinggi",
+      "reviewed": "Disemak",
+      "openRecords": "Rekod terbuka",
+      "reviewedRecords": "Rekod disemak"
     },
     "kindLabel": {
       "flag": "Ditanda",
@@ -1433,7 +1476,8 @@
       "nothingToReview": "Tiada perkara untuk disemak.",
       "allReportsReviewed": "Semua laporan telah disemak.",
       "noReportedChats": "Tiada sembang dilaporkan.",
-      "allReviewed": "Semuanya telah disemak."
+      "allReviewed": "Semuanya telah disemak.",
+      "noMatchingRecords": "Tiada rekod kelakuan sepadan dengan penapis ini."
     },
     "actions": {
       "viewLog": "Lihat log",
@@ -1536,6 +1580,7 @@
       "emailUnavailable": "E-mel tidak tersedia",
       "errors": {
         "loadFailed": "Tidak dapat memuatkan cadangan.",
+        "localizationFailed": "Tidak dapat mengemas kini lokasi atau terjemahan cadangan.",
         "reasonTooShort": "Jelaskan keputusan dengan sekurang-kurangnya 10 aksara.",
         "reviewFailed": "Semakan gagal."
       },
@@ -1583,6 +1628,25 @@
       "vendorConversion": "Penukaran vendor",
       "vendorOutreach": "Hubungan vendor",
       "vendorOutreachHint": "Rangka jemputan dengan AI, semak mesej, kemudian hantarkannya kepada vendor.",
+      "localization": {
+        "title": "Draf lokasi dan bahasa",
+        "hint": "Lokasi Google ialah bukti luaran. Sahkan Kawasan dalaman sebelum digunakan oleh platform; draf terjemahan kekal peribadi sehingga diluluskan.",
+        "suggestPlace": "Cadangkan Kawasan",
+        "confirmPlace": "Sahkan {{name}}",
+        "clearPlace": "Kosongkan Kawasan disahkan",
+        "generate": "Jana draf Cina & Melayu",
+        "suggested": "Kawasan dicadangkan",
+        "confirmed": "Kawasan disahkan",
+        "draftLabel": "{{field}} · {{locale}}",
+        "approveDraft": "Luluskan draf",
+        "rejectDraft": "Tolak draf",
+        "draftsGenerated": "Draf Cina dan Melayu dijana.",
+        "placeUpdated": "Resolusi Kawasan dikemas kini.",
+        "draftApproved": "Draf terjemahan diluluskan.",
+        "draftRejected": "Draf terjemahan ditolak.",
+        "fields": { "name": "Nama perniagaan", "description": "Penerangan" },
+        "status": { "draft": "Draf", "approved": "Diluluskan", "rejected": "Ditolak", "stale": "Lapuk" }
+      },
       "confirm": {
         "approveTitle": "Luluskan cadangan?",
         "rejectTitle": "Tolak cadangan?",
@@ -1908,6 +1972,28 @@
         "retryable": "Sahkan penyedia dan destinasi pembayaran tersedia, kemudian gunakan Cuba semula pembayaran. Kelulusan sedia ada akan dikekalkan."
       }
     },
+    "settlementProof": {
+      "title": "Bukti penyelesaian",
+      "noFurtherAction": "Keputusan penyedia telah diterima. Tiada kelulusan pembayaran lanjut diperlukan.",
+      "awaitingProvider": "Menunggu panggilan balik penyedia yang ditandatangani. Tiada kelulusan pembayaran tambahan diperlukan.",
+      "provider": "Penyedia",
+      "payoutReference": "Rujukan pembayaran",
+      "eventId": "Peristiwa penyedia",
+      "eventStatus": "Status penyedia",
+      "amount": "Amaun",
+      "providerTime": "Masa penyedia",
+      "receivedTime": "Diterima MyWisata",
+      "signatureVerified": "Tandatangan disahkan",
+      "payloadHash": "SHA-256 muatan",
+      "deliveryStatus": "Penghantaran panggilan balik",
+      "attempts": "Percubaan penghantaran",
+      "emailStatus": "Pemberitahuan e-mel",
+      "ledgerTitle": "Pergerakan lejar dompet",
+      "noLedger": "Belum ada catatan lejar penyelesaian.",
+      "reconciliationTitle": "Penyelarasan diperlukan",
+      "reconciliationMessage": "Tugasan panggilan balik memerlukan penyelarasan. Jangan cuba semula atau meluluskan pembayaran ini lagi sehingga peristiwa penyedia diselaraskan.",
+      "immutableNotice": "Peristiwa penyedia dan lejar penyelesaiannya ialah bukti audit yang tidak boleh diubah."
+    },
     "priority": {
       "highRisk": "Risiko tinggi",
       "needsAction": "Perlu tindakan",
@@ -2019,6 +2105,7 @@
     },
     "empty": {
       "description": "Permintaan bayaran balik pelanggan baharu akan muncul di sini.",
+      "noMatches": "Tiada permintaan bayaran balik sepadan dengan penapis anda.",
       "title": "Tiada permintaan bayaran balik"
     },
     "errors": {
@@ -2029,9 +2116,34 @@
     "header": {
       "description": "Luluskan atau tolak bayaran balik pelanggan. Penyedia simulator kekal tidak segerak sehingga keputusan bertandatangan diterima.",
       "eyebrow": "Pembayaran",
+      "oldestFirst": "Paling lama dahulu",
+      "queueClear": "Barisan kosong",
+      "reviewPriority": "Keutamaan semakan",
       "title": "Permintaan Bayaran Balik"
     },
+    "age": {
+      "daysHours": "{{days}}h {{hours}}j",
+      "hours": "{{count}}j",
+      "lessThanHour": "<1j"
+    },
+    "filters": {
+      "allStatuses": "Semua status",
+      "perPage": "{{count}} setiap halaman",
+      "searchOrderOrProvider": "Cari pesanan atau penyedia"
+    },
     "loading": "Memuatkan permintaan bayaran balik…",
+    "metrics": {
+      "awaitingProvider": "Menunggu penyedia",
+      "completed": "Selesai",
+      "failed": "Gagal",
+      "needsAction": "Perlu tindakan",
+      "needsAttention": "Perlu perhatian",
+      "pendingRefundValue": "Nilai bayaran balik tertunda",
+      "processed": "Diproses",
+      "requestsInQueue": "Permintaan dalam barisan ini",
+      "simulatedProviders": "Penyedia simulasi",
+      "visiblePageTotal": "Jumlah halaman yang kelihatan"
+    },
     "providers": {
       "bankTransferSimulator": "Pindahan bank — Simulasi",
       "grabpaySimulator": "GrabPay — Simulasi",
@@ -2044,15 +2156,35 @@
       "description": "Kawalan penyedia di bawah menguji webhook bertandatangan, idempotensi, lejar dan mesin keadaan bayaran balik. Tiada wang sebenar bergerak.",
       "label": "Sandbox / Simulasi:"
     },
+    "queue": {
+      "description": "Buka satu baris apabila status bayaran balik atau bukti penyedia memerlukan semakan lanjut.",
+      "noOpenRequests": "Tiada permintaan terbuka",
+      "oldestRequest": "Permintaan paling lama {{age}}",
+      "title": "Barisan semakan ({{count}})"
+    },
     "status": {
+      "approved": "Diluluskan",
+      "failed": "Gagal",
+      "pending": "Menunggu",
       "processed": "Diproses",
+      "rejected": "Ditolak",
       "simulated": "SIMULASI"
+    },
+    "table": {
+      "actions": "Tindakan",
+      "age": "Umur",
+      "amount": "Jumlah",
+      "attempts": "Percubaan",
+      "provider": "Penyedia",
+      "request": "Permintaan",
+      "status": "Status"
     },
     "attempt_one": "Percubaan {{count}}",
     "attempt_other": "Percubaan {{count}}"
   },
   "strictMigration": {
     "staffConduct": {
+      "eyebrow": "Operasi tadbir urus",
       "restricted": "Semakan kelakuan kakitangan terhad kepada pentadbir super.",
       "title": "Kelakuan kakitangan",
       "description": "Kelakuan pentadbir yang ditandai dan laporan sembang yang dihantar manusia untuk semakan pentadbir super.",

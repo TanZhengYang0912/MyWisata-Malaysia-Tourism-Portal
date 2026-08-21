@@ -3,6 +3,8 @@ import { cn } from "@/components/utils";
 
 const CUSTOMER_PAGE_SHELL_CLASS =
   "mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8";
+const CUSTOMER_PAGE_WIDE_SHELL_CLASS =
+  "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10";
 
 const CUSTOMER_PAGE_TITLE_CLASS =
   "mx-auto w-full max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10";
@@ -10,8 +12,8 @@ const CUSTOMER_PAGE_TITLE_CLASS =
 const CUSTOMER_PANEL_CLASS =
   "rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6";
 
-export function CustomerPageShell({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn(CUSTOMER_PAGE_SHELL_CLASS, className)}>{children}</div>;
+export function CustomerPageShell({ children, className, wide = false }: { children: ReactNode; className?: string; wide?: boolean }) {
+  return <div className={cn(wide ? CUSTOMER_PAGE_WIDE_SHELL_CLASS : CUSTOMER_PAGE_SHELL_CLASS, className)}>{children}</div>;
 }
 
 type CustomerPageHeaderProps = {

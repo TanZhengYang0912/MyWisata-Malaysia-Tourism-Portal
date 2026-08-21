@@ -13,6 +13,7 @@ describe("root locale hydration contract", () => {
     expect(layoutSource).toContain('const englishResources = locale === "en" ? resources : await loadLocaleResources("en");');
     expect(layoutSource).toContain("const resourcesByLocale: AppI18nResources = {");
     expect(layoutSource).toMatch(/<html[\s\S]*lang=\{locale\}/);
+    expect(layoutSource).toMatch(/<html[\s\S]*translate="no"/);
   });
 
   it("keeps the existing feedback, auth, and cart provider relationship inside i18n", () => {

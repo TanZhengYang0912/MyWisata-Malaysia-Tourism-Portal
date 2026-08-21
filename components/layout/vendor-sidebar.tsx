@@ -3,14 +3,12 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, LogOut, ShieldCheck, Building2, Bell, Store, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, ShieldCheck, Building2, Bell, Store, type LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
-import { AppearanceControl } from '@/components/shared/appearance-control';
-import { LanguageSwitcher } from '@/components/shared/language-switcher';
 
 type VendorNavItem = { href: string; activeHref?: string; label: string; icon: LucideIcon };
 
@@ -40,9 +38,7 @@ const OUTLET_MANAGER_NAV: VendorNavItem[] = [
 
 export default function VendorSidebar() {
   const { t: tVendor } = useTranslation('vendor');
-  const { t: tCommon } = useTranslation('common');
   const pathname = usePathname();
-  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { user, loading, isOutletManager } = useAuth();
   const nav = isOutletManager ? OUTLET_MANAGER_NAV : NAV;
@@ -72,15 +68,9 @@ export default function VendorSidebar() {
     };
   }, [supabase, user?.id]);
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  }
-
   return (
-      <aside className="fixed top-0 left-0 bottom-0 w-60 bg-gray-900 text-gray-200 flex flex-col z-40">
-        <div className="px-5 py-5 border-b border-gray-700">
+      <aside className="fixed bottom-0 left-0 top-0 z-40 flex w-60 flex-col bg-gray-900 text-gray-200">
+        <div className="flex h-16 items-center border-b border-gray-700 px-5">
         <p className="text-xs text-gray-400 uppercase tracking-wider">{tVendor('shell.portal')}</p>
         <p className="font-semibold text-white mt-0.5">{tVendor('shell.brand')}</p>
         {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> {tVendor('shell.outletOperations')}</p>}
@@ -105,16 +95,6 @@ export default function VendorSidebar() {
           </Link>
         ))}
       </nav>
-      <div className="border-t border-gray-700 px-2 py-2">
-        <LanguageSwitcher compact />
-        <AppearanceControl variant="sidebar-dark" />
-      </div>
-      <button
-        onClick={signOut}
-        className="flex items-center gap-3 px-5 py-4 text-sm text-gray-400 hover:text-red-400 border-t border-gray-700 transition-colors"
-      >
-        <LogOut size={17} /> {tCommon('actions.signOut')}
-      </button>
     </aside>
   );
 }

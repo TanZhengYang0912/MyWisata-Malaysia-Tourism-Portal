@@ -57,6 +57,18 @@ export interface AdminRecommendationDetail {
     vendorId: string;
     vendorName: string | null;
   } | null;
+  localization: {
+    suggestedPlace: { id: string; name: string; level: string } | null;
+    resolvedPlace: { id: string; name: string; level: string } | null;
+    translations: Array<{
+      id: string;
+      field: 'name' | 'description';
+      locale: 'zh-CN' | 'ms';
+      sourceText: string;
+      translatedText: string;
+      status: 'draft' | 'approved' | 'rejected' | 'stale';
+    }>;
+  };
 }
 
 export interface RecommendationDetailRow {
@@ -84,6 +96,8 @@ export interface RecommendationDetailRow {
   changes_requested_at: string | null;
   changes_requested_reason: string | null;
   converted_vendor_id: string | null;
+  suggested_place_id?: string | null;
+  resolved_place_id?: string | null;
   created_at: string;
   categories: { name: string } | Array<{ name: string }> | null;
 }
@@ -107,6 +121,16 @@ interface SignedImageRow {
   signedUrl: string;
 }
 
+type PlaceSummaryRow = { id: string; name: string; level: string };
+type TranslationSummaryRow = {
+  id: string;
+  field: 'name' | 'description';
+  locale: 'zh-CN' | 'ms';
+  source_text: string;
+  translated_text: string;
+  status: 'draft' | 'approved' | 'rejected' | 'stale';
+};
+
 function relationName(relation: RecommendationDetailRow['categories']) {
   if (Array.isArray(relation)) return relation[0]?.name ?? null;
   return relation?.name ?? null;
@@ -118,6 +142,9 @@ export function buildAdminRecommendationDetail(input: {
   reviewer: UserSummaryRow | null;
   convertedVendor: ConvertedVendorRow | null;
   images: SignedImageRow[];
+  suggestedPlace?: PlaceSummaryRow | null;
+  resolvedPlace?: PlaceSummaryRow | null;
+  translations?: TranslationSummaryRow[];
 }): AdminRecommendationDetail {
   const { recommendation: row } = input;
   const hasLocation = Boolean(
@@ -186,5 +213,17 @@ export function buildAdminRecommendationDetail(input: {
       vendorId: row.converted_vendor_id,
       vendorName: input.convertedVendor?.name ?? null,
     } : null,
+    localization: {
+      suggestedPlace: input.suggestedPlace ?? null,
+      resolvedPlace: input.resolvedPlace ?? null,
+      translations: (input.translations ?? []).map((translation) => ({
+        id: translation.id,
+        field: translation.field,
+        locale: translation.locale,
+        sourceText: translation.source_text,
+        translatedText: translation.translated_text,
+        status: translation.status,
+      })),
+    },
   };
 }

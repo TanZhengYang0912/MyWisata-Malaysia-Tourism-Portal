@@ -16,6 +16,12 @@ describe("nearby outlets section", () => {
   it("links every row to the outlet's shop page", () => {
     expect(nearbySource).toContain("getOutletShopHref");
     expect(nearbySource).toContain("href={getOutletShopHref(outlet.id)}");
+    expect(nearbySource.match(/t\("ui\.nearbyOutlets\.viewShop", \{ name: outlet\.name \}\)/g)).toHaveLength(2);
+  });
+
+  it("uses the existing category translation key for a nearby outlet badge", () => {
+    expect(nearbySource).toContain("getOptionalDiscoveryCategoryLabelKey");
+    expect(nearbySource).toContain("t(categoryKey)");
   });
 
   it("groups type and distance filters and defaults to a local radius", () => {

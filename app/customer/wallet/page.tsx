@@ -139,6 +139,32 @@ function WalletContent() {
     }
   }, [currentUser, tCustomer]);
 
+  const refreshWalletState = useCallback(async () => {
+    if (!currentUser) return;
+    const [summaryResponse, nextWithdrawals] = await Promise.all([
+      fetch("/api/wallet/summary", { cache: "no-store" }),
+      getMyWithdrawals(currentUser.id),
+    ]);
+    const body = await summaryResponse.json() as {
+      data?: {
+        topupSen: number;
+        earningsSen: number;
+        pendingEarningsSen: number;
+        reservedEarningsSen: number;
+        withdrawnEarningsSen: number;
+      };
+    };
+    const summary = body.data;
+    setBuckets(summary ? {
+      topup: summary.topupSen / 100,
+      earnings: summary.earningsSen / 100,
+      pendingEarnings: summary.pendingEarningsSen / 100,
+      reservedEarnings: summary.reservedEarningsSen / 100,
+      withdrawnEarnings: summary.withdrawnEarningsSen / 100,
+    } : null);
+    setWithdrawals(nextWithdrawals);
+  }, [currentUser]);
+
   useEffect(() => {
     if (!currentUser) {
       setBuckets(null);
@@ -147,24 +173,25 @@ function WalletContent() {
       setSelectedDestinationId("");
       return;
     }
-    fetch('/api/wallet/summary').then((response) => response.json()).then((body) => {
-      const summary = body.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
-      setBuckets(summary ? {
-        topup: summary.topupSen / 100,
-        earnings: summary.earningsSen / 100,
-        pendingEarnings: summary.pendingEarningsSen / 100,
-        reservedEarnings: summary.reservedEarningsSen / 100,
-        withdrawnEarnings: summary.withdrawnEarningsSen / 100,
-      } : null);
-    });
-    getMyWithdrawals(currentUser.id).then(setWithdrawals);
+    void refreshWalletState();
     fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
       const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
       setDestinations(nextDestinations);
       if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
       setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
     }).catch(() => setDestinations([]));
-  }, [currentUser]);
+  }, [currentUser, refreshWalletState]);
+
+  useEffect(() => {
+    if (!currentUser || !withdrawals?.some((withdrawal) => ['approved', 'processing'].includes(withdrawal.status))) return;
+    let refreshInFlight = false;
+    const interval = window.setInterval(() => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+      void refreshWalletState().finally(() => { refreshInFlight = false; });
+    }, 4_000);
+    return () => window.clearInterval(interval);
+  }, [currentUser, refreshWalletState, withdrawals]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -367,7 +394,7 @@ function WalletContent() {
         icon={<Wallet size={14} />}
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       {/* ── Banners ── */}
       {withdrawalSubmitted ? (

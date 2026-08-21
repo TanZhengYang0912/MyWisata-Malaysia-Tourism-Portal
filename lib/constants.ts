@@ -39,7 +39,8 @@ export const ORDER_STATUS = [
 ] as const;
 
 export const WITHDRAWAL_STATUS = [
-  'pending', 'approved', 'rejected', 'processing', 'completed',
+  'pending', 'pending_second_approval', 'hold', 'overdue', 'approved',
+  'processing', 'paid', 'completed', 'failed', 'rejected',
 ] as const;
 
 export const ROLE_NAMES = [

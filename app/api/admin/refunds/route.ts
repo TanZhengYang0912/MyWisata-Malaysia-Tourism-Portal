@@ -17,7 +17,7 @@ export async function GET() {
   const service = createServiceClient();
   const { data, error } = await service
     .from('refunds')
-    .select('id,order_id,amount,reason,status,provider_refund_id,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(order_number)')
+    .select('id,order_id,amount,reason,status,provider_refund_id,provider_failure_code,provider_failure_message,attempt_count,created_at,updated_at,payments(method,provider),orders(display_id)')
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
@@ -28,7 +28,7 @@ export async function GET() {
     return {
       id: refund.id,
       orderId: refund.order_id,
-      orderNumber: order?.order_number ?? null,
+      orderNumber: order?.display_id ?? null,
       amountRm: Number(refund.amount),
       reason: refund.reason ?? null,
       status: refund.status,

@@ -139,7 +139,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
         icon={<CalendarDays size={14} />}
         className="mb-6"
       />
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
         <section aria-label={tCustomer("ui.booking.calendar")} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
           <div className="border-b border-border">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">

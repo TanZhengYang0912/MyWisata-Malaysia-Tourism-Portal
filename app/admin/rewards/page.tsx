@@ -7,6 +7,7 @@ import { supabase } from "@/backend/supabase";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 interface PendingSummary {
   count: number;
@@ -69,20 +70,17 @@ export default function AdminRewardsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10">
-      <div className="flex items-center gap-3 mb-8">
-        <Award size={22} className="text-primary" />
-        <div>
-          <h1 className="text-xl font-bold text-foreground">{t("rewards.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("rewards.description")}
-          </p>
-        </div>
-      </div>
+    <AdminPageShell>
+      <div className="mx-auto w-full max-w-2xl space-y-6">
+        <AdminPageHeader
+          eyebrow={<span className="flex items-center gap-2"><Award size={14} /> {t("rewards.title")}</span>}
+          title={t("rewards.title")}
+          description={t("rewards.description")}
+        />
 
       {/* Pending summary */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="rounded-xl border border-border p-5">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1.5">
             <Clock size={12} /> {t("rewards.readyToConfirm")}
           </p>
@@ -93,7 +91,7 @@ export default function AdminRewardsPage() {
           )}
           <p className="text-xs text-muted-foreground mt-1">{t("rewards.pastHoldWindow")}</p>
         </div>
-        <div className="rounded-xl border border-border p-5">
+        <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{t("rewards.totalValue")}</p>
           {loading ? (
             <p className="text-2xl font-bold text-foreground">—</p>
@@ -107,7 +105,7 @@ export default function AdminRewardsPage() {
       </div>
 
       {/* Run clearance */}
-      <div className="rounded-xl border border-border p-6">
+      <div className="rounded-2xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-foreground mb-1">{t("rewards.runNow")}</p>
         <p className="text-xs text-muted-foreground mb-4">
           {t("rewards.runDescription")}
@@ -135,7 +133,7 @@ export default function AdminRewardsPage() {
       </div>
 
       {/* Commission tiers info */}
-      <div className="rounded-xl border border-border p-6 mt-6">
+      <div className="rounded-2xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-foreground mb-3">{t("rewards.tierRates")}</p>
         <table className="w-full text-sm">
           <thead>
@@ -160,6 +158,7 @@ export default function AdminRewardsPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </AdminPageShell>
   );
 }

@@ -41,7 +41,7 @@ function providerConfig(): ProviderConfig | null {
 export async function generateAiText(
   systemPrompt: string,
   userPrompt: string,
-  options: { temperature?: number; maxTokens?: number } = {},
+  options: { temperature?: number; maxTokens?: number; signal?: AbortSignal } = {},
 ): Promise<AiTextResult> {
   const config = providerConfig();
   if (!config) return { available: false, reason: 'not_configured' };
@@ -50,6 +50,7 @@ export async function generateAiText(
   let sawRateLimit = false;
 
   for (const model of config.models) {
+    if (options.signal?.aborted) return { available: false, reason: 'unavailable' };
     try {
       const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
@@ -67,6 +68,7 @@ export async function generateAiText(
           max_tokens: maxTokens,
         }),
         cache: 'no-store',
+        signal: options.signal,
       });
 
       if (response.status === 429) {
@@ -89,6 +91,7 @@ export async function generateAiText(
         return { available: true, provider: config.provider, model, content: content.trim() };
       }
     } catch (error) {
+      if (options.signal?.aborted) return { available: false, reason: 'unavailable' };
       console.error('[ai] provider request failed', error instanceof Error ? error.message : error);
     }
   }

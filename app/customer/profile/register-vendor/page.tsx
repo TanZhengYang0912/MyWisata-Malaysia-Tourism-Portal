@@ -33,7 +33,7 @@ export default async function RegisterVendorPage() {
           description={t(`ui.profile.vendorStatus.${vendor.status}`)}
           icon={<Store size={14} />}
         />
-        <CustomerPageShell className="pt-0 sm:pt-0">
+        <CustomerPageShell wide className="pt-0 sm:pt-0">
           <Link href="/customer/profile" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <span aria-hidden="true">←</span> {t('ui.profile.backToProfile')}
           </Link>
@@ -60,7 +60,7 @@ export default async function RegisterVendorPage() {
         className="mb-6"
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
         <Link href="/customer/profile" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <span aria-hidden="true">←</span> {t('ui.profile.backToProfile')}
         </Link>

@@ -27,6 +27,7 @@ export interface NotifyParams {
   title: string;
   body?: string;
   link?: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface AuditResult {
@@ -57,6 +58,7 @@ export async function auditAndNotify(
       title:   n.title,
       body:    n.body ?? null,
       link:    n.link ?? null,
+      metadata: n.metadata ?? {},
     })),
   });
 

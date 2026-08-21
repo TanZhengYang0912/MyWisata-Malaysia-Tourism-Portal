@@ -172,7 +172,7 @@ export default function KycPage() {
         icon={<ShieldCheck size={14} />}
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       {isVerified && continuation && <div className="mb-6"><Button asChild><Link href={continuation}>{tCustomer("ui.kyc.continue")}</Link></Button></div>}
 

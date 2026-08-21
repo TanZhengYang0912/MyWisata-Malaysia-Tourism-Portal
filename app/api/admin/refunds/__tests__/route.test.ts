@@ -40,7 +40,7 @@ describe('GET /api/admin/refunds', () => {
       created_at: '2026-08-17T00:00:00.000Z',
       updated_at: '2026-08-17T00:01:00.000Z',
       payments: { method: 'ewallet', provider: 'tng_ewallet_simulator' },
-      orders: { order_number: 'MW-1001' },
+      orders: { display_id: 'ORD-1001' },
     }]));
   });
 
@@ -52,7 +52,7 @@ describe('GET /api/admin/refunds', () => {
     expect(body.data.refunds[0]).toEqual({
       id: REFUND_ID,
       orderId: '1d4057cf-c821-4b05-a454-61dbdc42d32c',
-      orderNumber: 'MW-1001',
+      orderNumber: 'ORD-1001',
       amountRm: 50,
       reason: 'Customer request',
       status: 'approved',

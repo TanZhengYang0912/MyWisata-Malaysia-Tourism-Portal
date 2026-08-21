@@ -23,9 +23,13 @@
     "Chat Reports": "Chat Reports",
     "Affiliate": "Affiliate",
     "Chatbot": "Chatbot",
-    "AI Assistant": "AI Assistant"
+    "AI Assistant": "AI Assistant",
+    "Staff Conduct": "Staff Conduct"
   },
   "accessibility": {
+    "pendingItems": "{{count}} items needing attention",
+    "pendingItems_one": "{{count}} item needing attention",
+    "pendingItems_other": "{{count}} items needing attention",
     "unreadRecommendations": "{{count}} unread recommendations",
     "unreadRecommendations_one": "{{count}} unread recommendations",
     "unreadRecommendations_other": "{{count}} unread recommendations"
@@ -69,6 +73,7 @@
     "revoke": "Revoke"
   },
   "affiliate": {
+    "eyebrow": "Marketplace partnerships",
     "accessibility": {
       "selectAllFlags": "Select all visible open fraud flags",
       "selectFlag": "Select fraud flag for {{name}}"
@@ -409,6 +414,7 @@
     "questionMeta_other": "×{{count}} · last asked {{date}}"
   },
   "chatReports": {
+    "eyebrow": "Trust & safety",
     "accessibility": {
       "selectReport": "Select chat report {{id}}",
       "selectAll": "Select all visible chat reports",
@@ -674,6 +680,11 @@
       "noSubmission": "No submission data",
       "notAvailable": "Not available"
     },
+    "filters": {
+      "allStatuses": "All review statuses",
+      "search": "Search name, email or document type",
+      "status": "Filter by review status"
+    },
     "metrics": {
       "infoRequested": "Information requested",
       "infoRequestedNote": "Waiting for customer action",
@@ -755,7 +766,7 @@
       "pending_withdrawal_amount_rm": "Pending withdrawal RM",
       "reserved_amount_rm": "Reserved RM"
     },
-    "backToWithdrawals": "Back to withdrawals",
+    "backToWallet": "Back to wallet",
     "balance": {
       "available": "Available",
       "pendingEarnings": "Pending earnings",
@@ -879,6 +890,8 @@
       "pageNumber": "Page number",
       "pageOf": "Page {{page}} of {{total}}",
       "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
       "previous": "Previous",
       "previousPage": "Previous page",
       "perPage_one": "{{count}} per page",
@@ -897,7 +910,7 @@
         "processed_other": "{{count}} recommendations processed."
       },
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
-      "description": "Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.",
+      "description": "Review community recommendations before vendor outreach.",
       "duplicate": "Duplicate",
       "member": "MyWisata member",
       "noPending": "No pending recommendations",
@@ -923,6 +936,7 @@
       "selectRecommendation": "Select recommendation {{name}}",
       "subtitle": "Community-submitted vendors and hidden gems.",
       "title": "Recommendation Moderation",
+      "eyebrow": "Marketplace operations",
       "pending_one": "Pending ({{count}})",
       "pending_other": "Pending ({{count}})",
       "reviewed_one": "Reviewed ({{count}})",
@@ -932,6 +946,7 @@
       "loadingEllipsis": "Loading…"
     },
     "support": {
+      "eyebrow": "Customer support",
       "allCategories": "All categories",
       "allStatuses": "All statuses",
       "assignedToMe": "Assigned to me",
@@ -962,6 +977,7 @@
       "replySent": "Support reply sent.",
       "selectAllVisible": "Select all visible support tickets",
       "selectTicket": "Select support ticket {{subject}}",
+      "searchPlaceholder": "Search tickets, customer or category…",
       "sort": {
         "category": "Category",
         "dateCreated": "Date created",
@@ -1239,7 +1255,7 @@
         "reasonPlaceholder": "Describe the policy change and its reason.",
         "title": "Audit record"
       },
-      "backToWithdrawals": "Back to withdrawals",
+      "backToWallet": "Back to wallet",
       "batch": {
         "confirmRevoke": "Revoke wallet approval access for {{count}} selected approvers?",
         "revoked": "{{count}} wallet approvers revoked.",
@@ -1388,6 +1404,9 @@
       "markReviewed": "Mark reviewed",
       "reviewed": "Reviewed",
       "viewTicket": "View ticket",
+      "flagsCount": "{{count}} flags",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
       "openCount_one": "{{count}} open",
       "openCount_other": "{{count}} open"
     }
@@ -1400,7 +1419,31 @@
       "reportedChat": "Reported Chat"
     },
     "filters": {
-      "showReviewed": "Show reviewed"
+      "showReviewed": "Show reviewed",
+      "search": "Search conduct records",
+      "reviewState": "Review status",
+      "needsReview": "Needs review",
+      "reviewed": "Reviewed",
+      "allStatuses": "All statuses",
+      "recordType": "Record type",
+      "allRecordTypes": "All record types",
+      "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
+      "perPageAriaLabel": "Rows per page",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "pageOf": "Page {{page}} of {{total}}"
+    },
+    "metrics": {
+      "ariaLabel": "Conduct review summary",
+      "needsAction": "Needs action",
+      "flaggedConduct": "Flagged conduct",
+      "reportedChat": "Reported chat",
+      "highSeverity": "High severity",
+      "reviewed": "Reviewed",
+      "openRecords": "Open records",
+      "reviewedRecords": "Reviewed records"
     },
     "kindLabel": {
       "flag": "Flagged",
@@ -1433,7 +1476,8 @@
       "nothingToReview": "Nothing to review.",
       "allReportsReviewed": "All reports reviewed.",
       "noReportedChats": "No chats have been reported.",
-      "allReviewed": "Everything has been reviewed."
+      "allReviewed": "Everything has been reviewed.",
+      "noMatchingRecords": "No conduct records match these filters."
     },
     "actions": {
       "viewLog": "View log",
@@ -1536,6 +1580,7 @@
       "emailUnavailable": "Email unavailable",
       "errors": {
         "loadFailed": "Unable to load recommendation.",
+        "localizationFailed": "Unable to update recommendation localization.",
         "reasonTooShort": "Please explain the decision in at least 10 characters.",
         "reviewFailed": "Review failed."
       },
@@ -1583,6 +1628,25 @@
       "vendorConversion": "Vendor conversion",
       "vendorOutreach": "Vendor outreach",
       "vendorOutreachHint": "Draft an invitation with AI, review the message, then send it to the vendor.",
+      "localization": {
+        "title": "Location and language drafts",
+        "hint": "Google location is external evidence. Confirm an internal Area before it is used by the platform; translation drafts stay private until approved.",
+        "suggestPlace": "Suggest Area",
+        "confirmPlace": "Confirm {{name}}",
+        "clearPlace": "Clear confirmed Area",
+        "generate": "Generate Chinese & Malay drafts",
+        "suggested": "Suggested Area",
+        "confirmed": "Confirmed Area",
+        "draftLabel": "{{field}} · {{locale}}",
+        "approveDraft": "Approve draft",
+        "rejectDraft": "Reject draft",
+        "draftsGenerated": "Chinese and Malay drafts generated.",
+        "placeUpdated": "Area resolution updated.",
+        "draftApproved": "Translation draft approved.",
+        "draftRejected": "Translation draft rejected.",
+        "fields": { "name": "Business name", "description": "Description" },
+        "status": { "draft": "Draft", "approved": "Approved", "rejected": "Rejected", "stale": "Stale" }
+      },
       "confirm": {
         "approveTitle": "Approve recommendation?",
         "rejectTitle": "Reject recommendation?",
@@ -1908,6 +1972,28 @@
         "retryable": "Confirm the provider and payout destination are available, then use Retry payout. The existing approval will be preserved."
       }
     },
+    "settlementProof": {
+      "title": "Settlement proof",
+      "noFurtherAction": "Provider result received. No further payout approval is required.",
+      "awaitingProvider": "Waiting for the signed provider callback. No additional payout approval is required.",
+      "provider": "Provider",
+      "payoutReference": "Payout reference",
+      "eventId": "Provider event",
+      "eventStatus": "Provider status",
+      "amount": "Amount",
+      "providerTime": "Provider time",
+      "receivedTime": "MyWisata received",
+      "signatureVerified": "Signature verified",
+      "payloadHash": "Payload SHA-256",
+      "deliveryStatus": "Callback delivery",
+      "attempts": "Delivery attempts",
+      "emailStatus": "Email notification",
+      "ledgerTitle": "Wallet ledger movement",
+      "noLedger": "No settlement ledger entry yet.",
+      "reconciliationTitle": "Reconciliation required",
+      "reconciliationMessage": "The callback job needs reconciliation. Do not retry or approve this payout again until the provider event is reconciled.",
+      "immutableNotice": "This provider event and its settlement ledger are immutable audit evidence."
+    },
     "priority": {
       "highRisk": "High risk",
       "needsAction": "Needs action",
@@ -2019,6 +2105,7 @@
     },
     "empty": {
       "description": "New customer refund requests will appear here.",
+      "noMatches": "No refund requests match your filters.",
       "title": "No refund requests"
     },
     "errors": {
@@ -2029,9 +2116,34 @@
     "header": {
       "description": "Approve or reject customer refunds. Simulator providers remain asynchronous until a signed result is received.",
       "eyebrow": "Payments",
+      "oldestFirst": "Oldest first",
+      "queueClear": "Queue clear",
+      "reviewPriority": "Review priority",
       "title": "Refund Requests"
     },
     "loading": "Loading refund requests…",
+    "age": {
+      "daysHours": "{{days}}d {{hours}}h",
+      "hours": "{{count}}h",
+      "lessThanHour": "<1h"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "perPage": "{{count}} per page",
+      "searchOrderOrProvider": "Search order or provider"
+    },
+    "metrics": {
+      "awaitingProvider": "Awaiting provider",
+      "completed": "Completed",
+      "failed": "Failed",
+      "needsAction": "Needs action",
+      "needsAttention": "Needs attention",
+      "pendingRefundValue": "Pending refund value",
+      "processed": "Processed",
+      "requestsInQueue": "Requests in this queue",
+      "simulatedProviders": "Simulated providers",
+      "visiblePageTotal": "Visible page total"
+    },
     "providers": {
       "bankTransferSimulator": "Bank transfer — Simulator",
       "grabpaySimulator": "GrabPay — Simulator",
@@ -2044,15 +2156,35 @@
       "description": "Provider controls below exercise the signed webhook, idempotency, ledger and refund state machine. No real money moves.",
       "label": "Sandbox / Simulated:"
     },
+    "queue": {
+      "description": "Open a row when the refund status or provider evidence needs a closer look.",
+      "noOpenRequests": "No open requests",
+      "oldestRequest": "Oldest request {{age}}",
+      "title": "Review queue ({{count}})"
+    },
     "status": {
+      "approved": "Approved",
+      "failed": "Failed",
+      "pending": "Pending",
       "processed": "Processed",
+      "rejected": "Rejected",
       "simulated": "SIMULATED"
+    },
+    "table": {
+      "actions": "Actions",
+      "age": "Age",
+      "amount": "Amount",
+      "attempts": "Attempts",
+      "provider": "Provider",
+      "request": "Request",
+      "status": "Status"
     },
     "attempt_one": "Attempt {{count}}",
     "attempt_other": "Attempt {{count}}"
   },
   "strictMigration": {
     "staffConduct": {
+      "eyebrow": "Governance operations",
       "restricted": "Staff conduct review is limited to super admins.",
       "title": "Staff conduct",
       "description": "Flagged admin conduct and human-submitted chat reports for super-admin review.",

@@ -8,9 +8,12 @@ import { useAuth } from "@/components/providers/auth";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { isWalletReasonCategory, WALLET_REASON_CATEGORIES as WALLET_REASON_RULES, type WalletReasonAction } from "@/lib/validation/wallet-reason-schemas";
+import type { AdminSettlementProof } from "@/lib/payouts/settlement-proof";
 
 type ListItem = {
   id: string;
@@ -38,6 +41,7 @@ type Detail = ListItem & {
     fraudFlags: unknown[];
   };
   payoutFailure: { provider: string | null; eventId: string | null; code: string | null; message: string | null; category: string | null; occurredAt: string | null; retryable: boolean | null };
+  settlementProof: AdminSettlementProof | null;
 };
 
 type ReviewLedgerRow = { id: string; type: string; amountSen: number; direction: string; bucket: string; referenceId: string | null; orderId: string | null; withdrawalId?: string | null; createdAt: string; note: string | null };
@@ -189,6 +193,27 @@ function ReviewLedgerSection({ title, rows, emptyMessage, locale, displayEnum, f
   </section>;
 }
 
+function SettlementProofSection({ proof, locale, formatAmount }: { proof: AdminSettlementProof; locale: AppLocale; formatAmount: (valueSen: number) => string }) {
+  const { t } = useTranslation("admin");
+  const eventHash = proof.event?.payloadSha256
+    ? `${proof.event.payloadSha256.slice(0, 12)}…${proof.event.payloadSha256.slice(-8)}`
+    : null;
+  const notification = proof.notification;
+  return <section className="mt-4 rounded-xl border border-nature-green/30 bg-nature-green/5 p-4 text-sm">
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{t("withdrawals.settlementProof.title")}</h3><p className="mt-1 text-xs text-muted-foreground">{t(proof.event ? "withdrawals.settlementProof.noFurtherAction" : "withdrawals.settlementProof.awaitingProvider")}</p></div>{proof.event?.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-nature-green/15 px-2 py-1 text-xs font-semibold text-nature-green-ink"><ShieldCheck size={13} />{t("withdrawals.settlementProof.signatureVerified")}</span>}</div>
+    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+      <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.provider")}</dt><dd>{proof.provider}</dd></div>
+      <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.payoutReference")}</dt><dd className="break-all font-mono">{proof.providerPayoutReference ?? "—"}</dd></div>
+      {proof.event && <><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.eventId")}</dt><dd className="break-all font-mono">{proof.event.id}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.eventStatus")}</dt><dd>{proof.event.status}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.amount")}</dt><dd>{formatAmount(proof.event.amountSen)} {proof.event.currency}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.providerTime")}</dt><dd>{new Date(proof.event.providerOccurredAt).toLocaleString(locale)}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.receivedTime")}</dt><dd>{new Date(proof.event.receivedAt).toLocaleString(locale)}</dd></div>{eventHash && <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.payloadHash")}</dt><dd className="font-mono">{eventHash}</dd></div>}</>}
+      {proof.delivery && <><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.deliveryStatus")}</dt><dd>{proof.delivery.status}</dd></div><div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.attempts")}</dt><dd>{proof.delivery.attempts}</dd></div></>}
+      {notification && <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.emailStatus")}</dt><dd>{notification.emailStatus}</dd></div>}
+    </dl>
+    {proof.delivery?.needsReconciliation && <div role="alert" className="mt-3 rounded-lg border border-accent bg-accent/10 p-3 text-accent-foreground"><p className="font-semibold">{t("withdrawals.settlementProof.reconciliationTitle")}</p><p className="mt-1 text-xs">{t("withdrawals.settlementProof.reconciliationMessage")}</p></div>}
+    <div className="mt-3"><p className="text-xs font-semibold">{t("withdrawals.settlementProof.ledgerTitle")}</p>{proof.ledger.length === 0 ? <p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.settlementProof.noLedger")}</p> : <div className="mt-2 space-y-1">{proof.ledger.map((row) => <div key={row.id} className="flex justify-between gap-3 text-xs"><span>{row.type} · {row.direction}</span><span className="font-mono">{formatAmount(row.amountSen)}</span></div>)}</div>}</div>
+    <p className="mt-3 text-xs text-muted-foreground">{t("withdrawals.settlementProof.immutableNotice")}</p>
+  </section>;
+}
+
 export default function AdminWithdrawalsPage() {
   const { t, i18n } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
@@ -235,30 +260,49 @@ export default function AdminWithdrawalsPage() {
     }
   }, [page, pageSize, risk, search, showFeedback, status, t]);
 
-  async function openDetail(id: string) {
-    setError("");
+  const refreshDetail = useCallback(async (id: string, resetDecision = false) => {
+    if (resetDecision) setError("");
     try {
       const response = await fetch(`/api/admin/withdrawals/${id}`);
       const body = await response.json() as { data?: Detail; error?: { message?: string } };
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("withdrawals.errors.loadReviewDetails"));
-      const data = body.data as Detail & { reviewSources?: Detail["reviewSources"]; payoutFailure?: Detail["payoutFailure"] };
+      const data = body.data as Detail & { reviewSources?: Detail["reviewSources"]; payoutFailure?: Detail["payoutFailure"]; settlementProof?: Detail["settlementProof"] };
       setDetail({
         ...data,
         reviewSources: data.reviewSources ?? { rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: [] },
         payoutFailure: data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null },
+        settlementProof: data.settlementProof ?? null,
       });
-      setSelectedDecision(null);
-      setPendingConfirmation(null);
-      setReason("");
-      setReasonCategory("");
+      if (!resetDecision && !["approved", "processing"].includes(data.status)) void loadList();
+      if (resetDecision) {
+        setSelectedDecision(null);
+        setPendingConfirmation(null);
+        setReason("");
+        setReasonCategory("");
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : t("withdrawals.errors.loadReviewDetails");
       showFeedback("error", `${message}. ${t("withdrawals.feedback.refreshAndContactSuperAdmin")}`);
-      setError(message);
+      if (resetDecision) setError(message);
     }
+  }, [loadList, showFeedback, t]);
+
+  async function openDetail(id: string) {
+    await refreshDetail(id, true);
   }
 
   useEffect(() => { queueMicrotask(() => { void loadList(); }); }, [loadList]);
+
+  useEffect(() => {
+    if (!detail || !["approved", "processing"].includes(detail.status)) return;
+    let refreshInFlight = false;
+    const interval = window.setInterval(() => {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+      void refreshDetail(detail.id).finally(() => { refreshInFlight = false; });
+    }, 2_000);
+    return () => window.clearInterval(interval);
+  }, [detail, refreshDetail]);
 
   function chooseDecision(nextAction: Action) {
     setSelectedDecision(nextAction);
@@ -322,13 +366,13 @@ export default function AdminWithdrawalsPage() {
     || detail.reviewSources.affiliateSources.length > 0
     || detail.reviewSources.walletTransactions.length > 0
     || detail.reviewSources.fraudFlags.length > 0 : true;
-  const canChooseDecision = Boolean(canApprove || canHoldReject || canResume || isSuperAdmin);
   const availableDecisions: Action[] = [
     ...(canApprove ? ["approve" as const] : []),
     ...(canHoldReject ? ["hold" as const, "reject" as const] : []),
     ...(canResume ? ["resume" as const] : []),
     ...(isSuperAdmin && detail?.riskLevel === "high" && !detail.riskOverridden ? ["fraud-override" as const] : []),
   ];
+  const canChooseDecision = availableDecisions.length > 0;
   const selectedItems = items.filter((item) => selectedIds.has(item.id));
   const batchActions = selectedItems.length === 0 ? [] : (['approve', 'hold', 'reject', 'resume', 'fraud-override'] as Action[]).filter((action) => selectedItems.every((item) => {
     const approve = action === 'approve' && ['pending', 'pending_second_approval'].includes(item.status);
@@ -339,7 +383,6 @@ export default function AdminWithdrawalsPage() {
   }));
   const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
   const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
-  const visibleDualApproval = items.filter((item) => item.requiresDualApproval && item.approvalCount < 2).length;
   const visibleOverdue = items.filter((item) => item.status === "overdue").length;
   const oldestRequest = items.reduce<ListItem | null>((oldest, item) => !oldest || new Date(item.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? item : oldest, null);
   const displayStatus = (value: string | null | undefined) => value
@@ -403,18 +446,22 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
-  return <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-    <div className="w-full space-y-6">
-    <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("withdrawals.header.title")}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("withdrawals.header.description")}</p></div><div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div></div>
-    <div aria-label={t("withdrawals.accessibility.reviewSummary")} className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-      {[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.dualApproval"), value: visibleDualApproval, detail: t("withdrawals.metrics.waitingForSecondApprover") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }].map((metric) => <div key={metric.label} className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_10px_rgba(1,0,102,0.06)]"><p className="text-sm font-semibold text-muted-foreground">{metric.label}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{metric.value}</p><p className="mt-1 text-xs font-medium text-muted-foreground">{metric.detail}</p></div>)}
+  return <AdminPageShell>
+    <AdminPageHeader
+      eyebrow={<><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</>}
+      title={t("withdrawals.header.title")}
+      description={t("withdrawals.header.description")}
+      actions={<div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div>}
+    />
+    <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
+      <AdminMetricGrid items={[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }]} />
     </div>
-    <div className="rounded-2xl bg-card border border-border p-4 flex flex-wrap gap-3 items-center">
-      <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm" /></div>
-      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">{t("withdrawals.filters.allStatuses")}</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select>
-      <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">{t("withdrawals.filters.allRiskLevels")}</option><option value="low">{t("withdrawals.risk.low")}</option><option value="review">{t("withdrawals.risk.review")}</option><option value="high">{t("withdrawals.risk.high")}</option></select>
-      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm">{PAGE_SIZES.map((size) => <option key={size} value={size}>{t("withdrawals.filters.perPage", { count: size })}</option>)}</select>
-    </div>
+    <AdminFilterBar>
+      <div className="relative min-w-[220px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
+      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allStatuses")}</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select>
+      <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allRiskLevels")}</option><option value="low">{t("withdrawals.risk.low")}</option><option value="review">{t("withdrawals.risk.review")}</option><option value="high">{t("withdrawals.risk.high")}</option></select>
+      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className={adminFilterControlClassName}>{PAGE_SIZES.map((size) => <option key={size} value={size}>{t("withdrawals.filters.perPage", { count: size })}</option>)}</select>
+    </AdminFilterBar>
     <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.queue.description")}</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{oldestRequest ? t("withdrawals.queue.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.queue.noOpenRequests")}</span></div>
       <div className="overflow-x-auto">
@@ -436,6 +483,7 @@ export default function AdminWithdrawalsPage() {
         { key: "approvalProgress", label: t("withdrawals.table.approvalProgress"), value: detail.requiresDualApproval ? t("withdrawals.table.dualApprovals", { count: Math.min(detail.approvalCount, 2) }) : t("withdrawals.readiness.singleApproval"), ready: !detail.requiresDualApproval || detail.approvalCount >= 2 },
       ].map((check) => <div key={check.key} className="flex items-start gap-2 rounded-lg bg-card px-3 py-2.5"><span className={check.ready ? "text-emerald-600" : "text-amber-600"}>{check.ready ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}</span><div><p className="text-xs font-semibold text-foreground">{check.label}</p><p className="mt-0.5 text-[11px] text-muted-foreground">{check.value}</p></div></div>)}</div></section>
       <div className="rounded-xl border border-border p-4 mt-4 text-sm"><p className="font-semibold mb-2">{t("withdrawals.balances.title")}</p><p>{t("withdrawals.balances.topUp")}: {formatRM(detail.wallet.topupSen)}</p><p>{t("withdrawals.balances.earnings")}: {formatRM(detail.wallet.earningsSen)}</p><p>{t("withdrawals.balances.pendingRewards")}: {formatRM(detail.wallet.pendingEarningsSen)}</p><p>{t("withdrawals.balances.reserved")}: {formatRM(detail.wallet.reservedSen)}</p><p>{t("withdrawals.balances.withdrawn")}: {formatRM(detail.wallet.withdrawnSen)}</p><p className="mt-2 text-muted-foreground">{t("withdrawals.readiness.payoutDestination")}: {detail.destinationLabel}</p></div>
+      {detail.settlementProof && <SettlementProofSection proof={detail.settlementProof} locale={locale} formatAmount={formatRM} />}
       {!hasReviewEvidence && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 mt-4 text-sm text-amber-950"><p className="font-semibold">{t("withdrawals.evidence.unavailable")}</p><p>{t("withdrawals.evidence.doNotApprove")}</p></div>}
       <ReviewLedgerSection title={t("withdrawals.evidence.rewardSources")} rows={detail.reviewSources.rewardSources} emptyMessage={t("withdrawals.evidence.noRewardTransactions")} locale={locale} displayEnum={displayStatus} formatAmount={formatRM} />
       <ReviewLedgerSection title={t("withdrawals.evidence.affiliateSources")} rows={detail.reviewSources.affiliateSources} emptyMessage={t("withdrawals.evidence.noAffiliateTransactions")} locale={locale} displayEnum={displayStatus} formatAmount={formatRM} />
@@ -454,6 +502,5 @@ export default function AdminWithdrawalsPage() {
       {pendingConfirmation && <div role="dialog" aria-modal="true" aria-labelledby="confirm-withdrawal-title" className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-sm"><h3 id="confirm-withdrawal-title" className="font-semibold">{t("withdrawals.confirmation.title")}</h3><p className="mt-2">{t("withdrawals.confirmation.customer")}: {detail.customer.displayName}</p><p>{t("withdrawals.confirmation.amount")}: {formatRM(detail.amountSen)}</p><p>{t("withdrawals.confirmation.destination")}: {detail.destinationLabel}</p><p>{t("withdrawals.confirmation.decision")}: {decisionLabel(pendingConfirmation.action)}</p><p>{t("withdrawals.confirmation.reason")}: {decisionReason(toWalletReasonAction(pendingConfirmation.action), pendingConfirmation.reasonCategory)}</p><p>{t("withdrawals.confirmation.note")}: {pendingConfirmation.reason}</p><div className="flex flex-wrap gap-2 mt-4"><Button onClick={() => void confirmAction()} disabled={loading}>{t("withdrawals.confirmation.confirm")}</Button><Button variant="outline" onClick={() => setPendingConfirmation(null)} disabled={loading}>{t("withdrawals.confirmation.cancel")}</Button></div></div>}
       <p className="text-xs text-muted-foreground mt-3">{t("withdrawals.timeline.auditNote")}</p></div>}
     </aside></div>}
-    </div>
-  </div>;
+  </AdminPageShell>;
 }

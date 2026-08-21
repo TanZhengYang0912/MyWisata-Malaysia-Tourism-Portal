@@ -194,6 +194,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
+            <LanguageSwitcher compact className="hidden md:flex w-28" />
             <AppearanceControl />
             <NotificationBell />
             <Link
@@ -285,7 +286,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                   ))}
                 </div>
                 <div className="mt-2 border-t border-border pt-2">
-                  <LanguageSwitcher compact className="px-1 py-1" />
                   <button
                     type="button"
                     role="menuitem"

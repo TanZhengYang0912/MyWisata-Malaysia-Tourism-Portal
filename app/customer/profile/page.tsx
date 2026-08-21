@@ -272,14 +272,14 @@ export default function ProfilePage() {
         title={tCustomer("ui.profileWizard.title")}
         description={tCustomer("ui.profileWizard.description")}
       />
-      <CustomerPageShell className="pt-0 pb-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 pb-0 sm:pt-0">
         <div className="text-sm font-semibold text-primary" aria-label={tCustomer("ui.profileWizard.verificationComplete")}>
           {tCustomer("ui.profileWizard.stepOf", { current: 5, total: 5 })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: 100 })}
         </div>
         <div className="pt-4"><ProfileCompletionCard percentage={profileCompletion.percentage} missing={profileCompletion.missing} /></div>
         {continuation && <Button asChild className="mt-4"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}
       </CustomerPageShell>
-      <ProfileSections shellClassName="pt-0 sm:pt-0" showHeader={false} />
+      <ProfileSections wide shellClassName="pt-0 sm:pt-0" showHeader={false} />
     </>
   );
 
@@ -294,7 +294,7 @@ export default function ProfilePage() {
         title={tCustomer("ui.profileWizard.completeTitle")}
         description={tCustomer("ui.profileWizard.completeDescription")}
       />
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
       <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
         <span className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>

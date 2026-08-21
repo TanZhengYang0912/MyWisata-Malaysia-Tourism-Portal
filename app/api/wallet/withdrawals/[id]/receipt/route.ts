@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { customerSettlementProof, type SettlementProof } from "@/lib/payouts/settlement-proof";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,15 @@ export async function GET(
 
   if (error || !data) return apiFail("NOT_FOUND", "Withdrawal receipt not found", 404);
   const withdrawal = data as WithdrawalRow;
+  const { data: proofData, error: proofError } = await db.rpc('get_withdrawal_settlement_proof', {
+    p_withdrawal_id: id,
+  });
+  if (proofError) {
+    console.warn('[wallet/withdrawal-receipt] settlement proof unavailable', { withdrawalId: id });
+  }
+  const settlementProof = proofData
+    ? customerSettlementProof(proofData as SettlementProof)
+    : null;
 
   return apiOk({
     id: withdrawal.id,
@@ -80,5 +90,6 @@ export async function GET(
     ),
     customerReason: withdrawal.customer_reason,
     statusGuidanceCode: getStatusGuidanceCode(withdrawal),
+    settlementProof,
   });
 }

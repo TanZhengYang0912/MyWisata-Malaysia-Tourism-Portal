@@ -32,6 +32,12 @@ describe("place page layout and copy", () => {
     expect(pageSource).toContain("absolute inset-0 h-full w-full object-cover");
     expect(pageSource).toContain("min-h-[330px]");
   });
+
+  it("localizes known state labels and does not hard-code the public operator fallback", () => {
+    expect(pageSource).toContain("getMalaysiaStateTranslationKey");
+    expect(pageSource).toContain('?? t("ui.place.noOperator")');
+    expect(pageSource).not.toContain('?? "Open destination"');
+  });
 });
 
 describe("place page discovery controls", () => {

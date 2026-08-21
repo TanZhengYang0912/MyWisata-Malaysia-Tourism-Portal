@@ -167,7 +167,7 @@ export default function CheckoutPage() {
           idempotencyKey,
         }),
       });
-      const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string }; error?: CheckoutErrorPayload };
+      const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         throw new Error(getCheckoutErrorMessage(prepared.error));
       }
@@ -179,7 +179,10 @@ export default function CheckoutPage() {
         window.location.href = prepared.data.simulatorUrl;
         return;
       }
-      if (selectedMethod.paymentMethod !== "wallet") {
+      const walletFinalization =
+        selectedMethod.paymentMethod === "wallet" ||
+        (selectedMethod.paymentMethod === "wallet_split" && prepared.data.externalAmountSen === 0);
+      if (!walletFinalization) {
         throw new Error("The payment provider did not return a secure payment action.");
       }
       const finalizeResponse = await fetch("/api/checkout/finalize", {

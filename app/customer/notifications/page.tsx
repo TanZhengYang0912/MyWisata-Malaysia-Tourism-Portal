@@ -24,7 +24,7 @@ export default function NotificationsPage() {
         title={tCommon("notifications.title")}
         description={tCustomer("ui.notifications.description")}
       />
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
         <NotificationCenter scope="customer" categories={translatedFilters} pageSize={15} />
       </CustomerPageShell>
     </>

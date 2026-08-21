@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useTranslation } from "react-i18next";
 
 const PENDING_PAGE_SIZE = 10;
@@ -121,6 +123,8 @@ export default function AdminRecommendationsPage() {
   });
   const pending  = filteredRecs.filter((r) => r.status === "pending");
   const reviewed = filteredRecs.filter((r) => r.status !== "pending");
+  const approved = filteredRecs.filter((r) => r.status === "approved").length;
+  const rejected = filteredRecs.filter((r) => r.status === "rejected").length;
   const pendingPageCount = Math.max(1, Math.ceil(pending.length / PENDING_PAGE_SIZE));
   const reviewedPageCount = Math.max(1, Math.ceil(reviewed.length / PENDING_PAGE_SIZE));
   const activePendingPage = Math.min(pendingPage, pendingPageCount);
@@ -146,30 +150,39 @@ export default function AdminRecommendationsPage() {
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("ui.recommendations.title")}</h1>
-      <p className="text-xs text-muted-foreground mb-2">{t("ui.recommendations.subtitle")}</p>
-      <p className="mb-6 max-w-2xl text-xs text-muted-foreground">{t("ui.recommendations.description")}</p>
+    <AdminPageShell>
+      <AdminPageHeader
+        eyebrow={<span className="flex items-center gap-2"><CheckCircle2 size={14} /> {t("ui.recommendations.eyebrow")}</span>}
+        title={t("ui.recommendations.title")}
+        description={t("ui.recommendations.description")}
+      />
+
+      <AdminMetricGrid items={[
+        { label: t("ui.recommendations.pending", { count: pending.length }), value: pending.length },
+        { label: t("ui.recommendations.reviewed", { count: reviewed.length }), value: reviewed.length },
+        { label: t("filters.approved"), value: approved },
+        { label: t("filters.rejected"), value: rejected },
+      ]} />
 
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>
       )}
 
-      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:flex-row sm:items-center">
-        <label className="relative min-w-0 flex-1">
+      <AdminFilterBar className="mb-6">
+        <label className="relative min-w-[220px] flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
             onChange={(event) => { setSearch(event.target.value); setPendingPage(1); setReviewedPage(1); }}
             placeholder={t("ui.recommendations.searchPlaceholder")}
-            className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className={`${adminFilterControlClassName} w-full pl-9`}
           />
         </label>
-        <select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+        <select value={categoryFilter} onChange={(event) => { setCategoryFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className={adminFilterControlClassName}>
           <option value="all">{t("ui.recommendations.allCategories")}</option>
           {categories.map((category) => <option key={category} value={category}>{category}</option>)}
         </select>
-        <select value={stateFilter} onChange={(event) => { setStateFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className="h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+        <select value={stateFilter} onChange={(event) => { setStateFilter(event.target.value); setPendingPage(1); setReviewedPage(1); }} className={adminFilterControlClassName}>
           <option value="all">{t("ui.recommendations.allStates")}</option>
           {states.map((state) => <option key={state} value={state}>{state}</option>)}
         </select>
@@ -177,7 +190,7 @@ export default function AdminRecommendationsPage() {
         <Button type="button" variant="outline" onClick={clearFilters} disabled={!hasFilters} className="gap-1.5">
           <Filter size={14} /> {t("ui.actions.clear")}
         </Button>
-      </div>
+      </AdminFilterBar>
 
       <section className="mb-6 rounded-2xl border border-border bg-card p-5" aria-label={t("ui.recommendations.rewardClearing.ariaLabel")}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -323,6 +336,6 @@ export default function AdminRecommendationsPage() {
           </div>
         )}
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

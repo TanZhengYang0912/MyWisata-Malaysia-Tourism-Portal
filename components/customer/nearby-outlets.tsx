@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { ArrowRight, MapPin, Store } from "lucide-react";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
-import { DISCOVERY_CATEGORIES } from "@/lib/customer/discovery-categories";
+import { DISCOVERY_CATEGORIES, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import type { Outlet } from "@/backend/core/types";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
@@ -19,6 +19,7 @@ const RADIUS_OPTIONS_KM = [1, 3, 8] as const;
 
 function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
   const { t } = useTranslation("customer");
+  const categoryKey = getOptionalDiscoveryCategoryLabelKey(outlet.category);
   return (
     <Link
       href={getOutletShopHref(outlet.id)}
@@ -33,7 +34,7 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
           <p className="line-clamp-1 text-sm font-bold text-foreground">{outlet.name}</p>
           {outlet.category && (
             <span className="hidden shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-primary sm:inline-flex">
-              {outlet.category}
+              {categoryKey ? t(categoryKey) : outlet.category}
             </span>
           )}
         </div>
@@ -41,7 +42,7 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-bold text-foreground">{km.toFixed(1)} {DISTANCE_UNIT_KM}</p>
-        <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop")} <ArrowRight size={13} aria-hidden="true" /></p>
+        <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { name: outlet.name })} <ArrowRight size={13} aria-hidden="true" /></p>
       </div>
     </Link>
   );

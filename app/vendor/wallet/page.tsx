@@ -127,7 +127,7 @@ export default function VendorWalletPage() {
   const refresh = () => { setLoadError(""); setRefreshKey((value) => value + 1); };
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary"><Wallet size={21} /></div>

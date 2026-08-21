@@ -13,6 +13,26 @@ import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 const UNREAD_POLL_MS = 30_000;
 
+type PendingCounts = {
+  vendors: number;
+  catalogue: number;
+  kyc: number;
+  withdrawals: number;
+  refunds: number;
+  chatReports: number;
+  recommendations: number;
+};
+
+const EMPTY_PENDING_COUNTS: PendingCounts = {
+  vendors: 0,
+  catalogue: 0,
+  kyc: 0,
+  withdrawals: 0,
+  refunds: 0,
+  chatReports: 0,
+  recommendations: 0,
+};
+
 const NAV = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },
   { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
@@ -49,6 +69,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
   const [unreadTickets, setUnreadTickets] = useState(0);
+  const [pendingCounts, setPendingCounts] = useState<PendingCounts>(EMPTY_PENDING_COUNTS);
+  const [pendingCountsReady, setPendingCountsReady] = useState(false);
   const [unreadRecommendations, setUnreadRecommendations] = useState(0);
 
   async function signOut() {
@@ -77,6 +99,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         await poll();
       })();
     }, UNREAD_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    async function pollPendingCounts() {
+      try {
+        const response = await fetch("/api/admin/navigation/counts");
+        const body = (await response.json()) as { data?: Partial<PendingCounts> | null };
+        if (!cancelled && response.ok && body.data) {
+          setPendingCounts({ ...EMPTY_PENDING_COUNTS, ...body.data });
+          setPendingCountsReady(true);
+        }
+      } catch {
+        // best-effort — a failed poll leaves the last-known counts showing
+      }
+    }
+
+    void pollPendingCounts();
+    const interval = setInterval(() => {
+      void pollPendingCounts();
+    }, UNREAD_POLL_MS);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -114,10 +163,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
+  function pendingCountFor(href: string) {
+    if (href === "/admin/vendors") return pendingCounts.vendors;
+    if (href === "/admin/catalogue") return pendingCounts.catalogue;
+    if (href === "/admin/kyc") return pendingCounts.kyc;
+    if (href === "/admin/withdrawals") return pendingCounts.withdrawals;
+    if (href === "/admin/refunds") return pendingCounts.refunds;
+    if (href === "/admin/chat-reports") return pendingCounts.chatReports;
+    if (href === "/admin/recommendations") {
+      return pendingCountsReady ? pendingCounts.recommendations : currentUser?.role === "super_admin" ? unreadRecommendations : 0;
+    }
+    return 0;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="flex h-screen w-60 shrink-0 flex-col bg-gray-900">
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
+        <div className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-800">
             <Shield size={16} className="text-white" />
           </div>
@@ -126,7 +188,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="text-[0.625rem] text-white/35">{tAdmin("shell.panel")}</p>
           </div>
         </div>
-        <div className="px-4 py-3 border-b border-white/10">
+        <div className="px-4 py-3 border-b border-gray-700">
           <p className="text-[0.625rem] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs")}</p>
           <p className="text-sm font-bold text-white">{currentUser.name}</p>
           <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-bold bg-gray-800 text-gray-300">
@@ -134,35 +196,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV.filter((item) => !item.superAdminOnly || currentUser.role === "super_admin").map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
-            >
-              <item.icon size={15} /> {tAdmin(`navigation.${item.label}`)}
-              {item.href === "/admin/support" && unreadTickets > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200">
-                  {unreadTickets}
-                </span>
-              )}
-              {item.href === "/admin/recommendations" && currentUser.role === "super_admin" && unreadRecommendations > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}>
-                  {unreadRecommendations}
-                </span>
-              )}
-            </Link>
-          ))}
+          {NAV.filter((item) => !item.superAdminOnly || currentUser.role === "super_admin").map((item) => {
+            // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
+            const count = item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+              >
+                <item.icon size={15} /> {tAdmin(`navigation.${item.label}`)}
+                {count > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.pendingItems", { count })}>
+                    {count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="shrink-0 border-t border-white/10 p-3 space-y-0.5">
-          <LanguageSwitcher compact className="mb-2" />
-          <AppearanceControl variant="sidebar-dark" />
-          <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-white/55 transition-colors hover:bg-gray-800 hover:text-white">
-            <LogOut size={15} /> {tCommon("actions.signOut")}
-          </button>
-        </div>
       </aside>
       <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6">
+          <LanguageSwitcher compact className="w-28" />
+          <AppearanceControl />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            aria-label={tCommon("actions.signOut")}
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card/80 px-3 text-xs font-semibold text-foreground transition hover:border-primary/30 hover:bg-secondary"
+          >
+            <span className="max-w-32 truncate">{currentUser.name}</span>
+            <LogOut size={15} aria-hidden="true" />
+          </button>
+        </header>
         {children}
       </div>
     </div>

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   createTngPayout:       vi.fn(),
   tngIsConfigured:       vi.fn(),
   executeApprovedWithdrawalPayout: vi.fn(),
+  scheduleTngMockCallbackAcceleration: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -46,6 +47,9 @@ vi.mock('@/lib/payouts/providers/tng-direct-credit', () => ({
 }));
 vi.mock('@/lib/payouts/execute-approved-withdrawal', () => ({
   executeApprovedWithdrawalPayout: mocks.executeApprovedWithdrawalPayout,
+}));
+vi.mock('@/lib/payouts/tng-mock-callbacks', () => ({
+  scheduleTngMockCallbackAcceleration: mocks.scheduleTngMockCallbackAcceleration,
 }));
 
 import { POST } from '../route';
@@ -150,6 +154,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     expect(res.status).toBe(200);
     expect(body.data?.status ?? body.status).toBe('pending_second_approval');
     expect(mocks.transfersCreate).not.toHaveBeenCalled();
+    expect(mocks.scheduleTngMockCallbackAcceleration).not.toHaveBeenCalled();
   });
 
   it('returns 409 when same approver attempts a second approval', async () => {
@@ -231,7 +236,12 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     });
     mocks.executeApprovedWithdrawalPayout.mockResolvedValue({
       ok: true,
-      data: { status: 'processing', provider: 'tng_direct_credit' },
+      data: {
+        status: 'processing',
+        provider: 'tng_direct_credit',
+        callbackJobId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        callbackAvailableAt: '2026-08-21T05:00:03.000Z',
+      },
     });
 
     const res = await POST(request(), params());
@@ -244,6 +254,12 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       amountRm: 100,
     });
     expect(body.data).toMatchObject({ status: 'processing', provider: 'tng_direct_credit' });
+    expect(body.data).not.toHaveProperty('callbackJobId');
+    expect(body.data).not.toHaveProperty('callbackAvailableAt');
+    expect(mocks.scheduleTngMockCallbackAcceleration).toHaveBeenCalledWith(
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      '2026-08-21T05:00:03.000Z',
+    );
   });
 
   it('returns 422 when approve note is present but under 10 characters', async () => {

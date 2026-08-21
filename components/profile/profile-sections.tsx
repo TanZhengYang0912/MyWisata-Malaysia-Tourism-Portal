@@ -13,7 +13,6 @@ import { parseInternationalPhone } from "@/lib/phone/international";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { BUDGET_RANGES, MOBILITY_NEEDS } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
@@ -31,7 +30,7 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${good ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>{good && <CheckCircle2 size={12} />}{label}</span>;
 }
 
-export function ProfileSections({ shellClassName, showHeader = true }: { shellClassName?: string; showHeader?: boolean } = {}) {
+export function ProfileSections({ shellClassName, showHeader = true, wide = false }: { shellClassName?: string; showHeader?: boolean; wide?: boolean } = {}) {
   const { currentUser, refreshUser } = useAuth();
   const { setOpen: setSupportChatOpen } = useSupportChat();
   const { t: tCommon } = useTranslation("common");
@@ -161,7 +160,7 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
   if (!summary) return <CustomerPageShell><div className="py-8 text-center text-sm text-destructive">{error ?? tCustomer("ui.states.couldNotLoad")}</div></CustomerPageShell>;
 
   return (
-    <CustomerPageShell className={shellClassName}>
+    <CustomerPageShell wide={wide} className={shellClassName}>
       <main className="space-y-5">
       {showHeader && <CustomerPageHeader
         eyebrow={tCustomer("accountGroups.account")}
@@ -196,10 +195,6 @@ export function ProfileSections({ shellClassName, showHeader = true }: { shellCl
           {summary.survey && <p className="text-muted-foreground">{preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange) ? tCustomer(preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange)!) : tCustomer("ui.profileSections.budgetNotSet")} · {preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds) ? tCustomer(preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds)!) : tCustomer("ui.profileSections.mobilityNotSet")}</p>}
           <Button variant="outline" size="sm" className="mt-2" onClick={() => router.push("/customer/preferences")}>{tCustomer("ui.preferencesEditor.save")} <ChevronRight size={14} /></Button>
         </div>
-      </SectionCard>
-
-      <SectionCard id="language-region" title={tCommon("language.andRegion")} description={tCustomer("profile.languageDescription")}>
-        <LanguageSwitcher />
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.support")} description={tCustomer("ui.profileSections.supportDescription")}>

@@ -50,6 +50,8 @@ describe('executeApprovedWithdrawalPayout', () => {
     vi.clearAllMocks();
     mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'start_withdrawal_payout_attempt'
       ? { data: { acquired: true, started_at: new Date().toISOString() }, error: null }
+      : name === 'start_tng_mock_payout'
+      ? { data: { outbox_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', available_at: '2026-08-21T05:00:03.000Z' }, error: null }
       : { data: {}, error: null }));
     mocks.enqueueEmail.mockResolvedValue(undefined);
     mocks.tngConfigured.mockReturnValue(true);
@@ -74,22 +76,29 @@ describe('executeApprovedWithdrawalPayout', () => {
 
     const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 50 });
 
-    expect(result).toMatchObject({ ok: true, data: { provider: 'tng_direct_credit', status: 'processing' } });
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        provider: 'tng_direct_credit',
+        status: 'processing',
+        callbackJobId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        callbackAvailableAt: '2026-08-21T05:00:03.000Z',
+      },
+    });
     expect(mocks.createTngPayout).toHaveBeenCalledWith({
       withdrawalId,
       amountSen: 5_000,
       providerReference: 'tng_dest_0123456789abcdef',
       idempotencyKey: `wr-${withdrawalId}-tng`,
     });
-    expect(mocks.rpc).toHaveBeenCalledWith('record_tng_payout', {
+    expect(mocks.rpc).toHaveBeenCalledWith('start_tng_mock_payout', {
       p_withdrawal_id: withdrawalId,
       p_provider_payout_id: 'tng_payout_0123456789abcdef',
+      p_available_at: expect.any(String),
+      p_outcome: 'paid',
     });
-    expect(mocks.rpc).toHaveBeenCalledWith('mark_provider_withdrawal_processing', {
-      p_withdrawal_id: withdrawalId,
-      p_provider: 'tng_direct_credit',
-      p_provider_payout_id: 'tng_payout_0123456789abcdef',
-    });
+    expect(mocks.rpc).not.toHaveBeenCalledWith('record_tng_payout', expect.anything());
+    expect(mocks.rpc).not.toHaveBeenCalledWith('mark_provider_withdrawal_processing', expect.anything());
   });
 
   it('preserves the Stripe transfer and payout path', async () => {
@@ -242,7 +251,7 @@ describe('executeApprovedWithdrawalPayout', () => {
           stripe_transfer_id: null, stripe_payout_id: null, updated_at: new Date().toISOString(),
         }));
     mocks.createTngPayout.mockResolvedValue({ status: 'processing', providerEventId: 'tng_payout_opaque', failure: null });
-    mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'mark_provider_withdrawal_processing'
+    mocks.rpc.mockImplementation((name: string) => Promise.resolve(name === 'start_tng_mock_payout'
       ? { data: null, error: { message: 'database unavailable' } }
       : { data: {}, error: null }));
 
@@ -264,12 +273,20 @@ describe('executeApprovedWithdrawalPayout', () => {
 
     const result = await executeApprovedWithdrawalPayout({ withdrawalId, userId, amountRm: 50 });
 
-    expect(result).toMatchObject({ ok: true, data: { provider: 'tng_direct_credit', status: 'processing' } });
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        provider: 'tng_direct_credit',
+        status: 'processing',
+        callbackJobId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      },
+    });
     expect(mocks.createTngPayout).not.toHaveBeenCalled();
-    expect(mocks.rpc).toHaveBeenCalledWith('mark_provider_withdrawal_processing', {
+    expect(mocks.rpc).toHaveBeenCalledWith('start_tng_mock_payout', {
       p_withdrawal_id: withdrawalId,
-      p_provider: 'tng_direct_credit',
       p_provider_payout_id: 'tng_payout_recorded',
+      p_available_at: expect.any(String),
+      p_outcome: 'paid',
     });
   });
 });

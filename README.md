@@ -122,6 +122,21 @@ Shared password for all 28 accounts: **`demo123456`**
 Before enabling the live verification and payout paths, configure and verify these items in the deployment environments. Secret values must stay in Vercel/Supabase settings and must never be committed to this repository.
 
 - **Vercel Cron:** set `CRON_SECRET` in Production and bind `/api/cron/wallet-maintenance` to the checked-in `vercel.json` schedule. Confirm a real run returns escalation, reward-clearance, and report results in server logs; repeat the run to confirm it is safe to retry.
+
+### Non-production TNG mock payout lifecycle
+
+When `NODE_ENV` is not `production`, `TNG_PAYOUT_MODE=mock`, and a server-only
+`TNG_MOCK_WEBHOOK_SECRET` is configured, an approved TNG withdrawal enters
+`processing` while it waits for provider confirmation. A durable callback
+outbox signs and sends the mock provider result through the same webhook
+handler used for external callbacks. A best-effort post-response worker
+normally delivers it after about three seconds; the protected
+`/api/cron/tng-mock-callbacks` job uses `CRON_SECRET` every minute to retry and
+reconcile missed work.
+
+`paid` means the provider reported the payout sent/settled. It is not a claim
+of independent recipient acknowledgement. This mock path is disabled in
+production and is not a live Touch 'n Go integration.
 - **Supabase Auth:** enable Confirm Email, configure `/auth/callback` in the allowed redirect URLs, and configure the Google OAuth provider. A Google identity with a trusted `email_verified` claim receives only Email Verified status; Phone Verification, Profile Completion, and KYC remain separate requirements.
 - **KYC OCR:** configure `GOOGLE_AI_KEY` and optionally `GEMINI_OCR_MODEL`. If the key is missing or the provider fails, the submission remains pending and the API marks `manualReviewRequired: true`; OCR must never approve KYC by itself.
 - **Stripe payouts:** configure the Stripe Connect account and both webhook secrets, then verify successful, duplicate, and failed webhook deliveries. Failed provider codes/messages are normalized and stored without exposing credentials or raw personal data.

@@ -23,6 +23,9 @@ const paidPayload = {
   payoutId: 'tng_payout_0123456789abcdef0123456789abcdef',
   withdrawalId: '9e703f42-7f40-4a4f-a4a0-447eb6319931',
   status: 'paid' as const,
+  amountSen: 2500,
+  currency: 'MYR' as const,
+  occurredAt: '2026-08-21T05:00:03.000Z',
 };
 
 function signedRequest(payload: object, signatureSecret = secret): Request {
@@ -88,6 +91,9 @@ describe('POST /api/tng/payout/webhook', () => {
       p_provider_payout_id: paidPayload.payoutId,
       p_status: 'paid',
       p_payload_sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+      p_amount_sen: 2500,
+      p_currency: 'MYR',
+      p_provider_occurred_at: '2026-08-21T05:00:03.000Z',
     }));
     expect(mocks.enqueueWithdrawalEmail).toHaveBeenCalledWith({
       withdrawalId: paidPayload.withdrawalId,
@@ -149,6 +155,21 @@ describe('POST /api/tng/payout/webhook', () => {
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ received: true, idempotent: true });
+    expect(mocks.enqueueWithdrawalEmail).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic conflict for an amount or provider mismatch without sending email', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { message: 'provider_amount_conflict' },
+    });
+
+    const response = await POST(signedRequest(paidPayload));
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({ error: 'Settlement conflict' });
+    expect(JSON.stringify(body)).not.toContain('provider_amount_conflict');
     expect(mocks.enqueueWithdrawalEmail).not.toHaveBeenCalled();
   });
 });

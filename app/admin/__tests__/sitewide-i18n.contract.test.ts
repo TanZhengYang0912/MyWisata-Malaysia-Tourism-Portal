@@ -92,9 +92,12 @@ export const ADMIN_I18N_FILES = [
 
 /** These admin helpers were localized by prior tasks and remain out of scope. */
 export const PRIOR_TASK_FILES = [
+  "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",
+  "components/admin/filter-bar.tsx",
   "components/admin/segmented-filter.tsx",
+  "components/admin/staff-conduct-filtering.ts",
 ] as const;
 
 /** Non-rendering code is inventory-visible but does not need a translation hook. */

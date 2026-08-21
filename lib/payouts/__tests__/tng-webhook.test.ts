@@ -12,6 +12,9 @@ const payload = JSON.stringify({
   payoutId: 'tng_payout_0123456789abcdef0123456789abcdef',
   withdrawalId: '9e703f42-7f40-4a4f-a4a0-447eb6319931',
   status: 'paid',
+  amountSen: 2500,
+  currency: 'MYR',
+  occurredAt: '2026-08-21T05:00:03.000Z',
 });
 
 describe('TNG mock webhook contract', () => {
@@ -34,6 +37,9 @@ describe('TNG mock webhook contract', () => {
       payoutId: 'tng_payout_0123456789abcdef0123456789abcdef',
       withdrawalId: '9e703f42-7f40-4a4f-a4a0-447eb6319931',
       status: 'paid',
+      amountSen: 2500,
+      currency: 'MYR',
+      occurredAt: '2026-08-21T05:00:03.000Z',
     });
   });
 
@@ -43,6 +49,9 @@ describe('TNG mock webhook contract', () => {
       payoutId: 'tng_payout_0123456789abcdef0123456789abcdef',
       withdrawalId: '9e703f42-7f40-4a4f-a4a0-447eb6319931',
       status: 'failed',
+      amountSen: 2500,
+      currency: 'MYR',
+      occurredAt: '2026-08-21T05:00:03.000Z',
       failure: { code: 'destination_rejected', message: 'Recipient was rejected' },
     });
 
@@ -55,5 +64,15 @@ describe('TNG mock webhook contract', () => {
       ...JSON.parse(failed),
       failure: { code: 'bad code with spaces', message: 'Rejected' },
     }))).toThrow('invalid_tng_webhook_payload');
+  });
+
+  it('rejects a missing amount, a wrong currency, and a malformed provider time', () => {
+    const base = JSON.parse(payload) as Record<string, unknown>;
+    const { amountSen: _amount, ...withoutAmount } = base;
+
+    expect(() => parseTngWebhookPayload(JSON.stringify(withoutAmount))).toThrow('invalid_tng_webhook_payload');
+    expect(() => parseTngWebhookPayload(JSON.stringify({ ...base, amountSen: -1 }))).toThrow('invalid_tng_webhook_payload');
+    expect(() => parseTngWebhookPayload(JSON.stringify({ ...base, currency: 'USD' }))).toThrow('invalid_tng_webhook_payload');
+    expect(() => parseTngWebhookPayload(JSON.stringify({ ...base, occurredAt: 'yesterday' }))).toThrow('invalid_tng_webhook_payload');
   });
 });

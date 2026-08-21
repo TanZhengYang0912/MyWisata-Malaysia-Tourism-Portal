@@ -38,4 +38,18 @@ describe('generateAiText', () => {
     await expect(generateAiText('system', 'user')).resolves.toEqual({ available: false, reason: 'authentication_failed' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('forwards an abort signal and stops retrying when the caller cancels', async () => {
+    process.env.MODELSCOPE_API_KEY = 'test-token';
+    const controller = new AbortController();
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((_, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+
+    const result = generateAiText('system', 'user', { signal: controller.signal });
+    controller.abort();
+
+    await expect(result).resolves.toEqual({ available: false, reason: 'unavailable' });
+    expect(fetchMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signal: controller.signal }));
+  });
 });
