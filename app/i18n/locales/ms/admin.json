@@ -1911,6 +1911,7 @@
     "settlementProof": {
       "title": "Bukti penyelesaian",
       "noFurtherAction": "Keputusan penyedia telah diterima. Tiada kelulusan pembayaran lanjut diperlukan.",
+      "awaitingProvider": "Menunggu panggilan balik penyedia yang ditandatangani. Tiada kelulusan pembayaran tambahan diperlukan.",
       "provider": "Penyedia",
       "payoutReference": "Rujukan pembayaran",
       "eventId": "Peristiwa penyedia",

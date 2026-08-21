@@ -57,6 +57,7 @@ describe('withdrawal review action presentation', () => {
   it('renders provider proof, ledger evidence, and reconciliation state without a paid action', () => {
     expect(pageSource).toContain('detail.settlementProof');
     expect(pageSource).toContain('withdrawals.settlementProof.noFurtherAction');
+    expect(pageSource).toContain('withdrawals.settlementProof.awaitingProvider');
     expect(pageSource).toContain('withdrawals.settlementProof.signatureVerified');
     expect(pageSource).toContain('needsReconciliation');
     expect(pageSource).toContain('notification.emailStatus');
@@ -69,6 +70,7 @@ describe('withdrawal review action presentation', () => {
     expect(pageSource).toContain('setInterval');
     expect(pageSource).toContain('clearInterval');
     expect(pageSource).toContain('["approved", "processing"].includes(detail.status)');
+    expect(pageSource).toContain('void loadList()');
   });
 
   it('shows decision-specific reason options only after a decision is selected', () => {

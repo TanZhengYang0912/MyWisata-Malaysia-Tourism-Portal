@@ -18,6 +18,11 @@ ALTER TABLE public.payout_provider_events
   ADD COLUMN IF NOT EXISTS currency TEXT,
   ADD COLUMN IF NOT EXISTS provider_occurred_at TIMESTAMPTZ;
 
+-- Migration-only backfill: temporarily remove the append-only trigger inside
+-- this transaction, then restore it before any schema change becomes visible.
+DROP TRIGGER IF EXISTS payout_provider_events_append_only
+  ON public.payout_provider_events;
+
 UPDATE public.payout_provider_events AS event
    SET amount_sen = ROUND(request.amount * 100)::BIGINT,
        currency = 'MYR',
@@ -29,6 +34,10 @@ UPDATE public.payout_provider_events AS event
      OR event.currency IS NULL
      OR event.provider_occurred_at IS NULL
    );
+
+CREATE TRIGGER payout_provider_events_append_only
+  BEFORE UPDATE OR DELETE ON public.payout_provider_events
+  FOR EACH ROW EXECUTE FUNCTION public.payout_provider_events_are_append_only();
 
 ALTER TABLE public.payout_provider_events
   ALTER COLUMN amount_sen SET NOT NULL,
@@ -337,9 +346,29 @@ SET search_path = public
 AS $$
 DECLARE
   v_released INTEGER := 0;
+  v_exhausted INTEGER := 0;
   v_inserted INTEGER := 0;
 BEGIN
   IF COALESCE(auth.role(), '') <> 'service_role' THEN RAISE EXCEPTION 'service_role_required'; END IF;
+
+  WITH stale_exhausted AS (
+    SELECT outbox.id
+      FROM public.tng_mock_callback_outbox AS outbox
+     WHERE outbox.status = 'processing'
+       AND outbox.claimed_at < p_stale_before
+       AND outbox.attempt_count >= 5
+     ORDER BY outbox.claimed_at
+     LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 50), 100))
+     FOR UPDATE SKIP LOCKED
+  )
+  UPDATE public.tng_mock_callback_outbox AS outbox
+     SET status = 'exhausted',
+         claimed_at = NULL,
+         last_error_code = 'stale_claim_exhausted',
+         updated_at = now()
+    FROM stale_exhausted
+   WHERE outbox.id = stale_exhausted.id;
+  GET DIAGNOSTICS v_exhausted = ROW_COUNT;
 
   WITH stale AS (
     SELECT outbox.id
@@ -402,7 +431,12 @@ BEGIN
   ON CONFLICT (withdrawal_id, provider_payout_id, outcome) DO NOTHING;
   GET DIAGNOSTICS v_inserted = ROW_COUNT;
 
-  RETURN jsonb_build_object('released', v_released, 'inserted', v_inserted, 'count', v_released + v_inserted);
+  RETURN jsonb_build_object(
+    'released', v_released,
+    'exhausted', v_exhausted,
+    'inserted', v_inserted,
+    'count', v_released + v_exhausted + v_inserted
+  );
 END;
 $$;
 

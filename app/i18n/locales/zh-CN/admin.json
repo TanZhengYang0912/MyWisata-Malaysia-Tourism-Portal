@@ -1911,6 +1911,7 @@
     "settlementProof": {
       "title": "结算证明",
       "noFurtherAction": "已收到付款服务商结果，无需再次批准付款。",
+      "awaitingProvider": "正在等待已签名的付款服务商 callback，无需再次批准付款。",
       "provider": "付款服务商",
       "payoutReference": "付款编号",
       "eventId": "服务商事件",

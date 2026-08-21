@@ -45,6 +45,9 @@ describe('automatic TNG callback proof migration', () => {
 
   it('keeps provider events append-only and authorizes proof at the database boundary', () => {
     const sql = migrationSql();
+    const triggerDrop = sql.indexOf('DROP TRIGGER IF EXISTS payout_provider_events_append_only');
+    const backfill = sql.indexOf('UPDATE public.payout_provider_events AS event');
+    const triggerRestore = sql.indexOf('CREATE TRIGGER payout_provider_events_append_only');
 
     expect(sql).toContain('CREATE OR REPLACE FUNCTION public.get_withdrawal_settlement_proof');
     expect(sql).toContain('auth.uid()');
@@ -54,7 +57,9 @@ describe('automatic TNG callback proof migration', () => {
     expect(sql).toContain("'delivery', CASE WHEN NOT v_is_approver");
     expect(sql).toContain("'notification', CASE WHEN NOT v_is_approver");
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_withdrawal_settlement_proof\(UUID\)\s+TO authenticated/i);
-    expect(sql).not.toMatch(/DROP TRIGGER[\s\S]+payout_provider_events_append_only/);
+    expect(triggerDrop).toBeGreaterThan(-1);
+    expect(backfill).toBeGreaterThan(triggerDrop);
+    expect(triggerRestore).toBeGreaterThan(backfill);
   });
 
   it('bounds retry attempts and never automatically resurrects exhausted jobs', () => {
@@ -64,5 +69,6 @@ describe('automatic TNG callback proof migration', () => {
     expect(sql).toContain("status = 'exhausted'");
     expect(sql).toContain('CREATE OR REPLACE FUNCTION public.reconcile_tng_mock_callbacks');
     expect(sql).toContain("outbox.status <> 'exhausted'");
+    expect(sql).toContain("last_error_code = 'stale_claim_exhausted'");
   });
 });

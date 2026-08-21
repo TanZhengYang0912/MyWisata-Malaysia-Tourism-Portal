@@ -106,9 +106,8 @@ export default function WithdrawalReceiptPage() {
       {movement && <section className="mt-4 rounded-xl border border-border p-4 text-sm">
         <h2 className="font-semibold">{tCustomer("strictMigration.walletReceipt.moneyMovement.title")}</h2>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="rounded-lg bg-muted px-3 py-2"><p className="text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.moneyMovement.reserved")}</p><p className="font-mono font-semibold">−{formatAmount(movement.amountSen)}</p></div>
-          <ArrowRight size={18} className="text-muted-foreground" />
-          <div className="rounded-lg bg-primary/10 px-3 py-2"><p className="text-xs text-muted-foreground">{movementDestination}</p><p className="font-mono font-semibold">{movement.to ? `+${formatAmount(movement.amountSen)}` : formatAmount(movement.amountSen)}</p></div>
+          <div className="rounded-lg bg-muted px-3 py-2"><p className="text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.moneyMovement.reserved")}</p><p className="font-mono font-semibold">{movement.to ? `−${formatAmount(movement.amountSen)}` : formatAmount(movement.amountSen)}</p>{!movement.to && <p className="mt-1 text-xs text-muted-foreground">{movementDestination}</p>}</div>
+          {movement.to && <><ArrowRight size={18} className="text-muted-foreground" /><div className="rounded-lg bg-primary/10 px-3 py-2"><p className="text-xs text-muted-foreground">{movementDestination}</p><p className="font-mono font-semibold">+{formatAmount(movement.amountSen)}</p></div></>}
         </div>
       </section>}
 

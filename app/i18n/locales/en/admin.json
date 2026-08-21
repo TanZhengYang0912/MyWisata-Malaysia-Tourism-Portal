@@ -1911,6 +1911,7 @@
     "settlementProof": {
       "title": "Settlement proof",
       "noFurtherAction": "Provider result received. No further payout approval is required.",
+      "awaitingProvider": "Waiting for the signed provider callback. No additional payout approval is required.",
       "provider": "Provider",
       "payoutReference": "Payout reference",
       "eventId": "Provider event",

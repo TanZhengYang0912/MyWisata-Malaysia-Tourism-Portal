@@ -23,6 +23,7 @@ describe('withdrawal receipt provider presentation', () => {
     expect(source).toContain('strictMigration.walletReceipt.proof.title');
     expect(source).toContain('signatureVerified');
     expect(source).toContain('payloadSha256');
+    expect(source).toContain('movement.to ? `−${formatAmount(movement.amountSen)}` : formatAmount(movement.amountSen)');
     expect(source).not.toContain('Mark Paid');
     expect(source).not.toContain('Simulate Paid');
     expect(source).not.toContain('I received the money');

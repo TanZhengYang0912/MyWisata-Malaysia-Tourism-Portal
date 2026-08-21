@@ -189,7 +189,7 @@ function WalletContent() {
       if (refreshInFlight) return;
       refreshInFlight = true;
       void refreshWalletState().finally(() => { refreshInFlight = false; });
-    }, 2_000);
+    }, 4_000);
     return () => window.clearInterval(interval);
   }, [currentUser, refreshWalletState, withdrawals]);
 

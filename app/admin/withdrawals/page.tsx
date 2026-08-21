@@ -198,7 +198,7 @@ function SettlementProofSection({ proof, locale, formatAmount }: { proof: AdminS
     : null;
   const notification = proof.notification;
   return <section className="mt-4 rounded-xl border border-nature-green/30 bg-nature-green/5 p-4 text-sm">
-    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{t("withdrawals.settlementProof.title")}</h3><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.settlementProof.noFurtherAction")}</p></div>{proof.event?.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-nature-green/15 px-2 py-1 text-xs font-semibold text-nature-green-ink"><ShieldCheck size={13} />{t("withdrawals.settlementProof.signatureVerified")}</span>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold">{t("withdrawals.settlementProof.title")}</h3><p className="mt-1 text-xs text-muted-foreground">{t(proof.event ? "withdrawals.settlementProof.noFurtherAction" : "withdrawals.settlementProof.awaitingProvider")}</p></div>{proof.event?.signatureVerified && <span className="inline-flex items-center gap-1 rounded-full bg-nature-green/15 px-2 py-1 text-xs font-semibold text-nature-green-ink"><ShieldCheck size={13} />{t("withdrawals.settlementProof.signatureVerified")}</span>}</div>
     <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
       <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.provider")}</dt><dd>{proof.provider}</dd></div>
       <div><dt className="text-muted-foreground">{t("withdrawals.settlementProof.payoutReference")}</dt><dd className="break-all font-mono">{proof.providerPayoutReference ?? "—"}</dd></div>
@@ -271,6 +271,7 @@ export default function AdminWithdrawalsPage() {
         payoutFailure: data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null },
         settlementProof: data.settlementProof ?? null,
       });
+      if (!resetDecision && !["approved", "processing"].includes(data.status)) void loadList();
       if (resetDecision) {
         setSelectedDecision(null);
         setPendingConfirmation(null);
@@ -282,7 +283,7 @@ export default function AdminWithdrawalsPage() {
       showFeedback("error", `${message}. ${t("withdrawals.feedback.refreshAndContactSuperAdmin")}`);
       if (resetDecision) setError(message);
     }
-  }, [showFeedback, t]);
+  }, [loadList, showFeedback, t]);
 
   async function openDetail(id: string) {
     await refreshDetail(id, true);
