@@ -383,7 +383,6 @@ export default function AdminWithdrawalsPage() {
   }));
   const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
   const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
-  const visibleDualApproval = items.filter((item) => item.requiresDualApproval && item.approvalCount < 2).length;
   const visibleOverdue = items.filter((item) => item.status === "overdue").length;
   const oldestRequest = items.reduce<ListItem | null>((oldest, item) => !oldest || new Date(item.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? item : oldest, null);
   const displayStatus = (value: string | null | undefined) => value
@@ -455,7 +454,7 @@ export default function AdminWithdrawalsPage() {
       actions={<div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div>}
     />
     <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
-      <AdminMetricGrid items={[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.dualApproval"), value: visibleDualApproval, detail: t("withdrawals.metrics.waitingForSecondApprover") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }]} />
+      <AdminMetricGrid items={[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }]} />
     </div>
     <AdminFilterBar>
       <div className="relative min-w-[220px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
