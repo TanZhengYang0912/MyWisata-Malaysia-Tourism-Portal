@@ -66,6 +66,7 @@ export async function POST(request: Request) {
         ? 'Great find! We will reach out to the vendor soon.'
         : (reason ?? 'Please check the submission guidelines and try again.'),
       link:   '/customer/recommendations',
+      metadata: action === 'approve' ? { vendorName: rec.vendor_name } : undefined,
     }],
   );
 
