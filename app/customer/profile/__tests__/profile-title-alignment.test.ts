@@ -8,7 +8,8 @@ describe("profile title alignment", () => {
     expect(source).toContain("CustomerPageTitle");
     expect(source).not.toContain("function ProfilePageTitle");
     expect(source.match(/<CustomerPageTitle/g) ?? []).toHaveLength(2);
-    expect(source).toContain('<CustomerPageShell className="pt-0 pb-0 sm:pt-0">');
-    expect(source).toContain('<CustomerPageShell className="pt-0 sm:pt-0">');
+    expect(source).toContain('<CustomerPageShell wide className="pt-0 pb-0 sm:pt-0">');
+    expect(source).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
+    expect(source).toContain('<ProfileSections wide shellClassName="pt-0 sm:pt-0" showHeader={false} />');
   });
 });

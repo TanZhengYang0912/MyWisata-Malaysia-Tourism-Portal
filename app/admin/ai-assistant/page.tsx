@@ -113,40 +113,46 @@ function AskPanel() {
   }
 
   return (
-    <Card>
-      <CardContent className="p-4 flex flex-col" style={{ height: 640 }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Bot size={16} className="text-primary" />
+    <Card className="mx-auto w-full max-w-5xl overflow-hidden border-border/80 shadow-[0_12px_32px_rgba(1,0,102,0.06)]">
+      <CardContent className="flex min-h-[480px] flex-col p-0" style={{ height: "min(640px, calc(100vh - 18rem))" }}>
+        <div className="flex items-center gap-2 border-b border-border bg-card px-5 py-4">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Bot size={16} />
+          </span>
           <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title")}</h2>
         </div>
-        <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 mb-3">
-          {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring")}</p>}
-          {!loadingHistory && messages.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              {t("aiAssistant.ask.empty")}
-            </p>
-          )}
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
-            >
-              {m.text}
-            </div>
-          ))}
+        <div ref={listRef} className="flex-1 overflow-y-auto bg-muted/20 px-5 py-5">
+          <div className="mx-auto w-full max-w-3xl space-y-2">
+            {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring")}</p>}
+            {!loadingHistory && messages.length === 0 && (
+              <p className="rounded-xl border border-dashed border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+                {t("aiAssistant.ask.empty")}
+              </p>
+            )}
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-background text-foreground shadow-sm"}`}
+              >
+                {m.text}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder={t("aiAssistant.ask.placeholder")}
-            className={`${adminFilterControlClassName} flex-1`}
-            disabled={sending}
-          />
-          <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={send} disabled={sending || !input.trim()}>
-            <Send size={14} />
-          </Button>
+        <div className="border-t border-border bg-card px-5 py-4">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              placeholder={t("aiAssistant.ask.placeholder")}
+              className={`${adminFilterControlClassName} flex-1`}
+              disabled={sending}
+            />
+            <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={send} disabled={sending || !input.trim()}>
+              <Send size={14} />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -171,7 +177,7 @@ export default function AdminAiAssistantPage() {
   return (
     <AdminPageShell>
       <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("aiAssistant.title")}</span>} title={t("aiAssistant.title")} description={t("aiAssistant.description")} />
-      <div className="max-w-4xl">
+      <div className="flex w-full justify-center">
         <AskPanel />
       </div>
     </AdminPageShell>

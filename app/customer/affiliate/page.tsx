@@ -194,7 +194,7 @@ export default function AffiliateDashboardPage() {
           description={tCustomer("strictMigration.affiliate.eligibilityDescription")}
           icon={<Gift size={14} />}
         />
-        <CustomerPageShell className="pt-0 sm:pt-0">
+        <CustomerPageShell wide className="pt-0 sm:pt-0">
           <div className="mx-auto max-w-md py-4 text-center sm:py-8">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Gift size={24} className="text-primary" />
@@ -231,7 +231,7 @@ export default function AffiliateDashboardPage() {
         icon={<Gift size={14} />}
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">

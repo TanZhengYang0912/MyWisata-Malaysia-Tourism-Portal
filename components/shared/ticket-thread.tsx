@@ -140,7 +140,7 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
         const isImage = IMAGE_EXTENSIONS.has(extension);
         const attachmentSrc = item.attachmentUrl ? signedUrls[item.key] : undefined;
         return (
-          <div key={item.key} className={isMine ? "ml-auto max-w-[85%]" : "max-w-[85%]"}>
+          <div key={item.key} className={isMine ? "ml-auto w-fit max-w-[85%]" : "w-fit max-w-[85%]"}>
             {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot")}</p>}
             {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you") : t("ticket.supportTeam")}</p>}
             {item.attachmentUrl && (
@@ -170,22 +170,12 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
             )}
             {item.body && (
             <div
-              className={`rounded-xl px-3 py-2 text-sm ${
+              className={`w-fit max-w-full break-words rounded-xl px-3 py-2 text-sm ${
                 item.isBot ? "bg-teal/10 text-foreground" : isMine ? "bg-primary text-white" : "bg-muted text-foreground"
               }`}
             >
               {item.body}
             </div>
-            )}
-            {item.kbRefs.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {item.kbRefs.map((r, j) => (
-                  <span key={j} className="text-[0.625rem] px-1.5 py-0.5 rounded-full bg-teal/10 text-teal">
-                    {r.title}
-                    {r.score !== null ? ` · ${(r.score * 100).toFixed(0)}%` : ""}
-                  </span>
-                ))}
-              </div>
             )}
           </div>
         );

@@ -332,10 +332,8 @@ function AdminSupportContent() {
   }
 
   return (
-    <AdminPageShell>
-      <AdminPageHeader title={t("ui.support.title")} />
-
-      <ModerationFlagsPanel />
+      <AdminPageShell>
+      <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><MessageSquare size={14} /> {t("ui.support.eyebrow")}</span>} title={t("ui.support.title")} />
 
       {stats && (
         <AdminMetricGrid items={[
@@ -405,6 +403,8 @@ function AdminSupportContent() {
           </Select>
         </div>
       </AdminFilterBar>
+
+      <ModerationFlagsPanel onOpenTicket={openTicket} />
 
       {tickets === null ? (
         <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>

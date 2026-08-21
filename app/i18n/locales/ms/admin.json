@@ -73,6 +73,7 @@
     "revoke": "Tarik balik"
   },
   "affiliate": {
+    "eyebrow": "Perkongsian pasaran",
     "accessibility": {
       "selectAllFlags": "Pilih semua bendera penipuan terbuka yang kelihatan",
       "selectFlag": "Pilih bendera penipuan untuk {{name}}"
@@ -413,6 +414,7 @@
     "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}"
   },
   "chatReports": {
+    "eyebrow": "Kepercayaan & keselamatan",
     "accessibility": {
       "selectReport": "Pilih laporan sembang {{id}}",
       "selectAll": "Pilih semua laporan sembang yang kelihatan",
@@ -908,7 +910,7 @@
         "processed_other": "{{count}} cadangan telah diproses."
       },
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
-      "description": "Luluskan cadangan berkualiti untuk tindakan susulan. Kelulusan tidak menerbitkan vendor; pautkan cadangan yang diluluskan daripada Pengurusan Vendor selepas vendor menyertai supaya atribusi dan komisen kekal dilampirkan.",
+      "description": "Semak cadangan komuniti sebelum menghubungi vendor.",
       "duplicate": "Pendua",
       "member": "Ahli MyWisata",
       "noPending": "Tiada cadangan belum selesai",
@@ -934,6 +936,7 @@
       "selectRecommendation": "Pilih cadangan {{name}}",
       "subtitle": "Vendor dan lokasi menarik tersembunyi yang dihantar komuniti.",
       "title": "Moderasi Cadangan",
+      "eyebrow": "Operasi pasaran",
       "pending_one": "Belum selesai ({{count}})",
       "pending_other": "Belum selesai ({{count}})",
       "reviewed_one": "Disemak ({{count}})",
@@ -943,6 +946,7 @@
       "loadingEllipsis": "Memuatkan…"
     },
     "support": {
+      "eyebrow": "Sokongan pelanggan",
       "allCategories": "Semua kategori",
       "allStatuses": "Semua status",
       "assignedToMe": "Ditugaskan kepada saya",
@@ -1400,6 +1404,9 @@
       "markReviewed": "Tanda telah disemak",
       "reviewed": "Disemak",
       "viewTicket": "Lihat tiket",
+      "flagsCount": "{{count}} bendera",
+      "showDetails": "Tunjukkan butiran",
+      "hideDetails": "Sembunyikan butiran",
       "openCount_one": "{{count}} terbuka",
       "openCount_other": "{{count}} terbuka"
     }
@@ -2177,6 +2184,7 @@
   },
   "strictMigration": {
     "staffConduct": {
+      "eyebrow": "Operasi tadbir urus",
       "restricted": "Semakan kelakuan kakitangan terhad kepada pentadbir super.",
       "title": "Kelakuan kakitangan",
       "description": "Kelakuan pentadbir yang ditandai dan laporan sembang yang dihantar manusia untuk semakan pentadbir super.",

@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, Save, Search, ShieldCheck, UserPlus, UserRound, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Save, Search, ShieldCheck, UserPlus, UserRound, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -145,7 +144,6 @@ export default function WalletSettingsPage() {
   const dirty = !sameSettings(settings, savedSettings);
 
   return <AdminPageShell>
-    <Link href="/admin/withdrawals" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> {t("ui.walletSettings.backToWallet")}</Link>
     <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><ShieldCheck size={14} /> {t("ui.walletSettings.eyebrow")}</span>} title={t("ui.walletSettings.title")} description={t("ui.walletSettings.description")} />
     {error && <p role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle size={16} /> {error}</p>}
       {loading ? <p className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">{t("ui.walletSettings.loading")}</p> : <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">

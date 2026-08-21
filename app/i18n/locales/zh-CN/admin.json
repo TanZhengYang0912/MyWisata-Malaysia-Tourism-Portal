@@ -73,6 +73,7 @@
     "revoke": "撤销"
   },
   "affiliate": {
+    "eyebrow": "市场合作",
     "accessibility": {
       "selectAllFlags": "全选可见的开放欺诈标记",
       "selectFlag": "选择 {{name}} 的欺诈标记"
@@ -413,6 +414,7 @@
     "questionMeta_other": "×{{count}} · 最近提问于 {{date}}"
   },
   "chatReports": {
+    "eyebrow": "信任与安全",
     "accessibility": {
       "selectReport": "选择聊天举报 {{id}}",
       "selectAll": "全选可见的聊天举报",
@@ -906,7 +908,7 @@
         "processed_other": "已处理 {{count}} 条推荐。"
       },
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
-      "description": "批准优质推荐以便联系商家。批准不会发布商家；商家加入后，请从商家管理中关联已批准的推荐，以保留归属和佣金。",
+      "description": "在联系商家前审核社区推荐。",
       "duplicate": "重复",
       "member": "MyWisata 会员",
       "noPending": "没有待审核推荐",
@@ -932,6 +934,7 @@
       "selectRecommendation": "选择推荐 {{name}}",
       "subtitle": "社区提交的商家和小众宝藏地点。",
       "title": "推荐审核",
+      "eyebrow": "市场运营",
       "pending_one": "待审核（{{count}}）",
       "pending_other": "待审核（{{count}}）",
       "reviewed_one": "已审核（{{count}}）",
@@ -941,6 +944,7 @@
       "loadingEllipsis": "加载中…"
     },
     "support": {
+      "eyebrow": "客户支持",
       "allCategories": "所有类别",
       "allStatuses": "所有状态",
       "assignedToMe": "分配给我",
@@ -1398,6 +1402,9 @@
       "markReviewed": "标记为已审核",
       "reviewed": "已审核",
       "viewTicket": "查看工单",
+      "flagsCount": "{{count}} 个标记",
+      "showDetails": "展开详情",
+      "hideDetails": "收起详情",
       "openCount_one": "{{count}} 个待处理",
       "openCount_other": "{{count}} 个待处理"
     }
@@ -2175,6 +2182,7 @@
   },
   "strictMigration": {
     "staffConduct": {
+      "eyebrow": "治理运营",
       "restricted": "员工行为审核仅限超级管理员。",
       "title": "员工行为",
       "description": "供超级管理员审核的管理员行为标记和人工提交的聊天举报。",

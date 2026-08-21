@@ -1,4 +1,5 @@
 import VendorSidebar from '@/components/layout/vendor-sidebar';
+import VendorHeader from '@/components/layout/vendor-header';
 import VendorAccessGate from '@/components/layout/vendor-access-gate';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -14,6 +15,7 @@ export default async function VendorLayout({ children }: { children: React.React
     <div className="vendor-portal min-h-screen overflow-x-hidden bg-background">
       <VendorSidebar />
       <main className="ml-60 min-w-0 overflow-x-hidden">
+        <VendorHeader />
         <div className="w-full px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
           <VendorAccessGate>{children}</VendorAccessGate>
         </div>

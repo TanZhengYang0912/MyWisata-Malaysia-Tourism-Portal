@@ -13,7 +13,7 @@ describe("customer account page alignment", () => {
   ])("splits the wide title from the narrow body in %s", (path) => {
     const source = page(path);
     expect(source).toContain("CustomerPageTitle");
-    expect(source).toContain('CustomerPageShell className="pt-0 sm:pt-0"');
+    expect(source).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
   });
 
   it.each([
@@ -23,7 +23,7 @@ describe("customer account page alignment", () => {
   ])("uses the shared title grid in %s", (path) => {
     const source = page(path);
     expect(source).toContain("CustomerPageTitle");
-    expect(source).toContain('CustomerPageShell className="pt-0 sm:pt-0"');
+    expect(source).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
   });
 
   it("aligns both Become a Vendor states", () => {
@@ -36,7 +36,7 @@ describe("customer account page alignment", () => {
     (path) => {
       const source = page(path);
       expect(source).toContain("CustomerPageTitle");
-      expect(source).toContain('CustomerPageShell className="pt-0 sm:pt-0"');
+      expect(source).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
     },
   );
 

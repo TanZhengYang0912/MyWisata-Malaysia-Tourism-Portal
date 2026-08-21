@@ -336,7 +336,6 @@ export function StaffConductPanel() {
           { labelKey: "staffConduct.metrics.flaggedConduct", value: metrics.flaggedConduct, detailKey: "staffConduct.metrics.openRecords" },
           { labelKey: "staffConduct.metrics.reportedChat", value: metrics.reportedChat, detailKey: "staffConduct.metrics.openRecords" },
           { labelKey: "staffConduct.metrics.highSeverity", value: metrics.highSeverity, detailKey: "staffConduct.metrics.openRecords" },
-          { labelKey: "staffConduct.metrics.reviewed", value: metrics.reviewed, detailKey: "staffConduct.metrics.reviewedRecords" },
         ].map((metric) => ({ label: t(metric.labelKey), value: metric.value, detail: t(metric.detailKey) }))} />
       </div>
 

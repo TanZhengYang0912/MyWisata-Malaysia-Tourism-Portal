@@ -394,7 +394,7 @@ function WalletContent() {
         icon={<Wallet size={14} />}
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       {/* ── Banners ── */}
       {withdrawalSubmitted ? (

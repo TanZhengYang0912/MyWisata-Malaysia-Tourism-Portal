@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Flag, Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -290,7 +290,7 @@ export default function AdminChatReportsPage() {
 
   return (
     <AdminPageShell>
-      <AdminPageHeader title={t("chatReports.title")} />
+      <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Flag size={14} /> {t("chatReports.eyebrow")}</span>} title={t("chatReports.title")} />
 
       <AdminMetricGrid items={[
         { label: t("chatReports.tabs.pending"), value: openCount },

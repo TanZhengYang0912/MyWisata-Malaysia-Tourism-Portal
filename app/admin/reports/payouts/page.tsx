@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Clipboard, Download, FileBarChart2, RefreshCw, Search } from "lucide-react";
+import { Clipboard, Download, FileBarChart2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { csvRow } from "@/lib/admin/csv";
@@ -56,7 +55,6 @@ export default function PayoutReportsPage() {
   const statusTotal = Math.max(1, totalRequests);
 
   return <AdminPageShell>
-    <Link href="/admin/withdrawals" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> {t("payouts.backToWallet")}</Link>
     <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><FileBarChart2 size={14} /> {t("payouts.eyebrow")}</span>} title={t("payouts.title")} description={t("payouts.description")} />
     <section className="rounded-2xl border border-border bg-card p-5"><div className="flex flex-wrap items-end justify-between gap-4"><label className="text-sm"><span className="mb-1.5 block font-medium text-foreground">{t("payouts.reportMonth")}</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} className={adminFilterControlClassName} /></label><div className="flex flex-wrap gap-2"><Button onClick={() => void load()} disabled={loading || !period}><RefreshCw size={15} /> {loading ? t("payouts.generating") : t("payouts.generate")}</Button>{report && <Button variant="outline" onClick={downloadCsv}><Download size={15} /> {t("payouts.exportCsv")}</Button>}</div></div></section>
     {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}

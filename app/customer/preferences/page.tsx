@@ -15,7 +15,7 @@ export default function PreferencesPage() {
         description={t("ui.preferencesPage.description")}
         icon={<SlidersHorizontal size={14} />}
       />
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
         <CustomerPanel>
           <PreferencesEditor />
         </CustomerPanel>

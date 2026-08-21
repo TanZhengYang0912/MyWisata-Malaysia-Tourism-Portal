@@ -152,8 +152,9 @@ export default function AdminRecommendationsPage() {
   return (
     <AdminPageShell>
       <AdminPageHeader
+        eyebrow={<span className="flex items-center gap-2"><CheckCircle2 size={14} /> {t("ui.recommendations.eyebrow")}</span>}
         title={t("ui.recommendations.title")}
-        description={<>{t("ui.recommendations.subtitle")}<br />{t("ui.recommendations.description")}</>}
+        description={t("ui.recommendations.description")}
       />
 
       <AdminMetricGrid items={[

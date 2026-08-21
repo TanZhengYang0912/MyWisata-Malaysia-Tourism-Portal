@@ -73,6 +73,7 @@
     "revoke": "Revoke"
   },
   "affiliate": {
+    "eyebrow": "Marketplace partnerships",
     "accessibility": {
       "selectAllFlags": "Select all visible open fraud flags",
       "selectFlag": "Select fraud flag for {{name}}"
@@ -413,6 +414,7 @@
     "questionMeta_other": "×{{count}} · last asked {{date}}"
   },
   "chatReports": {
+    "eyebrow": "Trust & safety",
     "accessibility": {
       "selectReport": "Select chat report {{id}}",
       "selectAll": "Select all visible chat reports",
@@ -908,7 +910,7 @@
         "processed_other": "{{count}} recommendations processed."
       },
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
-      "description": "Approve quality recommendations for outreach. Approval does not publish a vendor; link the approved recommendation from Vendor Management after the vendor joins so attribution and commission remain attached.",
+      "description": "Review community recommendations before vendor outreach.",
       "duplicate": "Duplicate",
       "member": "MyWisata member",
       "noPending": "No pending recommendations",
@@ -934,6 +936,7 @@
       "selectRecommendation": "Select recommendation {{name}}",
       "subtitle": "Community-submitted vendors and hidden gems.",
       "title": "Recommendation Moderation",
+      "eyebrow": "Marketplace operations",
       "pending_one": "Pending ({{count}})",
       "pending_other": "Pending ({{count}})",
       "reviewed_one": "Reviewed ({{count}})",
@@ -943,6 +946,7 @@
       "loadingEllipsis": "Loading…"
     },
     "support": {
+      "eyebrow": "Customer support",
       "allCategories": "All categories",
       "allStatuses": "All statuses",
       "assignedToMe": "Assigned to me",
@@ -1400,6 +1404,9 @@
       "markReviewed": "Mark reviewed",
       "reviewed": "Reviewed",
       "viewTicket": "View ticket",
+      "flagsCount": "{{count}} flags",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
       "openCount_one": "{{count}} open",
       "openCount_other": "{{count}} open"
     }
@@ -2177,6 +2184,7 @@
   },
   "strictMigration": {
     "staffConduct": {
+      "eyebrow": "Governance operations",
       "restricted": "Staff conduct review is limited to super admins.",
       "title": "Staff conduct",
       "description": "Flagged admin conduct and human-submitted chat reports for super-admin review.",

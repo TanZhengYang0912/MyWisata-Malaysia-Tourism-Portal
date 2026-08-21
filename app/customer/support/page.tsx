@@ -93,7 +93,7 @@ export default function CustomerSupportPage() {
         icon={<MessageSquare size={14} aria-hidden="true" />}
       />
 
-      <CustomerPageShell className="pt-0 sm:pt-0">
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
 
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>

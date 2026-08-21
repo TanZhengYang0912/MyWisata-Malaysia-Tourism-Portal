@@ -31,7 +31,8 @@ describe("shared language entry points", () => {
     expect(login).toMatch(/<LanguageSwitcher compact \/>[\s\S]*?<Card/);
 
     const customer = source("app/customer/layout.tsx");
-    expect(customer).toMatch(/<div className="mt-2 border-t border-border pt-2">\s*<LanguageSwitcher compact className="px-1 py-1" \/>/);
+    expect(customer).toMatch(/<LanguageSwitcher compact className="hidden md:flex w-28" \/>[\s\S]*?<AppearanceControl \/>/);
+    expect(customer).not.toMatch(/<div className="mt-2 border-t border-border pt-2">\s*<LanguageSwitcher compact/);
 
     const guest = source("app/guest/layout.tsx");
     expect(guest).toMatch(/<header[\s\S]*?<LanguageSwitcher compact[^>]*\/>[\s\S]*?guest\.mode[\s\S]*?account\.signIn[\s\S]*?<\/header>/);
@@ -41,15 +42,16 @@ describe("shared language entry points", () => {
     expect(vendor).toMatch(/<div className="border-t border-gray-700 px-2 py-2">\s*<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
 
     const admin = source("app/admin/layout.tsx");
-    expect(admin).toMatch(/<div className="shrink-0 border-t border-white\/10 p-3 space-y-0\.5">\s*<LanguageSwitcher compact className="mb-2" \/>[\s\S]*?actions\.signOut/);
+    expect(admin).toMatch(/<header className="sticky top-0 z-40[\s\S]*?<LanguageSwitcher compact className="w-28" \/>[\s\S]*?<AppearanceControl \/>[\s\S]*?actions\.signOut/);
+    expect(admin).not.toContain('AppearanceControl variant="sidebar-dark"');
   });
 
-  it("renders the profile language switcher inside exactly one language section", () => {
+  it("removes the duplicate profile language section after moving it to customer navigation", () => {
     const contents = source("components/profile/profile-sections.tsx");
     const languageSections = contents.match(/<SectionCard id="language-region"[\s\S]*?<\/SectionCard>/g) ?? [];
-    expect(languageSections).toHaveLength(1);
-    expect(languageSections[0]).toContain("<LanguageSwitcher />");
-    expect(contents.match(/language\.andRegion/g)).toHaveLength(1);
+    expect(languageSections).toHaveLength(0);
+    expect(contents).not.toContain("LanguageSwitcher");
+    expect(contents).not.toContain("language.andRegion");
   });
 
   it("uses one shared native-label source instead of shell-owned option lists", () => {

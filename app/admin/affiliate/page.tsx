@@ -444,15 +444,16 @@ export default function AdminAffiliatePage() {
   }
 
   if (stats === undefined) {
-    return <AdminPageShell><AdminPageHeader title={t("affiliate.title")} /><p className="text-sm text-muted-foreground">{t("affiliate.loading")}</p></AdminPageShell>;
+    return <AdminPageShell><AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Share2 size={14} /> {t("affiliate.eyebrow")}</span>} title={t("affiliate.title")} /><p className="text-sm text-muted-foreground">{t("affiliate.loading")}</p></AdminPageShell>;
   }
   if (stats === null) {
-    return <AdminPageShell><AdminPageHeader title={t("affiliate.title")} /><EmptyState title={t("affiliate.errors.loadTitle")} description={t("affiliate.errors.loadDescription")} /></AdminPageShell>;
+    return <AdminPageShell><AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Share2 size={14} /> {t("affiliate.eyebrow")}</span>} title={t("affiliate.title")} /><EmptyState title={t("affiliate.errors.loadTitle")} description={t("affiliate.errors.loadDescription")} /></AdminPageShell>;
   }
 
   return (
     <AdminPageShell>
       <AdminPageHeader
+        eyebrow={<span className="flex items-center gap-2"><Share2 size={14} /> {t("affiliate.eyebrow")}</span>}
         title={t("affiliate.title")}
         actions={<div className="flex items-start gap-2 text-right">
           <div>
