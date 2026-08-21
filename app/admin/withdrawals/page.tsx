@@ -8,6 +8,8 @@ import { useAuth } from "@/components/providers/auth";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { isWalletReasonCategory, WALLET_REASON_CATEGORIES as WALLET_REASON_RULES, type WalletReasonAction } from "@/lib/validation/wallet-reason-schemas";
@@ -445,18 +447,22 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
-  return <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
-    <div className="w-full space-y-6">
-    <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary"><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</p><h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("withdrawals.header.title")}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("withdrawals.header.description")}</p></div><div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div></div>
-    <div aria-label={t("withdrawals.accessibility.reviewSummary")} className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-      {[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.dualApproval"), value: visibleDualApproval, detail: t("withdrawals.metrics.waitingForSecondApprover") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }].map((metric) => <div key={metric.label} className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_10px_rgba(1,0,102,0.06)]"><p className="text-sm font-semibold text-muted-foreground">{metric.label}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{metric.value}</p><p className="mt-1 text-xs font-medium text-muted-foreground">{metric.detail}</p></div>)}
+  return <AdminPageShell>
+    <AdminPageHeader
+      eyebrow={<><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</>}
+      title={t("withdrawals.header.title")}
+      description={t("withdrawals.header.description")}
+      actions={<div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div>}
+    />
+    <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
+      <AdminMetricGrid items={[{ label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") }, { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") }, { label: t("withdrawals.metrics.dualApproval"), value: visibleDualApproval, detail: t("withdrawals.metrics.waitingForSecondApprover") }, { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") }]} />
     </div>
-    <div className="rounded-2xl bg-card border border-border p-4 flex flex-wrap gap-3 items-center">
-      <div className="relative flex-1 min-w-[220px]"><Search size={15} className="absolute left-3 top-3 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm" /></div>
-      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">{t("withdrawals.filters.allStatuses")}</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select>
-      <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm"><option value="">{t("withdrawals.filters.allRiskLevels")}</option><option value="low">{t("withdrawals.risk.low")}</option><option value="review">{t("withdrawals.risk.review")}</option><option value="high">{t("withdrawals.risk.high")}</option></select>
-      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm">{PAGE_SIZES.map((size) => <option key={size} value={size}>{t("withdrawals.filters.perPage", { count: size })}</option>)}</select>
-    </div>
+    <AdminFilterBar>
+      <div className="relative min-w-[220px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
+      <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allStatuses")}</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select>
+      <select value={risk} onChange={(e) => { setRisk(e.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allRiskLevels")}</option><option value="low">{t("withdrawals.risk.low")}</option><option value="review">{t("withdrawals.risk.review")}</option><option value="high">{t("withdrawals.risk.high")}</option></select>
+      <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className={adminFilterControlClassName}>{PAGE_SIZES.map((size) => <option key={size} value={size}>{t("withdrawals.filters.perPage", { count: size })}</option>)}</select>
+    </AdminFilterBar>
     <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.queue.description")}</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{oldestRequest ? t("withdrawals.queue.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.queue.noOpenRequests")}</span></div>
       <div className="overflow-x-auto">
@@ -497,6 +503,5 @@ export default function AdminWithdrawalsPage() {
       {pendingConfirmation && <div role="dialog" aria-modal="true" aria-labelledby="confirm-withdrawal-title" className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-sm"><h3 id="confirm-withdrawal-title" className="font-semibold">{t("withdrawals.confirmation.title")}</h3><p className="mt-2">{t("withdrawals.confirmation.customer")}: {detail.customer.displayName}</p><p>{t("withdrawals.confirmation.amount")}: {formatRM(detail.amountSen)}</p><p>{t("withdrawals.confirmation.destination")}: {detail.destinationLabel}</p><p>{t("withdrawals.confirmation.decision")}: {decisionLabel(pendingConfirmation.action)}</p><p>{t("withdrawals.confirmation.reason")}: {decisionReason(toWalletReasonAction(pendingConfirmation.action), pendingConfirmation.reasonCategory)}</p><p>{t("withdrawals.confirmation.note")}: {pendingConfirmation.reason}</p><div className="flex flex-wrap gap-2 mt-4"><Button onClick={() => void confirmAction()} disabled={loading}>{t("withdrawals.confirmation.confirm")}</Button><Button variant="outline" onClick={() => setPendingConfirmation(null)} disabled={loading}>{t("withdrawals.confirmation.cancel")}</Button></div></div>}
       <p className="text-xs text-muted-foreground mt-3">{t("withdrawals.timeline.auditNote")}</p></div>}
     </aside></div>}
-    </div>
-  </div>;
+  </AdminPageShell>;
 }

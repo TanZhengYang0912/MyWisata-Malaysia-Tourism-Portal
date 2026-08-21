@@ -4,9 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
   Archive,
-  Building2,
   Check,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clipboard,
@@ -28,6 +26,8 @@ import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
+import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { useTranslation } from 'react-i18next';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -369,32 +369,29 @@ export default function AdminVendorsPage() {
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 text-foreground sm:px-6 sm:py-8 xl:px-8">
-      <div className="w-full space-y-6">
-        <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-              <Store size={16} /> {t('ui.vendors.eyebrow')}
-            </div>
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{t('ui.vendors.title')}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('ui.vendors.description')}</p>
-          </div>
-          <div className="flex items-center gap-2">
+    <AdminPageShell className="text-foreground">
+        <AdminPageHeader
+          eyebrow={<><Store size={16} /> {t('ui.vendors.eyebrow')}</>}
+          title={t('ui.vendors.title')}
+          description={t('ui.vendors.description')}
+          actions={<>
             <button type="button" onClick={exportCurrentView} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
               <ExternalLink size={16} /> {t('ui.vendors.export')}
             </button>
             <button type="button" onClick={() => void loadVendors()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90">
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {t('ui.actions.refresh')}
             </button>
-          </div>
-        </header>
+          </>}
+        />
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('ui.vendors.summary')}>
-          <SummaryCard label={t('ui.vendors.stats.total')} value={counts.all} icon={Building2} accent="slate" />
-          <SummaryCard label={t('ui.vendors.stats.needsReview')} value={pendingCount} icon={Clipboard} accent="amber" helper={pendingCount ? t('ui.vendors.stats.actionNeeded') : t('ui.vendors.stats.queueClear')} />
-          <SummaryCard label={t('ui.vendors.status.approved')} value={counts.approved + counts.welcomed} icon={CheckCircle2} accent="green" helper={t('ui.vendors.stats.live')} />
-          <SummaryCard label={t('ui.vendors.status.suspended')} value={counts.suspended} icon={Archive} accent="rose" helper={counts.suspended ? t('ui.vendors.stats.needsAttention') : t('ui.vendors.stats.noActiveHolds')} />
-        </section>
+        <div aria-label={t('ui.vendors.summary')}>
+          <AdminMetricGrid items={[
+            { label: t('ui.vendors.stats.total'), value: counts.all.toLocaleString() },
+            { label: t('ui.vendors.stats.needsReview'), value: pendingCount.toLocaleString(), detail: pendingCount ? t('ui.vendors.stats.actionNeeded') : t('ui.vendors.stats.queueClear') },
+            { label: t('ui.vendors.status.approved'), value: (counts.approved + counts.welcomed).toLocaleString(), detail: t('ui.vendors.stats.live') },
+            { label: t('ui.vendors.status.suspended'), value: counts.suspended.toLocaleString(), detail: counts.suspended ? t('ui.vendors.stats.needsAttention') : t('ui.vendors.stats.noActiveHolds') },
+          ]} />
+        </div>
 
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_12px_40px_rgba(1,0,102,0.06)]">
           <div className="border-b border-border px-5 pt-5 sm:px-6">
@@ -415,22 +412,22 @@ export default function AdminVendorsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-b border-border bg-muted p-4 sm:p-5 xl:flex-row">
+          <AdminFilterBar className="rounded-none border-x-0 border-t-0">
             <label className="relative min-w-0 flex-1">
               <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder={t('ui.vendors.searchPlaceholder')} className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-4 focus:ring-secondary" />
+              <input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder={t('ui.vendors.searchPlaceholder')} className={`${adminFilterControlClassName} min-w-[220px] w-full pl-10 pr-4`} />
             </label>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex shrink-0 flex-wrap gap-3">
               <label className="relative">
                 <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <select value={stateFilter} onChange={(event) => { setPage(1); setStateFilter(event.target.value); }} className="h-11 min-w-[155px] appearance-none rounded-xl border border-border bg-card pl-9 pr-8 text-sm text-muted-foreground outline-none focus:border-ring focus:ring-4 focus:ring-secondary">
+                <select value={stateFilter} onChange={(event) => { setPage(1); setStateFilter(event.target.value); }} className={`${adminFilterControlClassName} min-w-[155px] appearance-none pl-9 pr-8 text-muted-foreground`}>
                   <option value="all">{t('ui.vendors.filters.allStates')}</option>
                   {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
                 </select>
               </label>
               <label className="relative">
                 <ShieldCheck size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <select value={kycFilter} onChange={(event) => { setPage(1); setKycFilter(event.target.value as KycFilter); }} className="h-11 min-w-[165px] appearance-none rounded-xl border border-border bg-card pl-9 pr-8 text-sm text-muted-foreground outline-none focus:border-ring focus:ring-4 focus:ring-secondary">
+                <select value={kycFilter} onChange={(event) => { setPage(1); setKycFilter(event.target.value as KycFilter); }} className={`${adminFilterControlClassName} min-w-[165px] appearance-none pl-9 pr-8 text-muted-foreground`}>
                   {KYC_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
                 </select>
               </label>
@@ -438,7 +435,7 @@ export default function AdminVendorsPage() {
                 <Filter size={15} /> {t('ui.actions.clear')}
               </button>
             </div>
-          </div>
+          </AdminFilterBar>
 
           {selectedIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary px-4 py-3 sm:px-5">
@@ -511,8 +508,6 @@ export default function AdminVendorsPage() {
             </div>}
           </div>
         </section>
-      </div>
-
       {activeVendor && <VendorDrawer vendor={activeVendor} busyAction={busyAction} onClose={() => setActiveVendor(null)} onAction={(action) => void handleAction(activeVendor, action)} onCopy={() => void copyVendorId(activeVendor.id)} approvedRecs={approvedRecs} selectedRecommendation={selectedRec[activeVendor.id] ?? ''} linkingRecommendation={linkingVendor === activeVendor.id} onSelectRecommendation={(value) => setSelectedRec((current) => ({ ...current, [activeVendor.id]: value }))} onLinkRecommendation={() => void handleLinkRecommendation(activeVendor.id)} onOpenApprovalEmail={() => onOpenApprovalEmail(activeVendor)} />}
 
       <AiDraftEmailModal
@@ -531,13 +526,8 @@ export default function AdminVendorsPage() {
           void loadVendors();
         }}
       />
-    </div>
+    </AdminPageShell>
   );
-}
-
-function SummaryCard({ label, value, icon: Icon, accent, helper }: { label: string; value: number; icon: typeof Building2; accent: 'slate' | 'amber' | 'green' | 'rose'; helper?: string }) {
-  const accents = { slate: 'bg-muted text-muted-foreground', amber: 'bg-accent/25 text-amber-700 dark:text-amber-400', green: 'bg-secondary text-primary', rose: 'bg-destructive/10 text-destructive' };
-  return <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_8px_28px_rgba(1,0,102,0.04)]"><div className="flex items-start justify-between"><span className="text-sm font-semibold text-muted-foreground">{label}</span><span className={`rounded-xl p-2.5 ${accents[accent]}`}><Icon size={17} /></span></div><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-foreground">{value.toLocaleString()}</p>{helper && <p className="mt-1 text-xs font-medium text-muted-foreground">{helper}</p>}</div>;
 }
 
 function BatchButton({ label, icon: Icon, onClick, disabled, tone = 'default' }: { label: string; icon: typeof Check; onClick: () => void; disabled: boolean; tone?: 'default' | 'danger' }) {

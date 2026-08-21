@@ -11,6 +11,7 @@
 import { Shield } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { StaffConductPanel } from "@/components/admin/staff-conduct-panel";
+import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useTranslation } from "react-i18next";
 
 export default function AdminStaffConductPage() {
@@ -19,23 +20,21 @@ export default function AdminStaffConductPage() {
 
   if (currentUser && currentUser.role !== "super_admin") {
     return (
-      <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8">
+      <AdminPageShell>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Shield size={16} /> {t("strictMigration.staffConduct.restricted")}
         </div>
-      </div>
+      </AdminPageShell>
     );
   }
 
   return (
-    <div className="min-h-full bg-background px-4 py-6 sm:px-6 sm:py-8 xl:px-8 space-y-6">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-[-0.04em] text-foreground sm:text-4xl">{t("strictMigration.staffConduct.title")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t("strictMigration.staffConduct.description")}
-        </p>
-      </div>
+    <AdminPageShell>
+      <AdminPageHeader
+        title={t("strictMigration.staffConduct.title")}
+        description={t("strictMigration.staffConduct.description")}
+      />
       <StaffConductPanel />
-    </div>
+    </AdminPageShell>
   );
 }

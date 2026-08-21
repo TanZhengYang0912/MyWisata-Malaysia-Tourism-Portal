@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { UserX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, UserX } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +27,16 @@ import { useAuth } from "@/components/providers/auth";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { getMessages } from "@/backend/domains/identity";
 import type { ChatMessage } from "@/backend/core/types";
+import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMetricGrid } from "@/components/admin/admin-page-shell";
+import {
+  filterStaffConductRecords,
+  paginateStaffConductRecords,
+  summarizeStaffConductRecords,
+  type StaffConductMetricRecord,
+  type StaffConductRecordType,
+  type StaffConductReviewState,
+} from "@/components/admin/staff-conduct-filtering";
 
 interface ConductFlag {
   id: string;
@@ -79,23 +89,27 @@ const SEVERITY_LABEL: Record<ConductFlag["severity"], string> = {
   high: "staffConduct.severity.high",
 };
 
-type Tab = "all" | "flagged_conduct" | "reported_chat";
-type MergedItem = { kind: "flag"; data: ConductFlag } | { kind: "report"; data: ChatReport };
+type MergedItem =
+  | (StaffConductMetricRecord & { kind: "flagged_conduct"; data: ConductFlag })
+  | (StaffConductMetricRecord & { kind: "reported_chat"; data: ChatReport });
+
+const PAGE_SIZES = [15, 25, 50] as const;
 
 export function StaffConductPanel() {
   const { t } = useTranslation("admin");
   const { currentUser } = useAuth();
-  const [tab, setTab] = useState<Tab>("all");
+  const [query, setQuery] = useState("");
+  const [reviewState, setReviewState] = useState<StaffConductReviewState>("open");
+  const [recordType, setRecordType] = useState<StaffConductRecordType>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
 
   const [flags, setFlags] = useState<ConductFlag[] | null | undefined>(undefined);
-  const [showReviewedFlags, setShowReviewedFlags] = useState(false);
-  const [showReviewedAll, setShowReviewedAll] = useState(false);
   const [reviewingFlagId, setReviewingFlagId] = useState<string | null>(null);
   const [transcriptFlag, setTranscriptFlag] = useState<ConductFlag | null>(null);
   const [transcript, setTranscript] = useState<TranscriptMessage[] | null>(null);
 
   const [reports, setReports] = useState<ChatReport[] | null | undefined>(undefined);
-  const [showReviewedReports, setShowReviewedReports] = useState(false);
   const [reviewingReportId, setReviewingReportId] = useState<string | null>(null);
   const [chatLogReport, setChatLogReport] = useState<ChatReport | null>(null);
   const [chatLogMessages, setChatLogMessages] = useState<ChatMessage[] | null>(null);
@@ -183,31 +197,45 @@ export function StaffConductPanel() {
     return <EmptyState icon={<UserX size={40} />} title={t("staffConduct.empty.title")} description={t("staffConduct.empty.description")} />;
   }
 
-  const visibleFlags = flags && (showReviewedFlags ? flags : flags.filter((f) => f.status === "open"));
-  const openFlagCount = flags ? flags.filter((f) => f.status === "open").length : 0;
-
-  const visibleReports = reports && (showReviewedReports ? reports : reports.filter((r) => r.status === "open"));
-  const openReportCount = reports ? reports.filter((r) => r.status === "open").length : 0;
   const chatLogParticipants = chatLogReport
     ? chatLogReport.partyBName
       ? t("staffConduct.participantsWith", { partyA: chatLogReport.partyAName, partyB: chatLogReport.partyBName })
       : chatLogReport.partyAName
     : "";
 
-  // "All" tab: both datasets interleaved by recency rather than stacked in
-  // two sections — a reviewer scanning for the newest conduct issue
-  // shouldn't have to check two separate lists in date order.
   const mergedAll: MergedItem[] = [
-    ...(flags ?? []).map((f): MergedItem => ({ kind: "flag", data: f })),
-    ...(reports ?? []).map((r): MergedItem => ({ kind: "report", data: r })),
-  ].sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime());
-  const visibleAll = showReviewedAll ? mergedAll : mergedAll.filter((item) => item.data.status === "open");
-  const openAllCount = openFlagCount + openReportCount;
+    ...(flags ?? []).map((f): MergedItem => ({
+      id: f.id,
+      kind: "flagged_conduct",
+      status: f.status,
+      createdAt: f.createdAt,
+      severity: f.severity,
+      searchableText: [f.flaggedAdminName, f.targetUserName ?? "", f.originalText, f.source, f.sourceRefId],
+      data: f,
+    })),
+    ...(reports ?? []).map((r): MergedItem => ({
+      id: r.id,
+      kind: "reported_chat",
+      status: r.status,
+      createdAt: r.createdAt,
+      searchableText: [r.reporterName, r.partyAName, r.partyBName ?? "", r.reason ?? "", r.chatType, r.threadRef],
+      data: r,
+    })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const metrics = summarizeStaffConductRecords(mergedAll);
+  const openAllCount = metrics.needsAction;
+  const filteredItems = filterStaffConductRecords(mergedAll, { query, reviewState, recordType });
+  const pagedItems = paginateStaffConductRecords(filteredItems, page, pageSize);
+
+  function updateFilter(update: () => void) {
+    update();
+    setPage(1);
+  }
 
   function flagRow(f: ConductFlag, withKind: boolean) {
     return (
-      <div key={`flag-${f.id}`} className="flex items-start justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
-        <div>
+      <div key={`flag-${f.id}`} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4 text-sm">
+        <div className="min-w-0 flex-1">
           <p className="text-foreground">
             {withKind && (
               <span className="mr-1.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase text-destructive">
@@ -250,8 +278,8 @@ export function StaffConductPanel() {
 
   function reportRow(r: ChatReport, withKind: boolean) {
     return (
-      <div key={`report-${r.id}`} className="flex items-start justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
-        <div>
+      <div key={`report-${r.id}`} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4 text-sm">
+        <div className="min-w-0 flex-1">
           <p className="text-foreground">
             {withKind && (
               <span className="mr-1.5 rounded-full bg-accent/25 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase text-amber-700 dark:text-amber-400">
@@ -297,92 +325,84 @@ export function StaffConductPanel() {
   }
 
   return (
-    <div className="rounded-xl bg-card p-4 border border-destructive/20" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-      <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-destructive">
-          <UserX size={13} /> {t("staffConduct.title")}
-        </p>
-        <div className="flex gap-1 rounded-lg bg-secondary p-0.5">
-          <button
-            type="button"
-            onClick={() => setTab("all")}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${tab === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            {t("staffConduct.tabs.all")}{openAllCount > 0 && ` (${openAllCount})`}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("flagged_conduct")}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${tab === "flagged_conduct" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            {t("staffConduct.tabs.flaggedConduct")}{openFlagCount > 0 && ` (${openFlagCount})`}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("reported_chat")}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${tab === "reported_chat" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
-          >
-            {t("staffConduct.tabs.reportedChat")}{openReportCount > 0 && ` (${openReportCount})`}
-          </button>
-        </div>
+    <div className="space-y-4">
+      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-destructive">
+        <UserX size={13} /> {t("staffConduct.title")}
+      </p>
+
+      <div aria-label={t("staffConduct.metrics.ariaLabel")}>
+        <AdminMetricGrid items={[
+          { labelKey: "staffConduct.metrics.needsAction", value: metrics.needsAction, detailKey: "staffConduct.metrics.openRecords" },
+          { labelKey: "staffConduct.metrics.flaggedConduct", value: metrics.flaggedConduct, detailKey: "staffConduct.metrics.openRecords" },
+          { labelKey: "staffConduct.metrics.reportedChat", value: metrics.reportedChat, detailKey: "staffConduct.metrics.openRecords" },
+          { labelKey: "staffConduct.metrics.highSeverity", value: metrics.highSeverity, detailKey: "staffConduct.metrics.openRecords" },
+          { labelKey: "staffConduct.metrics.reviewed", value: metrics.reviewed, detailKey: "staffConduct.metrics.reviewedRecords" },
+        ].map((metric) => ({ label: t(metric.labelKey), value: metric.value, detail: t(metric.detailKey) }))} />
       </div>
 
-      {tab === "all" && (
-        <div>
-          <div className="mb-2 flex justify-end">
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input type="checkbox" checked={showReviewedAll} onChange={(e) => setShowReviewedAll(e.target.checked)} />
-              {t("staffConduct.filters.showReviewed")}
-            </label>
-          </div>
-          <div className="space-y-2">
-            {visibleAll.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                {mergedAll.length > 0 && openAllCount === 0 ? t("staffConduct.empty.allReviewed") : t("staffConduct.empty.nothingToReview")}
-              </p>
-            )}
-            {visibleAll.map((item) => (item.kind === "flag" ? flagRow(item.data, true) : reportRow(item.data, true)))}
-          </div>
+      <AdminFilterBar>
+        <div className="relative min-w-[220px] flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => updateFilter(() => setQuery(event.target.value))}
+            placeholder={t("staffConduct.filters.search")}
+            aria-label={t("staffConduct.filters.search")}
+            className={`${adminFilterControlClassName} w-full pl-9`}
+          />
         </div>
-      )}
+        <select
+          value={reviewState}
+          onChange={(event) => updateFilter(() => setReviewState(event.target.value as StaffConductReviewState))}
+          aria-label={t("staffConduct.filters.reviewState")}
+          className={adminFilterControlClassName}
+        >
+          <option value="open">{t("staffConduct.filters.needsReview")}</option>
+          <option value="reviewed">{t("staffConduct.filters.reviewed")}</option>
+          <option value="all">{t("staffConduct.filters.allStatuses")}</option>
+        </select>
+        <select
+          value={recordType}
+          onChange={(event) => updateFilter(() => setRecordType(event.target.value as StaffConductRecordType))}
+          aria-label={t("staffConduct.filters.recordType")}
+          className={adminFilterControlClassName}
+        >
+          <option value="all">{t("staffConduct.filters.allRecordTypes")}</option>
+          <option value="flagged_conduct">{t("staffConduct.tabs.flaggedConduct")}</option>
+          <option value="reported_chat">{t("staffConduct.tabs.reportedChat")}</option>
+        </select>
+        <select
+          value={pageSize}
+          onChange={(event) => updateFilter(() => setPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]))}
+          aria-label={t("staffConduct.filters.perPageAriaLabel")}
+          className={adminFilterControlClassName}
+        >
+          {PAGE_SIZES.map((size) => <option key={size} value={size}>{t("staffConduct.filters.perPage", { count: size })}</option>)}
+        </select>
+      </AdminFilterBar>
 
-      {tab === "flagged_conduct" && (
-        <div>
-          <div className="mb-2 flex justify-end">
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input type="checkbox" checked={showReviewedFlags} onChange={(e) => setShowReviewedFlags(e.target.checked)} />
-              {t("staffConduct.filters.showReviewed")}
-            </label>
-          </div>
-          <div className="space-y-2">
-            {(!visibleFlags || visibleFlags.length === 0) && (
-              <p className="text-sm text-muted-foreground">
-                {flags && openFlagCount === 0 && flags.length > 0 ? t("staffConduct.empty.allFlagsReviewed") : t("staffConduct.empty.nothingToReview")}
-              </p>
-            )}
-            {visibleFlags?.map((f) => flagRow(f, false))}
-          </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <div className="divide-y divide-border">
+          {pagedItems.items.length === 0 ? (
+            <p className="px-6 py-10 text-sm text-muted-foreground">
+              {reviewState === "open" && openAllCount === 0 ? t("staffConduct.empty.allReviewed") : t("staffConduct.empty.noMatchingRecords")}
+            </p>
+          ) : pagedItems.items.map((item) => (item.kind === "flagged_conduct" ? flagRow(item.data, true) : reportRow(item.data, true)))}
         </div>
-      )}
-
-      {tab === "reported_chat" && (
-        <div>
-          <div className="mb-2 flex justify-end">
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input type="checkbox" checked={showReviewedReports} onChange={(e) => setShowReviewedReports(e.target.checked)} />
-              {t("staffConduct.filters.showReviewed")}
-            </label>
-          </div>
-          <div className="space-y-2">
-            {(!visibleReports || visibleReports.length === 0) && (
-              <p className="text-sm text-muted-foreground">
-                {reports && openReportCount === 0 && reports.length > 0 ? t("staffConduct.empty.allReportsReviewed") : t("staffConduct.empty.noReportedChats")}
-              </p>
-            )}
-            {visibleReports?.map((r) => reportRow(r, false))}
-          </div>
+        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <span>{t("staffConduct.filters.pageOf", { page: pagedItems.page, total: pagedItems.totalPages })}</span>
+          {pagedItems.totalPages > 1 && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.previousPage")} disabled={pagedItems.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                <ChevronLeft size={14} />
+              </Button>
+              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.nextPage")} disabled={pagedItems.page >= pagedItems.totalPages} onClick={() => setPage((value) => Math.min(pagedItems.totalPages, value + 1))}>
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <Dialog open={!!transcriptFlag} onOpenChange={(open) => { if (!open) { setTranscriptFlag(null); setTranscript(null); } }}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
