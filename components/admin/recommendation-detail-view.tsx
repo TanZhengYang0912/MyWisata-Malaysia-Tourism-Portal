@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
+import { AdminPageHeader } from "@/components/admin/admin-page-shell";
 import { AiDraftEmailModal } from "@/components/admin/ai-draft-email-modal";
 import { RecommendationAiReviewPanel } from "@/components/admin/recommendation-ai-review-panel";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -207,7 +208,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground sm:p-8">{t("recommendation.detail.loading")}</div>;
+    return <div className="p-6 sm:p-8"><AdminPageHeader title={t("recommendation.detail.recommendationEvidence")} /><p className="text-sm text-muted-foreground">{t("recommendation.detail.loading")}</p></div>;
   }
 
   if (!detail) {
@@ -216,6 +217,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm text-primary">
           <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
         </Link>
+        <div className="mt-5"><AdminPageHeader title={t("recommendation.detail.recommendationEvidence")} /></div>
         <div className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
           {error ?? t("recommendation.detail.notFound")}
         </div>
@@ -273,13 +275,13 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
       </Link>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div id={EVIDENCE_TARGET_IDS.vendorName}>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("recommendation.detail.recommendationEvidence")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-foreground">{detail.name}</h1>
-          <p className="mt-1 text-xs text-muted-foreground">{t("recommendation.detail.submitted", { date: displayDate(detail.submittedAt, locale, t("recommendation.detail.notRecorded")) })}</p>
-        </div>
-        <StatusBadge status={detail.status} />
+      <div className="mt-5" id={EVIDENCE_TARGET_IDS.vendorName}>
+        <AdminPageHeader
+          eyebrow={t("recommendation.detail.recommendationEvidence")}
+          title={detail.name}
+          description={t("recommendation.detail.submitted", { date: displayDate(detail.submittedAt, locale, t("recommendation.detail.notRecorded")) })}
+          actions={<StatusBadge status={detail.status} />}
+        />
       </div>
 
       {error && <div className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}

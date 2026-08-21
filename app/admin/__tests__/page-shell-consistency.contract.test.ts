@@ -68,4 +68,10 @@ describe("admin page-shell consistency contract", () => {
   it("migrates every Admin route to the shared shell", () => {
     expect([...MIGRATED_ADMIN_ROUTE_PAGES].sort()).toEqual([...ADMIN_ROUTE_PAGES].sort());
   });
+
+  it("keeps the recommendation detail title on the shared header", () => {
+    const source = read("components/admin/recommendation-detail-view.tsx");
+    expect(source).toMatch(/import[\s\S]*AdminPageHeader[\s\S]*from[\s\S]*admin-page-shell/);
+    expect(source).toContain("<AdminPageHeader");
+  });
 });
