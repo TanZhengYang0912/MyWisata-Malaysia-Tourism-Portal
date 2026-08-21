@@ -11,6 +11,9 @@ const tngWebhookPayloadSchema = z.object({
   payoutId: z.string().trim().min(1).max(255),
   withdrawalId: z.uuid(),
   status: z.enum(['paid', 'failed']),
+  amountSen: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  currency: z.literal('MYR'),
+  occurredAt: z.iso.datetime({ offset: true }),
   failure: failureSchema.optional(),
 }).strict();
 
