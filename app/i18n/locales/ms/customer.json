@@ -1668,6 +1668,25 @@
       "summary_one": "{{count}} perniagaan dalam lingkungan {{radius}} km",
       "summary_other": "{{count}} perniagaan dalam lingkungan {{radius}} km"
     },
+    "malaysiaStates": {
+      "allMalaysia": "Seluruh Malaysia",
+      "johor": "Johor",
+      "kedah": "Kedah",
+      "kelantan": "Kelantan",
+      "melaka": "Melaka",
+      "negeriSembilan": "Negeri Sembilan",
+      "pahang": "Pahang",
+      "perak": "Perak",
+      "perlis": "Perlis",
+      "penang": "Pulau Pinang",
+      "sabah": "Sabah",
+      "sarawak": "Sarawak",
+      "selangor": "Selangor",
+      "terengganu": "Terengganu",
+      "kualaLumpur": "Kuala Lumpur",
+      "putrajaya": "Putrajaya",
+      "labuan": "Labuan"
+    },
     "discovery": {
       "searchLabel": "Cari tempat dan pengalaman"
     },

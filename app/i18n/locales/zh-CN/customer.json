@@ -1668,6 +1668,25 @@
       "summary_one": "{{radius}} 公里内有 {{count}} 家商家",
       "summary_other": "{{radius}} 公里内有 {{count}} 家商家"
     },
+    "malaysiaStates": {
+      "allMalaysia": "全马来西亚",
+      "johor": "柔佛",
+      "kedah": "吉打",
+      "kelantan": "吉兰丹",
+      "melaka": "马六甲",
+      "negeriSembilan": "森美兰",
+      "pahang": "彭亨",
+      "perak": "霹雳",
+      "perlis": "玻璃市",
+      "penang": "槟城",
+      "sabah": "沙巴",
+      "sarawak": "砂拉越",
+      "selangor": "雪兰莪",
+      "terengganu": "登嘉楼",
+      "kualaLumpur": "吉隆坡",
+      "putrajaya": "布城",
+      "labuan": "纳闽"
+    },
     "discovery": {
       "searchLabel": "搜索地点和体验"
     },

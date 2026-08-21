@@ -1668,6 +1668,25 @@
       "summary_one": "{{count}} businesses within {{radius}} km",
       "summary_other": "{{count}} businesses within {{radius}} km"
     },
+    "malaysiaStates": {
+      "allMalaysia": "All Malaysia",
+      "johor": "Johor",
+      "kedah": "Kedah",
+      "kelantan": "Kelantan",
+      "melaka": "Melaka",
+      "negeriSembilan": "Negeri Sembilan",
+      "pahang": "Pahang",
+      "perak": "Perak",
+      "perlis": "Perlis",
+      "penang": "Penang",
+      "sabah": "Sabah",
+      "sarawak": "Sarawak",
+      "selangor": "Selangor",
+      "terengganu": "Terengganu",
+      "kualaLumpur": "Kuala Lumpur",
+      "putrajaya": "Putrajaya",
+      "labuan": "Labuan"
+    },
     "discovery": {
       "searchLabel": "Search places and experiences"
     },

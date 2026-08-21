@@ -21,6 +21,7 @@ import { PlaceActivitySection } from "@/components/customer/place-activity-secti
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
+import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
@@ -42,10 +43,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const place = await getPlaceBySlug(slug);
   const { t } = await getServerTranslation("customer");
   if (!place) return { title: t("ui.place.notFound") };
+  const stateKey = getMalaysiaStateTranslationKey(place.state);
+  const stateLabel = stateKey ? t(stateKey) : place.state;
   const heroImage = getPlaceHeroImage(place);
   return {
     title: t("ui.place.metaTitle", { name: place.name }),
-    description: place.intro ?? place.tagline ?? t("ui.place.metaDescription", { name: place.name, state: place.state }),
+    description: place.intro ?? place.tagline ?? t("ui.place.metaDescription", { name: place.name, state: stateLabel }),
     openGraph: {
       title: `${place.name} | MyWisata`,
       description: place.intro ?? undefined,
@@ -59,6 +62,8 @@ export default async function PlacePage({ params }: Props) {
   const place = await getPlaceBySlug(slug);
   if (!place) notFound();
   const { t } = await getServerTranslation("customer");
+  const stateKey = getMalaysiaStateTranslationKey(place.state);
+  const stateLabel = stateKey ? t(stateKey) : place.state;
   const heroImage = getPlaceHeroImage(place);
 
   const [trail, children, regionGroups, products, nearby, vendors] = await Promise.all([
@@ -137,7 +142,7 @@ export default async function PlacePage({ params }: Props) {
               <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("ui.labels.location")}</p>
-                <p className="mt-1 font-semibold text-foreground">{place.district ? `${place.district}, ${place.state}` : place.state}</p>
+                <p className="mt-1 font-semibold text-foreground">{place.district ? `${place.district}, ${stateLabel}` : stateLabel}</p>
               </div>
             </div>
             <div className="flex items-start gap-2.5">
@@ -151,7 +156,7 @@ export default async function PlacePage({ params }: Props) {
               <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("ui.search.localPartner")}</p>
-                <p className="mt-1 font-semibold text-foreground">{operator?.name ?? "Open destination"}</p>
+                <p className="mt-1 font-semibold text-foreground">{operator?.name ?? t("ui.place.noOperator")}</p>
               </div>
             </div>
           </div>
