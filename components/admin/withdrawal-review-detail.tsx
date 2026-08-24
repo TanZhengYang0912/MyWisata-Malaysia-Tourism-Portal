@@ -130,7 +130,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   }
 
   if (loading && !detail) return <div className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">{t("withdrawals.loading")}</div>;
-  if (!detail) return <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive"><p>{error || t("withdrawals.errors.loadReviewDetails")}</p><Button className="mt-4" variant="outline" onClick={() => void loadDetail()}>{t("ui.actions.retry")}</Button></div>;
+  if (!detail) return <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive"><p>{error || t("withdrawals.errors.loadReviewDetails")}</p><Button className="mt-4" variant="outline" onClick={() => void loadDetail()}>{t("withdrawals.detail.retry")}</Button></div>;
 
   const hasReviewEvidence = detail.reviewSources.rewardSources.length > 0 || detail.reviewSources.affiliateSources.length > 0 || detail.reviewSources.walletTransactions.length > 0 || detail.reviewSources.fraudFlags.length > 0;
   const activeReasonAction = selectedDecision ? toWalletReasonAction(selectedDecision) : null;
@@ -162,6 +162,6 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       <p className="text-xs text-muted-foreground">{t("withdrawals.timeline.auditNote")}</p>
     </aside>
 
-    <AdminConfirmDialog open={pendingConfirmation != null} title="withdrawals.confirmation.title" description={selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description"} confirmLabel="withdrawals.confirmation.confirm" confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} />
+    <AdminConfirmDialog open={pendingConfirmation != null} title={t("withdrawals.confirmation.title")} description={t(selectedDecision ? DECISION_COPY[selectedDecision].consequenceKey : "withdrawals.decision.description")} confirmLabel={t("withdrawals.confirmation.confirm")} confirmVariant={selectedDecision === "reject" ? "destructive" : "default"} busy={loading} onCancel={() => setPendingConfirmation(null)} onConfirm={() => void confirmAction()} />
   </div>;
 }

@@ -959,6 +959,8 @@
       "queueDescription": "Buka satu cadangan untuk menyemak bukti lengkap dan membuat keputusan.",
       "queueItems": "cadangan",
       "queueTitle": "Baris gilir moderasi ({{count}})",
+      "queueTitle_one": "Baris gilir moderasi ({{count}})",
+      "queueTitle_other": "Baris gilir moderasi ({{count}})",
       "unassigned": "Belum ditugaskan — membuka butiran akan menuntut semakan ini",
       "sla": { "due_soon": "Hampir tamat · {{hours}}j", "overdue": "Lewat · {{hours}}j" },
       "batch": {
@@ -1960,6 +1962,7 @@
       "risk": "Risiko",
       "reviewDescription": "Semak kesediaan, bukti kekal dan garis masa pembayaran lengkap sebelum mengambil satu tindakan terkawal.",
       "reviewTitle": "Butiran semakan pengeluaran",
+      "retry": "Cuba lagi",
       "status": "Status",
       "unknown": "Tidak diketahui"
     },

@@ -957,6 +957,8 @@
       "queueDescription": "打开单条推荐，查看完整证据并作出决定。",
       "queueItems": "推荐",
       "queueTitle": "审核队列（{{count}}）",
+      "queueTitle_one": "审核队列（{{count}}）",
+      "queueTitle_other": "审核队列（{{count}}）",
       "unassigned": "尚未分配——打开详情后将领取此审核",
       "sla": { "due_soon": "即将到期 · {{hours}} 小时", "overdue": "已逾期 · {{hours}} 小时" },
       "batch": {
@@ -1987,6 +1989,7 @@
       "risk": "风险",
       "reviewDescription": "在执行单一受管控操作前，审核准备状态、不可变证据及完整打款时间线。",
       "reviewTitle": "提现审核详情",
+      "retry": "重试",
       "status": "状态",
       "unknown": "未知"
     },

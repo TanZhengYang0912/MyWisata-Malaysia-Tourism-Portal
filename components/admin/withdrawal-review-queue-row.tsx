@@ -33,7 +33,7 @@ export function WithdrawalReviewQueueRow({
   return (
     <Link
       href={`/admin/withdrawals/${item.id}`}
-      aria-label={t('withdrawals.accessibility.openRow', {
+      aria-label={t('admin:withdrawals.accessibility.openRow', {
         customer: item.customerDisplayName,
         amount: formatAmount(item.amountSen),
         priority: t(priority.labelKey),
@@ -47,11 +47,11 @@ export function WithdrawalReviewQueueRow({
           <p className="mt-1 truncate text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString(locale)} · {item.userId.slice(0, 8)}…</p>
         </div>
       </div>
-      <div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatAmount(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? t('withdrawals.table.rm500Threshold') : t('withdrawals.table.standardReview')}</p></div>
-      <div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{t(priority.labelKey)}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">{t('withdrawals.table.risk', { level: displayStatus(item.riskLevel) })}</p>}</div>
-      <div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? t('withdrawals.table.dualApprovals', { count: Math.min(item.approvalCount, 2) }) : t('withdrawals.table.singleApproval')}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? t('withdrawals.table.waitingForSecondApprover') : t('withdrawals.table.approvalPathReady')}</p></div>
-      <div><p className={`text-sm font-semibold ${item.status === 'overdue' ? 'text-red-700' : 'text-foreground'}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === 'overdue' ? t('withdrawals.table.overdue') : t('withdrawals.table.withinReviewWindow')}</p></div>
-      <div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === 'high' && <ShieldAlert size={15} aria-label={t('withdrawals.accessibility.highRisk')} className="text-red-600" />}</div>
+      <div><p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">{formatAmount(item.amountSen)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval ? t('admin:withdrawals.table.rm500Threshold') : t('admin:withdrawals.table.standardReview')}</p></div>
+      <div><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold ${priority.className}`}><PriorityIcon size={12} />{t(priority.labelKey)}</span>{item.riskLevel && <p className="mt-1 text-[11px] text-muted-foreground">{t('admin:withdrawals.table.risk', { level: displayStatus(item.riskLevel) })}</p>}</div>
+      <div><p className="text-sm font-semibold text-foreground">{item.requiresDualApproval ? t('admin:withdrawals.table.dualApprovals', { count: Math.min(item.approvalCount, 2) }) : t('admin:withdrawals.table.singleApproval')}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.requiresDualApproval && item.approvalCount < 2 ? t('admin:withdrawals.table.waitingForSecondApprover') : t('admin:withdrawals.table.approvalPathReady')}</p></div>
+      <div><p className={`text-sm font-semibold ${item.status === 'overdue' ? 'text-red-700' : 'text-foreground'}`}>{formatAge(item.createdAt)}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.status === 'overdue' ? t('admin:withdrawals.table.overdue') : t('admin:withdrawals.table.withinReviewWindow')}</p></div>
+      <div className="flex items-center gap-2"><StatusBadge status={item.status} />{item.riskLevel === 'high' && <ShieldAlert size={15} aria-label={t('admin:withdrawals.accessibility.highRisk')} className="text-red-600" />}</div>
       <ArrowUpRight size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
     </Link>
   );

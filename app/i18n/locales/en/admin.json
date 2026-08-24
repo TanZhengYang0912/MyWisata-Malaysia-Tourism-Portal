@@ -959,6 +959,8 @@
       "queueDescription": "Open one recommendation to review its complete evidence and make a decision.",
       "queueItems": "recommendations",
       "queueTitle": "Moderation queue ({{count}})",
+      "queueTitle_one": "Moderation queue ({{count}})",
+      "queueTitle_other": "Moderation queue ({{count}})",
       "unassigned": "Unassigned — opening the detail claims this review",
       "sla": { "due_soon": "Due soon · {{hours}}h", "overdue": "Overdue · {{hours}}h" },
       "batch": {
@@ -1962,6 +1964,7 @@
       "risk": "Risk",
       "reviewDescription": "Review readiness, immutable evidence and the complete payout timeline before taking one governed action.",
       "reviewTitle": "Withdrawal review detail",
+      "retry": "Retry",
       "status": "Status",
       "unknown": "Unknown"
     },
