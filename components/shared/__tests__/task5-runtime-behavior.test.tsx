@@ -233,7 +233,7 @@ describe("Task 5 shared runtime behavior", () => {
     const onConfirm = vi.fn();
     await render(
       <>
-        <AdminSegmentedFilter value="approved" items={[{ value: "approved", label: "Approved" }]} onChange={onFilter} ariaLabel="filters.filter" />
+        <AdminSegmentedFilter value="approved" items={[{ value: "approved", label: "Approved translated" }]} onChange={onFilter} ariaLabel="filters.filter" />
         <AdminConfirmDialog open title="batchActions.approve" description="confirm.approve" confirmLabel="batchActions.approve" onCancel={onCancel} onConfirm={onConfirm} />
       </>,
     );
