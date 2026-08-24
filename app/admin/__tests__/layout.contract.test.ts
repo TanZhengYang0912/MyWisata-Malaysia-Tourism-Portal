@@ -45,6 +45,11 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('item.allowedRoles.includes(currentUser.role)');
   });
 
+  it('exposes wallet approver governance only to super admins', () => {
+    expect(layoutSource).toContain('{ href: "/admin/wallet/approvers", label: "Wallet Approvers"');
+    expect(layoutSource).toMatch(/href: "\/admin\/wallet\/approvers"[\s\S]*?superAdminOnly: true/);
+  });
+
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
     expect(layoutSource).toContain('className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5"');
     expect(layoutSource).toContain('className="px-4 py-3 border-b border-gray-700"');

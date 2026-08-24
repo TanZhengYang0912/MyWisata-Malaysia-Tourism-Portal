@@ -11,7 +11,9 @@ export type SettlementProof = {
     currency: 'MYR';
     providerOccurredAt: string;
     receivedAt: string;
-    signatureVerified: true;
+    signatureVerified: boolean;
+    verificationMethod: 'hmac_sha256' | 'legacy_unverified' | 'unverified';
+    ingestionSource: 'tng_mock_webhook' | 'migration_backfill' | 'unknown';
     payloadSha256: string | null;
   };
   moneyMovement: {

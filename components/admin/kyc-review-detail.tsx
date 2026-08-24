@@ -58,7 +58,7 @@ export function KycReviewDetailContent({
   const [reasonDetail, setReasonDetail] = useState("");
   const [confirmDecision, setConfirmDecision] = useState<KycReviewDecision | null>(null);
 
-  const actionable = submission.status === "pending";
+  const actionable = submission.status === "pending" && detail.assignment.canDecide;
   const canContinue = Boolean(reasonCode) && (reasonCode !== "other" || reasonDetail.trim().length >= 10);
   const statusLabel = t(`kyc.status.${statusKey(submission.status)}`);
   const statusClassName = submission.status === "approved"
@@ -145,6 +145,16 @@ export function KycReviewDetailContent({
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-foreground">{t("kyc.detail.identitySnapshot")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.identitySnapshotDescription")}</p>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+              <div><dt className="text-muted-foreground">{t("kyc.detail.legalName")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.fullName ?? "—"}</dd></div>
+              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotEmail")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.email ?? "—"}</dd></div>
+              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotPhone")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.phone ?? "—"}</dd></div>
+            </dl>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-semibold text-foreground">{t("kyc.detail.automatedChecks")}</h2>
             {submission.ocr ? (
               <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -179,7 +189,12 @@ export function KycReviewDetailContent({
             </dl>
           </section>
 
-          {actionable ? (
+          {submission.status === "pending" && !detail.assignment.canDecide ? (
+            <section className="rounded-2xl border border-border bg-muted/50 p-5">
+              <h2 className="font-semibold text-foreground">{t("kyc.detail.assignedElsewhere")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.assignedElsewhereDescription")}</p>
+            </section>
+          ) : actionable ? (
             <section className="rounded-2xl border border-border bg-card p-5">
               <h2 className="font-semibold text-foreground">{t("kyc.detail.decision")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.decisionDescription")}</p>
@@ -242,6 +257,27 @@ export function KycReviewDetailContent({
             </section>
           )}
         </aside>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-semibold text-foreground">{t("kyc.detail.reviewHistory")}</h2>
+        {detail.reviewEvents.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">{t("kyc.detail.noReviewHistory")}</p>
+        ) : (
+          <ol className="mt-4 space-y-3">
+            {detail.reviewEvents.map((event) => (
+              <li key={event.id} className="rounded-xl border border-border bg-secondary/30 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground">{t(`kyc.actions.${event.action}`)}</p>
+                  <time className="text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}</time>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{event.fromStatus} → {event.toStatus} · {event.actorRole}</p>
+                {event.customerMessage && <p className="mt-2 text-sm text-foreground">{event.customerMessage}</p>}
+                {event.internalNote && <p className="mt-1 text-xs text-muted-foreground">{event.internalNote}</p>}
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
 
       <AdminConfirmDialog
@@ -315,6 +351,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          submissionId: detail.submission.id,
           userId: detail.customer.id,
           action: decision.action,
           ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),

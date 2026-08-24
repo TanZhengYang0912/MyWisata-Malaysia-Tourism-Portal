@@ -353,14 +353,43 @@ export interface AdminKycSubmission {
   } | null;
 }
 
+export interface AdminKycSubmissionDetail extends AdminKycSubmission {
+  assignedTo: string | null;
+  claimedAt: string | null;
+  legalIdentity: {
+    fullName: string | null;
+    email: string | null;
+    phone: string | null;
+    capturedAt: string | null;
+  };
+}
+
 export interface AdminKycReviewDetail {
-  submission: AdminKycSubmission;
+  submission: AdminKycSubmissionDetail;
   customer: {
     id: string;
     name: string;
     email: string;
     avatarInitial: string;
   };
+  assignment: {
+    assignedTo: string | null;
+    claimedAt: string | null;
+    isAssignedToCurrentUser: boolean;
+    canDecide: boolean;
+  };
+  reviewEvents: Array<{
+    id: string;
+    fromStatus: string;
+    toStatus: string;
+    action: 'approve' | 'reject' | 'request_info';
+    actorId: string | null;
+    actorRole: string;
+    reasonCategory: string | null;
+    internalNote: string | null;
+    customerMessage: string | null;
+    createdAt: string;
+  }>;
 }
 
 /** @deprecated Use CustomerKycSubmission or AdminKycSubmission at the relevant boundary. */

@@ -50,6 +50,11 @@ function serviceFor(options?: {
         created_at: '2026-07-15T08:00:00.000Z',
         reviewed_at: null,
         reviewer_id: null,
+        assigned_to: null,
+        claimed_at: null,
+        legal_name_snapshot: 'Customer Bob',
+        email_snapshot: 'bob@example.com',
+        phone_snapshot: '+60123456789',
         review_reason_code: null,
         review_reason_detail: null,
         document_url: 'https://private.example/raw-document-value',
@@ -88,21 +93,56 @@ function serviceFor(options?: {
   customerQuery.select.mockReturnValue(customerQuery);
   customerQuery.eq.mockReturnValue(customerQuery);
 
+  const eventsQuery = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    order: vi.fn().mockResolvedValue({
+      data: [{
+        id: '44444444-4444-4444-8444-444444444444',
+        from_status: 'pending',
+        to_status: 'approved',
+        action: 'approve',
+        actor_id: '33333333-3333-4333-8333-333333333333',
+        actor_role: 'admin',
+        reason_category: null,
+        customer_message: 'Your identity verification is complete.',
+        created_at: '2026-07-16T08:00:00.000Z',
+      }],
+      error: null,
+    }),
+  };
+  eventsQuery.select.mockReturnValue(eventsQuery);
+  eventsQuery.eq.mockReturnValue(eventsQuery);
+
   const from = vi.fn((table: string) => {
     if (table === 'user_roles') return roleQuery;
     if (table === 'kyc_submissions') return submissionQuery;
     if (table === 'users') return customerQuery;
+    if (table === 'kyc_review_events') return eventsQuery;
     throw new Error(`Unexpected table: ${table}`);
   });
 
-  return { from, roleQuery, submissionQuery, customerQuery };
+  return { from, roleQuery, submissionQuery, customerQuery, eventsQuery };
 }
 
 describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
   beforeEach(() => {
     getUser.mockReset();
     rpc.mockReset();
-    rpc.mockResolvedValue({ data: true, error: null });
+    rpc.mockImplementation(async (name: string) => {
+      if (name === 'claim_kyc_submission') {
+        return {
+          data: {
+            assignedTo: '33333333-3333-4333-8333-333333333333',
+            claimedAt: '2026-07-15T08:02:00.000Z',
+            isAssignedToActor: true,
+            canDecide: true,
+          },
+          error: null,
+        };
+      }
+      return { data: true, error: null };
+    });
     createServiceClient.mockReset();
   });
 
@@ -199,6 +239,18 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
       avatarInitial: 'C',
     });
     expect(body.data.submission.documents).toEqual([{ side: 'front' }]);
+    expect(body.data.assignment).toEqual({
+      assignedTo: '33333333-3333-4333-8333-333333333333',
+      claimedAt: '2026-07-15T08:02:00.000Z',
+      isAssignedToCurrentUser: true,
+      canDecide: true,
+    });
+    expect(body.data.reviewEvents).toEqual([expect.objectContaining({
+      action: 'approve',
+      actorRole: 'admin',
+      customerMessage: 'Your identity verification is complete.',
+    })]);
+    expect(rpc).toHaveBeenCalledWith('claim_kyc_submission', { p_submission_id: submissionId });
     expect(serialized).not.toContain('storage_path');
     expect(serialized).not.toContain('private/front.jpg');
     expect(serialized).not.toContain('document_hash');

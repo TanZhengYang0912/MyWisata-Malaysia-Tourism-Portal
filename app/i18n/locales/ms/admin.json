@@ -17,6 +17,7 @@
     "Withdrawals": "Pengeluaran",
     "Refunds": "Bayaran balik",
     "Wallet Settings": "Tetapan dompet",
+    "Wallet Approvers": "Pelulus Dompet",
     "Payout Reports": "Laporan pembayaran",
     "Recommendations": "Cadangan",
     "Support Tickets": "Tiket sokongan",
@@ -641,6 +642,9 @@
       "selectReason": "Pilih sebab…"
     },
     "actions": {
+      "approve": "Diluluskan",
+      "reject": "Ditolak",
+      "request_info": "Maklumat diminta",
       "viewSide": "Lihat {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "Luluskan KYC",
       "automatedChecks": "Semakan automatik",
+      "assignedElsewhere": "Ditugaskan kepada penyemak lain",
+      "assignedElsewhereDescription": "Penyerahan ini kekal boleh dilihat, tetapi hanya penerima tugasan atau Pentadbir Super boleh membuat keputusan.",
       "back": "Belakang",
       "backToQueue": "Kembali ke Semakan KYC",
       "decision": "Keputusan semakan",
@@ -667,8 +673,12 @@
       "documentsDescription": "Buka dokumen yang dihantar dalam pemapar selamat jangka pendek.",
       "eyebrow": "Pengesahan identiti",
       "front": "Hadapan",
+      "identitySnapshot": "Identiti semasa penyerahan",
+      "identitySnapshotDescription": "Medan identiti sah ini direkodkan ketika pakej dokumen dicipta.",
+      "legalName": "Nama sah",
       "loading": "Memuatkan semakan KYC…",
       "noAutomatedChecks": "Tiada hasil semakan automatik tersedia untuk penyerahan ini.",
+      "noReviewHistory": "Belum ada keputusan semakan direkodkan.",
       "notFound": "Penyerahan KYC tidak ditemui",
       "ocrStatus": "Status OCR: {{status}}",
       "openDocument": "Buka {{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "Minta maklumat",
       "retry": "Cuba lagi",
       "review": "Semak",
+      "reviewHistory": "Sejarah semakan",
       "reviewedAt": "Disemak {{date}}",
       "reviewedBy": "Disemak oleh {{reviewer}}",
       "submission": "Penyerahan",
+      "snapshotEmail": "E-mel",
+      "snapshotPhone": "Telefon",
       "submittedAt": "Dihantar pada",
       "waitingDescription": "Pelanggan mesti menghantar maklumat yang diminta sebelum keputusan lain boleh dibuat.",
       "waitingTitle": "Menunggu pelanggan"
@@ -1285,6 +1298,30 @@
       "outlets_other": "{{count}} outlet",
       "listings_one": "{{count}} penyenaraian",
       "listings_other": "{{count}} penyenaraian"
+    },
+    "walletApprovers": {
+      "active": "Akaun aktif",
+      "backToSettings": "Kembali ke tetapan dompet",
+      "currentDescription": "Setiap perubahan peranan memerlukan sebab dan pengesahan tersendiri.",
+      "currentTitle": "Pelulus semasa",
+      "description": "Urus individu yang boleh meluluskan pengeluaran dompet tanpa melemahkan perlindungan pelulus terakhir.",
+      "eyebrow": "Tadbir urus dompet",
+      "grant": "Berikan akses",
+      "grantDescription": "Pilih seorang pengguna aktif dan rekod sebab akses kelulusan diperlukan.",
+      "grantTitle": "Tambah pelulus dompet",
+      "inactive": "Akaun tidak aktif",
+      "loading": "Memuatkan pelulus dompet…",
+      "reasonCategories": {
+        "coverage_change": "Perubahan liputan",
+        "other": "Lain-lain",
+        "role_granted": "Peranan diberikan",
+        "role_revoked": "Peranan ditarik balik"
+      },
+      "reasonPlaceholder": "Terangkan sebab operasi bagi perubahan peranan ini.",
+      "revoke": "Tarik balik akses",
+      "selectUser": "Pilih pengguna aktif",
+      "title": "Pelulus dompet",
+      "userLabel": "Pengguna yang layak"
     },
     "walletSettings": {
       "audit": {

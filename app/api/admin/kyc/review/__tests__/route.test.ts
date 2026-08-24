@@ -26,6 +26,7 @@ describe('POST /api/admin/kyc/review', () => {
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
       body: JSON.stringify({
+        submissionId: '33333333-3333-4333-8333-333333333333',
         userId,
         action: 'reject',
         reasonCode: 'other',
@@ -35,6 +36,7 @@ describe('POST /api/admin/kyc/review', () => {
 
     expect(response.status).toBe(200);
     expect(rpc).toHaveBeenCalledWith('admin_review_kyc', {
+      p_submission_id: '33333333-3333-4333-8333-333333333333',
       p_user_id: userId,
       p_action: 'reject',
       p_reason_code: 'other',
@@ -47,7 +49,7 @@ describe('POST /api/admin/kyc/review', () => {
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
-      body: JSON.stringify({ userId, action: 'reject', reasonCode: 'unknown' }),
+      body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, action: 'reject', reasonCode: 'unknown' }),
     }));
 
     expect(response.status).toBe(422);
@@ -63,7 +65,7 @@ describe('POST /api/admin/kyc/review', () => {
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
-      body: JSON.stringify({ userId, action: 'approve' }),
+      body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, action: 'approve' }),
     }));
 
     expect(response.status).toBe(403);
@@ -71,5 +73,23 @@ describe('POST /api/admin/kyc/review', () => {
     expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
       uid: '22222222-2222-4222-8222-222222222222',
     });
+  });
+
+  it('returns a conflict when a reviewer tries to decide another reviewer assignment', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
+    rpc
+      .mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'kyc_not_assigned' } });
+
+    const response = await POST(new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({
+        submissionId: '33333333-3333-4333-8333-333333333333',
+        userId,
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(409);
   });
 });

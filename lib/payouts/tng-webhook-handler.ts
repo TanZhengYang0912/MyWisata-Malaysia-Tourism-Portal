@@ -72,6 +72,9 @@ export async function handleTngPayoutWebhook(request: Request): Promise<Response
     p_amount_sen: payload.amountSen,
     p_currency: payload.currency,
     p_provider_occurred_at: payload.occurredAt,
+    p_signature_verified: true,
+    p_verification_method: 'hmac_sha256',
+    p_ingestion_source: 'tng_mock_webhook',
   });
 
   if (error || !data) {

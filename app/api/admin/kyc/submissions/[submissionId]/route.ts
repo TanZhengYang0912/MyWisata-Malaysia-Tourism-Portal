@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import {
-  ADMIN_KYC_SUBMISSION_SELECT,
-  mapAdminKycSubmission,
-  type AdminKycSubmissionRow,
+  ADMIN_KYC_SUBMISSION_DETAIL_SELECT,
+  mapAdminKycSubmissionDetail,
+  type AdminKycSubmissionDetailRow,
 } from '@/lib/kyc/admin-submission';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
@@ -30,13 +30,13 @@ export async function GET(_request: Request, { params }: Props) {
   const service = createServiceClient();
   const { data: submissionRow, error: submissionError } = await service
     .from('kyc_submissions')
-    .select(ADMIN_KYC_SUBMISSION_SELECT)
+    .select(ADMIN_KYC_SUBMISSION_DETAIL_SELECT)
     .eq('id', submissionId)
     .maybeSingle();
   if (submissionError) return apiFail('SUBMISSION_LOOKUP_FAILED', 'Unable to load KYC submission', 500);
   if (!submissionRow) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
 
-  const submission = mapAdminKycSubmission(submissionRow as AdminKycSubmissionRow);
+  const submission = mapAdminKycSubmissionDetail(submissionRow as AdminKycSubmissionDetailRow);
   const { data: customerRow, error: customerError } = await service
     .from('users')
     .select('id,email,full_name')
@@ -45,14 +45,51 @@ export async function GET(_request: Request, { params }: Props) {
   if (customerError) return apiFail('CUSTOMER_LOOKUP_FAILED', 'Unable to load KYC customer', 500);
   if (!customerRow) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
 
-  const name = customerRow.full_name?.trim() || customerRow.email;
+  const { data: claimData, error: claimError } = await authenticated.rpc('claim_kyc_submission', {
+    p_submission_id: submissionId,
+  });
+  if (claimError) return apiFail('ASSIGNMENT_FAILED', 'Unable to claim KYC submission', 409);
+
+  const { data: eventRows, error: eventsError } = await service
+    .from('kyc_review_events')
+    .select('id,from_status,to_status,action,actor_id,actor_role,reason_category,internal_note,customer_message,created_at')
+    .eq('submission_id', submissionId)
+    .order('created_at', { ascending: true });
+  if (eventsError) return apiFail('REVIEW_EVENTS_FAILED', 'Unable to load KYC review history', 500);
+
+  const claim = claimData as {
+    assignedTo?: string | null;
+    claimedAt?: string | null;
+    isAssignedToActor?: boolean;
+    canDecide?: boolean;
+  } | null;
+  const name = submission.legalIdentity.fullName?.trim() || customerRow.full_name?.trim() || submission.legalIdentity.email || customerRow.email;
+  const email = submission.legalIdentity.email || customerRow.email;
   return apiOk({
     submission,
     customer: {
       id: customerRow.id,
       name,
-      email: customerRow.email,
+      email,
       avatarInitial: name.charAt(0).toUpperCase() || '?',
     },
+    assignment: {
+      assignedTo: claim?.assignedTo ?? submission.assignedTo,
+      claimedAt: claim?.claimedAt ?? submission.claimedAt,
+      isAssignedToCurrentUser: claim?.isAssignedToActor === true,
+      canDecide: claim?.canDecide === true,
+    },
+    reviewEvents: (eventRows ?? []).map((event) => ({
+      id: event.id,
+      fromStatus: event.from_status,
+      toStatus: event.to_status,
+      action: event.action,
+      actorId: event.actor_id,
+      actorRole: event.actor_role,
+      reasonCategory: event.reason_category,
+      internalNote: event.internal_note ?? null,
+      customerMessage: event.customer_message ?? null,
+      createdAt: event.created_at,
+    })),
   });
 }

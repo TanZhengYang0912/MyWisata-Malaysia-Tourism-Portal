@@ -17,6 +17,7 @@
     "Withdrawals": "Withdrawals",
     "Refunds": "Refunds",
     "Wallet Settings": "Wallet Settings",
+    "Wallet Approvers": "Wallet Approvers",
     "Payout Reports": "Payout Reports",
     "Recommendations": "Recommendations",
     "Support Tickets": "Support Tickets",
@@ -641,6 +642,9 @@
       "selectReason": "Select a reason…"
     },
     "actions": {
+      "approve": "Approved",
+      "reject": "Rejected",
+      "request_info": "Requested information",
       "viewSide": "View {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "Approve KYC",
       "automatedChecks": "Automated checks",
+      "assignedElsewhere": "Assigned to another reviewer",
+      "assignedElsewhereDescription": "This submission remains visible, but only its assignee or a Super Admin can decide it.",
       "back": "Back",
       "backToQueue": "Back to KYC Review",
       "decision": "Review decision",
@@ -667,8 +673,12 @@
       "documentsDescription": "Open the submitted document in a short-lived secure viewer.",
       "eyebrow": "Identity verification",
       "front": "Front",
+      "identitySnapshot": "Identity at submission",
+      "identitySnapshotDescription": "These legal identity fields were captured when this document package was created.",
+      "legalName": "Legal name",
       "loading": "Loading KYC review…",
       "noAutomatedChecks": "No automated check result is available for this submission.",
+      "noReviewHistory": "No review decision has been recorded yet.",
       "notFound": "KYC submission not found",
       "ocrStatus": "OCR status: {{status}}",
       "openDocument": "Open {{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "Request information",
       "retry": "Try again",
       "review": "Review",
+      "reviewHistory": "Review history",
       "reviewedAt": "Reviewed {{date}}",
       "reviewedBy": "Reviewed by {{reviewer}}",
       "submission": "Submission",
+      "snapshotEmail": "Email",
+      "snapshotPhone": "Phone",
       "submittedAt": "Submitted at",
       "waitingDescription": "The customer must submit the requested information before another decision can be made.",
       "waitingTitle": "Waiting for customer"
@@ -1285,6 +1298,30 @@
       "outlets_other": "{{count}} outlets",
       "listings_one": "{{count}} listings",
       "listings_other": "{{count}} listings"
+    },
+    "walletApprovers": {
+      "active": "Active account",
+      "backToSettings": "Back to wallet settings",
+      "currentDescription": "Each role change requires its own reason and confirmation.",
+      "currentTitle": "Current approvers",
+      "description": "Manage who can approve wallet withdrawals without weakening the last-approver safeguard.",
+      "eyebrow": "Wallet governance",
+      "grant": "Grant access",
+      "grantDescription": "Choose one active user and record why approval access is needed.",
+      "grantTitle": "Add a wallet approver",
+      "inactive": "Inactive account",
+      "loading": "Loading wallet approvers…",
+      "reasonCategories": {
+        "coverage_change": "Coverage change",
+        "other": "Other",
+        "role_granted": "Role granted",
+        "role_revoked": "Role revoked"
+      },
+      "reasonPlaceholder": "Describe the operational reason for this role change.",
+      "revoke": "Revoke access",
+      "selectUser": "Select an active user",
+      "title": "Wallet approvers",
+      "userLabel": "Eligible user"
     },
     "walletSettings": {
       "audit": {

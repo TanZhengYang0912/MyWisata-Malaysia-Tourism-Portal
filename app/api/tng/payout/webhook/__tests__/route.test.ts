@@ -94,6 +94,9 @@ describe('POST /api/tng/payout/webhook', () => {
       p_amount_sen: 2500,
       p_currency: 'MYR',
       p_provider_occurred_at: '2026-08-21T05:00:03.000Z',
+      p_signature_verified: true,
+      p_verification_method: 'hmac_sha256',
+      p_ingestion_source: 'tng_mock_webhook',
     }));
     expect(mocks.enqueueWithdrawalEmail).toHaveBeenCalledWith({
       withdrawalId: paidPayload.withdrawalId,

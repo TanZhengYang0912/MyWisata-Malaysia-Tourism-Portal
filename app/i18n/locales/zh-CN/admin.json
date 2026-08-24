@@ -17,6 +17,7 @@
     "Withdrawals": "提现",
     "Refunds": "退款",
     "Wallet Settings": "钱包设置",
+    "Wallet Approvers": "钱包审批人",
     "Payout Reports": "提现报告",
     "Recommendations": "推荐",
     "Support Tickets": "支持工单",
@@ -641,6 +642,9 @@
       "selectReason": "选择原因…"
     },
     "actions": {
+      "approve": "已批准",
+      "reject": "已拒绝",
+      "request_info": "已请求补充信息",
       "viewSide": "查看 {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "批准 KYC",
       "automatedChecks": "自动检查",
+      "assignedElsewhere": "已分配给其他审核人",
+      "assignedElsewhereDescription": "你仍可查看此提交，但只有受理人或超级管理员可以作出决定。",
       "back": "背面",
       "backToQueue": "返回 KYC 审核",
       "decision": "审核决定",
@@ -667,8 +673,12 @@
       "documentsDescription": "在短时效安全查看器中打开已提交的证件。",
       "eyebrow": "身份验证",
       "front": "正面",
+      "identitySnapshot": "提交时身份",
+      "identitySnapshotDescription": "这些法定身份字段在创建此证件提交时已保存。",
+      "legalName": "法定姓名",
       "loading": "正在加载 KYC 审核…",
       "noAutomatedChecks": "此提交暂无自动检查结果。",
+      "noReviewHistory": "尚未记录审核决定。",
       "notFound": "找不到 KYC 提交",
       "ocrStatus": "OCR 状态：{{status}}",
       "openDocument": "打开{{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "请求补充信息",
       "retry": "重试",
       "review": "审核",
+      "reviewHistory": "审核历史",
       "reviewedAt": "审核于 {{date}}",
       "reviewedBy": "审核人：{{reviewer}}",
       "submission": "提交信息",
+      "snapshotEmail": "电子邮箱",
+      "snapshotPhone": "手机号",
       "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
       "waitingTitle": "等待客户"
@@ -1283,6 +1296,30 @@
       "outlets_other": "{{count}} 家门店",
       "listings_one": "{{count}} 个商品",
       "listings_other": "{{count}} 个商品"
+    },
+    "walletApprovers": {
+      "active": "账户正常",
+      "backToSettings": "返回钱包设置",
+      "currentDescription": "每次角色更改都必须单独填写理由并确认。",
+      "currentTitle": "当前审批人",
+      "description": "管理可以批准钱包提款的人员，同时保留最后一名审批人的安全保护。",
+      "eyebrow": "钱包治理",
+      "grant": "授予权限",
+      "grantDescription": "选择一名活跃用户，并记录授予审批权限的原因。",
+      "grantTitle": "添加钱包审批人",
+      "inactive": "账户未激活",
+      "loading": "正在加载钱包审批人…",
+      "reasonCategories": {
+        "coverage_change": "值班覆盖调整",
+        "other": "其他",
+        "role_granted": "授予角色",
+        "role_revoked": "撤销角色"
+      },
+      "reasonPlaceholder": "说明本次角色更改的运营原因。",
+      "revoke": "撤销权限",
+      "selectUser": "选择活跃用户",
+      "title": "钱包审批人",
+      "userLabel": "符合条件的用户"
     },
     "walletSettings": {
       "audit": {
