@@ -172,8 +172,8 @@ export default function AdminRefundsPage() {
   }
 
   function statusLabel(value: string) {
-    if (value === "processed") return t("refunds.status.processed");
-    return t(`refunds.status.${value}`, { defaultValue: value });
+    const knownStatuses = new Set(["approved", "failed", "pending", "processed", "rejected", "simulated"]);
+    return t(`refunds.status.${knownStatuses.has(value) ? value : "unknown"}`);
   }
 
   async function review(refundId: string, action: "approve" | "reject") {

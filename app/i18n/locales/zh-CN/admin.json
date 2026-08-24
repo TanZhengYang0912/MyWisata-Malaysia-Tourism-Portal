@@ -714,6 +714,8 @@
     "filters": {
       "allStatuses": "所有审核状态",
       "infoRequestedCount": "已请求补充信息（{{count}}）",
+      "infoRequestedCount_one": "已请求补充信息（{{count}}）",
+      "infoRequestedCount_other": "已请求补充信息（{{count}}）",
       "search": "搜索姓名、邮箱或证件类型",
       "status": "按审核状态筛选"
     },
@@ -1440,6 +1442,8 @@
       "reviewed": "已审核",
       "viewTicket": "查看工单",
       "flagsCount": "{{count}} 个标记",
+      "flagsCount_one": "{{count}} 个标记",
+      "flagsCount_other": "{{count}} 个标记",
       "showDetails": "展开详情",
       "hideDetails": "收起详情",
       "openCount_one": "{{count}} 个待处理",
@@ -1804,6 +1808,10 @@
     "age": {
       "daysHours": "{{days}}天 {{hours}}小时",
       "hours": "{{count}}小时",
+      "hours_one": "{{count}}小时",
+      "hours_other": "{{count}}小时",
+      "hours_one": "{{count}}小时",
+      "hours_other": "{{count}}小时",
       "lessThanHour": "不足 1 小时",
       "hours_one": "{{count}}小时",
       "hours_other": "{{count}}小时"
@@ -1959,6 +1967,8 @@
       "allRiskLevels": "全部风险等级",
       "allStatuses": "全部状态",
       "perPage": "每页 {{count}} 条",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
       "searchCustomerOrEmail": "搜索客户或邮箱",
       "perPage_one": "每页 {{count}} 条",
       "perPage_other": "每页 {{count}} 条"
@@ -2159,11 +2169,15 @@
     "age": {
       "daysHours": "{{days}}天 {{hours}}小时",
       "hours": "{{count}}小时",
+      "hours_one": "{{count}}小时",
+      "hours_other": "{{count}}小时",
       "lessThanHour": "少于 1 小时"
     },
     "filters": {
       "allStatuses": "全部状态",
       "perPage": "每页 {{count}} 条",
+      "perPage_one": "每页 {{count}} 条",
+      "perPage_other": "每页 {{count}} 条",
       "searchOrderOrProvider": "搜索订单或服务商"
     },
     "loading": "正在加载退款申请…",
@@ -2195,7 +2209,9 @@
       "description": "当退款状态或服务商证据需要进一步查看时，打开对应行。",
       "noOpenRequests": "没有开放申请",
       "oldestRequest": "最早申请 {{age}}",
-      "title": "审核队列（{{count}}）"
+      "title": "审核队列（{{count}}）",
+      "title_one": "审核队列（{{count}}）",
+      "title_other": "审核队列（{{count}}）"
     },
     "status": {
       "approved": "已批准",
@@ -2203,7 +2219,8 @@
       "pending": "待处理",
       "processed": "已处理",
       "rejected": "已拒绝",
-      "simulated": "模拟"
+      "simulated": "模拟",
+      "unknown": "未知"
     },
     "table": {
       "actions": "操作",

@@ -36,7 +36,7 @@ export function AdminSegmentedFilter({ value, items, onChange, ariaLabel, fullWi
             onClick={() => onChange(item.value)}
             className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/15 ${active ? 'bg-[#010066] text-white shadow-sm' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
           >
-            {t(`filters.${item.value}`, { defaultValue: item.label })}
+            {item.label}
             {item.count !== undefined && <span className={active ? 'text-white/70' : 'text-muted-foreground/70'}>{formatNumber(item.count, locale)}</span>}
           </button>
         );

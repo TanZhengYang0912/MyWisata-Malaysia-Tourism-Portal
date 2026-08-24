@@ -714,6 +714,8 @@
     "filters": {
       "allStatuses": "All review statuses",
       "infoRequestedCount": "Information requested ({{count}})",
+      "infoRequestedCount_one": "Information requested ({{count}})",
+      "infoRequestedCount_other": "Information requested ({{count}})",
       "search": "Search name, email or document type",
       "status": "Filter by review status"
     },
@@ -1442,6 +1444,8 @@
       "reviewed": "Reviewed",
       "viewTicket": "View ticket",
       "flagsCount": "{{count}} flags",
+      "flagsCount_one": "{{count}} flag",
+      "flagsCount_other": "{{count}} flags",
       "showDetails": "Show details",
       "hideDetails": "Hide details",
       "openCount_one": "{{count}} open",
@@ -1796,6 +1800,8 @@
     "age": {
       "daysHours": "{{days}}d {{hours}}h",
       "hours": "{{count}}h",
+      "hours_one": "{{count}}h",
+      "hours_other": "{{count}}h",
       "lessThanHour": "<1h",
       "hours_one": "{{count}}h",
       "hours_other": "{{count}}h"
@@ -1961,6 +1967,8 @@
       "allRiskLevels": "All risk levels",
       "allStatuses": "All statuses",
       "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
       "searchCustomerOrEmail": "Search customer or email",
       "perPage_one": "{{count}} per page",
       "perPage_other": "{{count}} per page"
@@ -2162,11 +2170,15 @@
     "age": {
       "daysHours": "{{days}}d {{hours}}h",
       "hours": "{{count}}h",
+      "hours_one": "{{count}}h",
+      "hours_other": "{{count}}h",
       "lessThanHour": "<1h"
     },
     "filters": {
       "allStatuses": "All statuses",
       "perPage": "{{count}} per page",
+      "perPage_one": "{{count}} per page",
+      "perPage_other": "{{count}} per page",
       "searchOrderOrProvider": "Search order or provider"
     },
     "metrics": {
@@ -2197,7 +2209,9 @@
       "description": "Open a row when the refund status or provider evidence needs a closer look.",
       "noOpenRequests": "No open requests",
       "oldestRequest": "Oldest request {{age}}",
-      "title": "Review queue ({{count}})"
+      "title": "Review queue ({{count}})",
+      "title_one": "Review queue ({{count}})",
+      "title_other": "Review queue ({{count}})"
     },
     "status": {
       "approved": "Approved",
@@ -2205,7 +2219,8 @@
       "pending": "Pending",
       "processed": "Processed",
       "rejected": "Rejected",
-      "simulated": "SIMULATED"
+      "simulated": "SIMULATED",
+      "unknown": "Unknown"
     },
     "table": {
       "actions": "Actions",
