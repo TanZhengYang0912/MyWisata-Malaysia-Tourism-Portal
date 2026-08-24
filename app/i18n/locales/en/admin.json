@@ -655,6 +655,25 @@
       "rejectTitle": "Reject KYC submission?"
     },
     "description": "Review identity documents, resolve exceptions and keep verification decisions auditable.",
+    "drawer": {
+      "approve": "Approve KYC",
+      "automatedChecks": "Automated checks",
+      "back": "Back",
+      "close": "Close review",
+      "decision": "Review decision",
+      "decisionDescription": "Make a decision only after checking the submitted documents and automated results.",
+      "documents": "Documents",
+      "eyebrow": "Identity verification",
+      "front": "Front",
+      "noAutomatedChecks": "No automated check result is available for this submission.",
+      "ocrStatus": "OCR status: {{status}}",
+      "openDocument": "Open {{side}}",
+      "reject": "Reject KYC",
+      "requestInfo": "Request information",
+      "review": "Review",
+      "waitingDescription": "The customer must submit the requested information before another decision can be made.",
+      "waitingTitle": "Waiting for customer"
+    },
     "documents": {
       "driving_license": "Driving licence / MyPolis",
       "national_id": "MyKad",
@@ -682,6 +701,7 @@
     },
     "filters": {
       "allStatuses": "All review statuses",
+      "infoRequestedCount": "Information requested ({{count}})",
       "search": "Search name, email or document type",
       "status": "Filter by review status"
     },
@@ -729,7 +749,8 @@
       "other": "Other (add details)"
     },
     "status": {
-      "infoRequested": "Info requested"
+      "infoRequested": "Info requested",
+      "pending": "Pending review"
     },
     "submitted": "Submitted {{date}} · Queue position {{position}}",
     "success": {

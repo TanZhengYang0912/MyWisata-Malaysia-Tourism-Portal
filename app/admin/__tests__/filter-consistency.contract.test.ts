@@ -30,13 +30,17 @@ describe("admin filter consistency contract", () => {
     }
   });
 
-  it("keeps KYC's action queue behind the shared filter bar", () => {
+  it("keeps KYC's compact queue behind the shared filter bar and decisions in the review drawer", () => {
     const source = read("app/admin/kyc/page.tsx");
+    const drawer = read("components/admin/kyc-review-drawer.tsx");
     expect(source).toContain("AdminFilterBar");
     expect(source).toContain("kyc.filters.search");
     expect(source).toContain("kyc.filters.status");
     expect(source).toContain("kyc.queue.oldestFirst");
-    expect(source).toContain("kyc.accessibility.reason");
+    expect(source).toContain("KycReviewQueueRow");
+    expect(source).toContain("KycReviewDrawer");
+    expect(source).not.toContain("AdminBatchActionBar");
+    expect(drawer).toContain("kyc.accessibility.reason");
   });
 
   it("preserves segmented review filters and the user search/filter handlers", () => {

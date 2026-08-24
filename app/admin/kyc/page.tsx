@@ -1,28 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckSquare, Clock3, ExternalLink, FileCheck2, FileWarning, MessageSquare, Search, ShieldCheck, UserRound, XCircle } from "lucide-react";
-import { useAuth } from "@/components/providers/auth";
+import { Clock3, FileCheck2, Search, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import type { AdminKycSubmission, User } from "@/backend/core/types";
 import { getUsers } from "@/backend/domains/identity";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
-import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
-import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { KycReviewDrawer, type KycReviewDecision } from "@/components/admin/kyc-review-drawer";
+import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import type { AdminKycSubmission, User } from "@/backend/core/types";
-import { KYC_REVIEW_REASON_CODES, type KycReviewReasonCode } from "@/lib/kyc/types";
-import { useTranslation } from "react-i18next";
+import { useAuth } from "@/components/providers/auth";
+import { EmptyState } from "@/components/shared/empty-state";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
-
-const DOC_LABEL: Record<string, string> = { national_id: "MyKad", passport: "Passport", driving_license: "Driving licence / MyPolis" };
-const REVIEW_REASON_LABELS: Record<KycReviewReasonCode, string> = {
-  document_unreadable: "Document is unreadable", document_incomplete: "Document is incomplete", document_mismatch: "Document details do not match", document_expired: "Document is expired", document_suspected_tampering: "Document is suspected of tampering", other: "Other (add details)",
-};
-
-type PendingAction = { userId: string; action: "reject" | "request_info"; reasonCode: KycReviewReasonCode | ""; reasonDetail: string } | null;
-type ConfirmAction = { userId: string; action: "approve" | "reject" | "request_info"; reasonCode?: KycReviewReasonCode; reasonDetail?: string } | null;
 
 function dateLabel(value: string | null | undefined, locale: AppLocale) {
   return value ? new Date(value).toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -36,42 +27,68 @@ export default function AdminKycPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
   const [reviewing, setReviewing] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [selectedReviewUserId, setSelectedReviewUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [batchBusy, setBatchBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "info_requested">("all");
 
   async function load() {
     try {
-      const [allUsers, response] = await Promise.all([getUsers(), fetch("/api/admin/kyc/submissions", { cache: "no-store" })]);
+      const [allUsers, response] = await Promise.all([
+        getUsers(),
+        fetch("/api/admin/kyc/submissions", { cache: "no-store" }),
+      ]);
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.loadSubmissions"));
       setUsers(allUsers.filter((user) => user.role === "customer"));
       setSubmissions(new Map((body.data?.submissions ?? []).map((submission: AdminKycSubmission) => [submission.userId, submission])));
-    } catch (err) { setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue")); }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue"));
+    }
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, []);
 
-  async function review(userId: string, action: "approve" | "reject" | "request_info", reasonCode?: KycReviewReasonCode, reasonDetail?: string) {
+  async function review(userId: string, decision: KycReviewDecision) {
     if (!currentUser || reviewing) return;
-    if (action !== "approve" && !reasonCode) { setError(t("kyc.errors.selectReason")); return; }
-    if (reasonCode === "other" && (reasonDetail?.trim().length ?? 0) < 10) { setError(t("kyc.errors.otherDetail")); return; }
-    setReviewing(userId); setError(null);
+    setReviewing(userId);
+    setError(null);
     try {
-      const response = await fetch("/api/admin/kyc/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, action, ...(reasonCode ? { reasonCode } : {}), ...(reasonDetail?.trim() ? { reasonDetail: reasonDetail.trim() } : {}) }) });
+      const response = await fetch("/api/admin/kyc/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          action: decision.action,
+          ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
+          ...(decision.reasonDetail ? { reasonDetail: decision.reasonDetail } : {}),
+        }),
+      });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
-      setSubmissions((previous) => { const next = new Map(previous); next.delete(userId); return next; });
-      if (action === "approve") setUsers((previous) => previous.map((user) => user.id === userId ? { ...user, verificationTier: "kyc_verified" } : user));
-      showFeedback("success", action === "approve" ? t("kyc.success.approved") : action === "reject" ? t("kyc.success.rejected") : t("kyc.success.infoRequested"));
-      setPendingAction(null); setConfirmAction(null);
-    } catch (err) { const message = err instanceof Error ? err.message : t("kyc.errors.reviewFailed"); setError(message); showFeedback("error", message); }
-    finally { setReviewing(null); }
+      setSelectedReviewUserId(null);
+      setSubmissions((previous) => {
+        const next = new Map(previous);
+        next.delete(userId);
+        return next;
+      });
+      showFeedback(
+        "success",
+        decision.action === "approve"
+          ? t("kyc.success.approved")
+          : decision.action === "reject"
+            ? t("kyc.success.rejected")
+            : t("kyc.success.infoRequested"),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("kyc.errors.reviewFailed");
+      setError(message);
+      showFeedback("error", message);
+    } finally {
+      setReviewing(null);
+    }
   }
 
   async function openDocument(submission: AdminKycSubmission, side: "front" | "back") {
@@ -80,103 +97,95 @@ export default function AdminKycPage() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
       window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch (err) { showFeedback("error", err instanceof Error ? err.message : t("kyc.errors.loadDocument")); }
-  }
-
-  async function applyBatch(action: "approve" | "request_info" | "reject") {
-    if (!currentUser || batchBusy) return;
-    const selected = visiblePending.filter((user) => selectedIds.has(user.id));
-    if (!selected.length) return;
-    let reasonCode: KycReviewReasonCode | undefined;
-    let reasonDetail: string | undefined;
-    if (action !== "approve") {
-      const reasonOptions = KYC_REVIEW_REASON_CODES.map((code) => `${code}: ${t(`kyc.reasons.${code}`)}`).join(", ");
-      const enteredCode = window.prompt(t("kyc.prompts.reasonCode", { reasons: reasonOptions }), "other")?.trim() as KycReviewReasonCode | undefined;
-      if (!enteredCode || !KYC_REVIEW_REASON_CODES.includes(enteredCode)) {
-        setError(t("kyc.errors.invalidReason"));
-        return;
-      }
-      reasonCode = enteredCode;
-      if (reasonCode === "other") {
-        reasonDetail = window.prompt(t("kyc.prompts.otherDetail"))?.trim();
-        if (!reasonDetail || reasonDetail.length < 10) {
-          setError(t("kyc.errors.otherDetail"));
-          return;
-        }
-      }
-    }
-    setBatchBusy(true);
-    setError(null);
-    try {
-      const responses = await Promise.all(selected.map((user) => fetch("/api/admin/kyc/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, action, ...(reasonCode ? { reasonCode } : {}), ...(reasonDetail ? { reasonDetail } : {}) }),
-      })));
-      const failed = responses.find((response) => !response.ok);
-      if (failed) {
-        const body = await failed.json().catch(() => ({}));
-        throw new Error(body.error?.message ?? t("kyc.errors.batchFailed"));
-      }
-      setSelectedIds(new Set());
-      showFeedback("success", t("kyc.success.batchProcessed", { count: selected.length }));
-      await load();
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("kyc.errors.batchReviewFailed");
-      setError(message);
-      showFeedback("error", message);
-    } finally {
-      setBatchBusy(false);
+      showFeedback("error", err instanceof Error ? err.message : t("kyc.errors.loadDocument"));
     }
   }
 
-  const pending = users.filter((user) => submissions.has(user.id));
-  const verified = users.filter((user) => user.verificationTier === "kyc_verified");
-  const infoRequested = pending.filter((user) => submissions.get(user.id)?.status === "info_requested").length;
-  const oldest = pending.map((user) => submissions.get(user.id)?.submittedAt).filter(Boolean).sort()[0];
-  const visiblePending = pending.filter((user) => {
+  const queueUsers = users.filter((user) => submissions.has(user.id));
+  const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");
+  const infoRequested = queueUsers.filter((user) => submissions.get(user.id)?.status === "info_requested");
+  const oldestPendingAt = pendingReview
+    .map((user) => submissions.get(user.id)?.submittedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0];
+  const visibleQueue = queueUsers.filter((user) => {
     const submission = submissions.get(user.id);
     const matchesStatus = statusFilter === "all" || submission?.status === statusFilter;
     const searchText = `${user.name} ${user.email} ${submission?.docType ?? ""}`.toLowerCase();
     return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
   });
-  const selectedVisibleCount = visiblePending.filter((user) => selectedIds.has(user.id)).length;
+  const selectedUser = selectedReviewUserId ? users.find((user) => user.id === selectedReviewUserId) ?? null : null;
+  const selectedSubmission = selectedReviewUserId ? submissions.get(selectedReviewUserId) ?? null : null;
 
-  return <AdminPageShell>
-    <AdminPageHeader
-      eyebrow={<><ShieldCheck size={18} /> {t("kyc.eyebrow")}</>}
-      title={t("kyc.title")}
-      description={t("kyc.description")}
-    />
-    {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+  return (
+    <AdminPageShell>
+      <AdminPageHeader
+        eyebrow={<><ShieldCheck size={18} /> {t("kyc.eyebrow")}</>}
+        title={t("kyc.title")}
+        description={t("kyc.description")}
+      />
+      {error && !selectedReviewUserId && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
-    <AdminMetricGrid items={[
-      { label: t("kyc.metrics.pending"), value: pending.length, detail: t("kyc.metrics.pendingNote") },
-      { label: t("kyc.metrics.infoRequested"), value: infoRequested, detail: t("kyc.metrics.infoRequestedNote") },
-      { label: t("kyc.metrics.verified"), value: verified.length, detail: t("kyc.metrics.verifiedNote") },
-      { label: t("kyc.metrics.oldest"), value: oldest ? dateLabel(oldest, locale) : "—", detail: oldest ? t("kyc.metrics.submittedFirst") : t("kyc.metrics.queueClear") },
-    ]} />
+      <AdminMetricGrid items={[
+        { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },
+        { label: t("kyc.metrics.oldest"), value: oldestPendingAt ? dateLabel(oldestPendingAt, locale) : "—", detail: oldestPendingAt ? t("kyc.metrics.submittedFirst") : t("kyc.metrics.queueClear") },
+      ]} />
 
-    <AdminFilterBar>
-      <label className="relative min-w-[220px] flex-1">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("kyc.filters.search")} aria-label={t("kyc.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
-      </label>
-      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "pending" | "info_requested")} aria-label={t("kyc.filters.status")} className={adminFilterControlClassName}>
-        <option value="all">{t("kyc.filters.allStatuses")}</option>
-        <option value="pending">{t("kyc.metrics.pending")}</option>
-        <option value="info_requested">{t("kyc.status.infoRequested")}</option>
-      </select>
-    </AdminFilterBar>
+      <AdminFilterBar>
+        <label className="relative min-w-[220px] flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("kyc.filters.search")} aria-label={t("kyc.filters.search")} className={`${adminFilterControlClassName} w-full pl-9`} />
+        </label>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | "pending" | "info_requested")} aria-label={t("kyc.filters.status")} className={adminFilterControlClassName}>
+          <option value="all">{t("kyc.filters.allStatuses")}</option>
+          <option value="pending">{t("kyc.status.pending")}</option>
+          <option value="info_requested">{t("kyc.filters.infoRequestedCount", { count: infoRequested.length })}</option>
+        </select>
+      </AdminFilterBar>
 
-    <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-semibold text-foreground">{t("kyc.queue.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("kyc.queue.description")}</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 size={14} /> {t("kyc.queue.oldestFirst")}</div></div><div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs"><input type="checkbox" aria-label={t("kyc.accessibility.selectAll")} checked={visiblePending.length > 0 && selectedVisibleCount === visiblePending.length} onChange={(event) => setSelectedIds(event.target.checked ? new Set(visiblePending.map((user) => user.id)) : new Set())} /><span className="text-muted-foreground">{t("kyc.queue.selectAll")}</span></div><AdminBatchActionBar selectedCount={selectedVisibleCount} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "approve" | "request_info" | "reject")} actions={[{ value: "approve", label: t("batchActions.approve") }, { value: "request_info", label: t("batchActions.request_info") }, { value: "reject", label: t("batchActions.reject") }]} busy={batchBusy} />
-      {visiblePending.length === 0 ? <EmptyState icon={<FileCheck2 size={28} />} title={t("kyc.empty.title")} description={t("kyc.empty.description")} /> : <div className="divide-y divide-border">{visiblePending.map((user) => { const submission = submissions.get(user.id); const action = pendingAction?.userId === user.id ? pendingAction : null; return <div key={user.id} className="p-5 sm:p-6"><div className="flex flex-col gap-4 xl:flex-row xl:items-start"><div className="flex min-w-0 flex-1 items-start gap-3"><input type="checkbox" aria-label={t("kyc.accessibility.selectSubmission", { name: user.name })} checked={selectedIds.has(user.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(user.id) : next.delete(user.id); return next; })} /><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">{user.avatarInitial}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-foreground">{user.name}</p>{submission?.status === "info_requested" && <span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">{t("kyc.status.infoRequested")}</span>}</div><p className="mt-1 text-sm text-muted-foreground">{submission ? t(`kyc.documents.${submission.docType}`) : t("kyc.fallback.noSubmission")}</p><p className="mt-1 text-xs text-muted-foreground">{t("kyc.submitted", { date: dateLabel(submission?.submittedAt, locale), position: submission?.queuePosition ?? "—" })}</p></div></div><div className="flex flex-wrap items-center gap-2 xl:justify-end">{submission?.documents.map(({ side }) => <Button key={side} variant="outline" size="sm" onClick={() => void openDocument(submission, side)}><ExternalLink size={14} /> {t("kyc.actions.viewSide", { side })}</Button>)}<Button size="sm" disabled={Boolean(reviewing)} onClick={() => setConfirmAction({ userId: user.id, action: "approve" })}><CheckSquare size={14} /> {t("batchActions.approve")}</Button><Button size="sm" variant="outline" disabled={Boolean(reviewing)} onClick={() => setPendingAction(action?.action === "request_info" ? null : { userId: user.id, action: "request_info", reasonCode: "", reasonDetail: "" })}><MessageSquare size={14} /> {t("batchActions.request_info")}</Button><Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={Boolean(reviewing)} onClick={() => setPendingAction(action?.action === "reject" ? null : { userId: user.id, action: "reject", reasonCode: "", reasonDetail: "" })}><XCircle size={14} /> {t("batchActions.reject")}</Button></div></div>
-        {submission?.ocr && <div className="mt-4 grid gap-3 rounded-xl border border-border bg-secondary/30 p-4 text-xs sm:grid-cols-2"><div><p className="font-semibold text-foreground">{t("kyc.ocr.check")} <span className="capitalize">{t(`kyc.ocr.status.${submission.ocr.status}`)}</span></p><p className="mt-1 text-muted-foreground">{t("kyc.ocr.extractedName", { name: submission.ocr.holderName ?? t("kyc.fallback.notAvailable") })}</p><p className="text-muted-foreground">{t("kyc.ocr.documentEnding", { number: submission.ocr.documentNumberLast4 ?? t("kyc.fallback.notAvailable") })}</p></div><div><p className="text-muted-foreground">{t("kyc.ocr.expiryDate", { date: submission.ocr.expiryDate ?? t("kyc.fallback.notAvailable") })}</p>{submission.ocr.mismatchFields.length > 0 ? <p className="mt-1 flex items-start gap-1 text-destructive"><FileWarning size={14} className="mt-0.5 shrink-0" /> {t("kyc.ocr.mismatch", { fields: submission.ocr.mismatchFields.join(", ").replaceAll("_", " ") })}</p> : <p className="mt-1 text-emerald-700">{t("kyc.ocr.noMismatch")}</p>}</div></div>}
-        {action && <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4"><p className="text-sm font-semibold text-foreground">{action.action === "reject" ? t("kyc.action.rejectionReason") : t("kyc.action.informationRequested")}</p><p className="mt-1 text-xs text-muted-foreground">{t("kyc.action.chooseReason")}</p><select aria-label={t("kyc.accessibility.reason")} value={action.reasonCode} onChange={(event) => setPendingAction((current) => current ? { ...current, reasonCode: event.target.value as KycReviewReasonCode | "", reasonDetail: event.target.value === "other" ? current.reasonDetail : "" } : current)} className={`${adminFilterControlClassName} mt-3 w-full`}><option value="">{t("kyc.action.selectReason")}</option>{KYC_REVIEW_REASON_CODES.filter((code) => action.action === "reject" || code !== "document_suspected_tampering").map((code) => <option key={code} value={code}>{t(`kyc.reasons.${code}`)}</option>)}</select>{action.reasonCode === "other" && <textarea aria-label={t("kyc.accessibility.details")} rows={3} value={action.reasonDetail} onChange={(event) => setPendingAction((current) => current ? { ...current, reasonDetail: event.target.value } : current)} placeholder={t("kyc.action.detailPlaceholder")} className="mt-3 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm" />}<div className="mt-3 flex justify-end gap-2"><Button variant="outline" size="sm" onClick={() => setPendingAction(null)}>{t("common.actions.cancel")}</Button><Button size="sm" variant={action.action === "reject" ? "destructive" : "default"} disabled={!action.reasonCode || (action.reasonCode === "other" && action.reasonDetail.trim().length < 10)} onClick={() => setConfirmAction({ userId: action.userId, action: action.action, reasonCode: action.reasonCode || undefined, reasonDetail: action.reasonDetail })}>{t("kyc.action.review")}</Button></div></div>}
-      </div>; })}</div>}
-    </section>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div>
+            <h2 className="font-semibold text-foreground">{t("kyc.queue.title")}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{t("kyc.queue.description")}</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 size={14} /> {t("kyc.queue.oldestFirst")}</div>
+        </div>
+        {visibleQueue.length === 0 ? (
+          <EmptyState icon={<FileCheck2 size={28} />} title={t("kyc.empty.title")} description={t("kyc.empty.description")} />
+        ) : (
+          <div className="divide-y divide-border">
+            {visibleQueue.map((user) => {
+              const submission = submissions.get(user.id);
+              if (!submission) return null;
+              return (
+                <KycReviewQueueRow
+                  key={user.id}
+                  user={user}
+                  submission={submission}
+                  documentLabel={t(`kyc.documents.${submission.docType}`)}
+                  statusLabel={t(`kyc.status.${submission.status === "info_requested" ? "infoRequested" : "pending"}`)}
+                  submittedLabel={t("kyc.submitted", { date: dateLabel(submission.submittedAt, locale), position: submission.queuePosition ?? "—" })}
+                  reviewLabel={t("kyc.drawer.review")}
+                  onReview={() => { setError(null); setSelectedReviewUserId(user.id); }}
+                />
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-    <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-semibold text-foreground">{t("kyc.verified.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("kyc.verified.description")}</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><UserRound size={14} /> {t("kyc.verified.count", { count: verified.length })}</div></div>{verified.length === 0 ? <EmptyState title={t("kyc.verified.empty")} /> : <div className="divide-y divide-border">{verified.map((user) => <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><div><p className="text-sm font-medium text-foreground">{user.name}</p><p className="mt-1 text-xs text-muted-foreground">{t("kyc.verified.account")}</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("kyc.verified.badge")}</span></div>)}</div>}</section>
-    <AdminConfirmDialog open={Boolean(confirmAction)} title={confirmAction?.action === "approve" ? t("kyc.confirm.approveTitle") : confirmAction?.action === "reject" ? t("kyc.confirm.rejectTitle") : t("kyc.confirm.infoTitle")} description={confirmAction?.action === "approve" ? t("kyc.confirm.approveDescription") : confirmAction?.action === "reject" ? t("kyc.confirm.rejectDescription") : t("kyc.confirm.infoDescription")} confirmLabel={confirmAction?.action === "approve" ? t("kyc.confirm.approve") : confirmAction?.action === "reject" ? t("kyc.confirm.reject") : t("kyc.confirm.info")} confirmVariant={confirmAction?.action === "reject" ? "destructive" : "default"} busy={Boolean(confirmAction && reviewing === confirmAction.userId)} onCancel={() => setConfirmAction(null)} onConfirm={() => confirmAction && void review(confirmAction.userId, confirmAction.action, confirmAction.reasonCode, confirmAction.reasonDetail)} />
-  </AdminPageShell>;
+      <KycReviewDrawer
+        key={selectedReviewUserId ?? "closed"}
+        user={selectedUser}
+        submission={selectedSubmission}
+        busy={Boolean(selectedReviewUserId && reviewing === selectedReviewUserId)}
+        error={selectedReviewUserId ? error : null}
+        onClose={() => { setSelectedReviewUserId(null); setError(null); }}
+        onOpenDocument={(side) => { if (selectedSubmission) void openDocument(selectedSubmission, side); }}
+        onDecision={(decision) => { if (selectedReviewUserId) void review(selectedReviewUserId, decision); }}
+      />
+    </AdminPageShell>
+  );
 }

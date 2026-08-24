@@ -655,6 +655,25 @@
       "rejectTitle": "拒绝 KYC 提交？"
     },
     "description": "审核身份文件、处理例外情况，并确保验证决定可审计。",
+    "drawer": {
+      "approve": "批准 KYC",
+      "automatedChecks": "自动检查",
+      "back": "背面",
+      "close": "关闭审核",
+      "decision": "审核决定",
+      "decisionDescription": "请先检查提交的证件和自动检查结果，再作出决定。",
+      "documents": "证件",
+      "eyebrow": "身份验证",
+      "front": "正面",
+      "noAutomatedChecks": "此提交暂无自动检查结果。",
+      "ocrStatus": "OCR 状态：{{status}}",
+      "openDocument": "打开{{side}}",
+      "reject": "拒绝 KYC",
+      "requestInfo": "请求补充信息",
+      "review": "审核",
+      "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
+      "waitingTitle": "等待客户"
+    },
     "documents": {
       "driving_license": "驾驶执照 / MyPolis",
       "national_id": "MyKad",
@@ -682,6 +701,7 @@
     },
     "filters": {
       "allStatuses": "所有审核状态",
+      "infoRequestedCount": "已请求补充信息（{{count}}）",
       "search": "搜索姓名、邮箱或证件类型",
       "status": "按审核状态筛选"
     },
@@ -729,7 +749,8 @@
       "other": "其他（请补充详情）"
     },
     "status": {
-      "infoRequested": "已请求补充信息"
+      "infoRequested": "已请求补充信息",
+      "pending": "待审核"
     },
     "submitted": "提交于 {{date}} · 队列位置 {{position}}",
     "success": {

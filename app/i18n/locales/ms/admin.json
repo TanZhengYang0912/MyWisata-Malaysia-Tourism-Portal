@@ -655,6 +655,25 @@
       "rejectTitle": "Tolak penyerahan KYC?"
     },
     "description": "Semak dokumen identiti, selesaikan pengecualian dan pastikan keputusan pengesahan boleh diaudit.",
+    "drawer": {
+      "approve": "Luluskan KYC",
+      "automatedChecks": "Semakan automatik",
+      "back": "Belakang",
+      "close": "Tutup semakan",
+      "decision": "Keputusan semakan",
+      "decisionDescription": "Buat keputusan hanya selepas memeriksa dokumen yang dihantar dan hasil automatik.",
+      "documents": "Dokumen",
+      "eyebrow": "Pengesahan identiti",
+      "front": "Hadapan",
+      "noAutomatedChecks": "Tiada hasil semakan automatik tersedia untuk penyerahan ini.",
+      "ocrStatus": "Status OCR: {{status}}",
+      "openDocument": "Buka {{side}}",
+      "reject": "Tolak KYC",
+      "requestInfo": "Minta maklumat",
+      "review": "Semak",
+      "waitingDescription": "Pelanggan mesti menghantar maklumat yang diminta sebelum keputusan lain boleh dibuat.",
+      "waitingTitle": "Menunggu pelanggan"
+    },
     "documents": {
       "driving_license": "Lesen memandu / MyPolis",
       "national_id": "MyKad",
@@ -682,6 +701,7 @@
     },
     "filters": {
       "allStatuses": "Semua status semakan",
+      "infoRequestedCount": "Maklumat diminta ({{count}})",
       "search": "Cari nama, e-mel atau jenis dokumen",
       "status": "Tapis mengikut status semakan"
     },
@@ -729,7 +749,8 @@
       "other": "Lain-lain (tambah butiran)"
     },
     "status": {
-      "infoRequested": "Maklumat diminta"
+      "infoRequested": "Maklumat diminta",
+      "pending": "Menunggu semakan"
     },
     "submitted": "Dihantar {{date}} · Kedudukan dalam barisan {{position}}",
     "success": {

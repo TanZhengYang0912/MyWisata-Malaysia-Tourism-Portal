@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Awaiting written-plan approval
+**Status:** Implemented; repository-wide verification retains unrelated baseline failures documented in the handoff
 **Goal:** Turn the KYC review list into a compact prioritisation queue and move document inspection plus review decisions into one focused detail drawer.
 
 **Architecture:** `app/admin/kyc/page.tsx` remains responsible for loading, filtering, and submitting review mutations. Two focused presentation components render a compact queue row and a modal detail drawer; the drawer owns local reason/confirmation state and calls the existing signed-document and review handlers. Existing KYC APIs, permission checks, append-only review RPCs, and database types remain unchanged.
