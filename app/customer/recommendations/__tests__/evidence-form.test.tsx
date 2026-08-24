@@ -20,6 +20,17 @@ describe("recommendation evidence form contract", () => {
     expect(page).toContain('tCustomer("ui.recommendations.notEditable")');
   });
 
+  it("uses exclusive canonical groups and stable detail links", () => {
+    expect(page).toContain("groupRecommendations");
+    expect(page).toContain("groups.action_required");
+    expect(page).toContain("groups.in_review");
+    expect(page).toContain("groups.decided");
+    expect(page).toContain("groups.converted");
+    expect(page).toContain('href={`/customer/recommendations/${r.id}`}');
+    expect(page).not.toContain('r.status === "pending" || r.status === "changes_requested"');
+    expect(page).not.toContain('r.status !== "pending"');
+  });
+
   it("warns before replacing the oldest selected photos", () => {
     expect(page).toContain("allowRecommendationImageSelection");
     expect(page).toContain("replacementConfirmedRef");

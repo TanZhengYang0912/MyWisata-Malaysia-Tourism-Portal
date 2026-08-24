@@ -1058,6 +1058,7 @@
       "notEditable": "Pending recommendations cannot be edited.",
       "updateDetails": "Update the requested details",
       "viewContributor": "View contributor profile",
+      "viewVendor": "View vendor",
       "myRecommendations": "My recommendations",
       "noneYet": "You haven't recommended any vendors yet.",
       "makeFirst": "Make your first recommendation →",
@@ -1073,6 +1074,10 @@
         "pending": "Admin is checking the recommendation and vendor details.",
         "changes_requested": "Admin requested updated recommendation details.",
         "approved": "Admin approved it; the vendor still needs to join or be linked before going live.",
+        "invited": "The vendor has been invited to join MyWisata.",
+        "claimed": "The vendor claimed the invitation and started onboarding.",
+        "onboarding": "The vendor is completing onboarding.",
+        "vendor_pending_review": "The vendor application is waiting for review.",
         "rejected": "This recommendation was not approved for the marketplace.",
         "converted": "The vendor joined through your recommendation and commission attribution is active."
       },

@@ -1058,6 +1058,7 @@
       "notEditable": "待审核的推荐不可编辑。",
       "updateDetails": "更新要求的信息",
       "viewContributor": "查看贡献者资料",
+      "viewVendor": "查看商家",
       "myRecommendations": "我的推荐",
       "noneYet": "您还没有推荐任何商家。",
       "makeFirst": "创建您的第一个推荐 →",
@@ -1073,6 +1074,10 @@
         "pending": "管理员正在审核推荐和商家资料。",
         "changes_requested": "管理员要求更新推荐资料。",
         "approved": "管理员已批准；商家加入或完成关联后才会上线。",
+        "invited": "已邀请商家加入 MyWisata。",
+        "claimed": "商家已接受邀请并开始入驻。",
+        "onboarding": "商家正在完成入驻流程。",
+        "vendor_pending_review": "商家申请正在等待审核。",
         "rejected": "此推荐未获市场批准。",
         "converted": "商家已通过你的推荐加入，佣金归属已生效。"
       },

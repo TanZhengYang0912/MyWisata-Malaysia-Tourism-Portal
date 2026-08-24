@@ -1058,6 +1058,7 @@
       "notEditable": "Cadangan yang menunggu semakan tidak boleh diedit.",
       "updateDetails": "Kemas kini butiran yang diminta",
       "viewContributor": "Lihat profil penyumbang",
+      "viewVendor": "Lihat vendor",
       "myRecommendations": "Cadangan saya",
       "noneYet": "Anda belum mencadangkan sebarang vendor.",
       "makeFirst": "Buat cadangan pertama anda →",
@@ -1073,6 +1074,10 @@
         "pending": "Pentadbir sedang menyemak cadangan dan butiran vendor.",
         "changes_requested": "Pentadbir meminta butiran cadangan dikemas kini.",
         "approved": "Pentadbir telah meluluskan; vendor masih perlu menyertai atau dipautkan sebelum disiarkan.",
+        "invited": "Vendor telah dijemput untuk menyertai MyWisata.",
+        "claimed": "Vendor telah menerima jemputan dan memulakan proses penyertaan.",
+        "onboarding": "Vendor sedang melengkapkan proses penyertaan.",
+        "vendor_pending_review": "Permohonan vendor sedang menunggu semakan.",
         "rejected": "Cadangan ini tidak diluluskan untuk pasaran.",
         "converted": "Vendor menyertai melalui cadangan anda dan atribusi komisen kini aktif."
       },
