@@ -21,8 +21,8 @@ export async function GET(
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: isAdmin, error: roleError } = await db.rpc('is_admin', { uid: user.id });
-  if (roleError || !isAdmin) return apiFail('FORBIDDEN', 'Admin access required', 403);
+  const { data: canReview, error: roleError } = await db.rpc('can_review_recommendation', { uid: user.id });
+  if (roleError || canReview !== true) return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
   const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
 
   const service = createServiceClient();

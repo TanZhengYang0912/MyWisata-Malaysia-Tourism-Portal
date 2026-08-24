@@ -3,10 +3,11 @@ import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
+const rpc = vi.fn();
 const createServiceClient = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser } }),
+  createClient: async () => ({ auth: { getUser }, rpc }),
 }));
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
@@ -100,6 +101,8 @@ function serviceFor(options?: {
 describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
   beforeEach(() => {
     getUser.mockReset();
+    rpc.mockReset();
+    rpc.mockResolvedValue({ data: true, error: null });
     createServiceClient.mockReset();
   });
 
@@ -132,8 +135,7 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
 
   it('returns 403 for a customer role before loading submission detail', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
-    const service = serviceFor({ roleName: 'customer' });
-    createServiceClient.mockReturnValue(service);
+    rpc.mockResolvedValue({ data: false, error: null });
     const GET = await loadGet();
     if (!GET) return;
 
@@ -142,7 +144,24 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(service.submissionQuery.select).not.toHaveBeenCalled();
+    expect(createServiceClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects callers without the KYC review capability before using the service client', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
+    rpc.mockResolvedValue({ data: false, error: null });
+    const GET = await loadGet();
+    if (!GET) return;
+
+    const response = await GET(new Request('http://localhost'), {
+      params: Promise.resolve({ submissionId }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
+      uid: '33333333-3333-4333-8333-333333333333',
+    });
+    expect(createServiceClient).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the submission customer does not exist', async () => {

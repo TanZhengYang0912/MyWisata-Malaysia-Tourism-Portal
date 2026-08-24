@@ -235,12 +235,12 @@ export async function resolveTicket(id: string): Promise<void> {
 }
 
 // ─── Profile update ─────────────────────────────────────────────────────────
-export async function updateProfile(userId: string, data: { fullName: string; city: string; phone: string }): Promise<User> {
+export async function updateProfile(userId: string, data: { fullName: string; city: string }): Promise<User> {
   const isDemo = DEMO_USERS.some((u) => u.id === userId);
   if (!isDemo) {
     const { error } = await supabase
       .from("users")
-      .update({ full_name: data.fullName, city: data.city, phone: data.phone })
+      .update({ full_name: data.fullName, city: data.city })
       .eq("id", userId);
     if (error) throw error;
     // Re-fetch from DB so the trigger-updated kyc_status is reflected
@@ -257,7 +257,6 @@ export async function updateProfile(userId: string, data: { fullName: string; ci
     name: data.fullName.trim() || current.name,
     avatarInitial: (data.fullName.trim() || current.name)[0]?.toUpperCase() ?? "?",
     city: data.city,
-    phone: data.phone,
   };
   setCurrentUser(updated);
   return updated;

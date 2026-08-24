@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { verifyOtpSchema } from '@/lib/validation/phone-schemas';
 import { verifyOtp } from '@/lib/twilio';
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
   }
 
   // Post-verify: advance tier + record verified phone (atomic, with advisory lock in RPC)
-  const { error } = await supabase.rpc('promote_to_phone_verified', {
+  const service = createServiceClient();
+  const { error } = await service.rpc('promote_to_phone_verified', {
     p_user_id: user.id,
     p_phone:   phone,
   });

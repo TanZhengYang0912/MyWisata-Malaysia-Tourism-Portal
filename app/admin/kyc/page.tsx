@@ -5,7 +5,6 @@ import { Clock3, FileCheck2, Search, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { AdminKycSubmission, User } from "@/backend/core/types";
-import { getUsers } from "@/backend/domains/identity";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -21,20 +20,23 @@ export default function AdminKycPage() {
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [users, setUsers] = useState<User[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
+  const [verifiedCount, setVerifiedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "info_requested">("all");
 
   async function load() {
     try {
-      const [allUsers, response] = await Promise.all([
-        getUsers(),
-        fetch("/api/admin/kyc/submissions", { cache: "no-store" }),
-      ]);
+      const response = await fetch("/api/admin/kyc/submissions", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.loadSubmissions"));
-      setUsers(allUsers.filter((user) => user.role === "customer"));
+      setUsers((body.data?.customers ?? []).map((customer: Pick<User, "id" | "name" | "email" | "verificationTier">) => ({
+        ...customer,
+        role: "customer" as const,
+        avatarInitial: customer.name.charAt(0).toUpperCase() || "?",
+      })));
       setSubmissions(new Map((body.data?.submissions ?? []).map((submission: AdminKycSubmission) => [submission.userId, submission])));
+      setVerifiedCount(body.data?.verifiedCount ?? 0);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("kyc.errors.loadQueue"));
@@ -47,7 +49,6 @@ export default function AdminKycPage() {
   const queueUsers = users.filter((user) => submissions.has(user.id));
   const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");
   const infoRequested = queueUsers.filter((user) => submissions.get(user.id)?.status === "info_requested");
-  const verifiedUsers = users.filter((user) => user.verificationTier === "kyc_verified");
   const oldestPendingAt = pendingReview
     .map((user) => submissions.get(user.id)?.submittedAt)
     .filter((value): value is string => Boolean(value))
@@ -70,7 +71,7 @@ export default function AdminKycPage() {
       <AdminMetricGrid items={[
         { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },
         { label: t("kyc.metrics.infoRequested"), value: infoRequested.length, detail: t("kyc.metrics.infoRequestedNote") },
-        { label: t("kyc.metrics.verified"), value: verifiedUsers.length, detail: t("kyc.metrics.verifiedNote") },
+        { label: t("kyc.metrics.verified"), value: verifiedCount, detail: t("kyc.metrics.verifiedNote") },
         { label: t("kyc.metrics.oldest"), value: oldestPendingAt ? dateLabel(oldestPendingAt, locale) : "—", detail: oldestPendingAt ? t("kyc.metrics.submittedFirst") : t("kyc.metrics.queueClear") },
       ]} />
 

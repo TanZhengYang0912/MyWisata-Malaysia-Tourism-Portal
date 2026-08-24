@@ -51,7 +51,10 @@ describe('POST /api/admin/recommendations/review', () => {
     mocks.getUser.mockResolvedValue({
       data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
     });
-    mocks.rpc.mockResolvedValue({ data: null, error: null });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'can_review_recommendation') return { data: true, error: null };
+      return { data: null, error: null };
+    });
     mocks.auditAndNotify.mockResolvedValue({ notification_count: 1 });
   });
 
@@ -107,5 +110,25 @@ describe('POST /api/admin/recommendations/review', () => {
       onConflict: 'event_key',
       ignoreDuplicates: true,
     }));
+  });
+
+  it('rejects callers without the recommendation review capability before loading the submission', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: false, error: null });
+
+    const response = await POST(new Request('http://localhost/api/admin/recommendations/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recommendationId: '33333333-3333-4333-8333-333333333333',
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', {
+      uid: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(mocks.auditAndNotify).not.toHaveBeenCalled();
   });
 });

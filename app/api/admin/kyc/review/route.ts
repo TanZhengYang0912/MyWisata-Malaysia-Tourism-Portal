@@ -6,6 +6,13 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_kyc', {
+    uid: user.id,
+  });
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
+  }
+
   const parsed = await parseBody(request, kycReviewSchema);
   if (!parsed.ok) return parsed.response;
   const { userId, action, reasonCode, reasonDetail } = parsed.data;

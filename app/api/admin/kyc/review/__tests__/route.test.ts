@@ -15,12 +15,14 @@ describe('POST /api/admin/kyc/review', () => {
   beforeEach(() => {
     getUser.mockReset();
     rpc.mockReset();
+    rpc.mockImplementation(async (name: string) => {
+      if (name === 'can_review_kyc') return { data: true, error: null };
+      return { data: null, error: null };
+    });
   });
 
   it('sends structured catalog reasons to the hardened RPC', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
-    rpc.mockResolvedValue({ error: null });
-
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
       body: JSON.stringify({
@@ -49,6 +51,25 @@ describe('POST /api/admin/kyc/review', () => {
     }));
 
     expect(response.status).toBe(422);
-    expect(rpc).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
+      uid: '22222222-2222-4222-8222-222222222222',
+    });
+  });
+
+  it('rejects callers without the KYC review capability before deciding', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
+    rpc.mockResolvedValueOnce({ data: false, error: null });
+
+    const response = await POST(new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ userId, action: 'approve' }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
+      uid: '22222222-2222-4222-8222-222222222222',
+    });
   });
 });

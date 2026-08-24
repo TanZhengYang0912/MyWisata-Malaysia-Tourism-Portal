@@ -12,20 +12,14 @@ export async function GET() {
   const { data: { user } } = await authenticated.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const service = createServiceClient();
-  const { data: roleRows, error: roleError } = await service
-    .from('user_roles')
-    .select('roles(name)')
-    .eq('user_id', user.id);
-  type RoleRow = { roles: { name: string } | { name: string }[] | null };
-  const roleNames = ((roleRows ?? []) as RoleRow[]).map((r) => {
-    const role = Array.isArray(r.roles) ? r.roles[0] : r.roles;
-    return role?.name ?? '';
+  const { data: canReview, error: capabilityError } = await authenticated.rpc('can_review_kyc', {
+    uid: user.id,
   });
-  if (roleError || !roleNames.some((n) => ['admin', 'approver', 'super_admin'].includes(n))) {
-    return apiFail('FORBIDDEN', 'Admin role required', 403);
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
   }
 
+  const service = createServiceClient();
   const { data, error } = await service
     .from('kyc_submissions')
     .select(ADMIN_KYC_SUBMISSION_SELECT)
@@ -34,5 +28,38 @@ export async function GET() {
   if (error) return apiFail('SUBMISSION_LOOKUP_FAILED', 'Unable to load KYC submissions', 500);
 
   const submissions = (data ?? []).map((row) => mapAdminKycSubmission(row as AdminKycSubmissionRow));
-  return apiOk({ submissions });
+  const userIds = submissions.map((submission) => submission.userId);
+  const [customersResult, verifiedResult] = await Promise.all([
+    userIds.length > 0
+      ? service
+          .from('users')
+          .select('id,email,full_name,tier')
+          .in('id', userIds)
+      : Promise.resolve({ data: [], error: null }),
+    service
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('tier', 'kyc_verified'),
+  ]);
+  if (customersResult.error || verifiedResult.error) {
+    return apiFail('CUSTOMER_LOOKUP_FAILED', 'Unable to load KYC customers', 500);
+  }
+
+  const customers = ((customersResult.data ?? []) as Array<{
+    id: string;
+    email: string;
+    full_name: string | null;
+    tier: string;
+  }>).map((customer) => ({
+    id: customer.id,
+    name: customer.full_name?.trim() || customer.email,
+    email: customer.email,
+    verificationTier: customer.tier,
+  }));
+
+  return apiOk({
+    submissions,
+    customers,
+    verifiedCount: verifiedResult.count ?? 0,
+  });
 }

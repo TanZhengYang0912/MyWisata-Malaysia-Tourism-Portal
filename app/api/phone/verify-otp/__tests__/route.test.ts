@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   verifyOtp: vi.fn(),
   getUser: vi.fn(),
   rpc: vi.fn(),
+  serviceRpc: vi.fn(),
   from: vi.fn(),
   update: vi.fn(),
   firstEq: vi.fn(),
@@ -18,6 +19,10 @@ vi.mock('@/lib/supabase/server', () => ({
     rpc: mocks.rpc,
     from: mocks.from,
   })),
+}));
+
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc })),
 }));
 
 import { POST } from '../route';
@@ -35,6 +40,7 @@ describe('POST /api/phone/verify-otp', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     mocks.rpc.mockResolvedValue({ data: null, error: null });
+    mocks.serviceRpc.mockResolvedValue({ data: null, error: null });
     mocks.from.mockReturnValue({ update: mocks.update });
     mocks.update.mockReturnValue({ eq: mocks.firstEq });
     mocks.firstEq.mockReturnValue({ eq: mocks.secondEq });
@@ -48,10 +54,11 @@ describe('POST /api/phone/verify-otp', () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('promote_to_phone_verified', {
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('promote_to_phone_verified', {
       p_user_id: 'user-1',
       p_phone: '+60177143951',
     });
+    expect(mocks.rpc).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({ data: { verified: true } });
   });
 
@@ -72,13 +79,13 @@ describe('POST /api/phone/verify-otp', () => {
     expect(response.status).toBe(status);
     expect(body).toEqual({ data: null, error: { code: apiCode, message } });
     expect(JSON.stringify(body)).not.toContain('Provider secret');
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.serviceRpc).not.toHaveBeenCalled();
   });
 
   it('returns a stable generic message for an unexpected promotion RPC error', async () => {
     const internalSecret = 'rpc-internal-secret';
     mocks.verifyOtp.mockResolvedValue({ ok: true });
-    mocks.rpc.mockResolvedValue({ data: null, error: { message: `database exploded: ${internalSecret}` } });
+    mocks.serviceRpc.mockResolvedValue({ data: null, error: { message: `database exploded: ${internalSecret}` } });
 
     const response = await POST(request());
     const body = await response.json();

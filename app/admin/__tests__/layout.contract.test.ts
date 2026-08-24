@@ -38,6 +38,13 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('pendingCounts.chatReports');
   });
 
+  it('shows content-review queues only to content reviewers and withdrawals only to wallet approvers', () => {
+    expect(layoutSource).toContain('{ href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES }');
+    expect(layoutSource).toContain('{ href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES }');
+    expect(layoutSource).toContain('{ href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES }');
+    expect(layoutSource).toContain('item.allowedRoles.includes(currentUser.role)');
+  });
+
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
     expect(layoutSource).toContain('className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5"');
     expect(layoutSource).toContain('className="px-4 py-3 border-b border-gray-700"');

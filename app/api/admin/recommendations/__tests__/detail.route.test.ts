@@ -65,6 +65,6 @@ describe('GET /api/admin/recommendations/:id', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(mocks.rpc).toHaveBeenCalledWith('is_admin', { uid: 'user-1' });
+    expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', { uid: 'user-1' });
   });
 });

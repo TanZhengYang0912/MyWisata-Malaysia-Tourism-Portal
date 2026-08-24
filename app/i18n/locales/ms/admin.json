@@ -1373,6 +1373,7 @@
       "lastUpdated": "Kemas kini terakhir {{date}} MYT",
       "lastUpdatedBy": "Kemas kini terakhir {{date}} MYT oleh {{by}}",
       "loading": "Memuatkan tadbir urus dompet…",
+      "retry": "Cuba lagi",
       "policy": {
         "description": "Nilai ini digunakan pada permintaan dan ganjaran baharu. Permintaan sedia ada mengekalkan keadaan yang direkodkan.",
         "title": "Polisi pengeluaran"

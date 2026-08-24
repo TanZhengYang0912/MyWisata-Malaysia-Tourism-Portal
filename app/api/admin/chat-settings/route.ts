@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { getChatArchiveDays } from '@/lib/chat/settings';
 
@@ -9,7 +10,7 @@ export async function GET() {
   const { data: isAdmin } = await supabase.rpc('is_admin', { uid: user.id });
   if (!isAdmin) return apiFail('FORBIDDEN', 'Admin role required', 403);
 
-  const archiveDays = await getChatArchiveDays(supabase);
+  const archiveDays = await getChatArchiveDays(createServiceClient());
   return apiOk({ archiveDays });
 }
 
@@ -27,7 +28,8 @@ export async function PATCH(request: Request) {
     return apiFail('INVALID_BODY', 'archiveDays must be between 1 and 3650', 400);
   }
 
-  const { error } = await supabase
+  const service = createServiceClient();
+  const { error } = await service
     .from('platform_settings')
     .upsert({ key: 'chat.archive_days', value: String(Math.round(archiveDays)), description: 'Days of inactivity before an open chat thread is auto-archived', updated_by: user.id }, { onConflict: 'key' });
   if (error) return apiFail('DB_ERROR', error.message, 500);

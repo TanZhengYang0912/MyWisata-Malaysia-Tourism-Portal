@@ -33,17 +33,28 @@ const EMPTY_PENDING_COUNTS: PendingCounts = {
   recommendations: 0,
 };
 
-const NAV = [
+const CONTENT_REVIEW_ROLES = ["admin", "super_admin"] as const;
+const WITHDRAWAL_REVIEW_ROLES = ["approver", "super_admin"] as const;
+
+type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: typeof Activity;
+  superAdminOnly?: boolean;
+  allowedRoles?: readonly string[];
+};
+
+const NAV: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },
   { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
   { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
   { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
-  { href: "/admin/kyc", label: "KYC Review", icon: Shield },
-  { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign },
+  { href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES },
+  { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES },
   { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
   { href: "/admin/wallet/settings", label: "Wallet Settings", icon: Settings2, superAdminOnly: true },
   { href: "/admin/reports/payouts", label: "Payout Reports", icon: FileBarChart2, superAdminOnly: true },
-  { href: "/admin/recommendations", label: "Recommendations", icon: Gem },
+  { href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES },
   { href: "/admin/support", label: "Support Tickets", icon: Inbox },
   { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
   { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
@@ -196,7 +207,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV.filter((item) => !item.superAdminOnly || currentUser.role === "super_admin").map((item) => {
+          {NAV.filter((item) =>
+            (!item.superAdminOnly || currentUser.role === "super_admin")
+            && (!item.allowedRoles || item.allowedRoles.includes(currentUser.role)),
+          ).map((item) => {
             // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
             const count = item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
             return (

@@ -8,8 +8,6 @@ import {
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const REVIEWER_ROLES = ['admin', 'approver', 'super_admin'];
-
 interface Props {
   params: Promise<{ submissionId: string }>;
 }
@@ -19,23 +17,17 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await authenticated.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: canReview, error: capabilityError } = await authenticated.rpc('can_review_kyc', {
+    uid: user.id,
+  });
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
+  }
+
   const { submissionId } = await params;
   if (!UUID.test(submissionId)) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
 
   const service = createServiceClient();
-  const { data: roleRows, error: roleError } = await service
-    .from('user_roles')
-    .select('roles(name)')
-    .eq('user_id', user.id);
-  type RoleRow = { roles: { name: string } | { name: string }[] | null };
-  const roleNames = ((roleRows ?? []) as RoleRow[]).map((row) => {
-    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
-    return role?.name ?? '';
-  });
-  if (roleError || !roleNames.some((name) => REVIEWER_ROLES.includes(name))) {
-    return apiFail('FORBIDDEN', 'Admin role required', 403);
-  }
-
   const { data: submissionRow, error: submissionError } = await service
     .from('kyc_submissions')
     .select(ADMIN_KYC_SUBMISSION_SELECT)

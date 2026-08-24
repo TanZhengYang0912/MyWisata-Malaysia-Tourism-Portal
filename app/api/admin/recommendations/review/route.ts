@@ -15,6 +15,13 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_recommendation', {
+    uid: user.id,
+  });
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
+  }
+
   const parsed = await parseBody(request, reviewSchema);
   if (!parsed.ok) return parsed.response;
   const { recommendationId, action, reason } = parsed.data;

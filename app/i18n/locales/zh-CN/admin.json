@@ -1371,6 +1371,7 @@
       "lastUpdated": "最后更新：{{date}} MYT",
       "lastUpdatedBy": "最后由 {{by}} 于 {{date}} MYT 更新",
       "loading": "正在加载钱包治理…",
+      "retry": "重试",
       "policy": {
         "description": "这些数值适用于新的请求和奖励。现有请求保留其记录状态。",
         "title": "提款政策"

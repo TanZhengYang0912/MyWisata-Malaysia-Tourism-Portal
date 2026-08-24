@@ -1373,6 +1373,7 @@
       "lastUpdated": "Last updated {{date}} MYT",
       "lastUpdatedBy": "Last updated {{date}} MYT by {{by}}",
       "loading": "Loading wallet governance…",
+      "retry": "Try again",
       "policy": {
         "description": "These values apply to new requests and rewards. Existing requests keep their recorded state.",
         "title": "Withdrawal policy"

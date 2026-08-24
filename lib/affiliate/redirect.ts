@@ -8,10 +8,9 @@
 //     `anon` Postgres role SELECT on all tables — not INSERT. An anonymous
 //     visitor's insert would fail with "permission denied" under the
 //     cookie-aware client.
-// products and platform_settings both have public-read RLS policies and would
-// work with the cookie-aware client, but using one client for the whole
-// route keeps this simpler — none of these reads are user-permission-gated,
-// an affiliate link is public by design.
+// Platform settings are server-only governance data, so this route also needs
+// the service client for its attribution and click-cap reads. Product targets
+// are public, but one client for the whole server route keeps the boundary clear.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';

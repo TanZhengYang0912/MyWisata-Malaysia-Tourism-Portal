@@ -37,6 +37,20 @@ describe('/api/admin/wallet-settings', () => {
     expect((await GET()).status).toBe(403);
   });
 
+  it('reads private settings through the service client after authorization', async () => {
+    const settingsQuery = {
+      select: vi.fn(),
+      in: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    settingsQuery.select.mockReturnValue(settingsQuery);
+    mocks.serviceFrom.mockReturnValue(settingsQuery);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('platform_settings');
+  });
+
   it('rejects out-of-range settings before moderation or writes', async () => {
     const response = await PATCH(request({ clearanceDays: 0, reason: 'This is a valid reason.' }));
     expect(response.status).toBe(422);

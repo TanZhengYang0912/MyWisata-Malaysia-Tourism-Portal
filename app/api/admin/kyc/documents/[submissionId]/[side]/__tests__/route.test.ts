@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
+const rpc = vi.fn();
+const createServiceClient = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser } }),
+  createClient: async () => ({ auth: { getUser }, rpc }),
 }));
 
 vi.mock('@/lib/supabase/service', () => ({
-  createServiceClient: vi.fn(),
+  createServiceClient,
 }));
 
 const { GET } = await import('../route');
@@ -21,5 +23,23 @@ describe('GET /api/admin/kyc/documents/[submissionId]/[side]', () => {
     });
 
     expect(response.status).toBe(401);
+  });
+
+  it('rejects callers without the KYC review capability before resolving a private path', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
+    rpc.mockResolvedValue({ data: false, error: null });
+
+    const response = await GET(new Request('http://localhost'), {
+      params: Promise.resolve({
+        submissionId: '22222222-2222-4222-8222-222222222222',
+        side: 'front',
+      }),
+    });
+
+    expect(response.status).toBe(403);
+    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
+      uid: '33333333-3333-4333-8333-333333333333',
+    });
+    expect(createServiceClient).not.toHaveBeenCalled();
   });
 });
