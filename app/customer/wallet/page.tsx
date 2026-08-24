@@ -3,18 +3,15 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import {
-  Wallet, ArrowDownCircle, ArrowUpCircle, Clock,
-  CheckCircle2, XCircle, Building2, AlertCircle,
+  Wallet, CheckCircle2, Building2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import {
   getMyWithdrawals,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
-import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { normalizeTngDestinationIdentifier, selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
@@ -24,19 +21,14 @@ import { GuestAccountEmptyState } from "@/components/customer/guest-account-empt
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { WalletBalanceSummary, type WalletBuckets } from "@/components/customer/wallet/wallet-balance-summary";
+import { PayoutReadiness, type CustomerConnectStatus } from "@/components/customer/wallet/payout-readiness";
+import { WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
+import type { CustomerWalletCapabilities } from "@/lib/wallet/customer-capabilities";
+import { isSettlementPending, startSettlementPolling } from "@/lib/wallet/settlement-polling";
 
 
-type ConnectStatus =
-  | "idle"
-  | "loading"
-  | "kyc_required"
-  | "unlinked"
-  | "currently_due"
-  | "pending_verification"
-  | "payouts_enabled"
-  | "past_due"
-  | "restricted"
-  | "status_error";
+type ConnectStatus = CustomerConnectStatus;
 type PayoutCapabilities = {
   bank_account: { enabled: boolean; provider: string };
   e_wallet: { enabled: boolean; provider: string | null };
@@ -51,13 +43,13 @@ function WalletContent() {
   const onboardComplete  = searchParams.get("onboarding") === "complete";
   const onboardRefresh   = searchParams.get("onboarding") === "refresh";
 
-  const [buckets, setBuckets]         = useState<{ topup: number; earnings: number; pendingEarnings: number; reservedEarnings: number; withdrawnEarnings: number } | null>(null);
+  const [buckets, setBuckets]         = useState<WalletBuckets | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
+  const [readiness, setReadiness] = useState<CustomerWalletCapabilities | null>(null);
 
   // Withdrawal form
   const [showWithdraw, setShowWithdraw]   = useState(false);
-  const [showConnectModal, setShowConnectModal] = useState(false);
   const [withdrawSetupRequested, setWithdrawSetupRequested] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing]     = useState(false);
@@ -88,7 +80,6 @@ function WalletContent() {
   const { pending, history, pendingTotal, availableEarnings } = displayGroups;
   const walletReady = buckets !== null && withdrawals !== null;
   const resolvedAvailableEarnings = walletReady ? availableEarnings : 0;
-  const totalBalance = (buckets?.topup ?? 0) + (buckets?.earnings ?? 0);
   const returningFromOnboarding = onboardComplete || onboardRefresh;
   const showPayoutSetup = shouldExposeStripePayoutSetup({
     availableEarningsRm: resolvedAvailableEarnings,
@@ -152,7 +143,7 @@ function WalletContent() {
         pendingEarningsSen: number;
         reservedEarningsSen: number;
         withdrawnEarningsSen: number;
-      };
+      } & CustomerWalletCapabilities;
     };
     const summary = body.data;
     setBuckets(summary ? {
@@ -162,12 +153,20 @@ function WalletContent() {
       reservedEarnings: summary.reservedEarningsSen / 100,
       withdrawnEarnings: summary.withdrawnEarningsSen / 100,
     } : null);
+    setReadiness(summary ? {
+      canWithdraw: summary.canWithdraw,
+      blockerCode: summary.blockerCode,
+      nextAction: summary.nextAction,
+      destinationSummary: summary.destinationSummary,
+      lastProviderCheckAt: summary.lastProviderCheckAt,
+    } : null);
     setWithdrawals(nextWithdrawals);
   }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
       setBuckets(null);
+      setReadiness(null);
       setWithdrawals(null);
       setDestinations([]);
       setSelectedDestinationId("");
@@ -183,14 +182,11 @@ function WalletContent() {
   }, [currentUser, refreshWalletState]);
 
   useEffect(() => {
-    if (!currentUser || !withdrawals?.some((withdrawal) => ['approved', 'processing'].includes(withdrawal.status))) return;
-    let refreshInFlight = false;
-    const interval = window.setInterval(() => {
-      if (refreshInFlight) return;
-      refreshInFlight = true;
-      void refreshWalletState().finally(() => { refreshInFlight = false; });
-    }, 4_000);
-    return () => window.clearInterval(interval);
+    if (!currentUser || !withdrawals?.some((withdrawal) => isSettlementPending(withdrawal.status))) return;
+    return startSettlementPolling({
+      refresh: refreshWalletState,
+      shouldContinue: () => withdrawals.some((withdrawal) => isSettlementPending(withdrawal.status)),
+    });
   }, [currentUser, refreshWalletState, withdrawals]);
 
   useEffect(() => {
@@ -233,34 +229,23 @@ function WalletContent() {
   async function openWithdraw() {
     if (!gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
     setWithdrawalSubmitted(false);
-    const selectedDestination = destinations.find((destination) => destination.id === selectedDestinationId);
     setShowTopUp(false);
     setWithdrawError("");
-
-    if (!walletReady) {
-      setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
-      setShowWithdraw(true);
-      return;
-    }
-
-    if (availableEarnings <= 0) {
-      setWithdrawError(tCustomer("ui.wallet.noAvailableEarnings"));
-      setShowWithdraw(true);
-      return;
-    }
-
-    const usesEnabledEwallet = payoutCapabilities.e_wallet.enabled && selectedDestination?.type === "e_wallet";
-    if (usesEnabledEwallet) {
-      setShowWithdraw((v) => !v);
-      return;
-    }
-
     setWithdrawSetupRequested(true);
-    const nextStatus = connectStatus === "idle" || connectStatus === "status_error"
-      ? await refreshConnectStatus()
-      : connectStatus;
-    if (nextStatus === "payouts_enabled") setShowWithdraw((value) => !value);
-    else setShowConnectModal(true);
+
+    if (!walletReady || !readiness) {
+      setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
+      setShowWithdraw(false);
+      return;
+    }
+
+    if (!readiness.canWithdraw) {
+      setShowWithdraw(false);
+      if (readiness.nextAction === "complete_payout_setup") await refreshConnectStatus();
+      return;
+    }
+
+    setShowWithdraw((value) => !value);
   }
 
   async function handleAddTngDestination() {
@@ -331,7 +316,7 @@ function WalletContent() {
         fetch('/api/wallet/summary').then((response) => response.json()),
       ]);
       setWithdrawals(nextWithdrawals);
-      const summary = nextBuckets.data as { topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } | undefined;
+      const summary = nextBuckets.data as ({ topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } & CustomerWalletCapabilities) | undefined;
       if (summary) setBuckets({
         topup: summary.topupSen / 100,
         earnings: summary.earningsSen / 100,
@@ -339,6 +324,7 @@ function WalletContent() {
         reservedEarnings: summary.reservedEarningsSen / 100,
         withdrawnEarnings: summary.withdrawnEarningsSen / 100,
       });
+      if (summary) setReadiness({ canWithdraw: summary.canWithdraw, blockerCode: summary.blockerCode, nextAction: summary.nextAction, destinationSummary: summary.destinationSummary, lastProviderCheckAt: summary.lastProviderCheckAt });
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("topup");
       window.history.replaceState(
@@ -421,118 +407,15 @@ function WalletContent() {
         </div>
       )}
 
-      {/* ── Balance card ── */}
-      <div
-        className="mb-8 rounded-2xl p-6 text-white shadow-[0_18px_40px_rgba(1,0,102,0.16)] sm:p-7"
-        style={{ background: "linear-gradient(135deg, #010066 0%, #1D2A8A 100%)" }}
-      >
-        <p className="text-sm opacity-75 mb-1">{tCustomer("ui.checkout.total")}</p>
-        <p className="text-4xl font-bold font-[family-name:var(--font-mono)]">
-          {buckets === null ? "—" : `RM ${totalBalance.toFixed(2)}`}
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">{tCustomer("ui.wallet.topupBalance")}</p>
-            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
-              {buckets === null ? "—" : `RM ${buckets.topup.toFixed(2)}`}
-            </p>
-          </div>
-          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">{tCustomer("ui.wallet.earningsBalance")}</p>
-            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
-              {buckets === null ? "—" : `RM ${buckets.earnings.toFixed(2)}`}
-            </p>
-          </div>
-          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">{tCustomer("ui.wallet.pendingRewards")}</p>
-            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
-              {buckets === null ? "—" : `RM ${buckets.pendingEarnings.toFixed(2)}`}
-            </p>
-            <p className="mt-1 text-[10px] leading-snug opacity-60">{tCustomer("ui.wallet.pendingRewardsHint")}</p>
-          </div>
-          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">{tCustomer("ui.wallet.reservedWithdrawals")}</p>
-            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
-              {buckets === null ? "—" : `RM ${buckets.reservedEarnings.toFixed(2)}`}
-            </p>
-          </div>
-          <div className="min-h-[64px] rounded-xl bg-white/10 px-4 py-2">
-            <p className="text-xs opacity-60">{tCustomer("ui.wallet.withdrawnEarnings")}</p>
-            <p className="text-sm font-semibold font-[family-name:var(--font-mono)] mt-0.5">
-              {buckets === null ? "—" : `RM ${buckets.withdrawnEarnings.toFixed(2)}`}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex gap-3">
-           <button
-             onClick={() => { if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/wallet")) return; setShowTopUp((v) => !v); setShowWithdraw(false); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition text-sm font-semibold"
-          >
-            <ArrowUpCircle size={16} /> {tCustomer("ui.wallet.topUp")}
-          </button>
-          <button
-            onClick={() => void openWithdraw()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 transition text-sm font-semibold"
-          >
-            <ArrowDownCircle size={16} /> {tCustomer("ui.wallet.withdraw")}
-          </button>
-        </div>
-      </div>
+      <WalletBalanceSummary
+        buckets={buckets}
+        onTopUp={() => { if (!gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/wallet")) return; setShowTopUp((value) => !value); setShowWithdraw(false); }}
+        onWithdraw={() => void openWithdraw()}
+      />
 
       {/* Stripe payout setup is intentionally hidden until a withdrawal-related JIT trigger. */}
       {showPayoutSetup && (
-        <CustomerPanel className="mb-8">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-              connectStatus === "payouts_enabled" ? "bg-primary/15" :
-              connectStatus === "currently_due" || connectStatus === "pending_verification" ? "bg-amber-100" :
-              connectStatus === "past_due" || connectStatus === "restricted" || connectStatus === "status_error" ? "bg-red-100" : "bg-muted"
-            }`}>
-              {connectStatus === "payouts_enabled" ? <CheckCircle2 size={16} className="text-primary" /> :
-               connectStatus === "currently_due" || connectStatus === "pending_verification" ? <Clock size={16} className="text-amber-600" /> :
-               connectStatus === "past_due" || connectStatus === "restricted" || connectStatus === "status_error" ? <AlertCircle size={16} className="text-red-600" /> :
-                                                                                                                        <Building2 size={16} className="text-muted-foreground" />}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">
-                {connectStatus === "payouts_enabled" ? tCustomer("ui.wallet.bankWithdrawalsEnabled") :
-                 connectStatus === "currently_due" ? tCustomer("ui.wallet.completePayoutDetails") :
-                 connectStatus === "pending_verification" ? tCustomer("ui.wallet.stripeVerificationProgress") :
-                 connectStatus === "past_due" || connectStatus === "restricted" ? tCustomer("ui.wallet.bankWithdrawalsRestricted") :
-                 connectStatus === "status_error" ? tCustomer("ui.wallet.unableVerifyPayout") :
-                 connectStatus === "kyc_required" ? tCustomer("ui.wallet.completeKycFirst") :
-                 connectStatus === "loading" || connectStatus === "idle" ? tCustomer("ui.wallet.checkingSetup") :
-                 tCustomer("ui.wallet.setupEarningsOptional")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {connectStatus === "payouts_enabled" ? tCustomer("ui.wallet.approvedBankDestination") :
-                 connectStatus === "currently_due" ? tCustomer("ui.wallet.stripeNeedsInfo") :
-                 connectStatus === "pending_verification" ? tCustomer("ui.wallet.stripeReviewing") :
-                 connectStatus === "past_due" || connectStatus === "restricted" ? tCustomer("ui.wallet.bankRestrictedDescription") :
-                 connectStatus === "status_error" ? (onboardError || tCustomer("ui.wallet.retryStatus")) :
-                 connectStatus === "kyc_required" ? tCustomer("ui.wallet.setupAfterKyc") :
-                 connectStatus === "loading" || connectStatus === "idle" ? tCustomer("ui.wallet.checkingStripeStatus") :
-                 tCustomer("ui.wallet.setupWhenWithdrawing")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">{tCustomer("ui.wallet.stripePrivacy")}</p>
-              {onboardError && <p className="text-xs text-red-500 mt-1">{onboardError}</p>}
-            </div>
-
-            {(connectStatus === "unlinked" || connectStatus === "currently_due" || connectStatus === "past_due") && (
-              <Button size="sm" className="shrink-0" onClick={handleConnectOnboard} disabled={onboarding}>
-                {onboarding ? tCustomer("ui.states.loading") : connectStatus === "unlinked" ? tCustomer("ui.wallet.setupWithdrawals") : tCustomer("ui.wallet.updateDetails")}
-              </Button>
-            )}
-            {(connectStatus === "pending_verification" || connectStatus === "restricted" || connectStatus === "status_error") && (
-              <Button size="sm" variant="outline" className="shrink-0" onClick={() => void refreshConnectStatus()}>
-                {tCustomer("ui.wallet.retryStatusCheck")}
-              </Button>
-            )}
-          </div>
-        </CustomerPanel>
+        <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
       )}
 
       {/* ── Top-up form ── */}
@@ -691,130 +574,7 @@ function WalletContent() {
         </form>
       )}
 
-      {/* ── JIT payout setup modal ── */}
-      {showConnectModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <Building2 size={18} className="text-amber-600" />
-              </div>
-              <h2 className="font-bold text-foreground">
-                {connectStatus === "pending_verification" ? tCustomer("ui.wallet.stripeVerificationProgress") :
-                 connectStatus === "past_due" || connectStatus === "restricted" ? tCustomer("ui.wallet.bankWithdrawalsRestricted") :
-                 connectStatus === "kyc_required" ? tCustomer("ui.wallet.completeKycFirst") :
-                 tCustomer("ui.wallet.setupEarningsWithdrawals")}
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {connectStatus === "kyc_required"
-                ? tCustomer("ui.wallet.completeKycDescription")
-                : connectStatus === "currently_due"
-                ? tCustomer("ui.wallet.stripeNeedsInfoContinue")
-                : connectStatus === "pending_verification"
-                ? tCustomer("ui.wallet.stripeReviewing")
-                : connectStatus === "past_due"
-                ? tCustomer("ui.wallet.updateRestrictedDetails")
-                : connectStatus === "restricted"
-                ? tCustomer("ui.wallet.restrictedContactSupport")
-                : connectStatus === "status_error"
-                ? (onboardError || tCustomer("ui.wallet.verifyPayoutError"))
-                : connectStatus === "loading" || connectStatus === "idle"
-                ? tCustomer("ui.wallet.checkingPayoutSetup")
-                : tCustomer("ui.wallet.optionalBankSetup")}
-            </p>
-            <p className="text-xs text-muted-foreground">{tCustomer("ui.wallet.stripePrivacy")}</p>
-            {onboardError && <p className="text-xs text-red-500">{onboardError}</p>}
-            <div className="flex gap-2">
-              {(connectStatus === "unlinked" || connectStatus === "currently_due" || connectStatus === "past_due") && (
-                <Button className="flex-1" onClick={() => { setShowConnectModal(false); void handleConnectOnboard(); }} disabled={onboarding}>
-                  {onboarding
-                    ? tCustomer("ui.states.loading")
-                    : connectStatus === "unlinked" ? tCustomer("ui.wallet.setUpBankAccount") : tCustomer("ui.wallet.updateDetails")}
-                </Button>
-              )}
-              {(connectStatus === "pending_verification" || connectStatus === "restricted" || connectStatus === "status_error") && (
-                <Button className="flex-1" onClick={() => { setShowConnectModal(false); void refreshConnectStatus(); }}>
-                  {tCustomer("ui.wallet.retryStatusCheck")}
-                </Button>
-              )}
-              <Button variant="outline" className="flex-1" onClick={() => setShowConnectModal(false)}>
-                {connectStatus === "kyc_required" ? tCustomer("ui.wallet.ok") : tCustomer("ui.wallet.later")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── In Progress ── */}
-      {pending.length > 0 && (
-        <div className="rounded-2xl overflow-hidden border border-border bg-card mb-4">
-          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-            <Clock size={14} className="text-accent" />
-            <h2 className="font-bold text-foreground text-sm">
-              {tCustomer("ui.wallet.inProgress", { count: pending.length })}
-            </h2>
-          </div>
-          <div className="divide-y divide-border">
-            {pending.map((w) => (
-              <Link
-                key={w.id}
-                href={`/customer/wallet/withdrawals/${w.id}`}
-                className="px-5 py-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{w.destination}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(w.createdAt).toLocaleDateString(i18n.language === "en" ? "en-MY" : i18n.language)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
-                  <StatusBadge status={w.status} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Transaction history ── */}
-      <div className="rounded-2xl overflow-hidden border border-border bg-card">
-        <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-bold text-foreground text-sm">{tCustomer("ui.wallet.transactionHistory")}</h2>
-        </div>
-        {history.length === 0 && pending.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-muted-foreground">{tCustomer("ui.wallet.noTransactions")}</div>
-        ) : history.length === 0 ? (
-          <div className="px-5 py-6 text-center text-sm text-muted-foreground">{tCustomer("ui.wallet.noCompletedTransactions")}</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {history.map((w) => (
-              <Link
-                key={w.id}
-                href={`/customer/wallet/withdrawals/${w.id}`}
-                className="px-5 py-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-              >
-                <div className="flex items-center gap-3">
-                  {w.status === "completed" || w.status === "paid" || w.status === "approved" ? (
-                    <CheckCircle2 size={16} className="text-primary shrink-0" />
-                  ) : w.status === "failed" || w.status === "rejected" ? (
-                    <XCircle size={16} className="text-destructive shrink-0" />
-                  ) : (
-                    <Clock size={16} className="text-accent shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm text-foreground">{w.destination}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(w.createdAt).toLocaleDateString(i18n.language === "en" ? "en-MY" : i18n.language)}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {w.amount.toFixed(2)}</p>
-                  <StatusBadge status={w.status} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <WithdrawalList pending={pending} history={history} />
       </CustomerPageShell>
     </>
   );

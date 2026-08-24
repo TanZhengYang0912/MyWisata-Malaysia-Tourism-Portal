@@ -31,8 +31,13 @@ describe('withdrawal receipt provider presentation', () => {
 
   it('polls only non-terminal receipts and cleans up the timer', () => {
     expect(source).toContain('loadReceipt');
-    expect(source).toContain('setInterval');
-    expect(source).toContain('clearInterval');
-    expect(source).toContain('["approved", "processing"].includes(receipt.status)');
+    expect(source).toContain('startSettlementPolling');
+    expect(source).toContain('isSettlementPending(receipt.status)');
+    expect(source).not.toContain('setInterval');
+  });
+
+  it('uses the shared customer page skeleton', () => {
+    expect(source).toContain('CustomerPageTitle');
+    expect(source).toContain('CustomerPageShell');
   });
 });

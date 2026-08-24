@@ -10,6 +10,8 @@ import { useAuth } from "@/components/providers/auth";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 import type { CustomerSettlementProof } from "@/lib/payouts/settlement-proof";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
+import { isSettlementPending, startSettlementPolling } from "@/lib/wallet/settlement-polling";
 
 type Receipt = {
   id: string;
@@ -66,18 +68,15 @@ export default function WithdrawalReceiptPage() {
   }, [currentUser, loadReceipt]);
 
   useEffect(() => {
-    if (!receipt || !["approved", "processing"].includes(receipt.status)) return;
-    let inFlight = false;
-    const interval = window.setInterval(() => {
-      if (inFlight) return;
-      inFlight = true;
-      void loadReceipt(true).finally(() => { inFlight = false; });
-    }, 2_000);
-    return () => window.clearInterval(interval);
+    if (!receipt || !isSettlementPending(receipt.status)) return;
+    return startSettlementPolling({
+      refresh: () => loadReceipt(true),
+      shouldContinue: () => isSettlementPending(receipt.status),
+    });
   }, [loadReceipt, receipt]);
 
   if (!currentUser) {
-    return <main className="mx-auto max-w-2xl px-5 py-8"><GuestAccountEmptyState title={tCustomer("ui.states.noReceipt")} description={tCustomer("ui.guest.accountHint")} nextPath="/customer/wallet" /></main>;
+    return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.noReceipt")} description={tCustomer("ui.guest.accountHint")} nextPath="/customer/wallet" /></CustomerPageShell>;
   }
 
   const proof = receipt?.settlementProof;
@@ -92,7 +91,7 @@ export default function WithdrawalReceiptPage() {
     ? `${proof.event.payloadSha256.slice(0, 12)}…${proof.event.payloadSha256.slice(-8)}`
     : null;
 
-  return <main className="mx-auto max-w-2xl px-5 py-8 print:px-0">
+  return <><CustomerPageTitle eyebrow={tCustomer("accountGroups.account")} title={tCustomer("strictMigration.walletReceipt.title")} description={receipt?.reference ?? tCustomer("strictMigration.walletReceipt.eyebrow")} icon={<ReceiptText size={14} />} /><CustomerPageShell className="max-w-2xl pt-0 sm:pt-0 print:px-0">
     <div className="mb-6 flex items-center justify-between print:hidden">
       <Link href="/customer/wallet" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={16} /> {tCustomer("strictMigration.walletReceipt.backToWallet")}</Link>
       {receipt && <Button variant="outline" size="sm" onClick={() => window.print()}><Printer size={15} className="mr-2" /> {tCustomer("ui.actions.printReceipt")}</Button>}
@@ -130,5 +129,5 @@ export default function WithdrawalReceiptPage() {
       {receipt.customerReason && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm"><p className="font-semibold">{tCustomer("strictMigration.walletReceipt.reviewNote")}</p><p className="mt-1">{receipt.customerReason}</p></div>}
       <p className="mt-6 text-xs text-muted-foreground">{tCustomer("strictMigration.walletReceipt.settlementNotice", { provider: receipt.payoutProvider === "tng_direct_credit" ? "Touch 'n Go eWallet" : "Stripe Connect" })}</p>
     </section>}
-  </main>;
+  </CustomerPageShell></>;
 }
