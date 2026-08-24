@@ -1343,6 +1343,7 @@
     },
     "profileSections": {
       "contact": "Contact details",
+      "identityVerification": "Identity verification",
       "email": "Email",
       "emailChangeHint": "Email changes require confirmation from the new address.",
       "phone": "Phone",

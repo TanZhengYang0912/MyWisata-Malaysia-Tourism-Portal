@@ -167,7 +167,7 @@ export default function KycPage() {
     <>
       <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
-        title={tCustomer("ui.kyc.verified")}
+        title={tCustomer("ui.profileSections.identityVerification")}
         description={tCustomer("ui.kyc.description")}
         icon={<ShieldCheck size={14} />}
       />

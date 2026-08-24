@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await createServiceClient()
     .from('kyc_submissions')
-    .select('id,status,document_type,queue_position,created_at,reviewed_at,review_reason_code,review_reason_detail')
+    .select('id,status,document_type,queue_position,created_at,reviewed_at,review_reason_code')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(1)

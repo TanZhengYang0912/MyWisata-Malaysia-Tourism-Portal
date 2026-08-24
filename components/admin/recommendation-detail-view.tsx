@@ -211,12 +211,12 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   }
 
   if (loading) {
-    return <div className="p-6 sm:p-8"><AdminPageHeader title={t("recommendation.detail.recommendationEvidence")} /><p className="text-sm text-muted-foreground">{t("recommendation.detail.loading")}</p></div>;
+    return <div><AdminPageHeader title={t("recommendation.detail.recommendationEvidence")} /><p className="text-sm text-muted-foreground">{t("recommendation.detail.loading")}</p></div>;
   }
 
   if (!detail) {
     return (
-      <div className="p-6 sm:p-8">
+      <div>
         <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm text-primary">
           <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
         </Link>
@@ -292,7 +292,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   ) : null;
 
   return (
-    <div className="p-6 sm:p-8">
+    <div>
       <Link href="/admin/recommendations" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
         <ArrowLeft size={15} /> {t("recommendation.detail.backToRecommendations")}
       </Link>

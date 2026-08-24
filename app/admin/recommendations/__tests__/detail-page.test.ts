@@ -2,6 +2,15 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('admin recommendation detail workflow', () => {
+  it('uses the shared admin page shell without page-level spacing overrides', () => {
+    const page = readFileSync('app/admin/recommendations/[id]/page.tsx', 'utf8');
+    const detail = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
+
+    expect(page).toContain('<AdminPageShell>');
+    expect(page).not.toContain('className="p-0');
+    expect(detail).not.toContain('className="p-6 sm:p-8"');
+  });
+
   it('routes queue rows to one detail page without browser-side batch decisions', () => {
     const source = readFileSync('app/admin/recommendations/page.tsx', 'utf8');
 

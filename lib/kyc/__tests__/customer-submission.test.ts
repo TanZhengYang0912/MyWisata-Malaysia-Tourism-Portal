@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { mapCustomerKycSubmission, safeKycReasonCopy } from '../customer-submission';
 
@@ -24,7 +26,7 @@ describe('customer KYC submission mapping', () => {
       submittedAt: '2026-07-14T10:00:00.000Z',
       reviewedAt: '2026-07-14T11:00:00.000Z',
       reviewReasonCode: 'document_unreadable',
-      reviewReasonDetail: 'The front image is too blurry to verify.',
+      reviewReasonDetail: null,
     });
     expect(JSON.stringify(submission)).not.toMatch(/path|hash|storage/i);
   });
@@ -32,5 +34,13 @@ describe('customer KYC submission mapping', () => {
   it('provides safe customer-facing copy for a review reason', () => {
     expect(safeKycReasonCopy('document_unreadable')).toBe('We could not clearly read your document. Please submit clear, well-lit images.');
     expect(safeKycReasonCopy('unknown')).toBe('We could not complete verification with this submission. Please review your documents and submit a new one.');
+  });
+
+  it('does not select an internal KYC note in customer APIs', () => {
+    const submissionRoute = readFileSync(resolve(process.cwd(), 'app/api/kyc/submission/route.ts'), 'utf8');
+    const profileRoute = readFileSync(resolve(process.cwd(), 'app/api/profile/me/route.ts'), 'utf8');
+
+    expect(submissionRoute).not.toContain('review_reason_code,review_reason_detail');
+    expect(profileRoute).not.toContain('review_reason_code,review_reason_detail');
   });
 });

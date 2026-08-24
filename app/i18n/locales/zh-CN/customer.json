@@ -1343,6 +1343,7 @@
     },
     "profileSections": {
       "contact": "联系方式",
+      "identityVerification": "身份验证",
       "email": "邮箱",
       "emailChangeHint": "更改邮箱需要通过新地址确认。",
       "phone": "电话",

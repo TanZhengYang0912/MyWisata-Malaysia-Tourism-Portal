@@ -1343,6 +1343,7 @@
     },
     "profileSections": {
       "contact": "Butiran hubungan",
+      "identityVerification": "Pengesahan identiti",
       "email": "E-mel",
       "emailChangeHint": "Perubahan e-mel memerlukan pengesahan daripada alamat baharu.",
       "phone": "Telefon",

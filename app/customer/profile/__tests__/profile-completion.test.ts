@@ -21,4 +21,13 @@ describe('profile completion display contract', () => {
     expect(sections).toContain('identitySchema.safeParse');
     expect(sections).toContain('bioSchema.safeParse');
   });
+
+  it('uses a neutral identity verification heading for every KYC status', () => {
+    const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
+    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+
+    expect(sections).toContain('tCustomer("ui.profileSections.identityVerification")');
+    expect(sections).not.toContain('title={tCustomer("ui.kyc.verified")}');
+    expect(kycPage).toContain('title={tCustomer("ui.profileSections.identityVerification")}');
+  });
 });

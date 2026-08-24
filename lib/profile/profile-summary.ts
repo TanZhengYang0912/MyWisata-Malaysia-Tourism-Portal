@@ -30,7 +30,7 @@ export type PreferenceRow = {
 export type KycReviewRow = {
   status: string;
   review_reason_code: string | null;
-  review_reason_detail: string | null;
+  review_reason_detail?: string | null;
   reviewed_at: string | null;
   created_at: string;
 };
@@ -53,7 +53,7 @@ function latestReview(rows: KycReviewRow[]): ProfileSummary["latestKycReview"] {
   return {
     status: row.status,
     reasonCode: row.review_reason_code,
-    reasonDetail: row.review_reason_detail,
+    reasonDetail: null,
     reviewedAt: row.reviewed_at,
   };
 }

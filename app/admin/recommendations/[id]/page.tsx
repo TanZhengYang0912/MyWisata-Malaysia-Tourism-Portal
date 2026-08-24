@@ -8,7 +8,7 @@ export default async function AdminRecommendationDetailPage({
 }) {
   const { id } = await params;
   return (
-    <AdminPageShell className="p-0 sm:p-0 xl:p-0 [&>div]:space-y-0">
+    <AdminPageShell>
       <RecommendationDetailView recommendationId={id} />
     </AdminPageShell>
   );

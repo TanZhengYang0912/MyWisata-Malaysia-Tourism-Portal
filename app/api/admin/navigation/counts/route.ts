@@ -30,20 +30,33 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
 
+  const canReviewContent = roleNames.some((name) => name === 'admin' || name === 'super_admin');
+  const canReviewWithdrawals = roleNames.some((name) => name === 'approver' || name === 'super_admin');
+
   const service = createServiceClient();
-  const [vendors, outlets, products, vouchers, kyc, withdrawals, refunds, chatReports, recommendations] = await Promise.all([
-    service.from('vendors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    service.from('outlets').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
-    service.from('products').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
-    service.from('vouchers').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
-    service.from('kyc_submissions').select('id', { count: 'exact', head: true }).in('status', ['pending', 'info_requested']),
-    service.from('withdrawal_requests').select('id', { count: 'exact', head: true }).in('status', [...WITHDRAWAL_REVIEW_STATUSES]),
-    service.from('refunds').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    service.from('chat_reports').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-    service.from('vendor_recommendations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+  const [[vendors, outlets, products, vouchers, refunds, chatReports], [kyc, recommendations], withdrawals] = await Promise.all([
+    Promise.all([
+      service.from('vendors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      service.from('outlets').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
+      service.from('products').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
+      service.from('vouchers').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
+      service.from('refunds').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      service.from('chat_reports').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+    ]),
+    canReviewContent
+      ? Promise.all([
+          service.from('kyc_submissions').select('id', { count: 'exact', head: true }).in('status', ['pending', 'info_requested']),
+          service.from('vendor_recommendations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        ])
+      : Promise.resolve([null, null] as const),
+    canReviewWithdrawals
+      ? service.from('withdrawal_requests').select('id', { count: 'exact', head: true }).in('status', [...WITHDRAWAL_REVIEW_STATUSES])
+      : Promise.resolve(null),
   ]);
 
-  const results: CountResult[] = [vendors, outlets, products, vouchers, kyc, withdrawals, refunds, chatReports, recommendations];
+  const results: CountResult[] = [vendors, outlets, products, vouchers, refunds, chatReports];
+  if (kyc && recommendations) results.push(kyc, recommendations);
+  if (withdrawals) results.push(withdrawals);
   const failed = results.find((result) => result.error);
   if (failed?.error) {
     console.error('[admin-navigation-counts]', failed.error);
@@ -53,10 +66,12 @@ export async function GET() {
   return apiOk({
     vendors: vendors.count ?? 0,
     catalogue: (outlets.count ?? 0) + (products.count ?? 0) + (vouchers.count ?? 0),
-    kyc: kyc.count ?? 0,
-    withdrawals: withdrawals.count ?? 0,
     refunds: refunds.count ?? 0,
     chatReports: chatReports.count ?? 0,
-    recommendations: recommendations.count ?? 0,
+    ...(kyc && recommendations ? {
+      kyc: kyc.count ?? 0,
+      recommendations: recommendations.count ?? 0,
+    } : {}),
+    ...(withdrawals ? { withdrawals: withdrawals.count ?? 0 } : {}),
   });
 }
