@@ -316,6 +316,17 @@ export interface ProfileSummary {
   emailVerified: boolean;
   phoneVerified: boolean;
   profileComplete: boolean;
+  verification: {
+    complete: boolean;
+    percentage: 0 | 20 | 40 | 60 | 80 | 100;
+    completedSteps: Array<"phone" | "identity" | "avatar" | "bio" | "survey">;
+    currentStep: "phone" | "identity" | "avatar" | "bio" | "survey" | null;
+  };
+  profileRichness: {
+    percentage: 0 | 20 | 40 | 60 | 80 | 100;
+    missing: Array<"full_name" | "avatar" | "bio" | "city" | "country">;
+    complete: boolean;
+  };
   survey: {
     interests: string[];
     budgetRange: string | null;

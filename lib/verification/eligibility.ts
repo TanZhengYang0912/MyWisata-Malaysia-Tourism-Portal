@@ -9,6 +9,15 @@ export type ProfileCompletion = {
   complete: boolean;
 };
 
+export const PROFILE_VERIFICATION_STEPS = ['phone', 'identity', 'avatar', 'bio', 'survey'] as const;
+export type ProfileVerificationStep = typeof PROFILE_VERIFICATION_STEPS[number];
+export type ProfileVerification = {
+  complete: boolean;
+  percentage: ProfileCompletionPercentage;
+  completedSteps: ProfileVerificationStep[];
+  currentStep: ProfileVerificationStep | null;
+};
+
 export type EligibilitySnapshot = {
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -52,6 +61,31 @@ export function computeProfileCompletion(input: {
   const missing = PROFILE_COMPLETION_FIELDS.filter((field) => !completed[field]);
   const percentage = ((PROFILE_COMPLETION_FIELDS.length - missing.length) * 20) as ProfileCompletionPercentage;
   return { percentage, missing, complete: missing.length === 0 };
+}
+
+export function computeProfileVerification(input: {
+  phoneVerified: boolean;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  city?: string | null;
+  country?: string | null;
+  surveyComplete: boolean;
+}): ProfileVerification {
+  const richness = computeProfileCompletion(input);
+  const completed: Record<ProfileVerificationStep, boolean> = {
+    phone: input.phoneVerified,
+    identity: !richness.missing.includes('full_name')
+      && !richness.missing.includes('city')
+      && !richness.missing.includes('country'),
+    avatar: !richness.missing.includes('avatar'),
+    bio: !richness.missing.includes('bio'),
+    survey: input.surveyComplete,
+  };
+  const completedSteps = PROFILE_VERIFICATION_STEPS.filter((step) => completed[step]);
+  const currentStep = PROFILE_VERIFICATION_STEPS.find((step) => !completed[step]) ?? null;
+  const percentage = (completedSteps.length * 20) as ProfileCompletionPercentage;
+  return { complete: currentStep == null, percentage, completedSteps, currentStep };
 }
 
 export function canSubmitRecommendation(snapshot: EligibilitySnapshot): boolean {

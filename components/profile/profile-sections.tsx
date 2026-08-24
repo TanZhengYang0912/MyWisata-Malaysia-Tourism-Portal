@@ -13,6 +13,7 @@ import { parseInternationalPhone } from "@/lib/phone/international";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { BUDGET_RANGES, MOBILITY_NEEDS } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { bioSchema, identitySchema } from "@/lib/validation/profile-schemas";
 
 type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
@@ -73,16 +74,17 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function savePersonal() {
-    const trimmedBio = bio.trim();
-    if (trimmedBio.length < MIN_BIO_LENGTH || trimmedBio.length > MAX_BIO_LENGTH) {
+    const identity = identitySchema.safeParse({ fullName, city, country });
+    const profileBio = bioSchema.safeParse({ bio });
+    if (!identity.success || !profileBio.success) {
       setError(tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }));
       return;
     }
     setBusy(true); setError(null);
     try {
-      const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName: fullName.trim(), city: city.trim(), country: country.trim() }) });
+      const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(identity.data) });
       if (!response.ok) throw new Error(tCustomer("ui.profileWizard.saveDetails"));
-      const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bio: bio.trim() }) });
+      const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileBio.data) });
       if (!bioResponse.ok) {
         throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
@@ -184,7 +186,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.kyc.verified")} description={tCustomer("ui.kyc.description")}>
-        <div className="grid gap-2 sm:grid-cols-2"><StatusBadge label={tCustomer("ui.profileSections.emailStatus", { status: tCustomer(summary.emailVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.emailVerified} /><StatusBadge label={tCustomer("ui.profileSections.phoneStatus", { status: tCustomer(summary.phoneVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.phoneVerified} /><StatusBadge label={tCustomer("ui.profileSections.profileStatus", { status: tCustomer(summary.profileComplete ? "ui.profileSections.complete" : "ui.profileSections.incomplete") })} good={summary.profileComplete} /><StatusBadge label={tCustomer("ui.profileSections.kycStatus", { status: tCustomer(`ui.profileSections.kycStatuses.${summary.kycStatus}`) })} good={summary.kycStatus === "approved"} /></div>
+        <div className="grid gap-2 sm:grid-cols-2"><StatusBadge label={tCustomer("ui.profileSections.emailStatus", { status: tCustomer(summary.emailVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.emailVerified} /><StatusBadge label={tCustomer("ui.profileSections.phoneStatus", { status: tCustomer(summary.phoneVerified ? "ui.profileSections.verified" : "ui.profileSections.unverified") })} good={summary.phoneVerified} /><StatusBadge label={tCustomer("ui.profileSections.profileStatus", { status: tCustomer(summary.verification.complete ? "ui.profileSections.complete" : "ui.profileSections.incomplete") })} good={summary.verification.complete} /><StatusBadge label={tCustomer("ui.profileSections.kycStatus", { status: tCustomer(`ui.profileSections.kycStatuses.${summary.kycStatus}`) })} good={summary.kycStatus === "approved"} /></div>
         {summary.kycStatus === "rejected" && <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">{tCustomer("ui.kyc.rejected")}</p><p className="mt-1 text-sm text-muted-foreground">{tCustomer(`ui.kyc.reviewReasons.${summary.latestKycReview?.reasonCode ?? "default"}`)}</p>{summary.latestKycReview?.reasonDetail && <p className="mt-2 text-sm text-foreground">{summary.latestKycReview.reasonDetail}</p>}<Button className="mt-3" size="sm" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.newSubmission")} <ChevronRight size={14} /></Button></div>}
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.submitDocuments")} <ChevronRight size={14} /></Button>}
       </SectionCard>
