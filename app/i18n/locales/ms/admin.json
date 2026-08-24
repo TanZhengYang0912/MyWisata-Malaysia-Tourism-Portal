@@ -714,6 +714,8 @@
     "filters": {
       "allStatuses": "Semua status semakan",
       "infoRequestedCount": "Maklumat diminta ({{count}})",
+      "infoRequestedCount_one": "Maklumat diminta ({{count}})",
+      "infoRequestedCount_other": "Maklumat diminta ({{count}})",
       "search": "Cari nama, e-mel atau jenis dokumen",
       "status": "Tapis mengikut status semakan"
     },
@@ -1442,6 +1444,8 @@
       "reviewed": "Disemak",
       "viewTicket": "Lihat tiket",
       "flagsCount": "{{count}} bendera",
+      "flagsCount_one": "{{count}} bendera",
+      "flagsCount_other": "{{count}} bendera",
       "showDetails": "Tunjukkan butiran",
       "hideDetails": "Sembunyikan butiran",
       "openCount_one": "{{count}} terbuka",
@@ -2161,11 +2165,15 @@
     "age": {
       "daysHours": "{{days}}h {{hours}}j",
       "hours": "{{count}}j",
+      "hours_one": "{{count}}j",
+      "hours_other": "{{count}}j",
       "lessThanHour": "<1j"
     },
     "filters": {
       "allStatuses": "Semua status",
       "perPage": "{{count}} setiap halaman",
+      "perPage_one": "{{count}} setiap halaman",
+      "perPage_other": "{{count}} setiap halaman",
       "searchOrderOrProvider": "Cari pesanan atau penyedia"
     },
     "loading": "Memuatkan permintaan bayaran balik…",
@@ -2197,7 +2205,9 @@
       "description": "Buka satu baris apabila status bayaran balik atau bukti penyedia memerlukan semakan lanjut.",
       "noOpenRequests": "Tiada permintaan terbuka",
       "oldestRequest": "Permintaan paling lama {{age}}",
-      "title": "Barisan semakan ({{count}})"
+      "title": "Barisan semakan ({{count}})",
+      "title_one": "Barisan semakan ({{count}})",
+      "title_other": "Barisan semakan ({{count}})"
     },
     "status": {
       "approved": "Diluluskan",
@@ -2205,7 +2215,8 @@
       "pending": "Menunggu",
       "processed": "Diproses",
       "rejected": "Ditolak",
-      "simulated": "SIMULASI"
+      "simulated": "SIMULASI",
+      "unknown": "Tidak diketahui"
     },
     "table": {
       "actions": "Tindakan",

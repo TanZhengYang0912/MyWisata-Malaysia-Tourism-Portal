@@ -10,7 +10,7 @@ const entryPoints = [
   "app/login/page.tsx",
   "app/customer/layout.tsx",
   "app/guest/layout.tsx",
-  "components/layout/vendor-sidebar.tsx",
+  "components/layout/vendor-header.tsx",
   "app/admin/layout.tsx",
 ];
 
@@ -38,8 +38,8 @@ describe("shared language entry points", () => {
     expect(guest).toMatch(/<header[\s\S]*?<LanguageSwitcher compact[^>]*\/>[\s\S]*?guest\.mode[\s\S]*?account\.signIn[\s\S]*?<\/header>/);
     expect(guest).not.toContain("fixed right-4 top-4");
 
-    const vendor = source("components/layout/vendor-sidebar.tsx");
-    expect(vendor).toMatch(/<div className="border-t border-gray-700 px-2 py-2">\s*<LanguageSwitcher compact \/>[\s\S]*?<\/div>\s*<button[\s\S]*?actions\.signOut/);
+    const vendor = source("components/layout/vendor-header.tsx");
+    expect(vendor).toMatch(/<header[\s\S]*?<LanguageSwitcher compact className="hidden w-28 sm:flex" \/>[\s\S]*?<AppearanceControl \/>[\s\S]*?actions\.signOut[\s\S]*?<\/header>/);
 
     const admin = source("app/admin/layout.tsx");
     expect(admin).toMatch(/<header className="sticky top-0 z-40[\s\S]*?<LanguageSwitcher compact className="w-28" \/>[\s\S]*?<AppearanceControl \/>[\s\S]*?actions\.signOut/);
@@ -82,8 +82,8 @@ describe("shared language entry points", () => {
     expect(guest).toContain('tCommon("account.signIn")');
 
     const admin = source("app/admin/layout.tsx");
-    expect(admin).toContain('aria-label={tAdmin("accessibility.unreadRecommendations", { count: unreadRecommendations })}');
-    expect(admin).not.toContain("unread recommendations`}");
+    expect(admin).toContain('aria-label={tAdmin("accessibility.pendingItems", { count })}');
+    expect(admin).not.toContain("pending items`}");
   });
 
   it("translates fixed login entry-point copy through auth and common resources", () => {

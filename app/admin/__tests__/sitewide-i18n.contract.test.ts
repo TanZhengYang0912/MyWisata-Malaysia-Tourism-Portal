@@ -20,6 +20,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "ui.table.kyc",
     "ui.vendors.kyc",
     "email.draft.recipientPlaceholder",
+    "recommendation.detail.localization.draftLabel",
     "userManagement.fields.kyc",
     "strictMigration.moderationFlagSummary",
     "strictMigration.recommendationPhotoStatus",
@@ -43,6 +44,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "ui.table.vendor",
     "ui.vendors.kyc",
     "email.draft.recipientPlaceholder",
+    "recommendation.detail.localization.draftLabel",
     "recommendation.aiReview.findingKinds.spam",
     "userManagement.fields.kyc",
     "withdrawals.accessibility.openRow",
@@ -50,6 +52,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "withdrawals.enumValues.debit",
     "withdrawals.table.status",
     "refunds.providers.stripeSandbox",
+    "refunds.table.status",
     "strictMigration.moderationFlagSummary",
     "strictMigration.recommendationEvidence",
     "strictMigration.recommendationFindingMeta",
@@ -118,7 +121,7 @@ export const NON_RENDERING_HELPERS = [
 const expectedComponentInventory = [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES].sort();
 
 const SURFACE_ASSERTIONS = {
-  filters: ["components/admin/segmented-filter.tsx", "filters."],
+  filters: ["components/admin/segmented-filter.tsx", "{item.label}"],
   counts: ["components/admin/recommendation-ai-review-panel.tsx", "issueCount"],
   pagination: ["app/admin/recommendations/page.tsx", "pendingPageCount"],
   batch: ["components/admin/batch-action-bar.tsx", "batchActions."],
@@ -271,7 +274,8 @@ describe("admin component sitewide i18n contract", () => {
     expect(vendors).toContain("ui.vendors.status.suspended");
 
     const refunds = read("app/admin/refunds/page.tsx");
-    expect(refunds).toContain('refunds.status.processed');
+    expect(refunds).toMatch(/knownStatuses[\s\S]*"processed"/);
+    expect(refunds).toContain('knownStatuses.has(value) ? value : "unknown"');
 
     const withdrawals = read("app/admin/withdrawals/page.tsx");
     expect(withdrawals).toContain('decisionReason(reasonAction, category)');

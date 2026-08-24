@@ -109,10 +109,11 @@ describe('withdrawal review action presentation', () => {
 
   it('shows decision-ready context in the queue before opening a detail drawer', () => {
     expect(pageSource).toContain('t("withdrawals.metrics.pendingPayoutValue")');
+    expect(pageSource).toContain('t("withdrawals.metrics.needsAction")');
     expect(pageSource).toContain('t("withdrawals.table.approvalProgress")');
     expect(pageSource).toContain('t("withdrawals.table.ageSla")');
-    expect(pageSource).toContain('t("withdrawals.metrics.dualApproval")');
     expect(pageSource).toContain('t("withdrawals.metrics.highRisk")');
+    expect(pageSource).toContain('t("withdrawals.metrics.overdue")');
     expect(pageSource).toContain('t("withdrawals.metrics.oldestRequest"');
   });
 
