@@ -655,6 +655,37 @@
       "rejectTitle": "Reject KYC submission?"
     },
     "description": "Review identity documents, resolve exceptions and keep verification decisions auditable.",
+    "detail": {
+      "approve": "Approve KYC",
+      "automatedChecks": "Automated checks",
+      "back": "Back",
+      "backToQueue": "Back to KYC Review",
+      "decision": "Review decision",
+      "decisionDescription": "Make a decision only after checking the submitted documents and automated results.",
+      "documentType": "Document type",
+      "documents": "Documents",
+      "documentsDescription": "Open the submitted document in a short-lived secure viewer.",
+      "eyebrow": "Identity verification",
+      "front": "Front",
+      "loading": "Loading KYC review…",
+      "noAutomatedChecks": "No automated check result is available for this submission.",
+      "notFound": "KYC submission not found",
+      "ocrStatus": "OCR status: {{status}}",
+      "openDocument": "Open {{side}}",
+      "outcome": "Review outcome",
+      "queuePosition": "Queue position",
+      "readOnlyDescription": "This submission is read-only and cannot receive another review decision.",
+      "reject": "Reject KYC",
+      "requestInfo": "Request information",
+      "retry": "Try again",
+      "review": "Review",
+      "reviewedAt": "Reviewed {{date}}",
+      "reviewedBy": "Reviewed by {{reviewer}}",
+      "submission": "Submission",
+      "submittedAt": "Submitted at",
+      "waitingDescription": "The customer must submit the requested information before another decision can be made.",
+      "waitingTitle": "Waiting for customer"
+    },
     "documents": {
       "driving_license": "Driving licence / MyPolis",
       "national_id": "MyKad",
@@ -682,6 +713,7 @@
     },
     "filters": {
       "allStatuses": "All review statuses",
+      "infoRequestedCount": "Information requested ({{count}})",
       "search": "Search name, email or document type",
       "status": "Filter by review status"
     },
@@ -729,7 +761,12 @@
       "other": "Other (add details)"
     },
     "status": {
-      "infoRequested": "Info requested"
+      "approved": "Approved",
+      "draft": "Draft",
+      "infoRequested": "Info requested",
+      "pending": "Pending review",
+      "rejected": "Rejected",
+      "superseded": "Superseded"
     },
     "submitted": "Submitted {{date}} · Queue position {{position}}",
     "success": {

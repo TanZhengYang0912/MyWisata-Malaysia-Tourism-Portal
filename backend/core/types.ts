@@ -353,6 +353,16 @@ export interface AdminKycSubmission {
   } | null;
 }
 
+export interface AdminKycReviewDetail {
+  submission: AdminKycSubmission;
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+    avatarInitial: string;
+  };
+}
+
 /** @deprecated Use CustomerKycSubmission or AdminKycSubmission at the relevant boundary. */
 export type KycSubmission = AdminKycSubmission;
 
