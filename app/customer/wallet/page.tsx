@@ -34,6 +34,12 @@ type PayoutCapabilities = {
   e_wallet: { enabled: boolean; provider: string | null };
 };
 
+function walletSummaryEndpoint(destinationId: string) {
+  return destinationId
+    ? `/api/wallet/summary?destinationId=${encodeURIComponent(destinationId)}`
+    : "/api/wallet/summary";
+}
+
 function WalletContent() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { currentUser } = useAuth();
@@ -86,6 +92,7 @@ function WalletContent() {
     withdrawRequested: withdrawSetupRequested,
     returningFromOnboarding,
   });
+  const usesStripeDestination = readiness?.destinationSummary?.type !== "e_wallet";
   const topUpMaximumAmountLabel = STRIPE_TOP_UP_MAXIMUM_RM.toLocaleString(
     i18n.language === "en" ? "en-MY" : i18n.language,
     { minimumFractionDigits: 2, maximumFractionDigits: 2 },
@@ -130,12 +137,8 @@ function WalletContent() {
     }
   }, [currentUser, tCustomer]);
 
-  const refreshWalletState = useCallback(async () => {
-    if (!currentUser) return;
-    const [summaryResponse, nextWithdrawals] = await Promise.all([
-      fetch("/api/wallet/summary", { cache: "no-store" }),
-      getMyWithdrawals(currentUser.id),
-    ]);
+  const refreshWalletSummary = useCallback(async (destinationId: string) => {
+    const summaryResponse = await fetch(walletSummaryEndpoint(destinationId), { cache: "no-store" });
     const body = await summaryResponse.json() as {
       data?: {
         topupSen: number;
@@ -145,7 +148,7 @@ function WalletContent() {
         withdrawnEarningsSen: number;
       } & CustomerWalletCapabilities;
     };
-    const summary = body.data;
+    const summary = summaryResponse.ok ? body.data : undefined;
     setBuckets(summary ? {
       topup: summary.topupSen / 100,
       earnings: summary.earningsSen / 100,
@@ -153,15 +156,25 @@ function WalletContent() {
       reservedEarnings: summary.reservedEarningsSen / 100,
       withdrawnEarnings: summary.withdrawnEarningsSen / 100,
     } : null);
-    setReadiness(summary ? {
+    const nextReadiness = summary ? {
       canWithdraw: summary.canWithdraw,
       blockerCode: summary.blockerCode,
       nextAction: summary.nextAction,
       destinationSummary: summary.destinationSummary,
       lastProviderCheckAt: summary.lastProviderCheckAt,
-    } : null);
+    } : null;
+    setReadiness(nextReadiness);
+    return nextReadiness;
+  }, []);
+
+  const refreshWalletState = useCallback(async (destinationId: string) => {
+    if (!currentUser) return;
+    const [, nextWithdrawals] = await Promise.all([
+      refreshWalletSummary(destinationId),
+      getMyWithdrawals(currentUser.id),
+    ]);
     setWithdrawals(nextWithdrawals);
-  }, [currentUser]);
+  }, [currentUser, refreshWalletSummary]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -172,22 +185,27 @@ function WalletContent() {
       setSelectedDestinationId("");
       return;
     }
-    void refreshWalletState();
     fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
       const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
       setDestinations(nextDestinations);
       if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
-      setSelectedDestinationId(selectDefaultPayoutDestination(nextDestinations)?.id ?? "");
-    }).catch(() => setDestinations([]));
+      const nextDestinationId = selectDefaultPayoutDestination(nextDestinations)?.id ?? "";
+      setSelectedDestinationId(nextDestinationId);
+      void refreshWalletState(nextDestinationId);
+    }).catch(() => {
+      setDestinations([]);
+      setSelectedDestinationId("");
+      void refreshWalletState("");
+    });
   }, [currentUser, refreshWalletState]);
 
   useEffect(() => {
     if (!currentUser || !withdrawals?.some((withdrawal) => isSettlementPending(withdrawal.status))) return;
     return startSettlementPolling({
-      refresh: refreshWalletState,
+      refresh: () => refreshWalletState(selectedDestinationId),
       shouldContinue: () => withdrawals.some((withdrawal) => isSettlementPending(withdrawal.status)),
     });
-  }, [currentUser, refreshWalletState, withdrawals]);
+  }, [currentUser, refreshWalletState, selectedDestinationId, withdrawals]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -240,7 +258,11 @@ function WalletContent() {
     }
 
     if (!readiness.canWithdraw) {
-      setShowWithdraw(false);
+      const canOpenDestinationSetup = readiness.nextAction === "add_payout_destination"
+        || readiness.nextAction === "complete_payout_setup"
+        || readiness.nextAction === "wait_destination_cooldown";
+      if (canOpenDestinationSetup) setShowWithdraw(true);
+      else setShowWithdraw(false);
       if (readiness.nextAction === "complete_payout_setup") await refreshConnectStatus();
       return;
     }
@@ -279,6 +301,7 @@ function WalletContent() {
       const destination = body.data.destination;
       setDestinations((current) => [destination, ...current.filter((item) => item.id !== destination.id)]);
       setSelectedDestinationId(destination.id);
+      await refreshWalletSummary(destination.id);
       setTngIdentifier("");
       setShowAddTngDestination(false);
     } catch (error) {
@@ -295,6 +318,10 @@ function WalletContent() {
     if (!currentUser || !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
     if (showAddTngDestination) return;
     setWithdrawError("");
+    if (!readiness?.canWithdraw) {
+      setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
+      return;
+    }
     const amount    = parseFloat(withdrawAmount);
     const available = availableEarnings;
     if (!amount || amount <= 0) { setWithdrawError(tCustomer("ui.wallet.validAmount")); return; }
@@ -311,20 +338,7 @@ function WalletContent() {
       if (!response.ok) {
         throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? tCustomer("ui.wallet.submitWithdrawalError"));
       }
-      const [nextWithdrawals, nextBuckets] = await Promise.all([
-        getMyWithdrawals(currentUser.id),
-        fetch('/api/wallet/summary').then((response) => response.json()),
-      ]);
-      setWithdrawals(nextWithdrawals);
-      const summary = nextBuckets.data as ({ topupSen: number; earningsSen: number; pendingEarningsSen: number; reservedEarningsSen: number; withdrawnEarningsSen: number } & CustomerWalletCapabilities) | undefined;
-      if (summary) setBuckets({
-        topup: summary.topupSen / 100,
-        earnings: summary.earningsSen / 100,
-        pendingEarnings: summary.pendingEarningsSen / 100,
-        reservedEarnings: summary.reservedEarningsSen / 100,
-        withdrawnEarnings: summary.withdrawnEarningsSen / 100,
-      });
-      if (summary) setReadiness({ canWithdraw: summary.canWithdraw, blockerCode: summary.blockerCode, nextAction: summary.nextAction, destinationSummary: summary.destinationSummary, lastProviderCheckAt: summary.lastProviderCheckAt });
+      await refreshWalletState(selectedDestinationId);
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete("topup");
       window.history.replaceState(
@@ -414,7 +428,7 @@ function WalletContent() {
       />
 
       {/* Stripe payout setup is intentionally hidden until a withdrawal-related JIT trigger. */}
-      {showPayoutSetup && (
+      {showPayoutSetup && (!readiness?.canWithdraw || usesStripeDestination) && (
         <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
       )}
 
@@ -488,7 +502,14 @@ function WalletContent() {
             {destinations.length > 0 ? (
               <select
                 value={selectedDestinationId}
-                onChange={(e) => setSelectedDestinationId(e.target.value)}
+                onChange={(e) => {
+                  const nextDestinationId = e.target.value;
+                  setSelectedDestinationId(nextDestinationId);
+                  setReadiness(null);
+                  void refreshWalletSummary(nextDestinationId).then((nextReadiness) => {
+                    if (nextReadiness?.nextAction === "complete_payout_setup") void refreshConnectStatus();
+                  });
+                }}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {destinations.map((destination) => (
@@ -566,7 +587,7 @@ function WalletContent() {
           )}
           {withdrawError && <p role="alert" className="text-xs text-red-500">{withdrawError}</p>}
           <div className="flex gap-2">
-            <Button type="submit" disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0} className="flex-1">
+            <Button type="submit" disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw} className="flex-1">
               {withdrawing ? tCustomer("ui.states.submitting") : tCustomer("ui.wallet.submitRequest")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setShowWithdraw(false)}>{tCustomer("ui.wallet.cancel")}</Button>

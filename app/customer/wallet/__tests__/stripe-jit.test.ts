@@ -8,10 +8,10 @@ describe('customer wallet Stripe JIT contract', () => {
   it('uses the JIT visibility policy instead of loading Connect with wallet data', () => {
     expect(page).toContain('shouldExposeStripePayoutSetup');
     expect(page).toContain('withdrawSetupRequested');
-    const refreshWalletState = page.match(/const refreshWalletState = useCallback\(async \(\) => \{([\s\S]*?)\}, \[currentUser\]\);/)?.[1] ?? '';
+    const refreshWalletState = page.match(/const refreshWalletState = useCallback\(async \(destinationId: string\) => \{([\s\S]*?)\}, \[currentUser, refreshWalletSummary\]\);/)?.[1] ?? '';
     expect(refreshWalletState).toContain('getMyWithdrawals(currentUser.id)');
     expect(refreshWalletState).not.toContain('refreshConnectStatus');
-    expect(page).toContain('void refreshWalletState();');
+    expect(page).toContain('void refreshWalletState(nextDestinationId);');
   });
 
   it('shows payout readiness in one inline surface without a duplicate modal', () => {
@@ -37,8 +37,21 @@ describe('customer wallet Stripe JIT contract', () => {
   it('blocks withdrawal submission while the TNG destination editor is unfinished', () => {
     expect(page).toContain('if (showAddTngDestination) return;');
     expect(page).toContain(
-      'disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0}',
+      'disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw}',
     );
+  });
+
+  it('refreshes server readiness for the selected payout destination', () => {
+    expect(page).toContain('destinationId=${encodeURIComponent(destinationId)}');
+    expect(page).toContain('refreshWalletSummary(nextDestinationId)');
+    expect(page).toContain('if (!readiness?.canWithdraw)');
+    expect(page).toContain('!readiness?.canWithdraw');
+  });
+
+  it('keeps the destination form reachable while payout setup is required', () => {
+    const openWithdraw = page.match(/async function openWithdraw[\s\S]*?async function handleAddTngDestination/)?.[0] ?? '';
+    expect(openWithdraw).toContain('const canOpenDestinationSetup');
+    expect(openWithdraw).toContain('setShowWithdraw(true)');
   });
 
   it('replaces stale top-up feedback with localized withdrawal success feedback', () => {

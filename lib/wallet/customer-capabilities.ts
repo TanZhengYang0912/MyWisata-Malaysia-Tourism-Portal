@@ -42,6 +42,7 @@ export function deriveCustomerWalletCapabilities(input: {
   availableEarningsSen: number;
   minimumWithdrawalSen: number;
   stripePayoutsEnabled: boolean;
+  stripeFallback?: boolean;
   destination: DestinationInput | null;
 }): CustomerWalletCapabilities {
   const destinationSummary = input.destination ? {
@@ -63,6 +64,18 @@ export function deriveCustomerWalletCapabilities(input: {
   if (!input.phoneVerified) return blocked('phone_verification_required', 'verify_phone');
   if (input.kycStatus !== 'approved') return blocked('kyc_required', 'complete_kyc');
   if (input.availableEarningsSen < input.minimumWithdrawalSen) return blocked('minimum_balance_required', 'earn_minimum');
+  if (!input.destination && input.stripeFallback) {
+    if (!input.stripePayoutsEnabled) {
+      return blocked('payout_provider_required', 'complete_payout_setup');
+    }
+    return {
+      canWithdraw: true,
+      blockerCode: null,
+      nextAction: 'withdraw',
+      destinationSummary,
+      lastProviderCheckAt,
+    };
+  }
   if (!input.destination || input.destination.status !== 'verified') {
     return blocked('payout_destination_required', 'add_payout_destination');
   }

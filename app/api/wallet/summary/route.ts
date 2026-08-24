@@ -1,14 +1,32 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM } from '@/lib/stripe/jit-visibility';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const destinationIdParam = new URL(request.url).searchParams.get('destinationId');
+  const parsedDestinationId = destinationIdParam === null
+    ? { success: true as const, data: null }
+    : z.string().uuid().safeParse(destinationIdParam);
+  if (!parsedDestinationId.success) {
+    return NextResponse.json({ error: 'Invalid payout destination' }, { status: 422 });
+  }
+  const destinationId = parsedDestinationId.data;
+  const destinationPromise = destinationId === null
+    ? Promise.resolve({ data: null, error: null })
+    : db
+      .from('payout_destinations')
+      .select('id,dest_type,provider,label,masked_ref,verification_status,cooldown_until,updated_at')
+      .eq('user_id', user.id)
+      .eq('id', destinationId)
+      .maybeSingle();
 
   const [walletResult, profileResult, destinationResult] = await Promise.all([
     db
@@ -21,18 +39,14 @@ export async function GET() {
       .select('phone_verified_at,kyc_status,stripe_payouts_enabled')
       .eq('id', user.id)
       .maybeSingle(),
-    db
-      .from('payout_destinations')
-      .select('id,dest_type,provider,label,masked_ref,verification_status,cooldown_until,updated_at')
-      .eq('user_id', user.id)
-      .order('is_default', { ascending: false })
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    destinationPromise,
   ]);
   if (walletResult.error) return NextResponse.json({ error: 'Unable to load wallet balance' }, { status: 500 });
   if (profileResult.error || !profileResult.data) return NextResponse.json({ error: 'Unable to load wallet readiness' }, { status: 500 });
   if (destinationResult.error) return NextResponse.json({ error: 'Unable to load payout destination' }, { status: 500 });
+  if (destinationId !== null && !destinationResult.data) {
+    return NextResponse.json({ error: 'Payout destination not found' }, { status: 404 });
+  }
 
   const wallet = walletResult.data;
   const destination = destinationResult.data;
@@ -42,6 +56,7 @@ export async function GET() {
     availableEarningsSen: wallet?.earnings_sen ?? 0,
     minimumWithdrawalSen: CUSTOMER_WITHDRAWAL_MINIMUM_RM * 100,
     stripePayoutsEnabled: Boolean(profileResult.data.stripe_payouts_enabled),
+    stripeFallback: destinationId === null,
     destination: destination ? {
       id: destination.id,
       type: destination.dest_type === 'ewallet' ? 'e_wallet' : 'bank_account',

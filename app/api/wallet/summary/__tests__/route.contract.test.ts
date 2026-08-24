@@ -17,4 +17,11 @@ describe('wallet summary readiness contract', () => {
     expect(capabilitySource).toContain('lastProviderCheckAt');
     expect(source).not.toContain('provider_reference');
   });
+
+  it('binds readiness to the requested owner-scoped destination and preserves Stripe fallback', () => {
+    expect(source).toContain("searchParams.get('destinationId')");
+    expect(source).toContain(".eq('id', destinationId)");
+    expect(source).toContain('stripeFallback: destinationId === null');
+    expect(source).not.toContain(".order('is_default'");
+  });
 });

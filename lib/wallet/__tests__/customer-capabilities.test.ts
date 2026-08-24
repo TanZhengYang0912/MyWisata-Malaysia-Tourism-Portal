@@ -39,10 +39,23 @@ describe('deriveCustomerWalletCapabilities', () => {
     [{ ...readyInput, phoneVerified: false }, 'phone_verification_required', 'verify_phone'],
     [{ ...readyInput, kycStatus: 'pending' }, 'kyc_required', 'complete_kyc'],
     [{ ...readyInput, availableEarningsSen: 4_999 }, 'minimum_balance_required', 'earn_minimum'],
-    [{ ...readyInput, destination: null }, 'payout_destination_required', 'add_payout_destination'],
+    [{ ...readyInput, destination: null, stripeFallback: false }, 'payout_destination_required', 'add_payout_destination'],
+    [{ ...readyInput, destination: null, stripeFallback: true, stripePayoutsEnabled: false }, 'payout_provider_required', 'complete_payout_setup'],
     [{ ...readyInput, stripePayoutsEnabled: false }, 'payout_provider_required', 'complete_payout_setup'],
   ] as const)('returns one highest-priority blocker', (input, blockerCode, nextAction) => {
     expect(deriveCustomerWalletCapabilities(input)).toMatchObject({ canWithdraw: false, blockerCode, nextAction });
+  });
+
+  it('allows the existing Stripe fallback when no saved destination is selected', () => {
+    expect(deriveCustomerWalletCapabilities({
+      ...readyInput,
+      destination: null,
+      stripeFallback: true,
+    })).toMatchObject({
+      canWithdraw: true,
+      blockerCode: null,
+      destinationSummary: null,
+    });
   });
 
   it('does not require Stripe readiness for a verified e-wallet destination', () => {
