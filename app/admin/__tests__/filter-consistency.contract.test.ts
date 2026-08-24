@@ -40,6 +40,8 @@ describe("admin filter consistency contract", () => {
     expect(source).toContain("KycReviewQueueRow");
     expect(source).toContain("KycReviewDrawer");
     expect(source).not.toContain("AdminBatchActionBar");
+    expect(source).toContain('t("kyc.metrics.infoRequested")');
+    expect(source).toContain('t("kyc.metrics.verified")');
     expect(drawer).toContain("kyc.accessibility.reason");
   });
 

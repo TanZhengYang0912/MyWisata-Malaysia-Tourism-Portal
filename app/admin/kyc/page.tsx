@@ -105,6 +105,7 @@ export default function AdminKycPage() {
   const queueUsers = users.filter((user) => submissions.has(user.id));
   const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");
   const infoRequested = queueUsers.filter((user) => submissions.get(user.id)?.status === "info_requested");
+  const verifiedUsers = users.filter((user) => user.verificationTier === "kyc_verified");
   const oldestPendingAt = pendingReview
     .map((user) => submissions.get(user.id)?.submittedAt)
     .filter((value): value is string => Boolean(value))
@@ -129,6 +130,8 @@ export default function AdminKycPage() {
 
       <AdminMetricGrid items={[
         { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },
+        { label: t("kyc.metrics.infoRequested"), value: infoRequested.length, detail: t("kyc.metrics.infoRequestedNote") },
+        { label: t("kyc.metrics.verified"), value: verifiedUsers.length, detail: t("kyc.metrics.verifiedNote") },
         { label: t("kyc.metrics.oldest"), value: oldestPendingAt ? dateLabel(oldestPendingAt, locale) : "—", detail: oldestPendingAt ? t("kyc.metrics.submittedFirst") : t("kyc.metrics.queueClear") },
       ]} />
 

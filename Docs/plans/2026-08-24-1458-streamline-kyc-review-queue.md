@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Implemented; repository-wide verification retains unrelated baseline failures documented in the handoff
+**Status:** Implemented; amended after user review to retain four summary metrics
 **Goal:** Turn the KYC review list into a compact prioritisation queue and move document inspection plus review decisions into one focused detail drawer.
 
 **Architecture:** `app/admin/kyc/page.tsx` remains responsible for loading, filtering, and submitting review mutations. Two focused presentation components render a compact queue row and a modal detail drawer; the drawer owns local reason/confirmation state and calls the existing signed-document and review handlers. Existing KYC APIs, permission checks, append-only review RPCs, and database types remain unchanged.
@@ -17,6 +17,8 @@ The approved design follows the first-party GitHub research in `docs/research/20
 
 The repository instructions refer to `docs/requirements.md`, `docs/architecture.md`, `docs/testing.md`, and `docs/coding-standards.md`, but those files are not present in this checkout. This plan therefore uses the existing KYC security design, KYC append-only ADR, current admin shell patterns, and existing tests as the authoritative local context.
 
+**User amendment (2026-08-24):** Keep the compact queue and review drawer, but restore the four-card metric row: Pending review, Information requested, Verified users, and Oldest queue item. The separate Verified users list remains out of scope.
+
 ## Decisions
 
 ### Selected approach: focused review drawer
@@ -27,7 +29,7 @@ The repository instructions refer to `docs/requirements.md`, `docs/architecture.
 - `info_requested` submissions are read-only and explain that the case is waiting for customer action; they must not expose another decision before resubmission.
 - Approve uses the existing confirmation dialog. Request information and Reject require an allowed structured reason; `other` requires at least ten trimmed characters, followed by confirmation.
 - The list keeps search and status filtering but removes selection checkboxes and every bulk decision action.
-- The metric area shows only actionable pending count and the oldest actionable submission. Information-requested count belongs in the status filter; verified-user reporting and the verified-users section leave this work queue.
+- The metric area shows actionable pending count, information-requested count, verified-user count, and the oldest actionable submission. Information-requested count also remains visible in the status filter. The separate verified-users section leaves this work queue.
 - Closing the drawer discards unsent local reason input. A successful decision closes the drawer and removes the processed case from the queue.
 
 ### Alternatives considered
@@ -193,7 +195,7 @@ const oldestPendingAt = pendingReview
   .sort()[0];
 ```
 
-Render only `Pending review` and `Oldest queue item` metric cards. Keep `Information requested (count)` as a status-filter option. Remove the verified-users metric and verified-users section from this work queue.
+Render `Pending review`, `Information requested`, `Verified users`, and `Oldest queue item` metric cards. Keep `Information requested (count)` as a status-filter option. Remove only the separate verified-users section from this work queue.
 - [ ] **Step 3: Render `KycReviewQueueRow` for each filtered case.** `onReview` sets `selectedReviewUserId`; no row checkbox, document button, OCR block, or decision button remains in the list.
 - [ ] **Step 4: Render `KycReviewDrawer` for the selected user/submission.** Wire `onOpenDocument` to the unchanged signed-URL flow and `onDecision` to `review`.
 - [ ] **Step 5: Adjust `review` so success clears the selected case, removes the processed submission from the map, and preserves existing feedback.** Failure keeps the drawer open and shows the server-safe error.
