@@ -39,13 +39,14 @@ describe('POST /api/profile/update', () => {
     mocks.updateEq.mockResolvedValue({ error: null });
     mocks.select.mockReturnValue({ eq: mocks.selectEq });
     mocks.selectEq.mockReturnValue({ single: mocks.single });
-    mocks.single.mockResolvedValue({ data: { kyc_status: 'approved' }, error: null });
+    mocks.single.mockResolvedValue({ data: { tier: 'profile_complete' }, error: null });
   });
 
   it('rejects legacy phone mutations before touching the verified profile', async () => {
     const response = await POST(request({
       fullName: 'Aina Rahman',
       city: 'Kuala Lumpur',
+      country: 'Malaysia',
       phone: '+60123456789',
     }));
 
@@ -53,16 +54,33 @@ describe('POST /api/profile/update', () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it('continues to allow non-phone profile fields', async () => {
+  it('rejects identity data that does not satisfy the canonical profile schema', async () => {
+    const response = await POST(request({
+      fullName: 'A',
+      city: 'Kuala Lumpur',
+      country: 'Malaysia',
+    }));
+
+    expect(response.status).toBe(422);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('continues to allow canonical non-phone identity fields', async () => {
     const response = await POST(request({
       fullName: 'Aina Rahman',
       city: 'Kuala Lumpur',
+      country: 'Malaysia',
     }));
 
     expect(response.status).toBe(200);
     expect(mocks.update).toHaveBeenCalledWith({
       full_name: 'Aina Rahman',
       city: 'Kuala Lumpur',
+      country: 'Malaysia',
+    });
+    expect(mocks.select).toHaveBeenCalledWith('tier');
+    await expect(response.json()).resolves.toMatchObject({
+      data: { verificationTier: 'profile_complete' },
     });
   });
 });
