@@ -90,12 +90,14 @@ export const ADMIN_I18N_FILES = [
   "components/shared/share-button.tsx",
 ] as const;
 
-/** These admin helpers were localized by prior tasks and remain out of scope. */
+/** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",
   "components/admin/filter-bar.tsx",
+  "components/admin/kyc-review-detail.tsx",
+  "components/admin/kyc-review-queue-row.tsx",
   "components/admin/segmented-filter.tsx",
   "components/admin/staff-conduct-filtering.ts",
 ] as const;
@@ -253,7 +255,7 @@ describe("admin component sitewide i18n contract", () => {
     expect(chatReports).not.toContain("Select chat report ${r.id}");
     expect(chatReports).not.toContain('RESOLUTION_REASONS.map((reason) => reason.value).join(", ")');
 
-    const kyc = read("app/admin/kyc/page.tsx");
+    const kyc = read("components/admin/kyc-review-detail.tsx");
     expect(kyc).toContain('kyc.ocr.status.${submission.ocr.status}');
     expect(kyc).toContain('kyc.reasons.${code}');
     expect(kyc).not.toContain('KYC_REVIEW_REASON_CODES.join(", ")');

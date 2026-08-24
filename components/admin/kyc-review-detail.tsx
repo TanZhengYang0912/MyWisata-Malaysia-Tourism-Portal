@@ -289,6 +289,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
     }
   }, [submissionId, t]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, [load]);
 
   async function openDocument(side: "front" | "back") {

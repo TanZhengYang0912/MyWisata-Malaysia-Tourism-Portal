@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan inline. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Awaiting written-plan approval
+**Status:** Implemented and verified on 2026-08-24
 
 **Goal:** Make every KYC queue row a stable link to a dedicated submission detail page where evidence, decisions, and terminal outcomes remain reviewable.
 
