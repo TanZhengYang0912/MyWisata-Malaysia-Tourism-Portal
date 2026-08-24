@@ -192,4 +192,18 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     expect(serialized).not.toContain('provider_model');
     expect(serialized).not.toContain('signedUrl');
   });
+
+  it('keeps the shared select list free of private KYC columns', async () => {
+    const { ADMIN_KYC_SUBMISSION_SELECT } = await import('@/lib/kyc/admin-submission');
+
+    for (const privateColumn of [
+      'storage_path',
+      'ic_hash',
+      'document_url',
+      'document_number_hmac',
+      'provider_model',
+    ]) {
+      expect(ADMIN_KYC_SUBMISSION_SELECT).not.toContain(privateColumn);
+    }
+  });
 });

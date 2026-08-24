@@ -1,9 +1,7 @@
-"use client";
-
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import type { AdminKycSubmission, User } from "@/backend/core/types";
-import { Button } from "@/components/ui/button";
 
 type KycReviewQueueRowProps = {
   user: User;
@@ -12,7 +10,7 @@ type KycReviewQueueRowProps = {
   documentLabel: string;
   statusLabel: string;
   reviewLabel: string;
-  onReview: () => void;
+  href: string;
 };
 
 export function KycReviewQueueRow({
@@ -22,14 +20,18 @@ export function KycReviewQueueRow({
   documentLabel,
   statusLabel,
   reviewLabel,
-  onReview,
+  href,
 }: KycReviewQueueRowProps) {
   const statusClassName = submission.status === "info_requested"
     ? "bg-accent text-accent-foreground"
     : "bg-primary/10 text-primary";
 
   return (
-    <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <Link
+      href={href}
+      aria-label={`${reviewLabel}: ${user.name}`}
+      className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
           {user.avatarInitial}
@@ -45,10 +47,10 @@ export function KycReviewQueueRow({
           <p className="mt-1 text-xs text-muted-foreground">{submittedLabel}</p>
         </div>
       </div>
-      <Button size="sm" onClick={onReview} aria-label={`${reviewLabel}: ${user.name}`}>
+      <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary">
         {reviewLabel}
         <ArrowRight size={14} />
-      </Button>
-    </div>
+      </span>
+    </Link>
   );
 }

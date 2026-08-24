@@ -7,11 +7,8 @@ import { useTranslation } from "react-i18next";
 import type { AdminKycSubmission, User } from "@/backend/core/types";
 import { getUsers } from "@/backend/domains/identity";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
-import { KycReviewDrawer, type KycReviewDecision } from "@/components/admin/kyc-review-drawer";
 import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
-import { useActionFeedback } from "@/components/providers/action-feedback";
-import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
 
@@ -20,14 +17,10 @@ function dateLabel(value: string | null | undefined, locale: AppLocale) {
 }
 
 export default function AdminKycPage() {
-  const { currentUser } = useAuth();
-  const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [users, setUsers] = useState<User[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, AdminKycSubmission>>(new Map());
-  const [reviewing, setReviewing] = useState<string | null>(null);
-  const [selectedReviewUserId, setSelectedReviewUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "info_requested">("all");
@@ -51,57 +44,6 @@ export default function AdminKycPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, []);
 
-  async function review(userId: string, decision: KycReviewDecision) {
-    if (!currentUser || reviewing) return;
-    setReviewing(userId);
-    setError(null);
-    try {
-      const response = await fetch("/api/admin/kyc/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          action: decision.action,
-          ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
-          ...(decision.reasonDetail ? { reasonDetail: decision.reasonDetail } : {}),
-        }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
-      setSelectedReviewUserId(null);
-      setSubmissions((previous) => {
-        const next = new Map(previous);
-        next.delete(userId);
-        return next;
-      });
-      showFeedback(
-        "success",
-        decision.action === "approve"
-          ? t("kyc.success.approved")
-          : decision.action === "reject"
-            ? t("kyc.success.rejected")
-            : t("kyc.success.infoRequested"),
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("kyc.errors.reviewFailed");
-      setError(message);
-      showFeedback("error", message);
-    } finally {
-      setReviewing(null);
-    }
-  }
-
-  async function openDocument(submission: AdminKycSubmission, side: "front" | "back") {
-    try {
-      const response = await fetch(`/api/admin/kyc/documents/${submission.id}/${side}`);
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.data?.signedUrl) throw new Error(body.error?.message ?? t("kyc.errors.loadDocument"));
-      window.open(body.data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      showFeedback("error", err instanceof Error ? err.message : t("kyc.errors.loadDocument"));
-    }
-  }
-
   const queueUsers = users.filter((user) => submissions.has(user.id));
   const pendingReview = queueUsers.filter((user) => submissions.get(user.id)?.status === "pending");
   const infoRequested = queueUsers.filter((user) => submissions.get(user.id)?.status === "info_requested");
@@ -116,9 +58,6 @@ export default function AdminKycPage() {
     const searchText = `${user.name} ${user.email} ${submission?.docType ?? ""}`.toLowerCase();
     return matchesStatus && (!search.trim() || searchText.includes(search.trim().toLowerCase()));
   });
-  const selectedUser = selectedReviewUserId ? users.find((user) => user.id === selectedReviewUserId) ?? null : null;
-  const selectedSubmission = selectedReviewUserId ? submissions.get(selectedReviewUserId) ?? null : null;
-
   return (
     <AdminPageShell>
       <AdminPageHeader
@@ -126,7 +65,7 @@ export default function AdminKycPage() {
         title={t("kyc.title")}
         description={t("kyc.description")}
       />
-      {error && !selectedReviewUserId && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <AdminMetricGrid items={[
         { label: t("kyc.metrics.pending"), value: pendingReview.length, detail: t("kyc.metrics.pendingNote") },
@@ -170,8 +109,8 @@ export default function AdminKycPage() {
                   documentLabel={t(`kyc.documents.${submission.docType}`)}
                   statusLabel={t(`kyc.status.${submission.status === "info_requested" ? "infoRequested" : "pending"}`)}
                   submittedLabel={t("kyc.submitted", { date: dateLabel(submission.submittedAt, locale), position: submission.queuePosition ?? "—" })}
-                  reviewLabel={t("kyc.drawer.review")}
-                  onReview={() => { setError(null); setSelectedReviewUserId(user.id); }}
+                  reviewLabel={t("kyc.detail.review")}
+                  href={`/admin/kyc/${submission.id}`}
                 />
               );
             })}
@@ -179,16 +118,6 @@ export default function AdminKycPage() {
         )}
       </section>
 
-      <KycReviewDrawer
-        key={selectedReviewUserId ?? "closed"}
-        user={selectedUser}
-        submission={selectedSubmission}
-        busy={Boolean(selectedReviewUserId && reviewing === selectedReviewUserId)}
-        error={selectedReviewUserId ? error : null}
-        onClose={() => { setSelectedReviewUserId(null); setError(null); }}
-        onOpenDocument={(side) => { if (selectedSubmission) void openDocument(selectedSubmission, side); }}
-        onDecision={(decision) => { if (selectedReviewUserId) void review(selectedReviewUserId, decision); }}
-      />
     </AdminPageShell>
   );
 }

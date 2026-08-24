@@ -30,19 +30,22 @@ describe("admin filter consistency contract", () => {
     }
   });
 
-  it("keeps KYC's compact queue behind the shared filter bar and decisions in the review drawer", () => {
+  it("keeps KYC's compact queue behind the shared filter bar and links rows to dedicated reviews", () => {
     const source = read("app/admin/kyc/page.tsx");
-    const drawer = read("components/admin/kyc-review-drawer.tsx");
+    const detailRoute = resolve(process.cwd(), "app/admin/kyc/[submissionId]/page.tsx");
     expect(source).toContain("AdminFilterBar");
     expect(source).toContain("kyc.filters.search");
     expect(source).toContain("kyc.filters.status");
     expect(source).toContain("kyc.queue.oldestFirst");
     expect(source).toContain("KycReviewQueueRow");
-    expect(source).toContain("KycReviewDrawer");
+    expect(source).toContain('href={`/admin/kyc/${submission.id}`}');
+    expect(source).not.toContain("KycReviewDrawer");
+    expect(source).not.toContain("selectedReviewUserId");
+    expect(() => read("app/admin/kyc/[submissionId]/page.tsx")).not.toThrow();
     expect(source).not.toContain("AdminBatchActionBar");
     expect(source).toContain('t("kyc.metrics.infoRequested")');
     expect(source).toContain('t("kyc.metrics.verified")');
-    expect(drawer).toContain("kyc.accessibility.reason");
+    expect(detailRoute).toContain("app/admin/kyc/[submissionId]/page.tsx");
   });
 
   it("preserves segmented review filters and the user search/filter handlers", () => {

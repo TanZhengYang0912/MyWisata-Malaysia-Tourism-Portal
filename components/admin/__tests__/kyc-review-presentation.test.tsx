@@ -1,24 +1,25 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AdminKycSubmission, User } from "@/backend/core/types";
-import { KycReviewDrawer } from "@/components/admin/kyc-review-drawer";
 import { KycReviewQueueRow } from "@/components/admin/kyc-review-queue-row";
 
 const translations: Record<string, string> = {
-  "kyc.drawer.eyebrow": "Identity verification",
-  "kyc.drawer.close": "Close review",
-  "kyc.drawer.documents": "Documents",
-  "kyc.drawer.automatedChecks": "Automated checks",
-  "kyc.drawer.openDocument": "Open {{side}}",
-  "kyc.drawer.front": "Front",
-  "kyc.drawer.back": "Back",
-  "kyc.drawer.approve": "Approve KYC",
-  "kyc.drawer.requestInfo": "Request information",
-  "kyc.drawer.reject": "Reject KYC",
-  "kyc.drawer.waitingTitle": "Waiting for customer",
-  "kyc.drawer.waitingDescription": "The customer must submit the requested information before another decision.",
-  "kyc.drawer.ocrStatus": "OCR status: {{status}}",
+  "kyc.detail.eyebrow": "Identity verification",
+  "kyc.detail.documents": "Documents",
+  "kyc.detail.automatedChecks": "Automated checks",
+  "kyc.detail.openDocument": "Open {{side}}",
+  "kyc.detail.front": "Front",
+  "kyc.detail.back": "Back",
+  "kyc.detail.approve": "Approve KYC",
+  "kyc.detail.requestInfo": "Request information",
+  "kyc.detail.reject": "Reject KYC",
+  "kyc.detail.waitingTitle": "Waiting for customer",
+  "kyc.detail.waitingDescription": "The customer must submit the requested information before another decision.",
+  "kyc.detail.outcome": "Review outcome",
+  "kyc.detail.ocrStatus": "OCR status: {{status}}",
   "kyc.ocr.status.matched": "Matched",
   "kyc.ocr.extractedName": "Extracted name: {{name}}",
   "kyc.ocr.documentEnding": "Document ending: {{number}}",
@@ -26,11 +27,16 @@ const translations: Record<string, string> = {
   "kyc.ocr.noMismatch": "No OCR mismatch detected",
   "kyc.status.pending": "Pending review",
   "kyc.status.infoRequested": "Info requested",
+  "kyc.status.approved": "Approved",
+  "kyc.status.draft": "Draft",
+  "kyc.status.rejected": "Rejected",
+  "kyc.status.superseded": "Superseded",
   "kyc.fallback.notAvailable": "Not available",
 };
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
+    i18n: { resolvedLanguage: "en" },
     t: (key: string, values?: Record<string, string>) => {
       let translated = translations[key] ?? key;
       for (const [name, value] of Object.entries(values ?? {})) {
@@ -74,7 +80,7 @@ const pendingSubmission: AdminKycSubmission = {
 };
 
 describe("KYC review presentation", () => {
-  it("keeps each queue row compact with one review action", () => {
+  it("makes each compact queue row one link to its submission", () => {
     const markup = renderToStaticMarkup(
       <KycReviewQueueRow
         user={customer}
@@ -83,7 +89,7 @@ describe("KYC review presentation", () => {
         documentLabel="MyKad"
         statusLabel="Pending review"
         reviewLabel="Review"
-        onReview={() => undefined}
+        href={`/admin/kyc/${pendingSubmission.id}`}
       />,
     );
 
@@ -91,24 +97,49 @@ describe("KYC review presentation", () => {
     expect(markup).toContain("MyKad");
     expect(markup).toContain("Pending review");
     expect(markup).toContain("Review");
-    expect(markup.match(/<button/g)).toHaveLength(1);
+    expect(markup).toContain(`href="/admin/kyc/${pendingSubmission.id}"`);
+    expect(markup.match(/<a/g)).toHaveLength(1);
+    expect(markup).not.toContain("<button");
     expect(markup).not.toContain("View front");
     expect(markup).not.toContain("Approve");
     expect(markup).not.toContain("Reject");
   });
 
-  it("shows evidence and decisions together for a pending submission", () => {
-    const markup = renderToStaticMarkup(
-      <KycReviewDrawer
-        user={customer}
-        submission={pendingSubmission}
+  async function renderDetail(status: AdminKycSubmission["status"]) {
+    const detailPath = resolve(process.cwd(), "components/admin/kyc-review-detail.tsx");
+    expect(existsSync(detailPath), "dedicated KYC detail component must exist").toBe(true);
+    if (!existsSync(detailPath)) return "";
+
+    const { KycReviewDetailContent } = await import("@/components/admin/kyc-review-detail");
+    const detail = {
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        avatarInitial: customer.avatarInitial,
+      },
+      submission: {
+        ...pendingSubmission,
+        status,
+        reviewedAt: status === "approved" || status === "rejected" ? "2026-07-16T08:00:00.000Z" : null,
+        reviewedBy: status === "approved" || status === "rejected" ? "33333333-3333-4333-8333-333333333333" : null,
+        reviewReasonCode: status === "rejected" ? "document_mismatch" : null,
+      },
+    };
+
+    return renderToStaticMarkup(
+      <KycReviewDetailContent
+        detail={detail}
         busy={false}
         error={null}
-        onClose={() => undefined}
         onOpenDocument={() => undefined}
         onDecision={() => undefined}
       />,
     );
+  }
+
+  it("shows evidence and decisions together for a pending submission", async () => {
+    const markup = await renderDetail("pending");
 
     expect(markup).toContain("Documents");
     expect(markup).toContain("Open Front");
@@ -120,20 +151,25 @@ describe("KYC review presentation", () => {
     expect(markup).toContain("Reject KYC");
   });
 
-  it("makes information-requested submissions read-only while waiting for the customer", () => {
-    const markup = renderToStaticMarkup(
-      <KycReviewDrawer
-        user={customer}
-        submission={{ ...pendingSubmission, status: "info_requested" }}
-        busy={false}
-        error={null}
-        onClose={() => undefined}
-        onOpenDocument={() => undefined}
-        onDecision={() => undefined}
-      />,
-    );
+  it("makes information-requested submissions read-only while waiting for the customer", async () => {
+    const markup = await renderDetail("info_requested");
 
     expect(markup).toContain("Waiting for customer");
+    expect(markup).not.toContain("Approve KYC");
+    expect(markup).not.toContain("Request information");
+    expect(markup).not.toContain("Reject KYC");
+  });
+
+  it.each([
+    ["approved", "Approved"],
+    ["rejected", "Rejected"],
+    ["draft", "Draft"],
+    ["superseded", "Superseded"],
+  ] as const)("shows %s submissions as read-only outcomes", async (status, expectedLabel) => {
+    const markup = await renderDetail(status);
+
+    expect(markup).toContain("Review outcome");
+    expect(markup).toContain(expectedLabel);
     expect(markup).not.toContain("Approve KYC");
     expect(markup).not.toContain("Request information");
     expect(markup).not.toContain("Reject KYC");

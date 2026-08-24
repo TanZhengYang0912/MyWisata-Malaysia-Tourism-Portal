@@ -655,22 +655,34 @@
       "rejectTitle": "Tolak penyerahan KYC?"
     },
     "description": "Semak dokumen identiti, selesaikan pengecualian dan pastikan keputusan pengesahan boleh diaudit.",
-    "drawer": {
+    "detail": {
       "approve": "Luluskan KYC",
       "automatedChecks": "Semakan automatik",
       "back": "Belakang",
-      "close": "Tutup semakan",
+      "backToQueue": "Kembali ke Semakan KYC",
       "decision": "Keputusan semakan",
       "decisionDescription": "Buat keputusan hanya selepas memeriksa dokumen yang dihantar dan hasil automatik.",
+      "documentType": "Jenis dokumen",
       "documents": "Dokumen",
+      "documentsDescription": "Buka dokumen yang dihantar dalam pemapar selamat jangka pendek.",
       "eyebrow": "Pengesahan identiti",
       "front": "Hadapan",
+      "loading": "Memuatkan semakan KYC…",
       "noAutomatedChecks": "Tiada hasil semakan automatik tersedia untuk penyerahan ini.",
+      "notFound": "Penyerahan KYC tidak ditemui",
       "ocrStatus": "Status OCR: {{status}}",
       "openDocument": "Buka {{side}}",
+      "outcome": "Hasil semakan",
+      "queuePosition": "Kedudukan barisan",
+      "readOnlyDescription": "Penyerahan ini adalah baca sahaja dan tidak boleh menerima keputusan semakan lain.",
       "reject": "Tolak KYC",
       "requestInfo": "Minta maklumat",
+      "retry": "Cuba lagi",
       "review": "Semak",
+      "reviewedAt": "Disemak {{date}}",
+      "reviewedBy": "Disemak oleh {{reviewer}}",
+      "submission": "Penyerahan",
+      "submittedAt": "Dihantar pada",
       "waitingDescription": "Pelanggan mesti menghantar maklumat yang diminta sebelum keputusan lain boleh dibuat.",
       "waitingTitle": "Menunggu pelanggan"
     },
@@ -749,8 +761,12 @@
       "other": "Lain-lain (tambah butiran)"
     },
     "status": {
+      "approved": "Diluluskan",
+      "draft": "Draf",
       "infoRequested": "Maklumat diminta",
-      "pending": "Menunggu semakan"
+      "pending": "Menunggu semakan",
+      "rejected": "Ditolak",
+      "superseded": "Digantikan"
     },
     "submitted": "Dihantar {{date}} · Kedudukan dalam barisan {{position}}",
     "success": {

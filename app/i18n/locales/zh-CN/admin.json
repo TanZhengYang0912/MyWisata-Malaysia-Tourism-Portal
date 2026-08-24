@@ -655,22 +655,34 @@
       "rejectTitle": "拒绝 KYC 提交？"
     },
     "description": "审核身份文件、处理例外情况，并确保验证决定可审计。",
-    "drawer": {
+    "detail": {
       "approve": "批准 KYC",
       "automatedChecks": "自动检查",
       "back": "背面",
-      "close": "关闭审核",
+      "backToQueue": "返回 KYC 审核",
       "decision": "审核决定",
       "decisionDescription": "请先检查提交的证件和自动检查结果，再作出决定。",
+      "documentType": "证件类型",
       "documents": "证件",
+      "documentsDescription": "在短时效安全查看器中打开已提交的证件。",
       "eyebrow": "身份验证",
       "front": "正面",
+      "loading": "正在加载 KYC 审核…",
       "noAutomatedChecks": "此提交暂无自动检查结果。",
+      "notFound": "找不到 KYC 提交",
       "ocrStatus": "OCR 状态：{{status}}",
       "openDocument": "打开{{side}}",
+      "outcome": "审核结果",
+      "queuePosition": "队列位置",
+      "readOnlyDescription": "此提交为只读状态，无法再次作出审核决定。",
       "reject": "拒绝 KYC",
       "requestInfo": "请求补充信息",
+      "retry": "重试",
       "review": "审核",
+      "reviewedAt": "审核于 {{date}}",
+      "reviewedBy": "审核人：{{reviewer}}",
+      "submission": "提交信息",
+      "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
       "waitingTitle": "等待客户"
     },
@@ -749,8 +761,12 @@
       "other": "其他（请补充详情）"
     },
     "status": {
+      "approved": "已批准",
+      "draft": "草稿",
       "infoRequested": "已请求补充信息",
-      "pending": "待审核"
+      "pending": "待审核",
+      "rejected": "已拒绝",
+      "superseded": "已被取代"
     },
     "submitted": "提交于 {{date}} · 队列位置 {{position}}",
     "success": {
