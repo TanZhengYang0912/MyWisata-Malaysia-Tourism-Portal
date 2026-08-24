@@ -49,7 +49,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<ReviewAction | null>(null);
-  const [reason, setReason] = useState("");
+  const [internalNote, setInternalNote] = useState("");
+  const [customerMessage, setCustomerMessage] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +97,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
   function prepareAction(nextAction: ReviewAction) {
     setAction(nextAction);
-    setReason("");
+    setCustomerMessage("");
     if (nextAction === "approve") setConfirmOpen(true);
   }
 
@@ -105,7 +106,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
     feedbackDraft: string,
   ) {
     setAction(suggestedAction);
-    setReason(feedbackDraft);
+    setCustomerMessage(feedbackDraft);
     setConfirmOpen(false);
     setError(null);
     requestAnimationFrame(() => {
@@ -116,7 +117,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
 
   function continueWithReason() {
     if (!action || action === "approve") return;
-    if (reason.trim().length < 10) {
+    if (customerMessage.trim().length < 10) {
       setError(t("recommendation.detail.errors.reasonTooShort"));
       return;
     }
@@ -134,7 +135,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         body: JSON.stringify({
           recommendationId,
           action,
-          reason: action === "approve" ? undefined : reason.trim(),
+          internalNote: internalNote.trim() || undefined,
+          customerMessage: action === "approve" ? undefined : customerMessage.trim(),
         }),
       });
       const body = await response.json().catch(() => null) as {
@@ -153,7 +155,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
           : t("recommendation.detail.feedback.rejected"));
       setConfirmOpen(false);
       setAction(null);
-      setReason("");
+      setInternalNote("");
+      setCustomerMessage("");
       await loadDetail();
     } catch {
       setError(t("recommendation.detail.errors.reviewFailed"));
@@ -229,7 +232,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const isApproved = detail.status === "approved";
   const canManageLocalization = currentUser?.role === "super_admin";
   const reasonAction = action === "reject" || action === "request_changes";
-  const reviewDecision = isPending ? (
+  const reviewDecision = detail.availableActions.length > 0 ? (
     <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
       <h2 className="font-bold text-foreground">{t("recommendation.detail.reviewDecision")}</h2>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("recommendation.detail.reviewDecisionHint")}</p>
@@ -241,10 +244,24 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
           />
         </div>
       )}
+      <label className="mt-4 block text-xs font-semibold text-foreground">
+        {t("recommendation.detail.internalNote")}
+        <textarea
+          value={internalNote}
+          onChange={(event) => setInternalNote(event.target.value)}
+          maxLength={1000}
+          rows={3}
+          className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          placeholder={t("recommendation.detail.internalNotePlaceholder")}
+        />
+        <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+          {t("recommendation.detail.internalNoteHint")}
+        </span>
+      </label>
       <div className="mt-5 grid gap-2">
-        <Button onClick={() => prepareAction("approve")}>{t("recommendation.detail.actions.approve")}</Button>
-        <Button variant="outline" onClick={() => prepareAction("request_changes")}>{t("recommendation.detail.actions.requestChanges")}</Button>
-        <Button variant="destructive" onClick={() => prepareAction("reject")}>{t("recommendation.detail.actions.reject")}</Button>
+        {detail.availableActions.includes("approve") && <Button onClick={() => prepareAction("approve")}>{t("recommendation.detail.actions.approve")}</Button>}
+        {detail.availableActions.includes("request_changes") && <Button variant="outline" onClick={() => prepareAction("request_changes")}>{t("recommendation.detail.actions.requestChanges")}</Button>}
+        {detail.availableActions.includes("reject") && <Button variant="destructive" onClick={() => prepareAction("reject")}>{t("recommendation.detail.actions.reject")}</Button>}
       </div>
       {reasonAction && (
         <div className="mt-4">
@@ -253,19 +270,24 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
           </label>
           <textarea
             id="review-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            value={customerMessage}
+            onChange={(event) => setCustomerMessage(event.target.value)}
             maxLength={500}
             rows={4}
             className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder={t("recommendation.detail.reasonPlaceholder")}
           />
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-[11px] text-muted-foreground">{reason.length}/500</span>
+            <span className="text-[11px] text-muted-foreground">{customerMessage.length}/500</span>
             <Button size="sm" onClick={continueWithReason}>{t("recommendation.detail.actions.continue")}</Button>
           </div>
         </div>
       )}
+    </section>
+  ) : isPending ? (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+      <h2 className="font-bold">{t("recommendation.detail.assignedElsewhere")}</h2>
+      <p className="mt-1 text-xs leading-5">{t("recommendation.detail.assignedElsewhereHint")}</p>
     </section>
   ) : null;
 
@@ -397,6 +419,33 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
                     <p className="mt-1 whitespace-pre-wrap leading-5">{detail.review.reason}</p>
                   </div>
                 )}
+              </div>
+            </section>
+          )}
+
+          {detail.reviewEvents.length > 0 && (
+            <section className="rounded-2xl border border-border bg-card p-5">
+              <h2 className="font-bold text-foreground">{t("recommendation.detail.decisionTimeline")}</h2>
+              <div className="mt-4 space-y-4">
+                {detail.reviewEvents.map((event) => (
+                  <article key={event.id} className="border-b border-border pb-4 text-sm last:border-0 last:pb-0">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{event.actor.name} · {event.action}</p>
+                      <time className="text-xs text-muted-foreground">{displayDate(event.createdAt, locale, t("recommendation.detail.notRecorded"))}</time>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{event.fromStatus} → {event.toStatus}</p>
+                    <div className="mt-3 rounded-lg bg-muted/50 p-3">
+                      <p className="text-xs font-semibold text-muted-foreground">{t("recommendation.detail.customerMessage")}</p>
+                      <p className="mt-1 whitespace-pre-wrap">{event.customerMessage}</p>
+                    </div>
+                    {event.internalNote && (
+                      <div className="mt-2 rounded-lg border border-border p-3">
+                        <p className="text-xs font-semibold text-muted-foreground">{t("recommendation.detail.internalNote")}</p>
+                        <p className="mt-1 whitespace-pre-wrap">{event.internalNote}</p>
+                      </div>
+                    )}
+                  </article>
+                ))}
               </div>
             </section>
           )}

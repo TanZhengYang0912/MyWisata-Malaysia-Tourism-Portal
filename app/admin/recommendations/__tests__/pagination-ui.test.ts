@@ -8,20 +8,18 @@ const pageSource = readFileSync(
 );
 
 describe('recommendation moderation pagination', () => {
-  it('limits the pending queue to ten recommendations per page', () => {
-    expect(pageSource).toContain('const PENDING_PAGE_SIZE = 10;');
-    expect(pageSource).toContain('const visiblePending = pending.slice(');
-    expect(pageSource).toContain('aria-label={t("ui.recommendations.pendingPagination")}');
+  it('requests ten recommendations per server-owned page', () => {
+    expect(pageSource).toContain('const PAGE_SIZE = 10;');
+    expect(pageSource).toContain('pageSize: String(PAGE_SIZE)');
+    expect(pageSource).toContain('/api/admin/recommendations?');
     expect(pageSource).toContain('aria-label={t("ui.pagination.previousPage")}');
     expect(pageSource).toContain('aria-label={t("ui.pagination.nextPage")}');
   });
 
-  it('gives the reviewed queue its own count and ten-item pagination', () => {
-    expect(pageSource).toContain('t("ui.recommendations.reviewed", { count: reviewed.length })');
-    expect(pageSource).toContain('const visibleReviewed = reviewed.slice(');
-    expect(pageSource).toContain('aria-label={t("ui.recommendations.reviewedPagination")}');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.previousPage")}');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.nextPage")}');
-    expect(pageSource).toContain('kind: t("ui.recommendations.reviewedLabel")');
+  it('uses the API counts and status filter instead of splitting a browser-side table', () => {
+    expect(pageSource).toContain('data.counts.pending');
+    expect(pageSource).toContain('data.counts.reviewed');
+    expect(pageSource).toContain('<option value="reviewed">');
+    expect(pageSource).not.toContain('.filter((r) => r.status');
   });
 });

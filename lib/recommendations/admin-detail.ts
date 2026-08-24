@@ -43,6 +43,24 @@ export interface AdminRecommendationDetail {
   submittedAt: string;
   imageAttestedAt: string | null;
   status: RecommendationReviewStatus;
+  assignment: {
+    assignedTo: string | null;
+    claimedAt: string | null;
+    isAssignedToActor: boolean;
+    canDecide: boolean;
+  };
+  availableActions: Array<'approve' | 'request_changes' | 'reject'>;
+  reviewEvents: Array<{
+    id: string;
+    fromStatus: string;
+    toStatus: string;
+    action: 'approve' | 'request_changes' | 'reject';
+    actor: { id: string | null; name: string };
+    actorRole: string;
+    internalNote: string | null;
+    customerMessage: string;
+    createdAt: string;
+  }>;
   review: {
     reviewer: {
       id: string;
@@ -99,6 +117,8 @@ export interface RecommendationDetailRow {
   suggested_place_id?: string | null;
   resolved_place_id?: string | null;
   created_at: string;
+  assigned_to?: string | null;
+  claimed_at?: string | null;
   categories: { name: string } | Array<{ name: string }> | null;
 }
 
@@ -145,6 +165,25 @@ export function buildAdminRecommendationDetail(input: {
   suggestedPlace?: PlaceSummaryRow | null;
   resolvedPlace?: PlaceSummaryRow | null;
   translations?: TranslationSummaryRow[];
+  assignment?: {
+    assignedTo: string | null;
+    claimedAt: string | null;
+    isAssignedToActor: boolean;
+    canDecide: boolean;
+  };
+  availableActions?: Array<'approve' | 'request_changes' | 'reject'>;
+  reviewEvents?: Array<{
+    id: string;
+    from_status: string;
+    to_status: string;
+    action: 'approve' | 'request_changes' | 'reject';
+    actor_id: string | null;
+    actor_role: string;
+    internal_note: string | null;
+    customer_message: string;
+    created_at: string;
+    actor_name: string | null;
+  }>;
 }): AdminRecommendationDetail {
   const { recommendation: row } = input;
   const hasLocation = Boolean(
@@ -197,6 +236,26 @@ export function buildAdminRecommendationDetail(input: {
     submittedAt: row.created_at,
     imageAttestedAt: row.image_attested_at,
     status: row.status,
+    assignment: input.assignment ?? {
+      assignedTo: row.assigned_to ?? null,
+      claimedAt: row.claimed_at ?? null,
+      isAssignedToActor: false,
+      canDecide: false,
+    },
+    availableActions: input.availableActions ?? (input.assignment?.canDecide
+      ? ['approve', 'request_changes', 'reject']
+      : []),
+    reviewEvents: (input.reviewEvents ?? []).map((event) => ({
+      id: event.id,
+      fromStatus: event.from_status,
+      toStatus: event.to_status,
+      action: event.action,
+      actor: { id: event.actor_id, name: event.actor_name ?? 'Admin' },
+      actorRole: event.actor_role,
+      internalNote: event.internal_note,
+      customerMessage: event.customer_message,
+      createdAt: event.created_at,
+    })),
     review: hasReview ? {
       reviewer: input.reviewer ? {
         id: input.reviewer.id,

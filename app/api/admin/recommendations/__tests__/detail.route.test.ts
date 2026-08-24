@@ -68,3 +68,22 @@ describe('GET /api/admin/recommendations/:id', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', { uid: 'user-1' });
   });
 });
+
+describe('recommendation assignment and review evidence contract', () => {
+  it('claims pending work and returns server-owned decision capabilities', () => {
+    const source = readFileSync('app/api/admin/recommendations/[id]/route.ts', 'utf8');
+
+    expect(source).toContain("rpc('claim_recommendation_review'");
+    expect(source).toContain("from('recommendation_review_events')");
+    expect(source).toContain('availableActions');
+    expect(source).toContain('reviewEvents');
+  });
+
+  it('uses short-lived signed evidence URLs and fails closed when review events cannot load', () => {
+    const source = readFileSync('app/api/admin/recommendations/[id]/route.ts', 'utf8');
+
+    expect(source).toContain('createSignedUrl(image.storage_path, 600)');
+    expect(source).toContain('reviewEventsError');
+    expect(source).toContain("apiFail('EVIDENCE_FAILED'");
+  });
+});
