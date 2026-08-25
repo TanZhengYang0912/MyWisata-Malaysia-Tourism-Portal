@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Filter, Gift, Search } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Filter, Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -141,7 +141,12 @@ export default function AdminRecommendationsPage() {
         {loading && data.items.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p> : data.items.length === 0 ? <EmptyState title={t("ui.recommendations.noResults")} /> : (
           <div className="divide-y divide-border">
             {data.items.map((r) => (
-              <article key={r.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+              <Link
+                key={r.id}
+                href={`/admin/recommendations/${r.id}`}
+                aria-label={`${t("ui.actions.viewDetails")}: ${r.name}`}
+                className="group flex flex-wrap items-center gap-4 px-5 py-4 text-left transition hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-foreground">{r.name}</p><StatusBadge status={r.status} />
@@ -150,8 +155,8 @@ export default function AdminRecommendationsPage() {
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("ui.recommendations.contributorLine", { category: r.category, state: r.state, author: r.author.name })}</span><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>
                   <p className="mt-1 text-xs text-muted-foreground">{r.assignee ? t("ui.recommendations.assignedTo", { name: r.assignee.name }) : t("ui.recommendations.unassigned")}</p>
                 </div>
-                <Button asChild size="sm" variant="outline"><Link href={`/admin/recommendations/${r.id}`} className="gap-1.5"><Eye size={14} /> {t("ui.actions.viewDetails")}</Link></Button>
-              </article>
+                <ArrowUpRight aria-hidden="true" size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </Link>
             ))}
           </div>
         )}
