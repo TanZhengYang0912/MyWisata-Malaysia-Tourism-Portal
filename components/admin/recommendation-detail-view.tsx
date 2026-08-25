@@ -525,9 +525,18 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         sendLabel={t("recommendation.detail.sendInvite")}
         linkHint={t("recommendation.detail.inviteLinkHint")}
         onClose={() => setInviteOpen(false)}
-        onSent={() => {
+        onSent={(_id, responseData) => {
+          const statusSynced = typeof responseData === "object"
+            && responseData !== null
+            && "statusSynced" in responseData
+            && responseData.statusSynced === true;
           setInviteOpen(false);
-          showFeedback("success", t("recommendation.detail.feedback.inviteSent"));
+          showFeedback(
+            statusSynced ? "success" : "error",
+            t(statusSynced
+              ? "recommendation.detail.feedback.inviteSent"
+              : "recommendation.detail.feedback.inviteStatusSyncFailed"),
+          );
           void loadDetail();
         }}
       />

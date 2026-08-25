@@ -3,13 +3,12 @@
 // { recommendationId }. Returns a draft { subject, body } for the admin's
 // "Invite Vendor" modal to prefill; never saves anything or sends any
 // email itself (see lib/recommendations/invite-draft.ts's header). Gated
-// on super_admin/approver, same as the Send route this feeds into.
+// on the recommendation-review capability, same as the Send route.
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
 import { draftVendorInviteEmail } from '@/lib/recommendations/invite-draft';
 
 const schema = z.object({ recommendationId: z.string().uuid() }).strict();
@@ -18,8 +17,11 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can draft an invite email', 403);
+  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_recommendation', {
+    uid: user.id,
+  });
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
   }
 
   const parsed = await parseBody(request, schema);

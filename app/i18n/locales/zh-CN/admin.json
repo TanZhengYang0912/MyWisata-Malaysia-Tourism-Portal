@@ -1680,6 +1680,7 @@
         "approved": "推荐已批准。",
         "changesRequested": "已要求修改。",
         "inviteSent": "邀请已发送。",
+        "inviteStatusSyncFailed": "邀请邮件已发送，但推荐状态无法同步。请刷新页面后再决定是否重新发送。",
         "rejected": "推荐已拒绝。"
       },
       "fields": {

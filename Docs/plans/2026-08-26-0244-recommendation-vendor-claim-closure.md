@@ -35,10 +35,15 @@
 - `app/api/admin/vendors/recommendation-invite/__tests__/route.test.ts` — delivery ordering and failure cases.
 - `app/api/admin/vendors/recommendation-invite/draft/route.ts` — recommendation-domain capability gate.
 - `app/api/admin/vendors/recommendation-invite/draft/__tests__/route.test.ts` — role-matrix expectations.
+- `lib/email/events.ts` — remove the obsolete outbox helper that persisted raw claim URLs.
 - `components/admin/ai-draft-email-modal.tsx` — pass successful response data to the caller.
 - `components/admin/recommendation-detail-view.tsx` — show an invite-sent warning when status synchronization failed.
 - `app/i18n/locales/en/admin.json`, `app/i18n/locales/zh-CN/admin.json`, `app/i18n/locales/ms/admin.json` — one localized synchronization-warning message.
 - `app/api/admin/vendors/[id]/approve/route.ts` — use the atomic approval RPC for `approve`; preserve reject/request-information branches.
+
+**Delete**
+
+- `lib/email/__tests__/vendor-claim-invite.test.ts` — obsolete test for the removed token-persisting outbox helper; route tests replace it.
 
 **Explicitly not modified**
 
@@ -224,7 +229,7 @@ Expected: all tests PASS.
 **Interfaces:**
 
 - Consumes: `db.rpc('can_review_recommendation', { uid: user.id })`.
-- Produces on success: `{id, expires_at, claimUrl, emailSent: true, statusSynced: boolean}`.
+- Produces on success: `{id, expires_at, emailSent: true, statusSynced: boolean}`; the raw claim URL is not returned to the browser.
 - Produces on delivery failure: HTTP 502 `EMAIL_DELIVERY_FAILED` after updating the new invite to `cancelled`.
 
 - [ ] **Step 1: Add failing route tests**
@@ -268,7 +273,7 @@ if (capabilityError || canReview !== true) {
 }
 ```
 
-After inserting the invite, send/enqueue the email before updating the recommendation. On failure:
+After inserting the invite, send the email synchronously before updating the recommendation. Both fixed and admin-edited paths use the direct sender so the raw token is never persisted in `email_outbox`. Persist only the admin-edited prose in the invitation audit columns, not the server-appended claim URL. On failure:
 
 ```ts
 await service
@@ -282,7 +287,7 @@ After confirmed delivery, update the recommendation. Return:
 
 ```ts
 return apiOk(
-  { ...data, claimUrl, emailSent: true, statusSynced: !statusError },
+  { ...data, emailSent: true, statusSynced: !statusError },
   { status: 201 },
 );
 ```

@@ -18,7 +18,8 @@ export async function POST(request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  // Role check — only super_admin or approver
+  // Role check. Claimed-vendor approval also admits recommendation reviewers;
+  // the atomic RPC enforces the target-specific boundary before writing.
   const { data: roles } = await supabase
     .from('user_roles')
     .select('roles(name)')
@@ -26,14 +27,17 @@ export async function POST(request: Request, { params }: Props) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const roleNames = (roles ?? []).map((r: any) => (r.roles as Record<string, any>)?.name as string);
-  if (!roleNames.includes('super_admin') && !roleNames.includes('approver')) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can review vendors', 403);
-  }
 
   // Parse body
   const parsed = await parseBody(request, vendorApproveSchema);
   if (!parsed.ok) return parsed.response;
   const { action, reason } = parsed.data;
+  const canReviewOrdinaryVendor = roleNames.includes('super_admin') || roleNames.includes('approver');
+  const canReviewClaimedVendor = roleNames.includes('super_admin') || roleNames.includes('admin');
+  if ((action === 'approve' && !canReviewOrdinaryVendor && !canReviewClaimedVendor)
+      || (action !== 'approve' && !canReviewOrdinaryVendor)) {
+    return apiFail('FORBIDDEN', 'Vendor approval role required', 403);
+  }
 
   // Fetch current vendor
   const { data: vendor, error: fetchErr } = await supabase
@@ -66,42 +70,39 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   if (action === 'approve') {
-    // Update vendor status
-    const { error: updateErr } = await supabase
-      .from('vendors')
-      .update({
-        status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-      })
-      .eq('id', vendorId);
-
-    if (updateErr) return apiFail('DB_ERROR', updateErr.message, 500);
-
-    const { error: onboardingError } = await supabase.from('vendor_onboarding_profiles').upsert({
-      vendor_id: vendorId,
-      status: 'approved',
-      review_note: null,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'vendor_id' });
-    if (onboardingError) return apiFail('DB_ERROR', onboardingError.message, 500);
-
-    // Auto-create vendor_owner role for the vendor's owner
-    const { data: ownerRole } = await supabase
-      .from('roles')
-      .select('id')
-      .eq('name', 'vendor_owner')
-      .single();
-
-    if (ownerRole) {
-      await supabase.from('user_roles').upsert({
-        user_id: vendor.owner_id,
-        role_id: ownerRole.id,
-        vendor_id: vendorId,
-      }, { onConflict: 'user_id,role_id,vendor_id,outlet_id' });
+    const { data: approvalData, error: approvalError } = await supabase.rpc(
+      'admin_approve_claimed_vendor',
+      { p_vendor_id: vendorId },
+    );
+    if (approvalError) {
+      if (approvalError.message.includes('admin_required')) {
+        return apiFail('FORBIDDEN', 'Vendor approval role required', 403);
+      }
+      if (approvalError.message.includes('vendor_not_found')) {
+        return apiFail('NOT_FOUND', 'Vendor not found', 404);
+      }
+      if (approvalError.message.includes('vendor_not_approvable')) {
+        return apiFail('INVALID_STATE', 'Vendor is not pending approval', 409);
+      }
+      if (approvalError.message.includes('self_dealing')) {
+        return apiFail('FORBIDDEN', 'You cannot approve a vendor from your own recommendation', 403);
+      }
+      if (approvalError.message.includes('recommendation_not_ready_for_conversion')
+          || approvalError.message.includes('claim_link_not_found')) {
+        return apiFail('INVALID_RECOMMENDATION_STATE', 'The claimed recommendation is not ready for conversion', 409);
+      }
+      console.error('[vendor-approval] atomic approval failed:', approvalError);
+      return apiFail('RPC_ERROR', 'Vendor approval could not be completed', 500);
     }
+
+    const approval = approvalData as {
+      vendor_id: string;
+      status: string;
+      converted: boolean;
+      recommendation_id: string | null;
+      conversion_id: string | null;
+    } | null;
+    if (!approval) return apiFail('RPC_ERROR', 'Vendor approval returned no result', 500);
 
     // Audit + notify vendor owner
     await auditAndNotify(
@@ -109,8 +110,13 @@ export async function POST(request: Request, { params }: Props) {
         action: 'vendor.approved',
         entityType: 'vendor',
         entityId: vendorId,
-        beforeData: { status: 'pending' },
-        afterData: { status: 'approved' },
+        beforeData: { status: vendor.status },
+        afterData: {
+          status: 'approved',
+          converted: approval.converted,
+          recommendationId: approval.recommendation_id,
+          conversionId: approval.conversion_id,
+        },
       },
       [{
         userId: vendor.owner_id,
@@ -135,7 +141,13 @@ export async function POST(request: Request, { params }: Props) {
       serviceDb: createServiceClient(),
     }).catch((notificationError) => console.error('[vendor-notifications] approval event failed', notificationError));
 
-    return apiOk({ id: vendorId, status: 'approved' });
+    return apiOk({
+      id: vendorId,
+      status: 'approved',
+      converted: approval.converted,
+      recommendationId: approval.recommendation_id,
+      conversionId: approval.conversion_id,
+    });
   } else {
     // Reject
     const { error: updateErr } = await supabase

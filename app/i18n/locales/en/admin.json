@@ -1682,6 +1682,7 @@
         "approved": "Recommendation approved.",
         "changesRequested": "Changes requested.",
         "inviteSent": "Invite sent.",
+        "inviteStatusSyncFailed": "The invitation email was sent, but the recommendation status could not be synchronized. Refresh before sending another invite.",
         "rejected": "Recommendation rejected."
       },
       "fields": {

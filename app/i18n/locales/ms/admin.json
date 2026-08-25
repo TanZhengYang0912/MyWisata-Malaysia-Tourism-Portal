@@ -1682,6 +1682,7 @@
         "approved": "Cadangan diluluskan.",
         "changesRequested": "Perubahan diminta.",
         "inviteSent": "Jemputan dihantar.",
+        "inviteStatusSyncFailed": "E-mel jemputan telah dihantar, tetapi status cadangan tidak dapat disegerakkan. Muat semula sebelum menghantar jemputan lain.",
         "rejected": "Cadangan ditolak."
       },
       "fields": {

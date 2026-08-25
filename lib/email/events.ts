@@ -20,29 +20,6 @@ export type VendorEmailEventInput = VendorEmailInput & {
   eventKey: string;
 };
 
-export async function enqueueVendorClaimInviteEmail(input: {
-  recommendationId: string;
-  email: string;
-  vendorName: string;
-  claimUrl: string;
-}): Promise<void> {
-  await enqueueEmail({
-    eventKey: `vendor_claim_invite:${input.recommendationId}`,
-    toEmail: input.email,
-    eventType: 'vendor_account_update',
-    vendorName: input.vendorName,
-    reason: 'Your business has been invited to complete vendor onboarding.',
-    reference: input.claimUrl,
-    occurredAt: new Date().toISOString(),
-  });
-
-  try {
-    await processEmailOutbox(10);
-  } catch (error) {
-    console.error('[email-outbox] vendor claim invite failed:', error);
-  }
-}
-
 export async function enqueueRecommendationApprovalEmail(input: {
   recommendationId: string;
   userId: string;
