@@ -6,7 +6,6 @@ import type { WalletTransaction } from "@/backend/core/types";
 import {
   customerVisibleTransactions,
   signedTransactionAmount,
-  transactionLabel,
 } from "@/lib/wallet/transaction-display";
 
 export function CustomerTransactionHistory({ transactions }: { transactions: WalletTransaction[] }) {
@@ -26,9 +25,7 @@ export function CustomerTransactionHistory({ transactions }: { transactions: Wal
           {visibleTransactions.map((transaction) => {
             const debit = transaction.direction === "debit";
             const amountClass = transaction.direction === "debit" ? "text-wallet-debit" : "text-foreground";
-            const label = t(`ui.wallet.transactionType.${transaction.type}`, {
-              defaultValue: transactionLabel(transaction.type),
-            });
+            const label = t(`ui.wallet.transactionType.${transaction.type}`);
 
             return (
               <article key={transaction.id} className="flex items-center justify-between gap-3 px-5 py-3.5">

@@ -22,6 +22,7 @@ describe("customer wallet transaction history display contract", () => {
 
   it("uses localized transaction labels and dates", () => {
     expect(source).toContain('t(`ui.wallet.transactionType.${transaction.type}`');
+    expect(source).not.toContain("defaultValue");
     expect(source).toContain("toLocaleDateString(locale)");
   });
 });
