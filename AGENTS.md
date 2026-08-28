@@ -23,6 +23,26 @@ Before making any code changes:
 
 ---
 
+## Existing Implementation First
+
+Before recommending or implementing a new feature, flow, page, or component:
+
+1. Perform a read-only inventory of the relevant routes, components, APIs,
+   database flow, tests, and documentation.
+2. Tell the user what already exists, what can be reused, and what is genuinely
+   missing before recommending whether new implementation is necessary.
+3. Prefer exposing, connecting, or extending an existing implementation over
+   creating a duplicate implementation.
+4. Do not describe functionality as missing until the repository search has
+   confirmed that it does not already exist.
+
+Treat requests such as "do not implement yet" or "do not execute yet" as a
+restriction on writes, not on read-only investigation, unless the user also
+explicitly asks not to inspect. The user should not need to prompt the agent to
+discover and explain existing implementations first.
+
+---
+
 ## Implementation Plan
 
 The plan must include:
