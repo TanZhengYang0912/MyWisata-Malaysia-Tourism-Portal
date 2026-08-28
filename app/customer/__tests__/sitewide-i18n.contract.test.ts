@@ -92,6 +92,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/promotion-spotlight.tsx",
   "components/customer/saved-destination-card.tsx",
   "components/customer/use-customer-capability-gate.ts",
+  "components/customer/wallet/customer-transaction-history.tsx",
   "components/customer/wallet/payout-readiness.tsx",
   "components/customer/wallet/wallet-balance-summary.tsx",
   "components/customer/wallet/withdrawal-list.tsx",
