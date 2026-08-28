@@ -19,6 +19,8 @@ const translations: Record<string, string> = {
   "kyc.detail.waitingTitle": "Waiting for customer",
   "kyc.detail.waitingDescription": "The customer must submit the requested information before another decision.",
   "kyc.detail.outcome": "Review outcome",
+  "kyc.detail.reviewHistory": "Review history",
+  "kyc.detail.assignedElsewhere": "Assigned to another reviewer",
   "kyc.detail.ocrStatus": "OCR status: {{status}}",
   "kyc.ocr.status.matched": "Matched",
   "kyc.ocr.extractedName": "Extracted name: {{name}}",
@@ -105,7 +107,7 @@ describe("KYC review presentation", () => {
     expect(markup).not.toContain("Reject");
   });
 
-  async function renderDetail(status: AdminKycSubmission["status"]) {
+  async function renderDetail(status: AdminKycSubmission["status"], canDecide = true) {
     const detailPath = resolve(process.cwd(), "components/admin/kyc-review-detail.tsx");
     expect(existsSync(detailPath), "dedicated KYC detail component must exist").toBe(true);
     if (!existsSync(detailPath)) return "";
@@ -120,11 +122,37 @@ describe("KYC review presentation", () => {
       },
       submission: {
         ...pendingSubmission,
+        assignedTo: "33333333-3333-4333-8333-333333333333",
+        claimedAt: "2026-07-15T08:02:00.000Z",
+        legalIdentity: {
+          fullName: "Customer Bob",
+          email: "bob@example.com",
+          phone: "+60123456789",
+          capturedAt: "2026-07-15T08:00:00.000Z",
+        },
         status,
         reviewedAt: status === "approved" || status === "rejected" ? "2026-07-16T08:00:00.000Z" : null,
         reviewedBy: status === "approved" || status === "rejected" ? "33333333-3333-4333-8333-333333333333" : null,
         reviewReasonCode: status === "rejected" ? "document_mismatch" : null,
       },
+      assignment: {
+        assignedTo: canDecide ? "33333333-3333-4333-8333-333333333333" : "44444444-4444-4444-8444-444444444444",
+        claimedAt: "2026-07-15T08:02:00.000Z",
+        isAssignedToCurrentUser: canDecide,
+        canDecide,
+      },
+      reviewEvents: [{
+        id: "55555555-5555-4555-8555-555555555555",
+        fromStatus: "pending",
+        toStatus: "approved",
+        action: "approve" as const,
+        actorId: "33333333-3333-4333-8333-333333333333",
+        actorRole: "admin",
+        reasonCategory: null,
+        internalNote: null,
+        customerMessage: "Your identity verification is complete.",
+        createdAt: "2026-07-16T08:00:00.000Z",
+      }],
     };
 
     return renderToStaticMarkup(
@@ -149,6 +177,17 @@ describe("KYC review presentation", () => {
     expect(markup).toContain("Approve KYC");
     expect(markup).toContain("Request information");
     expect(markup).toContain("Reject KYC");
+    expect(markup).toContain("Review history");
+    expect(markup).toContain("Your identity verification is complete.");
+  });
+
+  it("hides decision actions when the pending submission belongs to another reviewer", async () => {
+    const markup = await renderDetail("pending", false);
+
+    expect(markup).toContain("Assigned to another reviewer");
+    expect(markup).not.toContain("Approve KYC");
+    expect(markup).not.toContain("Request information");
+    expect(markup).not.toContain("Reject KYC");
   });
 
   it("makes information-requested submissions read-only while waiting for the customer", async () => {

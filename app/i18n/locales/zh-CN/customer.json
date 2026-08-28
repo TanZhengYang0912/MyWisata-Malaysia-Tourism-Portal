@@ -68,6 +68,10 @@
       "label": "偏好设置",
       "description": "调整您的推荐内容"
     },
+    "orders": {
+      "label": "我的订单",
+      "description": "购买、预订和收据"
+    },
     "wallet": {
       "label": "钱包",
       "description": "余额和提现"
@@ -1058,6 +1062,7 @@
       "notEditable": "待审核的推荐不可编辑。",
       "updateDetails": "更新要求的信息",
       "viewContributor": "查看贡献者资料",
+      "viewVendor": "查看商家",
       "myRecommendations": "我的推荐",
       "noneYet": "您还没有推荐任何商家。",
       "makeFirst": "创建您的第一个推荐 →",
@@ -1073,6 +1078,10 @@
         "pending": "管理员正在审核推荐和商家资料。",
         "changes_requested": "管理员要求更新推荐资料。",
         "approved": "管理员已批准；商家加入或完成关联后才会上线。",
+        "invited": "已邀请商家加入 MyWisata。",
+        "claimed": "商家已接受邀请并开始入驻。",
+        "onboarding": "商家正在完成入驻流程。",
+        "vendor_pending_review": "商家申请正在等待审核。",
         "rejected": "此推荐未获市场批准。",
         "converted": "商家已通过你的推荐加入，佣金归属已生效。"
       },
@@ -1264,6 +1273,19 @@
       "availableWithdraw": "可提现",
       "destination": "收款方式",
       "transactionHistory": "交易记录",
+      "transactionType": {
+        "topup": "钱包充值",
+        "spend": "购买",
+        "earnings": "收益",
+        "withdrawal_reserve": "已申请提款",
+        "withdrawal_cancel": "提款已退回",
+        "earnings_pending": "待结算收益",
+        "earnings_confirm": "收益已发放",
+        "earnings_reverse": "待结算收益已撤销",
+        "refund": "退款",
+        "adjustment_credit": "余额调整",
+        "adjustment_debit": "余额调整"
+      },
       "noTransactions": "暂无交易。",
       "noCompletedTransactions": "暂无已完成交易。",
       "viewReceipt": "查看收据",
@@ -1338,6 +1360,7 @@
     },
     "profileSections": {
       "contact": "联系方式",
+      "identityVerification": "身份验证",
       "email": "邮箱",
       "emailChangeHint": "更改邮箱需要通过新地址确认。",
       "phone": "电话",

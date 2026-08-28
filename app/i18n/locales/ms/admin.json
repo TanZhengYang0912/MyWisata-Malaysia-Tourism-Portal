@@ -17,6 +17,7 @@
     "Withdrawals": "Pengeluaran",
     "Refunds": "Bayaran balik",
     "Wallet Settings": "Tetapan dompet",
+    "Wallet Approvers": "Pelulus Dompet",
     "Payout Reports": "Laporan pembayaran",
     "Recommendations": "Cadangan",
     "Support Tickets": "Tiket sokongan",
@@ -641,6 +642,9 @@
       "selectReason": "Pilih sebab…"
     },
     "actions": {
+      "approve": "Diluluskan",
+      "reject": "Ditolak",
+      "request_info": "Maklumat diminta",
       "viewSide": "Lihat {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "Luluskan KYC",
       "automatedChecks": "Semakan automatik",
+      "assignedElsewhere": "Ditugaskan kepada penyemak lain",
+      "assignedElsewhereDescription": "Penyerahan ini kekal boleh dilihat, tetapi hanya penerima tugasan atau Pentadbir Super boleh membuat keputusan.",
       "back": "Belakang",
       "backToQueue": "Kembali ke Semakan KYC",
       "decision": "Keputusan semakan",
@@ -667,8 +673,12 @@
       "documentsDescription": "Buka dokumen yang dihantar dalam pemapar selamat jangka pendek.",
       "eyebrow": "Pengesahan identiti",
       "front": "Hadapan",
+      "identitySnapshot": "Identiti semasa penyerahan",
+      "identitySnapshotDescription": "Medan identiti sah ini direkodkan ketika pakej dokumen dicipta.",
+      "legalName": "Nama sah",
       "loading": "Memuatkan semakan KYC…",
       "noAutomatedChecks": "Tiada hasil semakan automatik tersedia untuk penyerahan ini.",
+      "noReviewHistory": "Belum ada keputusan semakan direkodkan.",
       "notFound": "Penyerahan KYC tidak ditemui",
       "ocrStatus": "Status OCR: {{status}}",
       "openDocument": "Buka {{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "Minta maklumat",
       "retry": "Cuba lagi",
       "review": "Semak",
+      "reviewHistory": "Sejarah semakan",
       "reviewedAt": "Disemak {{date}}",
       "reviewedBy": "Disemak oleh {{reviewer}}",
       "submission": "Penyerahan",
+      "snapshotEmail": "E-mel",
+      "snapshotPhone": "Telefon",
       "submittedAt": "Dihantar pada",
       "waitingDescription": "Pelanggan mesti menghantar maklumat yang diminta sebelum keputusan lain boleh dibuat.",
       "waitingTitle": "Menunggu pelanggan"
@@ -939,6 +952,17 @@
     "recommendations": {
       "allCategories": "Semua kategori",
       "allStates": "Semua negeri",
+      "allStatuses": "Semua status",
+      "assignedTo": "Ditugaskan kepada {{name}}",
+      "loadError": "Tidak dapat memuatkan cadangan.",
+      "noResults": "Tiada cadangan sepadan dengan penapis ini",
+      "queueDescription": "Buka satu cadangan untuk menyemak bukti lengkap dan membuat keputusan.",
+      "queueItems": "cadangan",
+      "queueTitle": "Baris gilir moderasi ({{count}})",
+      "queueTitle_one": "Baris gilir moderasi ({{count}})",
+      "queueTitle_other": "Baris gilir moderasi ({{count}})",
+      "unassigned": "Belum ditugaskan — membuka butiran akan menuntut semakan ini",
+      "sla": { "due_soon": "Hampir tamat · {{hours}}j", "overdue": "Lewat · {{hours}}j" },
       "batch": {
         "changesReasonPrompt": "Apakah yang perlu diubah untuk semua cadangan yang dipilih? (sekurang-kurangnya 10 aksara):",
         "processed": "{{count}} cadangan telah diproses.",
@@ -965,7 +989,11 @@
         "ariaLabel": "Penjelasan ganjaran cadangan",
         "completed": "{{cleared}} dijelaskan, {{reversed}} dibalikkan dan {{skipped}} dikekalkan belum selesai.",
         "description": "Memindahkan ganjaran tertunda tujuh hari kepada pendapatan tersedia hanya selepas kelulusan KYC. Pesanan yang dibatalkan atau dibayar balik akan dibalikkan secara automatik.",
+        "eyebrow": "Operasi kewangan",
         "error": "Tidak dapat menjelaskan ganjaran cadangan.",
+        "operationDescription": "Jalankan satu kitaran penjelasan idempoten. Keputusan moderasi kekal pada halaman butiran cadangan.",
+        "operationTitle": "Jelaskan ganjaran cadangan yang layak",
+        "operations": "Operasi ganjaran",
         "run": "Jalankan penjelasan ganjaran",
         "running": "Sedang dijalankan…",
         "title": "Penjelasan ganjaran cadangan"
@@ -1286,6 +1314,30 @@
       "listings_one": "{{count}} penyenaraian",
       "listings_other": "{{count}} penyenaraian"
     },
+    "walletApprovers": {
+      "active": "Akaun aktif",
+      "backToSettings": "Kembali ke tetapan dompet",
+      "currentDescription": "Setiap perubahan peranan memerlukan sebab dan pengesahan tersendiri.",
+      "currentTitle": "Pelulus semasa",
+      "description": "Urus individu yang boleh meluluskan pengeluaran dompet tanpa melemahkan perlindungan pelulus terakhir.",
+      "eyebrow": "Tadbir urus dompet",
+      "grant": "Berikan akses",
+      "grantDescription": "Pilih seorang pengguna aktif dan rekod sebab akses kelulusan diperlukan.",
+      "grantTitle": "Tambah pelulus dompet",
+      "inactive": "Akaun tidak aktif",
+      "loading": "Memuatkan pelulus dompet…",
+      "reasonCategories": {
+        "coverage_change": "Perubahan liputan",
+        "other": "Lain-lain",
+        "role_granted": "Peranan diberikan",
+        "role_revoked": "Peranan ditarik balik"
+      },
+      "reasonPlaceholder": "Terangkan sebab operasi bagi perubahan peranan ini.",
+      "revoke": "Tarik balik akses",
+      "selectUser": "Pilih pengguna aktif",
+      "title": "Pelulus dompet",
+      "userLabel": "Pengguna yang layak"
+    },
     "walletSettings": {
       "audit": {
         "category": "Kategori perubahan",
@@ -1373,6 +1425,7 @@
       "lastUpdated": "Kemas kini terakhir {{date}} MYT",
       "lastUpdatedBy": "Kemas kini terakhir {{date}} MYT oleh {{by}}",
       "loading": "Memuatkan tadbir urus dompet…",
+      "retry": "Cuba lagi",
       "policy": {
         "description": "Nilai ini digunakan pada permintaan dan ganjaran baharu. Permintaan sedia ada mengekalkan keadaan yang direkodkan.",
         "title": "Polisi pengeluaran"
@@ -1629,6 +1682,7 @@
         "approved": "Cadangan diluluskan.",
         "changesRequested": "Perubahan diminta.",
         "inviteSent": "Jemputan dihantar.",
+        "inviteStatusSyncFailed": "E-mel jemputan telah dihantar, tetapi status cadangan tidak dapat disegerakkan. Muat semula sebelum menghantar jemputan lain.",
         "rejected": "Cadangan ditolak."
       },
       "fields": {
@@ -1653,6 +1707,13 @@
       "openVendorManagement": "Buka Pengurusan Vendor",
       "photoAlt": "Foto penyerahan {{name}} {{number}}",
       "privateSubmissionNotice": "Data penyerahan peribadi. Gunakan hanya untuk penyederhanaan dan hubungan vendor yang diluluskan.",
+      "assignedElsewhere": "Ditugaskan kepada penyemak lain",
+      "assignedElsewhereHint": "Cadangan ini hanya boleh dibaca oleh anda. Super Admin boleh mengatasi tugasan jika perlu.",
+      "customerMessage": "Mesej yang kelihatan kepada pelanggan",
+      "decisionTimeline": "Garis masa keputusan",
+      "internalNote": "Nota dalaman",
+      "internalNoteHint": "Hanya kelihatan kepada pentadbir sah dan pembaca audit.",
+      "internalNotePlaceholder": "Konteks operasi pilihan yang tidak dihantar kepada pelanggan",
       "reasonPlaceholder": "Terangkan perkara yang perlu diketahui penyumbang (minimum 10 aksara)",
       "recommendationEvidence": "Bukti cadangan",
       "rejectionReason": "Sebab penolakan",
@@ -1895,10 +1956,14 @@
     "detail": {
       "amount": "Jumlah",
       "appKyc": "KYC aplikasi",
+      "backToQueue": "Kembali ke baris gilir pengeluaran",
       "eyebrow": "Semakan pengeluaran",
       "notSupplied": "Tidak dibekalkan",
       "overridden": "Diganti",
       "risk": "Risiko",
+      "reviewDescription": "Semak kesediaan, bukti kekal dan garis masa pembayaran lengkap sebelum mengambil satu tindakan terkawal.",
+      "reviewTitle": "Butiran semakan pengeluaran",
+      "retry": "Cuba lagi",
       "status": "Status",
       "unknown": "Tidak diketahui"
     },

@@ -103,6 +103,8 @@ export const PRIOR_TASK_FILES = [
   "components/admin/kyc-review-queue-row.tsx",
   "components/admin/segmented-filter.tsx",
   "components/admin/staff-conduct-filtering.ts",
+  "components/admin/withdrawal-review-detail.tsx",
+  "components/admin/withdrawal-review-queue-row.tsx",
 ] as const;
 
 /** Non-rendering code is inventory-visible but does not need a translation hook. */
@@ -123,7 +125,7 @@ const expectedComponentInventory = [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES].so
 const SURFACE_ASSERTIONS = {
   filters: ["components/admin/segmented-filter.tsx", "{item.label}"],
   counts: ["components/admin/recommendation-ai-review-panel.tsx", "issueCount"],
-  pagination: ["app/admin/recommendations/page.tsx", "pendingPageCount"],
+  pagination: ["app/admin/recommendations/page.tsx", "data.totalPages"],
   batch: ["components/admin/batch-action-bar.tsx", "batchActions."],
   actions: ["components/admin/approve-reject-bar.tsx", "actions.approve"],
   status: ["components/admin/user-management-drawer.tsx", "status"],
@@ -277,8 +279,8 @@ describe("admin component sitewide i18n contract", () => {
     expect(refunds).toMatch(/knownStatuses[\s\S]*"processed"/);
     expect(refunds).toContain('knownStatuses.has(value) ? value : "unknown"');
 
-    const withdrawals = read("app/admin/withdrawals/page.tsx");
-    expect(withdrawals).toContain('decisionReason(reasonAction, category)');
+    const withdrawals = read("components/admin/withdrawal-review-detail.tsx");
+    expect(withdrawals).toContain('decisionReason(activeReasonAction, category)');
     expect(withdrawals).not.toContain('allowedReasons.join(", ")');
   });
 });

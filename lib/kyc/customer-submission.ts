@@ -10,7 +10,7 @@ type CustomerSubmissionRow = {
   created_at: string;
   reviewed_at: string | null;
   review_reason_code: string | null;
-  review_reason_detail: string | null;
+  review_reason_detail?: string | null;
 };
 
 const SAFE_REASON_COPY: Record<KycReviewReasonCode, string> = {
@@ -19,7 +19,7 @@ const SAFE_REASON_COPY: Record<KycReviewReasonCode, string> = {
   document_mismatch: 'The document details could not be matched. Please check that the document belongs to you.',
   document_expired: 'Your document appears to be expired. Please submit a current, valid document.',
   document_suspected_tampering: 'We could not complete verification with this submission. Please contact support if you need help.',
-  other: 'We need more information to complete verification. Please review the reviewer note below.',
+  other: 'We need more information to complete verification. Please review the request and submit updated evidence.',
 };
 
 function isStatus(status: string): status is KycSubmissionStatus {
@@ -45,6 +45,6 @@ export function mapCustomerKycSubmission(row: CustomerSubmissionRow): CustomerKy
     submittedAt: row.created_at,
     reviewedAt: row.reviewed_at,
     reviewReasonCode: isReasonCode(row.review_reason_code) ? row.review_reason_code : null,
-    reviewReasonDetail: row.review_reason_detail,
+    reviewReasonDetail: null,
   };
 }

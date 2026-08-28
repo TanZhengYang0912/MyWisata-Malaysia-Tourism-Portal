@@ -1,7 +1,8 @@
 # ADR-029: KYC Submissions — Append-Only Event Log
 
-**Status:** Accepted  
-**PR:** 029 — `029_kyc_append_only.sql`
+**Status:** Amended
+**Original migration:** `029_kyc_append_only.sql`
+**Amendment:** `20260824221900_kyc_review_events.sql`
 
 ---
 
@@ -15,21 +16,33 @@ A secondary question: should the user's queue position (for pending review displ
 
 ## Decisions
 
-### Append-Only Event Sourcing (H2)
+### Mutable current snapshot plus append-only review evidence
 
-`kyc_submissions` rows are **never updated after insert**. Each event in the review lifecycle is a new row:
+The original ADR described `kyc_submissions` itself as an append-only event
+log. That is not the architecture implemented by the hardened submission and
+review RPCs: one submission row is updated from `draft` to `pending` and then
+to its review state.
 
-| Event | New row `status` |
-|---|---|
-| User submits documents | `pending` |
-| Admin requests correction | `info_requested` |
-| User resubmits | `pending` |
-| Admin approves | `approved` |
-| Admin rejects | `rejected` |
+The amended model makes that distinction explicit:
 
-The current KYC state for a user is the `status` of their most recent row (`ORDER BY created_at DESC LIMIT 1`). All previous rows remain as immutable history.
+- `kyc_submissions` is the mutable current snapshot for one document package;
+- legal name, email and phone are captured on that row at submission start and
+  protected from later mutation;
+- `kyc_review_events` is the append-only compliance record for every review
+  decision, including from/to status, action, actor, actor-role snapshot,
+  structured reason, internal note, customer message and time;
+- audit and notification writes remain in the same transaction as the state
+  transition and review event.
 
-**Why not UPDATE**: once a row is updated, the previous state is gone. If an admin accidentally approves the wrong user and the record is later disputed, there is no way to reconstruct what happened. Append-only makes every state transition permanent and auditable.
+This preserves the existing operational state machine without making the
+incorrect claim that the mutable submission row is event-sourced.
+
+### Review assignment
+
+Pending submissions are claimed with a compare-and-set operation. A normal KYC
+reviewer may decide only a submission assigned to them; a super-admin may
+override an assignment. Decisions identify both `submission_id` and `user_id`
+so an older detail page cannot accidentally decide a newer submission.
 
 ### One Active Submission Per User (D1)
 
@@ -54,15 +67,18 @@ queue_position = (SELECT COALESCE(MAX(queue_position), 0) + 1
 
 The position is taken under the same transaction that inserts the row. If a previous submission is approved or rejected, positions are not recomputed — they are ordinal insertion positions, not dense ranks. This is acceptable: "position 14 in queue" means "14th to arrive", which is still useful and requires no background job.
 
-### No Triggers
+### Triggers are integrity guards only
 
-State transitions are managed by SECURITY DEFINER RPCs (`submit_kyc`, `review_kyc_submission`), not triggers. Triggers fire invisibly and make the logic hard to trace; RPC calls appear in application logs and are unit-testable.
+State transitions remain explicit SECURITY DEFINER RPC calls. Triggers are
+used only to reject mutation/deletion of immutable review events and legal
+identity snapshot fields; they do not perform workflow transitions.
 
 ---
 
 ## Scope
 
-- **Migration**: partial UNIQUE index on `kyc_submissions`; `queue_position` column; `submit_kyc` and `review_kyc_submission` RPCs rewritten to append-only semantics; RLS: INSERT for authenticated users, SELECT for own rows or admin.
+- **Migration**: current submission snapshot, immutable legal identity fields,
+  append-only `kyc_review_events`, assignment CAS and atomic review RPC.
 - **`app/api/kyc/submit/route.ts`**: calls `submit_kyc` RPC, no direct INSERT.
 - **`app/api/admin/kyc/review/route.ts`**: calls `review_kyc_submission` RPC, no direct UPDATE.
 - Existing `app/api/kyc/upload/route.ts` is unaffected (storage upload, not status transitions).

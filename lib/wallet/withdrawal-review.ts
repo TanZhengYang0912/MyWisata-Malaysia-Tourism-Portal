@@ -1,5 +1,6 @@
 import type { WithdrawalRiskLevel } from './withdrawal-risk';
 import type { AdminSettlementProof } from '@/lib/payouts/settlement-proof';
+import type { WithdrawalAvailableAction } from './withdrawal-capabilities';
 
 export type { WithdrawalRiskLevel };
 
@@ -62,6 +63,7 @@ export type WithdrawalReviewDetail = {
     claimedAt: string | null;
   };
   settlementProof: AdminSettlementProof | null;
+  availableActions: WithdrawalAvailableAction[];
 };
 
 export type WithdrawalReviewLedgerRow = {

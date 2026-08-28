@@ -17,6 +17,7 @@
     "Withdrawals": "提现",
     "Refunds": "退款",
     "Wallet Settings": "钱包设置",
+    "Wallet Approvers": "钱包审批人",
     "Payout Reports": "提现报告",
     "Recommendations": "推荐",
     "Support Tickets": "支持工单",
@@ -641,6 +642,9 @@
       "selectReason": "选择原因…"
     },
     "actions": {
+      "approve": "已批准",
+      "reject": "已拒绝",
+      "request_info": "已请求补充信息",
       "viewSide": "查看 {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "批准 KYC",
       "automatedChecks": "自动检查",
+      "assignedElsewhere": "已分配给其他审核人",
+      "assignedElsewhereDescription": "你仍可查看此提交，但只有受理人或超级管理员可以作出决定。",
       "back": "背面",
       "backToQueue": "返回 KYC 审核",
       "decision": "审核决定",
@@ -667,8 +673,12 @@
       "documentsDescription": "在短时效安全查看器中打开已提交的证件。",
       "eyebrow": "身份验证",
       "front": "正面",
+      "identitySnapshot": "提交时身份",
+      "identitySnapshotDescription": "这些法定身份字段在创建此证件提交时已保存。",
+      "legalName": "法定姓名",
       "loading": "正在加载 KYC 审核…",
       "noAutomatedChecks": "此提交暂无自动检查结果。",
+      "noReviewHistory": "尚未记录审核决定。",
       "notFound": "找不到 KYC 提交",
       "ocrStatus": "OCR 状态：{{status}}",
       "openDocument": "打开{{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "请求补充信息",
       "retry": "重试",
       "review": "审核",
+      "reviewHistory": "审核历史",
       "reviewedAt": "审核于 {{date}}",
       "reviewedBy": "审核人：{{reviewer}}",
       "submission": "提交信息",
+      "snapshotEmail": "电子邮箱",
+      "snapshotPhone": "手机号",
       "submittedAt": "提交时间",
       "waitingDescription": "客户必须先提交所要求的信息，才能再次作出决定。",
       "waitingTitle": "等待客户"
@@ -937,6 +950,17 @@
     "recommendations": {
       "allCategories": "所有类别",
       "allStates": "所有州属",
+      "allStatuses": "所有状态",
+      "assignedTo": "已分配给 {{name}}",
+      "loadError": "无法加载推荐。",
+      "noResults": "没有符合筛选条件的推荐",
+      "queueDescription": "打开单条推荐，查看完整证据并作出决定。",
+      "queueItems": "推荐",
+      "queueTitle": "审核队列（{{count}}）",
+      "queueTitle_one": "审核队列（{{count}}）",
+      "queueTitle_other": "审核队列（{{count}}）",
+      "unassigned": "尚未分配——打开详情后将领取此审核",
+      "sla": { "due_soon": "即将到期 · {{hours}} 小时", "overdue": "已逾期 · {{hours}} 小时" },
       "batch": {
         "changesReasonPrompt": "所有选中的推荐需要修改什么？（至少 10 个字符）：",
         "processed": "已处理 {{count}} 条推荐。",
@@ -963,7 +987,11 @@
         "ariaLabel": "推荐奖励清算",
         "completed": "已清算 {{cleared}} 笔、冲销 {{reversed}} 笔，并保留 {{skipped}} 笔待处理。",
         "description": "仅在 KYC 获批后，才将等待七天的奖励转为可用收益。已取消或退款的订单会自动冲销。",
+        "eyebrow": "财务运营",
         "error": "无法清算推荐奖励。",
+        "operationDescription": "运行一次幂等清算。推荐审核决定仍在推荐详情页处理。",
+        "operationTitle": "清算符合条件的推荐奖励",
+        "operations": "奖励运营",
         "run": "运行奖励清算",
         "running": "运行中…",
         "title": "推荐奖励清算"
@@ -1284,6 +1312,30 @@
       "listings_one": "{{count}} 个商品",
       "listings_other": "{{count}} 个商品"
     },
+    "walletApprovers": {
+      "active": "账户正常",
+      "backToSettings": "返回钱包设置",
+      "currentDescription": "每次角色更改都必须单独填写理由并确认。",
+      "currentTitle": "当前审批人",
+      "description": "管理可以批准钱包提款的人员，同时保留最后一名审批人的安全保护。",
+      "eyebrow": "钱包治理",
+      "grant": "授予权限",
+      "grantDescription": "选择一名活跃用户，并记录授予审批权限的原因。",
+      "grantTitle": "添加钱包审批人",
+      "inactive": "账户未激活",
+      "loading": "正在加载钱包审批人…",
+      "reasonCategories": {
+        "coverage_change": "值班覆盖调整",
+        "other": "其他",
+        "role_granted": "授予角色",
+        "role_revoked": "撤销角色"
+      },
+      "reasonPlaceholder": "说明本次角色更改的运营原因。",
+      "revoke": "撤销权限",
+      "selectUser": "选择活跃用户",
+      "title": "钱包审批人",
+      "userLabel": "符合条件的用户"
+    },
     "walletSettings": {
       "audit": {
         "category": "更改类别",
@@ -1371,6 +1423,7 @@
       "lastUpdated": "最后更新：{{date}} MYT",
       "lastUpdatedBy": "最后由 {{by}} 于 {{date}} MYT 更新",
       "loading": "正在加载钱包治理…",
+      "retry": "重试",
       "policy": {
         "description": "这些数值适用于新的请求和奖励。现有请求保留其记录状态。",
         "title": "提款政策"
@@ -1627,6 +1680,7 @@
         "approved": "推荐已批准。",
         "changesRequested": "已要求修改。",
         "inviteSent": "邀请已发送。",
+        "inviteStatusSyncFailed": "邀请邮件已发送，但推荐状态无法同步。请刷新页面后再决定是否重新发送。",
         "rejected": "推荐已拒绝。"
       },
       "fields": {
@@ -1651,6 +1705,13 @@
       "openVendorManagement": "打开商家管理",
       "photoAlt": "{{name}} 提交的照片 {{number}}",
       "privateSubmissionNotice": "私人提交数据，仅用于审核和联系已批准的商家。",
+      "assignedElsewhere": "已分配给其他审核员",
+      "assignedElsewhereHint": "此推荐目前为只读；如有需要，超级管理员可以覆盖分配。",
+      "customerMessage": "顾客可见信息",
+      "decisionTimeline": "决定时间线",
+      "internalNote": "内部备注",
+      "internalNoteHint": "仅授权管理员和审计人员可见。",
+      "internalNotePlaceholder": "可选的运营背景，不会发送给顾客",
       "reasonPlaceholder": "说明提交者需要了解的内容（至少 10 个字符）",
       "recommendationEvidence": "推荐证据",
       "rejectionReason": "拒绝理由",
@@ -1922,10 +1983,14 @@
     "detail": {
       "amount": "金额",
       "appKyc": "应用 KYC",
+      "backToQueue": "返回提现队列",
       "eyebrow": "提现审核",
       "notSupplied": "未提供",
       "overridden": "已覆盖",
       "risk": "风险",
+      "reviewDescription": "在执行单一受管控操作前，审核准备状态、不可变证据及完整打款时间线。",
+      "reviewTitle": "提现审核详情",
+      "retry": "重试",
       "status": "状态",
       "unknown": "未知"
     },

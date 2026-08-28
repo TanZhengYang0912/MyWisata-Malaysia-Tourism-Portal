@@ -17,6 +17,7 @@
   --popover-foreground: #0f172a;
   --primary: #010066;
   --primary-foreground: #f8fafc;
+  --wallet-debit: #4f46e5;
   --secondary: #eef2ff;
   --secondary-foreground: #010066;
   --muted: #f1f5f9;
@@ -75,6 +76,7 @@
   --popover-foreground: #e8ecf5;
   --primary: #7c8bff;
   --primary-foreground: #0b1120;
+  --wallet-debit: #7c8bff;
   --secondary: #1d2740;
   --secondary-foreground: #c7d0ff;
   --muted: #1a2236;
@@ -143,6 +145,7 @@ html[data-font-size="larger"] {
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-wallet-debit: var(--wallet-debit);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

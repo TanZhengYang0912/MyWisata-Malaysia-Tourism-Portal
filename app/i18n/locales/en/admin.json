@@ -17,6 +17,7 @@
     "Withdrawals": "Withdrawals",
     "Refunds": "Refunds",
     "Wallet Settings": "Wallet Settings",
+    "Wallet Approvers": "Wallet Approvers",
     "Payout Reports": "Payout Reports",
     "Recommendations": "Recommendations",
     "Support Tickets": "Support Tickets",
@@ -641,6 +642,9 @@
       "selectReason": "Select a reason…"
     },
     "actions": {
+      "approve": "Approved",
+      "reject": "Rejected",
+      "request_info": "Requested information",
       "viewSide": "View {{side}}"
     },
     "confirm": {
@@ -658,6 +662,8 @@
     "detail": {
       "approve": "Approve KYC",
       "automatedChecks": "Automated checks",
+      "assignedElsewhere": "Assigned to another reviewer",
+      "assignedElsewhereDescription": "This submission remains visible, but only its assignee or a Super Admin can decide it.",
       "back": "Back",
       "backToQueue": "Back to KYC Review",
       "decision": "Review decision",
@@ -667,8 +673,12 @@
       "documentsDescription": "Open the submitted document in a short-lived secure viewer.",
       "eyebrow": "Identity verification",
       "front": "Front",
+      "identitySnapshot": "Identity at submission",
+      "identitySnapshotDescription": "These legal identity fields were captured when this document package was created.",
+      "legalName": "Legal name",
       "loading": "Loading KYC review…",
       "noAutomatedChecks": "No automated check result is available for this submission.",
+      "noReviewHistory": "No review decision has been recorded yet.",
       "notFound": "KYC submission not found",
       "ocrStatus": "OCR status: {{status}}",
       "openDocument": "Open {{side}}",
@@ -679,9 +689,12 @@
       "requestInfo": "Request information",
       "retry": "Try again",
       "review": "Review",
+      "reviewHistory": "Review history",
       "reviewedAt": "Reviewed {{date}}",
       "reviewedBy": "Reviewed by {{reviewer}}",
       "submission": "Submission",
+      "snapshotEmail": "Email",
+      "snapshotPhone": "Phone",
       "submittedAt": "Submitted at",
       "waitingDescription": "The customer must submit the requested information before another decision can be made.",
       "waitingTitle": "Waiting for customer"
@@ -939,6 +952,17 @@
     "recommendations": {
       "allCategories": "All categories",
       "allStates": "All states",
+      "allStatuses": "All statuses",
+      "assignedTo": "Assigned to {{name}}",
+      "loadError": "Unable to load recommendations.",
+      "noResults": "No recommendations match these filters",
+      "queueDescription": "Open one recommendation to review its complete evidence and make a decision.",
+      "queueItems": "recommendations",
+      "queueTitle": "Moderation queue ({{count}})",
+      "queueTitle_one": "Moderation queue ({{count}})",
+      "queueTitle_other": "Moderation queue ({{count}})",
+      "unassigned": "Unassigned — opening the detail claims this review",
+      "sla": { "due_soon": "Due soon · {{hours}}h", "overdue": "Overdue · {{hours}}h" },
       "batch": {
         "changesReasonPrompt": "What needs to be changed for all selected recommendations? (at least 10 characters):",
         "processed": "{{count}} recommendations processed.",
@@ -965,7 +989,11 @@
         "ariaLabel": "Recommendation reward clearing",
         "completed": "Cleared {{cleared}}, reversed {{reversed}}, and kept {{skipped}} pending.",
         "description": "Moves seven-day pending rewards to available earnings only after KYC approval. Cancelled or refunded orders are reversed automatically.",
+        "eyebrow": "Financial operations",
         "error": "Unable to clear recommendation rewards.",
+        "operationDescription": "Run one idempotent clearing cycle. Moderation decisions remain on the recommendation detail page.",
+        "operationTitle": "Clear eligible recommendation rewards",
+        "operations": "Reward operations",
         "run": "Run reward clearing",
         "running": "Running…",
         "title": "Recommendation reward clearing"
@@ -1286,6 +1314,30 @@
       "listings_one": "{{count}} listings",
       "listings_other": "{{count}} listings"
     },
+    "walletApprovers": {
+      "active": "Active account",
+      "backToSettings": "Back to wallet settings",
+      "currentDescription": "Each role change requires its own reason and confirmation.",
+      "currentTitle": "Current approvers",
+      "description": "Manage who can approve wallet withdrawals without weakening the last-approver safeguard.",
+      "eyebrow": "Wallet governance",
+      "grant": "Grant access",
+      "grantDescription": "Choose one active user and record why approval access is needed.",
+      "grantTitle": "Add a wallet approver",
+      "inactive": "Inactive account",
+      "loading": "Loading wallet approvers…",
+      "reasonCategories": {
+        "coverage_change": "Coverage change",
+        "other": "Other",
+        "role_granted": "Role granted",
+        "role_revoked": "Role revoked"
+      },
+      "reasonPlaceholder": "Describe the operational reason for this role change.",
+      "revoke": "Revoke access",
+      "selectUser": "Select an active user",
+      "title": "Wallet approvers",
+      "userLabel": "Eligible user"
+    },
     "walletSettings": {
       "audit": {
         "category": "Change category",
@@ -1373,6 +1425,7 @@
       "lastUpdated": "Last updated {{date}} MYT",
       "lastUpdatedBy": "Last updated {{date}} MYT by {{by}}",
       "loading": "Loading wallet governance…",
+      "retry": "Try again",
       "policy": {
         "description": "These values apply to new requests and rewards. Existing requests keep their recorded state.",
         "title": "Withdrawal policy"
@@ -1629,6 +1682,7 @@
         "approved": "Recommendation approved.",
         "changesRequested": "Changes requested.",
         "inviteSent": "Invite sent.",
+        "inviteStatusSyncFailed": "The invitation email was sent, but the recommendation status could not be synchronized. Refresh before sending another invite.",
         "rejected": "Recommendation rejected."
       },
       "fields": {
@@ -1653,6 +1707,13 @@
       "openVendorManagement": "Open Vendor Management",
       "photoAlt": "{{name}} submission photo {{number}}",
       "privateSubmissionNotice": "Private submission data. Use only for moderation and approved vendor outreach.",
+      "assignedElsewhere": "Assigned to another reviewer",
+      "assignedElsewhereHint": "This recommendation is read-only for you. A Super Admin can override the assignment when necessary.",
+      "customerMessage": "Customer-visible message",
+      "decisionTimeline": "Decision timeline",
+      "internalNote": "Internal note",
+      "internalNoteHint": "Visible only to authorized administrators and audit readers.",
+      "internalNotePlaceholder": "Optional operational context that must not be sent to the customer",
       "reasonPlaceholder": "Explain what the contributor needs to know (minimum 10 characters)",
       "recommendationEvidence": "Recommendation evidence",
       "rejectionReason": "Rejection reason",
@@ -1897,10 +1958,14 @@
     "detail": {
       "amount": "Amount",
       "appKyc": "App KYC",
+      "backToQueue": "Back to withdrawal queue",
       "eyebrow": "Withdrawal review",
       "notSupplied": "Not supplied",
       "overridden": "Overridden",
       "risk": "Risk",
+      "reviewDescription": "Review readiness, immutable evidence and the complete payout timeline before taking one governed action.",
+      "reviewTitle": "Withdrawal review detail",
+      "retry": "Retry",
       "status": "Status",
       "unknown": "Unknown"
     },

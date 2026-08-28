@@ -1,6 +1,7 @@
-import type { AdminKycSubmission } from '@/backend/core/types';
+import type { AdminKycSubmission, AdminKycSubmissionDetail } from '@/backend/core/types';
 
 export const ADMIN_KYC_SUBMISSION_SELECT = 'id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side),kyc_ocr_results(status,holder_name,document_number_last4,expiry_date,confidence,mismatch_fields,processed_at)';
+export const ADMIN_KYC_SUBMISSION_DETAIL_SELECT = `assigned_to,claimed_at,legal_name_snapshot,email_snapshot,phone_snapshot,identity_snapshot_captured_at,${ADMIN_KYC_SUBMISSION_SELECT}`;
 
 export type AdminKycSubmissionRow = {
   id: string;
@@ -51,5 +52,28 @@ export function mapAdminKycSubmission(row: AdminKycSubmissionRow): AdminKycSubmi
           processedAt: ocr.processed_at,
         }
       : null,
+  };
+}
+
+export type AdminKycSubmissionDetailRow = AdminKycSubmissionRow & {
+  assigned_to: string | null;
+  claimed_at: string | null;
+  legal_name_snapshot: string | null;
+  email_snapshot: string | null;
+  phone_snapshot: string | null;
+  identity_snapshot_captured_at: string | null;
+};
+
+export function mapAdminKycSubmissionDetail(row: AdminKycSubmissionDetailRow): AdminKycSubmissionDetail {
+  return {
+    ...mapAdminKycSubmission(row),
+    assignedTo: row.assigned_to ?? null,
+    claimedAt: row.claimed_at ?? null,
+    legalIdentity: {
+      fullName: row.legal_name_snapshot ?? null,
+      email: row.email_snapshot ?? null,
+      phone: row.phone_snapshot ?? null,
+      capturedAt: row.identity_snapshot_captured_at ?? null,
+    },
   };
 }

@@ -21,9 +21,24 @@ export async function GET(
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: isAdmin, error: roleError } = await db.rpc('is_admin', { uid: user.id });
-  if (roleError || !isAdmin) return apiFail('FORBIDDEN', 'Admin access required', 403);
+  const { data: canReview, error: roleError } = await db.rpc('can_review_recommendation', { uid: user.id });
+  if (roleError || canReview !== true) return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
   const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
+  const { data: assignmentData, error: assignmentError } = await db.rpc('claim_recommendation_review', {
+    p_recommendation_id: id,
+  });
+  if (assignmentError) {
+    if (assignmentError.message.includes('recommendation_not_found')) {
+      return apiFail('NOT_FOUND', 'Recommendation not found', 404);
+    }
+    return apiFail('ASSIGNMENT_FAILED', 'Unable to claim recommendation review', 409);
+  }
+  const assignment = assignmentData as {
+    assignedTo: string | null;
+    claimedAt: string | null;
+    isAssignedToActor: boolean;
+    canDecide: boolean;
+  };
 
   const service = createServiceClient();
   const { data: recommendation, error: recommendationError } = await service
@@ -34,7 +49,8 @@ export async function GET(
       formatted_address, latitude, longitude, contact_phone, contact_email,
       contact_website, image_attested_at, status, reviewer_id, reviewed_at,
       rejection_reason, changes_requested_at, changes_requested_reason,
-      converted_vendor_id, suggested_place_id, resolved_place_id, created_at, categories(name)
+      converted_vendor_id, suggested_place_id, resolved_place_id,
+      assigned_to, claimed_at, created_at, categories(name)
     `)
     .eq('id', id)
     .maybeSingle();
@@ -44,14 +60,21 @@ export async function GET(
   }
 
   const row = recommendation as unknown as RecommendationDetailRow;
-  const userIds = [row.recommender_id, row.reviewer_id].filter(
+  const userIds = [row.recommender_id, row.reviewer_id, row.assigned_to].filter(
     (value): value is string => Boolean(value),
   );
   const placeIds = isSuperAdmin ? [row.suggested_place_id, row.resolved_place_id].filter(
     (value): value is string => Boolean(value),
   ) : [];
 
-  const [{ data: users }, { data: imageRows }, convertedVendorResult, { data: places }, { data: translations }] = await Promise.all([
+  const [
+    { data: users },
+    { data: imageRows },
+    convertedVendorResult,
+    { data: places },
+    { data: translations },
+    { data: reviewEventRows, error: reviewEventsError },
+  ] = await Promise.all([
     userIds.length > 0
       ? service.from('users').select('id,full_name,email,kyc_status').in('id', userIds)
       : Promise.resolve({ data: [] }),
@@ -77,7 +100,21 @@ export async function GET(
       .in('field', ['name', 'description'])
       .order('created_at', { ascending: true })
       : Promise.resolve({ data: [] }),
+    service
+      .from('recommendation_review_events')
+      .select(`
+        id, from_status, to_status, action, actor_id, actor_role,
+        internal_note, customer_message, created_at,
+        users!recommendation_review_events_actor_id_fkey(full_name)
+      `)
+      .eq('recommendation_id', id)
+      .order('created_at', { ascending: true }),
   ]);
+
+  if (reviewEventsError) {
+    console.error('[admin-recommendation-detail] review evidence unavailable', { recommendationId: id });
+    return apiFail('EVIDENCE_FAILED', 'Unable to load recommendation review evidence', 500);
+  }
 
   const signedImages = await Promise.all(
     ((imageRows ?? []) as Array<{
@@ -88,7 +125,7 @@ export async function GET(
     }>).map(async (image) => {
       const { data } = await service.storage
         .from('recommendation-images')
-        .createSignedUrl(image.storage_path, 3600);
+        .createSignedUrl(image.storage_path, 600);
       return data?.signedUrl ? {
         id: image.id,
         sort_order: image.sort_order,
@@ -104,6 +141,27 @@ export async function GET(
     email: string | null;
     kyc_status: string | null;
   }>;
+  const reviewEvents = ((reviewEventRows ?? []) as unknown as Array<{
+    id: string;
+    from_status: string;
+    to_status: string;
+    action: 'approve' | 'request_changes' | 'reject';
+    actor_id: string | null;
+    actor_role: string;
+    internal_note: string | null;
+    customer_message: string;
+    created_at: string;
+    users: { full_name: string | null } | Array<{ full_name: string | null }> | null;
+  }>).map((event) => {
+    const actor = Array.isArray(event.users) ? event.users[0] : event.users;
+    return {
+      ...event,
+      actor_name: actor?.full_name ?? null,
+    };
+  });
+  const availableActions: Array<'approve' | 'request_changes' | 'reject'> = assignment.canDecide
+    ? ['approve', 'request_changes', 'reject']
+    : [];
 
   return apiOk(buildAdminRecommendationDetail({
     recommendation: row,
@@ -121,5 +179,8 @@ export async function GET(
       translated_text: string;
       status: 'draft' | 'approved' | 'rejected' | 'stale';
     }>,
+    assignment,
+    availableActions,
+    reviewEvents,
   }));
 }

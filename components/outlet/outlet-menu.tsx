@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } from "lucide-react";
-import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -28,7 +29,7 @@ function fallbackImage(categoryLabel: string, photoComingSoon: string) {
 export function OutletProductCard({ outlet, product }: { outlet: OutletRendererOutlet; product: OutletRendererProduct }) {
   const { t } = useTranslation("customer");
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { addItem } = useCart();
   const [working, setWorking] = useState<"add" | "buy" | null>(null);
   const [added, setAdded] = useState(false);
@@ -58,10 +59,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
   async function handleAction(kind: "add" | "buy") {
     if (action.kind !== "cart") return;
-    if (!currentUser) {
-      router.push(`/login?next=${encodeURIComponent(`/customer/outlet/${outlet.id}`)}`);
-      return;
-    }
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
 
     setWorking(kind);
     setError(null);

@@ -9,6 +9,8 @@ import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 export function ExperienceBookingSidebar({
   experience,
@@ -22,6 +24,7 @@ export function ExperienceBookingSidebar({
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { addItem } = useCart();
+  const gate = useCustomerCapabilityGate();
   const trip = useTrip();
   const [tripAdded, setTripAdded] = useState(false);
   const [variantId, setVariantId] = useState<string>(experience.variants[0]?.id ?? "");
@@ -42,6 +45,7 @@ export function ExperienceBookingSidebar({
 
   async function handleAddToCart() {
     if (adding || (experience.requiresBooking && !slotId)) return;
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
     setAdding(true);
     try {
       await addItem({

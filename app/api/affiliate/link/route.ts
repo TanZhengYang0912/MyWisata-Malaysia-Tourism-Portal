@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   // Reads the same platform_settings value lib/affiliate/redirect.ts enforces
   // (getMonthlyClickCap) — was hardcoded 50 here while the redirect enforced
   // a different hardcoded 50, two numbers that could only agree by accident.
-  const clicksPerMonth = full ? null : await getMonthlyClickCap(supabase);
+  const clicksPerMonth = full ? null : await getMonthlyClickCap(createServiceClient());
   return apiOk({
     affiliateCode: link.affiliateCode,
     affiliateUrl: affiliateUrl(origin, link.affiliateCode),
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
   const { link, created } = result;
   const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
-  const clicksPerMonth = full ? null : await getMonthlyClickCap(supabase);
+  const clicksPerMonth = full ? null : await getMonthlyClickCap(createServiceClient());
   return apiOk(
     {
       affiliateCode: link.affiliateCode,

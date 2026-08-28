@@ -19,6 +19,8 @@ import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { guestLoginHref } from "@/lib/auth/guest-mode";
+import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -37,7 +39,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 }
 
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useRequireRole(["customer"]);
+  const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const { count } = useCart();
   const { savedIds } = useWishlist();
   const { savedStates } = useSavedDestinations();
@@ -153,17 +155,21 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     window.location.assign("/login");
   }
 
-  if (loading || !currentUser) {
+  const guestPublic = !currentUser && isPublicCustomerPath(pathname);
+  if (loading || (!currentUser && !guestPublic)) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
-  const customerDisplayName = getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"));
+  const customerDisplayName = currentUser
+    ? getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"))
+    : tCommon("account.guestMenu");
+  const guestSafeHref = (href: string) => currentUser || isPublicCustomerPath(href.split("?")[0]) ? href : guestLoginHref(href);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
-          <Link href="/customer" className="flex items-center gap-2 shrink-0">
+            <Link href={currentUser ? "/customer" : "/customer/explore"} className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
               <Globe size={16} className="text-white" />
             </div>
@@ -174,7 +180,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             {CUSTOMER_NAV.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={guestSafeHref(item.href)}
                 className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
@@ -228,7 +234,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               className="flex items-center gap-2 rounded-full border border-border bg-card/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                {currentUser.avatarInitial}
+                {currentUser?.avatarInitial ?? "G"}
               </span>
               <span className="hidden max-w-28 truncate text-xs font-semibold text-foreground lg:inline">{customerDisplayName}</span>
               <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
@@ -252,7 +258,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               >
                 <div className="border-b border-border px-3 pb-3 pt-2">
                   <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser.email}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser?.email ?? tCommon("account.guestMenu")}</p>
                 </div>
                 <div className="pt-2">
                   {ACCOUNT_MENU_GROUPS.map((group) => (
@@ -263,7 +269,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                         return (
                           <Link
                             key={item.href}
-                            href={item.href}
+                            href={guestSafeHref(item.href)}
                             role="menuitem"
                             aria-current={active ? "page" : undefined}
                             onClick={() => setAccountMenuOpen(false)}
@@ -307,7 +313,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={guestSafeHref(item.href)}
               className="relative flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}

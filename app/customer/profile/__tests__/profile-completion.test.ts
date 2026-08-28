@@ -2,13 +2,32 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('profile completion display contract', () => {
-  it('renders the field-based percentage separately from wizard progress', () => {
+  it('renders one server-derived verification progress story at a time', () => {
     const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
 
-    expect(page).toContain('computeProfileCompletion');
-    expect(page).toContain('t("ui.profileWizard.completion")');
-    expect(page).toContain('aria-valuenow');
+    expect(page).not.toContain('computeProfileCompletion');
+    expect(page).toContain('profile.verification');
     expect(page).toContain('wizardProgress.percentage');
-    expect(page).toContain('profileCompletion.percentage');
+    expect(page).not.toContain('profileCompletion.percentage');
+    expect(page).not.toContain('<ProfileCompletionCard');
+  });
+
+  it('reuses the shared identity and bio schemas in wizard and settings', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+    const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
+
+    expect(page).toContain('identitySchema.safeParse');
+    expect(page).toContain('bioSchema.safeParse');
+    expect(sections).toContain('identitySchema.safeParse');
+    expect(sections).toContain('bioSchema.safeParse');
+  });
+
+  it('uses a neutral identity verification heading for every KYC status', () => {
+    const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
+    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+
+    expect(sections).toContain('tCustomer("ui.profileSections.identityVerification")');
+    expect(sections).not.toContain('title={tCustomer("ui.kyc.verified")}');
+    expect(kycPage).toContain('title={tCustomer("ui.profileSections.identityVerification")}');
   });
 });

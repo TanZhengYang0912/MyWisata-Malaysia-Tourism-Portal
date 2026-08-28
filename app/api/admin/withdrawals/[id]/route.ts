@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import type { WithdrawalReviewDetail } from '@/lib/wallet/withdrawal-review';
+import { deriveWithdrawalAvailableActions } from '@/lib/wallet/withdrawal-capabilities';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function GET(
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const { data: isApprover, error: roleError } = await db.rpc('is_approver', { uid: user.id });
   if (roleError || !isApprover) return apiFail('FORBIDDEN', 'Wallet Approver access required', 403);
+  const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
 
   // Fetch withdrawal with safe joined fields only. Explicitly excludes KYC document paths,
   // IC/passport numbers, raw bank account details and Stripe secrets.
@@ -151,6 +153,12 @@ export async function GET(
       claimedAt: r.payout_execution_claimed_at as string | null,
     },
     settlementProof: proofData as WithdrawalReviewDetail['settlementProof'] ?? null,
+    availableActions: deriveWithdrawalAvailableActions({
+      status: r.status as string,
+      riskLevel: (risk?.risk_level as 'low' | 'review' | 'high') ?? 'low',
+      riskOverridden: risk?.overridden_at != null,
+      isSuperAdmin: isSuperAdmin === true,
+    }),
   };
 
   return apiOk(detail);

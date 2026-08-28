@@ -2,14 +2,26 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('admin recommendation detail workflow', () => {
-  it('routes both queues to one detail page and keeps batch review actions on the list', () => {
+  it('uses the shared admin page shell without page-level spacing overrides', () => {
+    const page = readFileSync('app/admin/recommendations/[id]/page.tsx', 'utf8');
+    const detail = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
+
+    expect(page).toContain('<AdminPageShell>');
+    expect(page).not.toContain('className="p-0');
+    expect(detail).not.toContain('className="p-6 sm:p-8"');
+  });
+
+  it('routes queue rows to one detail page without browser-side batch decisions', () => {
     const source = readFileSync('app/admin/recommendations/page.tsx', 'utf8');
 
     expect(source).toContain('/admin/recommendations/${r.id}');
     expect(source).toContain('t("ui.actions.viewDetails")');
     expect(source).not.toContain('ApproveRejectBar');
-    expect(source).toContain('AdminBatchActionBar');
-    expect(source).toContain('/api/admin/recommendations/review');
+    expect(source).not.toContain('AdminBatchActionBar');
+    expect(source).not.toContain('getVendorRecommendations');
+    expect(source).not.toContain('/api/admin/recommendations/review');
+    expect(source).toContain('/api/admin/recommendations?');
+    expect(source).toContain('/admin/recommendations/rewards');
   });
 
   it('shows the complete evidence and keeps actions on the detail view', () => {
@@ -35,7 +47,7 @@ describe('admin recommendation detail workflow', () => {
     expect(panel).toContain('onUseReason');
     expect(detail).toContain('handleAiReason');
     expect(detail).toContain('setAction(suggestedAction)');
-    expect(detail).toContain('setReason(feedbackDraft)');
+    expect(detail).toContain('setCustomerMessage(feedbackDraft)');
     expect(panel).not.toContain('/api/admin/recommendations/review');
   });
 
@@ -104,7 +116,7 @@ describe('admin recommendation detail workflow', () => {
     expect(handlerStart).toBeGreaterThanOrEqual(0);
     expect(handlerEnd).toBeGreaterThan(handlerStart);
     expect(handler).toContain('setAction(suggestedAction)');
-    expect(handler).toContain('setReason(feedbackDraft)');
+    expect(handler).toContain('setCustomerMessage(feedbackDraft)');
     expect(handler).toContain('setConfirmOpen(false)');
     expect(handler).toContain('setError(null)');
     expect(handler).toContain('requestAnimationFrame');
@@ -117,7 +129,16 @@ describe('admin recommendation detail workflow', () => {
     const source = readFileSync('app/api/admin/recommendations/review/route.ts', 'utf8');
 
     expect(source).toContain("['reject', 'request_changes'].includes(action)");
-    expect(source).toContain("reason.trim().length < 10");
+    expect(source).toContain("customerMessage.trim().length < 10");
+  });
+
+  it('keeps internal notes separate from customer-visible decision messages', () => {
+    const source = readFileSync('components/admin/recommendation-detail-view.tsx', 'utf8');
+
+    expect(source).toContain('internalNote');
+    expect(source).toContain('customerMessage');
+    expect(source).toContain('detail.availableActions');
+    expect(source).toContain('detail.reviewEvents');
   });
 
   it('keeps geographic resolution and translation review in the protected detail screen', () => {

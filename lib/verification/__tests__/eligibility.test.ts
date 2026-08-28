@@ -5,6 +5,7 @@ import {
   canSubmitRecommendation,
   canWithdraw,
   computeProfileCompletion,
+  computeProfileVerification,
 } from '../eligibility';
 
 const completeProfile = {
@@ -41,6 +42,34 @@ describe('computeProfileCompletion', () => {
       percentage: 20,
       missing: ['full_name', 'avatar', 'bio', 'city'],
       complete: false,
+    });
+  });
+});
+
+describe('computeProfileVerification', () => {
+  it('keeps verification progress separate from profile richness', () => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      phoneVerified: false,
+      surveyComplete: true,
+    })).toEqual({
+      complete: false,
+      percentage: 80,
+      completedSteps: ['identity', 'avatar', 'bio', 'survey'],
+      currentStep: 'phone',
+    });
+  });
+
+  it('only completes after every verification step is satisfied', () => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      phoneVerified: true,
+      surveyComplete: true,
+    })).toEqual({
+      complete: true,
+      percentage: 100,
+      completedSteps: ['phone', 'identity', 'avatar', 'bio', 'survey'],
+      currentStep: null,
     });
   });
 });

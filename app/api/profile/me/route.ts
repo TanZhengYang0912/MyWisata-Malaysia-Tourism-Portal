@@ -22,7 +22,7 @@ export async function GET() {
       .maybeSingle(),
     supabase
       .from("kyc_submissions")
-      .select("status,review_reason_code,review_reason_detail,reviewed_at,created_at")
+      .select("status,review_reason_code,reviewed_at,created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),

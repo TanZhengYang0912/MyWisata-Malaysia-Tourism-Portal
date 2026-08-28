@@ -3,27 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   rpc: vi.fn(),
-  auditAndNotify: vi.fn(),
   serviceFrom: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({
-            data: {
-              recommender_id: '22222222-2222-4222-8222-222222222222',
-              vendor_name: 'Kedai Amanah',
-              status: 'pending',
-            },
-            error: null,
-          }),
-        }),
-      }),
-    }),
     rpc: mocks.rpc,
   }),
 }));
@@ -35,24 +20,32 @@ vi.mock('@/lib/supabase/service', () => ({
   }),
 }));
 
-vi.mock('@/lib/audit', () => ({
-  auditAndNotify: mocks.auditAndNotify,
-}));
-
 const { POST } = await import('../review/route');
 
 describe('POST /api/admin/recommendations/review', () => {
   beforeEach(() => {
     mocks.getUser.mockReset();
     mocks.rpc.mockReset();
-    mocks.auditAndNotify.mockReset();
     mocks.serviceFrom.mockReset();
 
     mocks.getUser.mockResolvedValue({
       data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
     });
-    mocks.rpc.mockResolvedValue({ data: null, error: null });
-    mocks.auditAndNotify.mockResolvedValue({ notification_count: 1 });
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'can_review_recommendation') return { data: true, error: null };
+      if (name === 'admin_review_recommendation') {
+        return {
+          data: {
+            recommendationId: '33333333-3333-4333-8333-333333333333',
+            status: 'approved',
+            recommenderId: '22222222-2222-4222-8222-222222222222',
+            vendorName: 'Kedai Amanah',
+          },
+          error: null,
+        };
+      }
+      return { data: null, error: null };
+    });
   });
 
   it('enqueues an idempotent email after approving a recommendation', async () => {
@@ -89,15 +82,12 @@ describe('POST /api/admin/recommendations/review', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.auditAndNotify).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: 'recommendation_approved',
-          metadata: { vendorName: 'Kedai Amanah' },
-        }),
-      ]),
-    );
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation', {
+      p_rec_id: '33333333-3333-4333-8333-333333333333',
+      p_action: 'approve',
+      p_internal_note: null,
+      p_customer_message: null,
+    });
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
       event_key: 'recommendation_approved:33333333-3333-4333-8333-333333333333',
       user_id: '22222222-2222-4222-8222-222222222222',
@@ -107,5 +97,65 @@ describe('POST /api/admin/recommendations/review', () => {
       onConflict: 'event_key',
       ignoreDuplicates: true,
     }));
+  });
+
+  it('rejects callers without the recommendation review capability before loading the submission', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: false, error: null });
+
+    const response = await POST(new Request('http://localhost/api/admin/recommendations/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recommendationId: '33333333-3333-4333-8333-333333333333',
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', {
+      uid: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+
+  it('sends internal notes and customer messages as separate RPC fields', async () => {
+    const response = await POST(new Request('http://localhost/api/admin/recommendations/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recommendationId: '33333333-3333-4333-8333-333333333333',
+        action: 'request_changes',
+        internalNote: 'Possible duplicate; compare before next review.',
+        customerMessage: 'Please add a clearer storefront photo.',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_review_recommendation', {
+      p_rec_id: '33333333-3333-4333-8333-333333333333',
+      p_action: 'request_changes',
+      p_internal_note: 'Possible duplicate; compare before next review.',
+      p_customer_message: 'Please add a clearer storefront photo.',
+    });
+  });
+
+  it('does not expose raw database errors to the reviewer', async () => {
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'can_review_recommendation') return { data: true, error: null };
+      return { data: null, error: { message: 'sensitive schema and function stack' } };
+    });
+
+    const response = await POST(new Request('http://localhost/api/admin/recommendations/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recommendationId: '33333333-3333-4333-8333-333333333333',
+        action: 'approve',
+      }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(body)).not.toContain('sensitive schema and function stack');
   });
 });

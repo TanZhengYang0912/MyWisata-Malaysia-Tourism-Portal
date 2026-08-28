@@ -45,9 +45,10 @@ function mapSettings(rows: Array<{ key: string; value: string; updated_at?: stri
 }
 
 export async function GET() {
-  const { db, response } = await requireSuperAdmin();
+  const { response } = await requireSuperAdmin();
   if (response) return response;
-  const { data, error } = await db.from('platform_settings').select('key,value,updated_at,updated_by').in('key', Object.values(KEYS));
+  const service = createServiceClient();
+  const { data, error } = await service.from('platform_settings').select('key,value,updated_at,updated_by').in('key', Object.values(KEYS));
   if (error) return apiFail('SETTINGS_LOAD_FAILED', 'Unable to load wallet settings', 500);
   return apiOk(mapSettings((data ?? []) as Array<{ key: string; value: string; updated_at?: string | null; updated_by?: string | null }>));
 }

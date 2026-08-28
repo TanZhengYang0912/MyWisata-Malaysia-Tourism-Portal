@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_MENU_GROUPS,
@@ -27,6 +29,7 @@ describe("customer header navigation", () => {
       "/customer/profile",
       "/customer/notifications",
       "/customer/preferences",
+      "/customer/orders",
       "/customer/vouchers",
       "/customer/wallet",
       "/customer/kyc",
@@ -61,5 +64,17 @@ describe("customer header navigation", () => {
     expect(isCustomerNavActive("/customer/explore", "/customer")).toBe(false);
     expect(isCustomerNavActive("/customer/partners", "/customer")).toBe(false);
     expect(isCustomerNavActive("/customer/trip", "/customer")).toBe(false);
+  });
+
+  it("localizes the reused My Orders account entry", () => {
+    const locales = {
+      en: JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/en/customer.json"), "utf8")),
+      "zh-CN": JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/zh-CN/customer.json"), "utf8")),
+      ms: JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/ms/customer.json"), "utf8")),
+    };
+
+    expect(locales.en.accountItems.orders).toEqual({ label: "My Orders", description: "Purchases, bookings and receipts" });
+    expect(locales["zh-CN"].accountItems.orders).toEqual({ label: "我的订单", description: "购买、预订和收据" });
+    expect(locales.ms.accountItems.orders).toEqual({ label: "Pesanan Saya", description: "Pembelian, tempahan dan resit" });
   });
 });

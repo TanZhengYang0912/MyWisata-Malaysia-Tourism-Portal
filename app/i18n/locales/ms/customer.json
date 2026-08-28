@@ -68,6 +68,10 @@
       "label": "Keutamaan",
       "description": "Laraskan suapan cadangan anda"
     },
+    "orders": {
+      "label": "Pesanan Saya",
+      "description": "Pembelian, tempahan dan resit"
+    },
     "wallet": {
       "label": "Dompet",
       "description": "Baki dan pembayaran keluar"
@@ -1058,6 +1062,7 @@
       "notEditable": "Cadangan yang menunggu semakan tidak boleh diedit.",
       "updateDetails": "Kemas kini butiran yang diminta",
       "viewContributor": "Lihat profil penyumbang",
+      "viewVendor": "Lihat vendor",
       "myRecommendations": "Cadangan saya",
       "noneYet": "Anda belum mencadangkan sebarang vendor.",
       "makeFirst": "Buat cadangan pertama anda →",
@@ -1073,6 +1078,10 @@
         "pending": "Pentadbir sedang menyemak cadangan dan butiran vendor.",
         "changes_requested": "Pentadbir meminta butiran cadangan dikemas kini.",
         "approved": "Pentadbir telah meluluskan; vendor masih perlu menyertai atau dipautkan sebelum disiarkan.",
+        "invited": "Vendor telah dijemput untuk menyertai MyWisata.",
+        "claimed": "Vendor telah menerima jemputan dan memulakan proses penyertaan.",
+        "onboarding": "Vendor sedang melengkapkan proses penyertaan.",
+        "vendor_pending_review": "Permohonan vendor sedang menunggu semakan.",
         "rejected": "Cadangan ini tidak diluluskan untuk pasaran.",
         "converted": "Vendor menyertai melalui cadangan anda dan atribusi komisen kini aktif."
       },
@@ -1264,6 +1273,19 @@
       "availableWithdraw": "Boleh dikeluarkan",
       "destination": "Destinasi",
       "transactionHistory": "Sejarah Transaksi",
+      "transactionType": {
+        "topup": "Tambah nilai dompet",
+        "spend": "Pembelian",
+        "earnings": "Pendapatan",
+        "withdrawal_reserve": "Pengeluaran diminta",
+        "withdrawal_cancel": "Pengeluaran dikembalikan",
+        "earnings_pending": "Pendapatan belum selesai",
+        "earnings_confirm": "Pendapatan dilepaskan",
+        "earnings_reverse": "Pendapatan belum selesai dibalikkan",
+        "refund": "Bayaran balik",
+        "adjustment_credit": "Pelarasan baki",
+        "adjustment_debit": "Pelarasan baki"
+      },
       "noTransactions": "Tiada transaksi lagi.",
       "noCompletedTransactions": "Tiada transaksi selesai lagi.",
       "viewReceipt": "Lihat resit",
@@ -1338,6 +1360,7 @@
     },
     "profileSections": {
       "contact": "Butiran hubungan",
+      "identityVerification": "Pengesahan identiti",
       "email": "E-mel",
       "emailChangeHint": "Perubahan e-mel memerlukan pengesahan daripada alamat baharu.",
       "phone": "Telefon",

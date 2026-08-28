@@ -30,7 +30,7 @@ type Props = {
   sendLabel?: string;
   linkHint?: string;
   onClose: () => void;
-  onSent: (id: string) => void;
+  onSent: (id: string, data: unknown) => void;
 };
 
 export function AiDraftEmailModal({
@@ -112,12 +112,15 @@ export function AiDraftEmailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...extraBody, email: email.trim(), subject: subject.trim(), body: body.trim() }),
       });
-      const responseBody = (await res.json()) as { error: { message: string } | null };
+      const responseBody = (await res.json()) as {
+        data: unknown;
+        error: { message: string } | null;
+      };
       if (!res.ok) {
         setSendError(responseBody.error?.message ?? t("email.draft.errors.sendFailed"));
         return;
       }
-      onSent(target.id);
+      onSent(target.id, responseBody.data);
     } catch {
       setSendError(t("email.draft.errors.sendFailed"));
     } finally {

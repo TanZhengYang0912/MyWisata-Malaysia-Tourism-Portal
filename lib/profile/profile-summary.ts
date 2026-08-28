@@ -1,5 +1,6 @@
 import type { ProfileSummary, User } from "@/backend/core/types";
 import { normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
+import { computeProfileCompletion, computeProfileVerification } from "@/lib/verification/eligibility";
 
 export type ProfileRow = {
   id: string;
@@ -29,7 +30,7 @@ export type PreferenceRow = {
 export type KycReviewRow = {
   status: string;
   review_reason_code: string | null;
-  review_reason_detail: string | null;
+  review_reason_detail?: string | null;
   reviewed_at: string | null;
   created_at: string;
 };
@@ -52,7 +53,7 @@ function latestReview(rows: KycReviewRow[]): ProfileSummary["latestKycReview"] {
   return {
     status: row.status,
     reasonCode: row.review_reason_code,
-    reasonDetail: row.review_reason_detail,
+    reasonDetail: null,
     reviewedAt: row.reviewed_at,
   };
 }
@@ -61,6 +62,22 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
   const tier = TIERS.includes(profile.tier as User["verificationTier"]) ? profile.tier as User["verificationTier"] : "email_unverified";
   const kycStatus = KYC_STATUSES.includes(profile.kyc_status as ProfileSummary["kycStatus"]) ? profile.kyc_status as ProfileSummary["kycStatus"] : "unverified";
   const status = USER_STATUSES.includes(profile.status as ProfileSummary["status"]) ? profile.status as ProfileSummary["status"] : "active";
+  const profileRichness = computeProfileCompletion({
+    fullName: profile.full_name,
+    avatarUrl: profile.avatar_url,
+    bio: profile.bio,
+    city: profile.city,
+    country: profile.country,
+  });
+  const verification = computeProfileVerification({
+    phoneVerified: Boolean(profile.phone_verified_at),
+    fullName: profile.full_name,
+    avatarUrl: profile.avatar_url,
+    bio: profile.bio,
+    city: profile.city,
+    country: profile.country,
+    surveyComplete: Boolean(preference?.interests?.length),
+  });
   return {
     id: profile.id,
     email: profile.email ?? "",
@@ -78,6 +95,8 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     emailVerified: Boolean(profile.email_verified_at),
     phoneVerified: Boolean(profile.phone_verified_at),
     profileComplete: Boolean(profile.profile_completed_at),
+    verification,
+    profileRichness,
     survey: preference ? {
       interests: normalizeCategorySlugs(preference.interests),
       budgetRange: preference.budget_range,

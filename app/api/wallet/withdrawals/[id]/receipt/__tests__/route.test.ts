@@ -83,7 +83,7 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
         event: {
           id: 'tng_evt_safe_001', status: 'paid', amountSen: 7000, currency: 'MYR',
           providerOccurredAt: '2026-07-18T02:04:58.000Z', receivedAt: '2026-07-18T02:05:00.000Z',
-          signatureVerified: true, payloadSha256: 'a'.repeat(64),
+          signatureVerified: true, verificationMethod: 'hmac_sha256', ingestionSource: 'tng_mock_webhook', payloadSha256: 'a'.repeat(64),
         },
         moneyMovement: { amountSen: 7000, from: 'reserved_earnings', to: 'withdrawn_earnings' },
         ledger: [],
@@ -122,7 +122,10 @@ describe("GET /api/wallet/withdrawals/[id]/receipt", () => {
     });
     expect(JSON.stringify(body.data)).not.toContain("tng_payout_0123456789abcdef");
     expect(body.data.settlementProof).toMatchObject({
-      event: { id: 'tng_evt_safe_001', amountSen: 7000, signatureVerified: true },
+      event: {
+        id: 'tng_evt_safe_001', amountSen: 7000, signatureVerified: true,
+        verificationMethod: 'hmac_sha256', ingestionSource: 'tng_mock_webhook',
+      },
       moneyMovement: { from: 'reserved_earnings', to: 'withdrawn_earnings' },
     });
     expect(body.data.settlementProof).not.toHaveProperty('delivery');

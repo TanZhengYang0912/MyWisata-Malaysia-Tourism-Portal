@@ -25,4 +25,20 @@ describe("customer booking details", () => {
     expect(pageSource).not.toContain("booking.qrCode");
     expect(pageSource).not.toContain("DEMO-QR");
   });
+
+  it("uses semantic theme tokens instead of light-only receipt colors", () => {
+    expect(pageSource).toContain("bg-card");
+    expect(pageSource).toContain("bg-secondary/50");
+    expect(pageSource).toContain("text-muted-foreground");
+    expect(pageSource).toContain("border-border");
+    for (const lightOnlyClass of [
+      "bg-white",
+      "bg-slate-50/70",
+      "text-slate-500",
+      "text-slate-400",
+      "border-slate-100",
+    ]) {
+      expect(pageSource).not.toContain(lightOnlyClass);
+    }
+  });
 });

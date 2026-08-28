@@ -77,6 +77,26 @@ describe('POST /api/wallet/withdrawals', () => {
     }));
   });
 
+  it('does not allow an unverified phone to satisfy the withdrawal gate', async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: {
+        stripe_connect_account_id: 'acct_test',
+        phone_verified_at: null,
+        kyc_status: 'approved',
+      },
+      error: null,
+    });
+
+    const response = await POST(request({ amountRm: '50.00' }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'PHONE_VERIFICATION_REQUIRED' },
+    });
+    expect(mocks.retrieveConnectAccountStatus).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('maps KYC enforcement to a customer-safe error', async () => {
     mocks.rpc
       .mockResolvedValueOnce({ data: null, error: null })

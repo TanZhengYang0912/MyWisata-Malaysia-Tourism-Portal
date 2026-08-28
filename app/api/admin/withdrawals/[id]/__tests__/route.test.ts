@@ -25,4 +25,10 @@ describe('GET /api/admin/withdrawals/:id relationship contract', () => {
     expect(routeSource).not.toContain("from('payout_provider_events')");
     expect(routeSource).not.toContain("from('tng_mock_callback_outbox')");
   });
+
+  it('returns server-derived available actions', () => {
+    expect(routeSource).toContain('deriveWithdrawalAvailableActions');
+    expect(routeSource).toContain('availableActions');
+    expect(routeSource).toContain("db.rpc('is_super_admin'");
+  });
 });

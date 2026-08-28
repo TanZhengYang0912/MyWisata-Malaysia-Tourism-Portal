@@ -13,6 +13,13 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await authenticated.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: canReview, error: capabilityError } = await authenticated.rpc('can_review_kyc', {
+    uid: user.id,
+  });
+  if (capabilityError || canReview !== true) {
+    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
+  }
+
   const { submissionId, side } = await params;
   if (!UUID.test(submissionId) || (side !== 'front' && side !== 'back')) {
     return apiFail('NOT_FOUND', 'Document not found', 404);

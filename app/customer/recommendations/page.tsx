@@ -10,12 +10,14 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { VerifiedContributorBadge } from "@/components/shared/verified-contributor-badge";
 import type { VendorRecommendation } from "@/backend/core/types";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { getRecommendationStatus } from "@/lib/customer/recommendation-status";
+import { groupRecommendations } from "@/lib/customer/recommendation-status";
 import Link from "next/link";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
 import { allowRecommendationImageSelection, appendSelectedRecommendationImages } from "@/lib/recommendations/submission";
 import { useTranslation } from "react-i18next";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 type RecommendationResponse = {
   id: string;
@@ -52,6 +54,7 @@ function recommendationErrorMessage(body: unknown, fallback: string, translate: 
 export default function RecommendationsPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -108,6 +111,7 @@ export default function RecommendationsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) return;
     if (!currentUser) return;
     setError("");
 
@@ -199,8 +203,9 @@ export default function RecommendationsPage() {
     event.currentTarget.value = "";
   }
 
-  const pending  = (recs ?? []).filter((r) => r.status === "pending" || r.status === "changes_requested");
-  const reviewed = (recs ?? []).filter((r) => r.status !== "pending");
+  const groups = groupRecommendations(recs ?? []);
+  const pending = [...groups.action_required, ...groups.in_review];
+  const reviewed = [...groups.decided, ...groups.converted];
 
   return (
     <>
@@ -209,7 +214,7 @@ export default function RecommendationsPage() {
         title={tCustomer("ui.recommendations.title")}
         description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
-        actions={<Button onClick={() => setShowForm((v) => !v)} className="flex items-center gap-2">
+        actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) setShowForm((v) => !v); }} className="flex items-center gap-2">
           <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend")}
         </Button>}
       />
@@ -311,7 +316,7 @@ export default function RecommendationsPage() {
             {pending.map((r) => (
               <div key={r.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                  <Link href={`/customer/recommendations/${r.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                   <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
                   {r.status === "pending" && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.notEditable")}</p>}
@@ -333,7 +338,7 @@ export default function RecommendationsPage() {
           <div className="px-5 py-8 text-center">
             <Star size={32} aria-hidden="true" className="text-muted-foreground mx-auto mb-3 opacity-40" />
             <p className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneYet")}</p>
-            <button onClick={() => setShowForm(true)} className="mt-3 text-sm font-semibold text-primary">
+            <button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) setShowForm(true); }} className="mt-3 text-sm font-semibold text-primary">
               {tCustomer("ui.recommendations.makeFirst")}
             </button>
           </div>
@@ -350,7 +355,7 @@ export default function RecommendationsPage() {
                     <XCircle size={16} aria-hidden="true" className="text-destructive shrink-0" />
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                    <Link href={`/customer/recommendations/${r.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
                     {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}

@@ -16,6 +16,14 @@ vi.mock('@/lib/supabase/service', () => ({
 
 import { GET } from '../route';
 
+function mockRoles(...names: string[]) {
+  mocks.roleFrom.mockReturnValue({
+    select: vi.fn(() => ({
+      eq: vi.fn(async () => ({ data: names.map((name) => ({ roles: { name } })), error: null })),
+    })),
+  });
+}
+
 function countQuery(count: number, error: { message: string } | null = null) {
   const builder: Record<string, unknown> = {};
   builder.select = vi.fn(() => builder);
@@ -29,9 +37,7 @@ describe('GET /api/admin/navigation/counts', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-id' } }, error: null });
-    mocks.roleFrom.mockReturnValue({
-      select: vi.fn(() => ({ eq: vi.fn(async () => ({ data: [{ roles: { name: 'admin' } }], error: null })) })),
-    });
+    mockRoles('super_admin');
     mocks.from.mockImplementation((table: string) => {
       const counts: Record<string, number> = {
         vendors: 2,
@@ -73,6 +79,32 @@ describe('GET /api/admin/navigation/counts', () => {
       },
       error: null,
     });
+  });
+
+  it('does not query or return withdrawal metadata to a content admin', async () => {
+    mockRoles('admin');
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ kyc: 5, recommendations: 9 });
+    expect(body.data).not.toHaveProperty('withdrawals');
+    expect(mocks.from).not.toHaveBeenCalledWith('withdrawal_requests');
+  });
+
+  it('does not query or return KYC or recommendation metadata to an approver', async () => {
+    mockRoles('approver');
+
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ withdrawals: 6 });
+    expect(body.data).not.toHaveProperty('kyc');
+    expect(body.data).not.toHaveProperty('recommendations');
+    expect(mocks.from).not.toHaveBeenCalledWith('kyc_submissions');
+    expect(mocks.from).not.toHaveBeenCalledWith('vendor_recommendations');
   });
 
   it('does not expose database error details', async () => {

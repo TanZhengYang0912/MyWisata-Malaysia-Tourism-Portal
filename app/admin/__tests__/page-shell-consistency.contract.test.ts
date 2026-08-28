@@ -11,6 +11,7 @@ const ADMIN_ROUTE_PAGES = [
   "app/admin/dashboard/page.tsx",
   "app/admin/kyc/page.tsx",
   "app/admin/recommendations/[id]/page.tsx",
+  "app/admin/recommendations/rewards/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/refunds/page.tsx",
   "app/admin/reports/payouts/page.tsx",
@@ -21,6 +22,7 @@ const ADMIN_ROUTE_PAGES = [
   "app/admin/vendors/page.tsx",
   "app/admin/wallet/settings/page.tsx",
   "app/admin/withdrawals/page.tsx",
+  "app/admin/withdrawals/[id]/page.tsx",
 ] as const;
 
 // Each rollout task appends only the routes it migrates; Task 6 requires all 18.
@@ -33,6 +35,7 @@ const MIGRATED_ADMIN_ROUTE_PAGES: readonly (typeof ADMIN_ROUTE_PAGES)[number][] 
   "app/admin/dashboard/page.tsx",
   "app/admin/kyc/page.tsx",
   "app/admin/recommendations/[id]/page.tsx",
+  "app/admin/recommendations/rewards/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/refunds/page.tsx",
   "app/admin/reports/payouts/page.tsx",
@@ -43,14 +46,15 @@ const MIGRATED_ADMIN_ROUTE_PAGES: readonly (typeof ADMIN_ROUTE_PAGES)[number][] 
   "app/admin/vendors/page.tsx",
   "app/admin/wallet/settings/page.tsx",
   "app/admin/withdrawals/page.tsx",
+  "app/admin/withdrawals/[id]/page.tsx",
 ];
 
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 
 describe("admin page-shell consistency contract", () => {
   it("keeps the complete Admin route inventory", () => {
-    expect(ADMIN_ROUTE_PAGES).toHaveLength(18);
-    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(18);
+    expect(ADMIN_ROUTE_PAGES).toHaveLength(20);
+    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(20);
 
     for (const route of ADMIN_ROUTE_PAGES) {
       expect(existsSync(resolve(process.cwd(), route)), `${route} must remain in the Admin route inventory`).toBe(true);

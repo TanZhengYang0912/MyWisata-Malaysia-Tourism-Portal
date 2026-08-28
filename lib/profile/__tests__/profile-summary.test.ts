@@ -45,6 +45,13 @@ describe("profile summary", () => {
       profileComplete: true,
       survey: { interests: ["food"], budgetRange: "mid_range", mobilityNeeds: "none", preferredRadiusKm: 20 },
       latestKycReview: { status: "pending", reasonCode: null, reasonDetail: null },
+      verification: {
+        complete: true,
+        percentage: 100,
+        completedSteps: ["phone", "identity", "avatar", "bio", "survey"],
+        currentStep: null,
+      },
+      profileRichness: { percentage: 100, missing: [], complete: true },
     });
   });
 
@@ -61,5 +68,16 @@ describe("profile summary", () => {
     );
     expect(result).not.toHaveProperty("kycDocuments");
     expect(result).not.toHaveProperty("reviewerId");
+  });
+
+  it("does not treat a stored tier as proof that current profile data is complete", () => {
+    const result = mapProfileSummary(
+      { id: "u-3", email: "u@example.com", full_name: "Aisha", display_name: null, avatar_url: null, bio: null, phone: "+60123456789", city: null, country: "Malaysia", status: "active", tier: "profile_complete", kyc_status: "unverified", email_verified_at: "2026-07-15T00:00:00Z", phone_verified_at: "2026-07-15T00:00:00Z", profile_completed_at: "2026-07-15T00:00:00Z" },
+      null,
+      [],
+    );
+
+    expect(result.verification.complete).toBe(false);
+    expect(result.profileRichness.percentage).toBe(40);
   });
 });
