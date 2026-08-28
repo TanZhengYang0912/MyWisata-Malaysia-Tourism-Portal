@@ -68,6 +68,10 @@
       "label": "偏好设置",
       "description": "调整您的推荐内容"
     },
+    "orders": {
+      "label": "我的订单",
+      "description": "购买、预订和收据"
+    },
     "wallet": {
       "label": "钱包",
       "description": "余额和提现"

@@ -68,6 +68,10 @@
       "label": "Preferences",
       "description": "Tune your recommendation feed"
     },
+    "orders": {
+      "label": "My Orders",
+      "description": "Purchases, bookings and receipts"
+    },
     "wallet": {
       "label": "Wallet",
       "description": "Balance and payouts"

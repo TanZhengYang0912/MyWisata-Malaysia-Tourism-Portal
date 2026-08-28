@@ -68,6 +68,10 @@
       "label": "Keutamaan",
       "description": "Laraskan suapan cadangan anda"
     },
+    "orders": {
+      "label": "Pesanan Saya",
+      "description": "Pembelian, tempahan dan resit"
+    },
     "wallet": {
       "label": "Dompet",
       "description": "Baki dan pembayaran keluar"
