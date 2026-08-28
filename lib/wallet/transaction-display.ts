@@ -6,6 +6,10 @@ type TransactionLike = {
   direction: string;
 };
 
+type AmountTransactionLike = TransactionLike & {
+  amount: number;
+};
+
 const TRANSACTION_LABELS: Record<string, string> = {
   topup: "Wallet top-up",
   spend: "Purchase",
@@ -35,6 +39,15 @@ export function transactionGroup(type: string): TransactionGroup {
 
 export function transactionTone(direction: string) {
   return direction === "credit" ? "positive" : "negative";
+}
+
+export function signedTransactionAmount(transaction: AmountTransactionLike) {
+  const sign = transaction.direction === "credit" ? "+" : "-";
+  return `${sign}RM ${transaction.amount.toFixed(2)}`;
+}
+
+export function customerVisibleTransactions<T extends TransactionLike>(items: T[]) {
+  return items.filter((item) => item.type !== "withdrawal_complete");
 }
 
 export function filterTransactions<T extends TransactionLike>(items: T[], filter: TransactionFilter) {
