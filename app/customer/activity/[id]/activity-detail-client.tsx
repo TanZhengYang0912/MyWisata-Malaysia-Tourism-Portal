@@ -23,6 +23,8 @@ import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
 import { getDetailBody } from "./bodies";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -40,6 +42,7 @@ export function ActivityDetailClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { addItem } = useCart();
   const vendorDiscovery = searchParams.get("source") === "vendor";
   const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
@@ -131,6 +134,7 @@ export function ActivityDetailClient({
 
   async function handleAddToCart() {
     if (adding) return; // double-submit guard
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
     if (publicPlace) {
       setAddError(t("ui.activity.noVendorBooking"));
       return;
@@ -159,7 +163,7 @@ export function ActivityDetailClient({
   }
 
   async function handleChat() {
-    if (!currentUser) return;
+    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
     const response = await fetch("/api/customer/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

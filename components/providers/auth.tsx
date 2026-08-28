@@ -162,18 +162,25 @@ export function useAuth(): AuthContextValue {
 }
 
 /** Guards a route group: redirects to /login if the current user's role isn't allowed. */
-export function useRequireRole(allowed: Role[]): AuthContextValue {
+export function useRequireRole(
+  allowed: Role[],
+  options?: { allowUnauthenticated?: boolean | ((pathname: string) => boolean) },
+): AuthContextValue {
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const allowUnauthenticated = typeof options?.allowUnauthenticated === "function"
+    ? options.allowUnauthenticated(pathname)
+    : options?.allowUnauthenticated === true;
 
   useEffect(() => {
     if (auth.loading) return;
+    if (!auth.currentUser && allowUnauthenticated) return;
     if (!auth.currentUser || !allowed.includes(auth.currentUser.role)) {
       router.replace(`/login?next=${encodeURIComponent(pathname + window.location.search)}`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.loading, auth.currentUser?.role, pathname]);
+  }, [allowUnauthenticated, auth.loading, auth.currentUser?.role, pathname]);
 
   return auth;
 }

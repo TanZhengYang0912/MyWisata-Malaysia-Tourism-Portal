@@ -17,7 +17,6 @@ import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { normalizeTngDestinationIdentifier, selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
 import { STRIPE_TOP_UP_MAXIMUM_RM, STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
-import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
@@ -379,10 +378,6 @@ function WalletContent() {
     } finally {
       setToppingUp(false);
     }
-  }
-
-  if (!currentUser) {
-    return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.wallet.emptyTitle")} description={tCustomer("ui.wallet.emptyDescription")} nextPath="/customer/wallet" value="RM 0.00" /></CustomerPageShell>;
   }
 
   return (

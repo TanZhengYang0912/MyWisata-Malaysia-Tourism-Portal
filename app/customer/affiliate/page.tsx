@@ -25,6 +25,9 @@ import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { guestLoginHref } from "@/lib/auth/guest-mode";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 interface StatsResponse {
   affiliateCode: string | null;
@@ -43,6 +46,7 @@ type SortKey = "shares" | "clicks" | "referrals" | "earnings";
 export default function AffiliateDashboardPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, loading: authLoading } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<StatsResponse | null | undefined>(undefined); // undefined = loading
   const [generating, setGenerating] = useState(false);
@@ -98,7 +102,10 @@ export default function AffiliateDashboardPage() {
   }
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setStats(null);
+      return;
+    }
     (async () => {
       await loadStats();
     })();
@@ -131,6 +138,7 @@ export default function AffiliateDashboardPage() {
 
   async function generateLink() {
     if (generating) return;
+    if (!gate(CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "/customer/affiliate")) return;
     setGenerating(true);
     try {
       const response = await fetch("/api/affiliate/link", { method: "POST" });
@@ -180,7 +188,21 @@ export default function AffiliateDashboardPage() {
   }
 
   if (!currentUser) {
-    return <CustomerPageShell><EmptyState title={tCustomer("strictMigration.affiliate.signInRequired")} description={tCustomer("strictMigration.affiliate.signInDescription")} /></CustomerPageShell>;
+    return <>
+      <CustomerPageTitle
+        eyebrow={tCustomer("ui.recommendations.community")}
+        title={tCustomer("accountItems.earnShare.label")}
+        description={tCustomer("strictMigration.affiliate.description")}
+        icon={<Gift size={14} />}
+      />
+      <CustomerPageShell>
+        <EmptyState
+          title={tCustomer("strictMigration.affiliate.signInRequired")}
+          description={tCustomer("strictMigration.affiliate.signInDescription")}
+          action={<div className="flex flex-wrap justify-center gap-3"><Button onClick={() => void generateLink()}>{tCustomer("strictMigration.affiliate.generateLink")}</Button><Button asChild variant="outline"><Link href={guestLoginHref("/customer/affiliate")}>{tCustomer("ui.guest.signIn")}</Link></Button></div>}
+        />
+      </CustomerPageShell>
+    </>;
   }
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —

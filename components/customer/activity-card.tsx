@@ -11,12 +11,15 @@ import type { ComputedActivity } from "@/backend/core/types";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
 import { DISTANCE_UNIT_KM, MYR_CODE, TRENDING_SYMBOL } from "@/lib/i18n/invariant-tokens";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 export function ActivityCard({ activity, recommendationReason, returnTo }: { activity: ComputedActivity; recommendationReason?: string; returnTo?: string }) {
   const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const { savedIds, toggleSaved } = useWishlist();
+  const gate = useCustomerCapabilityGate();
   const saved = savedIds.has(activity.id);
   const imageSrc = activity.image?.trim();
   const activityHref = buildActivityPath(activity.id, returnTo);
@@ -30,6 +33,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
     event.preventDefault();
     event.stopPropagation();
     if (saving) return;
+    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
     setSaving(true);
     await toggleSaved(activity.id);
     setSaving(false);

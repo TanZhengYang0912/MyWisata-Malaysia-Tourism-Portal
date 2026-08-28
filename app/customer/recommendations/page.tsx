@@ -16,6 +16,8 @@ import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/component
 import { GooglePlacePicker, type RecommendationLocation } from "@/components/recommendations/google-place-picker";
 import { allowRecommendationImageSelection, appendSelectedRecommendationImages } from "@/lib/recommendations/submission";
 import { useTranslation } from "react-i18next";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 type RecommendationResponse = {
   id: string;
@@ -52,6 +54,7 @@ function recommendationErrorMessage(body: unknown, fallback: string, translate: 
 export default function RecommendationsPage() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { showFeedback } = useActionFeedback();
   const [recs, setRecs] = useState<VendorRecommendation[] | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -108,6 +111,7 @@ export default function RecommendationsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) return;
     if (!currentUser) return;
     setError("");
 
@@ -210,7 +214,7 @@ export default function RecommendationsPage() {
         title={tCustomer("ui.recommendations.title")}
         description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
-        actions={<Button onClick={() => setShowForm((v) => !v)} className="flex items-center gap-2">
+        actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) setShowForm((v) => !v); }} className="flex items-center gap-2">
           <Plus size={15} aria-hidden="true" /> {tCustomer("ui.recommendations.recommend")}
         </Button>}
       />
@@ -334,7 +338,7 @@ export default function RecommendationsPage() {
           <div className="px-5 py-8 text-center">
             <Star size={32} aria-hidden="true" className="text-muted-foreground mx-auto mb-3 opacity-40" />
             <p className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.noneYet")}</p>
-            <button onClick={() => setShowForm(true)} className="mt-3 text-sm font-semibold text-primary">
+            <button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) setShowForm(true); }} className="mt-3 text-sm font-semibold text-primary">
               {tCustomer("ui.recommendations.makeFirst")}
             </button>
           </div>
