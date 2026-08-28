@@ -38,8 +38,10 @@ another debit. `withdrawal_cancel` is a credit and therefore appears with a
 plus sign when reserved earnings are returned.
 
 The existing withdrawal request list remains responsible for pending payout
-status and receipt navigation. The ledger history is responsible for signed
-money movement, so a transaction is not duplicated merely to show status.
+status and receipt navigation. Its reserved amount also displays as a
+primary-blue `-RM` amount because the spendable earnings have already been
+reduced. The ledger history remains responsible for the complete signed money
+movement, so a transaction is not duplicated merely to show status.
 
 ## Scope
 
