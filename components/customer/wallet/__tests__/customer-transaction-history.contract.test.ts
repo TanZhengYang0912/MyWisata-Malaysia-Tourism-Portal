@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 const componentUrl = new URL("../customer-transaction-history.tsx", import.meta.url);
 const source = existsSync(componentUrl) ? readFileSync(componentUrl, "utf8") : "";
+const globalsSource = readFileSync(new URL("../../../../app/globals.css", import.meta.url), "utf8");
+const rootTheme = globalsSource.match(/:root\s*{([\s\S]*?)}/)?.[1] ?? "";
+const darkTheme = globalsSource.match(/\.dark\s*{([\s\S]*?)}/)?.[1] ?? "";
 
 describe("customer wallet transaction history display contract", () => {
   it("uses ledger visibility and signed-amount helpers", () => {
@@ -10,8 +13,11 @@ describe("customer wallet transaction history display contract", () => {
     expect(source).toContain("signedTransactionAmount(transaction)");
   });
 
-  it("keeps credits neutral and colours debits with the primary blue", () => {
-    expect(source).toContain('transaction.direction === "debit" ? "text-primary" : "text-foreground"');
+  it("keeps credits neutral and gives debits an accessible theme-aware blue", () => {
+    expect(source).toContain('transaction.direction === "debit" ? "text-wallet-debit" : "text-foreground"');
+    expect(rootTheme).toContain("--wallet-debit: #4f46e5;");
+    expect(darkTheme).toContain("--wallet-debit: #7c8bff;");
+    expect(globalsSource).toContain("--color-wallet-debit: var(--wallet-debit);");
   });
 
   it("uses localized transaction labels and dates", () => {

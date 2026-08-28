@@ -25,7 +25,7 @@ export function CustomerTransactionHistory({ transactions }: { transactions: Wal
         <div className="divide-y divide-border">
           {visibleTransactions.map((transaction) => {
             const debit = transaction.direction === "debit";
-            const amountClass = transaction.direction === "debit" ? "text-primary" : "text-foreground";
+            const amountClass = transaction.direction === "debit" ? "text-wallet-debit" : "text-foreground";
             const label = t(`ui.wallet.transactionType.${transaction.type}`, {
               defaultValue: transactionLabel(transaction.type),
             });
