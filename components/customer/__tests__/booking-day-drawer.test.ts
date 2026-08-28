@@ -45,4 +45,27 @@ describe("Booking day drawer", () => {
     expect(drawerSource).not.toContain("booking.orderId.slice(0, 8)");
     expect(drawerSource).not.toContain("items-center gap-x-3 gap-y-1 border-t");
   });
+
+  it("uses semantic theme tokens instead of light-only dialog colors", () => {
+    expect(drawerSource).toContain("bg-card");
+    expect(drawerSource).toContain("text-foreground");
+    expect(drawerSource).toContain("text-muted-foreground");
+    expect(drawerSource).toContain("border-border");
+    expect(drawerSource).toContain("text-amber-800 dark:text-amber-400");
+    for (const lightOnlyClass of [
+      "bg-white",
+      "bg-slate-50/70",
+      "text-slate-900",
+      "text-slate-800",
+      "text-slate-500",
+      "text-slate-400",
+      "border-slate-100",
+      "border-slate-200",
+      "bg-red-50",
+      "bg-[#FFF4CC]",
+      "text-[#7A5A00]",
+    ]) {
+      expect(drawerSource).not.toContain(lightOnlyClass);
+    }
+  });
 });

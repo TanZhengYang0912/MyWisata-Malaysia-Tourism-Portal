@@ -11,7 +11,13 @@ import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 function statusClass(status: BookingItineraryGroup["status"]) {
-  return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary";
+  if (status === "mixed" || status === "cancelled" || status === "no_show") {
+    return "bg-destructive/10 text-destructive";
+  }
+  if (status === "checked_in") {
+    return "bg-amber-500/10 text-amber-800 dark:text-amber-400";
+  }
+  return "bg-secondary text-primary";
 }
 
 export function BookingDayDrawer({
@@ -63,28 +69,28 @@ export function BookingDayDrawer({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6">
       <div aria-hidden="true" onMouseDown={onClose} className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]" />
-      <aside ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="booking-day-drawer-title" className="relative z-[80] flex max-h-[min(780px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
-        <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+      <aside ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="booking-day-drawer-title" className="relative z-[80] flex max-h-[min(780px,calc(100vh-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-card shadow-2xl sm:max-h-[calc(100vh-3rem)]">
+        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-5 sm:px-6">
           <div>
             <p className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary"><CalendarDays size={14} /> {t("ui.booking.dayItinerary")}</p>
             <h2 id="booking-day-drawer-title" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-foreground">{formatDate(date, locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t("strictMigration.bookingDay.itineraryCount", { count: groups.length })}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("strictMigration.bookingDay.itineraryCount", { count: groups.length })}</p>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label={t("actions.close", { ns: "common" })} className="rounded-xl p-2 text-slate-500 transition hover:bg-secondary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"><X size={20} /></button>
+          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label={t("actions.close", { ns: "common" })} className="rounded-xl p-2 text-muted-foreground transition hover:bg-secondary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"><X size={20} /></button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
           <div className="space-y-3">
             {groups.map((group) => {
               const outletName = outletMap.get(group.outletId)?.name || t("ui.labels.mywisataOutlet");
-              return <div key={group.key} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-primary/30 hover:bg-white">
-                <div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate text-sm font-bold text-slate-900">{group.activityName}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${statusClass(group.status)}`}>{t(`ui.calendar.statuses.${group.status}`)}</span></div>
-                <div className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2"><span className="inline-flex items-center gap-1.5"><Clock3 size={14} className="text-primary" /> {formatBookingTime(group.slotStartsAt)}</span><span className="inline-flex items-center gap-1.5"><Users size={14} className="text-primary" /> {t("strictMigration.bookingDay.guestBookingCount", { guests: group.totalQty, bookings: group.bookings.length })}</span><span className="inline-flex items-center gap-1.5 sm:col-span-2"><MapPin size={14} className="text-primary" /> {outletName}</span></div>
-                <div className="mt-5 border-t border-slate-200 pt-4">
+              return <div key={group.key} className="rounded-2xl border border-border bg-secondary/50 p-4 transition hover:border-primary/30 hover:bg-secondary">
+                <div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate text-sm font-bold text-foreground">{group.activityName}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${statusClass(group.status)}`}>{t(`ui.calendar.statuses.${group.status}`)}</span></div>
+                <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2"><span className="inline-flex items-center gap-1.5"><Clock3 size={14} className="text-primary" /> {formatBookingTime(group.slotStartsAt)}</span><span className="inline-flex items-center gap-1.5"><Users size={14} className="text-primary" /> {t("strictMigration.bookingDay.guestBookingCount", { guests: group.totalQty, bookings: group.bookings.length })}</span><span className="inline-flex items-center gap-1.5 sm:col-span-2"><MapPin size={14} className="text-primary" /> {outletName}</span></div>
+                <div className="mt-5 border-t border-border pt-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{t("ui.labels.bookings")}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{t("ui.booking.openDetails")}</p>
+                      <p className="text-sm font-bold text-foreground">{t("ui.labels.bookings")}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t("ui.booking.openDetails")}</p>
                     </div>
                     <span className="hidden rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-primary sm:inline-flex">{t("ui.actions.openBooking")}</span>
                   </div>
@@ -93,14 +99,14 @@ export function BookingDayDrawer({
                       <Link
                         key={booking.id}
                         href={`/customer/bookings/${booking.id}`}
-                        className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-primary/30 hover:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 transition hover:border-primary/30 hover:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
                       >
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-[10px] font-bold text-primary">
                           {String(index + 1).padStart(2, "0")}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">{t("ui.labels.booking")}</span>
-                          <span className="block truncate text-xs font-bold text-slate-800">{t("ui.labels.booking")} {String(index + 1).padStart(2, "0")}</span>
+                          <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{t("ui.labels.booking")}</span>
+                          <span className="block truncate text-xs font-bold text-foreground">{t("ui.labels.booking")} {String(index + 1).padStart(2, "0")}</span>
                         </span>
                          <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary">{t("ui.actions.viewBooking")} <ArrowUpRight size={13} aria-hidden="true" /></span>
                       </Link>
