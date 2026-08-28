@@ -18,4 +18,10 @@ describe("customer wallet ledger integration", () => {
     expect(source).toContain("<CustomerTransactionHistory transactions={transactions} />");
     expect(source).toContain("<WithdrawalList pending={pending} />");
   });
+
+  it("does not let a previous user's wallet request overwrite the active session", () => {
+    expect(source).toContain("isActiveRef");
+    expect(source).toContain("if (!isActiveRef.current) return;");
+    expect(source).toContain('key={currentUser?.id ?? "guest"}');
+  });
 });

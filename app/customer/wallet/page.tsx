@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useCallback, useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Wallet, CheckCircle2, Building2, AlertCircle,
@@ -44,6 +44,7 @@ function walletSummaryEndpoint(destinationId: string) {
 function WalletContent() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { currentUser } = useAuth();
+  const isActiveRef = useRef(true);
   const gate = useCustomerCapabilityGate();
   const searchParams     = useSearchParams();
   const topupSuccess     = searchParams.get("topup")      === "success";
@@ -83,6 +84,13 @@ function WalletContent() {
   // Connect onboarding
   const [onboarding, setOnboarding] = useState(false);
   const [onboardError, setOnboardError] = useState("");
+
+  useEffect(() => {
+    isActiveRef.current = true;
+    return () => {
+      isActiveRef.current = false;
+    };
+  }, []);
 
   const displayGroups = getWithdrawalDisplayGroups(withdrawals ?? [], buckets?.earnings ?? 0);
   const { pending, pendingTotal, availableEarnings } = displayGroups;
@@ -151,6 +159,7 @@ function WalletContent() {
       } & CustomerWalletCapabilities;
     };
     const summary = summaryResponse.ok ? body.data : undefined;
+    if (!isActiveRef.current) return null;
     setBuckets(summary ? {
       topup: summary.topupSen / 100,
       earnings: summary.earningsSen / 100,
@@ -176,6 +185,7 @@ function WalletContent() {
       getMyWithdrawals(currentUser.id),
       getWalletTransactions(currentUser.id),
     ]);
+    if (!isActiveRef.current) return;
     setWithdrawals(withdrawalsResult.status === "fulfilled" ? withdrawalsResult.value : []);
     if (transactionsResult.status === "fulfilled") {
       setTransactions(transactionsResult.value);
@@ -195,6 +205,7 @@ function WalletContent() {
       return;
     }
     fetch("/api/wallet/destinations", { cache: "no-store" }).then((response) => response.json()).then((body) => {
+      if (!isActiveRef.current) return;
       const nextDestinations = (body.data?.destinations ?? []) as PayoutDestination[];
       setDestinations(nextDestinations);
       if (body.data?.capabilities) setPayoutCapabilities(body.data.capabilities as PayoutCapabilities);
@@ -202,6 +213,7 @@ function WalletContent() {
       setSelectedDestinationId(nextDestinationId);
       void refreshWalletState(nextDestinationId);
     }).catch(() => {
+      if (!isActiveRef.current) return;
       setDestinations([]);
       setSelectedDestinationId("");
       void refreshWalletState("");
@@ -306,6 +318,7 @@ function WalletContent() {
           : body.error?.message ?? tCustomer("ui.wallet.verifyTngDetailsError");
         throw new Error(message);
       }
+      if (!isActiveRef.current) return;
 
       const destination = body.data.destination;
       setDestinations((current) => [destination, ...current.filter((item) => item.id !== destination.id)]);
@@ -608,9 +621,10 @@ function WalletContent() {
 }
 
 export default function WalletPage() {
+  const { currentUser } = useAuth();
   return (
     <Suspense>
-      <WalletContent />
+      <WalletContent key={currentUser?.id ?? "guest"} />
     </Suspense>
   );
 }
