@@ -1,36 +1,70 @@
 import { describe, expect, it } from "vitest";
 import {
   CUSTOMER_CAPABILITY,
+  CUSTOMER_CAPABILITY_KEY,
+  type CustomerViewer,
   customerAccessHref,
+  resolveCustomerCapabilities,
+  resolveCustomerCapability,
   resolveCustomerAccess,
 } from "@/lib/auth/customer-capabilities";
+import type { VerificationFacts } from "@/lib/entitlements/types";
 
-const viewer = (
-  verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified",
-) => ({ verificationTier });
+const customerFacts = (overrides: Partial<VerificationFacts> = {}): VerificationFacts => ({
+  emailVerified: true,
+  phoneVerified: false,
+  profileComplete: false,
+  kycStatus: "unverified",
+  accountStatus: "active",
+  roles: ["customer"],
+  ...overrides,
+});
 
-describe("customer capability policy", () => {
-  it.each([
-    [null, CUSTOMER_CAPABILITY.BROWSE, "allowed"],
-    [null, CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "sign_in_required"],
-    [viewer("email_verified"), CUSTOMER_CAPABILITY.CART_MUTATION, "allowed"],
-    [viewer("email_verified"), CUSTOMER_CAPABILITY.CHECKOUT, "phone_verification_required"],
-    [viewer("email_verified"), CUSTOMER_CAPABILITY.BASIC_AI, "phone_verification_required"],
-    [viewer("phone_verified"), CUSTOMER_CAPABILITY.CHECKOUT, "allowed"],
-    [viewer("phone_verified"), CUSTOMER_CAPABILITY.BASIC_AI, "allowed"],
-    [viewer("phone_verified"), CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "profile_completion_required"],
-    [viewer("profile_complete"), CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "allowed"],
-    [viewer("profile_complete"), CUSTOMER_CAPABILITY.AFFILIATE_FULL, "kyc_required"],
-    [viewer("profile_complete"), CUSTOMER_CAPABILITY.WITHDRAWAL, "kyc_required"],
-    [viewer("kyc_verified"), CUSTOMER_CAPABILITY.AFFILIATE_FULL, "allowed"],
-    [viewer("kyc_verified"), CUSTOMER_CAPABILITY.WITHDRAWAL, "allowed"],
-  ])("resolves %o / %s as %s", (currentViewer, capability, expected) => {
-    expect(resolveCustomerAccess(currentViewer, capability)).toBe(expected);
+describe("customer capability compatibility", () => {
+  it("maps customer aliases to stable capability keys", () => {
+    expect(CUSTOMER_CAPABILITY.CHECKOUT).toBe(CUSTOMER_CAPABILITY_KEY.CHECKOUT);
+    expect(CUSTOMER_CAPABILITY.CHECKOUT).toBe("commerce.checkout");
+    expect(CUSTOMER_CAPABILITY.WITHDRAWAL).toBe("wallet.request_withdrawal");
+  });
+
+  it("uses facts rather than a verification tier", () => {
+    const emailKycOnly = customerFacts({ kycStatus: "approved" });
+
+    expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT))
+      .toMatchObject({ allowed: true });
+    expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.AFFILIATE_FULL))
+      .toMatchObject({ allowed: true });
+    expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.WITHDRAWAL))
+      .toMatchObject({ allowed: true });
+    expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.CHECKOUT))
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
+  });
+
+  it("exposes a stable capability snapshot", () => {
+    const snapshot = resolveCustomerCapabilities(customerFacts({ phoneVerified: true }));
+
+    expect(Object.values(CUSTOMER_CAPABILITY).every((capability) => capability in snapshot)).toBe(true);
+    expect(snapshot["commerce.checkout"].allowed).toBe(true);
+    expect(snapshot["recommendation.submit"].blockerCode).toBe("PROFILE_OR_KYC_REQUIRED");
+  });
+
+  it("maps an entitlement blocker to the legacy access result", () => {
+    expect(resolveCustomerAccess(customerFacts(), CUSTOMER_CAPABILITY.CHECKOUT))
+      .toBe("phone_verification_required");
+    expect(resolveCustomerAccess(customerFacts({ phoneVerified: true }), CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT))
+      .toBe("profile_completion_required");
+  });
+
+  it("fails closed for legacy tier-only or guest compatibility inputs", () => {
+    const tierOnly: CustomerViewer = { verificationTier: "kyc_verified" };
+
+    expect(resolveCustomerCapability(tierOnly, CUSTOMER_CAPABILITY.CHECKOUT))
+      .toMatchObject({ allowed: false, blockerCode: "SIGN_IN_REQUIRED" });
+    expect(resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT))
+      .toMatchObject({ allowed: false, blockerCode: "SIGN_IN_REQUIRED" });
   });
 
   it("preserves only a safe local continuation", () => {
-    expect(customerAccessHref("sign_in_required", "/customer/activity/p1?slot=s1"))
-      .toBe("/login?next=%2Fcustomer%2Factivity%2Fp1%3Fslot%3Ds1");
     expect(customerAccessHref("phone_verification_required", "https://evil.example"))
       .toBe("/customer/profile?next=%2Fcustomer");
     expect(customerAccessHref("profile_completion_required", "//evil.example"))

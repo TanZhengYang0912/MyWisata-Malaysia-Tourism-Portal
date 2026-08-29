@@ -3,8 +3,9 @@
 export const USER_STATUS = ['active', 'suspended', 'deleted'] as const;
 export const KYC_STATUS  = ['unverified', 'pending', 'approved', 'rejected'] as const;
 
-// ── Verification tier ladder (ADR-025) ────────────────────────────────────────
-// Order is authoritative — use meetsMinTier() for comparisons, never string equality.
+// ── Legacy verification tier compatibility (ADR-025) ──────────────────────────
+// Deprecated for authorization: entitlement decisions use independent facts in
+// lib/entitlements. These values remain only for legacy display/migration code.
 export const TIER_ORDER = [
   'email_unverified',
   'email_verified',
