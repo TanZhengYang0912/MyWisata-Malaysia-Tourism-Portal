@@ -64,6 +64,13 @@ describe("customer capability compatibility", () => {
       .toMatchObject({ allowed: false, blockerCode: "SIGN_IN_REQUIRED" });
   });
 
+  it("rejects an unknown runtime capability alias", () => {
+    expect(resolveCustomerCapability(
+      customerFacts({ phoneVerified: true, profileComplete: true, kycStatus: "approved" }),
+      "unknown.runtime_capability" as never,
+    )).toMatchObject({ allowed: false, blockerCode: "ENTITLEMENT_DENIED" });
+  });
+
   it("preserves only a safe local continuation", () => {
     expect(customerAccessHref("phone_verification_required", "https://evil.example"))
       .toBe("/customer/profile?next=%2Fcustomer");

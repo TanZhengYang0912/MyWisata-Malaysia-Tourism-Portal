@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluateEntitlementDecision } from "@/lib/entitlements/evaluator";
 import type {
+  CapabilityKey,
   PolicyMatch,
   VerificationFacts,
 } from "@/lib/entitlements/types";
@@ -154,5 +155,17 @@ describe("independent entitlement evaluator", () => {
       entitlementGeneration: 5,
       unavailable: true,
     })).toMatchObject({ allowed: false, blockerCode: "POLICY_UNAVAILABLE", source: "default_deny" });
+  });
+
+  it("fails closed for an unknown runtime capability despite an allow policy", () => {
+    expect(evaluateEntitlementDecision(
+      facts({ phoneVerified: true, profileComplete: true, kycStatus: "approved" }),
+      "unknown.runtime_capability" as CapabilityKey,
+      allowPolicy,
+    )).toMatchObject({
+      allowed: false,
+      blockerCode: "ENTITLEMENT_DENIED",
+      source: "default_deny",
+    });
   });
 });

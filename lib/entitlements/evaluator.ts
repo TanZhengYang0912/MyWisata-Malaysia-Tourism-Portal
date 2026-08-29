@@ -11,6 +11,7 @@ import type {
   QualificationPath,
   VerificationFacts,
 } from "@/lib/entitlements/types";
+import { isCapabilityKey } from "@/lib/entitlements/types";
 
 const CUSTOMER_CAPABILITIES = new Set<CapabilityKey>([
   "platform.browse",
@@ -118,6 +119,17 @@ export function evaluateEntitlementDecision(
   capability: CapabilityKey,
   match: PolicyMatch,
 ): EntitlementDecision {
+  if (!isCapabilityKey(capability)) {
+    return {
+      capability,
+      allowed: false,
+      blockerCode: "ENTITLEMENT_DENIED",
+      qualificationPaths: [],
+      entitlementGeneration: match.entitlementGeneration,
+      source: "default_deny",
+    };
+  }
+
   if (facts.accountStatus !== "active") {
     return {
       ...denied(capability, "ACCOUNT_RESTRICTED"),

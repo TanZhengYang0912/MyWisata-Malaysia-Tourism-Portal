@@ -2,6 +2,7 @@ import { guestLoginHref, postLoginPath } from "@/lib/auth/guest-mode";
 import { evaluateEntitlementDecision } from "@/lib/entitlements/evaluator";
 import {
   CAPABILITY_KEYS,
+  isCapabilityKey,
   type CapabilityKey,
   type EntitlementBlockerCode,
   type EntitlementDecision,
@@ -115,11 +116,11 @@ function isVerificationFacts(value: CustomerViewer): value is VerificationFacts 
     && value.roles.every((role) => typeof role === "string");
 }
 
-function capabilityKey(capability: CustomerCapability): CapabilityKey {
-  if ((CAPABILITY_KEYS as readonly string[]).includes(capability)) {
-    return capability as CapabilityKey;
+function capabilityKey(capability: CustomerCapability): CapabilityKey | null {
+  if (isCapabilityKey(capability)) {
+    return capability;
   }
-  return LEGACY_CAPABILITY_KEY[capability as LegacyCustomerCapability];
+  return LEGACY_CAPABILITY_KEY[capability as LegacyCustomerCapability] ?? null;
 }
 
 function nextActionFor(blockerCode: CustomerCapabilityBlocker | null): CustomerCapabilityNextAction {
@@ -168,11 +169,25 @@ function signInRequired(capability: CapabilityKey): CustomerCapabilityDecision {
   };
 }
 
+function unknownCapabilityDecision(): CustomerCapabilityDecision {
+  return {
+    allowed: false,
+    blockerCode: "ENTITLEMENT_DENIED",
+    qualificationPaths: [],
+    entitlementGeneration: 0,
+    source: "default_deny",
+    currentTier: null,
+    requiredTier: null,
+    nextAction: "none",
+  };
+}
+
 export function resolveCustomerCapability(
   viewer: CustomerViewer,
   capability: CustomerCapability,
 ): CustomerCapabilityDecision {
   const resolvedCapability = capabilityKey(capability);
+  if (!resolvedCapability) return unknownCapabilityDecision();
   if (!isVerificationFacts(viewer)) return signInRequired(resolvedCapability);
 
   return compatibilityDecision(

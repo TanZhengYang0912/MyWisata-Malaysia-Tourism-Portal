@@ -14,6 +14,10 @@ export const CAPABILITY_KEYS = [
 
 export type CapabilityKey = typeof CAPABILITY_KEYS[number];
 
+export function isCapabilityKey(value: string): value is CapabilityKey {
+  return (CAPABILITY_KEYS as readonly string[]).includes(value);
+}
+
 export type VerificationFacts = {
   emailVerified: boolean;
   phoneVerified: boolean;
