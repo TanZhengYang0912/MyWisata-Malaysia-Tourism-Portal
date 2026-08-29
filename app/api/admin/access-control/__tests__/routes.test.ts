@@ -423,6 +423,70 @@ describe("Access Control Audit Log", () => {
     expect(JSON.stringify(body)).not.toMatch(/012-3456789|whsec_provider_secret|kyc_documents/);
   });
 
+  it("exposes only the governed capability metadata allowlist", async () => {
+    const builder = queryBuilder([{
+      id: AUDIT_ID,
+      actor_id: ACTOR_ID,
+      action: "entitlement.capability.updated",
+      entity_type: "entitlement_capability",
+      entity_id: "66666666-6666-4666-8666-666666666666",
+      before_data: {
+        capabilityKey: "commerce.checkout",
+        category: "commerce",
+        riskLevel: "high",
+        customerVisible: true,
+        manuallyAssignable: false,
+        enabled: true,
+        generation: 19,
+        email: "secret@example.com",
+      },
+      after_data: {
+        capabilityKey: "commerce.checkout",
+        category: "commerce",
+        riskLevel: "critical",
+        customerVisible: false,
+        manuallyAssignable: false,
+        enabled: false,
+        generation: 20,
+        providerSecret: "whsec_secret",
+        nested: { enabled: true, phone: "+60123456789" },
+      },
+      note: "secret@example.com +60123456789 whsec_secret",
+      created_at: "2026-08-30T00:00:00.000Z",
+    }]);
+    mocks.requireSuperAdmin.mockResolvedValue({
+      db: { from: vi.fn(() => builder) },
+      user: { id: ACTOR_ID },
+      response: null,
+    });
+
+    const response = await auditRoute.GET(new Request("http://localhost/api/admin/access-control/audit-log"));
+    const body = await response.json();
+    expect(body.data.items[0]).toMatchObject({
+      before: {
+        capabilityKey: "commerce.checkout",
+        category: "commerce",
+        riskLevel: "high",
+        customerVisible: true,
+        manuallyAssignable: false,
+        enabled: true,
+        generation: 19,
+      },
+      after: {
+        capabilityKey: "commerce.checkout",
+        category: "commerce",
+        riskLevel: "critical",
+        customerVisible: false,
+        manuallyAssignable: false,
+        enabled: false,
+        generation: 20,
+      },
+      reason: null,
+    });
+    expect(body.data.items[0].after).not.toHaveProperty("nested");
+    expect(JSON.stringify(body)).not.toMatch(/secret@example|60123456789|whsec_secret|providerSecret|phone/);
+  });
+
   it("applies strict Audit Log filters and database pagination", async () => {
     const builder = queryBuilder([]);
     mocks.requireSuperAdmin.mockResolvedValue({

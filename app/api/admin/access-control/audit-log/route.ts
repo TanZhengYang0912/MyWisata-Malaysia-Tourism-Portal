@@ -7,6 +7,11 @@ export const dynamic = "force-dynamic";
 
 const AUDIT_PAYLOAD_ALLOWLIST = new Set([
   "capabilityKey",
+  "category",
+  "riskLevel",
+  "customerVisible",
+  "manuallyAssignable",
+  "enabled",
   "policyId",
   "policyVersionId",
   "assignmentId",
