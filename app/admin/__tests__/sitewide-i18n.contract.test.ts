@@ -61,6 +61,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
 } as const;
 
 export const ADMIN_ROUTE_I18N_FILES = [
+  "app/admin/access-control/page.tsx",
   "app/admin/affiliate/page.tsx",
   "app/admin/ai-assistant/page.tsx",
   "app/admin/catalogue/page.tsx",
@@ -82,6 +83,12 @@ export const ADMIN_ROUTE_I18N_FILES = [
 
 /** The exclusive Task 9 component scope for this worker. */
 export const ADMIN_I18N_FILES = [
+  "components/admin/access-control/access-control-tabs.tsx",
+  "components/admin/access-control/overview-tab.tsx",
+  "components/admin/access-control/capabilities-tab.tsx",
+  "components/admin/access-control/policies-tab.tsx",
+  "components/admin/access-control/assignments-tab.tsx",
+  "components/admin/access-control/audit-log-tab.tsx",
   "components/admin/ai-draft-email-modal.tsx",
   "components/admin/approve-reject-bar.tsx",
   "components/admin/moderation-flags-panel.tsx",
@@ -95,6 +102,7 @@ export const ADMIN_I18N_FILES = [
 
 /** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
+  "components/admin/access-control/types.ts",
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",
