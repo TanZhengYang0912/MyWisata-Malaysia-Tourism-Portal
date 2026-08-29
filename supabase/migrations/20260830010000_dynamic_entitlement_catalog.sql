@@ -315,6 +315,12 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF TG_OP = 'UPDATE' THEN
+    PERFORM 1
+      FROM public.entitlement_policy_versions AS version
+     WHERE version.id IN (OLD.policy_version_id, NEW.policy_version_id)
+     ORDER BY version.id
+     FOR UPDATE;
+
     IF EXISTS (
       SELECT 1
         FROM public.entitlement_policy_versions AS version
@@ -324,6 +330,11 @@ BEGIN
       RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
     END IF;
   ELSIF TG_OP = 'DELETE' THEN
+    PERFORM 1
+      FROM public.entitlement_policy_versions AS version
+     WHERE version.id = OLD.policy_version_id
+     FOR UPDATE;
+
     IF EXISTS (
       SELECT 1
         FROM public.entitlement_policy_versions AS version
@@ -333,6 +344,11 @@ BEGIN
       RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
     END IF;
   ELSE
+    PERFORM 1
+      FROM public.entitlement_policy_versions AS version
+     WHERE version.id = NEW.policy_version_id
+     FOR UPDATE;
+
     IF EXISTS (
       SELECT 1
         FROM public.entitlement_policy_versions AS version

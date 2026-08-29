@@ -68,6 +68,9 @@ describe("dynamic entitlement catalog migration", () => {
       "version.id IN (OLD.policy_version_id, NEW.policy_version_id)",
     );
     expect(helper).toContain("version.activated_at IS NOT NULL");
+    expect(helper).toMatch(
+      /FROM public\.entitlement_policy_versions AS version[\s\S]+?FOR UPDATE[\s\S]+?version\.activated_at IS NOT NULL/i,
+    );
   });
 
   it("seeds one active built-in allow policy for every customer capability", () => {
