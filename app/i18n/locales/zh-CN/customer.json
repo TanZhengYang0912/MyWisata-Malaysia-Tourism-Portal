@@ -1067,7 +1067,7 @@
     },
     "kyc": {
       "guestTitle": "尚未开始 KYC",
-      "guestDescription": "提交身份证件前，请先登录并完成个人资料。",
+      "guestDescription": "提交身份证件前，请先登录。",
       "description": "提交身份证件以解锁钱包提现和完整的联盟收益功能。",
       "continue": "继续",
       "verified": "KYC 已验证",

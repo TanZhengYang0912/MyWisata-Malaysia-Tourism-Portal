@@ -1067,7 +1067,7 @@
     },
     "kyc": {
       "guestTitle": "KYC belum dimulakan",
-      "guestDescription": "Log masuk dan lengkapkan profil anda sebelum menghantar dokumen identiti.",
+      "guestDescription": "Log masuk sebelum menghantar dokumen identiti.",
       "description": "Hantar dokumen identiti anda untuk membuka pengeluaran dompet dan pendapatan afiliasi penuh.",
       "continue": "Teruskan",
       "verified": "KYC disahkan",

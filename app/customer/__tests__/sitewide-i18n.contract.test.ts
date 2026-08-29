@@ -226,18 +226,28 @@ describe("customer and guest sitewide i18n contract", () => {
 
   it("keeps independent verification and honest Profile-or-KYC recovery copy in every locale", () => {
     const resources = [
-      JSON.parse(read("app/i18n/locales/en/customer.json")),
-      JSON.parse(read("app/i18n/locales/zh-CN/customer.json")),
-      JSON.parse(read("app/i18n/locales/ms/customer.json")),
+      {
+        resource: JSON.parse(read("app/i18n/locales/en/customer.json")),
+        kycGuestDescription: "Sign in before submitting identity documents.",
+      },
+      {
+        resource: JSON.parse(read("app/i18n/locales/zh-CN/customer.json")),
+        kycGuestDescription: "提交身份证件前，请先登录。",
+      },
+      {
+        resource: JSON.parse(read("app/i18n/locales/ms/customer.json")),
+        kycGuestDescription: "Log masuk sebelum menghantar dokumen identiti.",
+      },
     ];
 
-    for (const resource of resources) {
+    for (const { resource, kycGuestDescription } of resources) {
       expect(resourceValue(resource, "ui.accountVerification.title")).toEqual(expect.any(String));
       expect(resourceValue(resource, "ui.accountVerification.intents.checkout.title")).toEqual(expect.any(String));
       expect(resourceValue(resource, "ui.accountVerification.statuses.phone.title")).toEqual(expect.any(String));
       expect(resourceValue(resource, "ui.phoneVerification.title")).toEqual(expect.any(String));
       expect(resourceValue(resource, "ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED.title")).toEqual(expect.any(String));
       expect(resourceValue(resource, "ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED.description")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.kyc.guestDescription")).toBe(kycGuestDescription);
     }
   });
 
