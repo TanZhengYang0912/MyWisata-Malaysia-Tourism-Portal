@@ -1,4 +1,6 @@
 import type { AppLocale } from "@/lib/i18n/locale";
+import type { CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
+import type { VerificationFacts } from "@/lib/entitlements/types";
 
 // Shared domain types — the integration contract every member's code imports.
 // Ownership: each seed/repo file below is owned by one member (see README).
@@ -24,6 +26,8 @@ export interface User {
   phone?: string;
   status?: "active" | "suspended" | "deleted";
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
+  verificationFacts?: VerificationFacts;
+  entitlementGeneration?: number;
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -34,6 +38,9 @@ export interface AuthState {
   roles: Role[];
   activeVendorId?: string;
   activeOutletIds?: string[];
+  capabilities: CustomerCapabilitySnapshot;
+  verificationFacts: VerificationFacts | null;
+  entitlementGeneration: number;
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────

@@ -5,10 +5,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { setCurrentUserId } from "@/backend/domains/current-user";
-import { isAppLocale } from "@/lib/i18n/locale";
 import { createClient } from "@/lib/supabase/client";
-import { pickDemoAssignment } from "@/lib/auth/demo-user-role";
+import { pickDemoRole } from "@/lib/auth/demo-user-role";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
+import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
+import { isAppLocale } from "@/lib/i18n/locale";
+import type { VerificationFacts } from "@/lib/entitlements/types";
 import type { Role, User } from "@/backend/core/types";
 
 interface AuthContextValue {
@@ -16,55 +18,79 @@ interface AuthContextValue {
   roles: Role[];
   activeVendorId?: string;
   activeOutletIds?: string[];
+  capabilities: CustomerCapabilitySnapshot;
+  verificationFacts: VerificationFacts | null;
+  entitlementGeneration: number;
   loading: boolean;
   switchUser: (id: string, user?: User) => Promise<User | null>;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const GUEST_CAPABILITIES = resolveCustomerCapabilities(null);
+
+type AuthMeUser = {
+  id: string;
+  email: string;
+  fullName: string | null;
+  tier: User["verificationTier"];
+  roles: Role[];
+  activeVendorId: string | null;
+  activeOutletIds: string[];
+  city: string | null;
+  country: string | null;
+  preferredLocale: string | null;
+  phone: string | null;
+  status: User["status"];
+  capabilities: CustomerCapabilitySnapshot;
+  verificationFacts: VerificationFacts;
+  entitlementGeneration: number;
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { t: tAuth } = useTranslation("auth");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [capabilities, setCapabilities] = useState<CustomerCapabilitySnapshot>(GUEST_CAPABILITIES);
+  const [verificationFacts, setVerificationFacts] = useState<VerificationFacts | null>(null);
+  const [entitlementGeneration, setEntitlementGeneration] = useState(0);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
   const router = useRouter();
 
   const loadSupabaseUser = useCallback(async (authUserId: string) => {
-    const { data: row, error } = await supabase
-      .from("users")
-      .select("id,email,full_name,city,country,preferred_locale,phone,status,tier,user_roles(vendor_id,outlet_id,roles(name),outlets(vendor_id))")
-      .eq("id", authUserId)
-      .maybeSingle();
-    if (error) throw new Error(tAuth("errors.generic"));
+    const response = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!response.ok) throw new Error(tAuth("errors.generic"));
+    const body = await response.json() as { user?: AuthMeUser };
+    const row = body.user;
+    if (!row || row.id !== authUserId) throw new Error(tAuth("errors.generic"));
 
-    const assignments = row?.user_roles ?? [];
-    const assignment = pickDemoAssignment(assignments as Array<{ roles?: { name?: string | null } | { name?: string | null }[] | null }>) as typeof assignments[number] | undefined;
-    const assignmentRole = Array.isArray(assignment?.roles) ? assignment.roles[0] : assignment?.roles;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const assignmentOutlet = Array.isArray((assignment as any)?.outlets) ? (assignment as any).outlets[0] : (assignment as any)?.outlets;
-    const vendorId = assignment?.vendor_id ?? assignmentOutlet?.vendor_id;
-    const name = row?.full_name ?? row?.email ?? tAuth("userFallback");
-    const user: User | null = row ? {
+    const role = pickDemoRole(row.roles.map((name) => ({ roles: { name } })));
+    const name = row.fullName ?? row.email ?? tAuth("userFallback");
+    const user: User = {
       id: row.id,
       name,
       email: row.email,
-      role: (assignmentRole?.name ?? "customer") as Role,
+      role,
       avatarInitial: name[0]?.toUpperCase() ?? "?",
       city: row.city ?? undefined,
       country: row.country ?? undefined,
-      preferredLocale: isAppLocale(row.preferred_locale) ? row.preferred_locale : undefined,
+      preferredLocale: isAppLocale(row.preferredLocale) ? row.preferredLocale : undefined,
       phone: row.phone ?? undefined,
       status: (row.status ?? "active") as User["status"],
       verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],
-      vendorId: vendorId ?? undefined,
-      outletId: assignment?.outlet_id ?? undefined,
-    } : null;
-    setCurrentUser(user ?? null);
-    if (user) setCurrentUserId(authUserId);
-    return user ?? null;
-  }, [supabase, tAuth]);
+      verificationFacts: row.verificationFacts,
+      entitlementGeneration: row.entitlementGeneration,
+      vendorId: row.activeVendorId ?? undefined,
+      outletId: row.activeOutletIds[0] ?? undefined,
+    };
+    setCurrentUser(user);
+    setCapabilities(row.capabilities);
+    setVerificationFacts(row.verificationFacts);
+    setEntitlementGeneration(row.entitlementGeneration);
+    setCurrentUserId(authUserId);
+    return user;
+  }, [tAuth]);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Do not trust the old localStorage-only demo selection. Server pages
         // authenticate through Supabase cookies, so both sides must agree.
         setCurrentUser(null);
+        setCapabilities(GUEST_CAPABILITIES);
+        setVerificationFacts(null);
+        setEntitlementGeneration(0);
         setLoading(false);
         return;
       }
@@ -86,12 +115,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     load().catch(() => {
       if (!active) return;
       setCurrentUser(null);
+      setCapabilities(GUEST_CAPABILITIES);
+      setVerificationFacts(null);
+      setEntitlementGeneration(0);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         setCurrentUser(null);
+        setCapabilities(GUEST_CAPABILITIES);
+        setVerificationFacts(null);
+        setEntitlementGeneration(0);
         setLoading(false);
         return;
       }
@@ -99,6 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {
           if (!active) return;
           setCurrentUser(null);
+          setCapabilities(GUEST_CAPABILITIES);
+          setVerificationFacts(null);
+          setEntitlementGeneration(0);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -129,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: user.email }),
     });
-    const result = await response.json() as { error?: string };
+    await response.json().catch(() => null);
     if (!response.ok) throw new Error(tAuth('signIn.error'));
 
     const loadedUser = await loadSupabaseUser(id);
@@ -147,6 +185,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     roles: currentUser ? [currentUser.role] : [],
     activeVendorId: currentUser?.vendorId,
     activeOutletIds: currentUser?.outletId ? [currentUser.outletId] : undefined,
+    capabilities,
+    verificationFacts,
+    entitlementGeneration,
     loading,
     switchUser,
     refreshUser,

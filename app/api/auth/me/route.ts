@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { AuthUser } from '@/types';
 import type { RoleName } from '@/lib/constants';
 import { isEmailVerified } from '@/lib/verification/email-status';
+import { resolveServerCustomerCapabilities } from '@/lib/auth/customer-capabilities.server';
+import type { VerificationFacts } from '@/lib/entitlements/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +31,11 @@ type ProfileRow = {
   email_verified_at: string | null;
   phone_verified_at: string | null;
   profile_completed_at: string | null;
+  city: string | null;
+  country: string | null;
+  preferred_locale: string | null;
+  phone: string | null;
+  status: string | null;
 };
 
 export async function GET() {
@@ -37,7 +44,7 @@ export async function GET() {
   if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
   const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }] = await Promise.all([
-    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at').eq('id', authUser.id).maybeSingle(),
+    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,preferred_locale,phone,status').eq('id', authUser.id).maybeSingle(),
     supabase.from('user_roles').select('vendor_id,outlet_id,roles(name),outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
   ]);
@@ -46,6 +53,7 @@ export async function GET() {
   if (managerError) return NextResponse.json({ error: managerError.message }, { status: 500 });
 
   const profileRow = profile as ProfileRow | null;
+  if (!profileRow) return NextResponse.json({ error: 'Profile unavailable' }, { status: 500 });
   const rows = (roleRows || []) as RoleRow[];
   const roles = rows.map((row) => {
     const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
@@ -64,6 +72,23 @@ export async function GET() {
   ].filter((id): id is string => Boolean(id)))];
   const outletIds = [...new Set(managerAssignments.map((row) => row.outlet_id))];
   const assignedOutletRelation = managerAssignments[0] ? (Array.isArray(managerAssignments[0].outlets) ? managerAssignments[0].outlets[0] : managerAssignments[0].outlets) : null;
+  const verificationFacts: VerificationFacts = {
+    emailVerified: isEmailVerified(authUser.email_confirmed_at, profileRow.email_verified_at, authUser.identities),
+    phoneVerified: Boolean(profileRow.phone_verified_at),
+    profileComplete: Boolean(profileRow.profile_completed_at),
+    kycStatus: profileRow.kyc_status === 'pending' || profileRow.kyc_status === 'approved' || profileRow.kyc_status === 'rejected'
+      ? profileRow.kyc_status
+      : 'unverified',
+    accountStatus: profileRow.status === 'suspended' || profileRow.status === 'deleted'
+      ? profileRow.status
+      : 'active',
+    roles,
+  };
+  const capabilities = await resolveServerCustomerCapabilities(authUser.id);
+  const entitlementGeneration = Math.max(
+    0,
+    ...Object.values(capabilities).map((decision) => decision.entitlementGeneration ?? 0),
+  );
 
   return NextResponse.json({
     user: {
@@ -71,15 +96,23 @@ export async function GET() {
       email: authUser.email || profileRow?.email || '',
       fullName: profileRow?.full_name || null,
       avatarUrl: profileRow?.avatar_url || null,
-      kycStatus: profileRow?.kyc_status || 'unverified',
+      kycStatus: verificationFacts.kycStatus,
       tier: profileRow?.tier || 'email_unverified',
-      emailVerified: isEmailVerified(authUser.email_confirmed_at, profileRow?.email_verified_at, authUser.identities),
-      phoneVerified: Boolean(profileRow?.phone_verified_at),
-      profileComplete: Boolean(profileRow?.profile_completed_at),
+      emailVerified: verificationFacts.emailVerified,
+      phoneVerified: verificationFacts.phoneVerified,
+      profileComplete: verificationFacts.profileComplete,
+      verificationFacts,
       roles,
       activeVendorId: vendorIds[0] || null,
       activeOutletIds: outletIds,
       activeOutletName: assignedOutletRelation?.name || null,
+      city: profileRow?.city || null,
+      country: profileRow?.country || null,
+      preferredLocale: profileRow?.preferred_locale || null,
+      phone: profileRow?.phone || null,
+      status: verificationFacts.accountStatus,
+      capabilities,
+      entitlementGeneration,
     },
   });
 }
