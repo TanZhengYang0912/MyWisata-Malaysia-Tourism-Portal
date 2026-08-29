@@ -51,5 +51,7 @@ describe("unified Access Control console", () => {
     expect(source).toContain("before");
     expect(source).toContain("after");
     expect(source).toContain("traceReference");
+    expect(source.match(/<th className="px-4 py-3 whitespace-nowrap/g) ?? []).toHaveLength(7);
+    expect(source.match(/<td className="px-4 py-4 align-top/g) ?? []).toHaveLength(7);
   });
 });
