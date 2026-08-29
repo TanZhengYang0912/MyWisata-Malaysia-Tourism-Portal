@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status (2026-08-30):** Implemented and verified within the available local runtime. Application, contract, migration-parser, i18n, affected-suite, full-suite, and focused permission/privacy review evidence all pass. Disposable-local pgTAP execution remains environment-blocked because Docker/Podman is unavailable; no linked, shared, or remote database was reset or migrated.
+
 **Goal:** Replace the linear customer tier authorization model with independent Phone, Profile, and KYC facts plus dynamic, versioned entitlements that preserve every accepted feature rule and cannot bypass hard security guards.
 
 **Architecture:** Existing verification columns remain the authoritative facts. A stable capability catalog, immutable policy versions, structured AND/OR requirements, assignments, and a default-deny evaluator produce named decisions for the frontend and API; database RPCs, RLS, triggers, and transactional checks independently enforce hard guards. Customer verification becomes three parallel paths, while Super Admin manages capabilities, policies, assignments, and the read-only global Audit Log inside one Access Control module.
@@ -884,7 +886,7 @@ git commit -m "feat: add entitlement rollout safeguards"
 **Interfaces:**
 - Produces release evidence; no new feature interface.
 
-- [ ] **Step 1: Run formatting and static checks**
+- [x] **Step 1: Run formatting and static checks**
 
 Run:
 
@@ -897,23 +899,23 @@ npm run verify:i18n
 
 Expected: every command exits 0. Existing warnings may be documented only if they predate this plan; no new warning is accepted in modified files.
 
-- [ ] **Step 2: Run affected entitlement and verification tests**
+- [x] **Step 2: Run affected entitlement and verification tests**
 
 Run:
 
 ```bash
-npx vitest run lib/entitlements/__tests__ lib/auth/__tests__/customer-capabilities.test.ts lib/auth/__tests__/customer-capabilities-server.test.ts lib/auth/__tests__/customer-capability-error.test.ts lib/verification/__tests__/eligibility.test.ts lib/wallet/__tests__/customer-capabilities.test.ts app/api/auth/me/__tests__/route.test.ts app/api/kyc/upload/__tests__/route.test.ts app/api/admin/kyc/review/__tests__/route.test.ts components/customer/__tests__/customer-capability-gate-dialog.test.tsx app/customer/verification/__tests__/page.contract.test.ts app/customer/phone/__tests__/page.contract.test.ts app/customer/profile/__tests__/wizard-progress.test.ts app/customer/profile/__tests__/profile-completion.test.ts lib/customer/__tests__/header-navigation.test.ts app/customer/__tests__/sitewide-i18n.contract.test.ts app/api/checkout/__tests__/phone-verification.test.ts app/api/checkout/__tests__/simulator-prepare.test.ts app/api/stripe/create-order-checkout/__tests__/route.test.ts app/api/stripe/create-checkout/__tests__/route.test.ts app/api/personalized-recommendations/__tests__/route-contract.test.ts app/api/recommendations/__tests__/route.test.ts app/api/affiliate/link/__tests__/route.test.ts app/api/stripe/connect-onboard/__tests__/route.test.ts app/api/wallet/withdrawals/__tests__/route.test.ts app/api/wallet/withdrawals/__tests__/destination-eligibility.test.ts app/api/admin/affiliate/run-clearing/__tests__/route.test.ts app/api/admin/clear-earnings/__tests__/route.test.ts app/api/admin/access-control/__tests__/routes.test.ts app/api/admin/access-control/shadow-report/__tests__/route.test.ts app/admin/access-control/__tests__/page.contract.test.ts app/admin/__tests__/layout.contract.test.ts app/admin/__tests__/page-shell-consistency.contract.test.ts app/admin/__tests__/filter-consistency.contract.test.ts app/admin/__tests__/sitewide-i18n.contract.test.ts components/admin/access-control/__tests__/filtering.test.ts supabase/migrations/__tests__/20260830010000_dynamic_entitlement_catalog.test.ts supabase/migrations/__tests__/20260830011000_entitlement_policy_governance.test.ts supabase/migrations/__tests__/20260830012000_independent_verification_facts.test.ts supabase/migrations/__tests__/20260830013000_independent_capability_hard_guards.test.ts supabase/migrations/__tests__/20260830014000_entitlement_audit_correlation.test.ts
+npx vitest run lib/entitlements/__tests__ lib/auth/__tests__/customer-capabilities.test.ts lib/auth/__tests__/customer-capabilities-server.test.ts lib/auth/__tests__/customer-capability-error.test.ts lib/verification/__tests__/eligibility.test.ts lib/wallet/__tests__/customer-capabilities.test.ts app/api/auth/me/__tests__/route.test.ts app/api/kyc/upload/__tests__/route.test.ts app/api/admin/kyc/review/__tests__/route.test.ts components/customer/__tests__/customer-capability-gate-dialog.test.tsx components/customer/__tests__/capability-surfaces.test.ts app/customer/verification/__tests__/page.contract.test.ts app/customer/phone/__tests__/page.contract.test.ts app/customer/profile/__tests__/wizard-progress.test.ts app/customer/profile/__tests__/profile-completion.test.ts lib/customer/__tests__/header-navigation.test.ts app/customer/__tests__/sitewide-i18n.contract.test.ts app/api/checkout/__tests__/phone-verification.test.ts app/api/checkout/__tests__/simulator-prepare.test.ts app/api/stripe/create-order-checkout/__tests__/route.test.ts app/api/stripe/create-checkout/__tests__/route.test.ts app/api/personalized-recommendations/__tests__/route-contract.test.ts app/api/recommendations/__tests__/route.test.ts app/api/affiliate/link/__tests__/route.test.ts app/api/affiliate/__tests__/customer-read-guards.test.ts app/api/stripe/connect-onboard/__tests__/route.test.ts app/api/wallet/withdrawals/__tests__/route.test.ts app/api/wallet/withdrawals/__tests__/destination-eligibility.test.ts app/api/admin/affiliate/run-clearing/__tests__/route.test.ts app/api/admin/clear-earnings/__tests__/route.test.ts app/api/admin/access-control/__tests__/routes.test.ts app/api/admin/access-control/shadow-report/__tests__/route.test.ts app/admin/access-control/__tests__/page.contract.test.ts app/admin/__tests__/layout.contract.test.ts app/admin/__tests__/page-shell-consistency.contract.test.ts app/admin/__tests__/filter-consistency.contract.test.ts app/admin/__tests__/sitewide-i18n.contract.test.ts components/admin/access-control/__tests__/filtering.test.ts supabase/migrations/__tests__/20260830010000_dynamic_entitlement_catalog.test.ts supabase/migrations/__tests__/20260830011000_entitlement_policy_governance.test.ts supabase/migrations/__tests__/20260830012000_independent_verification_facts.test.ts supabase/migrations/__tests__/20260830013000_independent_capability_hard_guards.test.ts supabase/migrations/__tests__/20260830014000_entitlement_audit_correlation.test.ts
 ```
 
 Expected: all affected tests PASS, including the full independent-fact matrix, policy lifecycle, Admin authorization, direct-RPC bypass, denied-side-effect, customer UI, and Audit Log contracts.
 
-- [ ] **Step 3: Run the complete suite once after the final code change**
+- [x] **Step 3: Run the complete suite once after the final code change**
 
 Run: `npm test`
 
 Expected: all non-skipped tests PASS. Do not repeatedly rerun the broad suite unless a failure requires one repair and one fresh verification.
 
-- [ ] **Step 4: Run a migration syntax check in an isolated local Supabase database**
+- [ ] **Step 4: Run a migration syntax check in an isolated local Supabase database** — PostgreSQL 17 parser check passed; disposable-local pgTAP execution is blocked until Docker Desktop or Podman is available.
 
 Create `supabase/tests/independent_entitlement_matrix.sql` with pgTAP assertions for:
 
@@ -938,15 +940,15 @@ npx supabase test db --file supabase/tests/independent_entitlement_matrix.sql
 
 Stop and report a blocker instead of running either command if status points to a linked/shared environment or the local database is not disposable.
 
-- [ ] **Step 5: Perform one focused `luna_worker` permission/privacy review**
+- [x] **Step 5: Perform one focused `luna_worker` permission/privacy review**
 
 Ask the custom reviewer to inspect only: entitlement hard-guard bypasses, service-role subject checks, KYC/phone/profile non-equivalence, policy self-approval, audit immutability, sensitive fact exposure, and signed/storage-path exposure. Classify confirmed security/authorization/privacy violations as must-fix; record polish and speculative issues as follow-up. Allow one repair cycle and one focused re-review maximum.
 
-- [ ] **Step 6: Record release evidence and residual follow-ups**
+- [x] **Step 6: Record release evidence and residual follow-ups**
 
 Update this plan status to implemented and verified. Record command results, migration-local-only status, any pre-existing warnings, and non-blocking follow-ups. Do not claim remote deployment or migration application.
 
-- [ ] **Step 7: Commit the SQL matrix and verified plan status**
+- [x] **Step 7: Commit the SQL matrix and verified plan status**
 
 Any confirmed in-scope verification fix must be committed in its owning Task 1–10 file set before this step. Then run exactly:
 
@@ -968,4 +970,13 @@ git commit -m "test: verify independent entitlement rollout"
 
 ## Verification summary
 
-The implementation is ready for handoff only when TypeScript, lint, i18n, affected tests, the full suite, isolated migration application, the complete capability matrix, denied-side-effect assertions, and the focused permission/privacy review all pass after the last code change.
+Evidence after the final code change (`bfbd6eb`):
+
+- `git diff --check`, `npx tsc --noEmit`, and `npm run verify:i18n` exited 0. Malay and Simplified Chinese remain at 100% coverage (4471/4471 keys each).
+- `npm run lint` exited 0 with 55 pre-existing warnings and no warnings in the final Affiliate repair file set.
+- The affected entitlement/verification suite passed: 46 files, 475 tests.
+- The full Vitest suite passed: 504 files passed, 7 skipped; 2345 tests passed, 20 skipped.
+- PostgreSQL 17 parser validation passed for `supabase/tests/independent_entitlement_matrix.sql`; its pgTAP plan contains 11 assertions covering the approved independent-fact matrix, manual-allow hard guards, high-risk self-approval, and Audit Log immutability.
+- `npx supabase status` confirmed the repository is linked to project `FYP`, but local container inspection failed because neither Docker nor Podman is installed. Therefore `supabase db reset` and `supabase test db` were intentionally not run; no remote/shared database was changed.
+- The focused `luna_worker` review found three confirmed must-fix inconsistencies in `/api/auth/me` fact sourcing/default-deny behavior and server snapshot generation coherence. Those were repaired and re-reviewed. Its final Affiliate privacy review found and repaired direct stats/export/insight reads that lacked capability enforcement; focused re-review approved `bfbd6eb` with no remaining authorization, privacy, or core-rule blocker.
+- Non-blocking follow-up: execute the committed pgTAP matrix on a disposable local Supabase stack once Docker Desktop or Podman is available, before any deployment or migration promotion.
