@@ -60,12 +60,23 @@ export function PoliciesTab({ focusId, onViewAudit }: { focusId: string | null; 
     finally { setVersionsLoading(false); }
   }, [t]);
 
-  useEffect(() => { void loadPolicies(); }, [loadPolicies]);
-  useEffect(() => { setPage(1); }, [search, status]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => { void loadPolicies(); }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [loadPolicies]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(timeoutId);
+  }, [search, status]);
   useEffect(() => {
     if (!focusId || selected) return;
     const policy = result.items.find((item) => item.id === focusId || item.latestVersion?.id === focusId);
-    if (policy) { setSelected(policy); void loadVersions(policy); }
+    if (!policy) return;
+    const timeoutId = setTimeout(() => {
+      setSelected(policy);
+      void loadVersions(policy);
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [focusId, loadVersions, result.items, selected]);
 
   async function createVersion() {

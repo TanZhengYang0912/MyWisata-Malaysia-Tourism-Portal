@@ -43,7 +43,10 @@ export function OverviewTab({ onOpenTab }: { onOpenTab: (tab: AccessControlTabId
     }
   }, [t]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [load]);
 
   if (loading && !data) return <StateCard text={t("accessControl.states.loading")} />;
   if (error && !data) return <StateCard text={error} action={<Button variant="outline" onClick={() => void load()}><RefreshCw /> {t("accessControl.actions.retry")}</Button>} />;

@@ -44,8 +44,14 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
     } finally { setLoading(false); }
   }, [query, t]);
 
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setPage(1); }, [category, enabled, search]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [load]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(timeoutId);
+  }, [category, enabled, search]);
 
   async function save() {
     if (!edit || edit.reason.trim().length < 10) return;

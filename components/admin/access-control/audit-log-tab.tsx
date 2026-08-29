@@ -30,8 +30,14 @@ export function AuditLogTab({ focus, onViewEntity }: { focus: AuditFocus | null;
     } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadAudit")); }
     finally { setLoading(false); }
   }, [focus, query, t]);
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setPage(1); }, [actionPrefix, actorId, capabilityKey, dateFrom, dateTo, entityType, focus?.entityId, traceReference]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [load]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(timeoutId);
+  }, [actionPrefix, actorId, capabilityKey, dateFrom, dateTo, entityType, focus?.entityId, traceReference]);
 
   return <div className="space-y-4">
     <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"><strong className="text-foreground">{t("accessControl.audit.readOnlyTitle")}</strong> {t("accessControl.audit.readOnlyDescription")}</div>

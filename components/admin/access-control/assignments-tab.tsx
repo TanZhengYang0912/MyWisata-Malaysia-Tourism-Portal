@@ -36,8 +36,14 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
     } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadAssignments")); }
     finally { setLoading(false); }
   }, [query, t]);
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setPage(1); }, [search, status, subjectType]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [load]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setPage(1), 0);
+    return () => clearTimeout(timeoutId);
+  }, [search, status, subjectType]);
 
   async function mutate() {
     if (!pending) return;
