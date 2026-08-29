@@ -240,6 +240,9 @@ export function customerAccessHref(
   if (decision === "kyc_required") {
     return `/customer/kyc?next=${encodeURIComponent(safeNext)}`;
   }
+  if (decision === "phone_verification_required") {
+    return `/customer/phone?next=${encodeURIComponent(safeNext)}`;
+  }
   return `/customer/profile?next=${encodeURIComponent(safeNext)}`;
 }
 

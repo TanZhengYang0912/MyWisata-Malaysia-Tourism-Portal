@@ -45,7 +45,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
       { href: "/customer/orders", label: "My Orders", labelKey: "accountItems.orders", description: "Purchases, bookings and receipts", icon: ReceiptText },
       { href: "/customer/vouchers", label: "My Vouchers", labelKey: "accountItems.vouchers", description: "Claimed partner deals", icon: Tag },
       { href: "/customer/wallet", label: "Wallet", labelKey: "accountItems.wallet", description: "Balance and payouts", icon: WalletCards },
-      { href: "/customer/kyc", label: "Verification", labelKey: "accountItems.verification", description: "Verify your identity", icon: ShieldCheck },
+      { href: "/customer/verification", label: "Verification", labelKey: "accountItems.verification", description: "Choose what to verify", icon: ShieldCheck },
     ],
   },
   {

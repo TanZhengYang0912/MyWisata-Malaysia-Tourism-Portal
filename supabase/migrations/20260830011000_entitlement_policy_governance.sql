@@ -313,7 +313,7 @@ BEGIN
     RETURN jsonb_build_object(
       'allowed', FALSE,
       'blockerCode', 'PHONE_VERIFICATION_REQUIRED',
-      'qualificationPaths', jsonb_build_array(jsonb_build_object('type', 'phone', 'href', '/customer/profile'))
+      'qualificationPaths', jsonb_build_array(jsonb_build_object('type', 'phone', 'href', '/customer/phone'))
     );
   END IF;
 

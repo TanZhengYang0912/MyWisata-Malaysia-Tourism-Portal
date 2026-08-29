@@ -11,7 +11,7 @@ describe("customer capability API error parser", () => {
         details: {
           capability: "commerce.checkout",
           blockerCode: "PHONE_VERIFICATION_REQUIRED",
-          qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+          qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
           entitlementGeneration: 7,
         },
       },
@@ -20,7 +20,7 @@ describe("customer capability API error parser", () => {
       decision: {
         allowed: false,
         blockerCode: "PHONE_VERIFICATION_REQUIRED",
-        qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+        qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
         entitlementGeneration: 7,
         source: "hard_guard",
         currentTier: null,

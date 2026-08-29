@@ -30,4 +30,30 @@ describe('profile completion display contract', () => {
     expect(sections).not.toContain('title={tCustomer("ui.kyc.verified")}');
     expect(kycPage).toContain('title={tCustomer("ui.profileSections.identityVerification")}');
   });
+
+  it('keeps Phone outside the four-step profile flow and returns only after Profile completion', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+
+    expect(page).toContain('<BusinessShareBanner />');
+    expect(page).toContain('const visibleSteps = WIZARD_STEPS');
+    expect(page).not.toContain('PhoneVerificationCard');
+    expect(page).not.toContain('/api/phone/send-otp');
+    expect(page).not.toContain('/api/phone/verify-otp');
+    expect(page).not.toContain('phoneOnlyIntent');
+    const submitBioSource = page.slice(
+      page.indexOf('async function submitBio'),
+      page.indexOf('async function handlePreferencesSaved'),
+    );
+    expect(submitBioSource).not.toContain('router.push(continuation)');
+    expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(continuation\) router\.push\(continuation\)/);
+  });
+
+  it('keeps KYC directly available without Profile or tier prerequisites', () => {
+    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+
+    expect(kycPage).toContain('verificationFacts?.kycStatus');
+    expect(kycPage).not.toContain('TIER_STEPS');
+    expect(kycPage).not.toContain('isProfileComplete');
+    expect(kycPage).not.toContain('href="/customer/profile"');
+  });
 });

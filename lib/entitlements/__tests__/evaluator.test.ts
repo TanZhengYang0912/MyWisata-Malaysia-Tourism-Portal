@@ -112,6 +112,13 @@ describe("independent entitlement evaluator", () => {
       });
   });
 
+  it("routes Phone hard-guard recovery to the independent Phone page", () => {
+    expect(evaluateEntitlementDecision(facts(), "commerce.checkout", allowPolicy))
+      .toMatchObject({
+        qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
+      });
+  });
+
   it.each([
     ["pending", "KYC_PENDING"],
     ["rejected", "KYC_RESUBMISSION_REQUIRED"],

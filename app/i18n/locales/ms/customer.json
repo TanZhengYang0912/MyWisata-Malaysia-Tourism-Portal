@@ -82,7 +82,7 @@
     },
     "verification": {
       "label": "Pengesahan",
-      "description": "Sahkan identiti anda"
+      "description": "Pilih perkara yang hendak disahkan"
     },
     "support": {
       "label": "Sokongan",
@@ -158,6 +158,112 @@
     }
   },
   "ui": {
+    "capabilityGate": {
+      "notNow": "Bukan sekarang",
+      "blockers": {
+        "SIGN_IN_REQUIRED": {
+          "title": "Log masuk untuk meneruskan",
+          "description": "Anda boleh terus melayari sebagai tetamu. Log masuk hanya apabila anda bersedia menggunakan fungsi ini.",
+          "cta": "Log masuk"
+        },
+        "EMAIL_VERIFICATION_REQUIRED": {
+          "title": "Sahkan e-mel anda",
+          "description": "Sahkan alamat e-mel sebelum meneruskan. Langkah profil lain boleh diselesaikan kemudian.",
+          "cta": "Sahkan e-mel"
+        },
+        "PHONE_VERIFICATION_REQUIRED": {
+          "title": "Sahkan telefon anda",
+          "description": "Pengesahan telefon diperlukan untuk tempahan, pembelian, checkout dan cadangan AI asas. Anda tidak perlu melengkapkan seluruh profil untuk tindakan ini.",
+          "cta": "Sahkan telefon"
+        },
+        "PROFILE_COMPLETION_REQUIRED": {
+          "title": "Lengkapkan profil anda",
+          "description": "Lengkapkan baki langkah profil untuk menghantar cadangan dan menjana pautan afiliasi terhad.",
+          "cta": "Lengkapkan profil"
+        },
+        "PROFILE_OR_KYC_REQUIRED": {
+          "title": "Pilih cara untuk melayakkan diri",
+          "description": "Lengkapkan profil untuk menghantar cadangan dan menggunakan Afiliasi Terhad, atau lengkapkan KYC untuk menghantar cadangan dan membuka tier Afiliasi Penuh.",
+          "cta": "Pilih pilihan pengesahan"
+        },
+        "KYC_REQUIRED": {
+          "title": "Lengkapkan pengesahan identiti",
+          "description": "KYC yang diluluskan diperlukan untuk pendapatan afiliasi penuh dan permintaan pengeluaran.",
+          "cta": "Mulakan KYC"
+        },
+        "KYC_PENDING": {
+          "title": "Semakan KYC sedang dijalankan",
+          "description": "Permohonan anda sedang disemak. Anda boleh terus menggunakan platform sementara menunggu.",
+          "cta": "Lihat status"
+        },
+        "KYC_RESUBMISSION_REQUIRED": {
+          "title": "KYC memerlukan tindakan anda",
+          "description": "Semak maklum balas dan hantar semula pengesahan identiti sebelum menggunakan fungsi ini.",
+          "cta": "Semak dan hantar semula"
+        },
+        "VENDOR_AFFILIATE_INELIGIBLE": {
+          "title": "Fungsi afiliasi tidak tersedia",
+          "description": "Pemilik vendor dan pengurus cawangan tidak boleh menyertai pendapatan afiliasi pelanggan pada akaun yang sama.",
+          "cta": "Tutup"
+        }
+      }
+    },
+    "accountVerification": {
+      "title": "Pengesahan akaun",
+      "description": "Pilih hanya pengesahan yang membuka fungsi yang anda mahu. Telefon, Profil dan KYC boleh diselesaikan dalam sebarang urutan.",
+      "guestTitle": "Log masuk untuk melihat pilihan pengesahan",
+      "guestDescription": "Log masuk untuk melihat status Telefon, Profil dan KYC yang berasingan.",
+      "available": "Tersedia",
+      "statuses": {
+        "title": "Status pengesahan anda",
+        "description": "Semakan ini adalah berasingan. Anda boleh memulakan mana-mana pilihan yang tersedia.",
+        "phone": { "title": "Telefon" },
+        "profile": { "title": "Profil" },
+        "kyc": { "title": "KYC" },
+        "states": {
+          "complete": "Selesai",
+          "available": "Belum selesai — mulakan apabila diperlukan",
+          "pending": "Sedang disemak",
+          "rejected": "Perlu dihantar semula"
+        }
+      },
+      "intents": {
+        "title": "Apakah yang anda mahu lakukan?",
+        "description": "Pilih matlamat untuk melihat kelayakan yang membukanya.",
+        "checkout": {
+          "title": "Tempah, beli, checkout atau guna AI asas",
+          "description": "Sahkan telefon anda. Profil atau KYC tidak diperlukan untuk fungsi ini."
+        },
+        "recommendation": {
+          "title": "Hantar cadangan",
+          "description": "Lengkapkan sama ada Profil atau KYC. Anda bebas memilih mana-mana laluan dahulu."
+        },
+        "affiliate": {
+          "title": "Jana pautan afiliasi dan peroleh komisen",
+          "description": "Profil membuka Afiliasi Terhad. KYC yang diluluskan membuka Afiliasi Penuh dan pendapatan komisen."
+        },
+        "withdrawal": {
+          "title": "Minta pengeluaran",
+          "description": "KYC yang diluluskan diperlukan, diikuti semakan kesediaan dompet dan pembayaran. Kelulusan Admin masih diperlukan."
+        }
+      },
+      "paths": {
+        "phone": "Sahkan telefon",
+        "profile": "Lengkapkan Profil",
+        "kyc": "Lengkapkan KYC",
+        "profileLimited": "Profil · Afiliasi Terhad",
+        "kycFull": "KYC · Afiliasi Penuh"
+      }
+    },
+    "phoneVerification": {
+      "title": "Sahkan telefon anda",
+      "description": "Sahkan telefon secara berasingan untuk membuka tempahan, pembelian, checkout dan cadangan AI asas.",
+      "guestTitle": "Log masuk untuk mengesahkan telefon",
+      "guestDescription": "Log masuk sebelum memulakan pengesahan telefon.",
+      "completeTitle": "Telefon telah disahkan",
+      "completeDescription": "Tempahan, pembelian, checkout dan cadangan AI asas kini tersedia, tertakluk pada polisi semasa.",
+      "verified": "Nombor telefon telah disahkan."
+    },
     "actions": {
       "backToResults": "Kembali ke hasil",
       "visitVendor": "Lihat vendor",
@@ -969,6 +1075,7 @@
       "rejected": "Penghantaran KYC ditolak",
       "underReview": "Dalam semakan",
       "ready": "Sedia untuk dihantar",
+      "baseAccountRequired": "Sahkan e-mel dan pulihkan akses akaun sebelum memulakan KYC",
       "completeFirst": "Lengkapkan profil dahulu",
       "reviewWindow": "Pasukan kami menyemak dalam 1–2 hari bekerja.",
       "queue": "Anda berada di kedudukan #{{position}} dalam barisan.",

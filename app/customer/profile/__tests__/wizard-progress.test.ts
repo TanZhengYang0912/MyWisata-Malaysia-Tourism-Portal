@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { getWizardProgress } from '../wizard-progress';
+import { getWizardProgress, WIZARD_STEPS } from '../wizard-progress';
 
 describe('verification wizard progress', () => {
   it('uses the server-derived verification contract', () => {
     expect(getWizardProgress({
       complete: false,
-      percentage: 20,
-      completedSteps: ['phone'],
-      currentStep: 'identity',
+      percentage: 25,
+      completedSteps: ['identity'],
+      currentStep: 'avatar',
     })).toEqual({
       currentStep: 2,
-      totalSteps: 5,
-      currentLabel: 'Identity',
-      nextLabel: 'Avatar',
-      percentage: 20,
+      totalSteps: 4,
+      currentLabel: 'Avatar',
+      nextLabel: 'Bio',
+      percentage: 25,
     });
   });
 
@@ -21,14 +21,23 @@ describe('verification wizard progress', () => {
     expect(getWizardProgress({
       complete: true,
       percentage: 100,
-      completedSteps: ['phone', 'identity', 'avatar', 'bio', 'survey'],
+      completedSteps: ['identity', 'avatar', 'bio', 'survey'],
       currentStep: null,
     })).toEqual({
-      currentStep: 5,
-      totalSteps: 5,
+      currentStep: 4,
+      totalSteps: 4,
       currentLabel: 'Complete',
       nextLabel: null,
       percentage: 100,
     });
+  });
+
+  it('contains exactly the four existing profile sections', () => {
+    expect(WIZARD_STEPS).toEqual([
+      { id: 'identity', label: 'Identity' },
+      { id: 'avatar', label: 'Avatar' },
+      { id: 'bio', label: 'Bio' },
+      { id: 'survey', label: 'Survey' },
+    ]);
   });
 });

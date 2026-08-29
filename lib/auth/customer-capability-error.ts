@@ -32,9 +32,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isQualificationPath(value: unknown): value is QualificationPath {
   if (!isRecord(value) || typeof value.type !== "string" || typeof value.href !== "string") return false;
-  return (value.type === "email" || value.type === "phone" || value.type === "profile")
-    ? value.href === "/customer/profile"
-    : value.type === "kyc" && value.href === "/customer/kyc";
+  if (value.type === "email" || value.type === "profile") return value.href === "/customer/profile";
+  if (value.type === "phone") return value.href === "/customer/phone";
+  return value.type === "kyc" && value.href === "/customer/kyc";
 }
 
 function nextActionFor(blockerCode: CustomerCapabilityBlocker): CustomerCapabilityNextAction {

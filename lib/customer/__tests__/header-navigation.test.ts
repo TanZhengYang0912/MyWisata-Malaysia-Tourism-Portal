@@ -32,7 +32,7 @@ describe("customer header navigation", () => {
       "/customer/orders",
       "/customer/vouchers",
       "/customer/wallet",
-      "/customer/kyc",
+      "/customer/verification",
       "/customer/support",
       "/customer/affiliate",
       "/customer/profile/register-vendor",
@@ -45,6 +45,14 @@ describe("customer header navigation", () => {
       "Help",
       "More",
     ]);
+  });
+
+  it("routes the Verification menu to the capability-first entry", () => {
+    const verification = ACCOUNT_MENU_GROUPS
+      .flatMap((group) => group.items)
+      .find((item) => item.labelKey === "accountItems.verification");
+
+    expect(verification?.href).toBe("/customer/verification");
   });
 
   it("uses a profile name and falls back to an email local part", () => {

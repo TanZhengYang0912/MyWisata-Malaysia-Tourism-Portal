@@ -81,13 +81,13 @@ describe("entitlement server adapters", () => {
     });
   });
 
-  it("accepts the shared Profile recovery route from the Task 1 contract", async () => {
+  it("accepts the independent Phone recovery route", async () => {
     mocks.rpc.mockResolvedValue({
       data: {
         capability: "commerce.checkout",
         allowed: false,
         blockerCode: "PHONE_VERIFICATION_REQUIRED",
-        qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+        qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
         entitlementGeneration: 8,
         source: "hard_guard",
       },
@@ -98,7 +98,7 @@ describe("entitlement server adapters", () => {
       resolveEffectiveCapability("user-2", "commerce.checkout"),
     ).resolves.toMatchObject({
       blockerCode: "PHONE_VERIFICATION_REQUIRED",
-      qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+      qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
     });
   });
 

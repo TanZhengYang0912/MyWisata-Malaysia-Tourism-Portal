@@ -31,7 +31,7 @@ const SOURCES = new Set<NonNullable<EntitlementDecision["source"]>>([
 
 const QUALIFICATION_HREFS: Record<QualificationPath["type"], string> = {
   email: "/customer/profile",
-  phone: "/customer/profile",
+  phone: "/customer/phone",
   profile: "/customer/profile",
   kyc: "/customer/kyc",
 };

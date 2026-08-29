@@ -38,19 +38,16 @@ export type CustomerCapabilityRecoveryAction = {
 const CustomerCapabilityGateContext = createContext<CustomerCapabilityGateContextValue | null>(null);
 
 export function capabilityGateCopyKey(blockerCode: CustomerCapabilityBlocker): string {
-  if (blockerCode === "PROFILE_OR_KYC_REQUIRED" || blockerCode === "PROFILE_REQUIRED") {
+  if (blockerCode === "PROFILE_OR_KYC_REQUIRED") {
+    return "ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED";
+  }
+  if (blockerCode === "PROFILE_REQUIRED") {
     return "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED";
   }
   return `ui.capabilityGate.blockers.${blockerCode}`;
 }
 
 export function capabilityGateDescriptionKeys(blockerCode: CustomerCapabilityBlocker): string[] {
-  if (blockerCode === "PROFILE_OR_KYC_REQUIRED") {
-    return [
-      "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED.description",
-      "ui.capabilityGate.blockers.KYC_REQUIRED.description",
-    ];
-  }
   return [`${capabilityGateCopyKey(blockerCode)}.description`];
 }
 
@@ -102,6 +99,9 @@ export function customerCapabilityRecoveryActions(
     || nextAction === "resubmit_kyc"
   ) {
     return [{ href: `/customer/kyc?${query}`, copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
+  }
+  if (nextAction === "verify_phone") {
+    return [{ href: `/customer/phone?${query}`, copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
   }
   return [{ href: `/customer/profile?${query}`, copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
 }

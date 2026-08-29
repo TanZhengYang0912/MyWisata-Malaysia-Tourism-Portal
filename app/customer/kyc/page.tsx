@@ -5,7 +5,7 @@ import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import {
   ShieldCheck, Upload, CheckCircle2, Clock, FileCheck2,
-  UserCircle, Info, AlertTriangle,
+  Info, AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { z } from "zod";
@@ -36,13 +36,6 @@ function createKycSchema(t: TFunction<"customer">) {
     }
   });
 }
-const TIER_STEPS = [
-  { value: "email_verified",  labelKey: "ui.kyc.tiers.emailVerified" },
-  { value: "phone_verified",  labelKey: "ui.kyc.tiers.phoneVerified" },
-  { value: "profile_complete", labelKey: "ui.kyc.tiers.profileComplete" },
-  { value: "kyc_verified",    labelKey: "ui.kyc.tiers.kycVerified" },
-] as const;
-
 function localizedKycFileError(file: File | null, t: TFunction<"customer">): string | null {
   const error = validateKycFile(file);
   if (!error) return null;
@@ -53,7 +46,7 @@ function localizedKycFileError(file: File | null, t: TFunction<"customer">): str
 
 export default function KycPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
-  const { currentUser, refreshUser } = useAuth();
+  const { currentUser, refreshUser, verificationFacts } = useAuth();
   const searchParams = useSearchParams();
   const continuation = postLoginPath(searchParams.get("next"));
   const { showFeedback } = useActionFeedback();
@@ -70,13 +63,11 @@ export default function KycPage() {
   const frontFileInputRef = useRef<HTMLInputElement>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
 
-  const tier      = currentUser?.verificationTier ?? "email_unverified";
-  const isVerified       = tier === "kyc_verified";
-  const isProfileComplete = tier === "profile_complete" || tier === "kyc_verified";
-  const canSubmit        = tier === "profile_complete";
+  const kycStatus = verificationFacts?.kycStatus ?? "unverified";
+  const isVerified = kycStatus === "approved";
+  const canSubmit = verificationFacts?.emailVerified === true
+    && verificationFacts.accountStatus === "active";
   const loading          = activeSubmission === undefined;
-
-  const tierIndex = TIER_STEPS.findIndex((s) => s.value === tier);
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -174,7 +165,7 @@ export default function KycPage() {
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
 
-      {isVerified && continuation && <div className="mb-6"><Button asChild><Link href={continuation}>{tCustomer("ui.kyc.continue")}</Link></Button></div>}
+      {(isVerified || activeSubmission?.status === "pending") && continuation && <div className="mb-6"><Button asChild><Link href={continuation}>{tCustomer("ui.kyc.continue")}</Link></Button></div>}
 
       {/* Status badge */}
       <div
@@ -221,9 +212,9 @@ export default function KycPage() {
               ? tCustomer("ui.kyc.rejected")
               : activeSubmission?.status === "pending"
               ? tCustomer("ui.kyc.underReview")
-              : isProfileComplete
+              : canSubmit
               ? tCustomer("ui.kyc.ready")
-              : tCustomer("ui.kyc.completeFirst")}
+              : tCustomer("ui.kyc.baseAccountRequired")}
           </p>
           {activeSubmission?.status === "pending" && (
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -249,42 +240,6 @@ export default function KycPage() {
           )}
         </div>
       </div>
-
-      {/* Verification steps progress */}
-      <div className="space-y-2 mb-8">
-        {TIER_STEPS.map(({ value, labelKey }, i) => {
-          const done = tierIndex >= i;
-          return (
-            <div key={value} className="flex min-h-[52px] items-center gap-3 rounded-xl border border-border bg-card p-3">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{
-                  backgroundColor: done ? "var(--primary)" : "var(--secondary)",
-                  color:           done ? "white"           : "var(--muted-foreground)",
-                }}
-              >
-                {i + 1}
-              </div>
-              <p className="text-sm text-foreground">{tCustomer(labelKey)}</p>
-              {done && <CheckCircle2 size={14} className="text-primary ml-auto" />}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Profile CTA — shown for non-profile-complete users */}
-      {!isProfileComplete && !isVerified && (
-        <div className="rounded-2xl border border-border bg-card p-5 mb-6 flex items-start gap-4">
-          <UserCircle size={22} className="text-accent shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground mb-1">{tCustomer("ui.kyc.profileTitle")}</p>
-            <p className="text-xs text-muted-foreground mb-3">{tCustomer("ui.kyc.profileDescription")}</p>
-            <Link href="/customer/profile">
-              <Button size="sm" variant="outline">{tCustomer("ui.kyc.completeProfile")}</Button>
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* KYC submission form */}
       {showForm && (

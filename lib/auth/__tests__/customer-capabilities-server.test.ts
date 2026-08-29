@@ -21,7 +21,7 @@ describe("server customer capability resolver", () => {
       capability: "commerce.checkout",
       allowed: false,
       blockerCode: "PHONE_VERIFICATION_REQUIRED",
-      qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+      qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
       entitlementGeneration: 11,
       source: "hard_guard",
     });

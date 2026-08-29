@@ -73,7 +73,7 @@ describe("customer capability compatibility", () => {
 
   it("preserves only a safe local continuation", () => {
     expect(customerAccessHref("phone_verification_required", "https://evil.example"))
-      .toBe("/customer/profile?next=%2Fcustomer");
+      .toBe("/customer/phone?next=%2Fcustomer");
     expect(customerAccessHref("profile_completion_required", "//evil.example"))
       .toBe("/customer/profile?next=%2Fcustomer");
     expect(customerAccessHref("kyc_required", "/customer/wallet"))

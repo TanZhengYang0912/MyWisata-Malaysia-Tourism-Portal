@@ -41,6 +41,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/page.tsx",
   "app/customer/partners/page.tsx",
   "app/customer/place/[slug]/page.tsx",
+  "app/customer/phone/page.tsx",
   "app/customer/preferences/page.tsx",
   "app/customer/profile/[userId]/page.tsx",
   "app/customer/profile/page.tsx",
@@ -61,6 +62,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/vendor/[vendorId]/page.tsx",
   "app/customer/vouchers/page.tsx",
   "app/customer/vouchers/voucher-hub-client.tsx",
+  "app/customer/verification/page.tsx",
   "app/customer/wallet/page.tsx",
   "app/customer/wallet/withdrawals/[id]/page.tsx",
   "app/customer/wishlist/page.tsx",
@@ -77,6 +79,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/booking-qr-code.tsx",
   "components/customer/category-icon.tsx",
   "components/customer/chat-thread-panel.tsx",
+  "components/customer/customer-capability-gate-dialog.tsx",
   "components/customer/customer-page-shell.tsx",
   "components/customer/destination-preview-modal.tsx",
   "components/customer/directory-pagination.tsx",
@@ -107,7 +110,9 @@ export const CUSTOMER_I18N_FILES = [
   "components/outlet/outlet-menu.tsx",
   "components/outlet/outlet-page-renderer.tsx",
   "components/profile/preferences-editor.tsx",
+  "components/profile/business-share-banner.tsx",
   "components/profile/international-phone-input.tsx",
+  "components/profile/phone-verification-card.tsx",
   "components/profile/profile-sections.tsx",
 ] as const;
 
@@ -216,6 +221,23 @@ describe("customer and guest sitewide i18n contract", () => {
       for (const [key, value] of Object.entries(values)) {
         expect(resourceValue(resources[locale as keyof typeof resources], key), `${locale}:${key}`).toBe(value);
       }
+    }
+  });
+
+  it("keeps independent verification and honest Profile-or-KYC recovery copy in every locale", () => {
+    const resources = [
+      JSON.parse(read("app/i18n/locales/en/customer.json")),
+      JSON.parse(read("app/i18n/locales/zh-CN/customer.json")),
+      JSON.parse(read("app/i18n/locales/ms/customer.json")),
+    ];
+
+    for (const resource of resources) {
+      expect(resourceValue(resource, "ui.accountVerification.title")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.accountVerification.intents.checkout.title")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.accountVerification.statuses.phone.title")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.phoneVerification.title")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED.title")).toEqual(expect.any(String));
+      expect(resourceValue(resource, "ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED.description")).toEqual(expect.any(String));
     }
   });
 

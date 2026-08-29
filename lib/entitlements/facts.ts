@@ -2,7 +2,7 @@ import type { QualificationPath, VerificationFacts } from "@/lib/entitlements/ty
 
 export const QUALIFICATION_PATH = {
   email: { type: "email", href: "/customer/profile" },
-  phone: { type: "phone", href: "/customer/profile" },
+  phone: { type: "phone", href: "/customer/phone" },
   profile: { type: "profile", href: "/customer/profile" },
   kyc: { type: "kyc", href: "/customer/kyc" },
 } as const satisfies Record<QualificationPath["type"], QualificationPath>;

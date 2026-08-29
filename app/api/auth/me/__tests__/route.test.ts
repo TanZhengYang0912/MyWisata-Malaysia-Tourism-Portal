@@ -85,7 +85,7 @@ describe("GET /api/auth/me", () => {
         capability: "commerce.checkout",
         allowed: false,
         blockerCode: "PHONE_VERIFICATION_REQUIRED",
-        qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+        qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
         entitlementGeneration: 17,
         source: "hard_guard",
         currentTier: null,

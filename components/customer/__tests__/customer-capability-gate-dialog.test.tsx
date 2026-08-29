@@ -13,7 +13,7 @@ describe("customer capability gate dialog contract", () => {
       decision: {
         allowed: false,
         blockerCode: "PHONE_VERIFICATION_REQUIRED",
-        qualificationPaths: [{ type: "phone", href: "/customer/profile" }],
+        qualificationPaths: [{ type: "phone", href: "/customer/phone" }],
         entitlementGeneration: 1,
         source: "hard_guard",
         currentTier: null,
@@ -21,7 +21,7 @@ describe("customer capability gate dialog contract", () => {
         nextAction: "verify_phone",
       },
       nextPath: "/customer/checkout?cart=1",
-    })).toBe("/customer/profile?capability=checkout&next=%2Fcustomer%2Fcheckout%3Fcart%3D1");
+    })).toBe("/customer/phone?capability=checkout&next=%2Fcustomer%2Fcheckout%3Fcart%3D1");
   });
 
   it("uses login for sign-in and email recovery, and KYC for review states", () => {
@@ -101,6 +101,6 @@ describe("customer capability gate dialog contract", () => {
     expect(capabilityGateCopyKey("PROFILE_COMPLETION_REQUIRED"))
       .toBe("ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED");
     expect(capabilityGateCopyKey("PROFILE_OR_KYC_REQUIRED"))
-      .toBe("ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED");
+      .toBe("ui.capabilityGate.blockers.PROFILE_OR_KYC_REQUIRED");
   });
 });
