@@ -22,6 +22,10 @@ export const capabilityMetadataSchema = z.object({
   enabled: z.boolean(),
 }).strict();
 
+export const updateCapabilitySchema = capabilityMetadataSchema.extend({
+  reason: reasonSchema,
+}).strict();
+
 const booleanRequirementSchema = z.object({
   alternativeGroup: z.number().int().positive(),
   factKey: z.enum(["email_verified", "phone_verified", "profile_complete"]),

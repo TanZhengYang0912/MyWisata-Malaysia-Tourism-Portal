@@ -17,6 +17,7 @@ import {
   revokeEntitlementAssignment,
   rollbackEntitlementPolicy,
   setEntitlementAssignment,
+  updateEntitlementCapability,
 } from "@/lib/entitlements/admin";
 import { resolveEffectiveCapability } from "@/lib/entitlements/server";
 
@@ -259,6 +260,32 @@ describe("entitlement server adapters", () => {
       },
     ]);
     expect(mocks.rpc.mock.calls[1][1]).not.toHaveProperty("p_actor_id");
+  });
+
+  it("updates capability metadata through the governed RPC without actor identity", async () => {
+    const capabilityId = "44444444-4444-4444-8444-444444444444";
+    mocks.rpc.mockResolvedValue({ data: capabilityId, error: null });
+
+    await expect(updateEntitlementCapability({
+      key: "commerce.checkout",
+      category: "commerce",
+      riskLevel: "high",
+      customerVisible: true,
+      manuallyAssignable: false,
+      enabled: false,
+      reason: "Disable checkout while a payment incident is investigated",
+    })).resolves.toBe(capabilityId);
+
+    expect(mocks.rpc).toHaveBeenCalledWith("update_entitlement_capability", {
+      p_capability_key: "commerce.checkout",
+      p_category: "commerce",
+      p_risk_level: "high",
+      p_customer_visible: true,
+      p_manually_assignable: false,
+      p_enabled: false,
+      p_reason: "Disable checkout while a payment incident is investigated",
+    });
+    expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty("p_actor_id");
   });
 
   it("rejects malformed audit RPC JSON rather than trusting a cast", () => {

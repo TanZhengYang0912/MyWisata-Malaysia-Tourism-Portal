@@ -42,6 +42,16 @@ export interface AssignmentInput {
   reason: string;
 }
 
+export interface UpdateCapabilityInput {
+  key: CapabilityKey;
+  category: "platform" | "commerce" | "ai" | "recommendation" | "affiliate" | "wallet";
+  riskLevel: "low" | "medium" | "high" | "critical";
+  customerVisible: boolean;
+  manuallyAssignable: boolean;
+  enabled: boolean;
+  reason: string;
+}
+
 export interface AccessControlState {
   capabilities: Record<string, unknown>[];
   policies: Record<string, unknown>[];
@@ -186,4 +196,16 @@ export async function revokeEntitlementAssignment(
     p_assignment_id: assignmentId,
     p_reason: reason,
   });
+}
+
+export async function updateEntitlementCapability(input: UpdateCapabilityInput): Promise<string> {
+  return callRpc("update_entitlement_capability", {
+    p_capability_key: input.key,
+    p_category: input.category,
+    p_risk_level: input.riskLevel,
+    p_customer_visible: input.customerVisible,
+    p_manually_assignable: input.manuallyAssignable,
+    p_enabled: input.enabled,
+    p_reason: input.reason,
+  }, (value) => isUuid(value) ? value : null);
 }

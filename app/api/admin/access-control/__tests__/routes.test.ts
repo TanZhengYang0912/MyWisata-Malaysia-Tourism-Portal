@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   rollbackPolicy: vi.fn(),
   setAssignment: vi.fn(),
   revokeAssignment: vi.fn(),
+  updateCapability: vi.fn(),
 }));
 
 vi.mock("@/lib/entitlements/admin-guard", () => ({
@@ -23,6 +24,7 @@ vi.mock("@/lib/entitlements/admin", () => ({
   rollbackEntitlementPolicy: mocks.rollbackPolicy,
   setEntitlementAssignment: mocks.setAssignment,
   revokeEntitlementAssignment: mocks.revokeAssignment,
+  updateEntitlementCapability: mocks.updateCapability,
 }));
 
 import * as overviewRoute from "@/app/api/admin/access-control/overview/route";
@@ -143,6 +145,7 @@ type RouteCase = {
 const routeCases: RouteCase[] = [
   { name: "overview GET", call: () => overviewRoute.GET() },
   { name: "capabilities GET", call: () => capabilitiesRoute.GET(new Request("http://localhost/api/admin/access-control/capabilities")) },
+  { name: "capabilities PATCH", call: () => capabilitiesRoute.PATCH(new Request("http://localhost/api/admin/access-control/capabilities", { method: "PATCH", body: JSON.stringify({ key: "commerce.checkout", category: "commerce", riskLevel: "high", customerVisible: true, manuallyAssignable: false, enabled: false, reason: "Disable checkout during the payment incident review" }) })) },
   { name: "policies GET", call: () => policiesRoute.GET(new Request("http://localhost/api/admin/access-control/policies")) },
   { name: "policy versions GET", call: () => versionsRoute.GET(new Request("http://localhost"), { params: Promise.resolve({ policyId: POLICY_ID }) }) },
   { name: "policy versions POST", call: () => versionsRoute.POST(new Request("http://localhost", { method: "POST", body: JSON.stringify(validVersionBody) }), { params: Promise.resolve({ policyId: POLICY_ID }) }) },
@@ -165,6 +168,7 @@ describe("Access Control route authorization", () => {
     mocks.rollbackPolicy.mockResolvedValue(VERSION_ID);
     mocks.setAssignment.mockResolvedValue(ASSIGNMENT_ID);
     mocks.revokeAssignment.mockResolvedValue(undefined);
+    mocks.updateCapability.mockResolvedValue("66666666-6666-4666-8666-666666666666");
   });
 
   for (const route of routeCases) {
@@ -205,6 +209,7 @@ describe("Access Control validation and governed mutations", () => {
     mocks.rollbackPolicy.mockResolvedValue(VERSION_ID);
     mocks.setAssignment.mockResolvedValue(ASSIGNMENT_ID);
     mocks.revokeAssignment.mockResolvedValue(undefined);
+    mocks.updateCapability.mockResolvedValue("66666666-6666-4666-8666-666666666666");
   });
 
   it("rejects unknown facts and operators before the policy RPC", async () => {
@@ -257,6 +262,54 @@ describe("Access Control validation and governed mutations", () => {
       error: null,
     });
     expect(mocks.createVersion).toHaveBeenCalledWith({ policyId: POLICY_ID, ...validVersionBody });
+  });
+
+  it("updates a capability through the governed adapter and returns its receipt", async () => {
+    const capabilityId = "66666666-6666-4666-8666-666666666666";
+    const body = {
+      key: "commerce.checkout",
+      category: "commerce",
+      riskLevel: "high",
+      customerVisible: true,
+      manuallyAssignable: false,
+      enabled: false,
+      reason: "Disable checkout during the payment incident review",
+    };
+    const response = await capabilitiesRoute.PATCH(new Request("http://localhost/api/admin/access-control/capabilities", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: { capabilityId, capabilityKey: "commerce.checkout", auditEventId: AUDIT_ID, generation: 19 },
+      error: null,
+    });
+    expect(mocks.updateCapability).toHaveBeenCalledWith(body);
+  });
+
+  it("rejects unknown fields, actor IDs, and unregistered capability keys before the RPC", async () => {
+    for (const invalidBody of [
+      { key: "commerce.checkout", category: "commerce", riskLevel: "high", customerVisible: true, manuallyAssignable: false, enabled: false, reason: "Disable checkout during the incident review", actorId: ACTOR_ID },
+      { key: "commerce.checkout", category: "commerce", riskLevel: "high", customerVisible: true, manuallyAssignable: false, enabled: false, reason: "Disable checkout during the incident review", arbitrary: true },
+      { key: "unknown.execute", category: "commerce", riskLevel: "high", customerVisible: true, manuallyAssignable: false, enabled: false, reason: "Disable the unregistered capability during review" },
+    ]) {
+      const response = await capabilitiesRoute.PATCH(new Request("http://localhost/api/admin/access-control/capabilities", {
+        method: "PATCH",
+        body: JSON.stringify(invalidBody),
+      }));
+      expect(response.status).toBe(422);
+    }
+    expect(mocks.updateCapability).not.toHaveBeenCalled();
+  });
+
+  it("maps a governed no-op capability update to a stable conflict", async () => {
+    mocks.updateCapability.mockRejectedValue(new Error("capability_no_changes"));
+    const response = await capabilitiesRoute.PATCH(new Request("http://localhost/api/admin/access-control/capabilities", {
+      method: "PATCH",
+      body: JSON.stringify({ key: "commerce.checkout", category: "commerce", riskLevel: "high", customerVisible: true, manuallyAssignable: false, enabled: true, reason: "Confirm the unchanged checkout capability metadata" }),
+    }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("NO_CHANGES");
   });
 
   it("rejects unknown Audit Log filters", () => {
