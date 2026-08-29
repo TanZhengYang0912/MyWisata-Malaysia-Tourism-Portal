@@ -36,18 +36,38 @@ describe("dynamic entitlement catalog migration", () => {
     expect(sql).toContain("REFERENCES public.users(id)");
   });
 
-  it("enforces one active version and one unrevoked assignment", () => {
+  it("enforces one active version and rejects overlapping unrevoked assignment windows", () => {
     const sql = migrationSql();
 
     expect(sql).toMatch(
       /CREATE UNIQUE INDEX entitlement_policy_versions_one_active_per_policy[\s\S]+?ON public\.entitlement_policy_versions \(policy_id\)[\s\S]+?WHERE status = 'active'/i,
     );
-    expect(sql).toMatch(
-      /CREATE UNIQUE INDEX entitlement_assignments_one_live_effect[\s\S]+?\(subject_type, subject_id, capability_key, effect\)[\s\S]+?WHERE revoked_at IS NULL/i,
+    expect(sql).toContain("CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA extensions");
+    expect(sql).toContain(
+      "active_during TSTZRANGE GENERATED ALWAYS AS (tstzrange(starts_at, COALESCE(expires_at, 'infinity'::timestamptz), '[)')) STORED",
     );
+    expect(sql).toMatch(
+      /CONSTRAINT entitlement_assignments_no_unrevoked_overlap[\s\S]+?EXCLUDE USING gist[\s\S]+?subject_type WITH =[\s\S]+?subject_id WITH =[\s\S]+?capability_key WITH =[\s\S]+?effect WITH =[\s\S]+?active_during WITH &&[\s\S]+?WHERE \(revoked_at IS NULL\)/i,
+    );
+    expect(sql).not.toContain("CREATE UNIQUE INDEX entitlement_assignments_one_live_effect");
+    expect(sql).not.toMatch(/WHERE[\s\S]{0,120}now\(\)/i);
     expect(sql).toContain("CREATE TRIGGER entitlement_policy_versions_immutable_after_activation");
     expect(sql).toContain("CREATE TRIGGER entitlement_policy_requirements_immutable_after_activation");
     expect(sql).toContain("CREATE TRIGGER capabilities_key_immutable");
+  });
+
+  it("rejects requirement updates when either the source or destination version is activated", () => {
+    const sql = migrationSql();
+    const helper = sql.match(
+      /CREATE OR REPLACE FUNCTION public\.protect_activated_entitlement_policy_requirement\(\)[\s\S]+?\n\$\$;/i,
+    )?.[0];
+
+    expect(helper, "requirement immutability helper must exist").toBeDefined();
+    expect(helper).toContain("IF TG_OP = 'UPDATE' THEN");
+    expect(helper).toContain(
+      "version.id IN (OLD.policy_version_id, NEW.policy_version_id)",
+    );
+    expect(helper).toContain("version.activated_at IS NOT NULL");
   });
 
   it("seeds one active built-in allow policy for every customer capability", () => {

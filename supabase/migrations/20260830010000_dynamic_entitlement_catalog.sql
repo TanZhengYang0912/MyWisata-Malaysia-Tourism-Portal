@@ -2,6 +2,8 @@
 -- Policy requirements are structured data only; governed evaluation and mutation
 -- RPCs are added by the following entitlement-governance migration.
 
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA extensions;
+
 CREATE TABLE public.capabilities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE CHECK (key ~ '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$'),
@@ -84,8 +86,18 @@ CREATE TABLE public.entitlement_assignments (
   revoked_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
   revoked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  active_during TSTZRANGE GENERATED ALWAYS AS (tstzrange(starts_at, COALESCE(expires_at, 'infinity'::timestamptz), '[)')) STORED,
   CHECK (expires_at IS NULL OR expires_at > starts_at),
-  CHECK ((revoked_at IS NULL AND revoked_by IS NULL) OR revoked_at IS NOT NULL)
+  CHECK ((revoked_at IS NULL AND revoked_by IS NULL) OR revoked_at IS NOT NULL),
+  CONSTRAINT entitlement_assignments_no_unrevoked_overlap
+    EXCLUDE USING gist (
+      subject_type WITH =,
+      subject_id WITH =,
+      capability_key WITH =,
+      effect WITH =,
+      active_during WITH &&
+    )
+    WHERE (revoked_at IS NULL)
 );
 
 CREATE TABLE public.entitlement_generation (
@@ -99,10 +111,6 @@ CREATE TABLE public.entitlement_generation (
 CREATE UNIQUE INDEX entitlement_policy_versions_one_active_per_policy
   ON public.entitlement_policy_versions (policy_id)
   WHERE status = 'active';
-
-CREATE UNIQUE INDEX entitlement_assignments_one_live_effect
-  ON public.entitlement_assignments (subject_type, subject_id, capability_key, effect)
-  WHERE revoked_at IS NULL;
 
 CREATE INDEX entitlement_policies_capability_idx
   ON public.entitlement_policies (capability_key, scope);
@@ -305,23 +313,34 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-  v_policy_version_id UUID;
-  v_activated_at TIMESTAMPTZ;
 BEGIN
-  IF TG_OP = 'DELETE' THEN
-    v_policy_version_id := OLD.policy_version_id;
+  IF TG_OP = 'UPDATE' THEN
+    IF EXISTS (
+      SELECT 1
+        FROM public.entitlement_policy_versions AS version
+       WHERE version.id IN (OLD.policy_version_id, NEW.policy_version_id)
+         AND version.activated_at IS NOT NULL
+    ) THEN
+      RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    IF EXISTS (
+      SELECT 1
+        FROM public.entitlement_policy_versions AS version
+       WHERE version.id = OLD.policy_version_id
+         AND version.activated_at IS NOT NULL
+    ) THEN
+      RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
+    END IF;
   ELSE
-    v_policy_version_id := NEW.policy_version_id;
-  END IF;
-
-  SELECT version.activated_at
-    INTO v_activated_at
-    FROM public.entitlement_policy_versions AS version
-   WHERE version.id = v_policy_version_id;
-
-  IF v_activated_at IS NOT NULL THEN
-    RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
+    IF EXISTS (
+      SELECT 1
+        FROM public.entitlement_policy_versions AS version
+       WHERE version.id = NEW.policy_version_id
+         AND version.activated_at IS NOT NULL
+    ) THEN
+      RAISE EXCEPTION 'activated_entitlement_policy_requirements_are_immutable';
+    END IF;
   END IF;
 
   IF TG_OP = 'DELETE' THEN
