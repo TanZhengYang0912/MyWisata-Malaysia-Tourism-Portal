@@ -95,16 +95,21 @@ describe("entitlement policy governance migration", () => {
     expect(functionSql("capability_hard_guard")).toContain("ACCOUNT_RESTRICTED");
   });
 
-  it("evaluates a known disabled capability's account guard before default deny", () => {
+  it("evaluates account restriction before unknown or disabled capability denial", () => {
     const sql = functionSql("resolve_user_capability");
-    const knownCapability = sql.indexOf("-- Resolve key existence before subject guards");
-    const hardGuard = sql.indexOf("-- Account and capability hard guards run before enabled-state denial");
-    const disabledCapability = sql.indexOf("-- A known disabled capability is default-denied after hard guards");
+    const accountGuard = sql.indexOf("-- Trusted account restriction precedes every capability-key outcome");
+    const capabilityLookup = sql.indexOf("-- Resolve key existence after the account restriction outcome");
+    const unknownCapability = sql.indexOf("-- Unknown runtime keys remain default-denied");
+    const capabilityHardGuard = sql.indexOf("-- Known capability-specific hard guards run before enabled-state denial");
+    const disabledCapability = sql.indexOf("-- A known disabled capability is default-denied after all hard guards");
 
-    expect(knownCapability).toBeGreaterThan(-1);
-    expect(hardGuard).toBeGreaterThan(knownCapability);
-    expect(disabledCapability).toBeGreaterThan(hardGuard);
-    expect(sql.slice(knownCapability, hardGuard)).toContain("IF NOT FOUND");
+    expect(accountGuard).toBeGreaterThan(-1);
+    expect(capabilityLookup).toBeGreaterThan(accountGuard);
+    expect(unknownCapability).toBeGreaterThan(capabilityLookup);
+    expect(capabilityHardGuard).toBeGreaterThan(unknownCapability);
+    expect(disabledCapability).toBeGreaterThan(capabilityHardGuard);
+    expect(sql.slice(accountGuard, capabilityLookup)).toContain("ACCOUNT_RESTRICTED");
+    expect(sql.slice(unknownCapability, capabilityHardGuard)).toContain("IF NOT FOUND");
     expect(sql.slice(disabledCapability)).toContain("IF NOT v_capability_enabled");
   });
 
@@ -194,6 +199,12 @@ describe("entitlement policy governance migration", () => {
       /COUNT\(\*\) FILTER \([\s\S]*?WHERE assignment\.expires_at IS NOT NULL AND assignment\.expires_at <= now\(\)/i,
     );
     expect(generation).toMatch(/v_base_generation \+ v_transition_count/i);
+    expect(generation).toContain("FROM public.entitlement_policy_versions AS policy_version");
+    expect(generation).toMatch(/policy_version\.activated_at IS NOT NULL/i);
+    expect(generation).toMatch(/policy_version\.effective_from <= now\(\)/i);
+    expect(generation).toMatch(
+      /policy_version\.effective_until IS NOT NULL[\s\S]*?AND policy_version\.effective_until <= now\(\)/i,
+    );
     expect(generation).toContain("9007199254740991");
     expect(generation).toContain("policy_unavailable");
     expect(resolver).toContain("public.current_entitlement_generation()");

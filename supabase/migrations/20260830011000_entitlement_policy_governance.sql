@@ -54,10 +54,10 @@ END;
 $$;
 
 -- The stored generation covers governed writes. The transition count makes
--- time-window changes visible without a cron write: every assignment start or
--- expiry boundary crossed adds one to the token. Revoked rows remain in the
--- count, which may cause harmless extra invalidations but can never leave a
--- stale authorization snapshot. Overflow fails closed before JavaScript's
+-- time-window changes visible without a cron write: every assignment or
+-- activated-policy effective boundary crossed adds one to the token. Retained
+-- historical rows may cause harmless extra invalidations but can never leave
+-- a stale authorization snapshot. Overflow fails closed before JavaScript's
 -- maximum safe integer because this value is returned through JSON.
 CREATE OR REPLACE FUNCTION public.current_entitlement_generation()
 RETURNS BIGINT
@@ -68,6 +68,8 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_base_generation BIGINT;
+  v_assignment_transition_count NUMERIC;
+  v_policy_transition_count NUMERIC;
   v_transition_count NUMERIC;
   v_effective_generation NUMERIC;
 BEGIN
@@ -83,8 +85,23 @@ BEGIN
     + (COUNT(*) FILTER (
       WHERE assignment.expires_at IS NOT NULL AND assignment.expires_at <= now()
     ))::NUMERIC
-  INTO v_transition_count
+  INTO v_assignment_transition_count
   FROM public.entitlement_assignments AS assignment;
+
+  SELECT
+    (COUNT(*) FILTER (
+      WHERE policy_version.activated_at IS NOT NULL
+        AND policy_version.effective_from <= now()
+    ))::NUMERIC
+    + (COUNT(*) FILTER (
+      WHERE policy_version.activated_at IS NOT NULL
+        AND policy_version.effective_until IS NOT NULL
+        AND policy_version.effective_until <= now()
+    ))::NUMERIC
+  INTO v_policy_transition_count
+  FROM public.entitlement_policy_versions AS policy_version;
+
+  v_transition_count := v_assignment_transition_count + v_policy_transition_count;
 
   v_effective_generation := v_base_generation + v_transition_count;
   IF v_effective_generation < 0 OR v_effective_generation > 9007199254740991 THEN
@@ -377,11 +394,25 @@ BEGIN
   BEGIN
     v_generation := public.current_entitlement_generation();
 
-    -- Resolve key existence before subject guards. Unknown runtime keys deny,
-    -- but known disabled keys still report account/hard-guard blockers first.
+    -- Trusted account restriction precedes every capability-key outcome,
+    -- including unknown runtime keys.
+    IF public.entitlement_fact_value(p_user_id, 'account_status')
+       IS DISTINCT FROM '"active"'::JSONB THEN
+      RETURN jsonb_build_object(
+        'capability', p_capability_key,
+        'allowed', FALSE,
+        'blockerCode', 'ACCOUNT_RESTRICTED',
+        'qualificationPaths', '[]'::JSONB,
+        'entitlementGeneration', v_generation,
+        'source', 'hard_guard'
+      );
+    END IF;
+
+    -- Resolve key existence after the account restriction outcome.
     SELECT capability.enabled INTO v_capability_enabled
       FROM public.capabilities AS capability
      WHERE capability.key = p_capability_key;
+    -- Unknown runtime keys remain default-denied.
     IF NOT FOUND THEN
       RETURN jsonb_build_object(
         'capability', p_capability_key,
@@ -393,8 +424,8 @@ BEGIN
       );
     END IF;
 
-    -- Account and capability hard guards run before enabled-state denial and
-    -- before all policy and assignment data.
+    -- Known capability-specific hard guards run before enabled-state denial
+    -- and before all policy and assignment data.
     v_guard := public.capability_hard_guard(p_user_id, p_capability_key);
     IF NOT COALESCE((v_guard ->> 'allowed')::BOOLEAN, FALSE) THEN
       RETURN jsonb_build_object(
@@ -407,7 +438,7 @@ BEGIN
       );
     END IF;
 
-    -- A known disabled capability is default-denied after hard guards.
+    -- A known disabled capability is default-denied after all hard guards.
     IF NOT v_capability_enabled THEN
       RETURN jsonb_build_object(
         'capability', p_capability_key,
