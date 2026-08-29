@@ -30,10 +30,33 @@ export interface NotifyParams {
   metadata?: Record<string, unknown>;
 }
 
-interface AuditResult {
+export interface AuditResult {
   audit_id: string;
   notification_ids: string[];
   notification_count: number;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Validate the JSON envelope returned by the audit RPC before exposing it. */
+export function parseAuditResult(value: unknown): AuditResult | null {
+  if (!isRecord(value)
+      || typeof value.audit_id !== 'string'
+      || !Array.isArray(value.notification_ids)
+      || !value.notification_ids.every((id) => typeof id === 'string')
+      || !Number.isSafeInteger(value.notification_count)
+      || (value.notification_count as number) < 0
+      || value.notification_count !== value.notification_ids.length) {
+    return null;
+  }
+
+  return {
+    audit_id: value.audit_id,
+    notification_ids: value.notification_ids as string[],
+    notification_count: value.notification_count as number,
+  };
 }
 
 /**
@@ -70,7 +93,14 @@ export async function auditAndNotify(
     });
     return null;
   }
-  return data as AuditResult;
+  const result = parseAuditResult(data);
+  if (!result) {
+    console.error('[audit] RPC returned malformed data', {
+      action: audit.action,
+      entity: `${audit.entityType}:${audit.entityId}`,
+    });
+  }
+  return result;
 }
 
 /** Audit without notifications. */
