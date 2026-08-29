@@ -146,6 +146,7 @@ export default function RecommendationsPage() {
           imageAttested: form.imageAttested,
         }),
       });
+      if (await gate.handleResponse(res, "/customer/recommendations")) return;
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(recommendationErrorMessage(body, tCustomer("ui.recommendations.submitError"), (key) => tCustomer(key)));

@@ -7,7 +7,6 @@ import { getActivities } from '@/backend/domains/catalogue';
 import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
-import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
 import { getCheckoutErrorCode, getCheckoutErrorMessage } from '@/lib/checkout/errors';
 import {
   createSimulatorPaymentSession,
@@ -15,6 +14,8 @@ import {
   resolveCheckoutProvider,
 } from '@/lib/payments/providers';
 import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -36,18 +37,19 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
+    'Sign in before checkout',
+  )!;
 
-  const { data: profile, error: profileError } = await db
-    .from('users')
-    .select('phone_verified_at')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (profileError) return NextResponse.json({ error: 'Unable to verify phone status' }, { status: 503 });
-  const phoneGate = checkPhoneVerification(profile?.phone_verified_at);
-  if (!phoneGate.allowed) {
-    return NextResponse.json({ error: { code: phoneGate.code, message: phoneGate.message } }, { status: 403 });
-  }
+  const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
+  const checkoutFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    checkoutDecision,
+    'Phone verification is required before checkout',
+  );
+  if (checkoutFailure) return checkoutFailure;
 
   const parsed = await parseBody(request, checkoutPrepareSchema);
   if (!parsed.ok) return parsed.response;

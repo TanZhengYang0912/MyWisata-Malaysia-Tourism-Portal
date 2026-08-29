@@ -21,6 +21,7 @@ import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNa
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestLoginHref } from "@/lib/auth/guest-mode";
 import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
+import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -30,7 +31,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       <WishlistProvider>
         <SavedDestinationsProvider>
           <SupportChatProvider>
-            <CustomerLayoutInner>{children}</CustomerLayoutInner>
+            <CustomerCapabilityGateProvider>
+              <CustomerLayoutInner>{children}</CustomerLayoutInner>
+            </CustomerCapabilityGateProvider>
           </SupportChatProvider>
         </SavedDestinationsProvider>
       </WishlistProvider>

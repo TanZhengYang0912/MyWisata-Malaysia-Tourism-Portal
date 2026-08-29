@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   customersCreate: vi.fn(),
   sessionsCreate: vi.fn(),
+  resolveEffectiveCapability: vi.fn(),
 }));
+
+vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -47,11 +50,16 @@ describe('POST /api/stripe/create-checkout amount boundaries', () => {
         full_name: 'Test User',
         stripe_customer_id: 'cus_test',
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         phone_verified_at: '2026-08-20T00:00:00.000Z',
       },
       error: null,
     });
     mocks.sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
+    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
+      capability, allowed: true, blockerCode: null, qualificationPaths: [],
+      entitlementGeneration: 7, source: 'policy',
+    }));
   });
 
   it.each([1.99, 1.999])('rejects RM%s before creating a Stripe session', async (amountRm) => {

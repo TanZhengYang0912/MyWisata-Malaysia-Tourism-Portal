@@ -15,7 +15,10 @@ const mocks = vi.hoisted(() => ({
   retrieveConnectAccountStatus: vi.fn(),
   notifyWithdrawalApprovers: vi.fn(),
   serviceRpc: vi.fn(),
+  resolveEffectiveCapability: vi.fn(),
 }));
+
+vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -45,7 +48,7 @@ describe('POST /api/wallet/withdrawals', () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.select.mockReturnValue({ eq: mocks.selectEq });
     mocks.selectEq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
-    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_test', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved' }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_test', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved', tier: 'kyc_verified' }, error: null });
     mocks.upsert.mockReturnValue({ select: mocks.upsertSelect });
     mocks.upsertSelect.mockReturnValue({ single: mocks.upsertSingle });
     mocks.upsertSingle.mockResolvedValue({ data: { id: 'destination-1' }, error: null });
@@ -61,6 +64,10 @@ describe('POST /api/wallet/withdrawals', () => {
       requiresDashboardAction: false,
     });
     mocks.serviceRpc.mockResolvedValue({ data: { id: 'destination-1' }, error: null });
+    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
+      capability, allowed: true, blockerCode: null, qualificationPaths: [],
+      entitlementGeneration: 7, source: 'policy',
+    }));
   });
 
   it('submits only an integer-sen amount to the authenticated withdrawal RPC', async () => {
@@ -77,39 +84,45 @@ describe('POST /api/wallet/withdrawals', () => {
     }));
   });
 
-  it('does not allow an unverified phone to satisfy the withdrawal gate', async () => {
+  it('allows approved KYC without requiring Phone or Profile completion', async () => {
     mocks.maybeSingle.mockResolvedValue({
       data: {
         stripe_connect_account_id: 'acct_test',
         phone_verified_at: null,
         kyc_status: 'approved',
+        tier: 'email_verified',
       },
       error: null,
     });
+    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
 
     const response = await POST(request({ amountRm: '50.00' }));
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'PHONE_VERIFICATION_REQUIRED' },
-    });
-    expect(mocks.retrieveConnectAccountStatus).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+    expect(mocks.resolveEffectiveCapability).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      'wallet.request_withdrawal',
+    );
+    expect(mocks.retrieveConnectAccountStatus).toHaveBeenCalled();
   });
 
   it('maps KYC enforcement to a customer-safe error', async () => {
-    mocks.rpc
-      .mockResolvedValueOnce({ data: null, error: null })
-      .mockResolvedValueOnce({ data: null, error: { message: 'kyc_required' } });
+    mocks.resolveEffectiveCapability.mockResolvedValue({
+      capability: 'wallet.request_withdrawal', allowed: false,
+      blockerCode: 'KYC_REQUIRED', qualificationPaths: [{ type: 'kyc', href: '/customer/kyc' }],
+      entitlementGeneration: 7, source: 'hard_guard',
+    });
 
     const response = await POST(request({ amountRm: '50.00' }));
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'KYC_REQUIRED' } });
+    expect(mocks.retrieveConnectAccountStatus).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('reconciles an enabled Stripe account before submitting the withdrawal RPC', async () => {
-    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_enabled', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved' }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_enabled', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved', tier: 'kyc_verified' }, error: null });
     mocks.retrieveConnectAccountStatus.mockResolvedValue({
       accountId: 'acct_enabled',
       accountType: 'standard',
@@ -132,7 +145,7 @@ describe('POST /api/wallet/withdrawals', () => {
   });
 
   it('fails closed and skips the withdrawal RPC when Stripe status cannot be read', async () => {
-    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_unavailable', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved' }, error: null });
+    mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_unavailable', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved', tier: 'kyc_verified' }, error: null });
     mocks.retrieveConnectAccountStatus.mockRejectedValue(new Error('Stripe unavailable'));
 
     const response = await POST(request({ amountRm: '50.00' }));

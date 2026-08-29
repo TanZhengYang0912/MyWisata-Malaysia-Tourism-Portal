@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
-import { clearMaturedCommissions } from '@/lib/affiliate/clearing';
 
 export async function POST() {
   const supabase = await createClient();
@@ -19,6 +18,10 @@ export async function POST() {
   }
 
   const service = createServiceClient();
-  const result = await clearMaturedCommissions(service);
-  return apiOk(result);
+  const { data, error } = await service.rpc('confirm_pending_earnings');
+  if (error) {
+    return apiFail('CLEARING_FAILED', 'Unable to clear matured commissions', 500);
+  }
+
+  return apiOk({ confirmed: Number(data ?? 0) });
 }

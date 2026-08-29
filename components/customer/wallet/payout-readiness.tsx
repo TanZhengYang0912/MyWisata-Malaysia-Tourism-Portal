@@ -21,7 +21,6 @@ export function PayoutReadiness({ readiness, connectStatus, error, busy, onSetup
   const warning = connectStatus === "currently_due" || connectStatus === "pending_verification";
   const failed = connectStatus === "past_due" || connectStatus === "restricted" || connectStatus === "status_error";
   const title = ready ? t("ui.wallet.bankWithdrawalsEnabled")
-    : readiness?.blockerCode === "phone_verification_required" ? t("ui.profileWizard.verifyPhone")
     : readiness?.blockerCode === "kyc_required" || connectStatus === "kyc_required" ? t("ui.wallet.completeKycFirst")
     : readiness?.blockerCode === "minimum_balance_required" ? t("ui.wallet.noAvailableEarnings")
     : connectStatus === "currently_due" ? t("ui.wallet.completePayoutDetails")

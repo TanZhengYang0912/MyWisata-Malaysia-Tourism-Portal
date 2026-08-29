@@ -18,11 +18,25 @@ import { simulatePurchaseSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { VENDOR_EVENT_MATRIX } from '@/lib/vendor-notifications/event-policy';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (!user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
+    'Sign in before simulating a purchase',
+  )!;
+
+  const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
+  const checkoutFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    checkoutDecision,
+    'Phone verification is required before simulating a purchase',
+  );
+  if (checkoutFailure) return checkoutFailure;
 
   // orders/order_items have RLS enabled with SELECT-only policies (no INSERT
   // policy exists at all — see CLAUDE.md Section 2), so this needs the

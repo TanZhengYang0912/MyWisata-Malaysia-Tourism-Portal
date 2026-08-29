@@ -1830,6 +1830,7 @@
       "price": "RM {{value}}"
     },
     "forYou": {
+      "generate": "Generate recommendations",
       "loadError": "Unable to load recommendations",
       "locationUnsupported": "Your browser does not support location. Showing your profile city instead.",
       "locationNotShared": "Location was not shared. Showing your profile city instead.",

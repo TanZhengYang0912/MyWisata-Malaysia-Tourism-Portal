@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
 
 const readyInput = {
-  phoneVerified: true,
   kycStatus: 'approved',
   availableEarningsSen: 10_000,
   minimumWithdrawalSen: 5_000,
@@ -36,7 +35,6 @@ describe('deriveCustomerWalletCapabilities', () => {
   });
 
   it.each([
-    [{ ...readyInput, phoneVerified: false }, 'phone_verification_required', 'verify_phone'],
     [{ ...readyInput, kycStatus: 'pending' }, 'kyc_required', 'complete_kyc'],
     [{ ...readyInput, availableEarningsSen: 4_999 }, 'minimum_balance_required', 'earn_minimum'],
     [{ ...readyInput, destination: null, stripeFallback: false }, 'payout_destination_required', 'add_payout_destination'],
@@ -44,6 +42,14 @@ describe('deriveCustomerWalletCapabilities', () => {
     [{ ...readyInput, stripePayoutsEnabled: false }, 'payout_provider_required', 'complete_payout_setup'],
   ] as const)('returns one highest-priority blocker', (input, blockerCode, nextAction) => {
     expect(deriveCustomerWalletCapabilities(input)).toMatchObject({ canWithdraw: false, blockerCode, nextAction });
+  });
+
+  it('allows a KYC-approved customer to withdraw without Phone verification input', () => {
+    expect(deriveCustomerWalletCapabilities(readyInput)).toMatchObject({
+      canWithdraw: true,
+      blockerCode: null,
+      nextAction: 'withdraw',
+    });
   });
 
   it('allows the existing Stripe fallback when no saved destination is selected', () => {

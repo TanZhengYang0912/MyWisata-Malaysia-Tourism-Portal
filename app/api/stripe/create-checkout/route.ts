@@ -6,23 +6,29 @@ import {
   STRIPE_TOP_UP_MAXIMUM_SEN,
   STRIPE_TOP_UP_MINIMUM_RM,
 } from '@/lib/stripe/top-up-limits';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export const dynamic = 'force-dynamic';
-
-// Per-tier top-up limits in sen (100 sen = RM 1)
-const TOPUP_LIMIT_SEN: Record<string, number> = {
-  email_verified:   10_000,   // RM 100
-  phone_verified:   10_000,   // RM 100
-  profile_complete: 50_000,   // RM 500
-  kyc_verified:     Infinity, // unlimited
-};
 
 export async function POST(req: Request) {
   const db = await createClient();
   const { data: { user: authUser }, error: authErr } = await db.auth.getUser();
   if (authErr || !authUser) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return customerCapabilityFailure(
+      CUSTOMER_CAPABILITY.CHECKOUT,
+      resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
+      'Sign in before topping up your wallet',
+    )!;
   }
+
+  const topUpDecision = await resolveServerCustomerCapability(authUser.id, CUSTOMER_CAPABILITY.CHECKOUT);
+  const topUpFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    topUpDecision,
+    'Phone verification is required before wallet top-up',
+  );
+  if (topUpFailure) return topUpFailure;
 
   let body: { amount_rm?: unknown };
   try { body = await req.json(); } catch { body = {}; }
@@ -45,24 +51,11 @@ export async function POST(req: Request) {
 
   const { data: userRow, error: userErr } = await db
     .from('users')
-    .select('email, full_name, stripe_customer_id, tier, phone_verified_at')
+    .select('email, full_name, stripe_customer_id')
     .eq('id', authUser.id)
     .single();
   if (userErr || !userRow) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
-
-  const rowWithVerification = userRow as { tier?: string | null; phone_verified_at?: string | null };
-  if (!rowWithVerification.phone_verified_at) {
-    return NextResponse.json({ error: 'Phone verification is required before wallet top-up.' }, { status: 403 });
-  }
-  const tier = rowWithVerification.tier ?? 'email_unverified';
-  const limitSen = TOPUP_LIMIT_SEN[tier] ?? 10_000;
-  if (Number.isFinite(limitSen) && amountSen > limitSen) {
-    return NextResponse.json(
-      { error: `Your tier allows a maximum top-up of RM ${(limitSen / 100).toFixed(2)}` },
-      { status: 400 },
-    );
   }
 
   // Get or create Stripe Customer (stored on users row)

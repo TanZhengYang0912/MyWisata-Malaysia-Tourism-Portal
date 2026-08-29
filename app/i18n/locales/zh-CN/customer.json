@@ -1830,6 +1830,7 @@
       "price": "RM {{value}}"
     },
     "forYou": {
+      "generate": "生成推荐",
       "loadError": "无法加载推荐",
       "locationUnsupported": "你的浏览器不支持定位，将改用个人资料中的城市。",
       "locationNotShared": "未取得定位，将改用个人资料中的城市。",

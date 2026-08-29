@@ -2,6 +2,7 @@ const PUBLIC_CUSTOMER_ROOTS = [
   "/customer/recommendations",
   "/customer/wallet",
   "/customer/affiliate",
+  "/customer/for-you",
 ] as const;
 
 const PUBLIC_CUSTOMER_PREFIXES = [

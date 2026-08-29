@@ -5,14 +5,25 @@ import { cityCentre, parseRecommendationCoordinates } from '@/lib/personalizatio
 import { describeFit } from '@/lib/personalization/explanation';
 import { rankPersonalizedActivities, type TravelPreferences } from '@/lib/personalization/scorer';
 import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
-
-const PERSONALIZED_TIERS = new Set(['profile_complete', 'kyc_verified']);
-const PHONE_READY_TIERS = new Set(['phone_verified', 'profile_complete', 'kyc_verified']);
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (!user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.BASIC_AI,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.BASIC_AI),
+    'Sign in before generating recommendations',
+  )!;
+
+  const aiDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.BASIC_AI);
+  const aiFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.BASIC_AI,
+    aiDecision,
+    'Phone verification is required before using recommendations',
+  );
+  if (aiFailure) return aiFailure;
 
   const body = await request.json().catch(() => null);
   const browserOrigin = parseRecommendationCoordinates(body);
@@ -21,17 +32,16 @@ export async function POST(request: Request) {
   }
 
   const [{ data: profile, error: profileError }, { data: survey, error: surveyError }] = await Promise.all([
-    db.from('users').select('tier,city').eq('id', user.id).maybeSingle(),
+    db.from('users').select('profile_completed_at,kyc_status,city').eq('id', user.id).maybeSingle(),
     db.from('preference_survey_responses').select('interests,budget_range,mobility_needs,preferred_radius_km').eq('user_id', user.id).maybeSingle(),
   ]);
   if (profileError || !profile) return apiFail('PROFILE_UNAVAILABLE', 'Unable to read your verification status', 500);
-  if (!PHONE_READY_TIERS.has(profile.tier)) return apiFail('PHONE_VERIFICATION_REQUIRED', 'Phone verification is required before using recommendations', 403);
   if (surveyError) return apiFail('PREFERENCES_UNAVAILABLE', 'Unable to read preferences', 500);
 
   const cityOrigin = await cityCentre(profile.city);
   const origin = browserOrigin ?? cityOrigin ?? undefined;
   const activities = await searchActivities({ category: null, sort: 'recommended', near: origin }, db);
-  const personalized = PERSONALIZED_TIERS.has(profile.tier) && Boolean(survey);
+  const personalized = Boolean(profile.profile_completed_at || profile.kyc_status === 'approved') && Boolean(survey);
 
   if (!personalized) {
     return apiOk({

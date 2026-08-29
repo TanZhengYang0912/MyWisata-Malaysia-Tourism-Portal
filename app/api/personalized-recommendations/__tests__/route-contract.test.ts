@@ -14,4 +14,16 @@ describe("personalized recommendations route contract", () => {
     expect(source).not.toContain("preferred_distance");
     expect(source).not.toContain("preferredDistance");
   });
+
+  it("uses the Phone-gated basic-AI capability from the trusted user id", () => {
+    expect(source).toMatch(/await resolveServerCustomerCapability\(user\.id, CUSTOMER_CAPABILITY\.BASIC_AI\)/);
+    expect(source).toContain("customerCapabilityFailure");
+    expect(source).not.toContain("PHONE_READY_TIERS");
+  });
+
+  it("does not use a legacy tier as recommendation authorization or personalization state", () => {
+    expect(source).not.toContain("PERSONALIZED_TIERS");
+    expect(source).not.toContain("select('tier");
+    expect(source).toContain("profile_completed_at");
+  });
 });

@@ -1830,6 +1830,7 @@
       "price": "RM {{value}}"
     },
     "forYou": {
+      "generate": "Jana cadangan",
       "loadError": "Tidak dapat memuatkan cadangan",
       "locationUnsupported": "Pelayar anda tidak menyokong lokasi. Bandar profil anda akan digunakan.",
       "locationNotShared": "Lokasi tidak dikongsi. Bandar profil anda akan digunakan.",
