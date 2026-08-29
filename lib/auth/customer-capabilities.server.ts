@@ -94,19 +94,59 @@ export function resolveServerCustomerCapability(
   return resolveEffectiveCapability(subject, resolvedCapability).then(customerDecision);
 }
 
-export async function resolveServerCustomerCapabilities(
-  userId: string,
-): Promise<CustomerCapabilitySnapshot> {
+async function resolveCanonicalSnapshot(userId: string): Promise<CustomerCapabilitySnapshot> {
   const decisions = await Promise.all(CAPABILITY_KEYS.map(async (capability) => [
     capability,
     await resolveServerCustomerCapability(userId, capability),
   ] as const));
 
-  const snapshot = Object.fromEntries(decisions) as CustomerCapabilitySnapshot;
+  return Object.fromEntries(decisions) as CustomerCapabilitySnapshot;
+}
+
+function isValidGeneration(value: unknown): value is number {
+  return Number.isSafeInteger(value) && typeof value === "number" && value >= 0;
+}
+
+function sharedGeneration(snapshot: CustomerCapabilitySnapshot): number | null {
+  const generations = CAPABILITY_KEYS.map((capability) => snapshot[capability]?.entitlementGeneration);
+  if (!generations.every(isValidGeneration)) return null;
+  return new Set(generations).size === 1 ? generations[0]! : null;
+}
+
+function unavailableSnapshot(generation: number): CustomerCapabilitySnapshot {
+  return Object.fromEntries(CAPABILITY_KEYS.map((capability) => [
+    capability,
+    { ...unavailableDecision(capability), entitlementGeneration: generation },
+  ])) as CustomerCapabilitySnapshot;
+}
+
+function withLegacyAliases(snapshot: CustomerCapabilitySnapshot): CustomerCapabilitySnapshot {
   for (const [legacyCapability, stableCapability] of Object.entries(LEGACY_CAPABILITY_KEY)) {
     snapshot[legacyCapability] = snapshot[stableCapability]!;
   }
   return snapshot;
+}
+
+export async function resolveServerCustomerCapabilities(
+  userId: string,
+): Promise<CustomerCapabilitySnapshot> {
+  const firstSnapshot = await resolveCanonicalSnapshot(userId);
+  const firstGeneration = sharedGeneration(firstSnapshot);
+  if (firstGeneration !== null) return withLegacyAliases(firstSnapshot);
+
+  const secondSnapshot = await resolveCanonicalSnapshot(userId);
+  const secondGeneration = sharedGeneration(secondSnapshot);
+  if (secondGeneration !== null) return withLegacyAliases(secondSnapshot);
+
+  const safeGeneration = Math.max(
+    0,
+    ...CAPABILITY_KEYS.flatMap((capability) => [
+      firstSnapshot[capability]?.entitlementGeneration,
+      secondSnapshot[capability]?.entitlementGeneration,
+    ]).filter(isValidGeneration),
+  );
+
+  return withLegacyAliases(unavailableSnapshot(safeGeneration));
 }
 
 export function customerCapabilityFailure(

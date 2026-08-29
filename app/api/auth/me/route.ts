@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { AuthUser } from '@/types';
 import type { RoleName } from '@/lib/constants';
-import { isEmailVerified } from '@/lib/verification/email-status';
 import { resolveServerCustomerCapabilities } from '@/lib/auth/customer-capabilities.server';
 import type { VerificationFacts } from '@/lib/entitlements/types';
 
@@ -73,15 +72,15 @@ export async function GET() {
   const outletIds = [...new Set(managerAssignments.map((row) => row.outlet_id))];
   const assignedOutletRelation = managerAssignments[0] ? (Array.isArray(managerAssignments[0].outlets) ? managerAssignments[0].outlets[0] : managerAssignments[0].outlets) : null;
   const verificationFacts: VerificationFacts = {
-    emailVerified: isEmailVerified(authUser.email_confirmed_at, profileRow.email_verified_at, authUser.identities),
+    emailVerified: Boolean(profileRow.email_verified_at),
     phoneVerified: Boolean(profileRow.phone_verified_at),
     profileComplete: Boolean(profileRow.profile_completed_at),
     kycStatus: profileRow.kyc_status === 'pending' || profileRow.kyc_status === 'approved' || profileRow.kyc_status === 'rejected'
       ? profileRow.kyc_status
       : 'unverified',
-    accountStatus: profileRow.status === 'suspended' || profileRow.status === 'deleted'
+    accountStatus: profileRow.status === 'active' || profileRow.status === 'deleted'
       ? profileRow.status
-      : 'active',
+      : 'suspended',
     roles,
   };
   const capabilities = await resolveServerCustomerCapabilities(authUser.id);

@@ -29,3 +29,11 @@ Completed and committed as `feat: expose effective capability snapshots`.
 
 - No dependencies or database changes.
 - Existing protected API routes still call the compatibility adapter with tier-shaped objects; by design they now deny until Task 7 migrates them to the user-id resolver. This is a safe temporary fail-closed state, not retained tier authorization.
+
+## Reviewer repair — generation and recovery hardening
+
+- RED: the four focused files failed with five expected failures covering mixed snapshot generations, a provider-only email confirmation, unknown account status, and missing distinct Profile/KYC recovery actions.
+- GREEN: the same command passes 19 tests after a single bounded repair.
+- Snapshot collection retries exactly once on mixed canonical generations. A second mismatch returns an all-denied `POLICY_UNAVAILABLE` snapshot at the maximum observed safe generation; aliases then reference only those coherent canonical decisions.
+- `emailVerified` now uses `users.email_verified_at` only. Only exact `active` is active; `deleted` stays deleted and all missing/unknown values become `suspended`.
+- Profile-or-KYC uses distinct existing translated CTA keys and combines the existing profile/KYC translated descriptions without introducing new locale text.

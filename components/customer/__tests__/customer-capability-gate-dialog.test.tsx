@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   capabilityGateCopyKey,
+  customerCapabilityRecoveryActions,
   customerCapabilityRecoveryHref,
   customerCapabilityRecoveryHrefs,
 } from "@/components/customer/customer-capability-gate-dialog";
@@ -76,6 +77,23 @@ describe("customer capability gate dialog contract", () => {
     })).toEqual([
       "/customer/profile?capability=recommendation.submit&next=%2Fcustomer",
       "/customer/kyc?capability=recommendation.submit&next=%2Fcustomer",
+    ]);
+  });
+
+  it("uses distinct translated CTAs for Profile-or-KYC qualification paths", () => {
+    const actions = customerCapabilityRecoveryActions({
+      capability: "recommendation.submit",
+      decision: {
+        capability: "recommendation.submit", allowed: false, blockerCode: "PROFILE_OR_KYC_REQUIRED",
+        qualificationPaths: [{ type: "profile", href: "/customer/profile" }, { type: "kyc", href: "/customer/kyc" }],
+        entitlementGeneration: 3, source: "hard_guard", currentTier: null, requiredTier: null, nextAction: "complete_profile",
+      },
+      nextPath: "/customer/recommendations",
+    });
+
+    expect(actions.map((action) => action.copyKey)).toEqual([
+      "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED",
+      "ui.capabilityGate.blockers.KYC_REQUIRED",
     ]);
   });
 

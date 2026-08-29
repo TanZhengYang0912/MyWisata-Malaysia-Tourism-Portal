@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { CAPABILITY_KEYS } from "@/lib/entitlements/types";
 
 const mocks = vi.hoisted(() => ({
   resolveEffectiveCapability: vi.fn(),
@@ -55,6 +56,50 @@ describe("server customer capability resolver", () => {
     });
     const snapshot = await resolveServerCustomerCapabilities("user-1");
     expect(snapshot["commerce.checkout"]).toMatchObject({ allowed: true, entitlementGeneration: 12 });
+  });
+
+  it("retries a mixed-generation snapshot and only returns coherent canonical decisions", async () => {
+    mocks.resolveEffectiveCapability.mockClear();
+    let call = 0;
+    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => {
+      const pass = Math.floor(call++ / CAPABILITY_KEYS.length);
+      const generation = pass === 0 && capability === "commerce.checkout" ? 2 : pass === 0 ? 1 : 3;
+      return {
+        capability,
+        allowed: true,
+        blockerCode: null,
+        qualificationPaths: [],
+        entitlementGeneration: generation,
+        source: "policy",
+      };
+    });
+
+    const snapshot = await resolveServerCustomerCapabilities("user-1");
+
+    expect(CAPABILITY_KEYS.map((capability) => snapshot[capability]?.entitlementGeneration))
+      .toEqual(Array(CAPABILITY_KEYS.length).fill(3));
+    expect(snapshot.checkout).toBe(snapshot["commerce.checkout"]);
+    expect(mocks.resolveEffectiveCapability).toHaveBeenCalledTimes(CAPABILITY_KEYS.length * 2);
+  });
+
+  it("fails the whole snapshot closed when a retry remains mixed", async () => {
+    let call = 0;
+    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
+      capability,
+      allowed: true,
+      blockerCode: null,
+      qualificationPaths: [],
+      entitlementGeneration: (++call % 2) + 4,
+      source: "policy",
+    }));
+
+    const snapshot = await resolveServerCustomerCapabilities("user-1");
+
+    expect(CAPABILITY_KEYS.map((capability) => snapshot[capability]))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ allowed: false, blockerCode: "POLICY_UNAVAILABLE", entitlementGeneration: 5 }),
+      ]));
+    expect(CAPABILITY_KEYS.every((capability) => snapshot[capability]?.entitlementGeneration === 5)).toBe(true);
   });
 
   it("serializes typed recovery paths and the resolver generation into the API envelope", async () => {

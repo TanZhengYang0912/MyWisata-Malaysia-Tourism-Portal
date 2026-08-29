@@ -30,6 +30,11 @@ type CustomerCapabilityGateContextValue = {
   showCapabilityGate: (request: CustomerCapabilityGateRequest) => void;
 };
 
+export type CustomerCapabilityRecoveryAction = {
+  href: string;
+  copyKey: string;
+};
+
 const CustomerCapabilityGateContext = createContext<CustomerCapabilityGateContextValue | null>(null);
 
 export function capabilityGateCopyKey(blockerCode: CustomerCapabilityBlocker): string {
@@ -37,6 +42,25 @@ export function capabilityGateCopyKey(blockerCode: CustomerCapabilityBlocker): s
     return "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED";
   }
   return `ui.capabilityGate.blockers.${blockerCode}`;
+}
+
+export function capabilityGateDescriptionKeys(blockerCode: CustomerCapabilityBlocker): string[] {
+  if (blockerCode === "PROFILE_OR_KYC_REQUIRED") {
+    return [
+      "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED.description",
+      "ui.capabilityGate.blockers.KYC_REQUIRED.description",
+    ];
+  }
+  return [`${capabilityGateCopyKey(blockerCode)}.description`];
+}
+
+function qualificationCopyKey(type: "email" | "phone" | "profile" | "kyc"): string {
+  switch (type) {
+    case "email": return "ui.capabilityGate.blockers.EMAIL_VERIFICATION_REQUIRED";
+    case "phone": return "ui.capabilityGate.blockers.PHONE_VERIFICATION_REQUIRED";
+    case "profile": return "ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED";
+    case "kyc": return "ui.capabilityGate.blockers.KYC_REQUIRED";
+  }
 }
 
 export function customerCapabilityRecoveryHref(
@@ -48,6 +72,12 @@ export function customerCapabilityRecoveryHref(
 export function customerCapabilityRecoveryHrefs(
   request: CustomerCapabilityGateRequest,
 ): string[] {
+  return customerCapabilityRecoveryActions(request).map((action) => action.href);
+}
+
+export function customerCapabilityRecoveryActions(
+  request: CustomerCapabilityGateRequest,
+): CustomerCapabilityRecoveryAction[] {
   const safeNext = postLoginPath(request.nextPath) ?? "/customer";
   const qualificationPaths = request.decision.qualificationPaths ?? [];
   if (qualificationPaths.length > 0) {
@@ -55,14 +85,14 @@ export function customerCapabilityRecoveryHrefs(
       const safePath = postLoginPath(path.href);
       if (!safePath) return [];
       const query = `capability=${encodeURIComponent(request.capability)}&next=${encodeURIComponent(safeNext)}`;
-      return [`${safePath}?${query}`];
+      return [{ href: `${safePath}?${query}`, copyKey: qualificationCopyKey(path.type) }];
     });
   }
 
   const { nextAction } = request.decision;
   if (nextAction === "none") return [];
   if (nextAction === "sign_in" || nextAction === "verify_email") {
-    return [guestLoginHref(safeNext)];
+    return [{ href: guestLoginHref(safeNext), copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
   }
 
   const query = `capability=${encodeURIComponent(request.capability)}&next=${encodeURIComponent(safeNext)}`;
@@ -71,9 +101,9 @@ export function customerCapabilityRecoveryHrefs(
     || nextAction === "wait_for_kyc"
     || nextAction === "resubmit_kyc"
   ) {
-    return [`/customer/kyc?${query}`];
+    return [{ href: `/customer/kyc?${query}`, copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
   }
-  return [`/customer/profile?${query}`];
+  return [{ href: `/customer/profile?${query}`, copyKey: capabilityGateCopyKey(request.decision.blockerCode!) }];
 }
 
 export function CustomerCapabilityGateProvider({ children }: { children: React.ReactNode }) {
@@ -87,7 +117,8 @@ export function CustomerCapabilityGateProvider({ children }: { children: React.R
 
   const blockerCode = request?.decision.blockerCode;
   const copyKey = blockerCode ? capabilityGateCopyKey(blockerCode) : null;
-  const recoveryHrefs = request ? customerCapabilityRecoveryHrefs(request) : [];
+  const descriptionKeys = blockerCode ? capabilityGateDescriptionKeys(blockerCode) : [];
+  const recoveryActions = request ? customerCapabilityRecoveryActions(request) : [];
 
   return (
     <CustomerCapabilityGateContext.Provider value={value}>
@@ -99,22 +130,22 @@ export function CustomerCapabilityGateProvider({ children }: { children: React.R
               <ShieldCheck aria-hidden="true" />
             </div>
             <DialogTitle>{copyKey ? t(`${copyKey}.title`) : ""}</DialogTitle>
-            <DialogDescription>{copyKey ? t(`${copyKey}.description`) : ""}</DialogDescription>
+            <DialogDescription>{descriptionKeys.map((key) => t(key)).join(" ")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setRequest(null)}>
               {t("ui.capabilityGate.notNow")}
             </Button>
-            {recoveryHrefs.map((recoveryHref) => (
+            {recoveryActions.map((action) => (
               <Button
-                key={recoveryHref}
+                key={action.href}
                 type="button"
                 onClick={() => {
                   setRequest(null);
-                  router.push(recoveryHref);
+                  router.push(action.href);
                 }}
               >
-                {t(`${copyKey}.cta`)}
+                {t(`${action.copyKey}.cta`)}
               </Button>
             ))}
           </DialogFooter>
