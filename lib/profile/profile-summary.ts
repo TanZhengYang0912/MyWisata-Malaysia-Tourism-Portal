@@ -70,7 +70,6 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     country: profile.country,
   });
   const verification = computeProfileVerification({
-    phoneVerified: Boolean(profile.phone_verified_at),
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     bio: profile.bio,

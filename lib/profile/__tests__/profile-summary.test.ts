@@ -48,7 +48,7 @@ describe("profile summary", () => {
       verification: {
         complete: true,
         percentage: 100,
-        completedSteps: ["phone", "identity", "avatar", "bio", "survey"],
+        completedSteps: ["identity", "avatar", "bio", "survey"],
         currentStep: null,
       },
       profileRichness: { percentage: 100, missing: [], complete: true },

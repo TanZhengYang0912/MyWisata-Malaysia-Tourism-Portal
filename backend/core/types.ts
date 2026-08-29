@@ -325,9 +325,9 @@ export interface ProfileSummary {
   profileComplete: boolean;
   verification: {
     complete: boolean;
-    percentage: 0 | 20 | 40 | 60 | 80 | 100;
-    completedSteps: Array<"phone" | "identity" | "avatar" | "bio" | "survey">;
-    currentStep: "phone" | "identity" | "avatar" | "bio" | "survey" | null;
+    percentage: 0 | 25 | 50 | 75 | 100;
+    completedSteps: Array<"identity" | "avatar" | "bio" | "survey">;
+    currentStep: "identity" | "avatar" | "bio" | "survey" | null;
   };
   profileRichness: {
     percentage: 0 | 20 | 40 | 60 | 80 | 100;

@@ -33,12 +33,10 @@ export async function POST(request: Request) {
       return apiFail('CONFLICT', 'No active KYC submission found for this user', 409);
     if (rpcErr.message.includes('kyc_not_assigned'))
       return apiFail('CONFLICT', 'This KYC submission is assigned to another reviewer', 409);
-    if (rpcErr.message.includes('tier_insufficient'))
-      return apiFail('CONFLICT', 'User has not completed profile — use admin_set_tier first', 409);
     return apiFail('RPC_ERROR', rpcErr.message, 500);
   }
 
-  const tierAfter = action === 'approve' ? 'kyc_verified' : 'profile_complete';
+  const kycStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'pending';
 
-  return apiOk({ userId, tier: tierAfter, action });
+  return apiOk({ userId, kycStatus, action });
 }

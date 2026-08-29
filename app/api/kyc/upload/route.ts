@@ -13,12 +13,27 @@ const IC_PATTERNS: Record<string, RegExp> = {
 };
 
 function safeSubmissionFailure(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  if (message.includes('tier_insufficient')) {
-    return apiFail('TIER_INSUFFICIENT', 'Complete your profile before submitting KYC', 403);
-  }
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : '';
   if (message.includes('active_submission_exists')) {
     return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
+  }
+  if (
+    message.includes('invalid_ic_fingerprint')
+    || message.includes('invalid_document_type')
+    || message.includes('ocr_consent_required')
+  ) {
+    return apiFail('INVALID_EVIDENCE', 'KYC evidence is invalid', 422);
+  }
+  if (
+    message.includes('invalid_document_path')
+    || message.includes('documents_missing')
+    || message.includes('invalid_document_mime')
+  ) {
+    return apiFail('INVALID_DOCUMENT_EVIDENCE', 'KYC document evidence is invalid', 422);
   }
   return apiFail('SUBMIT_FAILED', 'Unable to submit KYC documents', 500);
 }
