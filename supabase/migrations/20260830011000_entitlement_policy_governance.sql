@@ -53,6 +53,48 @@ BEGIN
 END;
 $$;
 
+-- The stored generation covers governed writes. The transition count makes
+-- time-window changes visible without a cron write: every assignment start or
+-- expiry boundary crossed adds one to the token. Revoked rows remain in the
+-- count, which may cause harmless extra invalidations but can never leave a
+-- stale authorization snapshot. Overflow fails closed before JavaScript's
+-- maximum safe integer because this value is returned through JSON.
+CREATE OR REPLACE FUNCTION public.current_entitlement_generation()
+RETURNS BIGINT
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_base_generation BIGINT;
+  v_transition_count NUMERIC;
+  v_effective_generation NUMERIC;
+BEGIN
+  SELECT generation INTO v_base_generation
+    FROM public.entitlement_generation
+   WHERE singleton = TRUE;
+  IF v_base_generation IS NULL THEN
+    RAISE EXCEPTION 'policy_unavailable';
+  END IF;
+
+  SELECT
+    (COUNT(*) FILTER (WHERE assignment.starts_at <= now()))::NUMERIC
+    + (COUNT(*) FILTER (
+      WHERE assignment.expires_at IS NOT NULL AND assignment.expires_at <= now()
+    ))::NUMERIC
+  INTO v_transition_count
+  FROM public.entitlement_assignments AS assignment;
+
+  v_effective_generation := v_base_generation + v_transition_count;
+  IF v_effective_generation < 0 OR v_effective_generation > 9007199254740991 THEN
+    RAISE EXCEPTION 'policy_unavailable';
+  END IF;
+
+  RETURN v_effective_generation::BIGINT;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.entitlement_fact_value(
   p_user_id UUID,
   p_fact_key TEXT
@@ -97,12 +139,14 @@ BEGIN
         FROM public.user_roles AS user_role
         JOIN public.roles AS role_row ON role_row.id = user_role.role_id
        WHERE user_role.user_id = p_user_id;
-    -- No authoritative membership tables exist for these registered extension
-    -- facts yet. An empty set is safe and cannot confer an entitlement.
+    -- These keys are registered for forward compatibility, but no authoritative
+    -- membership source exists yet. They must make the whole evaluation
+    -- unavailable: returning an empty set would let eq/contains-empty and
+    -- not_eq requirements match and overgrant.
     WHEN 'plan' THEN
-      v_value := '[]'::JSONB;
+      RAISE EXCEPTION 'policy_unavailable';
     WHEN 'partner' THEN
-      v_value := '[]'::JSONB;
+      RAISE EXCEPTION 'policy_unavailable';
     ELSE
       RAISE EXCEPTION 'policy_invalid';
   END CASE;
@@ -314,6 +358,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_generation BIGINT := 0;
+  v_capability_enabled BOOLEAN;
   v_guard JSONB;
   v_explicit_deny BOOLEAN := FALSE;
   v_deny_source TEXT;
@@ -330,16 +375,14 @@ BEGIN
   END IF;
 
   BEGIN
-    SELECT generation INTO v_generation
-      FROM public.entitlement_generation
-     WHERE singleton = TRUE;
-    v_generation := COALESCE(v_generation, 0);
+    v_generation := public.current_entitlement_generation();
 
-    IF NOT EXISTS (
-      SELECT 1 FROM public.capabilities AS capability
-       WHERE capability.key = p_capability_key
-         AND capability.enabled
-    ) THEN
+    -- Resolve key existence before subject guards. Unknown runtime keys deny,
+    -- but known disabled keys still report account/hard-guard blockers first.
+    SELECT capability.enabled INTO v_capability_enabled
+      FROM public.capabilities AS capability
+     WHERE capability.key = p_capability_key;
+    IF NOT FOUND THEN
       RETURN jsonb_build_object(
         'capability', p_capability_key,
         'allowed', FALSE,
@@ -350,7 +393,8 @@ BEGIN
       );
     END IF;
 
-    -- Hard guards are intentionally evaluated before policy and assignment data.
+    -- Account and capability hard guards run before enabled-state denial and
+    -- before all policy and assignment data.
     v_guard := public.capability_hard_guard(p_user_id, p_capability_key);
     IF NOT COALESCE((v_guard ->> 'allowed')::BOOLEAN, FALSE) THEN
       RETURN jsonb_build_object(
@@ -360,6 +404,18 @@ BEGIN
         'qualificationPaths', COALESCE(v_guard -> 'qualificationPaths', '[]'::JSONB),
         'entitlementGeneration', v_generation,
         'source', 'hard_guard'
+      );
+    END IF;
+
+    -- A known disabled capability is default-denied after hard guards.
+    IF NOT v_capability_enabled THEN
+      RETURN jsonb_build_object(
+        'capability', p_capability_key,
+        'allowed', FALSE,
+        'blockerCode', 'ENTITLEMENT_DENIED',
+        'qualificationPaths', '[]'::JSONB,
+        'entitlementGeneration', v_generation,
+        'source', 'default_deny'
       );
     END IF;
 
@@ -509,9 +565,7 @@ BEGIN
       SELECT jsonb_agg(to_jsonb(assignment) ORDER BY assignment.created_at DESC)
         FROM public.entitlement_assignments AS assignment
     ), '[]'::JSONB),
-    'generation', COALESCE((
-      SELECT generation FROM public.entitlement_generation WHERE singleton = TRUE
-    ), 0)
+    'generation', public.current_entitlement_generation()
   ) INTO v_result;
 
   RETURN v_result;
@@ -725,7 +779,8 @@ BEGIN
      SET status = 'active', activated_at = now()
    WHERE id = p_version_id;
 
-  v_generation := public.increment_entitlement_generation();
+  PERFORM public.increment_entitlement_generation();
+  v_generation := public.current_entitlement_generation();
 
   INSERT INTO public.audit_logs(
     actor_id, action, entity_type, entity_id, before_data, after_data, note
@@ -762,7 +817,6 @@ DECLARE
   v_current_active UUID;
   v_new_id UUID;
   v_new_version INTEGER;
-  v_generation BIGINT;
 BEGIN
   IF v_actor IS NULL OR NOT public.is_super_admin(v_actor) THEN
     RAISE EXCEPTION 'super_admin_required';
@@ -772,11 +826,10 @@ BEGIN
   PERFORM 1 FROM public.entitlement_policies WHERE id = p_policy_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'policy_not_found'; END IF;
 
-  SELECT version_row.*, policy_row.capability_key, capability.risk_level
+  SELECT version_row.*, policy_row.capability_key
     INTO v_target
     FROM public.entitlement_policy_versions AS version_row
     JOIN public.entitlement_policies AS policy_row ON policy_row.id = version_row.policy_id
-    JOIN public.capabilities AS capability ON capability.key = policy_row.capability_key
    WHERE version_row.policy_id = p_policy_id
      AND version_row.version = p_target_version
      AND version_row.status IN ('active', 'retired')
@@ -786,10 +839,6 @@ BEGIN
   IF v_target.effective_until IS NOT NULL AND v_target.effective_until <= now() THEN
     RAISE EXCEPTION 'rollback_target_expired';
   END IF;
-  IF v_target.risk_level IN ('high', 'critical')
-     AND (v_target.approved_by IS NULL OR v_target.approved_by = v_actor) THEN
-    RAISE EXCEPTION 'self_approval_forbidden';
-  END IF;
 
   SELECT COALESCE(MAX(version), 0) + 1
     INTO v_new_version
@@ -798,10 +847,10 @@ BEGIN
 
   INSERT INTO public.entitlement_policy_versions(
     policy_id, version, status, effect, effective_from, effective_until,
-    created_by, approved_by
+    created_by
   ) VALUES (
-    p_policy_id, v_new_version, 'scheduled', v_target.effect, now(),
-    v_target.effective_until, v_actor, v_target.approved_by
+    p_policy_id, v_new_version, 'pending_approval', v_target.effect, now(),
+    v_target.effective_until, v_actor
   ) RETURNING id INTO v_new_id;
 
   INSERT INTO public.entitlement_policy_requirements(
@@ -816,21 +865,11 @@ BEGIN
    WHERE policy_id = p_policy_id AND status = 'active'
    FOR UPDATE;
 
-  UPDATE public.entitlement_policy_versions
-     SET status = 'retired'
-   WHERE policy_id = p_policy_id AND status = 'active';
-
-  UPDATE public.entitlement_policy_versions
-     SET status = 'active', activated_at = now()
-   WHERE id = v_new_id;
-
-  v_generation := public.increment_entitlement_generation();
-
   INSERT INTO public.audit_logs(
     actor_id, action, entity_type, entity_id, before_data, after_data, note
   ) VALUES (
     v_actor,
-    'entitlement.policy.rolled_back',
+    'entitlement.policy.rollback_requested',
     'entitlement_policy_version',
     v_new_id,
     jsonb_build_object('policyId', p_policy_id, 'previousActiveVersionId', v_current_active),
@@ -840,8 +879,7 @@ BEGIN
       'targetVersion', p_target_version,
       'version', v_new_version,
       'capabilityKey', v_target.capability_key,
-      'status', 'active',
-      'generation', v_generation
+      'status', 'pending_approval'
     ),
     BTRIM(p_reason)
   );
@@ -867,6 +905,7 @@ DECLARE
   v_actor UUID := auth.uid();
   v_assignment_id UUID;
   v_starts_at TIMESTAMPTZ := COALESCE(p_starts_at, now());
+  v_subject_id TEXT;
   v_manually_assignable BOOLEAN;
   v_generation BIGINT;
 BEGIN
@@ -892,13 +931,21 @@ BEGIN
     RAISE EXCEPTION 'capability_not_manually_assignable';
   END IF;
 
-  IF p_subject_type = 'user' AND NOT EXISTS (
-    SELECT 1 FROM public.users WHERE id = p_subject_id::UUID
-  ) THEN
-    RAISE EXCEPTION 'assignment_subject_not_found';
+  IF p_subject_type = 'user' THEN
+    BEGIN
+      v_subject_id := BTRIM(p_subject_id)::UUID::TEXT;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'assignment_invalid';
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = v_subject_id::UUID) THEN
+      RAISE EXCEPTION 'assignment_subject_not_found';
+    END IF;
+  ELSE
+    v_subject_id := BTRIM(p_subject_id);
   END IF;
   IF p_subject_type = 'role' AND NOT EXISTS (
-    SELECT 1 FROM public.roles WHERE name = p_subject_id
+    SELECT 1 FROM public.roles WHERE name = v_subject_id
   ) THEN
     RAISE EXCEPTION 'assignment_subject_not_found';
   END IF;
@@ -907,11 +954,12 @@ BEGIN
     subject_type, subject_id, capability_key, effect, starts_at, expires_at,
     reason, granted_by
   ) VALUES (
-    p_subject_type, BTRIM(p_subject_id), p_capability_key, p_effect,
+    p_subject_type, v_subject_id, p_capability_key, p_effect,
     v_starts_at, p_expires_at, BTRIM(p_reason), v_actor
   ) RETURNING id INTO v_assignment_id;
 
-  v_generation := public.increment_entitlement_generation();
+  PERFORM public.increment_entitlement_generation();
+  v_generation := public.current_entitlement_generation();
 
   INSERT INTO public.audit_logs(
     actor_id, action, entity_type, entity_id, before_data, after_data, note
@@ -924,7 +972,7 @@ BEGIN
     jsonb_build_object(
       'assignmentId', v_assignment_id,
       'subjectType', p_subject_type,
-      'subjectId', BTRIM(p_subject_id),
+      'subjectId', v_subject_id,
       'capabilityKey', p_capability_key,
       'effect', p_effect,
       'startsAt', v_starts_at,
@@ -967,7 +1015,8 @@ BEGIN
      SET revoked_at = now(), revoked_by = v_actor
    WHERE id = p_assignment_id;
 
-  v_generation := public.increment_entitlement_generation();
+  PERFORM public.increment_entitlement_generation();
+  v_generation := public.current_entitlement_generation();
 
   INSERT INTO public.audit_logs(
     actor_id, action, entity_type, entity_id, before_data, after_data, note
@@ -1003,6 +1052,8 @@ REVOKE ALL ON FUNCTION public.validate_entitlement_reason(TEXT)
 REVOKE ALL ON FUNCTION public.require_entitlement_super_admin()
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.increment_entitlement_generation()
+  FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.current_entitlement_generation()
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.entitlement_fact_value(UUID, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;

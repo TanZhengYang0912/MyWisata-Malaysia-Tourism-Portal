@@ -43,6 +43,17 @@ describe("entitlement policy governance migration", () => {
     expect(sql).not.toMatch(/p_(?:facts|actor_id)\b/i);
   });
 
+  it("fails closed while plan and partner facts have no authoritative source", () => {
+    const sql = functionSql("entitlement_fact_value");
+    const unavailableBranches = sql.match(
+      /WHEN 'plan' THEN[\s\S]+?RAISE EXCEPTION 'policy_unavailable'[\s\S]+?WHEN 'partner' THEN[\s\S]+?RAISE EXCEPTION 'policy_unavailable'/i,
+    );
+
+    expect(unavailableBranches).not.toBeNull();
+    expect(unavailableBranches![0]).not.toContain("'[]'::JSONB");
+    expect(functionSql("resolve_user_capability")).toContain("POLICY_UNAVAILABLE");
+  });
+
   it("supports only eq, not_eq, and contains with AND groups and OR alternatives", () => {
     const matcher = functionSql("entitlement_requirement_matches");
     const resolver = functionSql("resolve_user_capability");
@@ -84,6 +95,19 @@ describe("entitlement policy governance migration", () => {
     expect(functionSql("capability_hard_guard")).toContain("ACCOUNT_RESTRICTED");
   });
 
+  it("evaluates a known disabled capability's account guard before default deny", () => {
+    const sql = functionSql("resolve_user_capability");
+    const knownCapability = sql.indexOf("-- Resolve key existence before subject guards");
+    const hardGuard = sql.indexOf("-- Account and capability hard guards run before enabled-state denial");
+    const disabledCapability = sql.indexOf("-- A known disabled capability is default-denied after hard guards");
+
+    expect(knownCapability).toBeGreaterThan(-1);
+    expect(hardGuard).toBeGreaterThan(knownCapability);
+    expect(disabledCapability).toBeGreaterThan(hardGuard);
+    expect(sql.slice(knownCapability, hardGuard)).toContain("IF NOT FOUND");
+    expect(sql.slice(disabledCapability)).toContain("IF NOT v_capability_enabled");
+  });
+
   it("ignores expired and revoked assignments and keeps manual allow behind hard guards", () => {
     const resolver = functionSql("resolve_user_capability");
     const setter = functionSql("set_entitlement_assignment");
@@ -96,6 +120,16 @@ describe("entitlement policy governance migration", () => {
     );
     expect(setter).toContain("manually_assignable");
     expect(setter).toContain("capability_not_manually_assignable");
+  });
+
+  it("canonicalizes user assignment UUIDs before validation, persistence, and audit", () => {
+    const setter = functionSql("set_entitlement_assignment");
+    const resolver = functionSql("resolve_user_capability");
+
+    expect(setter).toContain("v_subject_id := BTRIM(p_subject_id)::UUID::TEXT");
+    expect(setter).toMatch(/VALUES \([\s\S]+p_subject_type, v_subject_id, p_capability_key/i);
+    expect(setter).toContain("'subjectId', v_subject_id");
+    expect(resolver).toContain("assignment.subject_id = p_user_id::TEXT");
   });
 
   it("derives every governed mutation actor and enforces Super Admin authority", () => {
@@ -127,15 +161,43 @@ describe("entitlement policy governance migration", () => {
     expect(activation).toMatch(/status = 'retired'/i);
     expect(activation).toMatch(/status = 'active'/i);
     expect(rollback).toMatch(/INSERT INTO public\.entitlement_policy_versions/i);
-    expect(rollback).toContain("self_approval_forbidden");
     for (const name of [
       "activate_entitlement_policy_version",
-      "rollback_entitlement_policy",
       "set_entitlement_assignment",
       "revoke_entitlement_assignment",
     ]) {
       expect(functionSql(name)).toContain("increment_entitlement_generation");
     }
+  });
+
+  it("creates rollback as a new pending version without inherited approval or generation change", () => {
+    const rollback = functionSql("rollback_entitlement_policy");
+
+    expect(rollback).toMatch(
+      /INSERT INTO public\.entitlement_policy_versions\([\s\S]+created_by[\s\S]+VALUES \([\s\S]+p_policy_id, v_new_version, 'pending_approval'/i,
+    );
+    expect(rollback).not.toMatch(/created_by, approved_by/i);
+    expect(rollback).not.toContain("v_target.approved_by");
+    expect(rollback).not.toContain("increment_entitlement_generation");
+    expect(rollback).not.toMatch(/SET status = '(?:retired|active)'/i);
+    expect(rollback).toContain("entitlement.policy.rollback_requested");
+    expect(rollback).toContain("'status', 'pending_approval'");
+  });
+
+  it("derives a safe generation token from governance writes and timed transitions", () => {
+    const generation = functionSql("current_entitlement_generation");
+    const resolver = functionSql("resolve_user_capability");
+    const state = functionSql("list_entitlement_access_control_state");
+
+    expect(generation).toMatch(/COUNT\(\*\) FILTER \(WHERE assignment\.starts_at <= now\(\)\)/i);
+    expect(generation).toMatch(
+      /COUNT\(\*\) FILTER \([\s\S]*?WHERE assignment\.expires_at IS NOT NULL AND assignment\.expires_at <= now\(\)/i,
+    );
+    expect(generation).toMatch(/v_base_generation \+ v_transition_count/i);
+    expect(generation).toContain("9007199254740991");
+    expect(generation).toContain("policy_unavailable");
+    expect(resolver).toContain("public.current_entitlement_generation()");
+    expect(state).toContain("public.current_entitlement_generation()");
   });
 
   it("rejects null requirement payloads and expired rollback targets", () => {
