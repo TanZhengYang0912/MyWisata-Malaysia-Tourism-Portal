@@ -66,9 +66,11 @@ export default function AffiliateDashboardPage() {
 
   async function downloadEarnings() {
     if (exporting) return;
+    if (!gate("affiliate.earn_commission", "/customer/affiliate")) return;
     setExporting(true);
     try {
       const res = await fetch(`/api/affiliate/earnings-export?range=${exportRange}`);
+      if (await gate.handleResponse(res, "/customer/affiliate")) return;
       if (!res.ok) {
         showFeedback("error", "Could not export earnings. Please try again.");
         return;
@@ -104,13 +106,15 @@ export default function AffiliateDashboardPage() {
   }
 
   useEffect(() => {
-    if (!currentUser || !affiliateEligible) {
-      setStats(null);
-      return;
-    }
-    (async () => {
-      await loadStats();
-    })();
+    const timeoutId = window.setTimeout(() => {
+      if (!currentUser || !affiliateEligible) {
+        setStats(null);
+        return;
+      }
+      void loadStats();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [affiliateEligible, currentUser?.id]);
 
@@ -430,7 +434,7 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="mb-8">
-        <AffiliateInsightCard scope="user" />
+        <AffiliateInsightCard scope="user" requiredCapability="affiliate.earn_commission" nextPath="/customer/affiliate" />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">

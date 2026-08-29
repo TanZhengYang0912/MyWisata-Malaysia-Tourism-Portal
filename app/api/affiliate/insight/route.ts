@@ -8,11 +8,23 @@ import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { getAffiliateStats } from '@/lib/affiliate/stats';
 import { generateUserInsight, ruleBasedUserInsight, type UserInsightStats } from '@/lib/affiliate/insight';
+import {
+  customerCapabilityFailure,
+  resolveServerCustomerCapability,
+} from '@/lib/auth/customer-capabilities.server';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const decision = await resolveServerCustomerCapability(user.id, 'affiliate.earn_commission');
+  const failure = customerCapabilityFailure(
+    'affiliate.earn_commission',
+    decision,
+    'Complete KYC verification to generate Affiliate earnings insights',
+  );
+  if (failure) return failure;
 
   const stats = await getAffiliateStats(supabase, user.id);
 

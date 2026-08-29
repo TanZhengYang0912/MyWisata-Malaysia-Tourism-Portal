@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import type { CustomerCapability } from "@/lib/auth/customer-capabilities";
 
 type InsightMode = "llm" | "rule-based";
 
@@ -28,6 +30,8 @@ interface CachedInsight {
 
 interface AffiliateInsightCardProps {
   scope: "user" | "admin";
+  requiredCapability?: CustomerCapability;
+  nextPath?: string;
 }
 
 function storageKey(scope: string, userId: string): string {
@@ -44,23 +48,28 @@ function readCached(scope: string, userId: string): CachedInsight | null {
   }
 }
 
-export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
-  const { currentUser } = useAuth();
+export function AffiliateInsightCard({ scope, requiredCapability, nextPath }: AffiliateInsightCardProps) {
+  const { currentUser, capabilities } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const { t, i18n } = useTranslation("vendor");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const userId = currentUser?.id ?? "anon";
   const [cached, setCached] = useState<CachedInsight | null>(() => readCached(scope, userId));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const capabilityAllowed = !requiredCapability || capabilities[requiredCapability]?.allowed === true;
+  const visibleCached = capabilityAllowed ? cached : null;
 
   const endpoint = scope === "admin" ? "/api/admin/affiliate/insight" : "/api/affiliate/insight";
 
   async function generate() {
     if (loading) return;
+    if (requiredCapability && !gate(requiredCapability, nextPath)) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(endpoint);
+      if (requiredCapability && await gate.handleResponse(res, nextPath)) return;
       const body = (await res.json()) as { data: { insight: string; mode: InsightMode } | null; error: { message: string } | null };
       if (!res.ok || !body.data) {
         setError(body.error?.message ?? t("affiliate.insight.generateFailed"));
@@ -81,7 +90,7 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
   // Auto-generate exactly once, only when there's nothing cached yet — a
   // page revisit reuses the cached result instead of calling Gemini again.
   useEffect(() => {
-    if (!cached && !loading && !error) {
+    if (capabilityAllowed && !visibleCached && !loading && !error) {
       (async () => {
         await generate();
       })();
@@ -100,14 +109,14 @@ export function AffiliateInsightCard({ scope }: AffiliateInsightCardProps) {
         </Button>
       </div>
 
-      {error && !cached && <p className="text-sm text-destructive">{error}</p>}
-      {!error && !cached && loading && <p className="text-sm text-muted-foreground">{t("affiliate.insight.generatingYourInsight")}</p>}
-      {cached && (
+      {error && !visibleCached && <p className="text-sm text-destructive">{error}</p>}
+      {!error && !visibleCached && loading && <p className="text-sm text-muted-foreground">{t("affiliate.insight.generatingYourInsight")}</p>}
+      {visibleCached && (
         <div>
-          <p className="text-sm text-foreground leading-relaxed">{cached.insight}</p>
+          <p className="text-sm text-foreground leading-relaxed">{visibleCached.insight}</p>
           <p className="text-[0.625rem] text-muted-foreground mt-2">
-            {cached.mode === "rule-based" ? t("affiliate.insight.ruleBased") : t("affiliate.insight.aiGenerated")} ·{" "}
-            {formatDateTime(cached.generatedAt, locale)}
+            {visibleCached.mode === "rule-based" ? t("affiliate.insight.ruleBased") : t("affiliate.insight.aiGenerated")} ·{" "}
+            {formatDateTime(visibleCached.generatedAt, locale)}
           </p>
         </div>
       )}

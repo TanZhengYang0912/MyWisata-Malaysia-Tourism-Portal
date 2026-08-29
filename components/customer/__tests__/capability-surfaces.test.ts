@@ -27,12 +27,17 @@ describe("progressive capability surfaces", () => {
 
   it("keeps the affiliate teaser visible and uses the shared profile gate", () => {
     const affiliate = source("app/customer/affiliate/page.tsx");
+    const insight = source("components/shared/affiliate-insight-card.tsx");
 
     expect(affiliate).not.toContain("isAffiliateEligible");
     expect(affiliate).not.toContain('<Link href="/customer/kyc">');
     expect(affiliate).toContain("capabilities.affiliate_full.allowed || capabilities.affiliate_limited.allowed");
     expect(affiliate).toContain("CUSTOMER_CAPABILITY.AFFILIATE_FULL");
     expect(affiliate).toContain("gate.handleResponse(response");
+    expect(affiliate).toContain('gate("affiliate.earn_commission", "/customer/affiliate")');
+    expect(affiliate).toContain('requiredCapability="affiliate.earn_commission"');
+    expect(insight).toContain("useCustomerCapabilityGate");
+    expect(insight).toContain("gate.handleResponse(res");
   });
 
   it("uses the capability snapshot rather than legacy tier for withdrawal readiness", () => {
