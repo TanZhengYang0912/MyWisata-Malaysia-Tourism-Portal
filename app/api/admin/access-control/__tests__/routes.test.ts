@@ -37,6 +37,7 @@ import * as rollbackRoute from "@/app/api/admin/access-control/policies/[policyI
 import * as assignmentsRoute from "@/app/api/admin/access-control/assignments/route";
 import * as revokeRoute from "@/app/api/admin/access-control/assignments/[assignmentId]/revoke/route";
 import * as auditRoute from "@/app/api/admin/access-control/audit-log/route";
+import { sanitizeAuditPayload } from "@/app/api/admin/access-control/_audit-sanitizer";
 import {
   auditLogFiltersSchema,
   capabilityMetadataSchema,
@@ -351,8 +352,12 @@ describe("Access Control Audit Log", () => {
     expect(auditRoute).not.toHaveProperty("DELETE");
   });
 
+  it("exports only Next.js route handler and configuration symbols", () => {
+    expect(Object.keys(auditRoute).sort()).toEqual(["GET", "dynamic"].sort());
+  });
+
   it("recursively removes non-allowlisted metadata and secrets", () => {
-    const sanitized = auditRoute.sanitizeAuditPayload({
+    const sanitized = sanitizeAuditPayload({
       capabilityKey: "wallet.request_withdrawal",
       subjectId: ACTOR_ID,
       email: "secret@example.com",
