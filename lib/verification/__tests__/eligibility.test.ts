@@ -71,6 +71,37 @@ describe('computeProfileVerification', () => {
       currentStep: 'avatar',
     });
   });
+
+  it.each([
+    '/default-avatar.png',
+    'https://cdn.example/default-avatar.jpg?version=2',
+    '/images/DEFAULT-AVATAR.JPEG',
+    'default-avatar.webp',
+    '/default-avatar.svg',
+  ])('rejects the known default avatar %s from Profile completion', (avatarUrl) => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      avatarUrl,
+      surveyComplete: true,
+    })).toMatchObject({
+      complete: false,
+      percentage: 75,
+      completedSteps: ['identity', 'bio', 'survey'],
+      currentStep: 'avatar',
+    });
+  });
+
+  it('does not complete Profile when the preference survey has no interests', () => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      surveyComplete: false,
+    })).toMatchObject({
+      complete: false,
+      percentage: 75,
+      completedSteps: ['identity', 'avatar', 'bio'],
+      currentStep: 'survey',
+    });
+  });
 });
 
 describe('eligibility predicates', () => {

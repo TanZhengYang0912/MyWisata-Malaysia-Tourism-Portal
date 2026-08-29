@@ -80,4 +80,40 @@ describe("profile summary", () => {
     expect(result.verification.complete).toBe(false);
     expect(result.profileRichness.percentage).toBe(40);
   });
+
+  it("requires non-empty survey interests and an uploaded avatar for Profile verification", () => {
+    const result = mapProfileSummary(
+      {
+        id: "u-4",
+        email: "u@example.com",
+        full_name: "Aisha Rahman",
+        display_name: "Aisha",
+        avatar_url: "https://cdn.example/default-avatar.svg?cache=1",
+        bio: "A traveller who enjoys local food and culture.",
+        phone: null,
+        city: "Kuala Lumpur",
+        country: "Malaysia",
+        status: "active",
+        tier: "email_verified",
+        kyc_status: "unverified",
+        email_verified_at: "2026-07-15T00:00:00Z",
+        phone_verified_at: null,
+        profile_completed_at: null,
+      },
+      {
+        interests: [],
+        budget_range: "mid_range",
+        mobility_needs: "none",
+        preferred_radius_km: 20,
+      },
+      [],
+    );
+
+    expect(result.verification).toMatchObject({
+      complete: false,
+      percentage: 50,
+      completedSteps: ["identity", "bio"],
+      currentStep: "avatar",
+    });
+  });
 });

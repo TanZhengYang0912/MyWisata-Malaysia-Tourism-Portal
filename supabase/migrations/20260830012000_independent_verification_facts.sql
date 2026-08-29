@@ -41,6 +41,125 @@ $$;
 REVOKE ALL ON FUNCTION public.recompute_compatibility_tier(UUID)
   FROM PUBLIC, anon, authenticated, service_role;
 
+-- Every verification fact is server-managed. Admin and KYC reviewer workflows
+-- use the same transaction-local trusted context as customer promotion RPCs;
+-- roles alone never authorize a direct users-table verification write.
+CREATE OR REPLACE FUNCTION public.protect_verification_fields()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.phone IS DISTINCT FROM OLD.phone
+     AND current_setting('app.allow_verification_write', true) IS DISTINCT FROM 'on' THEN
+    RAISE EXCEPTION 'phone_change_requires_otp';
+  END IF;
+
+  IF current_setting('app.allow_verification_write', true) = 'on' THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.email IS DISTINCT FROM OLD.email
+     OR NEW.tier IS DISTINCT FROM OLD.tier
+     OR NEW.email_verified_at IS DISTINCT FROM OLD.email_verified_at
+     OR NEW.phone_verified_at IS DISTINCT FROM OLD.phone_verified_at
+     OR NEW.profile_completed_at IS DISTINCT FROM OLD.profile_completed_at
+     OR NEW.kyc_status IS DISTINCT FROM OLD.kyc_status THEN
+    RAISE EXCEPTION 'verification_fields_are_server_managed';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.protect_verification_fields()
+  FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.promote_to_phone_verified(
+  p_user_id UUID,
+  p_phone TEXT
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_email_verified BOOLEAN;
+BEGIN
+  IF auth.role() <> 'service_role' THEN
+    RAISE EXCEPTION 'service_role_required';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext('phone_verify:' || p_phone));
+  IF EXISTS (
+    SELECT 1
+      FROM public.users
+     WHERE phone = p_phone
+       AND phone_verified_at IS NOT NULL
+       AND id <> p_user_id
+  ) THEN
+    RAISE EXCEPTION 'phone_already_claimed';
+  END IF;
+
+  SELECT email_verified_at IS NOT NULL
+    INTO v_email_verified
+    FROM public.users
+   WHERE id = p_user_id
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'user_not_found: %', p_user_id;
+  END IF;
+  IF NOT v_email_verified THEN
+    RAISE EXCEPTION 'tier_insufficient: email_verified required';
+  END IF;
+
+  PERFORM set_config('app.allow_verification_write', 'on', true);
+  UPDATE public.users
+     SET phone = p_phone,
+         phone_verified_at = now(),
+         updated_at = now()
+   WHERE id = p_user_id;
+  PERFORM public.recompute_compatibility_tier(p_user_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.promote_to_phone_verified(UUID, TEXT)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.promote_to_phone_verified(UUID, TEXT)
+  TO service_role;
+
+CREATE OR REPLACE FUNCTION public.clear_phone_verification(p_user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF auth.uid() IS DISTINCT FROM p_user_id AND NOT public.is_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'unauthorized';
+  END IF;
+
+  PERFORM 1
+    FROM public.users
+   WHERE id = p_user_id
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'user_not_found: %', p_user_id;
+  END IF;
+
+  PERFORM set_config('app.allow_verification_write', 'on', true);
+  UPDATE public.users
+     SET phone_verified_at = NULL,
+         updated_at = now()
+   WHERE id = p_user_id;
+  PERFORM public.recompute_compatibility_tier(p_user_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.clear_phone_verification(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.clear_phone_verification(UUID) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.promote_to_profile_complete(p_user_id UUID)
 RETURNS void
 LANGUAGE plpgsql
@@ -49,6 +168,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_row public.users%ROWTYPE;
+  v_avatar_name TEXT;
 BEGIN
   IF auth.uid() IS DISTINCT FROM p_user_id AND NOT public.is_admin(auth.uid()) THEN
     RAISE EXCEPTION 'unauthorized';
@@ -72,8 +192,22 @@ BEGIN
   IF btrim(COALESCE(v_row.country, '')) = '' THEN
     RAISE EXCEPTION 'profile_incomplete: country required';
   END IF;
+  v_avatar_name := lower(regexp_replace(
+    split_part(btrim(COALESCE(v_row.avatar_url, '')), '?', 1),
+    '^.*/',
+    ''
+  ));
   IF btrim(COALESCE(v_row.avatar_url, '')) = '' THEN
     RAISE EXCEPTION 'profile_incomplete: avatar_url required';
+  END IF;
+  IF v_avatar_name IN (
+    'default-avatar.png',
+    'default-avatar.jpg',
+    'default-avatar.jpeg',
+    'default-avatar.webp',
+    'default-avatar.svg'
+  ) THEN
+    RAISE EXCEPTION 'profile_incomplete: uploaded avatar required';
   END IF;
   IF char_length(btrim(COALESCE(v_row.bio, ''))) NOT BETWEEN 30 AND 200 THEN
     RAISE EXCEPTION 'profile_incomplete: moderated bio required';
@@ -82,6 +216,7 @@ BEGIN
     SELECT 1
       FROM public.preference_survey_responses AS response
      WHERE response.user_id = p_user_id
+       AND COALESCE(cardinality(response.interests), 0) > 0
   ) THEN
     RAISE EXCEPTION 'profile_incomplete: preference survey required';
   END IF;

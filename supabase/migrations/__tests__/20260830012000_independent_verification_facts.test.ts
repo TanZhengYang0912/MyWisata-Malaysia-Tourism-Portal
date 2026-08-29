@@ -16,6 +16,17 @@ function functionBody(sql: string, signature: RegExp): string {
 describe('independent verification facts migration', () => {
   const sql = readFileSync(migrationPath, 'utf8');
 
+  it('guards Profile completion as a server-managed verification fact', () => {
+    const guard = functionBody(sql, /CREATE OR REPLACE FUNCTION public\.protect_verification_fields\(\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/);
+    const promote = functionBody(sql, /CREATE OR REPLACE FUNCTION public\.promote_to_profile_complete\(p_user_id UUID\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/);
+
+    expect(guard).toContain('NEW.profile_completed_at IS DISTINCT FROM OLD.profile_completed_at');
+    expect(guard).toContain("current_setting('app.allow_verification_write', true) = 'on'");
+    expect(guard).not.toContain('OR public.is_admin(auth.uid())');
+    expect(guard).not.toContain('public.can_review_kyc(auth.uid())');
+    expect(promote).toMatch(/set_config\('app\.allow_verification_write', 'on', true\)[\s\S]*profile_completed_at = COALESCE\(profile_completed_at, now\(\)\)/);
+  });
+
   it('completes Profile from the four profile sections without Phone or KYC', () => {
     const body = functionBody(sql, /CREATE OR REPLACE FUNCTION public\.promote_to_profile_complete\(p_user_id UUID\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/);
 
@@ -26,6 +37,12 @@ describe('independent verification facts migration', () => {
     expect(body).toContain('avatar_url');
     expect(body).toContain('bio');
     expect(body).toContain('preference_survey_responses');
+    expect(body).toContain("'default-avatar.png'");
+    expect(body).toContain("'default-avatar.jpg'");
+    expect(body).toContain("'default-avatar.jpeg'");
+    expect(body).toContain("'default-avatar.webp'");
+    expect(body).toContain("'default-avatar.svg'");
+    expect(body).toContain('cardinality(response.interests)');
     expect(body).not.toContain('phone_verified_at');
     expect(body).not.toContain('kyc_status');
     expect(body).not.toContain('tier_rank');
@@ -37,6 +54,24 @@ describe('independent verification facts migration', () => {
     expect(body).toMatch(/phone_verified_at IS NOT NULL[\s\S]*profile_completed_at IS NOT NULL[\s\S]*kyc_status = 'approved'[\s\S]*THEN 'kyc_verified'/);
     expect(body).toMatch(/phone_verified_at IS NOT NULL[\s\S]*profile_completed_at IS NOT NULL[\s\S]*THEN 'profile_complete'/);
     expect(body).toMatch(/phone_verified_at IS NOT NULL[\s\S]*THEN 'phone_verified'/);
+  });
+
+  it('recomputes compatibility metadata after every trusted Phone transition', () => {
+    const promote = functionBody(sql, /CREATE OR REPLACE FUNCTION public\.promote_to_phone_verified\([\s\S]*?p_phone TEXT[\s\S]*?AS \$\$([\s\S]*?)\$\$;/);
+    const clear = functionBody(sql, /CREATE OR REPLACE FUNCTION public\.clear_phone_verification\(p_user_id UUID\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/);
+
+    expect(promote).toContain("auth.role() <> 'service_role'");
+    expect(promote).toContain("pg_advisory_xact_lock(hashtext('phone_verify:' || p_phone))");
+    expect(promote).toContain('phone_already_claimed');
+    expect(promote).toContain('email_verified_at');
+    expect(promote).not.toContain('tier_rank');
+    expect(promote).toMatch(/set_config\('app\.allow_verification_write', 'on', true\)[\s\S]*phone_verified_at = now\(\)[\s\S]*recompute_compatibility_tier\(p_user_id\)/);
+
+    expect(clear).toContain('auth.uid() IS DISTINCT FROM p_user_id');
+    expect(clear).toContain('public.is_admin(auth.uid())');
+    expect(clear).toMatch(/set_config\('app\.allow_verification_write', 'on', true\)[\s\S]*phone_verified_at = NULL[\s\S]*recompute_compatibility_tier\(p_user_id\)/);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.promote_to_phone_verified\(UUID, TEXT\)\s+FROM PUBLIC, anon, authenticated/);
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.promote_to_phone_verified\(UUID, TEXT\)\s+TO service_role/);
   });
 
   it('begins an authenticated subject-bound KYC draft without Profile, Phone, or tier prerequisites', () => {
