@@ -4,6 +4,13 @@
 
 **Created:** 2026-08-29 19:56 Asia/Kuala_Lumpur
 
+**Authorization semantics:** Superseded by
+`Docs/plans/2026-08-30-0044-independent-verification-entitlements.md`. Phone,
+Profile, and KYC are independent facts; the cumulative tier ordering below is
+retained only as implementation history and must not be used for authorization.
+The shared capability dialog, typed API/frontend parity, and database-boundary
+work from this plan remain reused.
+
 **Objective:** Preserve the accepted customer verification ladder while making
 every gated action visible, understandable, and consistently enforced by the
 frontend, API, and database.
