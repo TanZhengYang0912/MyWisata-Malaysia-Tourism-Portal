@@ -15,6 +15,8 @@ describe("shared Profile photo acquisition", () => {
     expect(dialog).toContain("window.isSecureContext");
     expect(dialog).toContain("video.readyState");
     expect(dialog).toContain("requestId !== requestIdRef.current");
+    expect(dialog).toContain("streamRef.current === nextStream");
+    expect(dialog).toContain("isCameraOperationCurrent(captureRequestId");
     expect(dialog).not.toContain("MediaRecorder");
   });
 

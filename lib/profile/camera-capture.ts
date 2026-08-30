@@ -8,13 +8,20 @@ export type CameraErrorCode =
   | "capture_failed";
 
 export function classifyCameraError(error: unknown): CameraErrorCode {
-  if (error instanceof DOMException && ["NotAllowedError", "SecurityError"].includes(error.name)) {
+  if (error instanceof DOMException && error.name === "SecurityError") {
+    return "unsupported";
+  }
+  if (error instanceof DOMException && error.name === "NotAllowedError") {
     return "permission_denied";
   }
   if (error instanceof DOMException && ["NotFoundError", "OverconstrainedError"].includes(error.name)) {
     return "not_found";
   }
   return "startup_failed";
+}
+
+export function isCameraOperationCurrent(operationId: number, currentOperationId: number, open: boolean) {
+  return open && operationId === currentOperationId;
 }
 
 export function getSquareCrop(width: number, height: number) {

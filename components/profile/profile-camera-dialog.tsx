@@ -16,6 +16,7 @@ import {
   classifyCameraError,
   createCapturedPhotoFile,
   getSquareCrop,
+  isCameraOperationCurrent,
   stopCameraStream,
   type CameraErrorCode,
   type CameraFacingMode,
@@ -45,6 +46,7 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const requestIdRef = useRef(0);
+  const openRef = useRef(open);
   const capturedPreviewRef = useRef<string | null>(null);
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [activeFacingMode, setActiveFacingMode] = useState<CameraFacingMode>("user");
@@ -93,8 +95,9 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
       return;
     }
 
+    let nextStream: MediaStream | null = null;
     try {
-      const nextStream = await navigator.mediaDevices.getUserMedia({
+      nextStream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: { ideal: facingMode } },
       });
@@ -115,20 +118,30 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
       video.srcObject = nextStream;
       await video.play();
       if (requestId !== requestIdRef.current) {
-        stopActiveCamera();
+        if (streamRef.current === nextStream) streamRef.current = null;
+        if (videoRef.current?.srcObject === nextStream) videoRef.current.srcObject = null;
+        stopCameraStream(nextStream);
         return;
       }
       setStatus("ready");
     } catch (error) {
-      if (requestId !== requestIdRef.current) return;
-      stopActiveCamera();
+      if (streamRef.current === nextStream) streamRef.current = null;
+      if (nextStream && videoRef.current?.srcObject === nextStream) videoRef.current.srcObject = null;
+      stopCameraStream(nextStream);
+      if (!isCameraOperationCurrent(requestId, requestIdRef.current, openRef.current)) return;
       setCameraError(classifyCameraError(error));
       setStatus("idle");
     }
   }, [stopActiveCamera]);
 
   useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
+    // Opening the controlled dialog is the external event that starts camera synchronization.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void startCamera("user");
     return () => {
       requestIdRef.current += 1;
@@ -143,6 +156,7 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
   }, [stopActiveCamera]);
 
   function handleOpenChange(nextOpen: boolean) {
+    openRef.current = nextOpen;
     if (!nextOpen) resetDialog();
     onOpenChange(nextOpen);
   }
@@ -156,6 +170,8 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
 
   async function capturePhoto() {
     const video = videoRef.current;
+    const captureRequestId = requestIdRef.current;
+    const captureStream = streamRef.current;
     if (
       !video
       || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
@@ -175,6 +191,10 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
       const { sx, sy, size } = getSquareCrop(video.videoWidth, video.videoHeight);
       context.drawImage(video, sx, sy, size, size, 0, 0, CAPTURE_SIZE, CAPTURE_SIZE);
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+      if (
+        !isCameraOperationCurrent(captureRequestId, requestIdRef.current, openRef.current)
+        || streamRef.current !== captureStream
+      ) return;
       if (!blob) throw new Error("capture_failed");
 
       clearCapturedPhoto();
@@ -186,6 +206,7 @@ export function ProfileCameraDialog({ open, onOpenChange, onPhotoCaptured }: Pro
       setCameraError(null);
       setStatus("captured");
     } catch {
+      if (!isCameraOperationCurrent(captureRequestId, requestIdRef.current, openRef.current)) return;
       setCameraError("capture_failed");
     }
   }

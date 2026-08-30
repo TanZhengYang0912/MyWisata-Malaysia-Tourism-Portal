@@ -3,6 +3,7 @@ import {
   classifyCameraError,
   createCapturedPhotoFile,
   getSquareCrop,
+  isCameraOperationCurrent,
   stopCameraStream,
 } from "@/lib/profile/camera-capture";
 
@@ -14,8 +15,15 @@ describe("profile camera capture", () => {
 
   it("classifies browser camera failures without exposing exception text", () => {
     expect(classifyCameraError(new DOMException("blocked", "NotAllowedError"))).toBe("permission_denied");
+    expect(classifyCameraError(new DOMException("insecure", "SecurityError"))).toBe("unsupported");
     expect(classifyCameraError(new DOMException("missing", "NotFoundError"))).toBe("not_found");
     expect(classifyCameraError(new Error("private device detail"))).toBe("startup_failed");
+  });
+
+  it("rejects stale or closed camera operations", () => {
+    expect(isCameraOperationCurrent(4, 4, true)).toBe(true);
+    expect(isCameraOperationCurrent(3, 4, true)).toBe(false);
+    expect(isCameraOperationCurrent(4, 4, false)).toBe(false);
   });
 
   it("stops every active stream track", () => {
