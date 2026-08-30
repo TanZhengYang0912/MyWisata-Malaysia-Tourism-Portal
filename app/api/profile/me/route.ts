@@ -12,7 +12,7 @@ export async function GET() {
   const [profileResult, preferenceResult, kycResult] = await Promise.all([
     supabase
       .from("users")
-      .select("id,email,full_name,display_name,avatar_url,bio,phone,city,country,status,tier,kyc_status,email_verified_at,phone_verified_at,profile_completed_at")
+      .select("id,email,full_name,display_name,avatar_url,bio,phone,city,country,city_id,country_code,city_source,status,tier,kyc_status,email_verified_at,phone_verified_at,profile_completed_at")
       .eq("id", user.id)
       .maybeSingle(),
     supabase

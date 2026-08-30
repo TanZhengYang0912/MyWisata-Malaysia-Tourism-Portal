@@ -20,6 +20,8 @@ describe('profile completion display contract', () => {
     expect(page).toContain('bioSchema.safeParse');
     expect(sections).toContain('identitySchema.safeParse');
     expect(sections).toContain('bioSchema.safeParse');
+    expect(page).toContain('import { ProfileLocationFields }');
+    expect(page).toContain('<ProfileLocationFields');
   });
 
   it('uses a neutral identity verification heading for every KYC status', () => {
@@ -61,5 +63,19 @@ describe('profile completion display contract', () => {
     expect(kycPage).not.toContain('TIER_STEPS');
     expect(kycPage).not.toContain('isProfileComplete');
     expect(kycPage).not.toContain('href="/customer/profile"');
+  });
+
+  it('uses the same upload and camera picker in wizard and completed Profile settings', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+    const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
+
+    expect(page).toContain('import { ProfilePhotoPicker }');
+    expect(page).toContain('<ProfilePhotoPicker');
+    expect(sections).toContain('import { ProfilePhotoPicker }');
+    expect(sections).toContain('<ProfilePhotoPicker');
+    expect(page).toContain('/api/profile/avatar?type=');
+    expect(page).toContain('/api/profile/avatar/confirm');
+    expect(sections).toContain('/api/profile/avatar?type=');
+    expect(sections).toContain('/api/profile/avatar/confirm');
   });
 });

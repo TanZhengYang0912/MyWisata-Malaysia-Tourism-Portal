@@ -317,6 +317,9 @@ export interface ProfileSummary {
   maskedPhone: string | null;
   city: string | null;
   country: string | null;
+  cityId: string | null;
+  countryCode: string | null;
+  citySource: "manual" | "catalogue";
   status: "active" | "suspended" | "deleted";
   tier: User["verificationTier"];
   kycStatus: "unverified" | "pending" | "approved" | "rejected";

@@ -22,4 +22,14 @@ describe('wallet settings loading contract', () => {
     expect(pageSource).toContain('onClick={() => void loadSettings()}');
     expect(pageSource).toContain('t("ui.walletSettings.retry")');
   });
+
+  it('uses semantic theme surfaces for the effective policy summary', () => {
+    expect(pageSource).toContain('border border-primary/15 bg-secondary/50');
+    expect(pageSource).toContain('rounded-full bg-primary/10');
+    expect(pageSource).toContain('border border-primary/10 bg-muted');
+    expect(pageSource).not.toContain('from-[#F0F3FF]');
+    expect(pageSource).not.toContain('to-[#ECF9FF]');
+    expect(pageSource).not.toContain('bg-white/80');
+    expect(pageSource).not.toContain('bg-white/70');
+  });
 });

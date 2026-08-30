@@ -1,6 +1,6 @@
 # Progressive Verification Access Contract
 
-**Status:** Proposed — approved direction, awaiting written-spec review
+**Status:** Implemented and verified
 
 **Created:** 2026-08-29 19:56 Asia/Kuala_Lumpur
 
@@ -177,10 +177,11 @@ Existing SQL/RPC/RLS enforcement remains authoritative against bypasses:
 - commission clearing requires approved KYC;
 - withdrawal submission requires approved KYC and payout readiness.
 
-No historical migration is edited. No schema change is required for this
-design. Contract tests must cover the complete capability × tier matrix and
-assert that API blockers match the database floor for each money or trust
-mutation.
+No historical migration is edited. A forward-only hardening migration is
+required because implementation-time permission review confirmed that legacy
+RPC grants and policies could bypass several current API gates. Contract tests
+must cover the complete capability × tier matrix and assert that API blockers
+match the database floor for each money or trust mutation.
 
 ## Architecture and data flow
 
@@ -330,6 +331,44 @@ logic stay in their current modules.
 
 - `app/api/affiliate/link/__tests__/route.test.ts`
 
+### Phase 6 — Close confirmed legacy database bypasses
+
+**Create**
+
+- `supabase/migrations/20260829203000_progressive_verification_db_guards.sql`
+- `supabase/migrations/__tests__/20260829203000_progressive_verification_db_guards.test.ts`
+
+**Modify**
+
+- `app/api/dev/simulate-purchase/route.ts`
+  - use the canonical Checkout capability denial before the service-role demo
+    purchase path.
+
+The forward migration will:
+
+- enforce phone verification for service-role order insertion as well as
+  authenticated order insertion;
+- enforce Profile Complete on recommendation inserts and affiliate-link
+  inserts, including SECURITY DEFINER paths;
+- exclude vendor/outlet-manager accounts from affiliate links at the database
+  boundary;
+- require approved KYC while atomically clearing affiliate earnings;
+- revoke public/authenticated execution of obsolete withdrawal and wallet
+  mutation helpers that bypass the current governed RPC;
+- revoke the obsolete direct processing function that can skip approval state.
+
+**Files not touched:** historical migrations, KYC approval state machine,
+current `submit_wallet_withdrawal`, current provider settlement functions, and
+admin approval UI/API.
+
+**Database changes:** one forward-only policy/function/trigger/grant hardening
+migration; no table or column changes and no data deletion.
+
+**Risk:** existing callers of obsolete RPCs could receive permission errors.
+Repository search confirms the current application uses the governed
+replacement paths; affected legacy functions remain callable internally by
+their SECURITY DEFINER owners where needed.
+
 ## Scope boundaries
 
 ### Files and behavior explicitly not touched
@@ -355,9 +394,10 @@ logic stay in their current modules.
 
 ### Database changes
 
-- **Schema changes:** none planned.
+- **Schema changes:** no tables or columns; one forward-only trigger, policy,
+  function, and grant-hardening migration.
 - **Data migrations/backfills:** none.
-- Existing database invariants remain in place and are verified, not rewritten.
+- Historical migrations are not edited.
 
 ## Risks and mitigations
 

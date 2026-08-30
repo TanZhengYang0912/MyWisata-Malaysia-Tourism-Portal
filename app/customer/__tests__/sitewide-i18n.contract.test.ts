@@ -111,8 +111,13 @@ export const CUSTOMER_I18N_FILES = [
   "components/outlet/outlet-page-renderer.tsx",
   "components/profile/preferences-editor.tsx",
   "components/profile/business-share-banner.tsx",
+  "components/profile/city-autocomplete.tsx",
+  "components/profile/country-combobox.tsx",
   "components/profile/international-phone-input.tsx",
   "components/profile/phone-verification-card.tsx",
+  "components/profile/profile-camera-dialog.tsx",
+  "components/profile/profile-location-fields.tsx",
+  "components/profile/profile-photo-picker.tsx",
   "components/profile/profile-sections.tsx",
   "components/profile/verification-path-cards.tsx",
 ] as const;

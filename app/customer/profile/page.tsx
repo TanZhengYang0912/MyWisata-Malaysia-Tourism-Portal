@@ -1,18 +1,20 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   User, Camera, MessageSquare, ClipboardList,
-  Upload, Loader2,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 import { BusinessShareBanner } from "@/components/profile/business-share-banner";
 import { VerificationPathCards } from "@/components/profile/verification-path-cards";
+import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
+import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
@@ -37,11 +39,12 @@ export default function ProfilePage() {
   const [fullName, setFullName]         = useState(currentUser?.name !== currentUser?.email ? (currentUser?.name ?? "") : "");
   const [city,     setCity]             = useState(currentUser?.city ?? "");
   const [country,  setCountry]          = useState(currentUser?.country ?? "Malaysia");
+  const [cityId, setCityId]             = useState<string | null>(null);
+  const [countryCode, setCountryCode]   = useState<string | null>(currentUser?.country === "Malaysia" ? "MY" : null);
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [identityBusy,  setIdentityBusy]  = useState(false);
 
   // ── Avatar ─────────────────────────────────────────────────────────────────
-  const fileRef = useRef<HTMLInputElement>(null);
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError,   setAvatarError]   = useState<string | null>(null);
@@ -72,8 +75,9 @@ export default function ProfilePage() {
       setFullName(nextProfile.fullName ?? "");
       setCity(nextProfile.city ?? "");
       setCountry(nextProfile.country ?? "");
+      setCityId(nextProfile.cityId);
+      setCountryCode(nextProfile.countryCode);
       setBio(nextProfile.bio ?? "");
-      if (nextProfile.avatarUrl) setAvatarPreview(nextProfile.avatarUrl);
       return nextProfile;
     } catch {
       return null;
@@ -86,7 +90,7 @@ export default function ProfilePage() {
 
   // ── Identity handler ───────────────────────────────────────────────────────
   async function submitIdentity() {
-    const parsed = identitySchema.safeParse({ fullName, city, country });
+    const parsed = identitySchema.safeParse({ fullName, city, country, cityId, countryCode });
     if (!parsed.success) { setIdentityError(tCustomer("ui.profileWizard.fullNameValidation")); return; }
     setIdentityError(null);
     setIdentityBusy(true);
@@ -147,6 +151,9 @@ export default function ProfilePage() {
         throw new Error(tCustomer("ui.profileWizard.avatarConfirmError"));
       }
       await Promise.all([refreshUser(), loadProfile()]);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(null);
+      setAvatarPreview(null);
       showFeedback("success", tCustomer("ui.profileWizard.savePhoto"));
     } catch {
       setAvatarError(tCustomer("ui.profileWizard.savePhoto"));
@@ -279,26 +286,18 @@ export default function ProfilePage() {
               style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.city")}</label>
-            <input
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setIdentityError(null); }}
-              placeholder={tCustomer("ui.profileWizard.cityPlaceholder")}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-              style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.country")}</label>
-            <input
-              value={country}
-              onChange={(e) => { setCountry(e.target.value); setIdentityError(null); }}
-              placeholder={tCustomer("ui.profileWizard.countryPlaceholder")}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-              style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
-            />
-          </div>
+          <ProfileLocationFields
+            value={{ city, country, cityId, countryCode }}
+            error={Boolean(identityError)}
+            disabled={identityBusy}
+            onChange={(location) => {
+              setCity(location.city);
+              setCountry(location.country);
+              setCityId(location.cityId);
+              setCountryCode(location.countryCode);
+              setIdentityError(null);
+            }}
+          />
           {identityError && <p className="text-xs text-destructive">{identityError}</p>}
           <Button onClick={submitIdentity} disabled={identityBusy} className="w-full">
             {identityBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
@@ -315,39 +314,17 @@ export default function ProfilePage() {
             <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.profilePhoto")}</h2>
           </div>
           <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.photoDescription")}</p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)}
+          <ProfilePhotoPicker
+            variant="wizard"
+            previewUrl={avatarPreview || profile.avatarUrl}
+            error={avatarError}
+            disabled={avatarBusy}
+            onPhotoSelected={handleFileSelect}
+            onError={setAvatarError}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="w-full flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed transition-colors"
-            style={{
-              borderColor: avatarError ? "var(--destructive)" : avatarFile ? "var(--primary)" : "var(--border)",
-              backgroundColor: avatarFile ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",
-            }}
-          >
-            {avatarPreview ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={avatarPreview} alt={tCustomer("ui.profileWizard.profilePhoto")} className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
-                <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.choosePhoto")}</p>
-              </>
-            ) : (
-              <>
-                <Upload size={24} className="text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{tCustomer("ui.profileWizard.choosePhoto")}</p>
-              </>
-            )}
-          </button>
-          {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
           <Button onClick={submitAvatar} disabled={avatarBusy || !avatarFile} className="w-full">
             {avatarBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-            {avatarBusy ? tCustomer("ui.states.submitting") : tCustomer("ui.profileWizard.choosePhoto")}
+            {avatarBusy ? tCustomer("ui.states.submitting") : tCustomer("ui.profileWizard.savePhoto")}
           </Button>
         </div>
       )}

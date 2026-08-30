@@ -14,6 +14,9 @@ describe("profile summary", () => {
         phone: "+60123456789",
         city: "Kuala Lumpur",
         country: "Malaysia",
+        city_id: "22222222-2222-4222-8222-222222222222",
+        country_code: "MY",
+        city_source: "catalogue",
         status: "active",
         tier: "profile_complete",
         kyc_status: "rejected",
@@ -42,6 +45,9 @@ describe("profile summary", () => {
       kycStatus: "rejected",
       emailVerified: true,
       phoneVerified: true,
+      cityId: "22222222-2222-4222-8222-222222222222",
+      countryCode: "MY",
+      citySource: "catalogue",
       profileComplete: true,
       survey: { interests: ["food"], budgetRange: "mid_range", mobilityNeeds: "none", preferredRadiusKm: 20 },
       latestKycReview: { status: "pending", reasonCode: null, reasonDetail: null },
@@ -62,7 +68,7 @@ describe("profile summary", () => {
 
   it("does not copy public-only fields into the private summary", () => {
     const result = mapProfileSummary(
-      { id: "u-2", email: "u@example.com", full_name: null, display_name: null, avatar_url: null, bio: null, phone: null, city: null, country: null, status: "active", tier: "email_verified", kyc_status: "unverified", email_verified_at: null, phone_verified_at: null, profile_completed_at: null },
+      { id: "u-2", email: "u@example.com", full_name: null, display_name: null, avatar_url: null, bio: null, phone: null, city: null, country: null, city_id: null, country_code: null, city_source: "manual", status: "active", tier: "email_verified", kyc_status: "unverified", email_verified_at: null, phone_verified_at: null, profile_completed_at: null },
       null,
       [],
     );
@@ -72,7 +78,7 @@ describe("profile summary", () => {
 
   it("does not treat a stored tier as proof that current profile data is complete", () => {
     const result = mapProfileSummary(
-      { id: "u-3", email: "u@example.com", full_name: "Aisha", display_name: null, avatar_url: null, bio: null, phone: "+60123456789", city: null, country: "Malaysia", status: "active", tier: "profile_complete", kyc_status: "unverified", email_verified_at: "2026-07-15T00:00:00Z", phone_verified_at: "2026-07-15T00:00:00Z", profile_completed_at: "2026-07-15T00:00:00Z" },
+      { id: "u-3", email: "u@example.com", full_name: "Aisha", display_name: null, avatar_url: null, bio: null, phone: "+60123456789", city: null, country: "Malaysia", city_id: null, country_code: "MY", city_source: "manual", status: "active", tier: "profile_complete", kyc_status: "unverified", email_verified_at: "2026-07-15T00:00:00Z", phone_verified_at: "2026-07-15T00:00:00Z", profile_completed_at: "2026-07-15T00:00:00Z" },
       null,
       [],
     );
@@ -94,6 +100,9 @@ describe("profile summary", () => {
         phone: null,
         city: "Kuala Lumpur",
         country: "Malaysia",
+        city_id: null,
+        country_code: "MY",
+        city_source: "manual",
         status: "active",
         tier: "email_verified",
         kyc_status: "unverified",
