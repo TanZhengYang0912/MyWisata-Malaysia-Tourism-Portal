@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(new URL('../093_admin_recommendation_read_state.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../../legacy-migrations/093_admin_recommendation_read_state.sql', import.meta.url), 'utf8');
 
 describe('admin recommendation read-state migration', () => {
   it('stores one read timestamp per Super Admin and exposes owner-safe RPCs', () => {

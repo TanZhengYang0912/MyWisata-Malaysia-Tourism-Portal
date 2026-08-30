@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260804230000_saved_destinations.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260804162151_saved_destinations.sql");
 const routePath = resolve(process.cwd(), "app/api/saved-destinations/route.ts");
 
 describe("saved destination persistence contract", () => {

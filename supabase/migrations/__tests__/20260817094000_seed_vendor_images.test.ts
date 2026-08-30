@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations/20260817094000_seed_vendor_images.sql"),
+  resolve(process.cwd(), "supabase/migrations/20260817014518_seed_vendor_images.sql"),
   "utf8",
 );
 

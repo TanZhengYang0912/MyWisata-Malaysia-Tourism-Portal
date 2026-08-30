@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/076_recommendation_reward_multivendor.sql', 'utf8');
+const sql = readFileSync('supabase/legacy-migrations/076_recommendation_reward_multivendor.sql', 'utf8');
 
 describe('multi-vendor recommendation reward migration contract', () => {
   it('indexes active vendor conversion windows', () => {

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = "supabase/migrations/20260805010000_mark_public_walks_free.sql";
+const migrationPath = "supabase/migrations/20260805020349_mark_public_walks_free.sql";
 
 describe("public walk pricing migration contract", () => {
   it("resets only the known public walks to free and non-bookable", () => {

@@ -1,0 +1,41 @@
+{
+  "linkedProject": "ncdlaehknicabzjqskvk",
+  "verifiedAt": "2026-08-30T14:34:00+08:00",
+  "method": "Read-only Supabase Management API queries against pg_catalog and production data",
+  "objectCheckResult": "No expected function or table was missing",
+  "dataChecks": {
+    "categories": [
+      { "slug": "accommodation", "name": "Accommodation", "is_active": true },
+      { "slug": "activity", "name": "Activity", "is_active": true },
+      { "slug": "food", "name": "Food", "is_active": true },
+      { "slug": "retail", "name": "Retail", "is_active": true }
+    ],
+    "booking_products_missing_outlet": 0,
+    "booking_products_missing_variant": 0,
+    "future_available_slots": 152
+  },
+  "contracts": {
+    "052_admin_user_management.sql": ["admin_get_user", "admin_list_users", "admin_manage_user"],
+    "055_admin_account_lifecycle_context.sql": ["admin_manage_user"],
+    "073_wallet_withdrawal_governance.sql": ["apply_wallet_adjustment", "finalize_checkout", "process_wallet_refund", "submit_wallet_withdrawal", "monthly_payout_reports", "wallet_adjustments", "withdrawal_risk_assessments"],
+    "076_recommendation_reward_multivendor.sql": ["reverse_recommendation_rewards_for_order"],
+    "077_wallet_governance_report.sql": ["credit_pending_recommendation", "generate_monthly_payout_report"],
+    "078_connect_status_permissions.sql": ["update_connect_status"],
+    "079_wallet_hold_resume_notifications.sql": ["approve_wallet_withdrawal", "hold_wallet_withdrawal", "mark_withdrawal_processing", "reject_wallet_withdrawal", "resume_wallet_withdrawal", "wallet_moderation_attempts"],
+    "080_vendor_notifications.sql": ["notifications"],
+    "081_vendor_email_event_types.sql": ["email_outbox"],
+    "083_vendor_recommendation_claim_onboarding.sql": ["claim_vendor_recommendation", "convert_claimed_vendor_recommendation", "vendor_recommendation_claims"],
+    "084_payout_destinations.sql": ["release_wallet_split_checkout", "reserve_wallet_split_checkout", "checkout_wallet_reservations"],
+    "085_withdrawal_approver_notifications.sql": ["notifications"],
+    "086_payout_report_details.sql": ["generate_monthly_payout_report", "record_withdrawal_payout_fee"],
+    "088_withdrawal_review_sources.sql": ["get_withdrawal_notification_snapshot", "get_withdrawal_review_sources"],
+    "089_payout_report_pending_amounts.sql": ["generate_monthly_payout_report"],
+    "090_payout_failure_details.sql": ["record_withdrawal_payout_failure"],
+    "092_recommendation_evidence_and_reward_reversals.sql": ["mark_order_financial_outcome", "reverse_recommendation_rewards_for_order", "submit_recommendation_with_evidence", "recommendation_images"],
+    "093_admin_recommendation_read_state.sql": ["get_my_unread_recommendation_count", "mark_my_recommendations_seen", "admin_recommendation_read_state"],
+    "094_recommendation_approval_email.sql": ["email_outbox"],
+    "20260731224343_canonical_discovery_categories.sql": ["categories production data check"],
+    "20260816130000_repair_booking_catalogue.sql": ["booking production data check"],
+    "20260821150000_recommendation_geography_localization.sql": ["admin_resolve_recommendation_place", "admin_review_recommendation_translation", "content_translation_generation_locks", "content_translations"]
+  }
+}

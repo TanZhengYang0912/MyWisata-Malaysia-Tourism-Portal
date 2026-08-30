@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260817090000_canonicalize_catalogue_vouchers.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816170354_canonicalize_catalogue_vouchers.sql");
 
 describe("catalogue voucher canonicalization", () => {
   it("keeps outlet offers as the source scope while collapsing generated rows by product", () => {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816130000_repair_booking_catalogue.sql");
+const migrationPath = resolve(process.cwd(), "supabase/legacy-migrations/20260816130000_repair_booking_catalogue.sql");
 const seedPath = resolve(process.cwd(), "supabase/seed.sql");
 
 describe("booking catalogue repair contract", () => {

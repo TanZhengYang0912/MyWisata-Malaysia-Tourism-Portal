@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816230000_seed_catalogue_vouchers.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260817031044_outlet_voucher_catalogue.sql");
 
 describe("catalogue-derived voucher dataset", () => {
   it("derives voucher rows from approved products and active outlet offers", () => {
@@ -12,7 +12,7 @@ describe("catalogue-derived voucher dataset", () => {
     expect(source).toContain("FROM public.products p");
     expect(source).toContain("JOIN public.outlet_offers oo");
     expect(source).toContain("oo.status = 'active'");
-    expect(source).toContain("GROUP BY p.vendor_id, v.slug, v.name, oo.outlet_id, o.name, o.city, o.state");
+    expect(source).toContain("GROUP BY p.vendor_id, v.slug, v.name, oo.outlet_id, o.name");
     expect(source).toContain("active_product_count");
     expect(source).toContain("p.status = 'active'");
     expect(source).toContain("p.review_status = 'approved'");
@@ -21,7 +21,7 @@ describe("catalogue-derived voucher dataset", () => {
     expect(source).toContain("oo.outlet_id");
     expect(source).toContain("p.id");
     expect(source).toContain("10% off all eligible products");
-    expect(source).toContain("code LIKE 'MYW-OUTLET-%'");
+    expect(source).toContain("vouchers.code = 'MYW-OUTLET-'");
   });
 
   it("uses one outlet-level voucher covering every eligible product at that outlet", () => {

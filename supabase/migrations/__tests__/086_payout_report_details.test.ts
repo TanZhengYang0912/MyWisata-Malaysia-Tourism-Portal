@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync(new URL('../086_payout_report_details.sql', import.meta.url), 'utf8');
+const sql = readFileSync(new URL('../../legacy-migrations/086_payout_report_details.sql', import.meta.url), 'utf8');
 
 describe('payout report detail migration contract', () => {
   it('stores provider payout fees and returns user/date/source detail groups', () => {

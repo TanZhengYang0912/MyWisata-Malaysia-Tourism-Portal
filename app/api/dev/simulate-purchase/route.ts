@@ -1,9 +1,9 @@
-// P4 — DEV ONLY: fakes the checkout → order.paid trigger that real checkout
-// doesn't fire yet (see CLAUDE.md Section 6). Deleted at merge — never imply
-// a real payment happened. See CLAUDE.md Step 5.
+// Explicit local/staging test support only. This creates a synthetic paid order
+// and must never imply that a real provider payment happened.
 //
 // ⚠️ Now populates orders.affiliate_click_id (migration
-// 019_pr_industrial_atomicity.sql, pulled in from a teammate) from the
+// The non-production test-support helper populates orders.affiliate_click_id
+// from the
 // mw_ref cookie at order-creation time — the same thing real checkout is
 // expected to do once it's wired up. This means the simulator exercises
 // onOrderPaid()'s REAL path (reading the column) rather than its cookie
@@ -20,8 +20,11 @@ import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { VENDOR_EVENT_MATRIX } from '@/lib/vendor-notifications/event-policy';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
 
 export async function POST(request: Request) {
+  if (!isDemoToolRuntimeEnabled()) return new Response(null, { status: 404 });
+
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) return customerCapabilityFailure(

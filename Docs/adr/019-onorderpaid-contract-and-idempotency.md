@@ -26,7 +26,7 @@ PR 019 closed seven Sys-Arch gaps identified in the reward / attribution modules
 **Rationale:**  
 The `mw_ref` cookie carrying the affiliate click ID is only available in browser HTTP request context. A column on `orders` is available in any context. Whoever creates the order (checkout owner) reads the cookie once at order-creation time and persists it. `onOrderPaid(orderId)` reads from the column, not from cookies. This is the canonical hexagonal architecture pattern: the adapter (checkout HTTP handler) translates the transport-layer signal (cookie) into domain language (click ID on order), and the domain service (`onOrderPaid`) only speaks domain language.
 
-**Checkout owner contract:** When creating an `orders` row, read `cookies().get('mw_ref')?.value`, write to `orders.affiliate_click_id`, delete the cookie. See `app/api/dev/simulate-purchase/route.ts` for the reference implementation.
+**Checkout owner contract:** When creating an `orders` row, read `cookies().get('mw_ref')?.value`, write to `orders.affiliate_click_id`, delete the cookie. The production reference is `app/api/checkout/attribute/route.ts`; the legacy Demo Purchase implementation is isolated under explicit local/staging test support and is not a production reference.
 
 ### 2. Level 1 idempotency via partial unique indexes
 

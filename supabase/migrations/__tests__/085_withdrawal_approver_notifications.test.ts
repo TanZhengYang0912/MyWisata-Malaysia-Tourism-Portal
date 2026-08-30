@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync(new URL('../085_withdrawal_approver_notifications.sql', import.meta.url), 'utf8');
+const sql = readFileSync(new URL('../../legacy-migrations/085_withdrawal_approver_notifications.sql', import.meta.url), 'utf8');
 
 describe('withdrawal approver notification migration contract', () => {
   it('fans out to active approver roles and uses cycle-scoped idempotency keys', () => {

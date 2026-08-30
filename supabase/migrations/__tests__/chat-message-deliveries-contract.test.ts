@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const migrationPath = resolve(
   process.cwd(),
-  'supabase/migrations/20260816151000_chat_message_deliveries_live.sql',
+  'supabase/migrations/20260816135246_chat_message_deliveries_live.sql',
 );
 
 describe('live chat delivery receipts schema repair', () => {

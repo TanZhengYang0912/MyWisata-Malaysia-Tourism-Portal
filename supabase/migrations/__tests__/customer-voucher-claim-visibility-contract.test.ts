@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816181000_customer_voucher_claim_visibility.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816100320_customer_voucher_claim_visibility.sql");
 
 describe("customer voucher claim visibility migration contract", () => {
   it("lets owners see approved vouchers after the public deal filters no longer match", () => {

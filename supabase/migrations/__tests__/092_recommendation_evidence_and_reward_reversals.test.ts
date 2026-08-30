@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = new URL('../092_recommendation_evidence_and_reward_reversals.sql', import.meta.url);
+const migrationPath = new URL('../../legacy-migrations/092_recommendation_evidence_and_reward_reversals.sql', import.meta.url);
 
 describe('092 recommendation evidence and reward reversals migration', () => {
   it('adds private recommendation evidence and all pending-reward reversal outcomes', () => {

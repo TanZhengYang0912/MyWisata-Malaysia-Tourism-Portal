@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260817110000_outlet_voucher_catalogue.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260817031044_outlet_voucher_catalogue.sql");
 
 describe("outlet voucher canonicalization", () => {
   it("creates one deterministic voucher for each eligible outlet", () => {

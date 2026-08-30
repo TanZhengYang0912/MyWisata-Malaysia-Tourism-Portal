@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = new URL('../082_phone_verification_checkout_guards.sql', import.meta.url);
+const migrationPath = new URL('../20260830013000_independent_capability_hard_guards.sql', import.meta.url);
 
-describe('082 phone verification checkout guards migration', () => {
+describe('canonical phone verification checkout guards migration', () => {
   it('protects order creation for direct authenticated RPC callers', () => {
     const sql = readFileSync(migrationPath, 'utf8');
 

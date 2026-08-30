@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const sql = readFileSync('supabase/migrations/077_wallet_governance_report.sql', 'utf8');
+const sql = readFileSync('supabase/legacy-migrations/077_wallet_governance_report.sql', 'utf8');
 
 describe('wallet governance report migration contract', () => {
   it('uses the configurable wallet clearance window for new recommendation rewards', () => {

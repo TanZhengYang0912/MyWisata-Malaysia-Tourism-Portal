@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816180000_customer_voucher_claims.sql");
+const migrationPath = resolve(process.cwd(), "supabase/migrations/20260816095459_customer_voucher_claims.sql");
 
 describe("customer voucher claim migration contract", () => {
   it("adds an owned claim table with a one-claim-per-customer invariant", () => {
