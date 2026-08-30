@@ -1,5 +1,7 @@
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
+export const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
 const SIGNATURES: Record<string, Array<{ offset: number; bytes: number[] }>> = {
   "image/jpeg": [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
   "image/png": [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
@@ -17,4 +19,14 @@ export function validateAvatarBytes(bytes: Uint8Array, claimedType?: string): { 
     return signatures?.every(({ offset, bytes: signature }) => signature.every((value, index) => bytes[offset + index] === value));
   });
   return type ? { ok: true, type } : { ok: false, message: "The uploaded file is not a valid JPG, PNG, or WebP image." };
+}
+
+export function validateAvatarFileMetadata(file: Pick<File, "type" | "size">):
+  | { ok: true }
+  | { ok: false; reason: "type" | "size" } {
+  if (!AVATAR_ALLOWED_TYPES.includes(file.type as (typeof AVATAR_ALLOWED_TYPES)[number])) {
+    return { ok: false, reason: "type" };
+  }
+  if (file.size > AVATAR_MAX_BYTES) return { ok: false, reason: "size" };
+  return { ok: true };
 }
