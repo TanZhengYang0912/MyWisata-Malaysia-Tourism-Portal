@@ -32,7 +32,6 @@ describe("customer header navigation", () => {
       "/customer/orders",
       "/customer/vouchers",
       "/customer/wallet",
-      "/customer/kyc",
       "/customer/support",
       "/customer/affiliate",
       "/customer/profile/register-vendor",
@@ -45,6 +44,18 @@ describe("customer header navigation", () => {
       "Help",
       "More",
     ]);
+  });
+
+  it("makes the existing Profile editor the single Profile & Verification entry", () => {
+    const items = ACCOUNT_MENU_GROUPS.flatMap((group) => group.items);
+    const profileEntry = items.find((item) => item.labelKey === "accountItems.profile");
+
+    expect(profileEntry).toMatchObject({
+      href: "/customer/profile",
+      label: "Profile & Verification",
+    });
+    expect(items.filter((item) => item.href === "/customer/profile")).toHaveLength(1);
+    expect(items.some((item) => item.href === "/customer/verification")).toBe(false);
   });
 
   it("uses a profile name and falls back to an email local part", () => {
@@ -76,5 +87,17 @@ describe("customer header navigation", () => {
     expect(locales.en.accountItems.orders).toEqual({ label: "My Orders", description: "Purchases, bookings and receipts" });
     expect(locales["zh-CN"].accountItems.orders).toEqual({ label: "我的订单", description: "购买、预订和收据" });
     expect(locales.ms.accountItems.orders).toEqual({ label: "Pesanan Saya", description: "Pembelian, tempahan dan resit" });
+  });
+
+  it("localizes the combined Profile & Verification entry", () => {
+    const locales = {
+      en: JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/en/customer.json"), "utf8")),
+      "zh-CN": JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/zh-CN/customer.json"), "utf8")),
+      ms: JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/ms/customer.json"), "utf8")),
+    };
+
+    expect(locales.en.accountItems.profile).toEqual({ label: "Profile & Verification", description: "Choose and manage independent verification" });
+    expect(locales["zh-CN"].accountItems.profile).toEqual({ label: "资料与验证", description: "选择并管理独立验证" });
+    expect(locales.ms.accountItems.profile).toEqual({ label: "Profil & Pengesahan", description: "Pilih dan urus pengesahan berasingan" });
   });
 });

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = resolve(
   process.cwd(),
-  "supabase/migrations/20260815120000_delete_stale_demo_accounts.sql",
+  "supabase/migrations/20260815050159_delete_stale_demo_accounts.sql",
 );
 
 describe("delete stale demo accounts migration", () => {

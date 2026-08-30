@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   accountsCreate: vi.fn(),
   accountLinksCreate: vi.fn(),
   retrieveConnectAccountStatus: vi.fn(),
+  resolveEffectiveCapability: vi.fn(),
 }));
+
+vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -72,11 +75,16 @@ describe('POST /api/stripe/connect-onboard', () => {
       requirementCounts: { currentlyDue: 1, pastDue: 0, pendingVerification: 0 },
       disabledReason: null,
     });
+    mocks.resolveEffectiveCapability.mockReset().mockImplementation(async (_userId: string, capability: string) => ({
+      capability, allowed: true, blockerCode: null, qualificationPaths: [],
+      entitlementGeneration: 7, source: 'policy',
+    }));
 
     mocks.getUser.mockResolvedValue({ data: { user: authUser } });
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: null,
         full_name: 'Test User',
         phone: '+60123456789',
@@ -127,6 +135,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: 'acct_demo_1234567890',
         full_name: 'Test User',
         phone: null,
@@ -151,6 +160,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: 'acct_existing123',
         full_name: 'Test User',
         phone: null,
@@ -177,6 +187,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: 'acct_enabled',
         full_name: 'Test User',
         phone: null,
@@ -211,6 +222,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: 'acct_incomplete',
         full_name: 'Test User',
         phone: null,
@@ -249,6 +261,7 @@ describe('POST /api/stripe/connect-onboard', () => {
     mocks.single.mockResolvedValue({
       data: {
         tier: 'kyc_verified',
+        kyc_status: 'approved',
         stripe_connect_account_id: 'acct_pending',
         full_name: 'Test User',
         phone: null,
@@ -276,9 +289,15 @@ describe('POST /api/stripe/connect-onboard', () => {
   });
 
   it('does not start onboarding before KYC verification', async () => {
+    mocks.resolveEffectiveCapability.mockResolvedValue({
+      capability: 'wallet.request_withdrawal', allowed: false,
+      blockerCode: 'KYC_REQUIRED', qualificationPaths: [{ type: 'kyc', href: '/customer/kyc' }],
+      entitlementGeneration: 7, source: 'hard_guard',
+    });
     mocks.single.mockResolvedValue({
       data: {
         tier: 'profile_complete',
+        kyc_status: 'unverified',
         stripe_connect_account_id: null,
         full_name: 'Test User',
         phone: null,
@@ -292,6 +311,24 @@ describe('POST /api/stripe/connect-onboard', () => {
     expect(response.status).toBe(403);
     expect(mocks.accountsCreate).not.toHaveBeenCalled();
     expect(mocks.accountLinksCreate).not.toHaveBeenCalled();
+  });
+
+  it('allows approved KYC without Phone or Profile facts', async () => {
+    mocks.single.mockResolvedValue({
+      data: {
+        stripe_connect_account_id: null,
+        full_name: null,
+        phone: null,
+        email: authUser.email,
+      },
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.resolveEffectiveCapability).toHaveBeenCalledWith(authUser.id, 'wallet.request_withdrawal');
+    expect(mocks.accountsCreate).toHaveBeenCalledOnce();
   });
 
   it('returns a generic 502 when Stripe onboarding fails', async () => {

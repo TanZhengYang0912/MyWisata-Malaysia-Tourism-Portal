@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = path.join(
   process.cwd(),
-  "supabase/migrations/20260817110000_seed_federal_territory_place_images.sql",
+  "supabase/migrations/20260817041356_seed_federal_territory_place_images.sql",
 );
 const creditsPath = path.join(
   process.cwd(),

@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
-import { computeProfileCompletion } from '@/lib/verification/eligibility';
 import { recommendationSubmissionSchema } from '@/lib/recommendations/submission';
 import { selectSuggestedPlace } from '@/lib/recommendations/place-resolution';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 async function storeSuggestedPlace(recommendationId: string, latitude: number, longitude: number) {
   try {
@@ -35,30 +35,22 @@ async function storeSuggestedPlace(recommendationId: string, latitude: number, l
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (!user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT),
+    'Sign in before submitting a recommendation',
+  )!;
 
-  // Tier gate: profile_complete required to submit recommendations (ADR-028)
-  const { data: profile } = await supabase
-    .from('users')
-    .select('tier,full_name,avatar_url,bio,city,country')
-    .eq('id', user.id)
-    .single();
-  if (!profile || !meetsMinTier(profile.tier, REQUIRED_TIER.RECOMMENDATION)) {
-    return apiFail('TIER_INSUFFICIENT', 'Profile completion required to submit recommendations', 403);
-  }
-
-  const completion = computeProfileCompletion({
-    fullName: profile.full_name,
-    avatarUrl: profile.avatar_url,
-    bio: profile.bio,
-    city: profile.city,
-    country: profile.country,
-  });
-  if (!completion.complete) {
-    return apiFail('PROFILE_INCOMPLETE', 'Complete your profile before submitting a recommendation', 422, {
-      missing: completion.missing,
-    });
-  }
+  const recommendationDecision = await resolveServerCustomerCapability(
+    user.id,
+    CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT,
+  );
+  const recommendationFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT,
+    recommendationDecision,
+    'Complete your Profile or receive KYC approval before submitting a recommendation',
+  );
+  if (recommendationFailure) return recommendationFailure;
 
   const body = await request.json().catch(() => null);
   const evidence = recommendationSubmissionSchema.safeParse(body);

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       .maybeSingle(),
     db
       .from('users')
-      .select('phone_verified_at,kyc_status,stripe_payouts_enabled')
+      .select('kyc_status,stripe_payouts_enabled')
       .eq('id', user.id)
       .maybeSingle(),
     destinationPromise,
@@ -51,7 +51,6 @@ export async function GET(request: Request) {
   const wallet = walletResult.data;
   const destination = destinationResult.data;
   const capabilities = deriveCustomerWalletCapabilities({
-    phoneVerified: Boolean(profileResult.data.phone_verified_at),
     kycStatus: profileResult.data.kyc_status,
     availableEarningsSen: wallet?.earnings_sen ?? 0,
     minimumWithdrawalSen: CUSTOMER_WITHDRAWAL_MINIMUM_RM * 100,

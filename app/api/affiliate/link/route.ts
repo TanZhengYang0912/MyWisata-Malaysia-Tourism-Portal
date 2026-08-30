@@ -7,28 +7,30 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { affiliateUrl, getAffiliateLink, getOrCreateAffiliateLink } from '@/lib/affiliate/links';
-import { meetsMinTier, REQUIRED_TIER } from '@/lib/constants';
 import { getMonthlyClickCap } from '@/lib/affiliate/settings';
-import { getVendorIneligibleRole } from '@/lib/affiliate/vendor-role-guard';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (!user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.AFFILIATE_LIMITED,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.AFFILIATE_LIMITED),
+    'Sign in before generating an affiliate link',
+  )!;
 
   const link = await getAffiliateLink(supabase, user.id);
   if (!link) return apiOk(null);
 
-  const { data: profile } = await supabase.from('users').select('tier,kyc_status').eq('id', user.id).maybeSingle();
-  if (!profile || profile.kyc_status === 'rejected' || !meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_BASIC)) return apiOk(null);
-
-  // Fresh, authoritative — see lib/affiliate/vendor-role-guard.ts. Service-role
-  // since this checks a real state fact, not something that should ever
-  // silently differ by RLS visibility.
-  if (await getVendorIneligibleRole(createServiceClient(), user.id)) return apiOk(null);
+  const fullDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.AFFILIATE_FULL);
+  const limitedDecision = fullDecision.allowed
+    ? null
+    : await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.AFFILIATE_LIMITED);
+  if (!fullDecision.allowed && !limitedDecision?.allowed) return apiOk(null);
 
   const origin = new URL(request.url).origin;
-  const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
+  const full = fullDecision.allowed;
   // Reads the same platform_settings value lib/affiliate/redirect.ts enforces
   // (getMonthlyClickCap) — was hardcoded 50 here while the redirect enforced
   // a different hardcoded 50, two numbers that could only agree by accident.
@@ -44,24 +46,25 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (!user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.AFFILIATE_LIMITED,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.AFFILIATE_LIMITED),
+    'Sign in before generating an affiliate link',
+  )!;
 
-  const { data: profile, error: profileErr } = await supabase
-    .from('users')
-    .select('tier, kyc_status')
-    .eq('id', user.id)
-    .single();
-  if (profileErr || !profile) return apiFail('NOT_FOUND', 'User profile not found', 404);
-  if (profile.kyc_status === 'rejected') {
-    return apiFail('KYC_REJECTED', 'Affiliate earnings are unavailable until KYC is resubmitted and approved', 403);
-  }
-  if (!meetsMinTier(profile.tier, REQUIRED_TIER.AFFILIATE_BASIC)) {
-    return apiFail('TIER_INSUFFICIENT', 'Complete your verified profile before generating an affiliate link', 403);
-  }
-  const ineligibleRole = await getVendorIneligibleRole(createServiceClient(), user.id);
-  if (ineligibleRole) {
-    return apiFail('VENDOR_INELIGIBLE', 'Vendor and outlet manager accounts cannot earn affiliate commission', 403);
-  }
+  const fullDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.AFFILIATE_FULL);
+  const affiliateDecision = fullDecision.allowed
+    ? fullDecision
+    : await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.AFFILIATE_LIMITED);
+  const requiredCapability = fullDecision.allowed
+    ? CUSTOMER_CAPABILITY.AFFILIATE_FULL
+    : CUSTOMER_CAPABILITY.AFFILIATE_LIMITED;
+  const affiliateFailure = customerCapabilityFailure(
+    requiredCapability,
+    affiliateDecision,
+    'Complete your Profile or receive KYC approval before generating an affiliate link',
+  );
+  if (affiliateFailure) return affiliateFailure;
 
   let result: Awaited<ReturnType<typeof getOrCreateAffiliateLink>>;
   try {
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
   const { link, created } = result;
-  const full = profile.tier === 'kyc_verified' && profile.kyc_status === 'approved';
+  const full = fullDecision.allowed;
   const clicksPerMonth = full ? null : await getMonthlyClickCap(createServiceClient());
   return apiOk(
     {

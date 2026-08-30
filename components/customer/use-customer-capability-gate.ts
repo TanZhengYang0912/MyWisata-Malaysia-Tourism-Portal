@@ -1,25 +1,57 @@
 "use client";
 
-import { useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
+import { useCustomerCapabilityGateDialog } from "@/components/customer/customer-capability-gate-dialog";
 import {
-  customerAccessHref,
-  resolveCustomerAccess,
   type CustomerCapability,
 } from "@/lib/auth/customer-capabilities";
+import { parseCustomerCapabilityError } from "@/lib/auth/customer-capability-error";
 
-export function useCustomerCapabilityGate() {
-  const { currentUser } = useAuth();
+export type CustomerCapabilityGate = {
+  (capability: CustomerCapability, nextPath?: string): boolean;
+  handleResponse: (response: Response, nextPath?: string) => Promise<boolean>;
+};
+
+export function useCustomerCapabilityGate(): CustomerCapabilityGate {
+  const { capabilities, refreshUser } = useAuth();
+  const { showCapabilityGate } = useCustomerCapabilityGateDialog();
   const pathname = usePathname();
-  const router = useRouter();
 
-  return useCallback((capability: CustomerCapability, nextPath?: string) => {
-    const decision = resolveCustomerAccess(currentUser, capability);
-    if (decision === "allowed") return true;
+  const currentPath = useCallback(() => (
+    `${pathname}${typeof window === "undefined" ? "" : window.location.search}`
+  ), [pathname]);
 
-    const currentPath = `${pathname}${typeof window === "undefined" ? "" : window.location.search}`;
-    router.push(customerAccessHref(decision, nextPath ?? currentPath));
+  const gate = useCallback((capability: CustomerCapability, nextPath?: string) => {
+    const decision = capabilities[capability];
+    if (decision.allowed) return true;
+
+    showCapabilityGate({ capability, decision, nextPath: nextPath ?? currentPath() });
     return false;
-  }, [currentUser, pathname, router]);
+  }, [capabilities, currentPath, showCapabilityGate]);
+
+  const handleResponse = useCallback(async (response: Response, nextPath?: string) => {
+    if (response.ok) return false;
+    let payload: unknown;
+    try {
+      payload = await response.clone().json();
+    } catch {
+      return false;
+    }
+    const parsed = parseCustomerCapabilityError(payload);
+    if (!parsed) return false;
+
+    await refreshUser().catch(() => undefined);
+    showCapabilityGate({
+      ...parsed,
+      nextPath: nextPath ?? currentPath(),
+    });
+    return true;
+  }, [currentPath, refreshUser, showCapabilityGate]);
+
+  return useMemo(
+    () => Object.assign(gate, { handleResponse }),
+    [gate, handleResponse],
+  );
 }

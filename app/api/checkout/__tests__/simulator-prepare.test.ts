@@ -18,7 +18,10 @@ const mocks = vi.hoisted(() => ({
   cartTotals: vi.fn(),
   unitPrice: vi.fn(),
   stripeCreate: vi.fn(),
+  resolveEffectiveCapability: vi.fn(),
 }));
+
+vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
 
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
@@ -73,6 +76,10 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     mocks.getActivities.mockResolvedValue([{ id: PRODUCT_ID }]);
     mocks.cartTotals.mockReturnValue({ subtotal: 50, discount: 0, total: 50 });
     mocks.unitPrice.mockReturnValue(50);
+    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
+      capability, allowed: true, blockerCode: null, qualificationPaths: [],
+      entitlementGeneration: 7, source: 'policy',
+    }));
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === 'prepare_checkout') {
         return { data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: 'pending_payment' }, error: null };
@@ -80,7 +87,11 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       return { data: null, error: null };
     });
     mocks.from.mockImplementation((table: string) => {
-      if (table === 'users') return queryResult({ phone_verified_at: '2026-08-17T01:00:00.000Z' });
+      if (table === 'users') return queryResult({
+        tier: 'phone_verified',
+        kyc_status: 'not_started',
+        phone_verified_at: '2026-08-17T01:00:00.000Z',
+      });
       if (table === 'carts') return queryResult({ id: CART_ID });
       if (table === 'cart_items') return queryResult([{
         id: CART_ITEM_ID,

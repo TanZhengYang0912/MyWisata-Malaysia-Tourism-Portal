@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 
 const FILTER_SURFACES = [
+  "components/admin/access-control/capabilities-tab.tsx",
   "app/admin/catalogue/page.tsx",
   "app/admin/vendors/page.tsx",
   "app/admin/users/page.tsx",

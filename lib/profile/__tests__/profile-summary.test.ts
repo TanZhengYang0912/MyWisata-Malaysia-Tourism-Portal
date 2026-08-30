@@ -14,6 +14,9 @@ describe("profile summary", () => {
         phone: "+60123456789",
         city: "Kuala Lumpur",
         country: "Malaysia",
+        city_id: "22222222-2222-4222-8222-222222222222",
+        country_code: "MY",
+        city_source: "catalogue",
         status: "active",
         tier: "profile_complete",
         kyc_status: "rejected",
@@ -42,13 +45,16 @@ describe("profile summary", () => {
       kycStatus: "rejected",
       emailVerified: true,
       phoneVerified: true,
+      cityId: "22222222-2222-4222-8222-222222222222",
+      countryCode: "MY",
+      citySource: "catalogue",
       profileComplete: true,
       survey: { interests: ["food"], budgetRange: "mid_range", mobilityNeeds: "none", preferredRadiusKm: 20 },
       latestKycReview: { status: "pending", reasonCode: null, reasonDetail: null },
       verification: {
         complete: true,
         percentage: 100,
-        completedSteps: ["phone", "identity", "avatar", "bio", "survey"],
+        completedSteps: ["identity", "avatar", "bio", "survey"],
         currentStep: null,
       },
       profileRichness: { percentage: 100, missing: [], complete: true },
@@ -62,7 +68,7 @@ describe("profile summary", () => {
 
   it("does not copy public-only fields into the private summary", () => {
     const result = mapProfileSummary(
-      { id: "u-2", email: "u@example.com", full_name: null, display_name: null, avatar_url: null, bio: null, phone: null, city: null, country: null, status: "active", tier: "email_verified", kyc_status: "unverified", email_verified_at: null, phone_verified_at: null, profile_completed_at: null },
+      { id: "u-2", email: "u@example.com", full_name: null, display_name: null, avatar_url: null, bio: null, phone: null, city: null, country: null, city_id: null, country_code: null, city_source: "manual", status: "active", tier: "email_verified", kyc_status: "unverified", email_verified_at: null, phone_verified_at: null, profile_completed_at: null },
       null,
       [],
     );
@@ -72,12 +78,52 @@ describe("profile summary", () => {
 
   it("does not treat a stored tier as proof that current profile data is complete", () => {
     const result = mapProfileSummary(
-      { id: "u-3", email: "u@example.com", full_name: "Aisha", display_name: null, avatar_url: null, bio: null, phone: "+60123456789", city: null, country: "Malaysia", status: "active", tier: "profile_complete", kyc_status: "unverified", email_verified_at: "2026-07-15T00:00:00Z", phone_verified_at: "2026-07-15T00:00:00Z", profile_completed_at: "2026-07-15T00:00:00Z" },
+      { id: "u-3", email: "u@example.com", full_name: "Aisha", display_name: null, avatar_url: null, bio: null, phone: "+60123456789", city: null, country: "Malaysia", city_id: null, country_code: "MY", city_source: "manual", status: "active", tier: "profile_complete", kyc_status: "unverified", email_verified_at: "2026-07-15T00:00:00Z", phone_verified_at: "2026-07-15T00:00:00Z", profile_completed_at: "2026-07-15T00:00:00Z" },
       null,
       [],
     );
 
     expect(result.verification.complete).toBe(false);
+    expect(result.profileComplete).toBe(false);
     expect(result.profileRichness.percentage).toBe(40);
+  });
+
+  it("requires non-empty survey interests and an uploaded avatar for Profile verification", () => {
+    const result = mapProfileSummary(
+      {
+        id: "u-4",
+        email: "u@example.com",
+        full_name: "Aisha Rahman",
+        display_name: "Aisha",
+        avatar_url: "https://cdn.example/default-avatar.svg?cache=1",
+        bio: "A traveller who enjoys local food and culture.",
+        phone: null,
+        city: "Kuala Lumpur",
+        country: "Malaysia",
+        city_id: null,
+        country_code: "MY",
+        city_source: "manual",
+        status: "active",
+        tier: "email_verified",
+        kyc_status: "unverified",
+        email_verified_at: "2026-07-15T00:00:00Z",
+        phone_verified_at: null,
+        profile_completed_at: null,
+      },
+      {
+        interests: [],
+        budget_range: "mid_range",
+        mobility_needs: "none",
+        preferred_radius_km: 20,
+      },
+      [],
+    );
+
+    expect(result.verification).toMatchObject({
+      complete: false,
+      percentage: 50,
+      completedSteps: ["identity", "bio"],
+      currentStep: "avatar",
+    });
   });
 });

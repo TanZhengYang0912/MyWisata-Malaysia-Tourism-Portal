@@ -12,6 +12,9 @@ export type ProfileRow = {
   phone: string | null;
   city: string | null;
   country: string | null;
+  city_id: string | null;
+  country_code: string | null;
+  city_source: string | null;
   status: string | null;
   tier: string | null;
   kyc_status: string | null;
@@ -62,6 +65,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
   const tier = TIERS.includes(profile.tier as User["verificationTier"]) ? profile.tier as User["verificationTier"] : "email_unverified";
   const kycStatus = KYC_STATUSES.includes(profile.kyc_status as ProfileSummary["kycStatus"]) ? profile.kyc_status as ProfileSummary["kycStatus"] : "unverified";
   const status = USER_STATUSES.includes(profile.status as ProfileSummary["status"]) ? profile.status as ProfileSummary["status"] : "active";
+  const citySource: ProfileSummary["citySource"] = profile.city_source === "catalogue" && profile.city_id ? "catalogue" : "manual";
   const profileRichness = computeProfileCompletion({
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
@@ -70,7 +74,6 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     country: profile.country,
   });
   const verification = computeProfileVerification({
-    phoneVerified: Boolean(profile.phone_verified_at),
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     bio: profile.bio,
@@ -89,12 +92,15 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     maskedPhone: maskPhone(profile.phone),
     city: profile.city,
     country: profile.country,
+    cityId: citySource === "catalogue" ? profile.city_id : null,
+    countryCode: profile.country_code,
+    citySource,
     status,
     tier,
     kycStatus,
     emailVerified: Boolean(profile.email_verified_at),
     phoneVerified: Boolean(profile.phone_verified_at),
-    profileComplete: Boolean(profile.profile_completed_at),
+    profileComplete: Boolean(profile.profile_completed_at) && verification.complete,
     verification,
     profileRichness,
     survey: preference ? {

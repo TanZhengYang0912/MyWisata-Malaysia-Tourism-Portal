@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/081_vendor_email_event_types.sql';
+const migrationPath = 'supabase/legacy-migrations/081_vendor_email_event_types.sql';
 
 describe('vendor email event type migration contract', () => {
   it('recreates the outbox check with exactly the supported vendor events', () => {

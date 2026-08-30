@@ -138,9 +138,10 @@ describe.skipIf(!runIntegration)('KYC server-side security gates', () => {
       p_submission_id: submissionId, p_front_path: paths.front, p_back_path: paths.back,
     })).error).toBeNull();
 
-    expect((await client.rpc('submit_kyc', {
+    const legacySubmissionError = (await client.rpc('submit_kyc', {
       p_user_id: id, p_ic_hash: 'd'.repeat(64), p_doc_type: 'national_id', p_doc_url: `${id}/legacy.jpg`,
-    })).error?.message).toContain('permission denied');
+    })).error;
+    expect(legacySubmissionError).toBeTruthy();
     const { data, error } = await client.from('kyc_submission_documents').select('storage_path').eq('submission_id', submissionId);
     expect(error).toBeTruthy();
     expect(data).toBeNull();

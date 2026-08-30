@@ -320,7 +320,7 @@ async function ensureAuthUsers() {
     full_name: fullName,
     kyc_status: index < 4 ? 'approved' : index === 4 ? 'approved' : 'unverified',
     email_verified_at: new Date().toISOString(),
-    profile_completed_at: index < 6 ? new Date().toISOString() : null,
+    profile_completed_at: null,
   })));
 }
 

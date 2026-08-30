@@ -77,6 +77,9 @@ describe('POST /api/profile/update', () => {
       full_name: 'Aina Rahman',
       city: 'Kuala Lumpur',
       country: 'Malaysia',
+      city_id: null,
+      country_code: 'MY',
+      city_source: 'manual',
     });
     expect(mocks.select).toHaveBeenCalledWith('tier');
     await expect(response.json()).resolves.toMatchObject({

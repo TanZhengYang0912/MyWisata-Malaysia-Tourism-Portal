@@ -20,6 +20,8 @@ describe('profile completion display contract', () => {
     expect(page).toContain('bioSchema.safeParse');
     expect(sections).toContain('identitySchema.safeParse');
     expect(sections).toContain('bioSchema.safeParse');
+    expect(page).toContain('import { ProfileLocationFields }');
+    expect(page).toContain('<ProfileLocationFields');
   });
 
   it('uses a neutral identity verification heading for every KYC status', () => {
@@ -29,5 +31,51 @@ describe('profile completion display contract', () => {
     expect(sections).toContain('tCustomer("ui.profileSections.identityVerification")');
     expect(sections).not.toContain('title={tCustomer("ui.kyc.verified")}');
     expect(kycPage).toContain('title={tCustomer("ui.profileSections.identityVerification")}');
+  });
+
+  it('keeps Phone outside the four-step profile flow and returns only after Profile completion', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+
+    expect(page).toContain('<BusinessShareBanner />');
+    expect(page).toContain('import { VerificationPathCards }');
+    expect(page.match(/<VerificationPathCards/g)).toHaveLength(2);
+    expect(page.match(/<BusinessShareBanner \/>[\s\S]{0,260}<VerificationPathCards/g)).toHaveLength(2);
+    expect(page).toContain('phoneVerified={profile.phoneVerified}');
+    expect(page).toContain('kycStatus={profile.kycStatus}');
+    expect(page).not.toContain('phoneVerified={verificationFacts');
+    expect(page).toContain('const visibleSteps = WIZARD_STEPS');
+    expect(page).not.toContain('PhoneVerificationCard');
+    expect(page).not.toContain('/api/phone/send-otp');
+    expect(page).not.toContain('/api/phone/verify-otp');
+    expect(page).not.toContain('phoneOnlyIntent');
+    const submitBioSource = page.slice(
+      page.indexOf('async function submitBio'),
+      page.indexOf('async function handlePreferencesSaved'),
+    );
+    expect(submitBioSource).not.toContain('router.push(continuation)');
+    expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(continuation\) router\.push\(continuation\)/);
+  });
+
+  it('keeps KYC directly available without Profile or tier prerequisites', () => {
+    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+
+    expect(kycPage).toContain('verificationFacts?.kycStatus');
+    expect(kycPage).not.toContain('TIER_STEPS');
+    expect(kycPage).not.toContain('isProfileComplete');
+    expect(kycPage).not.toContain('href="/customer/profile"');
+  });
+
+  it('uses the same upload and camera picker in wizard and completed Profile settings', () => {
+    const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+    const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
+
+    expect(page).toContain('import { ProfilePhotoPicker }');
+    expect(page).toContain('<ProfilePhotoPicker');
+    expect(sections).toContain('import { ProfilePhotoPicker }');
+    expect(sections).toContain('<ProfilePhotoPicker');
+    expect(page).toContain('/api/profile/avatar?type=');
+    expect(page).toContain('/api/profile/avatar/confirm');
+    expect(sections).toContain('/api/profile/avatar?type=');
+    expect(sections).toContain('/api/profile/avatar/confirm');
   });
 });

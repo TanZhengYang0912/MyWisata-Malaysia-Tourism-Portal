@@ -50,6 +50,12 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toMatch(/href: "\/admin\/wallet\/approvers"[\s\S]*?superAdminOnly: true/);
   });
 
+  it('exposes one unified Access Control destination only to super admins', () => {
+    expect(layoutSource).toContain('{ href: "/admin/access-control", label: "Access Control"');
+    expect(layoutSource).toMatch(/href: "\/admin\/access-control"[\s\S]*?superAdminOnly: true/);
+    expect(layoutSource).not.toMatch(/href: "\/admin\/(?:entitlements|audit-log)"/);
+  });
+
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
     expect(layoutSource).toContain('className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5"');
     expect(layoutSource).toContain('className="px-4 py-3 border-b border-gray-700"');

@@ -47,29 +47,59 @@ describe('computeProfileCompletion', () => {
 });
 
 describe('computeProfileVerification', () => {
-  it('keeps verification progress separate from profile richness', () => {
+  it('completes Profile from identity, avatar, bio, and survey without Phone', () => {
     expect(computeProfileVerification({
       ...completeProfile,
-      phoneVerified: false,
-      surveyComplete: true,
-    })).toEqual({
-      complete: false,
-      percentage: 80,
-      completedSteps: ['identity', 'avatar', 'bio', 'survey'],
-      currentStep: 'phone',
-    });
-  });
-
-  it('only completes after every verification step is satisfied', () => {
-    expect(computeProfileVerification({
-      ...completeProfile,
-      phoneVerified: true,
       surveyComplete: true,
     })).toEqual({
       complete: true,
       percentage: 100,
-      completedSteps: ['phone', 'identity', 'avatar', 'bio', 'survey'],
+      completedSteps: ['identity', 'avatar', 'bio', 'survey'],
       currentStep: null,
+    });
+  });
+
+  it('reports four stable 25-point progress increments', () => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      avatarUrl: null,
+      surveyComplete: false,
+    })).toEqual({
+      complete: false,
+      percentage: 50,
+      completedSteps: ['identity', 'bio'],
+      currentStep: 'avatar',
+    });
+  });
+
+  it.each([
+    '/default-avatar.png',
+    'https://cdn.example/default-avatar.jpg?version=2',
+    '/images/DEFAULT-AVATAR.JPEG',
+    'default-avatar.webp',
+    '/default-avatar.svg',
+  ])('rejects the known default avatar %s from Profile completion', (avatarUrl) => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      avatarUrl,
+      surveyComplete: true,
+    })).toMatchObject({
+      complete: false,
+      percentage: 75,
+      completedSteps: ['identity', 'bio', 'survey'],
+      currentStep: 'avatar',
+    });
+  });
+
+  it('does not complete Profile when the preference survey has no interests', () => {
+    expect(computeProfileVerification({
+      ...completeProfile,
+      surveyComplete: false,
+    })).toMatchObject({
+      complete: false,
+      percentage: 75,
+      completedSteps: ['identity', 'avatar', 'bio'],
+      currentStep: 'survey',
     });
   });
 });
@@ -95,10 +125,10 @@ describe('eligibility predicates', () => {
     expect(canCreatePurchase({ ...snapshot, phoneVerified: false })).toBe(false);
   });
 
-  it('requires KYC, phone, and payout destination for withdrawal', () => {
+  it('requires KYC and a payout destination for withdrawal independently of Phone', () => {
     expect(canWithdraw(snapshot)).toBe(true);
     expect(canWithdraw({ ...snapshot, payoutDestinationVerified: false })).toBe(false);
     expect(canWithdraw({ ...snapshot, kycStatus: 'pending' })).toBe(false);
-    expect(canWithdraw({ ...snapshot, phoneVerified: false })).toBe(false);
+    expect(canWithdraw({ ...snapshot, phoneVerified: false })).toBe(true);
   });
 });

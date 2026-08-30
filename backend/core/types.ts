@@ -1,4 +1,6 @@
 import type { AppLocale } from "@/lib/i18n/locale";
+import type { CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
+import type { VerificationFacts } from "@/lib/entitlements/types";
 
 // Shared domain types — the integration contract every member's code imports.
 // Ownership: each seed/repo file below is owned by one member (see README).
@@ -24,6 +26,8 @@ export interface User {
   phone?: string;
   status?: "active" | "suspended" | "deleted";
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
+  verificationFacts?: VerificationFacts;
+  entitlementGeneration?: number;
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -34,6 +38,9 @@ export interface AuthState {
   roles: Role[];
   activeVendorId?: string;
   activeOutletIds?: string[];
+  capabilities: CustomerCapabilitySnapshot;
+  verificationFacts: VerificationFacts | null;
+  entitlementGeneration: number;
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────
@@ -310,6 +317,9 @@ export interface ProfileSummary {
   maskedPhone: string | null;
   city: string | null;
   country: string | null;
+  cityId: string | null;
+  countryCode: string | null;
+  citySource: "manual" | "catalogue";
   status: "active" | "suspended" | "deleted";
   tier: User["verificationTier"];
   kycStatus: "unverified" | "pending" | "approved" | "rejected";
@@ -318,9 +328,9 @@ export interface ProfileSummary {
   profileComplete: boolean;
   verification: {
     complete: boolean;
-    percentage: 0 | 20 | 40 | 60 | 80 | 100;
-    completedSteps: Array<"phone" | "identity" | "avatar" | "bio" | "survey">;
-    currentStep: "phone" | "identity" | "avatar" | "bio" | "survey" | null;
+    percentage: 0 | 25 | 50 | 75 | 100;
+    completedSteps: Array<"identity" | "avatar" | "bio" | "survey">;
+    currentStep: "identity" | "avatar" | "bio" | "survey" | null;
   };
   profileRichness: {
     percentage: 0 | 20 | 40 | 60 | 80 | 100;

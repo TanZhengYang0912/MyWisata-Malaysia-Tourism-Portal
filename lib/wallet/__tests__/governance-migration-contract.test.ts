@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '073_wallet_withdrawal_governance.sql');
+const migrationPath = path.join(process.cwd(), 'supabase', 'legacy-migrations', '073_wallet_withdrawal_governance.sql');
 
 describe('wallet withdrawal governance migration contract', () => {
   it('adds the agreed balance projections, settings and active withdrawal states', async () => {

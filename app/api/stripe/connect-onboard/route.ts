@@ -4,6 +4,8 @@ import { stripe } from '@/lib/stripe';
 import { isRealStripeAccountId } from '@/lib/stripe/account-id';
 import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail } from '@/lib/validation/schemas';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +50,26 @@ function accountStatusFailure(error: unknown) {
 export async function POST(req: Request) {
   const db = await createClient();
   const { data: { user: authUser } } = await db.auth.getUser();
-  if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!authUser) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.WITHDRAWAL),
+    'Sign in before setting up withdrawals',
+  )!;
+
+  const withdrawalDecision = await resolveServerCustomerCapability(
+    authUser.id,
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+  );
+  const withdrawalFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+    withdrawalDecision,
+    'KYC approval is required before setting up a withdrawal account',
+  );
+  if (withdrawalFailure) return withdrawalFailure;
 
   const { data: userRow, error: userErr } = await db
     .from('users')
-    .select('tier, stripe_connect_account_id, full_name, phone, email')
+    .select('stripe_connect_account_id, full_name, phone, email')
     .eq('id', authUser.id)
     .single();
 
@@ -61,19 +78,11 @@ export async function POST(req: Request) {
   }
 
   const row = userRow as {
-    tier: string;
     stripe_connect_account_id: string | null;
     full_name: string | null;
     phone: string | null;
     email: string | null;
   };
-
-  if (row.tier !== 'kyc_verified') {
-    return NextResponse.json(
-      { error: 'KYC verification required before setting up withdrawal account' },
-      { status: 403 },
-    );
-  }
 
   const origin = req.headers.get('origin') ?? 'http://localhost:3000';
 

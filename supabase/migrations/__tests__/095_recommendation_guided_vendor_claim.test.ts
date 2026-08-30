@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = new URL('../095_recommendation_guided_vendor_claim.sql', import.meta.url);
+const migrationPath = new URL('../20260826024400_recommendation_vendor_claim_closure.sql', import.meta.url);
 
 describe('095 recommendation guided vendor claim migration', () => {
   it('replaces the exact old overload with the guided claim signature and least privilege', () => {
@@ -73,6 +73,7 @@ describe('095 recommendation guided vendor claim migration', () => {
 
   it('atomically creates the pending vendor, submitted profile, and inactive first outlet', () => {
     const sql = readFileSync(migrationPath, 'utf8');
+    const claimSql = sql.slice(0, sql.indexOf('CREATE OR REPLACE FUNCTION public.admin_approve_claimed_vendor'));
 
     expect(sql).toContain('INSERT INTO public.vendors');
     expect(sql).toContain('description, business_type');
@@ -88,7 +89,7 @@ describe('095 recommendation guided vendor claim migration', () => {
     expect(sql).toContain('RETURNING id INTO v_claim_id');
     expect(sql).toContain("'claim_id', v_claim_id");
     expect(sql).toContain("'onboarding_profile_vendor_id', v_vendor_id");
-    expect(sql).not.toContain('INSERT INTO public.user_roles');
+    expect(claimSql).not.toContain('INSERT INTO public.user_roles');
     expect(sql).not.toContain('category_id, status, review_status');
     expect(sql).not.toContain('approval_status');
   });

@@ -35,19 +35,19 @@ ON CONFLICT DO NOTHING;
 
 -- For CI / demo resets, insert directly (bypassing auth trigger):
 INSERT INTO users (id, email, full_name, kyc_status, email_verified_at, phone_verified_at, profile_completed_at) VALUES
-  ('aaaaaaaa-0000-0000-0000-000000000001', 'admin@demo.local',           'Super Admin',       'approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000002', 'approver@demo.local',        'Wallet Approver',   'approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000003', 'vendor.owner@demo.local',    'Vendor Owner Ali',  'approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000004', 'outlet.manager@demo.local',  'Outlet Manager Mei','approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000005', 'customer1@demo.local',       'Customer Alice',    'approved', NOW(), NOW(), NOW()),
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'admin@demo.local',           'Super Admin',       'approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000002', 'approver@demo.local',        'Wallet Approver',   'approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000003', 'vendor.owner@demo.local',    'Vendor Owner Ali',  'approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000004', 'outlet.manager@demo.local',  'Outlet Manager Mei','approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000005', 'customer1@demo.local',       'Customer Alice',    'approved', NOW(), NOW(), NULL),
   ('aaaaaaaa-0000-0000-0000-000000000006', 'customer2@demo.local',       'Customer Bob',      'pending',  NOW(), NOW(), NULL),
   ('aaaaaaaa-0000-0000-0000-000000000007', 'customer3@demo.local',       'Customer Carol',    'unverified',NOW(), NULL, NULL),
   ('aaaaaaaa-0000-0000-0000-000000000008', 'customer4@demo.local',       'Customer Dave',     'unverified',NOW(), NULL, NULL),
-  ('aaaaaaaa-0000-0000-0000-000000000009', 'manager.klcc@demo.local',    'Outlet Manager Hana','approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000010', 'manager.georgetown@demo.local','Outlet Manager Ravi','approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000011', 'manager.batu@demo.local',     'Outlet Manager Siti','approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000012', 'manager.melaka@demo.local',   'Outlet Manager Lim', 'approved', NOW(), NOW(), NOW()),
-  ('aaaaaaaa-0000-0000-0000-000000000014', 'moderator@demo.local',        'Platform Admin',      'approved', NOW(), NOW(), NOW())
+  ('aaaaaaaa-0000-0000-0000-000000000009', 'manager.klcc@demo.local',    'Outlet Manager Hana','approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000010', 'manager.georgetown@demo.local','Outlet Manager Ravi','approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000011', 'manager.batu@demo.local',     'Outlet Manager Siti','approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000012', 'manager.melaka@demo.local',   'Outlet Manager Lim', 'approved', NOW(), NOW(), NULL),
+  ('aaaaaaaa-0000-0000-0000-000000000014', 'moderator@demo.local',        'Platform Admin',      'approved', NOW(), NOW(), NULL)
 ON CONFLICT (id) DO UPDATE SET
   full_name            = EXCLUDED.full_name,
   kyc_status           = EXCLUDED.kyc_status,

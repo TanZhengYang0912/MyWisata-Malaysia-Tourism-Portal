@@ -43,7 +43,7 @@ function walletSummaryEndpoint(destinationId: string) {
 
 function WalletContent() {
   const { t: tCustomer, i18n } = useTranslation("customer");
-  const { currentUser } = useAuth();
+  const { currentUser, capabilities } = useAuth();
   const isActiveRef = useRef(true);
   const gate = useCustomerCapabilityGate();
   const searchParams     = useSearchParams();
@@ -117,7 +117,6 @@ function WalletContent() {
       const body = await response.json() as {
         data?: {
           accountId: string | null;
-          tier: string;
           payoutsEnabled: boolean;
           payoutStatus: "unlinked" | "currently_due" | "pending_verification" | "payouts_enabled" | "past_due" | "restricted";
         };
@@ -133,7 +132,7 @@ function WalletContent() {
       }
 
       const data = body.data;
-      const nextStatus: ConnectStatus = !data || data.tier !== "kyc_verified"
+      const nextStatus: ConnectStatus = !data || !capabilities.withdrawal.allowed
         ? "kyc_required"
         : !data.accountId
         ? "unlinked"
@@ -145,7 +144,7 @@ function WalletContent() {
       setConnectStatus("status_error");
       return "status_error";
     }
-  }, [currentUser, tCustomer]);
+  }, [capabilities.withdrawal.allowed, currentUser, tCustomer]);
 
   const refreshWalletSummary = useCallback(async (destinationId: string) => {
     const summaryResponse = await fetch(walletSummaryEndpoint(destinationId), { cache: "no-store" });
@@ -240,6 +239,7 @@ function WalletContent() {
     setOnboardError("");
     try {
       const res  = await fetch("/api/stripe/connect-onboard", { method: "POST" });
+      if (await gate.handleResponse(res, "/customer/wallet")) return;
       const data = await res.json();
       if (!res.ok) {
         const message = typeof data.error === "string"
@@ -356,6 +356,7 @@ function WalletContent() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
       });
+      if (await gate.handleResponse(response, "/customer/wallet")) return;
       const body = await response.json() as { error?: { message?: string } | string };
       if (!response.ok) {
         throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? tCustomer("ui.wallet.submitWithdrawalError"));
@@ -393,6 +394,7 @@ function WalletContent() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ amount_rm: amount }),
       });
+      if (await gate.handleResponse(res, "/customer/wallet")) return;
       const data = await res.json();
       if (!res.ok) { setTopUpError(data.error ?? tCustomer("ui.wallet.topUpError")); return; }
       window.location.href = data.url;

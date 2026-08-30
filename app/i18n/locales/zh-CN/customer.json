@@ -21,8 +21,8 @@
   },
   "accountItems": {
     "Profile": {
-      "label": "个人资料",
-      "description": "您的个人信息"
+      "label": "资料与验证",
+      "description": "选择并管理独立验证"
     },
     "Notifications": {
       "label": "通知",
@@ -57,8 +57,8 @@
       "description": "分享本地发现"
     },
     "profile": {
-      "label": "个人资料",
-      "description": "您的个人信息"
+      "label": "资料与验证",
+      "description": "选择并管理独立验证"
     },
     "notifications": {
       "label": "通知",
@@ -82,7 +82,7 @@
     },
     "verification": {
       "label": "验证",
-      "description": "验证您的身份"
+      "description": "选择要完成的验证"
     },
     "support": {
       "label": "客服支持",
@@ -158,6 +158,112 @@
     }
   },
   "ui": {
+    "capabilityGate": {
+      "notNow": "暂时不要",
+      "blockers": {
+        "SIGN_IN_REQUIRED": {
+          "title": "登录后继续",
+          "description": "你可以继续以访客身份浏览；需要使用这项功能时再登录即可。",
+          "cta": "登录"
+        },
+        "EMAIL_VERIFICATION_REQUIRED": {
+          "title": "验证电子邮箱",
+          "description": "继续前请先确认电子邮箱；其他个人资料可以稍后完成。",
+          "cta": "验证邮箱"
+        },
+        "PHONE_VERIFICATION_REQUIRED": {
+          "title": "验证手机号码",
+          "description": "预订、购买、结账和基础 AI 推荐需要手机验证。使用当前功能不需要先完成整份个人资料。",
+          "cta": "验证手机"
+        },
+        "PROFILE_COMPLETION_REQUIRED": {
+          "title": "完成个人资料",
+          "description": "完成剩余资料步骤后，便可提交推荐及生成有限联盟链接。",
+          "cta": "完成资料"
+        },
+        "PROFILE_OR_KYC_REQUIRED": {
+          "title": "选择认证方式",
+          "description": "完成个人资料即可提交推荐并使用有限联盟；完成 KYC 则可提交推荐并解锁完整联盟等级。",
+          "cta": "选择验证选项"
+        },
+        "KYC_REQUIRED": {
+          "title": "完成身份验证",
+          "description": "完整联盟收益和提现申请需要通过 KYC 审核。",
+          "cta": "开始 KYC"
+        },
+        "KYC_PENDING": {
+          "title": "KYC 正在审核",
+          "description": "你的资料正在审核中，等待期间仍可继续使用平台。",
+          "cta": "查看状态"
+        },
+        "KYC_RESUBMISSION_REQUIRED": {
+          "title": "KYC 需要你处理",
+          "description": "请查看审核反馈并重新提交身份验证，再使用这项功能。",
+          "cta": "查看并重新提交"
+        },
+        "VENDOR_AFFILIATE_INELIGIBLE": {
+          "title": "无法使用联盟功能",
+          "description": "商家拥有者及门店管理员不能用同一个账户参与顾客联盟收益。",
+          "cta": "关闭"
+        }
+      }
+    },
+    "accountVerification": {
+      "title": "账户验证",
+      "description": "只需完成能解锁目标功能的验证。手机、个人资料和 KYC 可按任意顺序完成。",
+      "guestTitle": "登录后查看验证选项",
+      "guestDescription": "登录后可查看各自独立的手机、个人资料和 KYC 状态。",
+      "available": "可使用",
+      "statuses": {
+        "title": "你的验证状态",
+        "description": "这些验证彼此独立，你可以开始任何可用选项。",
+        "phone": { "title": "手机" },
+        "profile": { "title": "个人资料" },
+        "kyc": { "title": "KYC" },
+        "states": {
+          "complete": "已完成",
+          "available": "尚未完成——需要时再开始",
+          "pending": "审核中",
+          "rejected": "需要重新提交"
+        }
+      },
+      "intents": {
+        "title": "你想使用什么功能？",
+        "description": "选择目标，查看对应的认证方式。",
+        "checkout": {
+          "title": "预订、购买、结账或使用基础 AI",
+          "description": "验证手机即可；这些功能不要求先完成个人资料或 KYC。"
+        },
+        "recommendation": {
+          "title": "提交推荐",
+          "description": "完成个人资料或 KYC 其中之一即可，先做哪一个都可以。"
+        },
+        "affiliate": {
+          "title": "生成联盟链接并赚取佣金",
+          "description": "个人资料解锁有限联盟；通过 KYC 可解锁完整联盟和佣金收益。"
+        },
+        "withdrawal": {
+          "title": "申请提现",
+          "description": "须先通过 KYC，之后仍需满足钱包和收款条件，并由管理员审批。"
+        }
+      },
+      "paths": {
+        "phone": "验证手机",
+        "profile": "完成个人资料",
+        "kyc": "完成 KYC",
+        "profileLimited": "个人资料 · 有限联盟",
+        "kycFull": "KYC · 完整联盟"
+      }
+    },
+    "phoneVerification": {
+      "title": "验证手机",
+      "description": "独立完成手机验证，即可解锁预订、购买、结账和基础 AI 推荐。",
+      "guestTitle": "登录后验证手机",
+      "guestDescription": "请先登录，再开始手机验证。",
+      "completeTitle": "手机已验证",
+      "completeDescription": "在现行规则允许的情况下，你现在可以使用预订、购买、结账和基础 AI 推荐。",
+      "verified": "手机号码已验证。"
+    },
     "actions": {
       "backToResults": "返回结果",
       "visitVendor": "查看商家",
@@ -961,7 +1067,7 @@
     },
     "kyc": {
       "guestTitle": "尚未开始 KYC",
-      "guestDescription": "提交身份证件前，请先登录并完成个人资料。",
+      "guestDescription": "提交身份证件前，请先登录。",
       "description": "提交身份证件以解锁钱包提现和完整的联盟收益功能。",
       "continue": "继续",
       "verified": "KYC 已验证",
@@ -969,6 +1075,7 @@
       "rejected": "KYC 提交被拒绝",
       "underReview": "审核中",
       "ready": "可以提交",
+      "baseAccountRequired": "请先验证邮箱并恢复账户访问权限，再开始 KYC",
       "completeFirst": "请先完成个人资料",
       "reviewWindow": "我们的团队会在 1–2 个工作日内审核。",
       "queue": "您在队列中的位置是第 {{position}} 位。",
@@ -1119,9 +1226,23 @@
       "country": "国家/地区",
       "continue": "继续",
       "profilePhoto": "个人资料照片",
-      "photoDescription": "上传一张清晰的个人照片。JPG、PNG 或 WebP · 最大 2 MB。",
+      "photoDescription": "上传或拍摄一张清晰的个人照片。JPG、PNG 或 WebP · 最大 2 MB。",
       "choosePhoto": "选择照片",
+      "uploadPhoto": "上传照片",
+      "takePhoto": "拍摄照片",
       "savePhoto": "保存照片",
+      "cameraTitle": "拍摄个人资料照片",
+      "cameraDescription": "将面部置于画面中，然后拍摄照片。",
+      "cameraStarting": "正在启动相机…",
+      "cameraSwitch": "切换相机",
+      "cameraCapture": "拍摄照片",
+      "cameraRetake": "重新拍摄",
+      "cameraUse": "使用照片",
+      "cameraUnsupported": "此浏览器无法使用相机，请改为上传照片。",
+      "cameraPermissionDenied": "相机权限已被拒绝，请允许相机访问或改为上传照片。",
+      "cameraNotFound": "找不到可用的相机，请改为上传照片。",
+      "cameraStartupFailed": "无法启动相机，请改为上传照片。",
+      "cameraCaptureFailed": "无法拍摄照片，请重试或改为上传照片。",
       "bio": "关于您",
       "saveDetails": "保存详情",
       "invalidPhone": "请输入有效的国际电话号码。",
@@ -1154,6 +1275,14 @@
         "city": "城市",
         "country": "国家/地区"
       }
+    },
+    "profileLocation": {
+      "countrySearchPlaceholder": "搜索国家或地区",
+      "countryNoResults": "找不到匹配的国家或地区。",
+      "cityNoResults": "找不到匹配的城市，您可以保留手动输入。",
+      "cityUnavailable": "城市建议暂时不可用，您仍可手动输入城市。",
+      "cityManualHint": "有建议时可选择，也可以直接手动输入城市。",
+      "attribution": "城市数据 © GeoNames · CC BY 4.0"
     },
     "activityDetail": {
       "publicAccess": "公共访问",
@@ -1723,6 +1852,7 @@
       "price": "RM {{value}}"
     },
     "forYou": {
+      "generate": "生成推荐",
       "loadError": "无法加载推荐",
       "locationUnsupported": "你的浏览器不支持定位，将改用个人资料中的城市。",
       "locationNotShared": "未取得定位，将改用个人资料中的城市。",

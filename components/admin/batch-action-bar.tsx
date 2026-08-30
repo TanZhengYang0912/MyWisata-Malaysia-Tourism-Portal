@@ -59,14 +59,14 @@ export function AdminBatchActionBar({ selectedCount, onApply, onClear, actions, 
                 type="button"
                 disabled={busy}
                 onClick={() => onApply(action.value)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${destructive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-primary/20 text-primary hover:bg-primary/5'}`}
+                className={`inline-flex items-center gap-1.5 rounded-xl border bg-card px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${destructive ? 'border-destructive/30 text-destructive hover:bg-destructive/10' : 'border-primary/20 text-primary hover:bg-primary/5'}`}
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} />}
                 {t(`batchActions.${action.value}`)}
               </button>
             );
           })}
-          <button type="button" onClick={onClear} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-white hover:text-foreground">
+          <button type="button" onClick={onClear} className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground">
             <X size={14} />
             {t('selection.clear')}
           </button>

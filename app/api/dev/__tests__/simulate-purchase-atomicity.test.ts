@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const routeSource = fs.readFileSync(path.join(root, "app/api/dev/simulate-purchase/route.ts"), "utf8");
-const migrationPath = path.join(root, "supabase/migrations/20260804000000_atomic_demo_purchase.sql");
+const migrationPath = path.join(root, "supabase/test-support/demo-purchase.sql");
 const migrationSource = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, "utf8") : "";
 
 describe("development purchase atomicity contract", () => {
@@ -15,5 +15,9 @@ describe("development purchase atomicity contract", () => {
     expect(routeSource).toContain(".rpc('create_demo_purchase'");
     expect(routeSource).not.toContain(".from('orders')");
     expect(routeSource).not.toContain(".from('order_items')");
+  });
+
+  it("keeps the helper outside production migration discovery", () => {
+    expect(migrationPath).not.toContain("supabase/migrations/");
   });
 });

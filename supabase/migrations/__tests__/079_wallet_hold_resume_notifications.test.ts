@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = 'supabase/migrations/079_wallet_hold_resume_notifications.sql';
+const migrationPath = 'supabase/legacy-migrations/079_wallet_hold_resume_notifications.sql';
 
 describe('wallet hold/resume notification migration contract', () => {
   it('adds approval cycles, customer reason metadata, and support linkage', () => {

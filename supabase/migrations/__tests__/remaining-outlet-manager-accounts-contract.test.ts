@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const migrationPath = resolve(
   process.cwd(),
-  "supabase/migrations/20260816020000_remaining_outlet_manager_accounts.sql",
+  "supabase/migrations/20260816062923_remaining_outlet_manager_accounts.sql",
 );
 
 describe("remaining outlet manager accounts migration", () => {

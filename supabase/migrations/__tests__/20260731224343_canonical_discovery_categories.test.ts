@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = "supabase/migrations/20260731224343_canonical_discovery_categories.sql";
+const migrationPath = "supabase/legacy-migrations/20260731224343_canonical_discovery_categories.sql";
 
 describe("canonical discovery category migration contract", () => {
   it("normalizes the four real categories and retains legacy rows", () => {

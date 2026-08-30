@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const ADMIN_ROUTE_PAGES = [
   "app/admin/affiliate/page.tsx",
   "app/admin/ai-assistant/page.tsx",
+  "app/admin/access-control/page.tsx",
   "app/admin/catalogue/page.tsx",
   "app/admin/chat-reports/page.tsx",
   "app/admin/chatbot/page.tsx",
@@ -29,6 +30,7 @@ const ADMIN_ROUTE_PAGES = [
 const MIGRATED_ADMIN_ROUTE_PAGES: readonly (typeof ADMIN_ROUTE_PAGES)[number][] = [
   "app/admin/affiliate/page.tsx",
   "app/admin/ai-assistant/page.tsx",
+  "app/admin/access-control/page.tsx",
   "app/admin/catalogue/page.tsx",
   "app/admin/chat-reports/page.tsx",
   "app/admin/chatbot/page.tsx",
@@ -53,8 +55,8 @@ const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8"
 
 describe("admin page-shell consistency contract", () => {
   it("keeps the complete Admin route inventory", () => {
-    expect(ADMIN_ROUTE_PAGES).toHaveLength(20);
-    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(20);
+    expect(ADMIN_ROUTE_PAGES).toHaveLength(21);
+    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(21);
 
     for (const route of ADMIN_ROUTE_PAGES) {
       expect(existsSync(resolve(process.cwd(), route)), `${route} must remain in the Admin route inventory`).toBe(true);

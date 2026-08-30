@@ -1,20 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
-import { checkPhoneVerification } from '@/lib/verification/transaction-gates';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user }, error } = await db.auth.getUser();
-  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (error || !user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.CHECKOUT,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.CHECKOUT),
+    'Sign in before checkout',
+  )!;
 
-  const { data: profile } = await db.from('users').select('phone_verified_at').eq('id', user.id).maybeSingle();
-  const phoneGate = checkPhoneVerification(profile?.phone_verified_at);
-  if (!phoneGate.allowed) {
-    return NextResponse.json({ error: { code: phoneGate.code, message: phoneGate.message } }, { status: 403 });
-  }
+  const checkoutDecision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.CHECKOUT);
+  const checkoutFailure = customerCapabilityFailure(CUSTOMER_CAPABILITY.CHECKOUT, checkoutDecision, 'Phone verification is required before checkout');
+  if (checkoutFailure) return checkoutFailure;
 
   let body: { amount_rm?: unknown; voucher_code?: unknown } = {};
   try { body = await request.json(); } catch { /* use empty body */ }

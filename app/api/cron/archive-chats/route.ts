@@ -9,7 +9,7 @@ import { getChatArchiveDays } from '@/lib/chat/settings';
  * Status-only — message history is untouched, and sendMessage reopens a
  * thread automatically the next time either side sends a message.
  */
-export async function POST(request: Request) {
+async function archiveInactiveChats(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -24,4 +24,14 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ archived: data ?? 0, thresholdDays: days });
+}
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
+  return archiveInactiveChats(request);
+}
+
+export async function POST(request: Request) {
+  return archiveInactiveChats(request);
 }

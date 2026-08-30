@@ -21,8 +21,8 @@
   },
   "accountItems": {
     "Profile": {
-      "label": "Profile",
-      "description": "Your personal details"
+      "label": "Profile & Verification",
+      "description": "Choose and manage independent verification"
     },
     "Notifications": {
       "label": "Notifications",
@@ -57,8 +57,8 @@
       "description": "Share local discoveries"
     },
     "profile": {
-      "label": "Profile",
-      "description": "Your personal details"
+      "label": "Profile & Verification",
+      "description": "Choose and manage independent verification"
     },
     "notifications": {
       "label": "Notifications",
@@ -82,7 +82,7 @@
     },
     "verification": {
       "label": "Verification",
-      "description": "Verify your identity"
+      "description": "Choose what to verify"
     },
     "support": {
       "label": "Support",
@@ -158,6 +158,112 @@
     }
   },
   "ui": {
+    "capabilityGate": {
+      "notNow": "Not now",
+      "blockers": {
+        "SIGN_IN_REQUIRED": {
+          "title": "Sign in to continue",
+          "description": "You can keep browsing as a guest. Sign in only when you are ready to use this feature.",
+          "cta": "Sign in"
+        },
+        "EMAIL_VERIFICATION_REQUIRED": {
+          "title": "Verify your email",
+          "description": "Confirm your email address before continuing. Your other profile steps can wait.",
+          "cta": "Verify email"
+        },
+        "PHONE_VERIFICATION_REQUIRED": {
+          "title": "Verify your phone",
+          "description": "Phone verification is required for booking, purchasing, checkout, and basic AI recommendations. You do not need to complete the rest of your profile for this action.",
+          "cta": "Verify phone"
+        },
+        "PROFILE_COMPLETION_REQUIRED": {
+          "title": "Complete your profile",
+          "description": "Complete the remaining profile steps to submit recommendations and generate a limited affiliate link.",
+          "cta": "Complete profile"
+        },
+        "PROFILE_OR_KYC_REQUIRED": {
+          "title": "Choose how to qualify",
+          "description": "Complete your profile to submit recommendations and use Limited Affiliate, or complete KYC to submit recommendations and unlock the Full Affiliate tier.",
+          "cta": "Choose a verification option"
+        },
+        "KYC_REQUIRED": {
+          "title": "Complete identity verification",
+          "description": "Approved KYC is required for full affiliate earnings and withdrawal requests.",
+          "cta": "Start KYC"
+        },
+        "KYC_PENDING": {
+          "title": "KYC review is in progress",
+          "description": "Your submission is being reviewed. You can keep using the platform while you wait.",
+          "cta": "View status"
+        },
+        "KYC_RESUBMISSION_REQUIRED": {
+          "title": "KYC needs your attention",
+          "description": "Review the feedback and resubmit your identity verification before using this feature.",
+          "cta": "Review and resubmit"
+        },
+        "VENDOR_AFFILIATE_INELIGIBLE": {
+          "title": "Affiliate features are unavailable",
+          "description": "Vendor owners and outlet managers cannot participate in customer affiliate earnings on the same account.",
+          "cta": "Close"
+        }
+      }
+    },
+    "accountVerification": {
+      "title": "Account verification",
+      "description": "Choose only the verification that unlocks what you want to do. Phone, Profile and KYC can be completed in any order.",
+      "guestTitle": "Sign in to view verification options",
+      "guestDescription": "Sign in to see your independent Phone, Profile and KYC statuses.",
+      "available": "Available",
+      "statuses": {
+        "title": "Your verification status",
+        "description": "These checks are independent. You can start any available option.",
+        "phone": { "title": "Phone" },
+        "profile": { "title": "Profile" },
+        "kyc": { "title": "KYC" },
+        "states": {
+          "complete": "Complete",
+          "available": "Not completed — start when needed",
+          "pending": "Under review",
+          "rejected": "Needs resubmission"
+        }
+      },
+      "intents": {
+        "title": "What would you like to do?",
+        "description": "Pick a goal to see the qualification that unlocks it.",
+        "checkout": {
+          "title": "Book, purchase, checkout or use basic AI",
+          "description": "Verify your phone. No Profile or KYC is required for these features."
+        },
+        "recommendation": {
+          "title": "Submit a recommendation",
+          "description": "Complete either your Profile or KYC. You can choose either route first."
+        },
+        "affiliate": {
+          "title": "Generate affiliate links and earn commission",
+          "description": "Profile unlocks Limited Affiliate. Approved KYC unlocks Full Affiliate and commission earning."
+        },
+        "withdrawal": {
+          "title": "Request a withdrawal",
+          "description": "Approved KYC is required, followed by wallet and payout readiness checks. Admin approval still applies."
+        }
+      },
+      "paths": {
+        "phone": "Verify phone",
+        "profile": "Complete Profile",
+        "kyc": "Complete KYC",
+        "profileLimited": "Profile · Limited Affiliate",
+        "kycFull": "KYC · Full Affiliate"
+      }
+    },
+    "phoneVerification": {
+      "title": "Verify your phone",
+      "description": "Verify your phone independently to unlock booking, purchasing, checkout and basic AI recommendations.",
+      "guestTitle": "Sign in to verify your phone",
+      "guestDescription": "Sign in before starting phone verification.",
+      "completeTitle": "Phone verified",
+      "completeDescription": "Booking, purchasing, checkout and basic AI recommendations are now available, subject to current policy.",
+      "verified": "Phone number verified."
+    },
     "actions": {
       "backToResults": "Back to results",
       "visitVendor": "Visit vendor",
@@ -961,7 +1067,7 @@
     },
     "kyc": {
       "guestTitle": "KYC is not started",
-      "guestDescription": "Sign in and complete your profile before submitting identity documents.",
+      "guestDescription": "Sign in before submitting identity documents.",
       "description": "Submit your identity documents to unlock wallet withdrawals and full affiliate earnings.",
       "continue": "Continue",
       "verified": "KYC verified",
@@ -969,6 +1075,7 @@
       "rejected": "KYC submission rejected",
       "underReview": "Under review",
       "ready": "Ready to submit",
+      "baseAccountRequired": "Verify your email and restore account access before starting KYC",
       "completeFirst": "Complete profile first",
       "reviewWindow": "Our team reviews within 1–2 business days.",
       "queue": "You are #{{position}} in the queue.",
@@ -1119,9 +1226,23 @@
       "country": "Country",
       "continue": "Continue",
       "profilePhoto": "Profile photo",
-      "photoDescription": "Upload a clear photo of yourself. JPG, PNG, or WebP · max 2 MB.",
+      "photoDescription": "Upload or take a clear photo of yourself. JPG, PNG, or WebP · max 2 MB.",
       "choosePhoto": "Choose a photo",
+      "uploadPhoto": "Upload photo",
+      "takePhoto": "Take photo",
       "savePhoto": "Save photo",
+      "cameraTitle": "Take a profile photo",
+      "cameraDescription": "Position your face inside the frame, then take a photo.",
+      "cameraStarting": "Starting camera…",
+      "cameraSwitch": "Switch camera",
+      "cameraCapture": "Take photo",
+      "cameraRetake": "Retake",
+      "cameraUse": "Use photo",
+      "cameraUnsupported": "Camera access is not available in this browser. Upload a photo instead.",
+      "cameraPermissionDenied": "Camera permission was denied. Allow camera access or upload a photo instead.",
+      "cameraNotFound": "No available camera was found. Upload a photo instead.",
+      "cameraStartupFailed": "The camera could not be started. Upload a photo instead.",
+      "cameraCaptureFailed": "The photo could not be captured. Please try again or upload a photo.",
       "bio": "About you",
       "saveDetails": "Save details",
       "invalidPhone": "Enter a valid international phone number.",
@@ -1154,6 +1275,14 @@
         "city": "city",
         "country": "country"
       }
+    },
+    "profileLocation": {
+      "countrySearchPlaceholder": "Search for a country or region",
+      "countryNoResults": "No matching country or region.",
+      "cityNoResults": "No matching city found. You can keep your own entry.",
+      "cityUnavailable": "City suggestions are temporarily unavailable. You can still enter your city manually.",
+      "cityManualHint": "Choose a suggestion when available, or enter your city manually.",
+      "attribution": "City data © GeoNames · CC BY 4.0"
     },
     "activityDetail": {
       "publicAccess": "Public access",
@@ -1723,6 +1852,7 @@
       "price": "RM {{value}}"
     },
     "forYou": {
+      "generate": "Generate recommendations",
       "loadError": "Unable to load recommendations",
       "locationUnsupported": "Your browser does not support location. Showing your profile city instead.",
       "locationNotShared": "Location was not shared. Showing your profile city instead.",

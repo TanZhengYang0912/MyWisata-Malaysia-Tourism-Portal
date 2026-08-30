@@ -16,6 +16,10 @@ import { createClient } from '@/lib/supabase/server';
 import { apiFail } from '@/lib/validation/schemas';
 import { csvRow } from '@/lib/admin/csv';
 import { getAffiliateEarningsExport, type EarningsExportRange } from '@/lib/affiliate/earnings-export';
+import {
+  customerCapabilityFailure,
+  resolveServerCustomerCapability,
+} from '@/lib/auth/customer-capabilities.server';
 
 const VALID_RANGES: EarningsExportRange[] = ['month', 'year', 'all'];
 const CSV_HEADER = ['Date', 'Activity', 'Order Reference', 'Order Amount (RM)', 'Commission Rate (%)', 'Commission Amount (RM)', 'Status', 'Cleared Date'];
@@ -28,6 +32,14 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const decision = await resolveServerCustomerCapability(user.id, 'affiliate.earn_commission');
+  const failure = customerCapabilityFailure(
+    'affiliate.earn_commission',
+    decision,
+    'Complete KYC verification to export Affiliate earnings',
+  );
+  if (failure) return failure;
 
   const rangeParam = new URL(request.url).searchParams.get('range');
   const range: EarningsExportRange = VALID_RANGES.includes(rangeParam as EarningsExportRange)

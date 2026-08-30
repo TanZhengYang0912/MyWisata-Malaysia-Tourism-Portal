@@ -35,6 +35,9 @@ describe('POST /api/admin/kyc/review', () => {
     }));
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { userId, kycStatus: 'rejected', action: 'reject' },
+    });
     expect(rpc).toHaveBeenCalledWith('admin_review_kyc', {
       p_submission_id: '33333333-3333-4333-8333-333333333333',
       p_user_id: userId,
@@ -91,5 +94,23 @@ describe('POST /api/admin/kyc/review', () => {
     }));
 
     expect(response.status).toBe(409);
+  });
+
+  it('returns the independent KYC outcome without a synthetic tier', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
+
+    const response = await POST(new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({
+        submissionId: '33333333-3333-4333-8333-333333333333',
+        userId,
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ data: { userId, kycStatus: 'approved', action: 'approve' } });
+    expect(body.data).not.toHaveProperty('tier');
   });
 });

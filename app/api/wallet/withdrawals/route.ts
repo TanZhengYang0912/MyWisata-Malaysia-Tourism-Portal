@@ -7,6 +7,8 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
 import { getPayoutDestinationCapabilities } from '@/lib/payouts/destinations';
 import { createServiceClient } from '@/lib/supabase/service';
+import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
+import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 const submitSchema = z.object({
   amountRm: z.string().trim().min(1).max(20),
@@ -14,9 +16,6 @@ const submitSchema = z.object({
 }).strict();
 
 function withdrawalError(message: string) {
-  if (message.includes('phone_verification_required')) {
-    return apiFail('PHONE_VERIFICATION_REQUIRED', 'Phone verification is required before requesting a withdrawal', 403);
-  }
   if (message.includes('kyc_required')) {
     return apiFail('KYC_REQUIRED', 'KYC approval is required before requesting a withdrawal', 403);
   }
@@ -47,7 +46,22 @@ function withdrawalError(message: string) {
 export async function POST(request: Request) {
   const db = await createClient();
   const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (authError || !user) return customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+    resolveCustomerCapability(null, CUSTOMER_CAPABILITY.WITHDRAWAL),
+    'Sign in before requesting a withdrawal',
+  )!;
+
+  const withdrawalDecision = await resolveServerCustomerCapability(
+    user.id,
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+  );
+  const withdrawalFailure = customerCapabilityFailure(
+    CUSTOMER_CAPABILITY.WITHDRAWAL,
+    withdrawalDecision,
+    'KYC approval is required before requesting a withdrawal',
+  );
+  if (withdrawalFailure) return withdrawalFailure;
 
   const parsed = await parseBody(request, submitSchema);
   if (!parsed.ok) return parsed.response;
@@ -58,7 +72,7 @@ export async function POST(request: Request) {
 
   const { data: userRow, error: userLookupError } = await db
     .from('users')
-    .select('stripe_connect_account_id,phone_verified_at,kyc_status')
+    .select('stripe_connect_account_id')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -68,12 +82,6 @@ export async function POST(request: Request) {
   }
 
   const accountId = userRow?.stripe_connect_account_id as string | null | undefined;
-  if (!userRow?.phone_verified_at) {
-    return apiFail('PHONE_VERIFICATION_REQUIRED', 'Phone verification is required before requesting a withdrawal', 403);
-  }
-  if (userRow.kyc_status !== 'approved') {
-    return apiFail('KYC_REQUIRED', 'KYC approval is required before requesting a withdrawal', 403);
-  }
   let destinationId = parsed.data.destinationId ?? null;
   if (destinationId) {
     const { data: destination, error: destinationError } = await db

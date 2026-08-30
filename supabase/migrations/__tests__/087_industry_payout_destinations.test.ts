@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 describe('industry payout destination migration contract', () => {
   it('supports verified destinations, cooldowns, snapshots, and failure details', () => {
-    const sql = readFileSync(new URL('../087_industry_payout_destinations.sql', import.meta.url), 'utf8');
+    const sql = [
+      new URL('../096_wallet_ledger_tng_mock_settlement.sql', import.meta.url),
+      new URL('../098_provider_neutral_withdrawal_completion.sql', import.meta.url),
+      new URL('../20260830013000_independent_capability_hard_guards.sql', import.meta.url),
+    ].map((path) => readFileSync(path, 'utf8')).join('\n');
 
     expect(sql).toContain('cooldown_until');
     expect(sql).toContain('destination_provider');

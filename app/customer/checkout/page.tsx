@@ -12,9 +12,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import type { Voucher } from "@/backend/core/types";
-import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
-import { CUSTOMER_CAPABILITY, resolveCustomerAccess } from "@/lib/auth/customer-capabilities";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
@@ -56,7 +55,7 @@ type WalletSummary = {
 export default function CheckoutPage() {
   const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const { currentUser, capabilities } = useAuth();
   const gate = useCustomerCapabilityGate();
   const { selectedItems, selectedKeys, totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
@@ -67,11 +66,7 @@ export default function CheckoutPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
-  const checkoutAllowed = resolveCustomerAccess(currentUser, CUSTOMER_CAPABILITY.CHECKOUT) === "allowed";
-
-  useEffect(() => {
-    if (!checkoutAllowed) gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout");
-  }, [checkoutAllowed, gate]);
+  const checkoutAllowed = capabilities.checkout.allowed;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -137,20 +132,12 @@ export default function CheckoutPage() {
   const walletInsufficient = walletSummaryLoaded && walletSpendableSen < totalSen;
   const selectedMethod = METHODS.find((choice) => choice.id === methodId) ?? METHODS[0]!;
 
-  if (!currentUser) {
-    return <div className="mx-auto max-w-lg px-4 py-10 sm:px-6"><GuestAccountEmptyState title={tCustomer("strictMigration.checkout.signInTitle")} description={tCustomer("strictMigration.checkout.signInDescription")} nextPath="/customer/checkout" /></div>;
-  }
-
-  if (!checkoutAllowed) {
-    return <EmptyState title={tCustomer("ui.checkout.phoneRequired")} description={tCustomer("ui.checkout.verifyPhone")} action={<Link href="/customer/profile?next=%2Fcustomer%2Fcheckout" className="font-semibold text-primary hover:underline">{tCustomer("ui.checkout.continueVerification")}</Link>} />;
-  }
-
   if (selectedItems.length === 0) {
     return <EmptyState title={tCustomer("ui.checkout.nothing")} description={tCustomer("ui.checkout.selectItems")} action={<Link href="/customer/cart" className="font-semibold text-primary hover:underline">{tCustomer("ui.actions.backToCart")}</Link>} />;
   }
 
   async function handlePay() {
-    if (paying || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return; // double-submit and tier guard
+    if (paying || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return;
     setPaying(true);
     setCheckoutError(null);
     try {
@@ -167,6 +154,10 @@ export default function CheckoutPage() {
           idempotencyKey,
         }),
       });
+      if (await gate.handleResponse(prepareResponse, "/customer/checkout")) {
+        setPaying(false);
+        return;
+      }
       const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         throw new Error(getCheckoutErrorMessage(prepared.error));
@@ -190,6 +181,10 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ checkoutSessionId: prepared.data.checkout_session_id, outcome: "succeeded" }),
       });
+      if (await gate.handleResponse(finalizeResponse, "/customer/checkout")) {
+        setPaying(false);
+        return;
+      }
       const finalized = await finalizeResponse.json() as { data?: { order_id?: string }; error?: CheckoutErrorPayload };
       if (!finalizeResponse.ok || !finalized.data?.order_id) throw new Error(getCheckoutErrorMessage(finalized.error));
       attributeCheckout(finalized.data.order_id);

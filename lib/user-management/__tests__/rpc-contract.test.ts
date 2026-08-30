@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = resolve(process.cwd(), "supabase/migrations/052_admin_user_management.sql");
+const migrationPath = resolve(process.cwd(), "supabase/legacy-migrations/052_admin_user_management.sql");
 
 describe("admin user management RPC contract", () => {
   it("defines the secure list/detail/mutation functions", () => {

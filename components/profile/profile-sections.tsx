@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Camera, CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2, MessageCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
@@ -14,6 +14,8 @@ import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-c
 import { BUDGET_RANGES, MOBILITY_NEEDS } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { bioSchema, identitySchema } from "@/lib/validation/profile-schemas";
+import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
+import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 
 type SectionId = "personal" | "contact";
 const MIN_BIO_LENGTH = 30;
@@ -37,7 +39,6 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [summary, setSummary] = useState<ProfileSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,8 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
+  const [cityId, setCityId] = useState<string | null>(null);
+  const [countryCode, setCountryCode] = useState<string | null>(null);
   const [bio, setBio] = useState("");
   const [phone, setPhone] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
@@ -63,7 +66,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       if (!response.ok || !body.data) throw new Error(tCommon("errors.generic"));
       const next = body.data;
       setSummary(next);
-      setFullName(next.fullName ?? ""); setCity(next.city ?? ""); setCountry(next.country ?? "Malaysia"); setBio(next.bio ?? ""); setPhone(next.phone ?? "");
+      setFullName(next.fullName ?? ""); setCity(next.city ?? ""); setCountry(next.country ?? "Malaysia"); setCityId(next.cityId); setCountryCode(next.countryCode); setBio(next.bio ?? ""); setPhone(next.phone ?? "");
       setError(null);
     } catch { setError(tCommon("errors.generic")); }
     finally { setLoading(false); }
@@ -74,7 +77,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   useEffect(() => () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); }, [avatarPreview]);
 
   async function savePersonal() {
-    const identity = identitySchema.safeParse({ fullName, city, country });
+    const identity = identitySchema.safeParse({ fullName, city, country, cityId, countryCode });
     const profileBio = bioSchema.safeParse({ bio });
     if (!identity.success || !profileBio.success) {
       setError(tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }));
@@ -148,6 +151,15 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
     finally { setBusy(false); }
   }
 
+  function handleAvatarSelected(file: File) {
+    setError(null);
+    setAvatarFile(file);
+    setAvatarPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
+  }
+
   async function closeAccount() {
     if (deleteConfirm !== "DELETE") return;
     setBusy(true); setError(null);
@@ -173,12 +185,16 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       {error && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <SectionCard title={tCustomer("ui.profileWizard.identity")} description={tCustomer("ui.profileWizard.description")}>
-        <div className="flex items-center gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {avatarPreview || summary.avatarUrl ? <img src={avatarPreview || summary.avatarUrl || ""} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-primary"><Camera size={23} /></div>}
-          <div><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0] ?? null; if (file && file.size <= 2 * 1024 * 1024) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} /><Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>{tCustomer("ui.profileWizard.choosePhoto")}</Button>{avatarFile && <Button size="sm" className="ml-2" onClick={uploadAvatar} disabled={busy}>{tCustomer("ui.profileWizard.savePhoto")}</Button>}</div>
-        </div>
-        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="grid gap-3 sm:grid-cols-2"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder={tCustomer("ui.profileWizard.cityPlaceholder")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={tCustomer("ui.profileWizard.countryPlaceholder")} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /></div><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
+        <ProfilePhotoPicker
+          variant="compact"
+          previewUrl={avatarPreview || summary.avatarUrl}
+          error={error}
+          disabled={busy}
+          onPhotoSelected={handleAvatarSelected}
+          onError={setError}
+        />
+        {avatarFile && <Button size="sm" className="mt-3" onClick={uploadAvatar} disabled={busy}>{tCustomer("ui.profileWizard.savePhoto")}</Button>}
+        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><ProfileLocationFields compact value={{ city, country, cityId, countryCode }} disabled={busy} onChange={(location) => { setCity(location.city); setCountry(location.country); setCityId(location.cityId); setCountryCode(location.countryCode); setError(null); }} /><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.contact")} description={tCustomer("ui.profileWizard.description")}>

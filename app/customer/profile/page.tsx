@@ -1,20 +1,22 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Phone, User, Camera, MessageSquare, ClipboardList,
-  Store, Upload, Loader2, ChevronRight,
+  User, Camera, MessageSquare, ClipboardList,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
-import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
+import { BusinessShareBanner } from "@/components/profile/business-share-banner";
+import { VerificationPathCards } from "@/components/profile/verification-path-cards";
+import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
+import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
-import { parseInternationalPhone } from "@/lib/phone/international";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
@@ -33,22 +35,16 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // ── Phone ──────────────────────────────────────────────────────────────────
-  const [phonePhase, setPhonePhase] = useState<"enter" | "verify">("enter");
-  const [phone, setPhone]           = useState("");
-  const [otp,   setOtp]             = useState("");
-  const [phoneError,  setPhoneError]  = useState<string | null>(null);
-  const [phoneBusy,   setPhoneBusy]   = useState(false);
-
   // ── Identity ───────────────────────────────────────────────────────────────
   const [fullName, setFullName]         = useState(currentUser?.name !== currentUser?.email ? (currentUser?.name ?? "") : "");
   const [city,     setCity]             = useState(currentUser?.city ?? "");
   const [country,  setCountry]          = useState(currentUser?.country ?? "Malaysia");
+  const [cityId, setCityId]             = useState<string | null>(null);
+  const [countryCode, setCountryCode]   = useState<string | null>(currentUser?.country === "Malaysia" ? "MY" : null);
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [identityBusy,  setIdentityBusy]  = useState(false);
 
   // ── Avatar ─────────────────────────────────────────────────────────────────
-  const fileRef = useRef<HTMLInputElement>(null);
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError,   setAvatarError]   = useState<string | null>(null);
@@ -79,72 +75,22 @@ export default function ProfilePage() {
       setFullName(nextProfile.fullName ?? "");
       setCity(nextProfile.city ?? "");
       setCountry(nextProfile.country ?? "");
+      setCityId(nextProfile.cityId);
+      setCountryCode(nextProfile.countryCode);
       setBio(nextProfile.bio ?? "");
-      if (nextProfile.avatarUrl) setAvatarPreview(nextProfile.avatarUrl);
       return nextProfile;
     } catch {
       return null;
     } finally {
       setProfileLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, setBio, setCity, setCountry, setFullName]);
 
   useEffect(() => { void loadProfile(); }, [loadProfile]);
 
-  // ── Phone handlers ─────────────────────────────────────────────────────────
-  async function sendOtp() {
-    const parsedPhone = parseInternationalPhone(phone);
-    if (!parsedPhone.ok) { setPhoneError(tCustomer("ui.profileWizard.invalidPhone")); return; }
-    setPhone(parsedPhone.e164);
-    setPhoneError(null);
-    setPhoneBusy(true);
-    try {
-      const res = await fetch("/api/phone/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: parsedPhone.e164 }),
-      });
-      if (!res.ok) {
-        throw new Error(tCustomer("ui.profileWizard.sendOtp"));
-      }
-      setPhonePhase("verify");
-      showFeedback("success", tCustomer("ui.profileWizard.sendOtp"));
-    } catch {
-      setPhoneError(tCustomer("ui.profileWizard.sendOtp"));
-    } finally {
-      setPhoneBusy(false);
-    }
-  }
-
-  async function verifyOtp() {
-    if (!/^\d{6}$/.test(otp.trim())) { setPhoneError(tCustomer("ui.profileWizard.invalidOtp")); return; }
-    const parsedPhone = parseInternationalPhone(phone);
-    if (!parsedPhone.ok) { setPhoneError(tCustomer("ui.profileWizard.invalidPhone")); return; }
-    setPhone(parsedPhone.e164);
-    setPhoneError(null);
-    setPhoneBusy(true);
-    try {
-      const res = await fetch("/api/phone/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: parsedPhone.e164, code: otp.trim() }),
-      });
-      if (!res.ok) {
-        throw new Error(tCustomer("ui.profileWizard.verifyOtp"));
-      }
-      await Promise.all([refreshUser(), loadProfile()]);
-      showFeedback("success", tCustomer("ui.profileWizard.verifyOtp"));
-      if (continuation === "/customer/checkout") router.push(continuation);
-    } catch {
-      setPhoneError(tCustomer("ui.profileWizard.verifyOtp"));
-    } finally {
-      setPhoneBusy(false);
-    }
-  }
-
   // ── Identity handler ───────────────────────────────────────────────────────
   async function submitIdentity() {
-    const parsed = identitySchema.safeParse({ fullName, city, country });
+    const parsed = identitySchema.safeParse({ fullName, city, country, cityId, countryCode });
     if (!parsed.success) { setIdentityError(tCustomer("ui.profileWizard.fullNameValidation")); return; }
     setIdentityError(null);
     setIdentityBusy(true);
@@ -205,6 +151,9 @@ export default function ProfilePage() {
         throw new Error(tCustomer("ui.profileWizard.avatarConfirmError"));
       }
       await Promise.all([refreshUser(), loadProfile()]);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(null);
+      setAvatarPreview(null);
       showFeedback("success", tCustomer("ui.profileWizard.savePhoto"));
     } catch {
       setAvatarError(tCustomer("ui.profileWizard.savePhoto"));
@@ -228,14 +177,19 @@ export default function ProfilePage() {
       if (!res.ok) {
         throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
-      await loadProfile();
+      await Promise.all([refreshUser(), loadProfile()]);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
-      if (continuation) router.push(continuation);
     } catch {
       setBioError(tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setBioBusy(false);
     }
+  }
+
+  async function handlePreferencesSaved() {
+    await Promise.all([refreshUser(), loadProfile()]);
+    showFeedback("success", tCustomer("ui.preferencesEditor.saved"));
+    if (continuation) router.push(continuation);
   }
 
   if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath={continuation ?? "/customer/profile"} /></CustomerPageShell>;
@@ -256,8 +210,13 @@ export default function ProfilePage() {
         description={tCustomer("ui.profileWizard.description")}
       />
       <CustomerPageShell wide className="pt-0 pb-0 sm:pt-0">
+        <BusinessShareBanner />
+        <VerificationPathCards
+          phoneVerified={profile.phoneVerified}
+          kycStatus={profile.kycStatus}
+        />
         <div className="text-sm font-semibold text-primary" aria-label={tCustomer("ui.profileWizard.verificationComplete")}>
-          {tCustomer("ui.profileWizard.stepOf", { current: 5, total: 5 })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}
+          {tCustomer("ui.profileWizard.stepOf", { current: wizardProgress.totalSteps, total: wizardProgress.totalSteps })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}
         </div>
         {continuation && <Button asChild className="mt-4"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}
       </CustomerPageShell>
@@ -276,13 +235,11 @@ export default function ProfilePage() {
         description={tCustomer("ui.profileWizard.completeDescription")}
       />
       <CustomerPageShell wide className="pt-0 sm:pt-0">
-      <Link href="/customer/profile/register-vendor" className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4 text-left transition hover:border-primary/30 hover:bg-primary/[0.08]">
-        <span className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"><Store size={18} /></span>
-          <span><span className="block text-sm font-bold text-foreground">{tCustomer("ui.profileWizard.businessPrompt")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{tCustomer("ui.profileWizard.businessDescription")}</span></span>
-        </span>
-        <ChevronRight size={18} className="shrink-0 text-primary" />
-      </Link>
+      <BusinessShareBanner />
+      <VerificationPathCards
+        phoneVerified={profile.phoneVerified}
+        kycStatus={profile.kycStatus}
+      />
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">
@@ -312,68 +269,6 @@ export default function ProfilePage() {
         <p className="mt-1 font-semibold text-primary">{tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}</p>
       </div>
 
-      {/* ── Step 0: Phone Verification ───────────────────────────────────── */}
-      {activeStep === "phone" && (
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Phone size={18} className="text-primary" />
-            <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.verifyPhone")}</h2>
-          </div>
-
-          {phonePhase === "enter" ? (
-            <>
-              <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.phoneDescription")}</p>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.phoneNumber")}</label>
-                <InternationalPhoneInput
-                  id="profile-phone"
-                  value={phone}
-                  onChange={(value) => { setPhone(value); setPhoneError(null); }}
-                  disabled={phoneBusy}
-                  error={Boolean(phoneError)}
-                />
-                {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-              </div>
-              <Button onClick={sendOtp} disabled={phoneBusy} className="w-full">
-                {phoneBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-                {phoneBusy ? tCustomer("ui.profileWizard.sending") : tCustomer("ui.profileWizard.sendOtp")}
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.otpDescription", { phone })}</p>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.otpCode")}</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => { setOtp(e.target.value); setPhoneError(null); }}
-                  placeholder="123456"
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 tracking-widest text-center"
-                  style={{ borderColor: phoneError ? "var(--destructive)" : "var(--border)" }}
-                />
-                {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => { setPhonePhase("enter"); setOtp(""); setPhoneError(null); }}
-                >
-                  {tCustomer("ui.profileWizard.changeNumber")}
-                </Button>
-                <Button onClick={verifyOtp} disabled={phoneBusy} className="flex-1">
-                  {phoneBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-                  {phoneBusy ? tCustomer("ui.profileWizard.verifying") : tCustomer("ui.profileWizard.verifyOtp")}
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
       {/* ── Step 1: Identity ─────────────────────────────────────────────── */}
       {activeStep === "identity" && (
         <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
@@ -391,26 +286,18 @@ export default function ProfilePage() {
               style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.city")}</label>
-            <input
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setIdentityError(null); }}
-              placeholder={tCustomer("ui.profileWizard.cityPlaceholder")}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-              style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.profileWizard.country")}</label>
-            <input
-              value={country}
-              onChange={(e) => { setCountry(e.target.value); setIdentityError(null); }}
-              placeholder={tCustomer("ui.profileWizard.countryPlaceholder")}
-              className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
-              style={{ borderColor: identityError ? "var(--destructive)" : "var(--border)" }}
-            />
-          </div>
+          <ProfileLocationFields
+            value={{ city, country, cityId, countryCode }}
+            error={Boolean(identityError)}
+            disabled={identityBusy}
+            onChange={(location) => {
+              setCity(location.city);
+              setCountry(location.country);
+              setCityId(location.cityId);
+              setCountryCode(location.countryCode);
+              setIdentityError(null);
+            }}
+          />
           {identityError && <p className="text-xs text-destructive">{identityError}</p>}
           <Button onClick={submitIdentity} disabled={identityBusy} className="w-full">
             {identityBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
@@ -427,39 +314,17 @@ export default function ProfilePage() {
             <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.profilePhoto")}</h2>
           </div>
           <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.photoDescription")}</p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null)}
+          <ProfilePhotoPicker
+            variant="wizard"
+            previewUrl={avatarPreview || profile.avatarUrl}
+            error={avatarError}
+            disabled={avatarBusy}
+            onPhotoSelected={handleFileSelect}
+            onError={setAvatarError}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="w-full flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed transition-colors"
-            style={{
-              borderColor: avatarError ? "var(--destructive)" : avatarFile ? "var(--primary)" : "var(--border)",
-              backgroundColor: avatarFile ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",
-            }}
-          >
-            {avatarPreview ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={avatarPreview} alt={tCustomer("ui.profileWizard.profilePhoto")} className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
-                <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.choosePhoto")}</p>
-              </>
-            ) : (
-              <>
-                <Upload size={24} className="text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{tCustomer("ui.profileWizard.choosePhoto")}</p>
-              </>
-            )}
-          </button>
-          {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
           <Button onClick={submitAvatar} disabled={avatarBusy || !avatarFile} className="w-full">
             {avatarBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-            {avatarBusy ? tCustomer("ui.states.submitting") : tCustomer("ui.profileWizard.choosePhoto")}
+            {avatarBusy ? tCustomer("ui.states.submitting") : tCustomer("ui.profileWizard.savePhoto")}
           </Button>
         </div>
       )}
@@ -506,7 +371,7 @@ export default function ProfilePage() {
           <p className="text-xs text-muted-foreground">{tCustomer("ui.preferencesPage.description")}</p>
           <PreferencesEditor
             submitLabel={tCustomer("ui.kyc.completeProfile")}
-            onSaved={() => { void Promise.all([refreshUser(), loadProfile()]); showFeedback("success", tCustomer("ui.preferencesEditor.saved")); }}
+            onSaved={() => { void handlePreferencesSaved(); }}
           />
         </div>
       )}

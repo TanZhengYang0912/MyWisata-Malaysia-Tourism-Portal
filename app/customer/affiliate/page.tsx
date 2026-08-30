@@ -9,7 +9,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Copy, Download, Gift, Link2, Megaphone, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { isAffiliateEligible } from "@/lib/affiliate/verification";
 import { sanitizeCampaign } from "@/lib/affiliate/campaign";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
@@ -25,7 +24,6 @@ import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
-import { guestLoginHref } from "@/lib/auth/guest-mode";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -45,7 +43,7 @@ type SortKey = "shares" | "clicks" | "referrals" | "earnings";
 
 export default function AffiliateDashboardPage() {
   const { t: tCustomer } = useTranslation("customer");
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, capabilities, loading: authLoading } = useAuth();
   const gate = useCustomerCapabilityGate();
   const { showFeedback } = useActionFeedback();
   const [stats, setStats] = useState<StatsResponse | null | undefined>(undefined); // undefined = loading
@@ -53,6 +51,10 @@ export default function AffiliateDashboardPage() {
   const [copied, setCopied] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("clicks");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const affiliateEligible = capabilities.affiliate_full.allowed || capabilities.affiliate_limited.allowed;
+  const affiliateCapability = capabilities.affiliate_full.allowed
+    ? CUSTOMER_CAPABILITY.AFFILIATE_FULL
+    : CUSTOMER_CAPABILITY.AFFILIATE_LIMITED;
 
   // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1.
   const [campaignInput, setCampaignInput] = useState("");
@@ -64,9 +66,11 @@ export default function AffiliateDashboardPage() {
 
   async function downloadEarnings() {
     if (exporting) return;
+    if (!gate("affiliate.earn_commission", "/customer/affiliate")) return;
     setExporting(true);
     try {
       const res = await fetch(`/api/affiliate/earnings-export?range=${exportRange}`);
+      if (await gate.handleResponse(res, "/customer/affiliate")) return;
       if (!res.ok) {
         showFeedback("error", "Could not export earnings. Please try again.");
         return;
@@ -102,15 +106,17 @@ export default function AffiliateDashboardPage() {
   }
 
   useEffect(() => {
-    if (!currentUser) {
-      setStats(null);
-      return;
-    }
-    (async () => {
-      await loadStats();
-    })();
+    const timeoutId = window.setTimeout(() => {
+      if (!currentUser || !affiliateEligible) {
+        setStats(null);
+        return;
+      }
+      void loadStats();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
+  }, [affiliateEligible, currentUser?.id]);
 
   const sortedProducts = useMemo(() => {
     if (!stats) return [];
@@ -138,10 +144,11 @@ export default function AffiliateDashboardPage() {
 
   async function generateLink() {
     if (generating) return;
-    if (!gate(CUSTOMER_CAPABILITY.AFFILIATE_LIMITED, "/customer/affiliate")) return;
+    if (!gate(affiliateCapability, "/customer/affiliate")) return;
     setGenerating(true);
     try {
       const response = await fetch("/api/affiliate/link", { method: "POST" });
+      if (await gate.handleResponse(response, "/customer/affiliate")) return;
       await response.json().catch(() => ({}));
       if (!response.ok) { showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed")); return; }
       showFeedback("success", tCustomer("strictMigration.affiliate.linkReady"));
@@ -199,7 +206,7 @@ export default function AffiliateDashboardPage() {
         <EmptyState
           title={tCustomer("strictMigration.affiliate.signInRequired")}
           description={tCustomer("strictMigration.affiliate.signInDescription")}
-          action={<div className="flex flex-wrap justify-center gap-3"><Button onClick={() => void generateLink()}>{tCustomer("strictMigration.affiliate.generateLink")}</Button><Button asChild variant="outline"><Link href={guestLoginHref("/customer/affiliate")}>{tCustomer("ui.guest.signIn")}</Link></Button></div>}
+          action={<Button onClick={() => void generateLink()}>{tCustomer("strictMigration.affiliate.generateLink")}</Button>}
         />
       </CustomerPageShell>
     </>;
@@ -207,7 +214,7 @@ export default function AffiliateDashboardPage() {
 
   // Fix 3a: a real teaser with a path forward, not a dead-end EmptyState —
   // this is how the feature recruits affiliates in the first place.
-  if (!isAffiliateEligible(currentUser)) {
+  if (!affiliateEligible) {
     return (
       <>
         <CustomerPageTitle
@@ -222,9 +229,7 @@ export default function AffiliateDashboardPage() {
               <Gift size={24} className="text-primary" />
             </div>
             <p className="text-sm text-muted-foreground mb-6">{tCustomer("strictMigration.affiliate.verifyUnlock")}</p>
-            <Button asChild>
-              <Link href="/customer/kyc">{tCustomer("strictMigration.affiliate.verifyAccount")}</Link>
-            </Button>
+            <Button onClick={() => void generateLink()}>{tCustomer("strictMigration.affiliate.generateLink")}</Button>
           </div>
         </CustomerPageShell>
       </>
@@ -254,6 +259,13 @@ export default function AffiliateDashboardPage() {
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
+
+      {!capabilities.affiliate_full.allowed && (
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/[0.04] p-5">
+          <p className="max-w-2xl text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.verifyUnlock")}</p>
+          <Button variant="outline" onClick={() => gate(CUSTOMER_CAPABILITY.AFFILIATE_FULL, "/customer/affiliate")}>{tCustomer("strictMigration.affiliate.verifyAccount")}</Button>
+        </div>
+      )}
 
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
@@ -422,7 +434,7 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="mb-8">
-        <AffiliateInsightCard scope="user" />
+        <AffiliateInsightCard scope="user" requiredCapability="affiliate.earn_commission" nextPath="/customer/affiliate" />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">

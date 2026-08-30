@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const sql = readFileSync('supabase/migrations/080_vendor_notifications.sql', 'utf8');
+const sql = readFileSync('supabase/legacy-migrations/080_vendor_notifications.sql', 'utf8');
 
 describe('vendor notification migration', () => {
   it('adds scoped columns, constraints, and query indexes', () => {

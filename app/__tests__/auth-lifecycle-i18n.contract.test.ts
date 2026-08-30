@@ -16,6 +16,7 @@ const CODE_FILES = [
   "components/vendor/vendor-invite-wizard.tsx",
   "components/vendor/register-vendor-form.tsx",
   "app/dev/page.tsx",
+  "app/dev/demo-purchase-client.tsx",
   "app/dev/customize/page.tsx",
   "app/dev/customize/widgets.tsx",
   "app/dev/explore/page.tsx",
@@ -24,6 +25,7 @@ const CODE_FILES = [
 ] as const;
 
 const DIRECT_CHILDREN = [
+  ["app/dev/page.tsx", "./demo-purchase-client"],
   ["app/dev/customize/page.tsx", "./widgets"],
   ["app/dev/explore/page.tsx", "./dev-explore-client"],
 ] as const;
@@ -38,7 +40,8 @@ describe("authentication, invitation, lifecycle, and development i18n contract",
       const contents = source(path);
       const hasRuntime = /useTranslation\(|getServerTranslation\(|useT\(/.test(contents);
       const rendersTranslatedChild =
-        path === "app/vendor-invite/page.tsx" && contents.includes("<VendorInviteClient");
+        (path === "app/vendor-invite/page.tsx" && contents.includes("<VendorInviteClient")) ||
+        (path === "app/dev/page.tsx" && contents.includes("<DemoPurchaseClient"));
 
       expect(hasRuntime || rendersTranslatedChild, `${path} must use or render translated UI`).toBe(true);
     }
@@ -149,7 +152,7 @@ describe("authentication, invitation, lifecycle, and development i18n contract",
     expect(wizard).toContain("VendorInvitePhoneStep");
     expect(wizard).toContain("window.sessionStorage.removeItem");
 
-    const dev = source("app/dev/page.tsx");
+    const dev = source("app/dev/demo-purchase-client.tsx");
     expect(dev).toContain("/api/dev/simulate-purchase");
     expect(dev).toContain("productId");
   });
