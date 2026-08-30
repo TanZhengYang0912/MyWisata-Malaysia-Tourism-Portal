@@ -33,7 +33,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
     label: "Account",
     labelKey: "accountGroups.account",
     items: [
-      { href: "/customer/verification", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
+      { href: "/customer/profile", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
       { href: "/customer/notifications", label: "Notifications", labelKey: "accountItems.notifications", description: "Bookings, wallet and account updates", icon: Bell },
       { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
     ],

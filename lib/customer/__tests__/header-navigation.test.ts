@@ -26,7 +26,7 @@ describe("customer header navigation", () => {
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/map")).toBe(false);
 
     expect(getAllAccountRoutes()).toEqual([
-      "/customer/verification",
+      "/customer/profile",
       "/customer/notifications",
       "/customer/preferences",
       "/customer/orders",
@@ -46,16 +46,16 @@ describe("customer header navigation", () => {
     ]);
   });
 
-  it("makes Profile & Verification the single capability-first account entry", () => {
+  it("makes the existing Profile editor the single Profile & Verification entry", () => {
     const items = ACCOUNT_MENU_GROUPS.flatMap((group) => group.items);
     const profileEntry = items.find((item) => item.labelKey === "accountItems.profile");
 
     expect(profileEntry).toMatchObject({
-      href: "/customer/verification",
+      href: "/customer/profile",
       label: "Profile & Verification",
     });
-    expect(items.filter((item) => item.href === "/customer/verification")).toHaveLength(1);
-    expect(items.some((item) => item.href === "/customer/profile")).toBe(false);
+    expect(items.filter((item) => item.href === "/customer/profile")).toHaveLength(1);
+    expect(items.some((item) => item.href === "/customer/verification")).toBe(false);
   });
 
   it("uses a profile name and falls back to an email local part", () => {

@@ -35,6 +35,12 @@ describe('profile completion display contract', () => {
     const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
 
     expect(page).toContain('<BusinessShareBanner />');
+    expect(page).toContain('import { VerificationPathCards }');
+    expect(page.match(/<VerificationPathCards/g)).toHaveLength(2);
+    expect(page.match(/<BusinessShareBanner \/>[\s\S]{0,260}<VerificationPathCards/g)).toHaveLength(2);
+    expect(page).toContain('phoneVerified={profile.phoneVerified}');
+    expect(page).toContain('kycStatus={profile.kycStatus}');
+    expect(page).not.toContain('phoneVerified={verificationFacts');
     expect(page).toContain('const visibleSteps = WIZARD_STEPS');
     expect(page).not.toContain('PhoneVerificationCard');
     expect(page).not.toContain('/api/phone/send-otp');

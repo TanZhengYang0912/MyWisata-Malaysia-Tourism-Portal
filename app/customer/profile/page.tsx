@@ -12,6 +12,7 @@ import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { Button } from "@/components/ui/button";
 import { BusinessShareBanner } from "@/components/profile/business-share-banner";
+import { VerificationPathCards } from "@/components/profile/verification-path-cards";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
@@ -203,6 +204,10 @@ export default function ProfilePage() {
       />
       <CustomerPageShell wide className="pt-0 pb-0 sm:pt-0">
         <BusinessShareBanner />
+        <VerificationPathCards
+          phoneVerified={profile.phoneVerified}
+          kycStatus={profile.kycStatus}
+        />
         <div className="text-sm font-semibold text-primary" aria-label={tCustomer("ui.profileWizard.verificationComplete")}>
           {tCustomer("ui.profileWizard.stepOf", { current: wizardProgress.totalSteps, total: wizardProgress.totalSteps })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}
         </div>
@@ -224,6 +229,10 @@ export default function ProfilePage() {
       />
       <CustomerPageShell wide className="pt-0 sm:pt-0">
       <BusinessShareBanner />
+      <VerificationPathCards
+        phoneVerified={profile.phoneVerified}
+        kycStatus={profile.kycStatus}
+      />
 
       {/* Progress */}
       <div className="flex items-end gap-1.5 mb-8">

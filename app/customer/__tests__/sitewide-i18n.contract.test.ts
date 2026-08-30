@@ -114,6 +114,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/profile/international-phone-input.tsx",
   "components/profile/phone-verification-card.tsx",
   "components/profile/profile-sections.tsx",
+  "components/profile/verification-path-cards.tsx",
 ] as const;
 
 const inventoryRoots = [
@@ -176,6 +177,7 @@ const delegatingFiles = new Set([
   "app/customer/page.tsx",
   "app/customer/profile/wizard-progress.ts",
   "app/customer/search/page.tsx",
+  "app/customer/verification/page.tsx",
   "app/guest/activity/[id]/page.tsx",
   "app/guest/explore/page.tsx",
   "app/guest/layout.tsx",
