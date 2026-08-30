@@ -1282,7 +1282,7 @@
       "cityNoResults": "No matching city found. You can keep your own entry.",
       "cityUnavailable": "City suggestions are temporarily unavailable. You can still enter your city manually.",
       "cityManualHint": "Choose a suggestion when available, or enter your city manually.",
-      "attribution": "City data © GeoNames"
+      "attribution": "City data © GeoNames · CC BY 4.0"
     },
     "activityDetail": {
       "publicAccess": "Public access",

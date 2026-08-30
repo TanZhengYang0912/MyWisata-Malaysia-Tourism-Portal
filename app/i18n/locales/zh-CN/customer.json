@@ -1282,7 +1282,7 @@
       "cityNoResults": "找不到匹配的城市，您可以保留手动输入。",
       "cityUnavailable": "城市建议暂时不可用，您仍可手动输入城市。",
       "cityManualHint": "有建议时可选择，也可以直接手动输入城市。",
-      "attribution": "City data © GeoNames"
+      "attribution": "城市数据 © GeoNames · CC BY 4.0"
     },
     "activityDetail": {
       "publicAccess": "公共访问",

@@ -10,6 +10,7 @@ const read = (file: string) => {
 const fields = read("components/profile/profile-location-fields.tsx");
 const country = read("components/profile/country-combobox.tsx");
 const city = read("components/profile/city-autocomplete.tsx");
+const customerLocales = ["en", "ms", "zh-CN"].map((locale) => read(`app/i18n/locales/${locale}/customer.json`));
 
 describe("shared Profile location fields", () => {
   it("keeps country and city controlled with catalogue/manual transitions", () => {
@@ -46,6 +47,7 @@ describe("shared Profile location fields", () => {
     expect(city).toContain("Enter");
     expect(city).toContain("Escape");
     expect(city).toContain("https://www.geonames.org/");
-    expect(city).toContain("CC BY 4.0");
+    expect(city).toContain('tCustomer("ui.profileLocation.attribution")');
+    for (const locale of customerLocales) expect(locale).toContain("CC BY 4.0");
   });
 });

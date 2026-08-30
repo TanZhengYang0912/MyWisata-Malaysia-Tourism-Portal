@@ -135,7 +135,7 @@ export function CityAutocomplete({ value, cityId, countryCode, onChange, error =
             rel="noreferrer"
             className="block border-t border-border px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground"
           >
-            {tCustomer("ui.profileLocation.attribution")} · CC BY 4.0
+            {tCustomer("ui.profileLocation.attribution")}
           </a>
         </div>
       )}

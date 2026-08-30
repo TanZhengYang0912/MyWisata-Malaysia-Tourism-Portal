@@ -1282,7 +1282,7 @@
       "cityNoResults": "Tiada bandar yang sepadan. Anda boleh kekalkan entri sendiri.",
       "cityUnavailable": "Cadangan bandar tidak tersedia buat sementara. Anda masih boleh memasukkan bandar secara manual.",
       "cityManualHint": "Pilih cadangan jika tersedia, atau masukkan bandar secara manual.",
-      "attribution": "City data © GeoNames"
+      "attribution": "Data bandar © GeoNames · CC BY 4.0"
     },
     "activityDetail": {
       "publicAccess": "Akses awam",
