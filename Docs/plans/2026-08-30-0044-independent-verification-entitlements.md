@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status (2026-08-30):** Approved follow-up repair implemented and locally verified. The Account menu now has one `Profile & Verification` entry to the independent verification hub; the Profile card still opens the preserved four-step editor and business banner. The effective Profile fact now requires its historical completion timestamp plus current Identity, Photo, About you, and Preferences evidence in the auth snapshot, capability resolver, recommendation/affiliate database guards, compatibility metadata, and personalized recommendation mode. Historical completion timestamps are preserved; Phone and KYC remain independent and untouched. Full Vitest, ESLint, TypeScript, i18n, PostgreSQL parser, diff, browser-flow, and focused permission/privacy verification passed. Disposable-local pgTAP execution remains environment-blocked because Docker/Podman is unavailable; no linked, shared, or remote database was reset or migrated.
+**Status (2026-08-30):** Entitlement and Profile-fact repairs implemented and locally verified. A further UX simplification is approved in design and awaiting implementation review: make the existing Profile editor the single Account destination, add only Phone/KYC status cards above its stepper, and retire the duplicate intent-card hub through a compatibility redirect. The effective Profile fact already requires its historical completion timestamp plus current Identity, Photo, About you, and Preferences evidence across application and database authorization boundaries. Historical completion timestamps are preserved; Phone and KYC remain independent and untouched. Disposable-local pgTAP execution remains environment-blocked because Docker/Podman is unavailable; no linked, shared, or remote database was reset or migrated.
 
 **Goal:** Replace the linear customer tier authorization model with independent Phone, Profile, and KYC facts plus dynamic, versioned entitlements that preserve every accepted feature rule and cannot bypass hard security guards.
 
@@ -1009,16 +1009,54 @@ Evidence after the final code change (`bfbd6eb`):
 
 **Exact behavior:**
 
-1. Make the first Account item `Profile & Verification` and route it to `/customer/verification`; remove the duplicate Verification item from Payments & verification. The Profile card remains the only normal entry to the unchanged `/customer/profile` four-step editor.
-2. Define one fail-closed database eligibility predicate matching Identity, uploaded Photo, 30–200 character About you, and non-empty Preferences evidence. Use it for the dynamic `profile_complete` fact and the capability hard guard.
-3. Add a forward-only reconciliation migration that clears only invalid `profile_completed_at` values, recomputes compatibility metadata, and does not mutate Phone or KYC facts.
-4. Make `/api/auth/me` and the private Profile summary require both the stored completion timestamp and current four-section evidence, so the frontend cannot overstate Profile before a database reconciliation is applied.
-5. Stop demo seed paths from setting customer Profile completion without seeding the required evidence.
+1. The first routing repair made the Account item `Profile & Verification`, routed it to `/customer/verification`, and removed the duplicate Verification item. The later approved UX follow-up below supersedes only that destination/layout decision.
+2. Define one fail-closed database eligibility predicate matching Identity, uploaded Photo, 30–200 character About you, and non-empty Preferences evidence. Use it for the dynamic `profile_complete` fact, capability hard guard, recommendation insert guard, Affiliate mode, and compatibility metadata.
+3. Preserve historical `profile_completed_at` evidence. Do not bulk-clear timestamps or mutate Phone/KYC facts; authorization uses the effective timestamp-plus-current-evidence predicate.
+4. Make `/api/auth/me`, personalized recommendations, and the private Profile summary require both the stored completion timestamp and current four-section evidence, so application and database decisions cannot disagree.
+5. Stop all demo seed paths from setting Profile completion without seeding the required evidence.
 
 **Scope boundaries / files not touched:** No changes to the Profile editor layout, `BusinessShareBanner`, OTP provider, Phone/KYC flows, Profile field validation, avatar storage, bio moderation, Affiliate/Checkout rules, Admin pages, or historical applied migrations.
 
 **Dependencies:** None.
 
-**Database change:** One new forward migration; no destructive schema change. It may clear false-positive `profile_completed_at` timestamps only when the corresponding current Profile evidence is incomplete. Phone and KYC facts remain unchanged.
+**Database change:** One new forward migration; no destructive schema or data change. Historical completion timestamps, Phone facts, and KYC facts remain unchanged.
 
-**Risks:** A predicate mismatch could revoke a valid Profile capability or leave an invalid one enabled. Contract tests must compare the database predicate with the existing TypeScript rules, require default-avatar rejection and non-empty interests, and assert that the reconciliation never touches Phone/KYC. Local migration execution remains blocked until a disposable Docker/Podman-backed Supabase stack is available.
+**Risks:** A predicate mismatch could revoke a valid Profile capability or leave an invalid one enabled. Contract tests compare every authorization boundary with the existing TypeScript rules, require default-avatar rejection and non-empty interests, and assert that the migration never clears historical Profile evidence or touches Phone/KYC. Local migration execution remains blocked until a disposable Docker/Podman-backed Supabase stack is available.
+
+---
+
+### Approved UX follow-up: integrate verification paths into Profile
+
+**Context:** The independent verification hub correctly exposes Phone, Profile, and KYC, but its separate `What would you like to do?` intent cards duplicate the just-in-time capability dialogs. The selected visual target is the existing `/customer/profile` page. Users should keep that familiar four-step skeleton and see only the two other independent verification paths above it.
+
+**Decision:** Use the existing Profile page as the single Account destination. Add two compact status cards—Phone and KYC—immediately after `BusinessShareBanner` and before the four-step progress bar. Do not show a Profile card because the user is already on the Profile editor. Do not show intent/feature cards. Capability-specific surfaces remain responsible for explaining what verification is missing when the user actually attempts Submit Recommendation, Affiliate, Checkout, or Withdrawal.
+
+**Files to modify:**
+
+- `app/customer/profile/page.tsx` — render the two-card row in both incomplete and completed Profile states.
+- `app/customer/profile/__tests__/profile-completion.test.ts` — assert the preserved four-step skeleton and compact independent-path row.
+- `components/profile/verification-path-cards.tsx` — new reusable presentation-only Phone/KYC status card row.
+- `app/customer/verification/page.tsx` — replace the duplicate hub with a compatibility redirect to `/customer/profile`.
+- `app/customer/verification/__tests__/page.contract.test.ts` — assert redirect behavior and absence of intent cards.
+- `lib/customer/header-navigation.ts` — point the single `Profile & Verification` Account item to `/customer/profile`.
+- `lib/customer/__tests__/header-navigation.test.ts` — assert one Profile destination and no separate verification destination.
+- this plan.
+
+**Exact UI behavior:**
+
+1. Preserve `CustomerPageTitle`, `BusinessShareBanner`, Identity/Photo/About you/Preferences progress, all form fields, completion state, and continuation behavior.
+2. Render Phone and KYC as equal-width cards on desktop and a one-column stack on narrow screens, using existing design tokens and Lucide icons already used by the project.
+3. Each card shows its current state from `verificationFacts` and links directly to `/customer/phone` or `/customer/kyc`. Pending and rejected KYC remain visibly distinct through the existing localized state strings.
+4. Keep the row visually compact and unheaded; include an accessible navigation label without adding visible explanatory copy.
+5. `/customer/verification` redirects to `/customer/profile`, so bookmarks and older links do not break.
+6. Remove the `What would you like to do?` intent-card experience entirely; no feature rule or backend entitlement changes.
+
+**Files not touched:** Phone OTP UI/API, KYC UI/API, Profile section handlers and validation, Business banner styling, capability dialogs, recommendation/Affiliate/checkout/wallet APIs, database migrations, Admin pages, and entitlement rules.
+
+**Dependencies:** None.
+
+**Database changes:** None.
+
+**Risks:** The two cards could crowd the Profile page on mobile or show stale state after verification. Responsive contract/browser checks must cover the stacked layout, and the cards must read only the existing `verificationFacts` snapshot refreshed by the Phone/KYC flows. The legacy redirect must not create a loop.
+
+**Verification:** TDD contract tests, affected Profile/verification/navigation/i18n tests, TypeScript, scoped ESLint, browser inspection at desktop and narrow widths, and a screenshot comparison against the supplied Profile reference. Full Vitest runs once after the final code change.
