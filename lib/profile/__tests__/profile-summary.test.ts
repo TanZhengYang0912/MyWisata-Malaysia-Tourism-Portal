@@ -78,6 +78,7 @@ describe("profile summary", () => {
     );
 
     expect(result.verification.complete).toBe(false);
+    expect(result.profileComplete).toBe(false);
     expect(result.profileRichness.percentage).toBe(40);
   });
 

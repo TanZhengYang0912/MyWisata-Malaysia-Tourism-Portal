@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status (2026-08-30):** Implemented and verified within the available local runtime. Application, contract, migration-parser, i18n, affected-suite, full-suite, and focused permission/privacy review evidence all pass. Disposable-local pgTAP execution remains environment-blocked because Docker/Podman is unavailable; no linked, shared, or remote database was reset or migrated.
+**Status (2026-08-30):** Approved follow-up repair implemented and locally verified. The Account menu now has one `Profile & Verification` entry to the independent verification hub; the Profile card still opens the preserved four-step editor and business banner. The effective Profile fact now requires its historical completion timestamp plus current Identity, Photo, About you, and Preferences evidence in the auth snapshot, capability resolver, recommendation/affiliate database guards, compatibility metadata, and personalized recommendation mode. Historical completion timestamps are preserved; Phone and KYC remain independent and untouched. Full Vitest, ESLint, TypeScript, i18n, PostgreSQL parser, diff, browser-flow, and focused permission/privacy verification passed. Disposable-local pgTAP execution remains environment-blocked because Docker/Podman is unavailable; no linked, shared, or remote database was reset or migrated.
 
 **Goal:** Replace the linear customer tier authorization model with independent Phone, Profile, and KYC facts plus dynamic, versioned entitlements that preserve every accepted feature rule and cannot bypass hard security guards.
 
@@ -980,3 +980,45 @@ Evidence after the final code change (`bfbd6eb`):
 - `npx supabase status` confirmed the repository is linked to project `FYP`, but local container inspection failed because neither Docker nor Podman is installed. Therefore `supabase db reset` and `supabase test db` were intentionally not run; no remote/shared database was changed.
 - The focused `luna_worker` review found three confirmed must-fix inconsistencies in `/api/auth/me` fact sourcing/default-deny behavior and server snapshot generation coherence. Those were repaired and re-reviewed. Its final Affiliate privacy review found and repaired direct stats/export/insight reads that lacked capability enforcement; focused re-review approved `bfbd6eb` with no remaining authorization, privacy, or core-rule blocker.
 - Non-blocking follow-up: execute the committed pgTAP matrix on a disposable local Supabase stack once Docker Desktop or Podman is available, before any deployment or migration promotion.
+
+---
+
+### Follow-up repair: Profile entry and completion-fact consistency
+
+**Context:** The Account menu still sends `Profile` directly to the four-step editor, so users do not see the independent Phone/Profile/KYC cards first. Browser verification also reproduced a fail-open data mismatch: a demo row with `profile_completed_at` set but missing Profile evidence renders `0% complete` in the editor while the verification snapshot and entitlement resolver treat Profile as complete.
+
+**Files to modify:**
+
+- `lib/customer/header-navigation.ts`
+- `lib/customer/__tests__/header-navigation.test.ts`
+- `app/i18n/locales/en/customer.json`
+- `app/i18n/locales/ms/customer.json`
+- `app/i18n/locales/zh-CN/customer.json`
+- `app/api/auth/me/route.ts`
+- `app/api/auth/me/__tests__/route.test.ts`
+- `lib/profile/profile-summary.ts`
+- `lib/profile/__tests__/profile-summary.test.ts`
+- `supabase/seed.sql`
+- `scripts/seed-remote-demo.mjs`
+- this plan
+
+**Files to create:**
+
+- `supabase/migrations/20260830015000_profile_completion_consistency.sql`
+- `supabase/migrations/__tests__/20260830015000_profile_completion_consistency.test.ts`
+
+**Exact behavior:**
+
+1. Make the first Account item `Profile & Verification` and route it to `/customer/verification`; remove the duplicate Verification item from Payments & verification. The Profile card remains the only normal entry to the unchanged `/customer/profile` four-step editor.
+2. Define one fail-closed database eligibility predicate matching Identity, uploaded Photo, 30–200 character About you, and non-empty Preferences evidence. Use it for the dynamic `profile_complete` fact and the capability hard guard.
+3. Add a forward-only reconciliation migration that clears only invalid `profile_completed_at` values, recomputes compatibility metadata, and does not mutate Phone or KYC facts.
+4. Make `/api/auth/me` and the private Profile summary require both the stored completion timestamp and current four-section evidence, so the frontend cannot overstate Profile before a database reconciliation is applied.
+5. Stop demo seed paths from setting customer Profile completion without seeding the required evidence.
+
+**Scope boundaries / files not touched:** No changes to the Profile editor layout, `BusinessShareBanner`, OTP provider, Phone/KYC flows, Profile field validation, avatar storage, bio moderation, Affiliate/Checkout rules, Admin pages, or historical applied migrations.
+
+**Dependencies:** None.
+
+**Database change:** One new forward migration; no destructive schema change. It may clear false-positive `profile_completed_at` timestamps only when the corresponding current Profile evidence is incomplete. Phone and KYC facts remain unchanged.
+
+**Risks:** A predicate mismatch could revoke a valid Profile capability or leave an invalid one enabled. Contract tests must compare the database predicate with the existing TypeScript rules, require default-avatar rejection and non-empty interests, and assert that the reconciliation never touches Phone/KYC. Local migration execution remains blocked until a disposable Docker/Podman-backed Supabase stack is available.

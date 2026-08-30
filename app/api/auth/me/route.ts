@@ -5,6 +5,7 @@ import type { AuthUser } from '@/types';
 import type { RoleName } from '@/lib/constants';
 import { resolveServerCustomerCapabilities } from '@/lib/auth/customer-capabilities.server';
 import type { VerificationFacts } from '@/lib/entitlements/types';
+import { computeProfileVerification } from '@/lib/verification/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ type ProfileRow = {
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
   kyc_status: string | null;
   tier: string | null;
   email_verified_at: string | null;
@@ -37,19 +39,25 @@ type ProfileRow = {
   status: string | null;
 };
 
+type PreferenceRow = {
+  interests: string[] | null;
+};
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
-  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }] = await Promise.all([
-    supabase.from('users').select('id,email,full_name,avatar_url,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,preferred_locale,phone,status').eq('id', authUser.id).maybeSingle(),
+  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }, { data: preference, error: preferenceError }] = await Promise.all([
+    supabase.from('users').select('id,email,full_name,avatar_url,bio,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,preferred_locale,phone,status').eq('id', authUser.id).maybeSingle(),
     supabase.from('user_roles').select('vendor_id,outlet_id,roles(name),outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
+    supabase.from('preference_survey_responses').select('interests').eq('user_id', authUser.id).maybeSingle(),
   ]);
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
   if (rolesError) return NextResponse.json({ error: rolesError.message }, { status: 500 });
   if (managerError) return NextResponse.json({ error: managerError.message }, { status: 500 });
+  if (preferenceError) return NextResponse.json({ error: preferenceError.message }, { status: 500 });
 
   const profileRow = profile as ProfileRow | null;
   if (!profileRow) return NextResponse.json({ error: 'Profile unavailable' }, { status: 500 });
@@ -71,10 +79,19 @@ export async function GET() {
   ].filter((id): id is string => Boolean(id)))];
   const outletIds = [...new Set(managerAssignments.map((row) => row.outlet_id))];
   const assignedOutletRelation = managerAssignments[0] ? (Array.isArray(managerAssignments[0].outlets) ? managerAssignments[0].outlets[0] : managerAssignments[0].outlets) : null;
+  const preferenceRow = preference as PreferenceRow | null;
+  const profileVerification = computeProfileVerification({
+    fullName: profileRow.full_name,
+    avatarUrl: profileRow.avatar_url,
+    bio: profileRow.bio,
+    city: profileRow.city,
+    country: profileRow.country,
+    surveyComplete: Boolean(preferenceRow?.interests?.length),
+  });
   const verificationFacts: VerificationFacts = {
     emailVerified: Boolean(profileRow.email_verified_at),
     phoneVerified: Boolean(profileRow.phone_verified_at),
-    profileComplete: Boolean(profileRow.profile_completed_at),
+    profileComplete: Boolean(profileRow.profile_completed_at) && profileVerification.complete,
     kycStatus: profileRow.kyc_status === 'pending' || profileRow.kyc_status === 'approved' || profileRow.kyc_status === 'rejected'
       ? profileRow.kyc_status
       : 'unverified',

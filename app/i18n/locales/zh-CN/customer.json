@@ -21,8 +21,8 @@
   },
   "accountItems": {
     "Profile": {
-      "label": "个人资料",
-      "description": "您的个人信息"
+      "label": "资料与验证",
+      "description": "选择并管理独立验证"
     },
     "Notifications": {
       "label": "通知",
@@ -57,8 +57,8 @@
       "description": "分享本地发现"
     },
     "profile": {
-      "label": "个人资料",
-      "description": "您的个人信息"
+      "label": "资料与验证",
+      "description": "选择并管理独立验证"
     },
     "notifications": {
       "label": "通知",

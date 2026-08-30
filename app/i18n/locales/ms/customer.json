@@ -21,8 +21,8 @@
   },
   "accountItems": {
     "Profile": {
-      "label": "Profil",
-      "description": "Butiran peribadi anda"
+      "label": "Profil & Pengesahan",
+      "description": "Pilih dan urus pengesahan berasingan"
     },
     "Notifications": {
       "label": "Pemberitahuan",
@@ -57,8 +57,8 @@
       "description": "Kongsi penemuan tempatan"
     },
     "profile": {
-      "label": "Profil",
-      "description": "Butiran peribadi anda"
+      "label": "Profil & Pengesahan",
+      "description": "Pilih dan urus pengesahan berasingan"
     },
     "notifications": {
       "label": "Pemberitahuan",

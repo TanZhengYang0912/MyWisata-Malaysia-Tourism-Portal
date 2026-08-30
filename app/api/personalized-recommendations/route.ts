@@ -7,6 +7,7 @@ import { rankPersonalizedActivities, type TravelPreferences } from '@/lib/person
 import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { computeProfileVerification } from '@/lib/verification/eligibility';
 
 export async function POST(request: Request) {
   const db = await createClient();
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const [{ data: profile, error: profileError }, { data: survey, error: surveyError }] = await Promise.all([
-    db.from('users').select('profile_completed_at,kyc_status,city').eq('id', user.id).maybeSingle(),
+    db.from('users').select('profile_completed_at,kyc_status,full_name,avatar_url,bio,city,country').eq('id', user.id).maybeSingle(),
     db.from('preference_survey_responses').select('interests,budget_range,mobility_needs,preferred_radius_km').eq('user_id', user.id).maybeSingle(),
   ]);
   if (profileError || !profile) return apiFail('PROFILE_UNAVAILABLE', 'Unable to read your verification status', 500);
@@ -41,7 +42,16 @@ export async function POST(request: Request) {
   const cityOrigin = await cityCentre(profile.city);
   const origin = browserOrigin ?? cityOrigin ?? undefined;
   const activities = await searchActivities({ category: null, sort: 'recommended', near: origin }, db);
-  const personalized = Boolean(profile.profile_completed_at || profile.kyc_status === 'approved') && Boolean(survey);
+  const profileVerification = computeProfileVerification({
+    fullName: profile.full_name,
+    avatarUrl: profile.avatar_url,
+    bio: profile.bio,
+    city: profile.city,
+    country: profile.country,
+    surveyComplete: Boolean(survey?.interests?.length),
+  });
+  const profileComplete = Boolean(profile.profile_completed_at) && profileVerification.complete;
+  const personalized = Boolean(profileComplete || profile.kyc_status === 'approved') && Boolean(survey);
 
   if (!personalized) {
     return apiOk({

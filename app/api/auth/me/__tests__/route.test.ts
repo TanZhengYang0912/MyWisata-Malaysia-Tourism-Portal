@@ -67,6 +67,7 @@ describe("GET /api/auth/me", () => {
         }]);
       }
       if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
     });
     mocks.resolveServerCustomerCapabilities.mockResolvedValue({
@@ -123,6 +124,7 @@ describe("GET /api/auth/me", () => {
       });
       if (table === "user_roles") return queryResult([]);
       if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
     });
 
@@ -140,6 +142,7 @@ describe("GET /api/auth/me", () => {
       });
       if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "customer" }, outlets: null }]);
       if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
     });
 
@@ -157,6 +160,7 @@ describe("GET /api/auth/me", () => {
       });
       if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "customer" }, outlets: null }]);
       if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
     });
     mocks.resolveServerCustomerCapabilities.mockResolvedValue({
@@ -171,5 +175,25 @@ describe("GET /api/auth/me", () => {
     });
     expect(body.user.capabilities["recommendation.submit"].allowed).toBe(true);
     expect(body.user.capabilities["commerce.checkout"].blockerCode).toBe("PHONE_VERIFICATION_REQUIRED");
+  });
+
+  it("fails closed when a stored Profile completion timestamp has incomplete four-section evidence", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "users") return queryResult({
+        id: "user-1", email: "traveller@example.com", full_name: "Traveller", avatar_url: null,
+        bio: null, city: null, country: "Malaysia", kyc_status: "unverified", tier: "profile_complete",
+        email_verified_at: "2026-08-01T00:00:00.000Z", phone_verified_at: null,
+        profile_completed_at: "2026-08-02T00:00:00.000Z", status: "active",
+      });
+      if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "customer" }, outlets: null }]);
+      if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const body = await (await GET()).json();
+
+    expect(body.user.verificationFacts.profileComplete).toBe(false);
+    expect(body.user.profileComplete).toBe(false);
   });
 });

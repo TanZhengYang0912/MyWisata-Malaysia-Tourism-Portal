@@ -21,9 +21,12 @@ describe("personalized recommendations route contract", () => {
     expect(source).not.toContain("PHONE_READY_TIERS");
   });
 
-  it("does not use a legacy tier as recommendation authorization or personalization state", () => {
+  it("uses the current canonical Profile evidence rather than trusting a historical timestamp", () => {
     expect(source).not.toContain("PERSONALIZED_TIERS");
     expect(source).not.toContain("select('tier");
     expect(source).toContain("profile_completed_at");
+    expect(source).toContain("computeProfileVerification");
+    expect(source).toContain("full_name,avatar_url,bio");
+    expect(source).toMatch(/Boolean\(profile\.profile_completed_at\)[\s\S]*profileVerification\.complete/);
   });
 });

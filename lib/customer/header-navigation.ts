@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, UserRound, WalletCards } from "lucide-react";
+import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -33,7 +33,7 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
     label: "Account",
     labelKey: "accountGroups.account",
     items: [
-      { href: "/customer/profile", label: "Profile", labelKey: "accountItems.profile", description: "Your personal details", icon: UserRound },
+      { href: "/customer/verification", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
       { href: "/customer/notifications", label: "Notifications", labelKey: "accountItems.notifications", description: "Bookings, wallet and account updates", icon: Bell },
       { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
     ],
@@ -45,7 +45,6 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
       { href: "/customer/orders", label: "My Orders", labelKey: "accountItems.orders", description: "Purchases, bookings and receipts", icon: ReceiptText },
       { href: "/customer/vouchers", label: "My Vouchers", labelKey: "accountItems.vouchers", description: "Claimed partner deals", icon: Tag },
       { href: "/customer/wallet", label: "Wallet", labelKey: "accountItems.wallet", description: "Balance and payouts", icon: WalletCards },
-      { href: "/customer/verification", label: "Verification", labelKey: "accountItems.verification", description: "Choose what to verify", icon: ShieldCheck },
     ],
   },
   {

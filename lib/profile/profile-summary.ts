@@ -93,7 +93,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     kycStatus,
     emailVerified: Boolean(profile.email_verified_at),
     phoneVerified: Boolean(profile.phone_verified_at),
-    profileComplete: Boolean(profile.profile_completed_at),
+    profileComplete: Boolean(profile.profile_completed_at) && verification.complete,
     verification,
     profileRichness,
     survey: preference ? {
