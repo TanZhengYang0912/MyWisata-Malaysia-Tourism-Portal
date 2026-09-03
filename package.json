@@ -69,6 +69,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@swc/helpers": "^0.5.23",
     "@tailwindcss/postcss": "^4",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
