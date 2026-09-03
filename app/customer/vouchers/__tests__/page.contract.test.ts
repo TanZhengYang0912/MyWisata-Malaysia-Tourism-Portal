@@ -45,11 +45,26 @@ describe("customer voucher hub UI contract", () => {
     expect(types).toContain("outletImageUrl: string | null");
   });
 
-  it("gives voucher cards room for an image-led three-column layout", () => {
+  it("gives voucher tickets a responsive image-led horizontal treatment", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("lg:grid-cols-3");
-    expect(source).toContain("aspect-[16/9]");
-    expect(source).toContain("loading=\"lazy\"");
+    const ticket = read("components/vouchers/voucher-ticket.tsx");
+    expect(source).toContain("<VoucherTicket");
+    expect(source).toContain('className="space-y-5"');
+    expect(ticket).toContain("sm:w-[34%]");
+    expect(ticket).toContain("max-sm:flex-col");
+    expect(ticket).toContain("loading=\"lazy\"");
+  });
+
+  it("uses one shared ticket treatment for customer vouchers and vendor previews", () => {
+    const customer = read("app/customer/vouchers/voucher-hub-client.tsx");
+    const vendor = read("app/vendor/vouchers/page.tsx");
+    const ticket = read("components/vouchers/voucher-ticket.tsx");
+    expect(customer).toContain('from "@/components/vouchers/voucher-ticket"');
+    expect(customer).toContain("<VoucherTicket");
+    expect(vendor).toContain("@/components/vouchers/voucher-ticket");
+    expect(vendor).toContain("<VoucherTicket");
+    expect(ticket).toContain("data-voucher-ticket");
+    expect(ticket).toContain("border-dashed");
   });
 
   it("explains why the browse list is empty without inventing partner data", () => {
