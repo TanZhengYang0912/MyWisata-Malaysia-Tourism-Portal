@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk } from '@/lib/validation/schemas';
 import { voucherValidateSchema } from '@/lib/validation/vendor-schemas';
 import { applyPercent } from '@/lib/money';
+import { formatMYR } from '@/lib/i18n/format';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
 
   // Check minimum spend
   if (cartSubtotal < voucher.min_spend) {
-    return invalid(`Minimum spend of RM ${voucher.min_spend.toFixed(2)} required (current: RM ${cartSubtotal.toFixed(2)})`);
+    return invalid(`Minimum spend of ${formatMYR(voucher.min_spend)} required (current: ${formatMYR(cartSubtotal)})`);
   }
 
   if (voucher.review_status && voucher.review_status !== 'approved') {

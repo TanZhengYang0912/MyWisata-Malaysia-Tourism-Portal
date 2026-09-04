@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
@@ -9,10 +10,11 @@ import { FontSizeProvider, FontSizeScript } from "@/components/providers/font-si
 import { AppI18nProvider, type AppI18nResources } from "@/components/providers/i18n-provider";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { loadLocaleResources } from "@/lib/i18n/resources";
+import { RouteScrollReset } from "@/components/shared/route-scroll-reset";
 
-const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
-const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"] });
-const ibmPlexMono = IBM_Plex_Mono({ variable: "--font-ibm-plex-mono", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], display: "swap" });
+const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans", subsets: ["latin"], display: "swap" });
+const ibmPlexMono = IBM_Plex_Mono({ variable: "--font-ibm-plex-mono", subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "MyWisata — Malaysia Tourism Portal",
@@ -42,7 +44,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <AppI18nProvider locale={locale} resources={resourcesByLocale}>
               <ActionFeedbackProvider>
                 <AuthProvider>
-                  <CartProvider>{children}</CartProvider>
+                  <CartProvider>
+                    <Suspense fallback={null}>
+                      <RouteScrollReset />
+                    </Suspense>
+                    {children}
+                  </CartProvider>
                 </AuthProvider>
               </ActionFeedbackProvider>
             </AppI18nProvider>

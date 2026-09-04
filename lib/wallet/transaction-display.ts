@@ -1,6 +1,8 @@
 export type TransactionFilter = "all" | "earnings" | "withdrawals";
 export type TransactionGroup = Exclude<TransactionFilter, "all">;
 
+import { formatMYR } from "@/lib/i18n/format";
+
 type TransactionLike = {
   type: string;
   direction: string;
@@ -42,8 +44,7 @@ export function transactionTone(direction: string) {
 }
 
 export function signedTransactionAmount(transaction: AmountTransactionLike) {
-  const sign = transaction.direction === "credit" ? "+" : "-";
-  return `${sign}RM ${transaction.amount.toFixed(2)}`;
+  return formatMYR(Math.abs(transaction.amount));
 }
 
 export function customerVisibleTransactions<T extends TransactionLike>(items: T[]) {

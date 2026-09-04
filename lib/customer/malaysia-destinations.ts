@@ -41,6 +41,15 @@ const DESTINATION_SOURCES: MalaysiaDestination[] = [
     image: "malaysia/penang-george-town.webp",
   },
   {
+    state: "Melaka",
+    zone: "Southern Malaysia",
+    attraction: "A Famosa",
+    tagline: "History, heritage and riverside evenings.",
+    intro: "A riverside heritage city where layered history meets local flavours and evening walks.",
+    highlights: ["Heritage", "Food", "Riverside"],
+    image: "malaysia/melaka-a-famosa.webp",
+  },
+  {
     state: "Johor",
     zone: "Southern Malaysia",
     attraction: "Desaru Coast",
@@ -66,15 +75,6 @@ const DESTINATION_SOURCES: MalaysiaDestination[] = [
     intro: "An island-view escape with dramatic coastlines, sea air and elevated viewpoints.",
     highlights: ["Islands", "Views", "Coast"],
     image: "malaysia/kedah-langkawi-sky-bridge.webp",
-  },
-  {
-    state: "Melaka",
-    zone: "Southern Malaysia",
-    attraction: "A Famosa",
-    tagline: "History, heritage and riverside evenings.",
-    intro: "A riverside heritage city where layered history meets local flavours and evening walks.",
-    highlights: ["Heritage", "Food", "Riverside"],
-    image: "malaysia/melaka-a-famosa.webp",
   },
   {
     state: "Pahang",

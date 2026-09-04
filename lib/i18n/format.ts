@@ -46,10 +46,30 @@ export function formatNumber(value: number, locale: AppLocale, options: Intl.Num
   return new Intl.NumberFormat(locale, options).format(value);
 }
 
-export function formatMYR(value: number, locale: AppLocale, options: Intl.NumberFormatOptions = {}): string {
-  return new Intl.NumberFormat(locale, {
+const MYR_DISPLAY_LOCALE = "en-MY";
+
+/**
+ * Formats the numeric part of a Ringgit amount for use inside translated
+ * sentences. The currency symbol belongs to the translation in this case.
+ * Negative input is normalized to its absolute amount so money displays
+ * never render a negative value.
+ */
+export function formatMYRNumber(value: number, _locale: AppLocale = "en", options: Intl.NumberFormatOptions = {}): string {
+  const absoluteValue = Math.abs(value);
+  return new Intl.NumberFormat(MYR_DISPLAY_LOCALE, {
     ...options,
-    style: "currency",
-    currency: "MYR",
-  }).format(value);
+    style: "decimal",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(absoluteValue);
+}
+
+/** Formats a Ringgit amount as RM34,000.00 across every app locale. */
+export function formatMYR(value: number, locale: AppLocale = "en", options: Intl.NumberFormatOptions = {}): string {
+  return `RM${formatMYRNumber(value, locale, options)}`;
+}
+
+/** Formats an integer sen amount using the same RM display contract. */
+export function formatMYRFromSen(valueSen: number, locale: AppLocale = "en", options: Intl.NumberFormatOptions = {}): string {
+  return formatMYR(valueSen / 100, locale, options);
 }

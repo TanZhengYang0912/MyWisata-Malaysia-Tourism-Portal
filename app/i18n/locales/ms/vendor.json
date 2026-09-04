@@ -15,11 +15,11 @@
     "Dashboard": "Papan pemuka",
     "Outlets": "Outlet",
     "Business profile": "Profil perniagaan",
-    "Products": "Produk",
-    "Bookings": "Tempahan",
+    "Products": "Produk & Senarai",
+    "Bookings": "Tempahan & Reservasi",
     "Vouchers": "Baucar",
     "Orders": "Pesanan",
-    "Wallet": "Dompet",
+    "Wallet": "Dompet & Pembayaran",
     "Inbox": "Peti masuk",
     "Notifications": "Pemberitahuan",
     "Analytics": "Analitik",
@@ -376,7 +376,130 @@
       "paidOrders": "Pesanan berbayar",
       "activeOutletsMalaysia": "Outlet aktif di seluruh Malaysia",
       "readingThisView": "Cara membaca paparan ini:",
-      "readingDescription": "carta dua belas bulan dikira daripada item pesanan berbayar dan selesai dalam Supabase. Gunakan kawalan tempoh papan pemuka untuk tetingkap operasi yang lebih pendek."
+      "readingDescription": "carta dua belas bulan dikira daripada item pesanan berbayar dan selesai dalam Supabase. Gunakan kawalan tempoh papan pemuka untuk tetingkap operasi yang lebih pendek.",
+      "eyebrow": "Sokongan keputusan",
+      "controls": {
+        "period": "Tempoh analisis",
+        "outlet": "Outlet",
+        "allOutlets": "Semua outlet",
+        "last7Days": "7 hari terakhir",
+        "last30Days": "30 hari terakhir",
+        "last12Months": "12 bulan terakhir",
+        "apply": "Gunakan"
+      },
+      "insightLabel": "Perkara utama",
+      "insightTitle": "Tukar data prestasi kepada tindakan operasi seterusnya.",
+      "insightDescription": "Gunakan corak permintaan, campuran produk, sumbangan outlet dan sentimen pelancong untuk menentukan perkara yang perlu dipromosi, diperbaiki atau dijadualkan.",
+      "periodLabel": "Menganalisis",
+      "revenueTracked": "Pesanan berbayar dan selesai sahaja",
+      "metrics": {
+        "revenue": "Hasil diiktiraf",
+        "orders": "Pesanan unik",
+        "averageOrderValue": "Nilai pesanan purata",
+        "bookingShare": "Bahagian tempahan",
+        "averageRating": "Penilaian purata",
+        "reviewCount": "Ulasan terlihat",
+        "activeProducts": "Produk aktif",
+        "outletCoverage": "Liputan outlet",
+        "revenuePerOutlet": "Hasil setiap outlet",
+        "topProductShare": "Bahagian produk utama",
+        "productsWithSales": "Produk dengan jualan",
+        "peakWindowOrders": "Pesanan waktu puncak"
+      },
+      "metricNotes": {
+        "paidCompleted": "Item berbayar atau selesai",
+        "uniqueOrders": "Dinyahduplikasi mengikut pesanan",
+        "inSelectedScope": "Terlihat dalam skop anda",
+        "outletsWithAccess": "Tersedia untuk akaun ini",
+        "revenuePerOutlet": "Hasil diiktiraf dibahagi dengan outlet",
+        "topProductShare": "Bahagian daripada hasil diiktiraf",
+        "productsWithSales": "Produk dengan sekurang-kurangnya satu pesanan",
+        "peakWindowOrders": "Pesanan unik dalam sel paling sibuk"
+      },
+      "revenueQuality": {
+        "eyebrow": "Kualiti hasil",
+        "title": "Cara permintaan ditukar",
+        "description": "Bandingkan hasil, jumlah pesanan dan nilai pesanan purata dalam tempoh dipilih.",
+        "metrics": {
+          "revenue": "Hasil",
+          "averageOrderValue": "NPP",
+          "orders": "Pesanan"
+        },
+        "trendHint": "Julat pendek dikumpulkan mengikut minggu dan julat panjang mengikut bulan."
+      },
+      "bookingMix": {
+        "eyebrow": "Tingkah laku pembelian",
+        "title": "Campuran tempahan",
+        "description": "Lihat bahagian permintaan yang tiba bersama slot masa berjadual.",
+        "booked": "Ditempah",
+        "nonBooked": "Tiada slot"
+      },
+      "demandHeatmap": {
+        "eyebrow": "Kecerdasan permintaan",
+        "title": "Bila pelancong membeli",
+        "description": "Aktiviti pesanan mengikut waktu Malaysia. Sel lebih gelap menunjukkan lebih banyak pesanan unik.",
+        "orders": "pesanan",
+        "less": "Kurang",
+        "more": "Lebih"
+      },
+      "weekdays": {
+        "mon": "Isn",
+        "tue": "Sel",
+        "wed": "Rab",
+        "thu": "Kha",
+        "fri": "Jum",
+        "sat": "Sab",
+        "sun": "Ahd"
+      },
+      "productPortfolio": {
+        "eyebrow": "Portfolio produk",
+        "title": "Jumlah berbanding nilai",
+        "description": "Setiap gelembung ialah satu produk. Unit lebih tinggi bergerak ke kanan; hasil atau penilaian lebih tinggi bergerak ke atas.",
+        "axisHint": "Saiz gelembung mewakili jumlah ulasan.",
+        "revenue": "Hasil",
+        "units": "Unit",
+        "rating": "Penilaian"
+      },
+      "outletPerformance": {
+        "eyebrow": "Prestasi outlet",
+        "title": "Sumbangan mengikut outlet",
+        "description": "Susun outlet mengikut hasil diiktiraf, bersama jumlah pesanan dan bahagian hasil.",
+        "orders": "pesanan"
+      },
+      "customerSignal": {
+        "eyebrow": "Isyarat pelanggan",
+        "title": "Apa kata pelancong",
+        "description": "Taburan ulasan terlihat untuk tempoh dipilih.",
+        "reviews": "Ulasan"
+      },
+      "actionQueue": {
+        "eyebrow": "Barisan tindakan",
+        "title": "Isyarat yang wajar diambil tindakan",
+        "description": "Petunjuk berasaskan data untuk membimbing keputusan produk, jadual atau outlet seterusnya."
+      },
+      "marketingAttribution": {
+        "title": "Atribusi pemasaran",
+        "description": "Jejaki bagaimana senarai yang dikongsi bergerak daripada penemuan sosial kepada klik dan pesanan. Kiraan berdasarkan acara yang dijejaki."
+      },
+      "dataNote": {
+        "title": "Nota data:",
+        "description": "Hasil menggunakan item pesanan berbayar dan selesai. Paparan ini belum menjejaki paparan produk, pembatalan, bayaran balik, pelanggan berulang atau kapasiti."
+      },
+      "empty": {
+        "trend": "Tiada aktiviti pesanan diiktiraf dalam tempoh ini.",
+        "products": "Belum ada jualan produk untuk dibandingkan.",
+        "outlets": "Belum ada jualan outlet untuk dibandingkan.",
+        "reviews": "Tiada ulasan terlihat dalam tempoh ini.",
+        "insights": "Lebih banyak aktiviti diperlukan sebelum isyarat tindakan muncul."
+      },
+      "insights": {
+        "topProductTitle": "Utamakan produk terbaik",
+        "topProductDescription": "Produk ini kini menyumbang hasil diiktiraf tertinggi.",
+        "peakWindowTitle": "Lindungi waktu puncak",
+        "peakWindowDescription": "Gunakan waktu permintaan ini untuk menyusun staf atau promosi bermasa.",
+        "outletConcentrationTitle": "Pantau tumpuan hasil",
+        "outletConcentrationDescription": "Ini ialah bahagian outlet utama daripada hasil diiktiraf."
+      }
     },
     "bookings": {
       "loadFailed": "Tidak dapat memuatkan tempahan.",
@@ -393,7 +516,7 @@
       "bookingOperations": "Operasi tempahan",
       "title": "Tempahan",
       "description": "Urus tempahan dan waktu operasi mengikut cawangan, dengan slot tempahan diasingkan.",
-      "addSlot": "Tambah slot tarikh",
+      "addSlot": "+ Tambah Slot Tempahan",
       "currentFilter": "Penapis semasa",
       "outletsManaged": "Cawangan diurus",
       "allVendorOutlets": "Semua cawangan vendor",
@@ -679,7 +802,8 @@
       "perPage_one": "{{count}} setiap halaman",
       "perPage_other": "{{count}} setiap halaman",
       "stockCount_one": "{{count}} dalam stok{{low}}",
-      "stockCount_other": "{{count}} dalam stok{{low}}"
+      "stockCount_other": "{{count}} dalam stok{{low}}",
+      "addProduct": "+ Tambah Produk Baru"
     },
     "profile": {
       "loading": "Memuatkan profil perniagaan…",
@@ -808,7 +932,7 @@
       "usesCount": "{{count}} penggunaan",
       "unlimitedUsage": "Penggunaan tanpa had",
       "usageCap": "{{percent}}% had penggunaan",
-      "analyticsAmounts": "Jualan RM {{revenue}} · diskaun RM {{discount}} · kesan bersih RM {{impact}}",
+      "analyticsAmounts": "Jualan RM{{revenue}} · diskaun RM{{discount}} · kesan bersih RM{{impact}}",
       "noAnalyticsMatches": "Tiada baucar sepadan dengan penapis tarikh dan cawangan.",
       "searchPlaceholder": "Cari kod baucar atau kempen",
       "activateSelected": "Aktifkan yang dipilih",
@@ -826,7 +950,7 @@
       "copyCode": "Salin kod",
       "codeCopied": "{{code}} disalin",
       "copyCodeValue": "Salin {{code}}",
-      "minimumAmount": "Min RM {{amount}}",
+      "minimumAmount": "Min RM{{amount}}",
       "uses": "penggunaan",
       "endsOn": "Tamat {{date}}",
       "noEndDate": "Tiada tarikh tamat",
@@ -835,7 +959,7 @@
       "deactivate": "Nyahaktifkan",
       "voucherDetails": "Butiran baucar",
       "closeDetails": "Tutup butiran baucar",
-      "minimumSpend": "Perbelanjaan minimum: RM {{amount}}",
+      "minimumSpend": "Perbelanjaan minimum: RM{{amount}}",
       "validRange": "Sah: {{from}} – {{until}}",
       "outletValue": "Cawangan: {{outlet}}",
       "bulkCreation": "Penciptaan pukal",
@@ -869,7 +993,7 @@
         "inactive": "Tidak aktif",
         "expired": "Tamat tempoh"
       },
-      "fixedDiscount": "Diskaun RM {{amount}}",
+      "fixedDiscount": "Diskaun RM{{amount}}",
       "percentDiscount": "Diskaun {{percent}}%",
       "bogoDiscount": "Beli {{buy}} Percuma {{free}}",
       "offer": "Tawaran baucar",
@@ -899,7 +1023,7 @@
       "transactionHistory": "Sejarah transaksi",
       "listJoiner": " dan ",
       "loadFailed": "Tidak dapat memuatkan {{items}}. Anda boleh cuba lagi.",
-      "minimumError": "Pengeluaran minimum ialah RM {{amount}}.",
+      "minimumError": "Pengeluaran minimum ialah RM{{amount}}.",
       "insufficientBalance": "Baki tersedia tidak mencukupi.",
       "submissionFailed": "Penghantaran gagal.",
       "activeUnderReview": "Pengeluaran aktif anda sedang disemak.",
@@ -949,8 +1073,8 @@
       "closeDialog": "Tutup dialog pengeluaran",
       "amountRm": "Amaun (RM)",
       "withdrawAll": "Keluarkan semua",
-      "minimumPlaceholder": "Min RM {{amount}}",
-      "largeWithdrawalNotice": "Pengeluaran ≥ RM 500 memerlukan kelulusan berganda dan mungkin mengambil 2–3 hari bekerja tambahan.",
+      "minimumPlaceholder": "Min RM{{amount}}",
+      "largeWithdrawalNotice": "Pengeluaran ≥ RM500.00 memerlukan kelulusan berganda dan mungkin mengambil 2–3 hari bekerja tambahan.",
       "submitting": "Menghantar…",
       "submitRequest": "Hantar permintaan",
       "cancel": "Batal",
@@ -1479,7 +1603,8 @@
     "saveAndExit": "Simpan & keluar",
     "saveDraft": "Simpan draf",
     "saving": "Menyimpan…",
-    "working": "Sedang diproses…"
+    "working": "Sedang diproses…",
+    "exportCsv": "Eksport CSV"
   },
   "batch": {
     "allFilteredSelected": "Semua hasil yang ditapis dipilih",

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { searchActivities } from "@/backend/domains/catalogue";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
+import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import type { ComputedActivity } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
 
@@ -10,7 +10,8 @@ export default async function CustomerHomePage() {
   const { data: { user } } = await db.auth.getUser();
 
   const [activities, feed, vendorRows] = await Promise.all([
-    searchActivities({ state: "All Malaysia", category: null }, db),
+    // Cached for 60 s — same data for all visitors, no user-specific filtering
+    getCachedComputedActivities(),
     getRecommendedFeed(user?.id ?? null, { limit: 8 }, db),
     db
       .from("vendors")
@@ -37,8 +38,8 @@ export default async function CustomerHomePage() {
         .filter((outlet) => outlet.status === "active" && outlet.review_status === "approved")
         .map((outlet) => ({ id: outlet.id, name: outlet.name, city: outlet.city, state: outlet.state })),
     }))
-    .filter((vendor) => vendor.outlets.length > 0)
-    
+    .filter((vendor) => vendor.outlets.length > 0);
+
   const featuredVendors = rankFeaturedVendors(vendors, activities, 24);
 
   return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} />;

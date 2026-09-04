@@ -66,7 +66,7 @@ describe('POST /api/stripe/create-checkout amount boundaries', () => {
     const response = await POST(request(amountRm));
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Minimum top-up is RM 2.00' });
+    await expect(response.json()).resolves.toEqual({ error: 'Minimum top-up is RM2.00' });
     expect(mocks.sessionsCreate).not.toHaveBeenCalled();
   });
 
@@ -84,7 +84,7 @@ describe('POST /api/stripe/create-checkout amount boundaries', () => {
     const response = await POST(request(amountRm));
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'Maximum top-up is RM 999,999.99' });
+    await expect(response.json()).resolves.toEqual({ error: 'Maximum top-up is RM999,999.99' });
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.customersCreate).not.toHaveBeenCalled();
     expect(mocks.sessionsCreate).not.toHaveBeenCalled();

@@ -18,6 +18,7 @@ interface AuthContextValue {
   roles: Role[];
   activeVendorId?: string;
   activeOutletIds?: string[];
+  activeOutletName?: string;
   capabilities: CustomerCapabilitySnapshot;
   verificationFacts: VerificationFacts | null;
   entitlementGeneration: number;
@@ -37,6 +38,7 @@ type AuthMeUser = {
   roles: Role[];
   activeVendorId: string | null;
   activeOutletIds: string[];
+  activeOutletName: string | null;
   city: string | null;
   country: string | null;
   preferredLocale: string | null;
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [capabilities, setCapabilities] = useState<CustomerCapabilitySnapshot>(GUEST_CAPABILITIES);
   const [verificationFacts, setVerificationFacts] = useState<VerificationFacts | null>(null);
   const [entitlementGeneration, setEntitlementGeneration] = useState(0);
+  const [activeOutletName, setActiveOutletName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCapabilities(row.capabilities);
     setVerificationFacts(row.verificationFacts);
     setEntitlementGeneration(row.entitlementGeneration);
+    setActiveOutletName(row.activeOutletName);
     setCurrentUserId(authUserId);
     return user;
   }, [tAuth]);
@@ -105,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCapabilities(GUEST_CAPABILITIES);
         setVerificationFacts(null);
         setEntitlementGeneration(0);
+        setActiveOutletName(null);
         setLoading(false);
         return;
       }
@@ -118,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCapabilities(GUEST_CAPABILITIES);
       setVerificationFacts(null);
       setEntitlementGeneration(0);
+      setActiveOutletName(null);
       setLoading(false);
     });
 
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setCapabilities(GUEST_CAPABILITIES);
           setVerificationFacts(null);
           setEntitlementGeneration(0);
+          setActiveOutletName(null);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -185,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     roles: currentUser ? [currentUser.role] : [],
     activeVendorId: currentUser?.vendorId,
     activeOutletIds: currentUser?.outletId ? [currentUser.outletId] : undefined,
+    activeOutletName: activeOutletName ?? undefined,
     capabilities,
     verificationFacts,
     entitlementGeneration,

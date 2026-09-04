@@ -2,11 +2,27 @@ import { expect, test } from "@playwright/test";
 
 const CUSTOMER_EMAIL = "customer1@demo.local";
 
+test("Guest Mode enters Home and Trip navigation requires sign-in", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: /guest mode/i }).click();
+  await expect(page).toHaveURL(/\/customer$/, { timeout: 15_000 });
+  await expect(page.getByRole("link", { name: "Home", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Explore", exact: true }).first()).toBeVisible();
+
+  // Test Trip navigation in header gates sign-in
+  await page.getByRole("link", { name: "Trip", exact: true }).first().click();
+  const tripDialog = page.getByRole("dialog");
+  await expect(tripDialog).toBeVisible();
+  await tripDialog.getByRole("button", { name: "Continue browsing", exact: true }).click();
+  await expect(tripDialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/customer$/);
+});
+
 test("Guest Mode signs out and booking requires sign-in", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /guest mode/i }).click();
-  await expect(page).toHaveURL(/\/customer\/explore$/, { timeout: 15_000 });
-  await expect(page.getByRole("link", { name: "Explore", exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(/\/customer$/, { timeout: 15_000 });
+  await page.goto("/customer/explore");
 
   await page.getByRole("button", { name: /^Open / }).first().click();
   await page.getByRole("link", { name: "View destination", exact: true }).click();

@@ -180,15 +180,43 @@ export async function getOrdersForOutlets(outletIds: string[]): Promise<Order[]>
   return (data as unknown as OrderRow[]).map(mapOrder).filter((o) => o.items.some((item) => outletIds.includes(item.outletId)));
 }
 
+type TicketPassRow = {
+  id: string;
+  policy: "single_entry" | "multi_entry" | "group_entry";
+  entry_limit: number;
+  entries_used: number;
+  status: string;
+};
+
 type BookingRow = {
   id: string;
   status: Booking["status"];
   order_items: { order_id: string; product_id: string | null; product_name: string; outlet_id: string; slot_starts_at: string | null; quantity: number };
+  ticket_passes?: TicketPassRow | TicketPassRow[] | null;
 };
 
 function mapBooking(row: BookingRow): Booking | null {
   // order_items can be undefined if the RLS join returns no related row
   if (!row.order_items) return null;
+  const pass = Array.isArray(row.ticket_passes) ? row.ticket_passes[0] : row.ticket_passes;
+  let passToken: string | undefined = undefined;
+  if (pass?.id && typeof window === "undefined") {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { signTicketPassToken } = require("@/lib/tickets/tokens");
+      passToken = signTicketPassToken({
+        passId: pass.id,
+        bookingId: row.id,
+        outletId: row.order_items.outlet_id,
+        policy: pass.policy,
+        entryLimit: pass.entry_limit,
+        issuedAt: Date.now(),
+      });
+    } catch {
+      // client bundle safe fallback
+    }
+  }
+
   return {
     id: row.id,
     orderId: row.order_items.order_id,
@@ -199,10 +227,14 @@ function mapBooking(row: BookingRow): Booking | null {
     qty: row.order_items.quantity,
     status: row.status,
     qrCode: row.id,
+    passToken,
+    policy: pass?.policy,
+    entryLimit: pass?.entry_limit,
+    entriesUsed: pass?.entries_used,
   };
 }
 
-const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity)";
+const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);

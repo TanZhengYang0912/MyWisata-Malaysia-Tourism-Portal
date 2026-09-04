@@ -22,7 +22,7 @@ import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
 import { getDetailBody } from "./bodies";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -183,7 +183,7 @@ export function ActivityDetailClient({
   return (
     // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
     // only the reviews list scrolls internally; mobile keeps normal page scroll.
-    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
+    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
       <div className="mb-4">
         <Link href={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
           <ArrowLeft size={16} aria-hidden="true" /> {t("ui.actions.backToResults")}
@@ -285,7 +285,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">{MYR_CODE} {price}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">{formatMYR(price)}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
@@ -337,7 +337,7 @@ export function ActivityDetailClient({
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
-                        {MYR_CODE} {choice.price.toFixed(2)}
+                        {formatMYR(choice.price)}
                       </span>
                     </button>
                   );
@@ -363,7 +363,7 @@ export function ActivityDetailClient({
                       color: variantId === v.id ? "white" : "var(--foreground)",
                     }}
                   >
-                    {v.label} {v.priceDelta !== 0 && `(${v.priceDelta > 0 ? "+" : ""}RM ${v.priceDelta})`}
+                        {v.label} {v.priceDelta !== 0 && `(${formatMYR(Math.abs(v.priceDelta))})`}
                   </button>
                 ))}
               </div>
@@ -412,12 +412,30 @@ export function ActivityDetailClient({
           )}
 
           </>}
-          {!publicPlace && <div className="mt-3 flex items-center justify-center gap-3">
-            {vendorBacked && <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-2" onClick={handleChat} title={t("ui.activityDetail.chatVendor")} aria-label={t("ui.activityDetail.chatVendor")}>
-              <MessageCircle size={17} />
-            </Button>}
-            <ShareButton shareType="product" contentId={activity.id} title={activity.name} />
-          </div>}
+          {!publicPlace && (
+            <div className="mt-3 flex justify-center">
+              <ShareButton
+                shareType="product"
+                contentId={activity.id}
+                title={activity.name}
+                leading={
+                  vendorBacked ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-12 w-12 rounded-full border-2"
+                      onClick={handleChat}
+                      title={t("ui.activityDetail.chatVendor")}
+                      aria-label={t("ui.activityDetail.chatVendor")}
+                    >
+                      <MessageCircle size={18} />
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </div>
+          )}
         </div>
 
         {chips.length > 0 && (
@@ -447,10 +465,10 @@ export function ActivityDetailClient({
       </div>
 
        {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
-        <div className="mx-auto flex max-w-6xl items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
-            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{MYR_CODE} {price * qty}</p>
+            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{formatMYR(price * qty)}</p>
           </div>
           {added ? (
             <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>

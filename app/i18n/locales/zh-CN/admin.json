@@ -32,31 +32,276 @@
     "eyebrow": "安全治理",
     "title": "访问控制",
     "description": "管理能力元数据、版本化策略、定向分配以及关联的全平台审计历史。",
-    "tabs": { "overview": "概览", "capabilities": "能力", "policies": "策略", "assignments": "分配", "audit-log": "审计日志" },
-    "actions": { "retry": "重试", "refresh": "刷新", "manage": "管理", "close": "关闭", "reviewChange": "复核变更", "viewAuditEvent": "查看审计事件", "open": "打开", "newVersion": "新建版本", "addRequirement": "添加条件", "removeRequirement": "移除条件", "createVersion": "创建版本", "cancel": "取消", "newAssignment": "新建分配", "reviewAssignment": "复核分配", "revoke": "撤销", "openTarget": "打开目标", "hide": "收起", "inspect": "查看详情" },
-    "accessibility": { "tabs": "访问控制分区", "capabilityStatus": "能力状态", "assignmentStatus": "分配状态", "previousPage": "上一页", "nextPage": "下一页" },
-    "states": { "loading": "正在加载访问控制数据…", "empty": "暂无可用的访问控制数据。", "none": "无", "noCapabilities": "没有符合筛选条件的能力。", "noPolicies": "没有符合筛选条件的策略。", "noVersions": "此策略尚无版本。", "noAssignments": "没有符合筛选条件的分配。", "noAuditEvents": "没有符合筛选条件的审计事件。" },
-    "errors": { "load": "无法加载访问控制。", "loadCapabilities": "无法加载能力。", "saveCapability": "无法更新此能力。", "loadPolicies": "无法加载策略。", "loadVersions": "无法加载策略版本。", "createVersion": "无法创建策略版本。", "policyAction": "无法完成策略操作。", "loadAssignments": "无法加载分配。", "assignmentAction": "无法完成分配操作。", "loadAudit": "无法加载审计日志。" },
-    "feedback": { "capabilityUpdated": "能力治理元数据已更新。", "policyUpdated": "策略操作已完成。", "assignmentUpdated": "分配操作已完成。" },
-    "filters": { "searchCapabilities": "搜索能力键", "category": "类别", "allCategories": "全部类别", "all": "全部", "searchPolicies": "搜索策略", "policyStatus": "策略状态", "allStatuses": "全部状态", "searchAssignments": "搜索主体或能力", "subjectType": "主体类型", "allSubjects": "全部主体类型", "actionPrefix": "操作前缀", "actorId": "操作者 UUID", "entityType": "实体类型", "capability": "能力", "allCapabilities": "全部能力", "traceReference": "追踪引用", "dateFrom": "起始日期", "dateTo": "结束日期" },
-    "overview": { "activeVersions": "生效版本", "policiesDetail": "{{count}} 项受治理策略", "policiesDetail_one": "{{count}} 项受治理策略记录", "policiesDetail_other": "共有 {{count}} 项受治理策略", "pendingApprovals": "待审批", "activeAssignments": "生效分配", "expiringDetail": "{{count}} 项将在 30 天内到期", "expiringDetail_one": "{{count}} 项分配将在 30 天内到期", "expiringDetail_other": "共有 {{count}} 项分配将在 30 天内到期", "generation": "策略代次", "capabilitiesDetail": "{{count}} 项已注册能力", "capabilitiesDetail_one": "{{count}} 项能力已经注册", "capabilitiesDetail_other": "共有 {{count}} 项能力已经注册", "healthTitle": "评估器健康状态", "healthDescription": "警告反映当前治理状态，绝不会削弱硬性保护。", "noWarnings": "未发现评估器警告。", "attentionTitle": "需要关注", "reviewApprovals": "复核 {{count}} 项待审批", "reviewApprovals_one": "复核 {{count}} 项待审批记录", "reviewApprovals_other": "复核共 {{count}} 项待审批记录", "reviewExpiring": "复核 {{count}} 项即将到期的分配", "reviewExpiring_one": "复核 {{count}} 项即将到期的分配记录", "reviewExpiring_other": "复核共 {{count}} 项即将到期的分配记录", "openAudit": "打开全平台审计日志" },
-    "warnings": { "CAPABILITY_DISABLED": "至少一项能力已停用。受影响的决策将按安全方式拒绝。" },
-    "categories": { "platform": "平台", "commerce": "交易", "ai": "人工智能", "recommendation": "推荐", "affiliate": "联盟", "wallet": "钱包" },
-    "risk": { "low": "低", "medium": "中", "high": "高", "critical": "关键" },
-    "status": { "enabled": "已启用", "disabled": "已停用", "draft": "草稿", "pending_approval": "待审批", "scheduled": "已排程", "active": "生效中", "retired": "已退役", "expired": "已过期", "revoked": "已撤销" },
-    "common": { "yes": "是", "no": "否", "allowed": "允许", "locked": "锁定", "true": "真", "false": "假" },
-    "forms": { "reason": "治理原因", "reasonPlaceholder": "说明业务或安全原因（至少 10 个字符）。" },
-    "confirm": { "capabilityTitle": "确认能力变更", "capabilityDescription": "此治理变更会感知策略代次，并记录到审计日志。", "save": "保存治理变更", "approveTitle": "审批策略版本", "approveDescription": "审批人必须与策略创建者不同，且操作会被审计。", "activateTitle": "启用策略版本", "activateDescription": "启用后会推进策略代次，并在适用时退役当前生效版本。", "rollbackTitle": "请求回滚策略", "rollbackDescription": "回滚会根据选定的已审批历史创建治理版本，并记录审计事件。", "assignmentTitle": "确认分配", "assignmentDescription": "分配可以限制访问，但不能绕过硬性安全保护。", "revokeTitle": "确认撤销分配", "revokeDescription": "该分配将停止生效，但仍会保留在历史记录中。", "confirm": "确认治理操作" },
-    "capabilities": { "key": "不可变键", "category": "类别", "risk": "风险", "visibility": "客户可见", "assignment": "手动分配", "status": "状态", "actions": "操作", "editTitle": "管理能力元数据", "immutableKey": "能力键永久固定，无法编辑。", "customerVisible": "客户可见", "manuallyAssignable": "允许手动分配", "enabled": "启用" },
-    "policies": { "name": "策略", "capability": "能力", "scope": "范围", "latest": "最新版本", "versions": "版本数", "actions": "操作", "versionHistory": "版本历史", "compareHint": "选择两个版本进行比较", "comparison": "版本比较", "createTitle": "创建受治理的策略版本", "effect": "效果", "effectiveFrom": "生效时间", "effectiveUntil": "结束时间（可选）", "requirements": "结构化条件组", "groupsHelp": "同一组内使用“且”，不同组之间使用“或”。", "group": "分组", "fact": "事实", "operator": "运算符", "value": "期望值", "impactPreview": "影响预览", "impactSummary": "{{effect}} 覆盖 {{groups}} 个替代组和 {{requirements}} 个条件。硬性保护仍然适用。", "requirementCount": "个条件", "compare": "比较", "actionReason": "确认此高影响操作前，请填写原因。" },
-    "policyActions": { "approve": "审批", "activate": "启用或排程", "rollback": "回滚" },
-    "effects": { "allow": "允许", "deny": "拒绝" },
-    "facts": { "email_verified": "邮箱已验证", "phone_verified": "手机已验证", "profile_complete": "个人资料已完成", "kyc_status": "KYC 状态", "account_status": "账户状态", "role": "角色", "plan": "方案", "partner": "合作伙伴" },
-    "operators": { "eq": "等于", "not_eq": "不等于", "contains": "包含" },
-    "subjectTypes": { "user": "用户", "role": "角色", "plan": "方案", "partner": "合作伙伴" },
-    "assignments": { "createTitle": "创建定向分配", "hardGuardNote": "允许分配绝不会绕过验证、账户、所有权或资金硬性保护。", "subjectType": "主体类型", "subjectId": "主体标识", "subjectPlaceholder": "UUID、角色、方案或合作伙伴标识", "capability": "能力", "effect": "效果", "startsAt": "开始时间", "expiresAt": "到期时间（可选）", "subject": "主体", "period": "有效期", "reason": "原因", "status": "状态", "actions": "操作", "noExpiry": "永不过期", "revokeTitle": "撤销分配" },
-    "audit": { "readOnlyTitle": "只读证据。", "readOnlyDescription": "此全平台审计日志包含访问控制及关联的平台治理事件；目录审核仍是独立工作流程。", "focusedEvent": "已选择审计事件：{{id}}", "focusNotOnPage": "所选事件不在当前结果页内。", "when": "时间", "actor": "操作者", "action": "操作", "target": "目标", "policyVersion": "策略版本", "trace": "追踪引用", "details": "详情", "systemActor": "系统", "before": "变更前", "after": "变更后" },
-    "pagination": { "pageOf": "第 {{page}} 页，共 {{total}} 页" }
+    "tabs": {
+      "overview": "概览",
+      "capabilities": "能力",
+      "policies": "策略",
+      "assignments": "分配",
+      "audit-log": "审计日志"
+    },
+    "actions": {
+      "retry": "重试",
+      "refresh": "刷新",
+      "manage": "管理",
+      "close": "关闭",
+      "reviewChange": "复核变更",
+      "viewAuditEvent": "查看审计事件",
+      "open": "打开",
+      "newVersion": "新建版本",
+      "addRequirement": "添加条件",
+      "removeRequirement": "移除条件",
+      "createVersion": "创建版本",
+      "cancel": "取消",
+      "newAssignment": "新建分配",
+      "reviewAssignment": "复核分配",
+      "revoke": "撤销",
+      "openTarget": "打开目标",
+      "hide": "收起",
+      "inspect": "查看详情"
+    },
+    "accessibility": {
+      "tabs": "访问控制分区",
+      "capabilityStatus": "能力状态",
+      "assignmentStatus": "分配状态",
+      "previousPage": "上一页",
+      "nextPage": "下一页"
+    },
+    "states": {
+      "loading": "正在加载访问控制数据…",
+      "empty": "暂无可用的访问控制数据。",
+      "none": "无",
+      "noCapabilities": "没有符合筛选条件的能力。",
+      "noPolicies": "没有符合筛选条件的策略。",
+      "noVersions": "此策略尚无版本。",
+      "noAssignments": "没有符合筛选条件的分配。",
+      "noAuditEvents": "没有符合筛选条件的审计事件。"
+    },
+    "errors": {
+      "load": "无法加载访问控制。",
+      "loadCapabilities": "无法加载能力。",
+      "saveCapability": "无法更新此能力。",
+      "loadPolicies": "无法加载策略。",
+      "loadVersions": "无法加载策略版本。",
+      "createVersion": "无法创建策略版本。",
+      "policyAction": "无法完成策略操作。",
+      "loadAssignments": "无法加载分配。",
+      "assignmentAction": "无法完成分配操作。",
+      "loadAudit": "无法加载审计日志。"
+    },
+    "feedback": {
+      "capabilityUpdated": "能力治理元数据已更新。",
+      "policyUpdated": "策略操作已完成。",
+      "assignmentUpdated": "分配操作已完成。"
+    },
+    "filters": {
+      "searchCapabilities": "搜索能力键",
+      "category": "类别",
+      "allCategories": "全部类别",
+      "all": "全部",
+      "searchPolicies": "搜索策略",
+      "policyStatus": "策略状态",
+      "allStatuses": "全部状态",
+      "searchAssignments": "搜索主体或能力",
+      "subjectType": "主体类型",
+      "allSubjects": "全部主体类型",
+      "actionPrefix": "操作前缀",
+      "actorId": "操作者 UUID",
+      "entityType": "实体类型",
+      "capability": "能力",
+      "allCapabilities": "全部能力",
+      "traceReference": "追踪引用",
+      "dateFrom": "起始日期",
+      "dateTo": "结束日期"
+    },
+    "overview": {
+      "activeVersions": "生效版本",
+      "policiesDetail": "{{count}} 项受治理策略",
+      "policiesDetail_one": "{{count}} 项受治理策略记录",
+      "policiesDetail_other": "共有 {{count}} 项受治理策略",
+      "pendingApprovals": "待审批",
+      "activeAssignments": "生效分配",
+      "expiringDetail": "{{count}} 项将在 30 天内到期",
+      "expiringDetail_one": "{{count}} 项分配将在 30 天内到期",
+      "expiringDetail_other": "共有 {{count}} 项分配将在 30 天内到期",
+      "generation": "策略代次",
+      "capabilitiesDetail": "{{count}} 项已注册能力",
+      "capabilitiesDetail_one": "{{count}} 项能力已经注册",
+      "capabilitiesDetail_other": "共有 {{count}} 项能力已经注册",
+      "healthTitle": "评估器健康状态",
+      "healthDescription": "警告反映当前治理状态，绝不会削弱硬性保护。",
+      "noWarnings": "未发现评估器警告。",
+      "attentionTitle": "需要关注",
+      "reviewApprovals": "复核 {{count}} 项待审批",
+      "reviewApprovals_one": "复核 {{count}} 项待审批记录",
+      "reviewApprovals_other": "复核共 {{count}} 项待审批记录",
+      "reviewExpiring": "复核 {{count}} 项即将到期的分配",
+      "reviewExpiring_one": "复核 {{count}} 项即将到期的分配记录",
+      "reviewExpiring_other": "复核共 {{count}} 项即将到期的分配记录",
+      "openAudit": "打开全平台审计日志"
+    },
+    "warnings": {
+      "CAPABILITY_DISABLED": "至少一项能力已停用。受影响的决策将按安全方式拒绝。"
+    },
+    "categories": {
+      "platform": "平台",
+      "commerce": "交易",
+      "ai": "人工智能",
+      "recommendation": "推荐",
+      "affiliate": "联盟",
+      "wallet": "钱包"
+    },
+    "risk": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "critical": "关键"
+    },
+    "status": {
+      "enabled": "已启用",
+      "disabled": "已停用",
+      "draft": "草稿",
+      "pending_approval": "待审批",
+      "scheduled": "已排程",
+      "active": "生效中",
+      "retired": "已退役",
+      "expired": "已过期",
+      "revoked": "已撤销"
+    },
+    "common": {
+      "yes": "是",
+      "no": "否",
+      "allowed": "允许",
+      "locked": "锁定",
+      "true": "真",
+      "false": "假"
+    },
+    "forms": {
+      "reason": "治理原因",
+      "reasonPlaceholder": "说明业务或安全原因（至少 10 个字符）。"
+    },
+    "confirm": {
+      "capabilityTitle": "确认能力变更",
+      "capabilityDescription": "此治理变更会感知策略代次，并记录到审计日志。",
+      "save": "保存治理变更",
+      "approveTitle": "审批策略版本",
+      "approveDescription": "审批人必须与策略创建者不同，且操作会被审计。",
+      "activateTitle": "启用策略版本",
+      "activateDescription": "启用后会推进策略代次，并在适用时退役当前生效版本。",
+      "rollbackTitle": "请求回滚策略",
+      "rollbackDescription": "回滚会根据选定的已审批历史创建治理版本，并记录审计事件。",
+      "assignmentTitle": "确认分配",
+      "assignmentDescription": "分配可以限制访问，但不能绕过硬性安全保护。",
+      "revokeTitle": "确认撤销分配",
+      "revokeDescription": "该分配将停止生效，但仍会保留在历史记录中。",
+      "confirm": "确认治理操作"
+    },
+    "capabilities": {
+      "key": "不可变键",
+      "category": "类别",
+      "risk": "风险",
+      "visibility": "客户可见",
+      "assignment": "手动分配",
+      "status": "状态",
+      "actions": "操作",
+      "editTitle": "管理能力元数据",
+      "immutableKey": "能力键永久固定，无法编辑。",
+      "customerVisible": "客户可见",
+      "manuallyAssignable": "允许手动分配",
+      "enabled": "启用"
+    },
+    "policies": {
+      "name": "策略",
+      "capability": "能力",
+      "scope": "范围",
+      "latest": "最新版本",
+      "versions": "版本数",
+      "actions": "操作",
+      "versionHistory": "版本历史",
+      "compareHint": "选择两个版本进行比较",
+      "comparison": "版本比较",
+      "createTitle": "创建受治理的策略版本",
+      "effect": "效果",
+      "effectiveFrom": "生效时间",
+      "effectiveUntil": "结束时间（可选）",
+      "requirements": "结构化条件组",
+      "groupsHelp": "同一组内使用“且”，不同组之间使用“或”。",
+      "group": "分组",
+      "fact": "事实",
+      "operator": "运算符",
+      "value": "期望值",
+      "impactPreview": "影响预览",
+      "impactSummary": "{{effect}} 覆盖 {{groups}} 个替代组和 {{requirements}} 个条件。硬性保护仍然适用。",
+      "requirementCount": "个条件",
+      "compare": "比较",
+      "actionReason": "确认此高影响操作前，请填写原因。"
+    },
+    "policyActions": {
+      "approve": "审批",
+      "activate": "启用或排程",
+      "rollback": "回滚"
+    },
+    "effects": {
+      "allow": "允许",
+      "deny": "拒绝"
+    },
+    "facts": {
+      "email_verified": "邮箱已验证",
+      "phone_verified": "手机已验证",
+      "profile_complete": "个人资料已完成",
+      "kyc_status": "KYC 状态",
+      "account_status": "账户状态",
+      "role": "角色",
+      "plan": "方案",
+      "partner": "合作伙伴"
+    },
+    "operators": {
+      "eq": "等于",
+      "not_eq": "不等于",
+      "contains": "包含"
+    },
+    "subjectTypes": {
+      "user": "用户",
+      "role": "角色",
+      "plan": "方案",
+      "partner": "合作伙伴"
+    },
+    "assignments": {
+      "createTitle": "创建定向分配",
+      "hardGuardNote": "允许分配绝不会绕过验证、账户、所有权或资金硬性保护。",
+      "subjectType": "主体类型",
+      "subjectId": "主体标识",
+      "subjectPlaceholder": "UUID、角色、方案或合作伙伴标识",
+      "capability": "能力",
+      "effect": "效果",
+      "startsAt": "开始时间",
+      "expiresAt": "到期时间（可选）",
+      "subject": "主体",
+      "period": "有效期",
+      "reason": "原因",
+      "status": "状态",
+      "actions": "操作",
+      "noExpiry": "永不过期",
+      "revokeTitle": "撤销分配"
+    },
+    "audit": {
+      "readOnlyTitle": "只读证据。",
+      "readOnlyDescription": "此全平台审计日志包含访问控制及关联的平台治理事件；目录审核仍是独立工作流程。",
+      "focusedEvent": "已选择审计事件：{{id}}",
+      "focusNotOnPage": "所选事件不在当前结果页内。",
+      "when": "时间",
+      "actor": "操作者",
+      "action": "操作",
+      "target": "目标",
+      "policyVersion": "策略版本",
+      "trace": "追踪引用",
+      "details": "详情",
+      "systemActor": "系统",
+      "before": "变更前",
+      "after": "变更后"
+    },
+    "pagination": {
+      "pageOf": "第 {{page}} 页，共 {{total}} 页"
+    }
   },
   "accessibility": {
     "pendingItems": "{{count}} 项待处理",
@@ -991,7 +1236,10 @@
       "queueTitle_one": "审核队列（{{count}}）",
       "queueTitle_other": "审核队列（{{count}}）",
       "unassigned": "尚未分配——打开详情后将领取此审核",
-      "sla": { "due_soon": "即将到期 · {{hours}} 小时", "overdue": "已逾期 · {{hours}} 小时" },
+      "sla": {
+        "due_soon": "即将到期 · {{hours}} 小时",
+        "overdue": "已逾期 · {{hours}} 小时"
+      },
       "batch": {
         "changesReasonPrompt": "所有选中的推荐需要修改什么？（至少 10 个字符）：",
         "processed": "已处理 {{count}} 条推荐。",
@@ -1477,11 +1725,16 @@
         "hours": "小时"
       },
       "unsaved": "未保存的更改"
+    },
+    "loading": {
+      "adminContent": "正在加载管理内容"
     }
   },
   "actions": {
     "approve": "批准",
-    "reject": "拒绝"
+    "reject": "拒绝",
+    "previous": "上一个",
+    "next": "下一个"
   },
   "email": {
     "draft": {
@@ -1775,8 +2028,16 @@
         "placeUpdated": "区域关联已更新。",
         "draftApproved": "翻译草稿已批准。",
         "draftRejected": "翻译草稿已拒绝。",
-        "fields": { "name": "商家名称", "description": "描述" },
-        "status": { "draft": "草稿", "approved": "已批准", "rejected": "已拒绝", "stale": "已过期" }
+        "fields": {
+          "name": "商家名称",
+          "description": "描述"
+        },
+        "status": {
+          "draft": "草稿",
+          "approved": "已批准",
+          "rejected": "已拒绝",
+          "stale": "已过期"
+        }
       },
       "confirm": {
         "approveTitle": "批准推荐？",
@@ -1902,11 +2163,7 @@
       "hours": "{{count}}小时",
       "hours_one": "{{count}}小时",
       "hours_other": "{{count}}小时",
-      "hours_one": "{{count}}小时",
-      "hours_other": "{{count}}小时",
-      "lessThanHour": "不足 1 小时",
-      "hours_one": "{{count}}小时",
-      "hours_other": "{{count}}小时"
+      "lessThanHour": "不足 1 小时"
     },
     "balances": {
       "earnings": "收益",
@@ -2065,9 +2322,7 @@
       "perPage": "每页 {{count}} 条",
       "perPage_one": "每页 {{count}} 条",
       "perPage_other": "每页 {{count}} 条",
-      "searchCustomerOrEmail": "搜索客户或邮箱",
-      "perPage_one": "每页 {{count}} 条",
-      "perPage_other": "每页 {{count}} 条"
+      "searchCustomerOrEmail": "搜索客户或邮箱"
     },
     "header": {
       "description": "在打开证据抽屉前，查看提现金额、风险、审批进度和申请时长。",
@@ -2217,7 +2472,7 @@
       "overdue": "逾期",
       "risk": "风险：{{level}}",
       "riskPriority": "风险 / 优先级",
-      "rm500Threshold": "RM500+ 阈值",
+      "rm500Threshold": "RM500.00+ 阈值",
       "singleApproval": "1/1 次审批",
       "standardReview": "标准审核",
       "status": "状态",

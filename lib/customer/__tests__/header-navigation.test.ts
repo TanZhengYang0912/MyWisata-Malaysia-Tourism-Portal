@@ -16,22 +16,21 @@ describe("customer header navigation", () => {
       "/customer/explore",
       "/customer/partners",
       "/customer/trip",
-      "/customer/chat",
-      "/customer/activity?tab=itinerary",
-      "/customer/saved",
     ]);
     expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer", label: "Home" });
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/for-you")).toBe(false);
-    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/chat")).toBe(true);
+    expect(CUSTOMER_NAV.some((item) => item.href === "/customer/chat")).toBe(false);
     expect(CUSTOMER_NAV.some((item) => item.href === "/customer/map")).toBe(false);
 
     expect(getAllAccountRoutes()).toEqual([
-      "/customer/profile",
-      "/customer/notifications",
-      "/customer/preferences",
+      "/customer/saved",
+      "/customer/activity?tab=itinerary",
+      "/customer/chat",
       "/customer/orders",
       "/customer/vouchers",
       "/customer/wallet",
+      "/customer/profile",
+      "/customer/preferences",
       "/customer/support",
       "/customer/affiliate",
       "/customer/profile/register-vendor",
@@ -39,10 +38,10 @@ describe("customer header navigation", () => {
     ]);
 
     expect(ACCOUNT_MENU_GROUPS.map((group) => group.label)).toEqual([
-      "Account",
-      "Payments & verification",
-      "Help",
-      "More",
+      "My Trips & Saved",
+      "Orders & Wallet",
+      "Account & Preferences",
+      "Partner & More",
     ]);
   });
 

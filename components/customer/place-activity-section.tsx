@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatMYRNumber } from "@/lib/i18n/format";
 import { ArrowUpRight, Compass, Ticket } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
@@ -12,11 +13,11 @@ import {
   type PlaceActivityFilter,
 } from "@/lib/customer/place-list";
 
-const FILTERS: { value: PlaceActivityFilter; key: string; fallback: string }[] = [
-  { value: "all", key: "ui.placeActivity.filters.all", fallback: "All experiences" },
-  { value: "admission", key: "ui.placeActivity.filters.admission", fallback: "Entry tickets" },
-  { value: "guide_service", key: "ui.placeActivity.filters.guideService", fallback: "Guided" },
-  { value: "addon", key: "ui.placeActivity.filters.addon", fallback: "Add-ons" },
+const FILTERS: { value: PlaceActivityFilter; key: string }[] = [
+  { value: "all", key: "ui.placeActivity.filters.all" },
+  { value: "admission", key: "ui.placeActivity.filters.admission" },
+  { value: "guide_service", key: "ui.placeActivity.filters.guideService" },
+  { value: "addon", key: "ui.placeActivity.filters.addon" },
 ];
 
 function RelationIcon({ relation }: Pick<PlaceProduct, "relation">) {
@@ -44,7 +45,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
         </div>
 
         <div className="flex shrink-0 rounded-full border border-border bg-card p-1 shadow-sm" role="group" aria-label={t("ui.placeActivity.filterLabel")}>
-          {FILTERS.map(({ value, key, fallback }) => {
+          {FILTERS.map(({ value, key }) => {
             const count = counts[value];
             const isActive = filter === value;
             return (
@@ -108,7 +109,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                     </div>
                     <p className="shrink-0 text-right text-sm font-bold text-foreground">
                       <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>
-                      {product.price === 0 ? t("ui.placeActivity.free") : t("ui.placeActivity.price", { value: product.price.toFixed(2) })}
+                      {product.price === 0 ? t("ui.placeActivity.free") : t("ui.placeActivity.price", { value: formatMYRNumber(product.price) })}
                     </p>
                   </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
 import { ArrowRight, Check, CircleHelp, Gift, Search, Sparkles } from "lucide-react";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -29,7 +30,7 @@ function VoucherCard({ voucher, onClaim, claiming }: { voucher: CustomerVoucher;
   const discountLabel = voucher.voucherType === "percent"
     ? tCustomer("ui.voucherHub.percentOff", { value: voucher.discountValue })
     : voucher.voucherType === "fixed"
-      ? tCustomer("ui.voucherHub.fixedOff", { value: voucher.discountValue.toFixed(2) })
+      ? tCustomer("ui.voucherHub.fixedOff", { value: formatMYRNumber(voucher.discountValue) })
       : tCustomer("ui.voucherHub.filters.bogo");
   const expiryLabel = voucher.validUntil
     ? tCustomer("ui.voucherHub.ends", { date: new Date(voucher.validUntil).toLocaleDateString(i18n.resolvedLanguage ?? "en-MY", { day: "numeric", month: "short", year: "numeric" }) })
@@ -44,7 +45,7 @@ function VoucherCard({ voucher, onClaim, claiming }: { voucher: CustomerVoucher;
         brandName: voucher.vendorName,
         name: isOutletVoucher ? voucher.outletName ?? voucher.name : voucher.name,
         discountLabel,
-        minSpendLabel: voucher.minSpend > 0 ? tCustomer("ui.voucherHub.minSpend", { value: voucher.minSpend.toFixed(2) }) : null,
+        minSpendLabel: voucher.minSpend > 0 ? tCustomer("ui.voucherHub.minSpend", { value: formatMYRNumber(voucher.minSpend) }) : null,
         expiryLabel,
         availabilityLabel: remainingLabel,
         scopeLabel: isOutletVoucher ? tCustomer("ui.voucherHub.outletVoucher") : voucher.voucherType === "bogo" ? tCustomer("ui.voucherHub.freebie") : tCustomer("ui.voucherHub.partnerVoucher"),

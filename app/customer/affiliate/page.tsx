@@ -23,7 +23,7 @@ import type { AffiliateCampaignStat, AffiliateCommission, AffiliateDailyClicks, 
 import type { Funnel } from "@/lib/affiliate/funnel";
 import type { TierInfo } from "@/lib/affiliate/tier";
 import type { EarningsExportRange } from "@/lib/affiliate/earnings-export";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -279,7 +279,7 @@ export default function AffiliateDashboardPage() {
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.wallet.destinationStatus.pending")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
-            {MYR_CODE} {stats.totals.pendingEarnings.toFixed(2)}
+            {formatMYR(stats.totals.pendingEarnings)}
           </p>
           {Number.isFinite(nearestClearsInDays) && (
             <p className="text-[0.625rem] text-muted-foreground mt-0.5">
@@ -290,7 +290,7 @@ export default function AffiliateDashboardPage() {
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.booking.available")}</p>
           <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
-            {MYR_CODE} {stats.totals.availableToWithdraw.toFixed(2)}
+            {formatMYR(stats.totals.availableToWithdraw)}
           </p>
           {stats.totals.availableToWithdraw > 0 ? (
             <Button size="sm" asChild className="h-6 text-[0.6875rem] px-2">
@@ -416,7 +416,7 @@ export default function AffiliateDashboardPage() {
                       <td className="px-3 py-2 font-medium text-foreground">{row.campaign ?? tCustomer("ui.affiliate.campaigns.untagged")}</td>
                       <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.clicks}</td>
                       <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.referrals}</td>
-                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{MYR_CODE} {row.earnings.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{formatMYR(row.earnings)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -467,7 +467,7 @@ export default function AffiliateDashboardPage() {
                   <td className="px-4 py-2.5 text-right text-foreground">{p.clicks}</td>
                   <td className="px-4 py-2.5 text-right text-foreground">{p.referrals}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
-                    {MYR_CODE} {p.earnings.toFixed(2)}
+                    {formatMYR(p.earnings)}
                   </td>
                 </tr>
               ))
@@ -509,7 +509,7 @@ export default function AffiliateDashboardPage() {
                   <p className="text-sm font-medium text-foreground truncate">{c.productName ?? "Referral"}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(c.createdAt).toLocaleDateString()}
-                    {c.orderAmount !== null && ` · order RM ${c.orderAmount.toFixed(2)}`} · {tCustomer("strictMigration.affiliate.rate", { percent: (c.rate * 100).toFixed(0) })}
+                    {c.orderAmount !== null && ` · order ${formatMYR(c.orderAmount)}`} · {tCustomer("strictMigration.affiliate.rate", { percent: (c.rate * 100).toFixed(0) })}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {c.status === "confirmed" && "Cleared to wallet"}
@@ -522,7 +522,7 @@ export default function AffiliateDashboardPage() {
                 <p
                   className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
                 >
-                  {MYR_CODE} {c.amount.toFixed(2)}
+                  {formatMYR(c.amount)}
                 </p>
               </div>
             ))

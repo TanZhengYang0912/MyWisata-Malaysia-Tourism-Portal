@@ -6,6 +6,8 @@ import {
   getPlaceActivityLabel,
   getPlaceListingCounts,
   filterPlaceListings,
+  parsePlaceAreaIds,
+  serializePlaceAreaIds,
 } from "@/lib/customer/place-list";
 
 function place(id: string, entryFee: number | null): Place {
@@ -49,6 +51,11 @@ describe("place listing filters", () => {
 
   it("combines the availability and area filters", () => {
     expect(filterPlaceListings(places, productCounts, regionByPoi, "bookable", new Set(["north"]))).toEqual([places[0], places[2]]);
+  });
+
+  it("keeps a future-proof multi-area selection in the URL and ignores unknown areas", () => {
+    expect(parsePlaceAreaIds(["north", "unknown", "south", "north"], new Set(["north", "south"]))).toEqual(new Set(["north", "south"]));
+    expect(serializePlaceAreaIds(new Set(["south", "north"]))).toEqual(["north", "south"]);
   });
 });
 

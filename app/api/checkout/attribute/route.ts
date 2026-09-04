@@ -25,6 +25,7 @@ import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
 import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
 import { enqueueUserTransactionEmail } from '@/lib/email/events';
+import { formatMYR } from '@/lib/i18n/format';
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       const deliveries = reward.rewards.flatMap(({ commissionId, recommenderId, amountSen }) => {
         const amountRm = amountSen / 100;
         return [
-          service.from('notifications').insert({ user_id: recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `RM ${amountRm.toFixed(2)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
+          service.from('notifications').insert({ user_id: recommenderId, type: 'recommendation_reward_pending', title: 'Your recommendation earned a pending reward', body: `${formatMYR(amountRm)} will be available after the 7-day hold and KYC approval.`, link: '/customer/wallet' }),
           enqueueUserTransactionEmail({ userId: recommenderId, eventType: 'recommendation_reward_pending', eventKey: `recommendation_reward_pending:${commissionId}`, reference: 'Recommendation reward', amountRm }),
         ];
       });

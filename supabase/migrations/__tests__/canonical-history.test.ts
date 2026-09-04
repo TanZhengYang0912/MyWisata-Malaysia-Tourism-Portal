@@ -7,6 +7,12 @@ const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseli
 const approvedForwardMigrations = [
   "20260830133000_disable_production_demo_purchase.sql",
   "20260830134000_chat_auto_archive.sql",
+  "20260904210000_place_comments.sql",
+  "20260904220000_place_comment_mock_data.sql",
+  "20260904222000_place_comments_rich_identity.sql",
+  "20260904230000_external_booking_sync.sql",
+  "20260904233000_ticket_passes_and_audit.sql",
+  "20260904240000_free_activity_reservations.sql",
 ];
 
 function migrationFiles() {

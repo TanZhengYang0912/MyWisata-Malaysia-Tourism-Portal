@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { useCustomerCapabilityGate, type CustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import type { CustomerCapability } from "@/lib/auth/customer-capabilities";
 
 type InsightMode = "llm" | "rule-based";
@@ -28,11 +28,24 @@ interface CachedInsight {
   generatedAt: string;
 }
 
-interface AffiliateInsightCardProps {
+type CustomerAffiliateInsightCardProps = {
+  scope: "user";
+  requiredCapability: CustomerCapability;
+  nextPath?: string;
+};
+
+type AdminAffiliateInsightCardProps = {
+  scope: "admin";
+};
+
+type AffiliateInsightCardProps = CustomerAffiliateInsightCardProps | AdminAffiliateInsightCardProps;
+
+type AffiliateInsightCardContentProps = {
   scope: "user" | "admin";
   requiredCapability?: CustomerCapability;
   nextPath?: string;
-}
+  gate?: CustomerCapabilityGate;
+};
 
 function storageKey(scope: string, userId: string): string {
   return `mw_affiliate_insight_${scope}_${userId}`;
@@ -48,9 +61,21 @@ function readCached(scope: string, userId: string): CachedInsight | null {
   }
 }
 
-export function AffiliateInsightCard({ scope, requiredCapability, nextPath }: AffiliateInsightCardProps) {
-  const { currentUser, capabilities } = useAuth();
+function GatedAffiliateInsightCard({ scope, requiredCapability, nextPath }: CustomerAffiliateInsightCardProps) {
   const gate = useCustomerCapabilityGate();
+
+  return (
+    <AffiliateInsightCardContent
+      scope={scope}
+      requiredCapability={requiredCapability}
+      nextPath={nextPath}
+      gate={gate}
+    />
+  );
+}
+
+function AffiliateInsightCardContent({ scope, requiredCapability, nextPath, gate }: AffiliateInsightCardContentProps) {
+  const { currentUser, capabilities } = useAuth();
   const { t, i18n } = useTranslation("vendor");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const userId = currentUser?.id ?? "anon";
@@ -64,12 +89,12 @@ export function AffiliateInsightCard({ scope, requiredCapability, nextPath }: Af
 
   async function generate() {
     if (loading) return;
-    if (requiredCapability && !gate(requiredCapability, nextPath)) return;
+    if (requiredCapability && (!gate || !gate(requiredCapability, nextPath))) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(endpoint);
-      if (requiredCapability && await gate.handleResponse(res, nextPath)) return;
+      if (requiredCapability && gate && await gate.handleResponse(res, nextPath)) return;
       const body = (await res.json()) as { data: { insight: string; mode: InsightMode } | null; error: { message: string } | null };
       if (!res.ok || !body.data) {
         setError(body.error?.message ?? t("affiliate.insight.generateFailed"));
@@ -122,4 +147,12 @@ export function AffiliateInsightCard({ scope, requiredCapability, nextPath }: Af
       )}
     </div>
   );
+}
+
+export function AffiliateInsightCard(props: AffiliateInsightCardProps) {
+  if (props.scope === "user") {
+    return <GatedAffiliateInsightCard {...props} />;
+  }
+
+  return <AffiliateInsightCardContent scope="admin" />;
 }

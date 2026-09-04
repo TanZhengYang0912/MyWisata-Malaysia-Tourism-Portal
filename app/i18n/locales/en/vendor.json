@@ -15,11 +15,11 @@
     "Dashboard": "Dashboard",
     "Outlets": "Outlets",
     "Business profile": "Business profile",
-    "Products": "Products",
-    "Bookings": "Bookings",
+    "Products": "Products & Listings",
+    "Bookings": "Bookings & Reservations",
     "Vouchers": "Vouchers",
     "Orders": "Orders",
-    "Wallet": "Wallet",
+    "Wallet": "Wallet & Payouts",
     "Inbox": "Inbox",
     "Notifications": "Notifications",
     "Analytics": "Analytics",
@@ -376,7 +376,130 @@
       "paidOrders": "Paid orders",
       "activeOutletsMalaysia": "Active outlets across Malaysia",
       "readingThisView": "Reading this view:",
-      "readingDescription": "the twelve-month chart is calculated from paid and completed order items in Supabase. Use the dashboard period controls for shorter operating windows."
+      "readingDescription": "the twelve-month chart is calculated from paid and completed order items in Supabase. Use the dashboard period controls for shorter operating windows.",
+      "eyebrow": "Decision support",
+      "controls": {
+        "period": "Analysis period",
+        "outlet": "Outlet",
+        "allOutlets": "All outlets",
+        "last7Days": "Last 7 days",
+        "last30Days": "Last 30 days",
+        "last12Months": "Last 12 months",
+        "apply": "Apply"
+      },
+      "insightLabel": "What stands out",
+      "insightTitle": "Turn performance data into your next operating move.",
+      "insightDescription": "Use demand patterns, product mix, outlet contribution and traveller sentiment to decide what to promote, improve or schedule next.",
+      "periodLabel": "Analysing",
+      "revenueTracked": "Paid and completed orders only",
+      "metrics": {
+        "revenue": "Recognised revenue",
+        "orders": "Unique orders",
+        "averageOrderValue": "Average order value",
+        "bookingShare": "Booking share",
+        "averageRating": "Average rating",
+        "reviewCount": "Visible reviews",
+        "activeProducts": "Active products",
+        "outletCoverage": "Outlet coverage",
+        "revenuePerOutlet": "Revenue per outlet",
+        "topProductShare": "Top product share",
+        "productsWithSales": "Products with sales",
+        "peakWindowOrders": "Peak-window orders"
+      },
+      "metricNotes": {
+        "paidCompleted": "Paid or completed line items",
+        "uniqueOrders": "Deduplicated by order",
+        "inSelectedScope": "Visible in your scope",
+        "outletsWithAccess": "Available to this account",
+        "revenuePerOutlet": "Recognised revenue divided by outlets",
+        "topProductShare": "Share of recognised revenue",
+        "productsWithSales": "Products with at least one order",
+        "peakWindowOrders": "Unique orders in the busiest cell"
+      },
+      "revenueQuality": {
+        "eyebrow": "Revenue quality",
+        "title": "How demand is converting",
+        "description": "Compare revenue, order volume and average order value across the selected period.",
+        "metrics": {
+          "revenue": "Revenue",
+          "averageOrderValue": "AOV",
+          "orders": "Orders"
+        },
+        "trendHint": "The chart groups short ranges by week and long ranges by month."
+      },
+      "bookingMix": {
+        "eyebrow": "Purchase behaviour",
+        "title": "Booking mix",
+        "description": "See how much demand arrives with a scheduled time slot.",
+        "booked": "Booked",
+        "nonBooked": "No slot"
+      },
+      "demandHeatmap": {
+        "eyebrow": "Demand intelligence",
+        "title": "When travellers buy",
+        "description": "Order activity by Malaysia time. Darker cells mark the windows with more unique orders.",
+        "orders": "orders",
+        "less": "Less",
+        "more": "More"
+      },
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "productPortfolio": {
+        "eyebrow": "Product portfolio",
+        "title": "Volume versus value",
+        "description": "Each bubble is a product. More units move right; more revenue or rating moves up.",
+        "axisHint": "Bubble size represents review volume.",
+        "revenue": "Revenue",
+        "units": "Units",
+        "rating": "Rating"
+      },
+      "outletPerformance": {
+        "eyebrow": "Outlet performance",
+        "title": "Contribution by outlet",
+        "description": "Rank outlets by recognised revenue, with order count and revenue share for context.",
+        "orders": "orders"
+      },
+      "customerSignal": {
+        "eyebrow": "Customer signal",
+        "title": "What travellers are saying",
+        "description": "Visible review distribution for the selected period.",
+        "reviews": "Reviews"
+      },
+      "actionQueue": {
+        "eyebrow": "Action queue",
+        "title": "Signals worth acting on",
+        "description": "Data-backed prompts to guide your next product, schedule or outlet decision."
+      },
+      "marketingAttribution": {
+        "title": "Marketing attribution",
+        "description": "Track how shared listings move from social discovery to clicks and orders. Counts are based on tracked events."
+      },
+      "dataNote": {
+        "title": "Data note:",
+        "description": "Revenue uses paid and completed order items. Product views, cancellations, refunds, repeat customers and capacity are not tracked in this view."
+      },
+      "empty": {
+        "trend": "No recognised order activity in this period.",
+        "products": "No product sales to compare yet.",
+        "outlets": "No outlet sales to compare yet.",
+        "reviews": "No visible reviews in this period.",
+        "insights": "More activity is needed before actionable signals appear."
+      },
+      "insights": {
+        "topProductTitle": "Lead with your top product",
+        "topProductDescription": "This product currently contributes the most recognised revenue.",
+        "peakWindowTitle": "Protect the peak window",
+        "peakWindowDescription": "Use this demand window to schedule staffing or timed promotions.",
+        "outletConcentrationTitle": "Watch revenue concentration",
+        "outletConcentrationDescription": "This is the leading outlet share of recognised revenue."
+      }
     },
     "bookings": {
       "loadFailed": "Could not load bookings.",
@@ -393,7 +516,7 @@
       "bookingOperations": "Booking operations",
       "title": "Bookings",
       "description": "Manage reservations and operating hours by outlet, with booking slots kept separate.",
-      "addSlot": "Add date slot",
+      "addSlot": "+ Add Booking Slot",
       "currentFilter": "Current filter",
       "outletsManaged": "Outlets managed",
       "allVendorOutlets": "All vendor outlets",
@@ -679,7 +802,8 @@
       "perPage_one": "{{count}} per page",
       "perPage_other": "{{count}} per page",
       "stockCount_one": "{{count}} in stock{{low}}",
-      "stockCount_other": "{{count}} in stock{{low}}"
+      "stockCount_other": "{{count}} in stock{{low}}",
+      "addProduct": "+ Add New Product"
     },
     "profile": {
       "loading": "Loading business profile…",
@@ -808,7 +932,7 @@
       "usesCount": "{{count}} uses",
       "unlimitedUsage": "Unlimited usage",
       "usageCap": "{{percent}}% of usage cap",
-      "analyticsAmounts": "RM {{revenue}} sales · RM {{discount}} discount · RM {{impact}} net impact",
+      "analyticsAmounts": "RM{{revenue}} sales · RM{{discount}} discount · RM{{impact}} net impact",
       "noAnalyticsMatches": "No vouchers match this date and outlet filter.",
       "searchPlaceholder": "Search voucher code or campaign",
       "activateSelected": "Activate selected",
@@ -826,7 +950,7 @@
       "copyCode": "Copy code",
       "codeCopied": "{{code}} copied",
       "copyCodeValue": "Copy {{code}}",
-      "minimumAmount": "Min RM {{amount}}",
+      "minimumAmount": "Min RM{{amount}}",
       "uses": "uses",
       "endsOn": "Ends {{date}}",
       "noEndDate": "No end date",
@@ -835,7 +959,7 @@
       "deactivate": "Deactivate",
       "voucherDetails": "Voucher details",
       "closeDetails": "Close voucher details",
-      "minimumSpend": "Minimum spend: RM {{amount}}",
+      "minimumSpend": "Minimum spend: RM{{amount}}",
       "validRange": "Valid: {{from}} – {{until}}",
       "outletValue": "Outlet: {{outlet}}",
       "bulkCreation": "Bulk creation",
@@ -869,7 +993,7 @@
         "inactive": "Inactive",
         "expired": "Expired"
       },
-      "fixedDiscount": "RM {{amount}} off",
+      "fixedDiscount": "RM{{amount}} off",
       "percentDiscount": "{{percent}}% off",
       "bogoDiscount": "Buy {{buy}} Get {{free}}",
       "offer": "Voucher offer",
@@ -899,7 +1023,7 @@
       "transactionHistory": "Transaction history",
       "listJoiner": " and ",
       "loadFailed": "Unable to load {{items}}. You can try again.",
-      "minimumError": "Minimum withdrawal is RM {{amount}}.",
+      "minimumError": "Minimum withdrawal is RM{{amount}}.",
       "insufficientBalance": "Insufficient available balance.",
       "submissionFailed": "Submission failed.",
       "activeUnderReview": "Your active withdrawal is already under review.",
@@ -949,8 +1073,8 @@
       "closeDialog": "Close withdrawal dialog",
       "amountRm": "Amount (RM)",
       "withdrawAll": "Withdraw all",
-      "minimumPlaceholder": "Min RM {{amount}}",
-      "largeWithdrawalNotice": "Withdrawals ≥ RM 500 require dual approval and may take 2–3 additional business days.",
+      "minimumPlaceholder": "Min RM{{amount}}",
+      "largeWithdrawalNotice": "Withdrawals ≥ RM500.00 require dual approval and may take 2–3 additional business days.",
       "submitting": "Submitting…",
       "submitRequest": "Submit request",
       "cancel": "Cancel",
@@ -1479,7 +1603,8 @@
     "saveAndExit": "Save & exit",
     "saveDraft": "Save draft",
     "saving": "Saving…",
-    "working": "Working…"
+    "working": "Working…",
+    "exportCsv": "Export CSV"
   },
   "batch": {
     "allFilteredSelected": "All filtered results selected",

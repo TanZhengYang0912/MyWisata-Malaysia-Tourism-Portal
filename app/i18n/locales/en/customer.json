@@ -10,16 +10,29 @@
     "wishlist": "Saved"
   },
   "accountGroups": {
-    "Account": "Account",
-    "Payments & verification": "Payments & verification",
+    "Account": "Account & Preferences",
+    "Payments & verification": "Orders & Wallet",
     "Help": "Help",
-    "More": "More",
-    "account": "Account",
-    "paymentsVerification": "Payments & verification",
+    "More": "Partner & More",
+    "myTravel": "My Trips & Saved",
+    "account": "Account & Preferences",
+    "paymentsVerification": "Orders & Wallet",
     "help": "Help",
-    "more": "More"
+    "more": "Partner & More"
   },
   "accountItems": {
+    "saved": {
+      "label": "Saved",
+      "description": "Saved places and destinations"
+    },
+    "activity": {
+      "label": "My Activity",
+      "description": "Itineraries and activities"
+    },
+    "chat": {
+      "label": "Messages",
+      "description": "Conversations with partners"
+    },
     "Profile": {
       "label": "Profile & Verification",
       "description": "Choose and manage independent verification"
@@ -106,13 +119,14 @@
     "activity": "Activity",
     "accommodation": "Accommodation",
     "retail": "Retail",
-    "hiddenGem": "Hidden Gem"
+    "hiddenGem": "Hidden Gem",
+    "hidden_gem": "Hidden Gem"
   },
   "preferences": {
     "budgetRanges": {
-      "budget": "Budget (< RM 100/day)",
-      "mid_range": "Mid-range (RM 100–500/day)",
-      "luxury": "Luxury (> RM 500/day)"
+      "budget": "Budget (< RM100.00/day)",
+      "mid_range": "Mid-range (RM100.00–RM500.00/day)",
+      "luxury": "Luxury (> RM500.00/day)"
     },
     "mobilityNeeds": {
       "none": "No restrictions",
@@ -218,9 +232,15 @@
       "statuses": {
         "title": "Your verification status",
         "description": "These checks are independent. You can start any available option.",
-        "phone": { "title": "Phone" },
-        "profile": { "title": "Profile" },
-        "kyc": { "title": "KYC" },
+        "phone": {
+          "title": "Phone"
+        },
+        "profile": {
+          "title": "Profile"
+        },
+        "kyc": {
+          "title": "KYC"
+        },
         "states": {
           "complete": "Complete",
           "available": "Not completed — start when needed",
@@ -399,7 +419,13 @@
       "selectItems": "Select at least one item in your cart to continue.",
       "phoneRequired": "Phone verification required",
       "verifyPhone": "Verify your phone number to complete booking and payment.",
-      "continueVerification": "Continue verification"
+      "continueVerification": "Continue verification",
+      "reserveFreeSpot": "Reserve Free Spot",
+      "freeReservationTitle": "Free Activity Reservation",
+      "freeReservationNotice": "This activity is free of charge, but requires a slot reservation for capacity control. No payment will be processed.",
+      "itemsToReserve": "Items to Reserve",
+      "orderSummary": "Order Summary",
+      "instantAllocation": "Instant slot reservation · No payment required"
     },
     "booking": {
       "notFound": "Booking not found",
@@ -419,7 +445,12 @@
       "availableTimes": "Available times",
       "selectSlot": "Select a time slot to continue.",
       "qrUnavailable": "QR unavailable",
-      "qrCodeLabel": "Booking QR code"
+      "qrCodeLabel": "Booking QR code",
+      "qtyLabel": "Qty:",
+      "freeAdmission": "Free Admission",
+      "remaining": "remaining",
+      "multiEntryPass": "Multi-Entry: {{used}} / {{limit}} remaining",
+      "groupPass": "Group Pass: {{used}} / {{limit}} remaining"
     },
     "promotion": {
       "previous": "Previous promotion",
@@ -1026,9 +1057,9 @@
       "proceedCheckout": "Proceed to checkout",
       "voucherApplied": "Voucher {{code}} applied.",
       "discountPercent": "{{value}}% off",
-      "discountFixed": "RM {{value}} off",
-      "minimumSpend": "Min RM {{value}}",
-      "saveEnds": "Save RM {{amount}} · Ends {{date}}",
+      "discountFixed": "RM{{value}} off",
+      "minimumSpend": "Min RM{{value}}",
+      "saveEnds": "Save RM{{amount}} · Ends {{date}}",
       "inStock_one": "{{count}} in stock",
       "inStock_other": "{{count}} in stock",
       "selected_one": "{{count}} selected",
@@ -1315,7 +1346,7 @@
       },
       "photoComingSoon": "Experience photo coming soon",
       "from": "From",
-      "fromPrice": "From RM {{price}}",
+      "fromPrice": "From RM{{price}}",
       "locationCount": "{{count}} locations",
       "listingCount": "{{count}} listings",
       "publishedExperienceCount": "{{count}} published experiences",
@@ -1462,11 +1493,11 @@
       "verifyTngError": "We could not verify this TNG eWallet. Please try again.",
       "validAmount": "Enter a valid amount.",
       "amountExceedsEarnings": "Amount exceeds your available earnings.",
-      "minimumWithdrawal": "Minimum withdrawal is RM {{amount}}.",
+      "minimumWithdrawal": "Minimum withdrawal is RM{{amount}}.",
       "submitWithdrawalError": "Failed to submit withdrawal.",
       "submitError": "Failed to submit.",
-      "minimumTopUp": "Minimum top-up is RM {{amount}}.",
-      "maximumTopUp": "Maximum top-up is RM {{amount}}.",
+      "minimumTopUp": "Minimum top-up is RM{{amount}}.",
+      "maximumTopUp": "Maximum top-up is RM{{amount}}.",
       "topUpError": "Failed to initiate top-up.",
       "bankWithdrawalsEnabled": "Bank withdrawals enabled",
       "completePayoutDetails": "Please complete your payout details",
@@ -1504,7 +1535,7 @@
       "tngSecurityHint": "We verify the destination with the payout provider. Never enter your TNG PIN.",
       "verifying": "Verifying…",
       "verifySave": "Verify & save",
-      "dualApprovalWarning": "⚠ Withdrawals ≥ RM 500 require dual approval and may take longer to process.",
+      "dualApprovalWarning": "⚠ Withdrawals ≥ RM500.00 require dual approval and may take longer to process.",
       "submitRequest": "Submit Request",
       "setupEarningsWithdrawals": "Set up earnings withdrawals",
       "completeKycDescription": "You need to complete KYC verification before setting up a payout account.",
@@ -1627,13 +1658,13 @@
       "descriptionFallback": "A local favourite from {{outlet}}.",
       "emptyTitle": "The menu is being prepared",
       "emptyDescription": "This outlet has not published a sellable item yet. Check back soon for local favourites.",
-      "price": "RM {{price}}",
+      "price": "RM{{price}}",
       "listingCount_one": "{{count}} listings",
       "listingCount_other": "{{count}} listings"
     },
     "home": {
       "vendorCover": "{{vendor}} cover",
-      "vendorDescription": "{{type}} in {{location}}.",
+      "vendorDescription": "Local experiences in {{location}}.",
       "viewFullMap": "View the full map",
       "heroKicker": "A living atlas of Malaysia",
       "heroTitleStart": "Find the place that",
@@ -1780,6 +1811,10 @@
       "filterShow": "Show",
       "filterAreaLabel": "Filter places by area",
       "allAreas": "All areas",
+      "selectedAreas_one": "{{count}} area selected",
+      "selectedAreas_other": "{{count}} areas selected",
+      "searchAreas": "Search areas",
+      "noAreasMatch": "No areas match your search.",
       "activityFallback": "Explore this experience at the destination.",
       "reserveSpot": "Reserve your spot",
       "availablePurchase": "Available to purchase",
@@ -1792,7 +1827,41 @@
       "bookableCount_one": "{{count}} bookable place",
       "vendorOptions_one": "{{count}} vendor option",
       "activityCount_one": "{{count}} activity",
-      "vendorCount_one": "{{count}} vendor"
+      "vendorCount_one": "{{count}} vendor",
+      "localNotes": {
+        "eyebrow": "Local perspective",
+        "title": "Local Notes",
+        "description": "Practical observations from people who have spent time at {{place}}.",
+        "count_one": "{{count}} note",
+        "count_other": "{{count}} notes",
+        "shareLabel": "Share a useful tip",
+        "placeholder": "What would help the next visitor? Keep it specific and respectful.",
+        "guidance": "Do not include phone numbers, identity details or sensitive personal information.",
+        "publish": "Publish note",
+        "signInToShare": "Sign in to share",
+        "loading": "Loading local notes…",
+        "empty": "No local notes yet. Share the first practical tip for future visitors.",
+        "loadMore": "Load more notes",
+        "delete": "Delete",
+        "loadError": "Local notes could not be loaded right now.",
+        "publishError": "Your note could not be published. Please check it and try again.",
+        "deleteError": "This note could not be deleted. Please try again.",
+        "anonymousVisitor": "Anonymous Visitor",
+        "anonymousBadge": "Anonymous",
+        "fromCity": "from {{city}}",
+        "postAnonymously": "Post anonymously",
+        "postingAs": "Posting as {{name}}",
+        "postingAsAnonymous": "Posting as Anonymous Visitor",
+        "charCount": "{{current}} / {{max}}",
+        "minCharWarning": "Minimum 8 characters ({{current}}/8)",
+        "justNow": "Just now",
+        "minutesAgo_one": "{{count}}m ago",
+        "minutesAgo_other": "{{count}}m ago",
+        "hoursAgo_one": "{{count}}h ago",
+        "hoursAgo_other": "{{count}}h ago",
+        "daysAgo_one": "{{count}}d ago",
+        "daysAgo_other": "{{count}}d ago"
+      }
     },
     "saved": {
       "metadataTitle": "Saved — MyWisata",
@@ -1882,7 +1951,13 @@
       "empty": "No experiences in this category yet.",
       "showAll": "Show all experiences",
       "free": "Free",
-      "price": "RM {{value}}"
+      "price": "RM{{value}}",
+      "filters": {
+        "all": "All experiences",
+        "admission": "Entry tickets",
+        "guideService": "Guided experiences",
+        "addon": "Add-ons"
+      }
     },
     "forYou": {
       "generate": "Generate recommendations",
@@ -1948,10 +2023,10 @@
       "threeTravellers": "3 travellers",
       "fourTravellers": "4+ travellers",
       "comfortRange": "Comfort range",
-      "budgetUnder100": "Under RM100/day",
-      "budget100To250": "RM100–250/day",
-      "budget250To500": "RM250–500/day",
-      "budget500Plus": "RM500+/day",
+      "budgetUnder100": "Under RM100.00/day",
+      "budget100To250": "RM100.00–RM250.00/day",
+      "budget250To500": "RM250.00–RM500.00/day",
+      "budget500Plus": "RM500.00+/day",
       "startAt": "Start at",
       "thenChoose": "Then choose",
       "verifiedVendor": "Verified vendor",
@@ -2018,7 +2093,7 @@
       "outletImageAlt": "{{name}} outlet",
       "vendorLogoAlt": "{{name}} logo",
       "percentOff": "{{value}}% off",
-      "fixedOff": "RM {{value}} off",
+      "fixedOff": "RM{{value}} off",
       "ends": "Ends {{date}}",
       "noExpiry": "No expiry date",
       "limitedTime": "Limited time",
@@ -2030,7 +2105,7 @@
       "allEligibleProducts": "All eligible products",
       "productsAvailable": "{{count}} products available",
       "moreProducts": "+{{count}} more",
-      "minSpend": "Minimum spend RM {{value}}",
+      "minSpend": "Minimum spend RM{{value}}",
       "eligibleProduct": "For {{name}}",
       "saved": "Saved",
       "claimLater": "Claim now, use later",

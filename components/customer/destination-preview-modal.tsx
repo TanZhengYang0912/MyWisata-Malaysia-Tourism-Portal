@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, MapPin, X } from "lucide-react";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 
 export type DestinationPreviewModalProps = {
@@ -14,6 +16,7 @@ export type DestinationPreviewModalProps = {
 
 export function DestinationPreviewModal({ destination, onClose, onExplore }: DestinationPreviewModalProps) {
   const { t } = useTranslation("customer");
+  const gate = useCustomerCapabilityGate();
   const { savedStates, toggleSaved } = useSavedDestinations();
   useEffect(() => {
     if (!destination) return;
@@ -82,7 +85,10 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
           <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
-              onClick={() => void toggleSaved(destination.state)}
+              onClick={() => {
+                if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
+                void toggleSaved(destination.state);
+              }}
               aria-pressed={savedStates.has(destination.state)}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-[#f4f6ff] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
             >

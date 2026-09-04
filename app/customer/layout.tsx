@@ -6,7 +6,12 @@ import { usePathname } from "next/navigation";
 import { ArrowRightLeft, Bell, ChevronDown, Globe, ShoppingCart, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
-import { ChatbotWidget } from "@/components/shared/chatbot-widget";
+import dynamic from "next/dynamic";
+
+const ChatbotWidget = dynamic(
+  () => import("@/components/shared/chatbot-widget").then((m) => m.ChatbotWidget),
+  { ssr: false, loading: () => null },
+);
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
@@ -156,9 +161,13 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
   async function switchAccount() {
     setAccountMenuOpen(false);
-    const { error } = await supabase.auth.signOut();
-    if (error) return;
-    window.location.assign("/login");
+    if (currentUser) {
+      const { error } = await supabase.auth.signOut();
+      if (error) return;
+      window.location.assign("/login");
+    } else {
+      window.location.assign(`/login?next=${encodeURIComponent(pathname)}`);
+    }
   }
 
   const guestPublic = !currentUser && isPublicCustomerPath(pathname);
@@ -186,11 +195,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
-            <Link href={currentUser ? "/customer" : "/customer/explore"} className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-primary">
-              <Globe size={16} className="text-white" />
+          <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <Globe size={18} strokeWidth={2.2} />
             </div>
-            <span className="font-bold text-base text-foreground font-[family-name:var(--font-display)]">{BRAND_NAME}</span>
+            <span className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight text-foreground">{BRAND_NAME}</span>
           </Link>
 
           <div className="hidden flex-1 items-center gap-5 md:flex xl:gap-6">
@@ -203,15 +212,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
               >
                 <span>{tCustomer(item.labelKey)}</span>
-                {item.href === "/customer/trip" && tripCount > 0 && (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
-                )}
-                {item.href === "/customer/chat" && unreadChats > 0 && (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
-                )}
-                {item.href === "/customer/saved" && savedCount > 0 && (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{savedCount > 99 ? "99+" : savedCount}</span>
-                )}
               </Link>
             ))}
           </div>
@@ -238,9 +238,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </Link>
-            <Link href="/customer/vouchers" aria-label={tCustomer("accountItems.vouchers.label")} className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary lg:inline-flex">
-              <Tag size={16} className="text-primary" /> {tCustomer("accountItems.vouchers.label")}
-            </Link>
           </div>
 
           <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
@@ -252,12 +249,14 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               aria-label={currentUser
                 ? tCommon("account.openMenuFor", { name: customerDisplayName })
                 : tCommon("account.guestMenu")}
-              className="flex items-center gap-2 rounded-full border border-border bg-card/80 p-1.5 pr-2 transition hover:border-primary/30 hover:bg-secondary"
+              className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 p-1 pr-2 transition hover:border-primary/30 hover:bg-secondary"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+              <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
                 {currentUser?.avatarInitial ?? "G"}
+                {(unreadChats > 0 || unreadTickets > 0) && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
+                )}
               </span>
-              <span className="hidden max-w-28 truncate text-xs font-semibold text-foreground lg:inline">{customerDisplayName}</span>
               <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
             </button>
 
@@ -293,16 +292,29 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                             href={item.href}
                             role="menuitem"
                             aria-current={active ? "page" : undefined}
+                            aria-label={item.href === "/customer/vouchers" ? tCustomer("accountItems.vouchers.label") : undefined}
                             onClick={() => setAccountMenuOpen(false)}
                             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary ${active ? "bg-secondary" : ""}`}
                           >
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
                               <item.icon size={16} />
                             </span>
-                            <span className="min-w-0">
-                              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                {tCustomer(`${item.labelKey}.label`)}
-                                {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                                <span className="flex items-center gap-2 truncate">
+                                  {tCustomer(`${item.labelKey}.label`)}
+                                  {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                                </span>
+                                {item.href === "/customer/saved" && savedCount > 0 && (
+                                  <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-bold text-primary">
+                                    {savedCount > 99 ? "99+" : savedCount}
+                                  </span>
+                                )}
+                                {item.href === "/customer/chat" && unreadChats > 0 && (
+                                  <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[0.625rem] font-bold text-white">
+                                    {unreadChats > 99 ? "99+" : unreadChats}
+                                  </span>
+                                )}
                               </span>
                               <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                             </span>
@@ -320,7 +332,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
                   >
                     <ArrowRightLeft size={16} />
-                    {tCommon("account.switchAccount")}
+                    {currentUser ? tCommon("account.switchAccount") : tCommon("account.signIn")}
                   </button>
                 </div>
               </div>
@@ -342,12 +354,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               <item.icon size={13} /> {tCustomer(item.labelKey)}
               {item.href === "/customer/trip" && tripCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{tripCount > 99 ? "99+" : tripCount}</span>
-              )}
-              {item.href === "/customer/chat" && unreadChats > 0 && (
-                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{unreadChats > 99 ? "99+" : unreadChats}</span>
-              )}
-              {item.href === "/customer/saved" && savedCount > 0 && (
-                <span className="absolute -right-2 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{savedCount > 99 ? "99+" : savedCount}</span>
               )}
             </Link>
           ))}
