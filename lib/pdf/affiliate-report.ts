@@ -9,6 +9,7 @@ import PDFDocument from 'pdfkit';
 import type { AffiliateAdminStats } from '@/lib/affiliate/admin-stats';
 import type { FraudCounters } from '@/lib/affiliate/fraud';
 import type { FraudAnalytics, FraudAnalyticsRange } from '@/lib/affiliate/fraud-analytics';
+import { formatMYR } from '@/lib/i18n/format';
 
 export interface AffiliateReportData {
   generatedAt: string; // ISO
@@ -40,10 +41,6 @@ const FLAG_TYPE_LABEL: Record<string, string> = {
 
 const PAGE_MARGIN = 50;
 const CONTENT_WIDTH = 495; // A4 (595.28pt) minus 2*50 margin, rounded down
-
-function formatMYR(amount: number): string {
-  return `RM ${amount.toFixed(2)}`;
-}
 
 function formatPercent(rate: number): string {
   return `${Number((rate * 100).toFixed(2))}%`;

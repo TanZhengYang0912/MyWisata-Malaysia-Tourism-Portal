@@ -16,12 +16,12 @@ import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
 type ExploreTab = "destinations" | "experiences";
 
 const ZONE_ORDER = [
+  "Federal Territory",
   "Northern Malaysia",
   "Central Malaysia",
   "Southern Malaysia",
-  "East Coast Malaysia",
   "Borneo Malaysia",
-  "Federal Territory",
+  "East Coast Malaysia",
 ];
 
 export function ExploreClient({

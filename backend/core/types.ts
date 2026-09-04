@@ -212,6 +212,25 @@ export interface PlaceProduct {
   relation: PlaceRelation;
 }
 
+/** Customer-safe local discussion attached to a state, region, or place. */
+export interface PlaceComment {
+  id: string;
+  placeId: string;
+  body: string;
+  createdAt: string;
+  authorName: string;
+  authorAvatarUrl?: string | null;
+  authorInitial: string;
+  authorCity?: string | null;
+  isAnonymous: boolean;
+  canDelete: boolean;
+}
+
+export interface PlaceCommentsPage {
+  items: PlaceComment[];
+  total: number;
+}
+
 // ─── Commerce domain (P4 — Cart/Order/Booking/Wallet) ──────────────────────
 export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED";
 
@@ -278,8 +297,12 @@ export interface Booking {
   outletId: string;
   slotStartsAt?: string;
   qty: number;
-  status: "confirmed" | "checked_in" | "no_show" | "cancelled";
+  status: "confirmed" | "checked_in" | "no_show" | "cancelled" | "in_use";
   qrCode: string; // booking id retained as a compatibility payload; customer UI renders a real QR
+  passToken?: string;
+  policy?: "single_entry" | "multi_entry" | "group_entry";
+  entryLimit?: number;
+  entriesUsed?: number;
 }
 
 export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";

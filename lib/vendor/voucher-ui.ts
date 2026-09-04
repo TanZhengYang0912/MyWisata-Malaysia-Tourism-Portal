@@ -1,3 +1,5 @@
+import { formatMYR } from "@/lib/i18n/format";
+
 export interface VoucherDisplayInput {
   voucherType: string;
   discountValue: number | null | undefined;
@@ -7,7 +9,7 @@ export interface VoucherDisplayInput {
 
 export function voucherDiscountLabel(input: VoucherDisplayInput): string {
   if (input.voucherType === 'percent') return `${Number(input.discountValue ?? 0)}% off`;
-  if (input.voucherType === 'fixed') return `RM${Number(input.discountValue ?? 0).toFixed(2)} off`;
+  if (input.voucherType === 'fixed') return `${formatMYR(Number(input.discountValue ?? 0))} off`;
   if (input.voucherType === 'bogo' && input.buyQuantity && input.freeQuantity) {
     return `Buy ${input.buyQuantity} Get ${input.freeQuantity}`;
   }

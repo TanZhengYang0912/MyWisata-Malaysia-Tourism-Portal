@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
+import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,7 +27,7 @@ function fallbackImage(categoryLabel: string, photoComingSoon: string) {
   );
 }
 
-export function OutletProductCard({ outlet, product }: { outlet: OutletRendererOutlet; product: OutletRendererProduct }) {
+function CartActions({ outlet, product }: { outlet: OutletRendererOutlet; product: OutletRendererProduct }) {
   const { t } = useTranslation("customer");
   const router = useRouter();
   const gate = useCustomerCapabilityGate();
@@ -34,6 +35,56 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
   const [working, setWorking] = useState<"add" | "buy" | null>(null);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const action = getOutletProductAction({
+    requiresBooking: Boolean(product.requires_booking),
+    variantId: product.variant_id,
+    firstAvailableSlotId: product.first_available_slot_id,
+    availableStock: product.available_stock,
+  });
+
+  if (action.kind !== "cart") return null;
+  const cartAction = action;
+
+  async function handleAction(kind: "add" | "buy") {
+    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
+
+    setWorking(kind);
+    setError(null);
+    try {
+      await addItem({
+        activityId: product.id,
+        variantId: cartAction.variantId,
+        slotId: cartAction.slotId,
+        outletId: outlet.id,
+        qty: 1,
+        priceOverride: product.base_price,
+      });
+      setAdded(true);
+      if (kind === "buy") router.push("/customer/cart");
+    } catch {
+      setError(t("ui.outletMenu.addError", { product: product.name }));
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  return (
+    <>
+      {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
+        <button type="button" onClick={() => void handleAction("add")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full border border-primary/20 px-2 py-2 text-xs font-bold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
+          {added ? <><Check size={13} aria-hidden="true" /> {t("ui.states.addedToCart")}</> : t(product.requires_booking ? "ui.actions.addBookingToCart" : "ui.actions.addToCart")}
+        </button>
+        <button type="button" onClick={() => void handleAction("buy")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-2 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          {working === "buy" ? t("ui.outletMenu.adding") : t(product.requires_booking ? "ui.actions.bookNow" : "ui.actions.buyNow")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+export function OutletProductCard({ outlet, product }: { outlet: OutletRendererOutlet; product: OutletRendererProduct }) {
+  const { t } = useTranslation("customer");
   const action = getOutletProductAction({
     requiresBooking: Boolean(product.requires_booking),
     variantId: product.variant_id,
@@ -55,31 +106,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
   const detailHref = productDetailHref(product.id, outlet.id);
   const categoryLabel = product.category || t(product.product_type ? `ui.vendor.productTypes.${product.product_type}` : "ui.outlet.availableToExplore");
   const descriptionFallback = t("ui.outletMenu.descriptionFallback", { outlet: outlet.name });
-  const priceLabel = t("ui.outletMenu.price", { price: Number(product.base_price).toFixed(2) });
-
-  async function handleAction(kind: "add" | "buy") {
-    if (action.kind !== "cart") return;
-    if (!gate(CUSTOMER_CAPABILITY.CART_MUTATION)) return;
-
-    setWorking(kind);
-    setError(null);
-    try {
-      await addItem({
-        activityId: product.id,
-        variantId: action.variantId,
-        slotId: action.slotId,
-        outletId: outlet.id,
-        qty: 1,
-        priceOverride: product.base_price,
-      });
-      setAdded(true);
-      if (kind === "buy") router.push("/customer/cart");
-    } catch {
-      setError(t("ui.outletMenu.addError", { product: product.name }));
-    } finally {
-      setWorking(null);
-    }
-  }
+  const priceLabel = t("ui.outletMenu.price", { price: formatMYRNumber(Number(product.base_price)) });
 
   return (
     <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
@@ -120,17 +147,8 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
           </span>
         </div>
 
-        {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
-
         {action.kind === "cart" ? (
-          <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
-            <button type="button" onClick={() => void handleAction("add")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-full border border-primary/20 px-2 py-2 text-xs font-bold text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50">
-              {added ? <><Check size={13} aria-hidden="true" /> {t("ui.states.addedToCart")}</> : t(product.requires_booking ? "ui.actions.addBookingToCart" : "ui.actions.addToCart")}
-            </button>
-            <button type="button" onClick={() => void handleAction("buy")} disabled={Boolean(working)} className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-2 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
-              {working === "buy" ? t("ui.outletMenu.adding") : t(product.requires_booking ? "ui.actions.bookNow" : "ui.actions.buyNow")}
-            </button>
-          </div>
+          <CartActions outlet={outlet} product={product} />
         ) : (
           <Link href={detailHref} className="mt-auto inline-flex min-h-10 items-center justify-center rounded-full border border-primary/20 px-3 py-2 text-xs font-bold text-primary transition hover:bg-primary/5">
             {t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime" : action.reason === "out_of_stock" ? "ui.outletMenu.viewDetails" : "ui.outletMenu.chooseOptions")}

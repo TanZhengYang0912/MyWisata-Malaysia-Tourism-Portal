@@ -132,20 +132,60 @@
       "vendor_account": "Account"
     },
     "events": {
-      "withdrawalApproved": { "title": "Withdrawal approved — payout in progress", "body": "Your withdrawal has been approved and will be transferred to your selected payout destination shortly." },
-      "withdrawalSecondApprovalPending": { "title": "Withdrawal partially approved — awaiting second review", "body": "Your withdrawal has received its first approval and requires one more review." },
-      "withdrawalSubmitted": { "title": "Withdrawal request submitted", "body": "Your withdrawal is pending review. You will receive an update when its status changes." },
-      "withdrawalPaid": { "title": "Payout sent to your account", "body": "Your withdrawal has been transferred. Please check your bank account within 1–3 business days." },
-      "withdrawalFailed": { "title": "Withdrawal payout failed", "body": "Your withdrawal payout failed. Your balance has been restored. Please contact support." },
-      "withdrawalRiskReviewed": { "title": "Withdrawal risk review completed", "body": "Your withdrawal has passed an additional risk review and is awaiting final approval." },
-      "withdrawalOverdue": { "title": "Withdrawal review is taking longer than expected", "body": "Your withdrawal is under extended review. Our team will contact you if additional information is needed." },
-      "withdrawalResumed": { "title": "Withdrawal review resumed", "body": "Your withdrawal review has resumed. A fresh approval review is now in progress." },
-      "withdrawalRejected": { "title": "Withdrawal request rejected" },
-      "withdrawalHold": { "title": "Withdrawal needs additional review" },
-      "walletAdjustment": { "title": "Wallet balance adjusted", "body": "An administrator made a Wallet adjustment. Open your Wallet for the updated balance." },
-      "walletRefund": { "title": "Wallet refund processed", "body": "Your full refund has been returned to the Wallet balance buckets used for the original payment." },
-      "recommendationApproved": { "title": "Your recommendation was approved", "body": "Great find! We will reach out to the vendor soon." },
-      "recommendationApprovedWithName": { "title": "Your recommendation \"{{vendorName}}\" was approved", "body": "Great find! We will reach out to the vendor soon." }
+      "withdrawalApproved": {
+        "title": "Withdrawal approved — payout in progress",
+        "body": "Your withdrawal has been approved and will be transferred to your selected payout destination shortly."
+      },
+      "withdrawalSecondApprovalPending": {
+        "title": "Withdrawal partially approved — awaiting second review",
+        "body": "Your withdrawal has received its first approval and requires one more review."
+      },
+      "withdrawalSubmitted": {
+        "title": "Withdrawal request submitted",
+        "body": "Your withdrawal is pending review. You will receive an update when its status changes."
+      },
+      "withdrawalPaid": {
+        "title": "Payout sent to your account",
+        "body": "Your withdrawal has been transferred. Please check your bank account within 1–3 business days."
+      },
+      "withdrawalFailed": {
+        "title": "Withdrawal payout failed",
+        "body": "Your withdrawal payout failed. Your balance has been restored. Please contact support."
+      },
+      "withdrawalRiskReviewed": {
+        "title": "Withdrawal risk review completed",
+        "body": "Your withdrawal has passed an additional risk review and is awaiting final approval."
+      },
+      "withdrawalOverdue": {
+        "title": "Withdrawal review is taking longer than expected",
+        "body": "Your withdrawal is under extended review. Our team will contact you if additional information is needed."
+      },
+      "withdrawalResumed": {
+        "title": "Withdrawal review resumed",
+        "body": "Your withdrawal review has resumed. A fresh approval review is now in progress."
+      },
+      "withdrawalRejected": {
+        "title": "Withdrawal request rejected"
+      },
+      "withdrawalHold": {
+        "title": "Withdrawal needs additional review"
+      },
+      "walletAdjustment": {
+        "title": "Wallet balance adjusted",
+        "body": "An administrator made a Wallet adjustment. Open your Wallet for the updated balance."
+      },
+      "walletRefund": {
+        "title": "Wallet refund processed",
+        "body": "Your full refund has been returned to the Wallet balance buckets used for the original payment."
+      },
+      "recommendationApproved": {
+        "title": "Your recommendation was approved",
+        "body": "Great find! We will reach out to the vendor soon."
+      },
+      "recommendationApprovedWithName": {
+        "title": "Your recommendation \"{{vendorName}}\" was approved",
+        "body": "Great find! We will reach out to the vendor soon."
+      }
     }
   },
   "ticket": {
@@ -213,9 +253,50 @@
     "itemCountPlural_one": "Shopping cart, {{count}} items",
     "itemCountPlural_other": "Shopping cart, {{count}} items"
   },
+  "command": {
+    "title": "Command Palette",
+    "searchAdminPlaceholder": "Type a command or search queues… (⌘K)",
+    "searchVendorPlaceholder": "Type a command or jump to workspace… (⌘K)",
+    "noResults": "No commands or pages found.",
+    "navigation": "Navigation",
+    "queue": "Review Queues",
+    "actions": "Quick Actions",
+    "admin": "Administration",
+    "preferences": "Preferences",
+    "navigate": "to navigate",
+    "select": "to select",
+    "openPalette": "Command Palette"
+  },
   "strictMigration": {
     "verifiedContributor": "Verified contributor",
     "accountFallbackName": "Account",
     "chatbotTicketCreated": "Done — ticket #{{id}} created. Our team will reply; you'll see it under My Tickets."
+  },
+  "theme": {
+    "light": "Light Theme",
+    "dark": "Dark Theme"
+  },
+  "keyboard": {
+    "esc": "ESC",
+    "cmdK": "⌘K"
+  },
+  "brand": {
+    "speed": "MyWisata Speed"
+  },
+  "ui": {
+    "place": {
+      "localNotes": {
+        "justNow": "Just now",
+        "minutesAgo": "{{count}}m ago",
+        "minutesAgo_one": "{{count}}m ago",
+        "minutesAgo_other": "{{count}}m ago",
+        "hoursAgo": "{{count}}h ago",
+        "hoursAgo_one": "{{count}}h ago",
+        "hoursAgo_other": "{{count}}h ago",
+        "daysAgo": "{{count}}d ago",
+        "daysAgo_one": "{{count}}d ago",
+        "daysAgo_other": "{{count}}d ago"
+      }
+    }
   }
 }

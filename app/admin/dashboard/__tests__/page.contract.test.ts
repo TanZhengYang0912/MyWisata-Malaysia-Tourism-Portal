@@ -13,7 +13,7 @@ describe('admin approval overview workbench', () => {
     expect(pageSource).toContain('t("dashboard.metrics.pendingPayout")');
     expect(pageSource).toContain('t("dashboard.metrics.overdue")');
     expect(pageSource).toContain('t("dashboard.metrics.dualApproval")');
-    expect(pageSource).toContain('RM');
+    expect(pageSource).toContain('formatMYR(data.pendingPayoutValue, locale)');
   });
 
   it('provides an action centre with direct queue links', () => {

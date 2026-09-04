@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -32,11 +32,38 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => firstDateKey);
   const [displayedMonthKey, setDisplayedMonthKey] = useState<string>(() => firstDateKey.slice(0, 7));
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
   const activeDateKey = bookableDateGroups.some((group) => group.key === selectedDateKey) ? selectedDateKey : bookableDateGroups[0]?.key ?? "";
   const activeDateGroup = bookableDateGroups.find((group) => group.key === activeDateKey);
   const previewDateGroups = getBookingDatePreview(bookableDateGroups, activeDateKey);
   const calendarDays = useMemo(() => getBookingCalendarDays(slots, displayedMonthKey, now), [slots, displayedMonthKey, now]);
   const availableSlotCount = activeDateGroup?.slots.length ?? 0;
+
+  useEffect(() => {
+    if (!calendarOpen) return;
+
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (calendarContainerRef.current && !calendarContainerRef.current.contains(event.target as Node)) {
+        setCalendarOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setCalendarOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [calendarOpen]);
 
   if (!activity.requiresBooking) return null;
 
@@ -52,7 +79,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
       <div className="mb-2 flex items-center justify-between gap-3">
         <label className="block text-xs font-semibold text-muted-foreground">{label}</label>
         {slots.length > 0 && (
-          <div className="relative shrink-0">
+          <div ref={calendarContainerRef} className="relative shrink-0">
             <button
               type="button"
               onClick={() => setCalendarOpen((open) => !open)}

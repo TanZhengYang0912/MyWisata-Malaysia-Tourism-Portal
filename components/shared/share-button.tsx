@@ -53,6 +53,8 @@ interface ShareButtonProps {
    * share_events row at all, not even a plain-link one.
    */
   plainOnly?: boolean;
+  /** Optional action(s) rendered in the same button row prior to the share actions. */
+  leading?: React.ReactNode;
 }
 
 // CLAUDE-SHARE-SURFACES.md Surface 4 (not yet built — see lib/affiliate/redirect.ts):
@@ -82,7 +84,7 @@ const SHARE_IMAGE_TYPES: Partial<Record<ShareType, "product" | "vendor" | "outle
   outlet: "outlet",
 };
 
-export function ShareButton({ shareType, contentId, title, slug, compact = false, plainOnly = false }: ShareButtonProps) {
+export function ShareButton({ shareType, contentId, title, slug, compact = false, plainOnly = false, leading }: ShareButtonProps) {
   const { t } = useTranslation("admin");
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
@@ -270,6 +272,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
   return (
     <div className="inline-flex flex-col items-center gap-1">
       <div className="flex items-center gap-2">
+        {leading}
         <Button
           variant="outline"
           size="icon"

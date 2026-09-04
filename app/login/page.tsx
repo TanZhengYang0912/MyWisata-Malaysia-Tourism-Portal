@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
-import { GUEST_EXPLORE_PATH, postLoginPath } from "@/lib/auth/guest-mode";
+import { postLoginPath } from "@/lib/auth/guest-mode";
 import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,7 +106,7 @@ function LoginContent() {
       : { error: null };
     setBusy(false);
     if (signOutError) { setError(tCommon("guest.startError")); return; }
-    router.replace(GUEST_EXPLORE_PATH); router.refresh();
+    router.replace("/customer"); router.refresh();
   }
 
   async function signUp(event: FormEvent<HTMLFormElement>) {
@@ -114,7 +114,7 @@ function LoginContent() {
     const validation = validatePassword(password);
     if (!validation.ok) { setError(tAuth("errors.passwordPolicy")); return; }
     if (password !== confirmPassword) { setError(tAuth("errors.passwordMismatch")); return; }
-    const next = requestedNext() ?? "/customer/explore";
+    const next = requestedNext() ?? "/customer";
     setBusy(true);
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(), password,

@@ -35,6 +35,18 @@ describe('public outlet menu', () => {
     expect(source).not.toContain('disabled={Boolean(working) || action.kind !== "cart"}');
   });
 
+  it('mounts the customer capability gate only for cart-capable cards', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
+    const card = source.slice(
+      source.indexOf('export function OutletProductCard'),
+      source.indexOf('export function OutletMenu'),
+    );
+
+    expect(source).toContain('function CartActions');
+    expect(card).not.toContain('useCustomerCapabilityGate');
+    expect(card).toMatch(/action\.kind === "cart" \? \(\s*<CartActions outlet=\{outlet\} product=\{product\} \/>/);
+  });
+
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
     expect(source).toContain('t("strictMigration.outletNavigation.position"');

@@ -1,20 +1,21 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, CreditCard, ShieldCheck, Smartphone, Wallet } from "lucide-react";
+import { AlertCircle, CalendarClock, CreditCard, ImageOff, ShieldCheck, Smartphone, Ticket, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
-import { getVoucherByCode } from "@/backend/domains/catalogue";
+import { getActivities, getBookingSlots, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
+import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
-import type { Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
+import { formatMYR, formatMYRFromSen } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
 function attributeCheckout(orderId: string) {
@@ -66,7 +67,29 @@ export default function CheckoutPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [outlets, setOutlets] = useState<Outlet[]>([]);
+  const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
   const checkoutAllowed = capabilities.checkout.allowed;
+
+  useEffect(() => {
+    getActivities().then(setActivities).catch(() => setActivities([]));
+    getOutlets().then(setOutlets).catch(() => setOutlets([]));
+  }, []);
+
+  const bookingActivityIds = useMemo(
+    () => [...new Set(selectedItems.filter((item) => item.slotId).map((item) => item.activityId))],
+    [selectedItems],
+  );
+  const bookingActivityKey = bookingActivityIds.join(",");
+
+  useEffect(() => {
+    if (bookingActivityIds.length === 0) return;
+    Promise.all(bookingActivityIds.map((id) => getBookingSlots(id))).then((lists) => {
+      setSlotsById(new Map(lists.flat().map((slot) => [slot.id, slot])));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingActivityKey]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -128,12 +151,25 @@ export default function CheckoutPage() {
 
   const { subtotal, discount, total } = totals(voucher);
   const totalSen = Math.round(total * 100);
+  const isFreeReservation = total === 0;
   const walletSpendableSen = (walletSummary?.topupSen ?? 0) + (walletSummary?.earningsSen ?? 0);
-  const walletInsufficient = walletSummaryLoaded && walletSpendableSen < totalSen;
+  const walletInsufficient = !isFreeReservation && walletSummaryLoaded && walletSpendableSen < totalSen;
   const selectedMethod = METHODS.find((choice) => choice.id === methodId) ?? METHODS[0]!;
 
   if (selectedItems.length === 0) {
-    return <EmptyState title={tCustomer("ui.checkout.nothing")} description={tCustomer("ui.checkout.selectItems")} action={<Link href="/customer/cart" className="font-semibold text-primary hover:underline">{tCustomer("ui.actions.backToCart")}</Link>} />;
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <EmptyState
+          title={tCustomer("ui.checkout.nothing")}
+          description={tCustomer("ui.checkout.selectItems")}
+          action={
+            <Link href="/customer/cart" className="font-semibold text-primary hover:underline">
+              {tCustomer("ui.actions.backToCart")}
+            </Link>
+          }
+        />
+      </div>
+    );
   }
 
   async function handlePay() {
@@ -142,6 +178,10 @@ export default function CheckoutPage() {
     setCheckoutError(null);
     try {
       const idempotencyKey = crypto.randomUUID();
+      const isFreeReservation = total === 0;
+      const paymentMethod = isFreeReservation ? "free_reservation" : selectedMethod.paymentMethod;
+      const paymentProvider = isFreeReservation ? null : selectedMethod.paymentProvider;
+
       const prepareResponse = await fetch("/api/checkout/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
@@ -149,8 +189,8 @@ export default function CheckoutPage() {
           selectedKeys: [...selectedKeys],
           voucherCode,
           claimId,
-          paymentMethod: selectedMethod.paymentMethod,
-          paymentProvider: selectedMethod.paymentProvider,
+          paymentMethod,
+          paymentProvider,
           idempotencyKey,
         }),
       });
@@ -161,6 +201,13 @@ export default function CheckoutPage() {
       const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         throw new Error(getCheckoutErrorMessage(prepared.error));
+      }
+      if (isFreeReservation) {
+        if (!prepared.data.order_id) throw new Error("Order creation failed");
+        attributeCheckout(prepared.data.order_id);
+        fetch("/api/orders/receipt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: prepared.data.order_id }), keepalive: true });
+        router.push(`/customer/orders/${prepared.data.order_id}`);
+        return;
       }
       if (prepared.data.stripeUrl) {
         window.location.href = prepared.data.stripeUrl;
@@ -197,96 +244,202 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
-      <Link href="/customer/cart" className="mb-5 inline-flex items-center text-sm font-semibold text-primary hover:underline">← {tCustomer("ui.actions.backToCart")}</Link>
-      <h1 className="text-2xl font-bold text-foreground mb-2 font-[family-name:var(--font-display)]">{tCustomer("ui.checkout.title")}</h1>
-      <nav aria-label={tCustomer("ui.checkout.progress")} className="mb-5 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        <Link href="/customer/cart" className="text-primary hover:underline">{tCustomer("ui.cart.title")}</Link>
-        <span aria-hidden="true">→</span>
-        <span className="text-foreground" aria-current="step">{tCustomer("ui.checkout.title")}</span>
-        <span aria-hidden="true">→</span>
-        <span>{tCustomer("ui.checkout.confirmation")}</span>
-      </nav>
-      <p className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
-        <ShieldCheck size={13} /> {tCustomer("ui.checkout.stripeNotice")}
-      </p>
-
-      <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
-          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {subtotal.toFixed(2)}</span>
-        </div>
-        {discount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{tCustomer("strictMigration.checkout.discountWithCode", { code: voucherCode })}</span>
-            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: `${MYR_CODE} ${discount.toFixed(2)}` })}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-base pt-2 border-t border-border">
-          <span className="font-bold text-foreground">{tCustomer("ui.checkout.total")}</span>
-          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {total.toFixed(2)}</span>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/customer/cart" className="mb-4 inline-flex items-center text-sm font-semibold text-primary hover:underline">
+        ← {tCustomer("ui.actions.backToCart")}
+      </Link>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground font-[family-name:var(--font-display)]">
+          {tCustomer("ui.checkout.title")}
+        </h1>
+        <nav aria-label={tCustomer("ui.checkout.progress")} className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <Link href="/customer/cart" className="text-primary hover:underline">{tCustomer("ui.cart.title")}</Link>
+          <span aria-hidden="true">→</span>
+          <span className="text-foreground" aria-current="step">{tCustomer("ui.checkout.title")}</span>
+          <span aria-hidden="true">→</span>
+          <span>{tCustomer("ui.checkout.confirmation")}</span>
+        </nav>
       </div>
 
-      <p className="text-xs font-semibold text-muted-foreground mb-2">{tCustomer("ui.checkout.paymentMethod")}</p>
-      <div className="space-y-2 mb-6">
-        {METHODS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            disabled={m.id === "wallet" && walletInsufficient}
-             onClick={() => setMethodId(m.id)}
-             className="w-full flex items-center gap-3 p-3 rounded-xl border text-left disabled:cursor-not-allowed disabled:opacity-50"
-             style={{ borderColor: methodId === m.id ? "var(--primary)" : "var(--border)", backgroundColor: methodId === m.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent" }}
-          >
-            <m.icon size={16} className="text-teal shrink-0" />
-            <span className="text-sm font-medium text-foreground flex-1">{tCustomer(m.labelKey)}</span>
-            {m.id === "wallet" && walletSummaryLoaded && (
-              <span className="text-xs text-muted-foreground font-[family-name:var(--font-mono)]">
-                {MYR_CODE} {(walletSpendableSen / 100).toFixed(2)}
-              </span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Main Column */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {/* Reservation Items Card */}
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
+              <Ticket size={18} className="text-primary" />
+              <span>{tCustomer("ui.checkout.itemsToReserve", "Items in Reservation")} ({selectedItems.length})</span>
+            </h2>
+            <div className="space-y-3">
+              {selectedItems.map((item) => {
+                const activity = activities.find((candidate) => candidate.id === item.activityId);
+                const outlet = outlets.find((candidate) => candidate.id === (item.outletId ?? activity?.outletId));
+                const variant = activity?.variants.find((candidate) => candidate.id === item.variantId);
+                const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
+                const price = item.priceOverride ?? (activity ? unitPrice(activity, item.variantId, item.qty) : 0);
+                const lineTotal = price * item.qty;
+                return (
+                  <div key={`${item.activityId}-${item.variantId}-${item.slotId ?? ""}`} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-secondary/15 transition-colors">
+                    {activity?.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={activity.image} alt={activity.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+                        <ImageOff size={20} strokeWidth={1.5} aria-hidden="true" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-bold text-foreground truncate">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
+                        <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
+                          {lineTotal === 0 ? "RM0.00" : formatMYR(lineTotal)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{outlet?.name ?? ""} {variant?.label ? `· ${variant.label}` : ""}</p>
+                      {slot && (
+                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
+                          <CalendarClock size={13} className="text-primary" />
+                          <span>{new Date(slot.startsAt).toLocaleString("en-MY", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                        </p>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
+                          {tCustomer('ui.booking.qtyLabel')} {item.qty}
+                        </span>
+                        {lineTotal === 0 && (
+                          <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600">
+                            {tCustomer('ui.booking.freeAdmission')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Payment or Free Reservation Card */}
+          <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            {isFreeReservation ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-start gap-3">
+                  <Ticket size={20} className="text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {tCustomer("ui.checkout.freeReservationTitle")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      {tCustomer("ui.checkout.freeReservationNotice")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-muted-foreground mb-3">{tCustomer("ui.checkout.paymentMethod")}</p>
+                <div className="space-y-2 mb-4">
+                  {METHODS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      disabled={m.id === "wallet" && walletInsufficient}
+                      onClick={() => setMethodId(m.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border text-left disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                      style={{ borderColor: methodId === m.id ? "var(--primary)" : "var(--border)", backgroundColor: methodId === m.id ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "transparent" }}
+                    >
+                      <m.icon size={16} className="text-teal shrink-0" />
+                      <span className="text-sm font-medium text-foreground flex-1">{tCustomer(m.labelKey)}</span>
+                      {m.id === "wallet" && walletSummaryLoaded && (
+                        <span className="text-xs text-muted-foreground font-[family-name:var(--font-mono)]">
+                          {formatMYRFromSen(walletSpendableSen)}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {walletInsufficient && (
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {tCustomer("ui.checkout.walletInsufficient")}
+                  </p>
+                )}
+
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck size={13} /> {tCustomer("ui.checkout.stripeNotice")}
+                </p>
+              </>
             )}
-          </button>
-        ))}
-      </div>
+          </section>
 
-      {walletInsufficient && (
-        <p className="-mt-3 mb-6 text-xs text-muted-foreground">
-          {tCustomer("ui.checkout.walletInsufficient")}
-        </p>
-      )}
-
-      {checkoutError && (
-        <div className="mb-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-          <div className="flex items-start gap-2">
-            <AlertCircle size={15} className="mt-0.5 shrink-0" />
-            <span>{checkoutError}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/customer/cart")}
-            className="mt-2 pl-6 text-xs font-semibold underline underline-offset-2"
-          >
-            {tCustomer("strictMigration.checkout.returnToCart")}
-          </button>
-          {checkoutError.includes("Wallet balance is no longer sufficient") && (
-            <div className="mt-3 flex gap-2 pl-6">
-              <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>{tCustomer("ui.wallet.topUp")}</Button>
-               <Button type="button" size="sm" variant="outline" onClick={() => { setMethodId("stripe_card"); setCheckoutError(null); }}>{tCustomer("strictMigration.checkout.payByCard")}</Button>
+          {checkoutError && (
+            <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span>{checkoutError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/customer/cart")}
+                className="mt-2 pl-6 text-xs font-semibold underline underline-offset-2"
+              >
+                {tCustomer("strictMigration.checkout.returnToCart")}
+              </button>
+              {checkoutError.includes("Wallet balance is no longer sufficient") && (
+                <div className="mt-3 flex gap-2 pl-6">
+                  <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>{tCustomer("ui.wallet.topUp")}</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { setMethodId("stripe_card"); setCheckoutError(null); }}>{tCustomer("strictMigration.checkout.payByCard")}</Button>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
 
-       <Button className="h-12 w-full rounded-full" disabled={paying} onClick={() => void handlePay()}>
-         {paying
-           ? tCustomer("ui.states.preparingPayment")
-           : selectedMethod.simulated
-             ? tCustomer("ui.checkout.continueSimulator")
-             : selectedMethod.paymentMethod === "wallet"
-             ? tCustomer("ui.checkout.payWallet")
-               : tCustomer("ui.checkout.continueStripe")}
-       </Button>
+        {/* Sidebar Column */}
+        <div className="lg:col-span-5 xl:col-span-4 sticky top-24 space-y-6">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
+            <h2 className="text-base font-bold text-foreground">
+              {tCustomer("ui.checkout.orderSummary", "Order Summary")}
+            </h2>
+            <div className="space-y-2 border-b border-border pb-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
+                <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(subtotal)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{tCustomer("strictMigration.checkout.discountWithCode", { code: voucherCode })}</span>
+                  <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: formatMYR(discount) })}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between text-lg font-bold">
+              <span className="text-foreground">{tCustomer("ui.checkout.total")}</span>
+              <span className="text-primary font-[family-name:var(--font-mono)]">{formatMYR(total)}</span>
+            </div>
+
+            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying} onClick={() => void handlePay()}>
+              {paying
+                ? tCustomer("ui.states.preparingPayment")
+                : isFreeReservation
+                ? tCustomer("ui.checkout.reserveFreeSpot")
+                : selectedMethod.simulated
+                ? tCustomer("ui.checkout.continueSimulator")
+                : selectedMethod.paymentMethod === "wallet"
+                ? tCustomer("ui.checkout.payWallet")
+                : tCustomer("ui.checkout.continueStripe")}
+            </Button>
+
+            <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground space-y-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                <span>{isFreeReservation ? tCustomer("ui.checkout.instantAllocation", "Instant slot reservation · No payment required") : "Secure encryption and fraud protection"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+

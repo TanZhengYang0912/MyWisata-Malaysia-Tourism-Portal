@@ -12,7 +12,7 @@ import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 function dateTimeLabel(value: string, locale: string) {
   return new Date(value).toLocaleString(locale === "en" ? "en-MY" : locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -97,21 +97,21 @@ export default function OrderDetailPage() {
                 <p className="font-semibold text-foreground text-base">{item.activityName}</p>
                 <p className="text-muted-foreground">{item.qty}× {item.variantLabel}</p>
               </div>
-              <span className="font-bold text-foreground text-base font-[family-name:var(--font-mono)]">{MYR_CODE} {(item.unitPrice * item.qty).toFixed(2)}</span>
+              <span className="font-bold text-foreground text-base font-[family-name:var(--font-mono)]">{formatMYR(item.unitPrice * item.qty)}</span>
             </div>
           ))}
         </div>
         <div className="pt-4 border-t border-border space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{tCustomer("ui.checkout.subtotal")}</span><span>{MYR_CODE} {order.subtotal.toFixed(2)}</span>
+            <span>{tCustomer("ui.checkout.subtotal")}</span><span>{formatMYR(order.subtotal)}</span>
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{tCustomer("ui.checkout.discount")} {order.voucherCode && `(${order.voucherCode})`}</span><span>{tCustomer("strictMigration.cart.discountValue", { amount: `${MYR_CODE} ${order.discount.toFixed(2)}` })}</span>
+              <span>{tCustomer("ui.checkout.discount")} {order.voucherCode && `(${order.voucherCode})`}</span><span>{tCustomer("strictMigration.cart.discountValue", { amount: formatMYR(order.discount) })}</span>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold text-foreground pt-2">
-            <span>{tCustomer("ui.checkout.total")}</span><span className="text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {order.total.toFixed(2)}</span>
+            <span>{tCustomer("ui.checkout.total")}</span><span className="text-primary font-[family-name:var(--font-mono)]">{formatMYR(order.total)}</span>
           </div>
         </div>
       </div>

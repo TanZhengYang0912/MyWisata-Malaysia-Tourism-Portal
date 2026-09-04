@@ -49,13 +49,13 @@ describe("GET /auth/callback", () => {
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  it("keeps an allowed destination for the authenticated role", async () => {
+  it("redirects authenticated admin to their fixed admin home page", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "admin-1" } }, error: null });
     mocks.rpc.mockResolvedValue({ data: [{ role_name: "admin" }], error: null });
 
     const response = await GET(new Request("http://localhost/auth/callback?code=oauth-code&next=%2Fadmin%2Fvendors"));
 
-    expect(response.headers.get("location")).toBe("http://localhost/admin/vendors");
+    expect(response.headers.get("location")).toBe("http://localhost/admin/dashboard");
   });
 
   it.each([
@@ -74,10 +74,10 @@ describe("GET /auth/callback", () => {
     expect(response.headers.get("location")).toBe("http://localhost/customer");
   });
 
-  it("rejects an external next destination", async () => {
+  it("rejects an external next destination and redirects customer to fixed customer home", async () => {
     const response = await GET(new Request("http://localhost/auth/callback?code=oauth-code&next=https%3A%2F%2Fevil.example%2Fsteal"));
 
-    expect(response.headers.get("location")).toBe("http://localhost/customer/explore");
+    expect(response.headers.get("location")).toBe("http://localhost/customer");
   });
 
   it("reports an OAuth exchange failure before reading account data", async () => {

@@ -1,3 +1,5 @@
+import { formatMYR } from '@/lib/i18n/format';
+
 export type TransactionEmailType =
   | 'checkout_succeeded'
   | 'topup_succeeded'
@@ -140,7 +142,7 @@ function sanitizeVendorText(value: string): string {
 export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
   const subject = SUBJECTS[input.eventType];
   const name = input.recipientName?.trim() || 'there';
-  const amount = `RM ${input.amountRm.toFixed(2)}`;
+  const amount = formatMYR(input.amountRm);
   const reference = input.reference.trim();
   const occurredAt = new Date(input.occurredAt).toLocaleString('en-MY', {
     timeZone: 'Asia/Kuala_Lumpur',

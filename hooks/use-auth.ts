@@ -1,35 +1,24 @@
 'use client';
-// P1 — Member 1 owns this hook (A1 Auth/RBAC)
 
-import { useEffect, useState } from 'react';
+import { useAuth as useProviderAuth } from '@/components/providers/auth';
 import type { AuthUser } from '@/types';
 
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadUser() {
-      try {
-        const response = await fetch('/api/auth/me', { cache: 'no-store' });
-        if (!response.ok) {
-          if (active) setUser(null);
-          return;
-        }
-        const payload = await response.json() as { user: AuthUser };
-        if (active) setUser(payload.user);
-      } catch {
-        if (active) setUser(null);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    loadUser();
-    return () => { active = false; };
-  }, []);
+  const { currentUser, roles, activeVendorId, activeOutletIds, activeOutletName, verificationFacts, loading } = useProviderAuth();
+  const user: AuthUser | null = currentUser ? {
+    id: currentUser.id,
+    email: currentUser.email,
+    fullName: currentUser.name,
+    avatarUrl: null,
+    kycStatus: verificationFacts?.kycStatus ?? 'unverified',
+    emailVerified: verificationFacts?.emailVerified ?? false,
+    phoneVerified: verificationFacts?.phoneVerified ?? false,
+    profileComplete: verificationFacts?.profileComplete ?? false,
+    roles: roles as AuthUser['roles'],
+    activeVendorId: activeVendorId ?? null,
+    activeOutletIds: activeOutletIds ?? [],
+    activeOutletName,
+  } : null;
 
   const isAdmin = user?.roles.includes('super_admin') ?? false;
   const isApprover = user?.roles.includes('approver') ?? false;

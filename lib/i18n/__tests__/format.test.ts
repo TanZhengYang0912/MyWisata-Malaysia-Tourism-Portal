@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadLocaleResources } from "../resources";
-import { formatDate, formatDateTime, formatMYR, formatNumber } from "../format";
+import { formatDate, formatDateTime, formatMYR, formatMYRFromSen, formatMYRNumber, formatNumber } from "../format";
 import { CUSTOMER_NAV, ACCOUNT_MENU_GROUPS } from "@/lib/customer/header-navigation";
 import { DISCOVERY_CATEGORIES } from "@/lib/customer/discovery-categories";
 import { STATUS_LABEL_KEYS } from "@/components/shared/status-badge";
@@ -12,13 +12,20 @@ import {
 } from "@/backend/domains/preferences";
 
 describe("locale-aware formatters", () => {
-  it("formats the same numeric MYR value in every supported locale", () => {
+  it("uses one RM display contract in every supported locale", () => {
     for (const locale of ["en", "zh-CN", "ms"] as const) {
-      const formatted = formatMYR(70, locale);
+      const formatted = formatMYR(34000, locale);
 
-      expect(formatted).toMatch(/MYR|RM/);
-      expect(formatted).toMatch(/70(?:[.,]00)?/);
+      expect(formatted).toBe("RM34,000.00");
     }
+  });
+
+  it("formats RM values and sen values through the same numeric rules", () => {
+    expect(formatMYRNumber(34000, "zh-CN")).toBe("34,000.00");
+    expect(formatMYR(34000, "en", { minimumFractionDigits: 0, maximumFractionDigits: 0 })).toBe("RM34,000.00");
+    expect(formatMYRFromSen(3400000, "ms")).toBe("RM34,000.00");
+    expect(formatMYRFromSen(-123450, "en")).toBe("RM1,234.50");
+    expect(formatMYR(-1234.5, "en")).toBe("RM1,234.50");
   });
 
   it("uses the requested locale for dates, date-times, and numbers", () => {

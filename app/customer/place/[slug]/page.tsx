@@ -18,11 +18,13 @@ import { PlaceBreadcrumb } from "@/components/customer/place-breadcrumb";
 import { PlaceCard } from "@/components/customer/place-card";
 import { PlaceList } from "@/components/customer/place-list";
 import { PlaceActivitySection } from "@/components/customer/place-activity-section";
+import { PlaceCommunitySection } from "@/components/customer/place-community-section";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
 import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { formatMYRNumber } from "@/lib/i18n/format";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +82,7 @@ export default async function PlacePage({ params }: Props) {
     ? { text: t("ui.place.noGate"), tone: "bg-muted text-muted-foreground" }
     : place.entryFee === 0
       ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 text-emerald-800" }
-      : { text: t("ui.place.entryFee", { price: place.entryFee }), tone: "bg-amber-100 text-amber-900" };
+      : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 text-amber-900" };
 
   // Product-option counts for every card this page is about to render — one
   // batch of parallel lookups instead of each PlaceCard fetching its own.
@@ -125,9 +127,9 @@ export default async function PlacePage({ params }: Props) {
             <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${entry.tone}`}>
               {entry.text}
             </span>
-            <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
-              {operator ? t("ui.place.operatedBy", { name: operator.name }) : t("ui.place.noOperator")}
-            </span>
+            {operator && <span className="rounded-full bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
+              {t("ui.place.operatedBy", { name: operator.name })}
+            </span>}
           </div>
           <h1 className="mt-4 max-w-4xl font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-white sm:text-6xl">{place.name}</h1>
           {place.tagline && <p className="mt-2 max-w-2xl text-base font-semibold text-white/90 sm:text-lg">{place.tagline}</p>}
@@ -137,7 +139,7 @@ export default async function PlacePage({ params }: Props) {
 
       <section className="-mt-5 relative mx-3 rounded-2xl border border-border bg-card p-4 shadow-md sm:mx-6 sm:p-5" aria-label={`${place.name} visitor information`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="grid gap-4 text-sm sm:grid-cols-3 sm:gap-8">
+          <div className={`grid gap-4 text-sm sm:gap-8 ${operator ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             <div className="flex items-start gap-2.5">
               <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               <div>
@@ -152,13 +154,13 @@ export default async function PlacePage({ params }: Props) {
                 <p className="mt-1 font-semibold text-foreground">{entry.text}</p>
               </div>
             </div>
-            <div className="flex items-start gap-2.5">
+            {operator && <div className="flex items-start gap-2.5">
               <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("ui.search.localPartner")}</p>
-                <p className="mt-1 font-semibold text-foreground">{operator?.name ?? t("ui.place.noOperator")}</p>
+                <p className="mt-1 font-semibold text-foreground">{operator.name}</p>
               </div>
-            </div>
+            </div>}
           </div>
           <a href={directionsHref} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
             {t("ui.actions.getDirections")} <ArrowUpRight size={15} aria-hidden="true" />
@@ -244,6 +246,8 @@ export default async function PlacePage({ params }: Props) {
           </section>
         )
       )}
+
+      <PlaceCommunitySection placeId={place.id} placeName={place.name} />
 
       <NearbyOutlets outlets={nearbyBusinesses} maxRadiusKm={nearbyRadiusKm(place.level)} />
     </div>

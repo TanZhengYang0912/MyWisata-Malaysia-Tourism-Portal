@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MapPin, Store } from "lucide-react";
 import { guestVendorHref } from "@/lib/auth/guest-mode";
 import type { ComputedActivity } from "@/backend/core/types";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 type GuestCatalogueProps = {
   activities: ComputedActivity[];
@@ -37,7 +37,7 @@ export function GuestCatalogue({ activities, error }: GuestCatalogueProps) {
             <div className="mw-card-body space-y-3 p-5">
               <div><p className="text-xs font-semibold text-primary">{activity.category || t("ui.guest.experience")}</p><h2 className="mw-card-title mt-1 text-lg font-bold" title={activity.name}>{activity.name}</h2></div>
               <p className="mw-card-meta flex items-center gap-1 text-sm text-muted-foreground" title={`${activity.outlet.city}, ${activity.outlet.state}`}><MapPin size={14} />{activity.outlet.city}, {activity.outlet.state}</p>
-              <div className="mw-card-footer"><p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{MYR_CODE} {activity.price}</p><div className="flex flex-wrap justify-end gap-3 text-sm font-semibold"><Link href={`/guest/activity/${activity.id}`} className="text-primary underline underline-offset-4">{t("ui.guest.viewListing")}</Link><Link href={guestVendorHref(activity.outlet.vendorId)} className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-4"><Store size={14} />{t("ui.guest.viewVendor")}</Link></div></div>
+              <div className="mw-card-footer"><p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{formatMYR(Number(activity.price))}</p><div className="flex flex-wrap justify-end gap-3 text-sm font-semibold"><Link href={`/guest/activity/${activity.id}`} className="text-primary underline underline-offset-4">{t("ui.guest.viewListing")}</Link><Link href={guestVendorHref(activity.outlet.vendorId)} className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-4"><Store size={14} />{t("ui.guest.viewVendor")}</Link></div></div>
             </div>
           </article>)}
         </section>

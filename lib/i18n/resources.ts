@@ -30,10 +30,20 @@ const resourceLoaders: Record<AppLocale, Record<AppNamespace, ResourceLoader>> =
   },
 };
 
-export async function loadLocaleResources(locale: AppLocale): Promise<AppResources> {
-  const entries = await Promise.all(
-    APP_NAMESPACES.map(async (namespace) => [namespace, await resourceLoaders[locale][namespace]()] as const),
-  );
+const localeCache = new Map<AppLocale, Promise<AppResources>>();
 
-  return Object.fromEntries(entries) as AppResources;
+export function loadLocaleResources(locale: AppLocale): Promise<AppResources> {
+  const cached = localeCache.get(locale);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const entries = await Promise.all(
+      APP_NAMESPACES.map(async (namespace) => [namespace, await resourceLoaders[locale][namespace]()] as const),
+    );
+    return Object.fromEntries(entries) as AppResources;
+  })();
+
+  localeCache.set(locale, promise);
+  return promise;
 }
+

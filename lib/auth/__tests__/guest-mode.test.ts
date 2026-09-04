@@ -20,7 +20,7 @@ describe("Guest Mode navigation", () => {
 
   it("leaves public browsing, explicit authentication and external navigation alone", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
-    for (const href of ["/customer/explore", "/customer/activity/123", "/customer/wallet", "/customer/for-you", "/login?next=%2Fcustomer%2Fcart&mode=signup", "https://other.test/customer/cart", "//other.test/customer/cart", "mailto:help@example.com", "#listings", "http://[", "/customer-service"]) {
+    for (const href of ["/customer", "/customer/explore", "/customer/activity/123", "/customer/wallet", "/customer/for-you", "/login?next=%2Fcustomer%2Fcart&mode=signup", "https://other.test/customer/cart", "//other.test/customer/cart", "mailto:help@example.com", "#listings", "http://[", "/customer-service"]) {
       expect(guestProtectedCustomerPath(href, "https://mywisata.test/customer/explore")).toBeNull();
     }
   });

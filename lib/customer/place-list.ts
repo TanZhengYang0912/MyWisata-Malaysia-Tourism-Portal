@@ -71,3 +71,12 @@ export function filterPlaceListings(
     return matchesAvailability && matchesRegion;
   });
 }
+
+/** Keeps URL-driven area selection stable as a state grows beyond a few chips. */
+export function parsePlaceAreaIds(values: readonly string[], supportedAreaIds: ReadonlySet<string>): Set<string> {
+  return new Set(values.filter((value) => supportedAreaIds.has(value)));
+}
+
+export function serializePlaceAreaIds(areaIds: ReadonlySet<string>): string[] {
+  return [...areaIds].sort();
+}

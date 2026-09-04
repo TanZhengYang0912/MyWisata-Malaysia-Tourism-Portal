@@ -11,9 +11,8 @@ import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
-import { formatDate, formatMYR } from "@/lib/i18n/format";
+import { formatDate, formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 type VoucherOption = {
   voucher: Voucher;
@@ -22,7 +21,7 @@ type VoucherOption = {
 
 function voucherDiscountLabel(voucher: Voucher, t: ReturnType<typeof useTranslation>["t"]) {
   if (voucher.type === "percent") return t("ui.cart.discountPercent", { value: voucher.value, ns: "customer" });
-  if (voucher.type === "fixed") return t("ui.cart.discountFixed", { value: voucher.value.toFixed(2), ns: "customer" });
+  if (voucher.type === "fixed") return t("ui.cart.discountFixed", { value: formatMYRNumber(voucher.value), ns: "customer" });
   return t("ui.cart.buyOneGetOne", { ns: "customer" });
 }
 
@@ -36,10 +35,10 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
         <p className="truncate text-sm font-semibold text-foreground">{voucher.name ?? voucher.code}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {voucherDiscountLabel(voucher, tCustomer)}
-          {voucher.minSpend > 0 ? ` · ${tCustomer("ui.cart.minimumSpend", { value: voucher.minSpend.toFixed(2) })}` : ""}
+          {voucher.minSpend > 0 ? ` · ${tCustomer("ui.cart.minimumSpend", { value: formatMYRNumber(voucher.minSpend) })}` : ""}
         </p>
         <p className="mt-0.5 text-[11px] text-primary">
-          {tCustomer("ui.cart.saveEnds", { amount: discountAmount.toFixed(2), date: formatDate(voucher.expiresAt, locale, { day: "numeric", month: "short" }) })}
+          {tCustomer("ui.cart.saveEnds", { amount: formatMYRNumber(discountAmount), date: formatDate(voucher.expiresAt, locale, { day: "numeric", month: "short" }) })}
         </p>
       </div>
       <Button type="button" variant="outline" onClick={onApply} disabled={applied} className="shrink-0 rounded-full px-3 text-xs">
@@ -388,7 +387,7 @@ export default function CartPage() {
                       : seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
                   </p>
                 )}
-                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">{MYR_CODE} {price.toFixed(2)} × {item.qty}</p>
+                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">{formatMYR(price)} × {item.qty}</p>
                 {stockLimit !== undefined && (
                   <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700" : "text-emerald-700"}`}>
                     {stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}
@@ -396,7 +395,7 @@ export default function CartPage() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {lineTotal.toFixed(2)}</p>
+                <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(lineTotal)}</p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => updateQty(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
@@ -418,7 +417,7 @@ export default function CartPage() {
             </div>
             <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
               <span className="text-xs text-muted-foreground">{tCustomer("ui.cart.outletSubtotal")}</span>
-              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {group.groupSubtotal.toFixed(2)}</span>
+              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(group.groupSubtotal)}</span>
             </footer>
           </section>
         ))}
@@ -527,7 +526,7 @@ export default function CartPage() {
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{tCustomer("ui.cart.subtotalSelected", { count: selectedKeys.size })}</span>
-          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{MYR_CODE} {subtotal.toFixed(2)}</span>
+          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(subtotal)}</span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
@@ -537,7 +536,7 @@ export default function CartPage() {
         )}
         <div className="flex justify-between text-base pt-2 border-t border-border">
           <span className="font-bold text-foreground">{tCustomer("ui.cart.total")}</span>
-          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{MYR_CODE} {total.toFixed(2)}</span>
+          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{formatMYR(total)}</span>
         </div>
       </div>
 

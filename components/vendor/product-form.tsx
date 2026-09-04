@@ -17,6 +17,7 @@ import AiWritingAssistant from '@/components/vendor/ai-writing-assistant';
 import type { ListingSuggestion } from '@/lib/ai/listing-suggestions';
 import { canonicalCategorySlug, normalizeCategoryRows, type CanonicalCategoryOption } from '@/lib/customer/discovery-categories';
 import { useTranslation } from 'react-i18next';
+import { formatMYRNumber } from '@/lib/i18n/format';
 
 interface Props {
   vendorId: string;
@@ -86,7 +87,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           location: [outlet?.city, outlet?.state].filter(Boolean).join(', '),
           description: values.description,
           keywords: String(values.tags || '').split(',').map((tag) => tag.trim()).filter(Boolean),
-          priceRange: values.basePrice ? `RM ${values.basePrice}` : undefined,
+          priceRange: values.basePrice ? `RM${formatMYRNumber(Number(values.basePrice))}` : undefined,
         }),
       });
       const payload = await response.json();

@@ -2,41 +2,34 @@ import { describe, expect, it } from "vitest";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
 
 describe("post-login destination", () => {
-  it.each([null, "/admin/dashboard", "/admin/vendors", "/admin/wallet/settings", "/admin/refunds", "/admin/withdrawals-exports", "/admin/withdrawals/../users"])("lands wallet approvers in their withdrawal queue for %s", (next) => {
+  it.each([null, "/admin/dashboard", "/admin/vendors", "/admin/wallet/settings", "/admin/refunds", "/admin/withdrawals-exports", "/admin/withdrawals/../users"])("lands wallet approvers in their fixed withdrawal queue for %s", (next) => {
     expect(postLoginDestination("approver", next)).toBe("/admin/withdrawals");
   });
 
-  it("retains withdrawal details and neutral authentication returns for approvers", () => {
-    expect(postLoginDestination("approver", "/admin/withdrawals/request-id?tab=evidence#history"))
-      .toBe("/admin/withdrawals/request-id?tab=evidence#history");
-    expect(postLoginDestination("approver", "/reset-password")).toBe("/reset-password");
-    expect(postLoginDestination("super_admin", "/admin/vendors")).toBe("/admin/vendors");
+  it("lands admins strictly on their fixed dashboard home page", () => {
+    expect(postLoginDestination("super_admin", "/admin/vendors")).toBe("/admin/dashboard");
+    expect(postLoginDestination("super_admin", "/customer/checkout")).toBe("/admin/dashboard");
+    expect(postLoginDestination("admin", "/admin/catalogue")).toBe("/admin/dashboard");
     expect(postLoginDestination("admin", null)).toBe("/admin/dashboard");
   });
 
-  it("keeps customers on the requested customer path", () => {
-    expect(postLoginDestination("customer", "/customer/vendor/vendor-1/outlet/outlet-1"))
-      .toBe("/customer/vendor/vendor-1/outlet/outlet-1");
+  it("lands customers strictly on their fixed /customer home page", () => {
+    expect(postLoginDestination("customer", "/customer/vendor/vendor-1/outlet/outlet-1")).toBe("/customer");
+    expect(postLoginDestination("customer", "/customer/checkout")).toBe("/customer");
+    expect(postLoginDestination("customer", "/customer/explore")).toBe("/customer");
+    expect(postLoginDestination("customer", null)).toBe("/customer");
   });
 
-  it("does not send outlet managers into customer routes", () => {
-    expect(postLoginDestination("outlet_manager", "/customer/vendor/vendor-1/outlet/outlet-1"))
-      .toBe("/vendor/dashboard");
+  it("lands vendors strictly on their fixed /vendor/dashboard home page", () => {
+    expect(postLoginDestination("vendor_owner", "/vendor/outlets")).toBe("/vendor/dashboard");
+    expect(postLoginDestination("vendor_owner", "/vendor/products")).toBe("/vendor/dashboard");
+    expect(postLoginDestination("outlet_manager", "/vendor/bookings")).toBe("/vendor/dashboard");
+    expect(postLoginDestination("outlet_manager", "/customer/explore")).toBe("/vendor/dashboard");
   });
 
-  it("does not send customers into admin routes", () => {
-    expect(postLoginDestination("customer", "/admin/dashboard"))
-      .toBe("/customer");
-  });
-
-  it("keeps vendor routes for vendor roles", () => {
-    expect(postLoginDestination("vendor_owner", "/vendor/outlets"))
-      .toBe("/vendor/outlets");
-  });
-
-  it("keeps safe role-neutral paths needed to finish authentication", () => {
-    expect(postLoginDestination("customer", "/reset-password"))
-      .toBe("/reset-password");
+  it("preserves only essential authentication actions", () => {
+    expect(postLoginDestination("customer", "/reset-password")).toBe("/reset-password");
+    expect(postLoginDestination("approver", "/reset-password")).toBe("/reset-password");
     expect(postLoginDestination("customer", "/outlet-manager-invitations/invite-token"))
       .toBe("/outlet-manager-invitations/invite-token");
   });

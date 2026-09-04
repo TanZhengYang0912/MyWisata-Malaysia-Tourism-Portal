@@ -17,6 +17,7 @@ describe("Destination preview modal", () => {
     expect(modalSource).toContain('t("ui.map.savedToAtlas")');
     expect(modalSource).toContain('t("ui.map.saveToAtlas")');
     expect(modalSource).toContain("useSavedDestinations");
+    expect(modalSource).toContain("useCustomerCapabilityGate");
     expect(modalSource).toContain("aria-pressed");
     expect(modalSource).toContain("onClose");
     expect(modalSource).not.toContain("All states");

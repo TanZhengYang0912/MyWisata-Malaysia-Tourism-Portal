@@ -28,22 +28,18 @@ function isRoleNeutralPath(pathname: string): boolean {
     || pathname.startsWith("/outlet-manager-invitations/");
 }
 
-export function postLoginDestination(role: Role, next: string | null): string {
-  const safeNext = postLoginPath(next);
+export function postLoginDestination(role: Role, next?: string | null): string {
+  const safeNext = postLoginPath(next ?? null);
   if (!safeNext) return HOME_BY_ROLE[role];
 
   const parsedNext = new URL(safeNext, "https://mywisata.invalid");
   const pathname = parsedNext.pathname;
-  const normalizedNext = `${pathname}${parsedNext.search}${parsedNext.hash}`;
-  const requestedPrefix = ROLE_PREFIXES.find(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-  const prefix = rolePrefix(role);
-  if (role === "approver" && requestedPrefix === "/admin" && !isWalletApproverPath(pathname)) {
-    return HOME_BY_ROLE.approver;
+
+  // Preserve only essential post-auth completion flows (password reset or invitation tokens)
+  if (pathname === "/reset-password" || pathname === "/vendor-invite" || pathname.startsWith("/outlet-manager-invitations/")) {
+    return `${pathname}${parsedNext.search}${parsedNext.hash}`;
   }
-  if (requestedPrefix === prefix || (!requestedPrefix && isRoleNeutralPath(pathname))) {
-    return normalizedNext;
-  }
+
+  // All other logins (customer, vendor, admin, approver) ALWAYS land on their fixed role home page
   return HOME_BY_ROLE[role];
 }

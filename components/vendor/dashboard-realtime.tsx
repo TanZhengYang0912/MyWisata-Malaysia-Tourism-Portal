@@ -29,13 +29,15 @@ export default function DashboardRealtime({ vendorId }: { vendorId: string }) {
 
     const refreshOnFocus = () => router.refresh();
     window.addEventListener('focus', refreshOnFocus);
-    subscribe();
+    void subscribe().catch(() => {});
     return () => {
       active = false;
       window.removeEventListener('focus', refreshOnFocus);
       if (timer) clearInterval(timer);
       if (channel) {
-        import('@/lib/supabase/client').then(({ createClient }) => createClient().removeChannel(channel!));
+        import('@/lib/supabase/client')
+          .then(({ createClient }) => createClient().removeChannel(channel))
+          .catch(() => {});
       }
     };
   }, [router, vendorId]);

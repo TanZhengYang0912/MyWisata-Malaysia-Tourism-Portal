@@ -64,7 +64,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
               <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#e5e7eb" strokeDasharray="4 4" vertical={false} />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(value) => metric === 'revenue' ? formatMYR(Number(value), locale, { maximumFractionDigits: 0 }) : formatNumber(Number(value), locale)} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(value) => metric === 'revenue' ? formatMYR(Number(value), locale) : formatNumber(Number(value), locale)} />
                 <Tooltip formatter={(value) => [metric === 'revenue' ? formatMYR(Number(value), locale, { minimumFractionDigits: 2 }) : formatNumber(Number(value), locale), metric === 'revenue' ? t('charts.sales.revenue') : t('charts.sales.ordersLabel')]} />
                 <Legend verticalAlign="bottom" height={32} iconType="circle" />
                 <Line type="monotone" dataKey={metric} name={metric === 'revenue' ? t('charts.sales.revenueRM') : t('charts.sales.ordersQty')} stroke={metric === 'revenue' ? '#f59e0b' : '#010066'} strokeWidth={3} dot={{ r: 3, fill: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />

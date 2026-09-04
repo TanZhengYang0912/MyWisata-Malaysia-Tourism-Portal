@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { formatMYR } from '@/lib/i18n/format';
 
 export type ReceiptItem = {
   activityName: string;
@@ -18,10 +19,6 @@ export type ReceiptData = {
   total: number;
   voucherCode?: string;
 };
-
-function formatMYR(amount: number): string {
-  return `MYR ${amount.toFixed(2)}`;
-}
 
 export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -90,7 +87,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     if (data.discount > 0) {
       const voucherLabel = data.voucherCode ? `Discount (${data.voucherCode}):` : 'Discount:';
       doc.text(voucherLabel, totalsX, doc.y, { width: 90 });
-      doc.text(`-${formatMYR(data.discount)}`, totalsX + 90, doc.y - doc.currentLineHeight(), { width: 85, align: 'right' });
+      doc.text(formatMYR(data.discount), totalsX + 90, doc.y - doc.currentLineHeight(), { width: 85, align: 'right' });
     }
 
     doc.moveDown(0.3);

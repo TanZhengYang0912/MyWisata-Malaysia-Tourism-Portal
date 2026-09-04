@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Search, ShieldCheck } from "lucide-react";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { formatMYRFromSen } from "@/lib/i18n/format";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { WithdrawalReviewQueueRow } from "@/components/admin/withdrawal-review-queue-row";
@@ -73,7 +74,6 @@ export default function AdminWithdrawalsPage() {
 
   useEffect(() => { queueMicrotask(() => { void loadList(); }); }, [loadList]);
 
-  const formatRM = (valueSen: number) => `RM ${(valueSen / 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const displayStatus = (value: string | null | undefined) => value
     ? t(ENUM_VALUE_KEYS[value] ?? "withdrawals.status.unknown")
     : t("withdrawals.status.notAssessed");
@@ -102,7 +102,7 @@ export default function AdminWithdrawalsPage() {
       <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
         <AdminMetricGrid items={[
           { label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") },
-          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatRM(visiblePayoutValue), detail: t("withdrawals.metrics.visiblePageTotal") },
+          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatMYRFromSen(visiblePayoutValue, locale), detail: t("withdrawals.metrics.visiblePageTotal") },
           { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") },
           { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") },
         ]} />
@@ -120,7 +120,7 @@ export default function AdminWithdrawalsPage() {
         <div className="overflow-x-auto">
           <div className="min-w-[940px]">
             <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>{t("withdrawals.table.customer")}</span><span>{t("withdrawals.table.amount")}</span><span>{t("withdrawals.table.riskPriority")}</span><span>{t("withdrawals.table.approvalProgress")}</span><span>{t("withdrawals.table.ageSla")}</span><span>{t("withdrawals.table.status")}</span><span aria-hidden="true" /></div>
-            {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : <div className="divide-y divide-border">{items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatRM} formatAge={formatAge} displayStatus={displayStatus} />)}</div>}
+            {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : <div className="divide-y divide-border">{items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} />)}</div>}
           </div>
         </div>
         <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("withdrawals.pagination.pageOf", { page, totalPages: Math.max(totalPages, 1) })}</span>{totalPages > 1 && <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={tCommon("accessibility.previousPage")} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={tCommon("accessibility.nextPage")} disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>}</div>

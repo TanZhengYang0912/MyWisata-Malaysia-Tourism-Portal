@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail, processEmailOutbox } from '@/lib/email/outbox';
 import { buildWithdrawalNotificationMetadata, buildWithdrawalNotificationReason, type WithdrawalNotificationSnapshot } from './withdrawal-review-projection';
+import { formatMYR } from '@/lib/i18n/format';
 
 export type ApproverNotificationInput = {
   withdrawalId: string;
@@ -56,7 +57,7 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
       user_id: user.id,
       type: 'withdrawal_submitted',
       title: 'New withdrawal requires review',
-      body: `A customer submitted a withdrawal of RM ${input.amountRm.toFixed(2)} for review. ${notificationReason}`,
+      body: `A customer submitted a withdrawal of ${formatMYR(input.amountRm)} for review. ${notificationReason}`,
       link: `/admin/withdrawals/${input.withdrawalId}`,
       event_key: eventKey(user.id),
       category: 'wallet',

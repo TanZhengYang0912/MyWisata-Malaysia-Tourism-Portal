@@ -18,7 +18,7 @@ export default async function TripPage() {
   const { data: { user } } = await db.auth.getUser();
 
   if (!user) {
-    redirect("/auth/sign-in?redirect_to=/customer/trip");
+    redirect("/login?next=/customer/trip");
   }
 
   const trips = await getTrips(db);

@@ -14,7 +14,8 @@ import { searchActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 import { MalaysiaStateMap, type StateCounts } from "./malaysia-state-map";
-import { HIDDEN_GEM_SYMBOL, MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 // Display metadata for the 4 real categories — Hidden Gem is a collection
 // filter backed by the listing flag and is rendered separately below.
@@ -354,7 +355,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{MYR_CODE} {selectedActivity.price}</span></div>
+                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{formatMYR(Number(selectedActivity.price))}</span></div>
                 <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
@@ -431,7 +432,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</p>
                          </div>
-                        <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{MYR_CODE} {activity.price}</span>
+                        <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{formatMYR(Number(activity.price))}</span>
                        </div>
                     </button>
                   ))}

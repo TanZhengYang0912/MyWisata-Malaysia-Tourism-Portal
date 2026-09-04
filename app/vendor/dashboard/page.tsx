@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation';
 import {
   AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent,
 } from 'lucide-react';
-import { getVendorDashboardData, formatGrowth, formatRM, type DashboardFilter } from '@/lib/vendor-dashboard';
+import { getVendorDashboardData, formatGrowth, type DashboardFilter } from '@/lib/vendor-dashboard';
+import { formatMYR } from '@/lib/i18n/format';
 import SalesChart from '@/components/vendor/sales-chart';
 import OutletPieChart from '@/components/vendor/outlet-pie-chart';
 import DashboardFilterControl from '@/components/vendor/dashboard-filter';
@@ -42,12 +43,12 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const isOutletManager = data.role === 'outlet_manager';
 
   const stats = isOutletManager ? [
-    { label: t('ui.dashboard.totalRevenue'), value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
+    { label: t('ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: t('ui.dashboard.bookingActivity'), value: data.stats.bookingItems.toLocaleString(), note: t('ui.dashboard.bookingsInPeriod'), icon: CalendarDays, tone: 'teal' },
     { label: t('ui.dashboard.ordersToFulfil'), value: data.stats.pendingOrders.toLocaleString(), note: t('ui.dashboard.assignedOutletOperations'), icon: ShoppingBag, tone: 'amber' },
   ] : [
-    { label: t('ui.dashboard.totalRevenue'), value: formatRM(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
+    { label: t('ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: t('ui.dashboard.activeListings'), value: data.stats.activeProducts.toLocaleString(), note: t('ui.dashboard.publishedProducts'), icon: Compass, tone: 'amber' },
     { label: t('ui.dashboard.outletsManaged'), value: data.stats.activeOutlets.toLocaleString(), note: t('ui.dashboard.acrossMalaysia'), icon: MapPinned, tone: 'rose' },

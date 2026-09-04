@@ -21,7 +21,7 @@ describe('customer wallet withdrawal row navigation', () => {
   });
 
   it('shows the reserved withdrawal as a primary-blue negative amount', () => {
-    expect(listSource).toContain('text-primary">-{MYR_CODE} {w.amount.toFixed(2)}');
+    expect(listSource).toContain('text-primary">-{formatMYR(w.amount)}');
   });
 
   it('refreshes wallet buckets while a payout is awaiting provider settlement', () => {

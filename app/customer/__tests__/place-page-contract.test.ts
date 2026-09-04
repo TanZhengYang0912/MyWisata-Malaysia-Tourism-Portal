@@ -26,16 +26,24 @@ describe("place page layout and copy", () => {
     expect(activitySource).toContain("count: providerCount");
   });
 
-  it("uses customer-facing public access copy and a compact hero", () => {
+  it("uses localised labels for every activity filter instead of rendering translation keys", () => {
+    const activitySource = readFileSync(resolve(process.cwd(), "components/customer/place-activity-section.tsx"), "utf8");
+    expect(activitySource).toContain('key: "ui.placeActivity.filters.all"');
+    expect(activitySource).toContain('key: "ui.placeActivity.filters.guideService"');
+    expect(activitySource).not.toContain("fallback:");
+  });
+
+  it("uses customer-facing access copy, omits empty operator metadata, and keeps a compact hero", () => {
     expect(pageSource).toContain('t("ui.place.noGate")');
-    expect(pageSource).toContain('t("ui.place.noOperator")');
+    expect(pageSource).toContain("{operator &&");
+    expect(pageSource).not.toContain('t("ui.place.noOperator")');
     expect(pageSource).toContain("absolute inset-0 h-full w-full object-cover");
     expect(pageSource).toContain("min-h-[330px]");
   });
 
-  it("localizes known state labels and does not hard-code the public operator fallback", () => {
+  it("localizes known state labels without a public operator fallback", () => {
     expect(pageSource).toContain("getMalaysiaStateTranslationKey");
-    expect(pageSource).toContain('?? t("ui.place.noOperator")');
+    expect(pageSource).not.toContain("noOperator");
     expect(pageSource).not.toContain('?? "Open destination"');
   });
 });

@@ -10,8 +10,8 @@
 //   - Outputs: number (RM, guaranteed ≤2 decimals) OR string (formatted)
 //   - Never returns NaN, Infinity, or a negative number from a positive input
 
-const CURRENCY = 'MYR';
-const LOCALE   = 'en-MY';
+import { formatMYR } from './i18n/format';
+
 const MAX_RM   = 1_000_000_000;   // sanity ceiling to catch bad inputs
 
 // ── Internal: sen (integer cents) representation ────────────
@@ -62,17 +62,12 @@ export function applyPercent(amount: number, pct: number): number {
   return multiply(amount, pct / 100);
 }
 
-/** Format for user display: "RM 55.00" */
+/** Format for user display using the app-wide RM34,000.00 contract. */
 export function toRM(amount: number): string {
-  return new Intl.NumberFormat(LOCALE, {
-    style: 'currency',
-    currency: CURRENCY,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(roundRM(amount));
+  return formatMYR(roundRM(amount));
 }
 
-/** Parse "RM 55.00" or "55.00" back to a number. Non-numeric → 0. */
+/** Parse "RM55.00" or "55.00" back to a number. Non-numeric → 0. */
 export function parseRM(str: string): number {
   const cleaned = str.replace(/[^0-9.-]/g, '');
   const n = parseFloat(cleaned);

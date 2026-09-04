@@ -73,7 +73,7 @@ export function DiscoveryCategoryFilter({
                 <CategoryIcon category={categoryOption.id} size={22} strokeWidth={1.8} />
               </span>
               <span className="text-[10px] font-bold leading-tight" style={{ color: selected ? "var(--primary)" : "var(--foreground)" }}>
-                {t(`categories.${categoryOption.id}`)}
+                {t(categoryOption.labelKey ?? `categories.${categoryOption.id}`)}
               </span>
             </button>
           );

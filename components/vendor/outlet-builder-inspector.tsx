@@ -14,7 +14,7 @@ import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
 import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";
 import { useTranslation } from "react-i18next";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 interface ProductOption {
   id: string;
@@ -393,7 +393,7 @@ export default function OutletBuilderInspector({
                     {product.name}
                   </span>
                   <span className="font-mono text-[10px] text-gray-400">
-                    {MYR_CODE} {Number(product.base_price).toFixed(2)}
+                    {formatMYR(Number(product.base_price))}
                   </span>
                 </label>
               ))}

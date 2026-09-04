@@ -10,7 +10,8 @@ import { ShareButton } from "@/components/shared/share-button";
 import type { ComputedActivity } from "@/backend/core/types";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
-import { DISTANCE_UNIT_KM, MYR_CODE, TRENDING_SYMBOL } from "@/lib/i18n/invariant-tokens";
+import { DISTANCE_UNIT_KM, TRENDING_SYMBOL } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -100,7 +101,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo }: { act
         </div>
         {(activity.aiTag || recommendationReason) && <AiTag text={recommendationReason ?? activity.aiTag ?? ""} />}
         <div className="mw-card-footer pt-1">
-          <div><span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{MYR_CODE} {activity.price}</span><span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span></div>
+          <div><span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{formatMYR(Number(activity.price))}</span><span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span></div>
           <Link href={activityHref} className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white">{activity.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow")}</Link>
         </div>
       </div>
