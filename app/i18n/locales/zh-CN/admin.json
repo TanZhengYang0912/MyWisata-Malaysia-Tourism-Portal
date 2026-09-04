@@ -2217,7 +2217,7 @@
       "overdue": "逾期",
       "risk": "风险：{{level}}",
       "riskPriority": "风险 / 优先级",
-      "rm500Threshold": "RM500+ 阈值",
+      "rm500Threshold": "RM500.00+ 阈值",
       "singleApproval": "1/1 次审批",
       "standardReview": "标准审核",
       "status": "状态",

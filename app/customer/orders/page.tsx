@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import type { Order, Outlet } from "@/backend/core/types";
 import { activityHref } from "@/lib/customer/activity-navigation";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -198,7 +198,7 @@ export default function OrdersPage() {
                     <div className="flex flex-col sm:items-end">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 sm:hidden">{tCustomer("ui.checkout.total")}</span>
                       <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary lg:text-xl">
-                        {MYR_CODE} {order.total.toFixed(2)}
+                        {formatMYR(order.total)}
                       </span>
                       <span className="mt-1 text-xs font-medium text-muted-foreground sm:hidden">
                         {dateLabel(order.createdAt, i18n.resolvedLanguage || i18n.language)} · {order.items.reduce((sum, item) => sum + item.qty, 0)} {tCustomer("ui.labels.items")}

@@ -98,7 +98,7 @@ export default function OutletPieChart({ data, total }: { data: OutletSale[]; to
                     {formatNumber(rows[activeIndex]?.percentage ?? 0, locale)}%
                   </span>
                   <span className="mt-0.5 text-[10px] text-gray-400">
-                    {formatMYR(rows[activeIndex]?.revenue ?? 0, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    {formatMYR(rows[activeIndex]?.revenue ?? 0, locale)}
                   </span>
                 </>
               ) : (
@@ -107,7 +107,7 @@ export default function OutletPieChart({ data, total }: { data: OutletSale[]; to
                     {formatNumber(data.length, locale)} {data.length === 1 ? t('charts.outlet.outlet') : t('charts.outlet.outlets')}
                   </span>
                   <span className="mt-0.5 text-sm font-bold text-gray-900 leading-tight">
-                    {formatMYR(total, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    {formatMYR(total, locale)}
                   </span>
                   <span className="mt-0.5 text-[10px] text-gray-400">{t('charts.outlet.total')}</span>
                 </>

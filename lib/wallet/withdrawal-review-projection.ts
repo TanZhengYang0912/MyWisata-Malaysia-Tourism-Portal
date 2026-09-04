@@ -7,12 +7,14 @@ export type WithdrawalNotificationSnapshot = {
   destination: { type: string; maskedReference: string };
 };
 
+import { formatMYRFromSen } from "@/lib/i18n/format";
+
 function safeLabel(value: string): string {
   return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80) || 'Unknown';
 }
 
 function formatSen(value: number): string {
-  return `RM ${(Math.max(0, value) / 100).toFixed(2)}`;
+  return formatMYRFromSen(Math.max(0, value));
 }
 
 export function buildWithdrawalNotificationReason(snapshot: WithdrawalNotificationSnapshot): string {

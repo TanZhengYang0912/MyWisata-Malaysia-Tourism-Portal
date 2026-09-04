@@ -91,6 +91,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/place-activity-section.tsx",
   "components/customer/place-breadcrumb.tsx",
   "components/customer/place-card.tsx",
+  "components/customer/place-community-section.tsx",
   "components/customer/place-list.tsx",
   "components/customer/promotion-spotlight.tsx",
   "components/customer/saved-destination-card.tsx",

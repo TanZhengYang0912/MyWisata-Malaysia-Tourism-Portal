@@ -4,6 +4,7 @@ import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 describe("isPublicCustomerPath", () => {
   it("allows browse, vendor, listing, recommendation, and wallet surfaces", () => {
     for (const path of [
+      "/customer",
       "/customer/explore",
       "/customer/partners",
       "/customer/activity/product-1",

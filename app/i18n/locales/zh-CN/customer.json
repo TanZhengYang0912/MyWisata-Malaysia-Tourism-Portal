@@ -10,16 +10,29 @@
     "wishlist": "已保存"
   },
   "accountGroups": {
-    "Account": "账户",
-    "Payments & verification": "付款与验证",
+    "Account": "账户与偏好",
+    "Payments & verification": "订单与钱包",
     "Help": "帮助",
-    "More": "更多",
-    "account": "账户",
-    "paymentsVerification": "付款与验证",
+    "More": "合作与更多",
+    "myTravel": "我的旅行与收藏",
+    "account": "账户与偏好",
+    "paymentsVerification": "订单与钱包",
     "help": "帮助",
-    "more": "更多"
+    "more": "合作与更多"
   },
   "accountItems": {
+    "saved": {
+      "label": "已保存",
+      "description": "已保存的地点与目的地"
+    },
+    "activity": {
+      "label": "我的活动",
+      "description": "行程与活动记录"
+    },
+    "chat": {
+      "label": "站内消息",
+      "description": "与商家的咨询对话"
+    },
     "Profile": {
       "label": "资料与验证",
       "description": "选择并管理独立验证"
@@ -106,13 +119,14 @@
     "activity": "活动",
     "accommodation": "住宿",
     "retail": "零售",
-    "hiddenGem": "隐藏宝藏"
+    "hiddenGem": "隐藏宝藏",
+    "hidden_gem": "隐藏宝藏"
   },
   "preferences": {
     "budgetRanges": {
-      "budget": "经济型（每天低于 RM 100）",
-      "mid_range": "中档（每天 RM 100–500）",
-      "luxury": "豪华型（每天高于 RM 500）"
+      "budget": "经济型（每天低于 RM100.00）",
+      "mid_range": "中档（每天 RM100.00–RM500.00）",
+      "luxury": "豪华型（每天高于 RM500.00）"
     },
     "mobilityNeeds": {
       "none": "没有限制",
@@ -399,7 +413,13 @@
       "selectItems": "请在购物车中至少选择一件商品。",
       "phoneRequired": "需要验证手机",
       "verifyPhone": "验证手机号码以完成预订和付款。",
-      "continueVerification": "继续验证"
+      "continueVerification": "继续验证",
+      "reserveFreeSpot": "免费预订名额",
+      "freeReservationTitle": "免费活动预订",
+      "freeReservationNotice": "此活动完全免费，但需要预订时间段以控制场地容量。无需任何支付。",
+      "itemsToReserve": "待预订项目",
+      "orderSummary": "订单总览",
+      "instantAllocation": "名额即时锁定 · 无需任何支付"
     },
     "booking": {
       "notFound": "找不到预订",
@@ -1026,9 +1046,9 @@
       "proceedCheckout": "前往结账",
       "voucherApplied": "优惠券 {{code}} 已应用。",
       "discountPercent": "{{value}}% 折扣",
-      "discountFixed": "减 RM {{value}}",
-      "minimumSpend": "最低消费 RM {{value}}",
-      "saveEnds": "节省 RM {{amount}} · 截止 {{date}}",
+      "discountFixed": "减 RM{{value}}",
+      "minimumSpend": "最低消费 RM{{value}}",
+      "saveEnds": "节省 RM{{amount}} · 截止 {{date}}",
       "inStock_one": "库存 {{count}}",
       "inStock_other": "库存 {{count}}",
       "selected_one": "已选择 {{count}} 项",
@@ -1315,7 +1335,7 @@
       },
       "photoComingSoon": "体验照片即将上线",
       "from": "起价",
-      "fromPrice": "RM {{price}} 起",
+      "fromPrice": "RM{{price}} 起",
       "locationCount": "{{count}} 个地点",
       "listingCount": "{{count}} 个项目",
       "publishedExperienceCount": "{{count}} 个已发布体验",
@@ -1462,11 +1482,11 @@
       "verifyTngError": "无法验证此 TNG eWallet，请重试。",
       "validAmount": "请输入有效金额。",
       "amountExceedsEarnings": "金额超过你的可提现收益。",
-      "minimumWithdrawal": "最低提现金额为 RM {{amount}}。",
+      "minimumWithdrawal": "最低提现金额为 RM{{amount}}。",
       "submitWithdrawalError": "提现申请提交失败。",
       "submitError": "提交失败。",
-      "minimumTopUp": "最低充值金额为 RM {{amount}}。",
-      "maximumTopUp": "最高充值金额为 RM {{amount}}。",
+      "minimumTopUp": "最低充值金额为 RM{{amount}}。",
+      "maximumTopUp": "最高充值金额为 RM{{amount}}。",
       "topUpError": "无法发起充值。",
       "bankWithdrawalsEnabled": "银行提款已启用",
       "completePayoutDetails": "请完成收款资料",
@@ -1504,7 +1524,7 @@
       "tngSecurityHint": "我们会通过付款服务商验证收款方式。切勿输入 TNG PIN。",
       "verifying": "正在验证…",
       "verifySave": "验证并保存",
-      "dualApprovalWarning": "⚠ RM 500 或以上的提现需要双重审批，处理时间可能更长。",
+      "dualApprovalWarning": "⚠ RM500.00 或以上的提现需要双重审批，处理时间可能更长。",
       "submitRequest": "提交申请",
       "setupEarningsWithdrawals": "设置收益提现",
       "completeKycDescription": "设置收款账户前需要先完成 KYC 验证。",
@@ -1627,13 +1647,13 @@
       "descriptionFallback": "{{outlet}} 的本地热门选择。",
       "emptyTitle": "菜单正在准备中",
       "emptyDescription": "此门店尚未发布可售项目，请稍后回来查看本地精选。",
-      "price": "RM {{price}}",
+      "price": "RM{{price}}",
       "listingCount_one": "{{count}} 个项目",
       "listingCount_other": "{{count}} 个项目"
     },
     "home": {
       "vendorCover": "{{vendor}} 封面",
-      "vendorDescription": "{{location}} 的{{type}}。",
+      "vendorDescription": "{{location}} 的本地体验。",
       "viewFullMap": "查看完整地图",
       "heroKicker": "马来西亚的生动地图册",
       "heroTitleStart": "找到一个",
@@ -1780,6 +1800,9 @@
       "filterShow": "显示",
       "filterAreaLabel": "按地区筛选地点",
       "allAreas": "所有地区",
+      "selectedAreas": "已选择 {{count}} 个地区",
+      "searchAreas": "搜索地区",
+      "noAreasMatch": "没有匹配的地区。",
       "activityFallback": "探索此目的地提供的体验。",
       "reserveSpot": "预留名额",
       "availablePurchase": "可购买",
@@ -1792,7 +1815,38 @@
       "bookableCount_one": "{{count}} 个可预订地点",
       "vendorOptions_one": "{{count}} 个商家选项",
       "activityCount_one": "{{count}} 项活动",
-      "vendorCount_one": "{{count}} 个商家"
+      "vendorCount_one": "{{count}} 个商家",
+      "localNotes": {
+        "eyebrow": "当地视角",
+        "title": "当地笔记",
+        "description": "来自曾在 {{place}} 停留过的人们的实用观察。",
+        "count_one": "{{count}} 条笔记",
+        "count_other": "{{count}} 条笔记",
+        "shareLabel": "分享实用贴士",
+        "placeholder": "什么信息能帮助下一位访客？请写得具体并保持尊重。",
+        "guidance": "请勿包含电话号码、身份证明或敏感个人信息。",
+        "publish": "发布笔记",
+        "signInToShare": "登录后分享",
+        "loading": "正在加载当地笔记…",
+        "empty": "暂时还没有当地笔记。分享第一条实用贴士，帮助下一位访客。",
+        "loadMore": "加载更多笔记",
+        "delete": "删除",
+        "loadError": "暂时无法加载当地笔记。",
+        "publishError": "无法发布你的笔记，请检查后重试。",
+        "deleteError": "无法删除这条笔记，请重试。",
+        "anonymousVisitor": "匿名游客",
+        "anonymousBadge": "匿名",
+        "fromCity": "来自 {{city}}",
+        "postAnonymously": "匿名发布",
+        "postingAs": "以 {{name}} 身份发布",
+        "postingAsAnonymous": "以匿名游客身份发布",
+        "charCount": "{{current}} / {{max}}",
+        "minCharWarning": "至少输入 8 个字符 ({{current}}/8)",
+        "justNow": "刚刚",
+        "minutesAgo": "{{count}}分钟前",
+        "hoursAgo": "{{count}}小时前",
+        "daysAgo": "{{count}}天前"
+      }
     },
     "saved": {
       "metadataTitle": "已保存 — MyWisata",
@@ -1882,7 +1936,13 @@
       "empty": "此类别暂时没有体验。",
       "showAll": "显示所有体验",
       "free": "免费",
-      "price": "RM {{value}}"
+      "price": "RM{{value}}",
+      "filters": {
+        "all": "全部体验",
+        "admission": "入场门票",
+        "guideService": "导览体验",
+        "addon": "附加项目"
+      }
     },
     "forYou": {
       "generate": "生成推荐",
@@ -1948,10 +2008,10 @@
       "threeTravellers": "3 位旅客",
       "fourTravellers": "4 位以上旅客",
       "comfortRange": "预算范围",
-      "budgetUnder100": "每天 RM100 以下",
-      "budget100To250": "每天 RM100–250",
-      "budget250To500": "每天 RM250–500",
-      "budget500Plus": "每天 RM500 以上",
+      "budgetUnder100": "每天 RM100.00 以下",
+      "budget100To250": "每天 RM100.00–RM250.00",
+      "budget250To500": "每天 RM250.00–RM500.00",
+      "budget500Plus": "每天 RM500.00 以上",
       "startAt": "起点",
       "thenChoose": "接着选择",
       "verifiedVendor": "已验证商家",
@@ -2018,7 +2078,7 @@
       "outletImageAlt": "{{name}} 门店",
       "vendorLogoAlt": "{{name}} 标志",
       "percentOff": "{{value}}% 折扣",
-      "fixedOff": "减 RM {{value}}",
+      "fixedOff": "减 RM{{value}}",
       "ends": "截止 {{date}}",
       "noExpiry": "无到期日",
       "limitedTime": "限时优惠",
@@ -2030,7 +2090,7 @@
       "allEligibleProducts": "所有适用商品",
       "productsAvailable": "{{count}} 件商品适用",
       "moreProducts": "另有 {{count}} 件",
-      "minSpend": "最低消费 RM {{value}}",
+      "minSpend": "最低消费 RM{{value}}",
       "eligibleProduct": "适用于 {{name}}",
       "saved": "已保存",
       "claimLater": "现在领取，稍后使用",

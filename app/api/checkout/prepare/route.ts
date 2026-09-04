@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, checkoutPrepareSchema } from '@/lib/validation/schemas';
 import { buildCheckoutRequestHash, normalizeCheckoutRequest } from '@/lib/checkout/idempotency';
-import { getActivities } from '@/backend/domains/catalogue';
+import { getCachedActivities } from '@/lib/cache/catalogue-cache';
 import { cartTotals, unitPrice } from '@/backend/core/helpers';
 import type { CartItem, Voucher } from '@/backend/core/types';
 import { stripe } from '@/lib/stripe';
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
   let activities;
   try {
-    activities = await getActivities(db);
+    activities = await getCachedActivities();
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load catalogue' }, { status: 503 });
   }

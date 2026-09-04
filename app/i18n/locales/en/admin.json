@@ -2219,7 +2219,7 @@
       "overdue": "Overdue",
       "risk": "Risk: {{level}}",
       "riskPriority": "Risk / priority",
-      "rm500Threshold": "RM500+ threshold",
+      "rm500Threshold": "RM500.00+ threshold",
       "singleApproval": "1/1 approval",
       "standardReview": "Standard review",
       "status": "Status",

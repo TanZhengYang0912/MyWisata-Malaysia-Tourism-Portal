@@ -23,12 +23,34 @@ function supabaseStorageRemotePattern() {
 }
 
 const nextConfig: NextConfig = {
+  compress: true,
   turbopack: {
     root: projectRoot,
   },
   serverExternalPackages: ['pdfkit'],
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'date-fns',
+      'recharts',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-label',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-select',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-tabs',
+    ],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+  },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: supabaseStorageRemotePattern(),
+    minimumCacheTTL: 2592000,
   },
 };
 

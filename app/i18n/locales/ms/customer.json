@@ -10,16 +10,29 @@
     "wishlist": "Disimpan"
   },
   "accountGroups": {
-    "Account": "Akaun",
-    "Payments & verification": "Pembayaran & pengesahan",
+    "Account": "Akaun & Keutamaan",
+    "Payments & verification": "Pesanan & Dompet",
     "Help": "Bantuan",
-    "More": "Lagi",
-    "account": "Akaun",
-    "paymentsVerification": "Pembayaran & pengesahan",
+    "More": "Rakan Kongsi & Lain-lain",
+    "myTravel": "Perjalanan & Disimpan",
+    "account": "Akaun & Keutamaan",
+    "paymentsVerification": "Pesanan & Dompet",
     "help": "Bantuan",
-    "more": "Lagi"
+    "more": "Rakan Kongsi & Lain-lain"
   },
   "accountItems": {
+    "saved": {
+      "label": "Disimpan",
+      "description": "Tempat dan destinasi yang disimpan"
+    },
+    "activity": {
+      "label": "Aktiviti Saya",
+      "description": "Jadual perjalanan dan aktiviti"
+    },
+    "chat": {
+      "label": "Mesej",
+      "description": "Perbualan dengan rakan kongsi"
+    },
     "Profile": {
       "label": "Profil & Pengesahan",
       "description": "Pilih dan urus pengesahan berasingan"
@@ -106,13 +119,14 @@
     "activity": "Aktiviti",
     "accommodation": "Penginapan",
     "retail": "Runcit",
-    "hiddenGem": "Permata Tersembunyi"
+    "hiddenGem": "Permata Tersembunyi",
+    "hidden_gem": "Permata Tersembunyi"
   },
   "preferences": {
     "budgetRanges": {
-      "budget": "Bajet (< RM 100/hari)",
-      "mid_range": "Pertengahan (RM 100–500/hari)",
-      "luxury": "Mewah (> RM 500/hari)"
+      "budget": "Bajet (< RM100.00/hari)",
+      "mid_range": "Pertengahan (RM100.00–RM500.00/hari)",
+      "luxury": "Mewah (> RM500.00/hari)"
     },
     "mobilityNeeds": {
       "none": "Tiada sekatan",
@@ -399,7 +413,13 @@
       "selectItems": "Pilih sekurang-kurangnya satu item dalam troli untuk teruskan.",
       "phoneRequired": "Pengesahan telefon diperlukan",
       "verifyPhone": "Sahkan nombor telefon untuk melengkapkan tempahan dan pembayaran.",
-      "continueVerification": "Teruskan pengesahan"
+      "continueVerification": "Teruskan pengesahan",
+      "reserveFreeSpot": "Tempah Tempat Percuma",
+      "freeReservationTitle": "Tempahan Aktiviti Percuma",
+      "freeReservationNotice": "Aktiviti ini percuma, tetapi memerlukan tempahan slot untuk kawalan kapasiti. Tiada bayaran akan diproses.",
+      "itemsToReserve": "Item untuk Ditempah",
+      "orderSummary": "Ringkasan Pesanan",
+      "instantAllocation": "Slot ditempah serta-merta · Tiada bayaran diperlukan"
     },
     "booking": {
       "notFound": "Tempahan tidak ditemui",
@@ -1026,9 +1046,9 @@
       "proceedCheckout": "Terus ke pembayaran",
       "voucherApplied": "Baucar {{code}} digunakan.",
       "discountPercent": "Diskaun {{value}}%",
-      "discountFixed": "Diskaun RM {{value}}",
-      "minimumSpend": "Minimum RM {{value}}",
-      "saveEnds": "Jimat RM {{amount}} · Tamat {{date}}",
+      "discountFixed": "Diskaun RM{{value}}",
+      "minimumSpend": "Minimum RM{{value}}",
+      "saveEnds": "Jimat RM{{amount}} · Tamat {{date}}",
       "inStock_one": "{{count}} dalam stok",
       "inStock_other": "{{count}} dalam stok",
       "selected_one": "{{count}} dipilih",
@@ -1315,7 +1335,7 @@
       },
       "photoComingSoon": "Foto pengalaman akan datang",
       "from": "Dari",
-      "fromPrice": "Dari RM {{price}}",
+      "fromPrice": "Dari RM{{price}}",
       "locationCount": "{{count}} lokasi",
       "listingCount": "{{count}} penyenaraian",
       "publishedExperienceCount": "{{count}} pengalaman diterbitkan",
@@ -1462,11 +1482,11 @@
       "verifyTngError": "Kami tidak dapat mengesahkan TNG eWallet ini. Sila cuba lagi.",
       "validAmount": "Masukkan jumlah yang sah.",
       "amountExceedsEarnings": "Jumlah melebihi pendapatan yang boleh dikeluarkan.",
-      "minimumWithdrawal": "Pengeluaran minimum ialah RM {{amount}}.",
+      "minimumWithdrawal": "Pengeluaran minimum ialah RM{{amount}}.",
       "submitWithdrawalError": "Gagal menghantar permintaan pengeluaran.",
       "submitError": "Gagal menghantar.",
-      "minimumTopUp": "Tambah nilai minimum ialah RM {{amount}}.",
-      "maximumTopUp": "Tambah nilai maksimum ialah RM {{amount}}.",
+      "minimumTopUp": "Tambah nilai minimum ialah RM{{amount}}.",
+      "maximumTopUp": "Tambah nilai maksimum ialah RM{{amount}}.",
       "topUpError": "Gagal memulakan tambah nilai.",
       "bankWithdrawalsEnabled": "Pengeluaran bank diaktifkan",
       "completePayoutDetails": "Sila lengkapkan butiran pembayaran anda",
@@ -1504,7 +1524,7 @@
       "tngSecurityHint": "Kami mengesahkan destinasi dengan penyedia pembayaran. Jangan sekali-kali masukkan PIN TNG anda.",
       "verifying": "Mengesahkan…",
       "verifySave": "Sahkan & simpan",
-      "dualApprovalWarning": "⚠ Pengeluaran ≥ RM 500 memerlukan dua kelulusan dan mungkin mengambil masa lebih lama.",
+      "dualApprovalWarning": "⚠ Pengeluaran ≥ RM500.00 memerlukan dua kelulusan dan mungkin mengambil masa lebih lama.",
       "submitRequest": "Hantar Permintaan",
       "setupEarningsWithdrawals": "Sediakan pengeluaran pendapatan",
       "completeKycDescription": "Anda perlu melengkapkan pengesahan KYC sebelum menyediakan akaun pembayaran.",
@@ -1627,13 +1647,13 @@
       "descriptionFallback": "Pilihan tempatan popular dari {{outlet}}.",
       "emptyTitle": "Menu sedang disediakan",
       "emptyDescription": "Cawangan ini belum menerbitkan item untuk dijual. Semak semula tidak lama lagi.",
-      "price": "RM {{price}}",
+      "price": "RM{{price}}",
       "listingCount_one": "{{count}} penyenaraian",
       "listingCount_other": "{{count}} penyenaraian"
     },
     "home": {
       "vendorCover": "Kulit {{vendor}}",
-      "vendorDescription": "{{type}} di {{location}}.",
+      "vendorDescription": "Pengalaman tempatan di {{location}}.",
       "viewFullMap": "Lihat peta penuh",
       "heroKicker": "Atlas hidup Malaysia",
       "heroTitleStart": "Cari tempat yang",
@@ -1780,6 +1800,9 @@
       "filterShow": "Tunjukkan",
       "filterAreaLabel": "Tapis tempat mengikut kawasan",
       "allAreas": "Semua kawasan",
+      "selectedAreas": "{{count}} kawasan dipilih",
+      "searchAreas": "Cari kawasan",
+      "noAreasMatch": "Tiada kawasan sepadan dengan carian anda.",
       "activityFallback": "Terokai pengalaman ini di destinasi tersebut.",
       "reserveSpot": "Tempah tempat anda",
       "availablePurchase": "Tersedia untuk dibeli",
@@ -1792,7 +1815,38 @@
       "bookableCount_one": "{{count}} tempat boleh ditempah",
       "vendorOptions_one": "{{count}} pilihan vendor",
       "activityCount_one": "{{count}} aktiviti",
-      "vendorCount_one": "{{count}} vendor"
+      "vendorCount_one": "{{count}} vendor",
+      "localNotes": {
+        "eyebrow": "Pandangan tempatan",
+        "title": "Nota Tempatan",
+        "description": "Pemerhatian praktikal daripada orang yang pernah meluangkan masa di {{place}}.",
+        "count_one": "{{count}} nota",
+        "count_other": "{{count}} nota",
+        "shareLabel": "Kongsi tip yang berguna",
+        "placeholder": "Apakah yang boleh membantu pelawat seterusnya? Tulis dengan khusus dan hormat.",
+        "guidance": "Jangan sertakan nombor telefon, butiran identiti atau maklumat peribadi yang sensitif.",
+        "publish": "Terbitkan nota",
+        "signInToShare": "Daftar masuk untuk berkongsi",
+        "loading": "Memuatkan nota tempatan…",
+        "empty": "Belum ada nota tempatan. Kongsi tip praktikal pertama untuk pelawat seterusnya.",
+        "loadMore": "Muatkan lebih banyak nota",
+        "delete": "Padam",
+        "loadError": "Nota tempatan tidak dapat dimuatkan buat masa ini.",
+        "publishError": "Nota anda tidak dapat diterbitkan. Semak dan cuba lagi.",
+        "deleteError": "Nota ini tidak dapat dipadamkan. Sila cuba lagi.",
+        "anonymousVisitor": "Pengunjung Tanpa Nama",
+        "anonymousBadge": "Tanpa Nama",
+        "fromCity": "dari {{city}}",
+        "postAnonymously": "Kongsi secara tanpa nama",
+        "postingAs": "Menghantar sebagai {{name}}",
+        "postingAsAnonymous": "Menghantar sebagai Pengunjung Tanpa Nama",
+        "charCount": "{{current}} / {{max}}",
+        "minCharWarning": "Sekurang-kurangnya 8 aksara ({{current}}/8)",
+        "justNow": "Sebentar tadi",
+        "minutesAgo": "{{count}}m lalu",
+        "hoursAgo": "{{count}}j lalu",
+        "daysAgo": "{{count}}h lalu"
+      }
     },
     "saved": {
       "metadataTitle": "Disimpan — MyWisata",
@@ -1882,7 +1936,13 @@
       "empty": "Belum ada pengalaman dalam kategori ini.",
       "showAll": "Tunjukkan semua pengalaman",
       "free": "Percuma",
-      "price": "RM {{value}}"
+      "price": "RM{{value}}",
+      "filters": {
+        "all": "Semua pengalaman",
+        "admission": "Tiket masuk",
+        "guideService": "Pengalaman berpandu",
+        "addon": "Tambahan"
+      }
     },
     "forYou": {
       "generate": "Jana cadangan",
@@ -1948,10 +2008,10 @@
       "threeTravellers": "3 pengembara",
       "fourTravellers": "4+ pengembara",
       "comfortRange": "Julat bajet",
-      "budgetUnder100": "Bawah RM100/hari",
-      "budget100To250": "RM100–250/hari",
-      "budget250To500": "RM250–500/hari",
-      "budget500Plus": "RM500+/hari",
+      "budgetUnder100": "Bawah RM100.00/hari",
+      "budget100To250": "RM100.00–RM250.00/hari",
+      "budget250To500": "RM250.00–RM500.00/hari",
+      "budget500Plus": "RM500.00+/hari",
       "startAt": "Mulakan di",
       "thenChoose": "Kemudian pilih",
       "verifiedVendor": "Vendor disahkan",
@@ -2018,7 +2078,7 @@
       "outletImageAlt": "Cawangan {{name}}",
       "vendorLogoAlt": "Logo {{name}}",
       "percentOff": "Diskaun {{value}}%",
-      "fixedOff": "Diskaun RM {{value}}",
+      "fixedOff": "Diskaun RM{{value}}",
       "ends": "Tamat {{date}}",
       "noExpiry": "Tiada tarikh luput",
       "limitedTime": "Masa terhad",
@@ -2030,7 +2090,7 @@
       "allEligibleProducts": "Semua produk yang layak",
       "productsAvailable": "{{count}} produk tersedia",
       "moreProducts": "+{{count}} lagi",
-      "minSpend": "Perbelanjaan minimum RM {{value}}",
+      "minSpend": "Perbelanjaan minimum RM{{value}}",
       "eligibleProduct": "Untuk {{name}}",
       "saved": "Disimpan",
       "claimLater": "Tuntut sekarang, guna kemudian",

@@ -213,6 +213,20 @@
     "itemCountPlural_one": "Troli beli-belah, {{count}} item",
     "itemCountPlural_other": "Troli beli-belah, {{count}} item"
   },
+  "command": {
+    "title": "Palet Arahan",
+    "searchAdminPlaceholder": "Taip arahan atau cari barisan gilir… (⌘K)",
+    "searchVendorPlaceholder": "Taip arahan atau lompat ke ruang kerja… (⌘K)",
+    "noResults": "Tiada arahan atau halaman ditemui.",
+    "navigation": "Navigasi",
+    "queue": "Barisan Gilir Semakan",
+    "actions": "Tindakan Pantas",
+    "admin": "Pentadbiran",
+    "preferences": "Keutamaan",
+    "navigate": "untuk navigasi",
+    "select": "untuk pilih",
+    "openPalette": "Palet Arahan"
+  },
   "strictMigration": {
     "verifiedContributor": "Penyumbang disahkan",
     "accountFallbackName": "Akaun",

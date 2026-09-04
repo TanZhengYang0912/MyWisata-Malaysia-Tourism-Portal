@@ -56,6 +56,7 @@ function toChatMessages(thread: Thread): ChatMessage[] {
 export default function VendorInboxPage() {
   const { t } = useTranslation('vendor');
   const { user } = useAuth();
+  const vendorId = user?.activeVendorId;
   const { showFeedback } = useActionFeedback();
   const supabase = useMemo(() => createClient(), []);
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -74,15 +75,18 @@ export default function VendorInboxPage() {
   const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
   const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
 
-  const presence = useChatPresence(user?.activeVendorId ? `chat-presence-vendor-${user.activeVendorId}` : undefined, user?.id, 'vendor');
+  const presence = useChatPresence(vendorId ? `chat-presence-vendor-${vendorId}` : undefined, user?.id, 'vendor');
   const onlineCustomerIds = useMemo(() => new Set(presence.filter((p) => p.role === 'customer').map((p) => p.key)), [presence]);
 
   const loadThreads = useCallback(async (showLoading = true) => {
-    if (!user?.activeVendorId) return;
+    if (!vendorId) {
+      if (showLoading) setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
     setLoadError(null);
     try {
-      const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, { cache: 'no-store' });
+      const response = await fetch(`/api/vendors/${vendorId}/inbox`, { cache: 'no-store' });
       const payload = await parseInboxResponse<Thread>(response);
       setThreads(payload.data);
       setLoadError(payload.error);
@@ -92,7 +96,7 @@ export default function VendorInboxPage() {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [t, user]);
+  }, [t, vendorId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

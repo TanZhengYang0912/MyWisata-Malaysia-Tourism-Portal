@@ -51,6 +51,7 @@ export const VENDOR_I18N_FILES = [
   "components/vendor/variant-manager.tsx",
   "components/vendor/vendor-claim-form.tsx",
   "components/vendor/vendor-share-analytics.tsx",
+  "components/vendor/vendor-analytics-workspace.tsx",
   "components/vendor/voucher-csv-builder.tsx",
   "components/vendor/voucher-form.tsx",
   "components/shared/affiliate-funnel.tsx",
@@ -62,6 +63,7 @@ export const VENDOR_I18N_FILES = [
 
 const priorTaskFiles = new Set([
   "app/vendor/layout.tsx",
+  "app/vendor/loading.tsx",
   "components/layout/vendor-sidebar.tsx",
   "components/vendor/compact-filter-bar.tsx",
   "components/vendor/pagination-controls.tsx",
@@ -78,6 +80,7 @@ const priorTaskFiles = new Set([
   "components/shared/appearance-control.tsx",
   "components/shared/chatbot-widget.tsx",
   "components/shared/empty-state.tsx",
+  "components/shared/global-command-palette.tsx",
   "components/shared/header-icon-button.ts",
   "components/shared/language-switcher.tsx",
   "components/shared/notification-bell.tsx",

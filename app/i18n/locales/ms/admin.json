@@ -2213,7 +2213,7 @@
       "overdue": "Tertunggak",
       "risk": "Risiko: {{level}}",
       "riskPriority": "Risiko / keutamaan",
-      "rm500Threshold": "Ambang RM500+",
+      "rm500Threshold": "Ambang RM500.00+",
       "singleApproval": "1/1 kelulusan",
       "standardReview": "Semakan standard",
       "status": "Status",

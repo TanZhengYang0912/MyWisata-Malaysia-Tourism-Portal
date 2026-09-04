@@ -213,6 +213,20 @@
     "itemCountPlural_one": "购物车，{{count}} 件商品",
     "itemCountPlural_other": "购物车，{{count}} 件商品"
   },
+  "command": {
+    "title": "全局命令面板",
+    "searchAdminPlaceholder": "输入命令或搜索待办队列… (⌘K)",
+    "searchVendorPlaceholder": "输入命令或快速跳转工作区… (⌘K)",
+    "noResults": "未找到相关命令或页面。",
+    "navigation": "导航直达",
+    "queue": "待审队列",
+    "actions": "快捷操作",
+    "admin": "系统管理",
+    "preferences": "偏好设置",
+    "navigate": "切换项",
+    "select": "确认选择",
+    "openPalette": "命令面板"
+  },
   "strictMigration": {
     "verifiedContributor": "已验证贡献者",
     "accountFallbackName": "账户",

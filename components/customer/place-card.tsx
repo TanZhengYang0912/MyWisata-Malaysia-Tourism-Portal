@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import type { Place } from "@/backend/core/types";
+import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 
 export function entryLabel(place: Place, t?: (key: string, options?: Record<string, unknown>) => string): { text: string; tone: string } {
   if (place.entryFee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
   if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
-  return { text: t?.("ui.place.entryFee", { price: place.entryFee, ns: "customer" }) ?? `RM${place.entryFee} entry`, tone: "bg-amber-100 text-amber-900" };
+  return { text: t?.("ui.place.entryFee", { price: formatMYRNumber(place.entryFee), ns: "customer" }) ?? `${formatMYR(place.entryFee)} entry`, tone: "bg-amber-100 text-amber-900" };
 }
 
 /** A region or POI card in a state/region listing — productCount is precomputed by the page, not fetched here. */

@@ -15,6 +15,7 @@
 // blank or broken because the LLM is down.
 
 import { callGemini } from '@/lib/admin-ai/gemini';
+import { formatMYR } from '@/lib/i18n/format';
 
 export interface InsightPlatformRow {
   platform: string;
@@ -57,7 +58,7 @@ const USER_SYSTEM_PROMPT = `You are an analytics assistant for a Malaysian touri
 Given these performance stats, write 2-3 short, specific, actionable sentences for the affiliate.
 Focus on: their best channel, their best product, and one concrete suggestion to earn more. Use
 only the numbers provided. Never invent figures. All money amounts are in Malaysian Ringgit — write
-them as "RM 12.50", never "$12.50" or any other currency symbol. Plain, encouraging, concise.`;
+them as "RM12.50", never "$12.50" or any other currency symbol. Plain, encouraging, concise.`;
 
 const ADMIN_SYSTEM_PROMPT = `You are an analytics assistant for a Malaysian tourism marketplace's
 admin team, summarising platform-wide affiliate performance. Given these aggregate stats, write 2-3
@@ -65,7 +66,7 @@ short, specific sentences: which channel or affiliate drives the most conversion
 anomaly in words (e.g. an affiliate with many clicks and zero conversions — possible bot traffic,
 worth reviewing). Affiliates are identified only by their affiliate code (e.g. "AF-7K2M9P") — never
 refer to anyone by name. Use only the numbers provided. Never invent figures. All money amounts are
-in Malaysian Ringgit — write them as "RM 12.50", never "$12.50" or any other currency symbol. Plain,
+in Malaysian Ringgit — write them as "RM12.50", never "$12.50" or any other currency symbol. Plain,
 concise, professional.`;
 
 export async function generateUserInsight(stats: UserInsightStats): Promise<string> {
@@ -92,7 +93,7 @@ export function ruleBasedUserInsight(stats: UserInsightStats): string {
   }
   const topProduct = [...stats.byProduct].sort((a, b) => b.earned - a.earned)[0];
   if (topProduct && topProduct.earned > 0) {
-    parts.push(`${topProduct.productName} is your best-earning activity so far (RM ${topProduct.earned.toFixed(2)}).`);
+    parts.push(`${topProduct.productName} is your best-earning activity so far (${formatMYR(topProduct.earned)}).`);
   }
   if (stats.referralsToNextTier !== null && stats.referralsToNextTier > 0) {
     parts.push(`You're ${stats.referralsToNextTier} referral${stats.referralsToNextTier === 1 ? '' : 's'} away from your next tier.`);
@@ -105,7 +106,7 @@ export function ruleBasedAdminInsight(stats: AdminInsightStats): string {
   const parts: string[] = [];
   const topAffiliate = [...stats.topAffiliates].sort((a, b) => b.commission - a.commission)[0];
   if (topAffiliate && topAffiliate.commission > 0) {
-    parts.push(`${topAffiliate.affiliateCode} is the top earner (RM ${topAffiliate.commission.toFixed(2)}, ${topAffiliate.referrals} referral${topAffiliate.referrals === 1 ? '' : 's'}).`);
+    parts.push(`${topAffiliate.affiliateCode} is the top earner (${formatMYR(topAffiliate.commission)}, ${topAffiliate.referrals} referral${topAffiliate.referrals === 1 ? '' : 's'}).`);
   }
   const topPlatform = [...stats.byPlatform].sort((a, b) => b.shares - a.shares)[0];
   if (topPlatform && topPlatform.shares > 0) {

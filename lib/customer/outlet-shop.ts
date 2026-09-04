@@ -1,3 +1,5 @@
+import { formatMYRNumber } from "@/lib/i18n/format";
+
 export interface PublicOutletEmptyState {
   title: string;
   body: string;
@@ -182,7 +184,7 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
 
   return {
     categoryLabel,
-    priceLabel: `From RM ${Number(input.basePrice).toFixed(2)}`,
+    priceLabel: `From RM${formatMYRNumber(Number(input.basePrice))}`,
     descriptionFallback: `A local favourite from ${input.outletName}.`,
     availabilityLabel,
     ratingLabel,

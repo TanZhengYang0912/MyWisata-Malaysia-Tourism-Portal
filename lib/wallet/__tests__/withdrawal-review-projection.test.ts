@@ -14,8 +14,8 @@ describe('withdrawal review projection', () => {
 
     expect(summary).toContain('Customer: Customer');
     expect(summary).toContain('Risk: review');
-    expect(summary).toContain('Reward sources: RM 25.00');
-    expect(summary).toContain('Affiliate sources: RM 50.00');
+    expect(summary).toContain('Reward sources: RM25.00');
+    expect(summary).toContain('Affiliate sources: RM50.00');
     expect(summary).toContain('Destination: e_wallet +60••••6789');
     expect(summary).not.toContain('customer@example.test');
   });

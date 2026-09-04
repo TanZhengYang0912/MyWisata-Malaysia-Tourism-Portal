@@ -333,7 +333,3 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
 export function formatGrowth(value: number) {
   return `${value >= 0 ? '+' : ''}${value}% vs previous period`;
 }
-
-export function formatRM(value: number) {
-  return `RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}

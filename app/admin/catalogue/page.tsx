@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Check, ClipboardCheck, Eye, MessageSquare, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight, ClipboardCheck, Eye, MessageSquare, X } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { AdminBatchActionBar } from '@/components/admin/batch-action-bar';
@@ -23,11 +23,7 @@ type ReviewItem = {
   display_id?: string | null;
 };
 
-const labels: Record<ReviewItem['entityType'], string> = {
-  outlet: 'Outlet',
-  product: 'Listing',
-  voucher: 'Voucher',
-};
+
 
 const labelKeys: Record<ReviewItem['entityType'], string> = {
   outlet: 'catalogue.entity.outlet',
@@ -83,7 +79,12 @@ export default function CatalogueReviewPage() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || t('catalogue.errors.actionFailed'));
       showFeedback('success', t(`catalogue.success.${action}`, { entity: t(labelKeys[item.entityType]) }));
-      setActive(null);
+      const currentIndex = visible.findIndex((v) => v.id === item.id && v.entityType === item.entityType);
+      if (currentIndex >= 0 && currentIndex < visible.length - 1) {
+        setActive(visible[currentIndex + 1]);
+      } else {
+        setActive(null);
+      }
       await load();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : t('catalogue.errors.reviewActionFailed');
@@ -136,14 +137,52 @@ export default function CatalogueReviewPage() {
     }
   }
 
-  const visible = filter === 'all' ? items : items.filter((item) => item.entityType === filter);
-  const selectedVisibleCount = visible.filter((item) => selectedIds.has(`${item.entityType}:${item.id}`)).length;
-  const counts = {
-    all: items.length,
-    outlet: items.filter((item) => item.entityType === 'outlet').length,
-    product: items.filter((item) => item.entityType === 'product').length,
-    voucher: items.filter((item) => item.entityType === 'voucher').length,
-  };
+  /* eslint-disable react-hooks/preserve-manual-memoization */
+  const visible = useMemo(
+    () => (filter === 'all' ? items : items.filter((item) => item.entityType === filter)),
+    [items, filter]
+  );
+  const selectedVisibleCount = useMemo(
+    () => visible.filter((item) => selectedIds.has(`${item.entityType}:${item.id}`)).length,
+    [visible, selectedIds]
+  );
+  /* eslint-enable react-hooks/preserve-manual-memoization */
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      outlet: items.filter((item) => item.entityType === 'outlet').length,
+      product: items.filter((item) => item.entityType === 'product').length,
+      voucher: items.filter((item) => item.entityType === 'voucher').length,
+    }),
+    [items]
+  );
+
+  const activeIndex = active ? visible.findIndex((item) => item.id === active.id && item.entityType === active.entityType) : -1;
+  const hasPrevious = activeIndex > 0;
+  const hasNext = activeIndex >= 0 && activeIndex < visible.length - 1;
+
+  function goToPrevious() {
+    if (hasPrevious) setActive(visible[activeIndex - 1]);
+  }
+
+  function goToNext() {
+    if (hasNext) setActive(visible[activeIndex + 1]);
+  }
+
+  useEffect(() => {
+    if (!active) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'ArrowLeft' && hasPrevious) {
+        event.preventDefault();
+        setActive(visible[activeIndex - 1]);
+      } else if (event.key === 'ArrowRight' && hasNext) {
+        event.preventDefault();
+        setActive(visible[activeIndex + 1]);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [active, hasPrevious, hasNext, visible, activeIndex]);
 
   return (
     <AdminPageShell>
@@ -169,7 +208,66 @@ export default function CatalogueReviewPage() {
           <div className="hidden grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid"><span><input type="checkbox" aria-label={t('catalogue.accessibility.selectAll')} checked={visible.length > 0 && selectedVisibleCount === visible.length} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visible.forEach((item) => { const key = `${item.entityType}:${item.id}`; event.target.checked ? next.add(key) : next.delete(key); }); return next; })} /></span><span>{t('catalogue.columns.type')}</span><span>{t('catalogue.columns.submission')}</span><span>{t('catalogue.columns.vendorLocation')}</span><span>{t('catalogue.columns.submitted')}</span><span className="text-right">{t('catalogue.columns.action')}</span></div>
           {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div> : visible.length === 0 ? <div className="px-6 py-20 text-center text-sm text-muted-foreground"><ClipboardCheck className="mx-auto mb-3 opacity-30" size={36} /><p>{t('catalogue.empty')}</p></div> : <div className="divide-y divide-border">{visible.map((item) => { const key = `${item.entityType}:${item.id}`; return <article key={key} className="grid gap-3 px-4 py-4 md:grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] md:items-center md:gap-4 md:px-5"><div><input type="checkbox" aria-label={t('catalogue.accessibility.selectItem', { item: item.entityLabel })} checked={selectedIds.has(key)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); event.target.checked ? next.add(key) : next.delete(key); return next; })} /></div><div><StatusBadge status={t(labelKeys[item.entityType])} /></div><div className="min-w-0"><p className="truncate font-semibold text-foreground">{item.entityLabel}</p><p className="mt-1 truncate text-xs text-muted-foreground">{item.display_id || item.id} · {item.context || t('catalogue.fallback.noLocation')}</p></div><div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{item.vendors?.name || t('catalogue.fallback.unknownVendor')}</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t('catalogue.status.pendingReview')}</p></div><div className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</div><div className="flex justify-end gap-1"><button type="button" title={t('catalogue.actions.openReview')} onClick={() => setActive(item)} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"><Eye size={16} /></button><button type="button" title={t('batchActions.approve')} disabled={!!busy} onClick={() => void review(item, 'approve')} className="rounded-lg p-2 text-primary hover:bg-secondary disabled:opacity-40"><Check size={16} /></button></div></article>; })}</div>}
         </section>
-      {active && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6" onClick={() => setActive(null)}><aside role="dialog" aria-modal="true" aria-labelledby="catalogue-review-title" onClick={(event) => event.stopPropagation()} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('catalogue.reviewTitle', { entity: t(labelKeys[active.entityType]) })}</p><h2 id="catalogue-review-title" className="mt-1 text-xl font-bold text-foreground">{active.entityLabel}</h2></div><button type="button" aria-label={t('catalogue.actions.closeReview')} onClick={() => setActive(null)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></button></div><div className="mt-6 space-y-3 text-sm"><div className="rounded-xl bg-muted p-4"><p className="text-xs text-muted-foreground">{t('catalogue.fields.vendor')}</p><p className="mt-1 font-semibold text-foreground">{active.vendors?.name || t('catalogue.fallback.unknownVendor')}</p></div><div className="rounded-xl bg-muted p-4"><p className="text-xs text-muted-foreground">{t('catalogue.fields.reference')}</p><p className="mt-1 break-all font-mono text-xs text-foreground">{active.display_id || active.id}</p><p className="mt-2 text-muted-foreground">{active.context || t('catalogue.fallback.noLocation')}</p></div><div className="rounded-xl border border-primary/20 bg-secondary p-4 text-primary"><div className="flex items-center gap-2 font-semibold"><MessageSquare size={15} /> {t('catalogue.checklist.title')}</div><p className="mt-2 text-xs leading-5">{t('catalogue.checklist.description')}</p></div></div><div className="mt-8 grid gap-2 sm:grid-cols-3"><button type="button" disabled={!!busy} onClick={() => void review(active, 'approve')} className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{t('batchActions.approve')}</button><button type="button" disabled={!!busy} onClick={() => void review(active, 'change_requested')} className="rounded-xl border border-amber-300/60 px-4 py-3 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-500/40 dark:text-amber-400">{t('batchActions.request_changes')}</button><button type="button" disabled={!!busy} onClick={() => void review(active, 'reject')} className="rounded-xl border border-destructive/30 px-4 py-3 text-sm font-semibold text-destructive disabled:opacity-50">{t('batchActions.reject')}</button></div></aside></div>}
+      {active && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6" onClick={() => setActive(null)}>
+          <aside role="dialog" aria-modal="true" aria-labelledby="catalogue-review-title" onClick={(event) => event.stopPropagation()} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('catalogue.reviewTitle', { entity: t(labelKeys[active.entityType]) })}</p>
+                <h2 id="catalogue-review-title" className="mt-1 text-xl font-bold text-foreground">{active.entityLabel}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {visible.length > 1 && (
+                  <div className="flex items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-2 py-1">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {activeIndex + 1} / {visible.length}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!hasPrevious}
+                      onClick={goToPrevious}
+                      title={t('actions.previous', { defaultValue: 'Previous' })}
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!hasNext}
+                      onClick={goToNext}
+                      title={t('actions.next', { defaultValue: 'Next' })}
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+                <button type="button" aria-label={t('catalogue.actions.closeReview')} onClick={() => setActive(null)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></button>
+              </div>
+            </div>
+            <div className="mt-6 space-y-3 text-sm">
+              <div className="rounded-xl bg-muted p-4">
+                <p className="text-xs text-muted-foreground">{t('catalogue.fields.vendor')}</p>
+                <p className="mt-1 font-semibold text-foreground">{active.vendors?.name || t('catalogue.fallback.unknownVendor')}</p>
+              </div>
+              <div className="rounded-xl bg-muted p-4">
+                <p className="text-xs text-muted-foreground">{t('catalogue.fields.reference')}</p>
+                <p className="mt-1 break-all font-mono text-xs text-foreground">{active.display_id || active.id}</p>
+                <p className="mt-2 text-muted-foreground">{active.context || t('catalogue.fallback.noLocation')}</p>
+              </div>
+              <div className="rounded-xl border border-primary/20 bg-secondary p-4 text-primary">
+                <div className="flex items-center gap-2 font-semibold"><MessageSquare size={15} /> {t('catalogue.checklist.title')}</div>
+                <p className="mt-2 text-xs leading-5">{t('catalogue.checklist.description')}</p>
+              </div>
+            </div>
+            <div className="mt-8 grid gap-2 sm:grid-cols-3">
+              <button type="button" disabled={!!busy} onClick={() => void review(active, 'approve')} className="rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">{t('batchActions.approve')}</button>
+              <button type="button" disabled={!!busy} onClick={() => void review(active, 'change_requested')} className="rounded-xl border border-amber-300/60 px-4 py-3 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-500/40 dark:text-amber-400">{t('batchActions.request_changes')}</button>
+              <button type="button" disabled={!!busy} onClick={() => void review(active, 'reject')} className="rounded-xl border border-destructive/30 px-4 py-3 text-sm font-semibold text-destructive disabled:opacity-50">{t('batchActions.reject')}</button>
+            </div>
+          </aside>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

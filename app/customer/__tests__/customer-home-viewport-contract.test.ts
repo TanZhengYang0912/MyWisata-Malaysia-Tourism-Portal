@@ -44,4 +44,10 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('href="/customer/for-you"');
     expect(homeSource).toContain('t("ui.actions.viewAll")');
   });
+
+  it("does not expose vendor business-type translation keys in Featured Partners cards", () => {
+    expect(homeSource).not.toContain("ui.vendor.businessTypes");
+    expect(homeSource).not.toContain("customer:ui.vendor");
+    expect(homeSource).toContain('t("ui.home.vendorDescription", { location })');
+  });
 });

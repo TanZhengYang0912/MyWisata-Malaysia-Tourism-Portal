@@ -9,7 +9,8 @@ import { GuestAccountEmptyState } from "@/components/customer/guest-account-empt
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { MYR_CODE, REFERENCE_PREFIX } from "@/lib/i18n/invariant-tokens";
+import { REFERENCE_PREFIX } from "@/lib/i18n/invariant-tokens";
+import { formatMYRFromSen } from "@/lib/i18n/format";
 
 type SimulatorProvider = "tng_ewallet_simulator" | "grabpay_simulator" | "bank_transfer_simulator";
 type SimulatorSession = {
@@ -128,7 +129,7 @@ export default function PaymentSimulatorPage() {
         </div>
 
         <dl className="mt-5 space-y-2 text-sm">
-          <div className="flex justify-between"><dt className="text-muted-foreground">{tCustomer("ui.checkout.total")}</dt><dd className="font-bold font-[family-name:var(--font-mono)]">{MYR_CODE} {(session.amountSen / 100).toFixed(2)}</dd></div>
+          <div className="flex justify-between"><dt className="text-muted-foreground">{tCustomer("ui.checkout.total")}</dt><dd className="font-bold font-[family-name:var(--font-mono)]">{formatMYRFromSen(session.amountSen)}</dd></div>
           <div className="flex justify-between"><dt className="text-muted-foreground">{tCustomer("ui.labels.status")}</dt><dd className="font-semibold">{tCustomer(`strictMigration.paymentSimulator.statuses.${session.status}`)}</dd></div>
           <div className="flex justify-between"><dt className="text-muted-foreground">{tCustomer("ui.labels.bookingReference")}</dt><dd className="font-mono text-xs">…{session.providerPaymentId.slice(-10)}</dd></div>
         </dl>

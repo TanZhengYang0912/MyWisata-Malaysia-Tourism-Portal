@@ -13,6 +13,9 @@ describe("place discovery section layout", () => {
     expect(source).toContain('aria-labelledby="places-to-visit-heading"');
     expect(source).toContain('t("ui.explore.eyebrow")');
     expect(source).toContain('aria-live="polite"');
+    expect(source).toContain("parsePlaceAreaIds");
+    expect(source).toContain("AreaPicker");
+    expect(source).toContain('searchParams.getAll("area")');
     expect(source).toContain("items-stretch");
     expect(card).toContain("group-hover:scale-105");
     expect(card).toContain("line-clamp-2");

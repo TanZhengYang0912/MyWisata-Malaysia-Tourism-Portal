@@ -19,7 +19,7 @@ import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@
 import { STRIPE_TOP_UP_MAXIMUM_RM, STRIPE_TOP_UP_MINIMUM_RM } from "@/lib/stripe/top-up-limits";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { WalletBalanceSummary, type WalletBuckets } from "@/components/customer/wallet/wallet-balance-summary";
 import { PayoutReadiness, type CustomerConnectStatus } from "@/components/customer/wallet/payout-readiness";
 import { WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
@@ -341,7 +341,7 @@ function WalletContent() {
     const available = availableEarnings;
     if (!amount || amount <= 0) { setWithdrawError(tCustomer("ui.wallet.validAmount")); return; }
     if (amount > available)     { setWithdrawError(tCustomer("ui.wallet.amountExceedsEarnings")); return; }
-    if (amount < CUSTOMER_WITHDRAWAL_MINIMUM_RM) { setWithdrawError(tCustomer("ui.wallet.minimumWithdrawal", { amount: CUSTOMER_WITHDRAWAL_MINIMUM_RM.toFixed(2) })); return; }
+    if (amount < CUSTOMER_WITHDRAWAL_MINIMUM_RM) { setWithdrawError(tCustomer("ui.wallet.minimumWithdrawal", { amount: formatMYRNumber(CUSTOMER_WITHDRAWAL_MINIMUM_RM) })); return; }
     setWithdrawing(true);
     try {
       const response = await fetch('/api/wallet/withdrawals', {
@@ -378,7 +378,7 @@ function WalletContent() {
     setTopUpError("");
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0 || !Number.isFinite(amount)) { setTopUpError(tCustomer("ui.wallet.validAmount")); return; }
-    if (amount < STRIPE_TOP_UP_MINIMUM_RM) { setTopUpError(tCustomer("ui.wallet.minimumTopUp", { amount: STRIPE_TOP_UP_MINIMUM_RM.toFixed(2) })); return; }
+    if (amount < STRIPE_TOP_UP_MINIMUM_RM) { setTopUpError(tCustomer("ui.wallet.minimumTopUp", { amount: formatMYRNumber(STRIPE_TOP_UP_MINIMUM_RM) })); return; }
     if (amount > STRIPE_TOP_UP_MAXIMUM_RM) { setTopUpError(tCustomer("ui.wallet.maximumTopUp", { amount: topUpMaximumAmountLabel })); return; }
     setToppingUp(true);
     try {
@@ -485,17 +485,17 @@ function WalletContent() {
           <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>{tCustomer("ui.wallet.earningsBalance")}</span>
-              <span className="font-mono">{MYR_CODE} {(buckets?.earnings ?? 0).toFixed(2)}</span>
+              <span className="font-mono">{formatMYR(buckets?.earnings ?? 0)}</span>
             </div>
             {pendingTotal > 0 && (
               <div className="flex justify-between text-amber-600">
                 <span>{tCustomer("ui.wallet.reservedRequests")}</span>
-                <span className="font-mono">{MYR_CODE} {pendingTotal.toFixed(2)}</span>
+                <span className="font-mono">{formatMYR(pendingTotal)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
               <span>{tCustomer("ui.wallet.availableWithdraw")}</span>
-              <span className="font-mono">{MYR_CODE} {availableEarnings.toFixed(2)}</span>
+              <span className="font-mono">{formatMYR(availableEarnings)}</span>
             </div>
           </div>
 

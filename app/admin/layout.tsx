@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { GlobalCommandPalette } from "@/components/shared/global-command-palette";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { isWalletApproverPath } from "@/lib/auth/post-login-destination";
 
@@ -79,6 +80,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pathname = usePathname();
   const router = useRouter();
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+  }, [pathname]);
+
   const approverOutsideWallet = currentUser?.role === "approver" && !isWalletApproverPath(pathname);
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
@@ -87,6 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>(EMPTY_PENDING_COUNTS);
   const [pendingCountsReady, setPendingCountsReady] = useState(false);
   const [unreadRecommendations, setUnreadRecommendations] = useState(0);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && approverOutsideWallet) router.replace("/admin/withdrawals");
@@ -110,17 +120,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         // best-effort — a failed poll just leaves the last-known count showing
       }
     }
-    (async () => {
-      await poll();
-    })();
+    void poll();
     const interval = setInterval(() => {
-      (async () => {
-        await poll();
-      })();
+      if (document.visibilityState === "visible") {
+        void poll();
+      }
     }, UNREAD_POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void poll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [currentUser]);
 
@@ -142,12 +157,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     void pollPendingCounts();
     const interval = setInterval(() => {
-      void pollPendingCounts();
+      if (document.visibilityState === "visible") {
+        void pollPendingCounts();
+      }
     }, UNREAD_POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void pollPendingCounts();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [currentUser]);
 
@@ -169,12 +193,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     void pollRecommendationUnread();
     const interval = setInterval(() => {
-      void pollRecommendationUnread();
+      if (document.visibilityState === "visible") {
+        void pollRecommendationUnread();
+      }
     }, UNREAD_POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void pollRecommendationUnread();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [currentUser?.role]);
 
@@ -239,21 +272,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
       </aside>
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      <div ref={mainContentRef} data-scroll-container="admin-main" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6">
-          <LanguageSwitcher compact className="w-28" />
-          <AppearanceControl />
           <button
             type="button"
-            onClick={() => void signOut()}
-            aria-label={tCommon("actions.signOut")}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card/80 px-3 text-xs font-semibold text-foreground transition hover:border-primary/30 hover:bg-secondary"
+            onClick={() => setCommandPaletteOpen(true)}
+            aria-label={tCommon("command.openPalette", { defaultValue: "Command Palette" })}
+            className="mr-auto flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="max-w-32 truncate">{currentUser.name}</span>
-            <LogOut size={15} aria-hidden="true" />
+            <Search size={14} className="text-muted-foreground" />
+            <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder", { defaultValue: "Type a command or search queues…" })}</span>
+            <span className="sm:hidden">{tCommon("actions.search", { defaultValue: "Search" })}</span>
+            <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
           </button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher compact className="w-28" />
+            <AppearanceControl />
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              aria-label={tCommon("actions.signOut")}
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card/80 px-3 text-xs font-semibold text-foreground transition hover:border-primary/30 hover:bg-secondary"
+            >
+              <span className="max-w-32 truncate">{currentUser.name}</span>
+              <LogOut size={15} aria-hidden="true" />
+            </button>
+          </div>
         </header>
         {children}
+        <GlobalCommandPalette
+          scope="admin"
+          userRole={currentUser.role}
+          pendingCounts={pendingCounts}
+          triggerOpen={commandPaletteOpen}
+          onOpenChange={setCommandPaletteOpen}
+        />
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
 } from '@/lib/stripe/top-up-limits';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { formatMYR } from '@/lib/i18n/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,15 +39,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
   }
   if (amountRM < STRIPE_TOP_UP_MINIMUM_RM) {
-    return NextResponse.json({ error: `Minimum top-up is RM ${STRIPE_TOP_UP_MINIMUM_RM.toFixed(2)}` }, { status: 400 });
+    return NextResponse.json({ error: `Minimum top-up is ${formatMYR(STRIPE_TOP_UP_MINIMUM_RM)}` }, { status: 400 });
   }
   const amountSen = Math.round(amountRM * 100);
   if (!Number.isSafeInteger(amountSen) || amountSen > STRIPE_TOP_UP_MAXIMUM_SEN) {
-    const maximum = STRIPE_TOP_UP_MAXIMUM_RM.toLocaleString('en-MY', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return NextResponse.json({ error: `Maximum top-up is RM ${maximum}` }, { status: 400 });
+    return NextResponse.json({ error: `Maximum top-up is ${formatMYR(STRIPE_TOP_UP_MAXIMUM_RM)}` }, { status: 400 });
   }
 
   const { data: userRow, error: userErr } = await db

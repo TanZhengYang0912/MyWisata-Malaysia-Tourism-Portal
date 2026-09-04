@@ -7,6 +7,7 @@ import { MalaysiaDistrictMap, type MapMarker } from "@/components/demo-map/malay
 import { DiscoveryPinPreview } from "@/components/demo-map/discovery-pin-preview";
 import type { DiscoveryMapData, DiscoveryPin } from "@/lib/demo-map/discovery-pins";
 import { DEMO_STATES } from "@/lib/demo-map/data";
+import { formatMYR } from "@/lib/i18n/format";
 
 function pinCoord(pin: DiscoveryPin): [number, number] {
   return pin.kind === "outlet" ? [pin.outlet.lat, pin.outlet.lng] : [pin.lat, pin.lng];
@@ -21,7 +22,7 @@ function pinToMarker(pin: DiscoveryPin): MapMarker {
   const [lat, lng] = pinCoord(pin);
   return pin.kind === "outlet"
     ? { id: pin.id, kind: "outlet", lat, lng, name: pin.outlet.name, detail: pin.outlet.vendorName }
-    : { id: pin.id, kind: "activity", lat, lng, name: pin.activity.name, detail: `RM ${pin.activity.price}` };
+    : { id: pin.id, kind: "activity", lat, lng, name: pin.activity.name, detail: formatMYR(Number(pin.activity.price)) };
 }
 
 const CLUSTER_PREFIX = "cluster:";

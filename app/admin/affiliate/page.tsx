@@ -18,7 +18,7 @@ import type { Funnel } from "@/lib/affiliate/funnel";
 import type { FraudAnalytics, FraudAnalyticsRange } from "@/lib/affiliate/fraud-analytics";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 interface AdminTier {
   id: string;
@@ -527,7 +527,7 @@ export default function AdminAffiliatePage() {
           { label: t("affiliate.metrics.affiliates"), value: String(stats.totals.totalAffiliates) },
           { label: t("affiliate.metrics.clicks"), value: String(stats.totals.totalClicks) },
           { label: t("affiliate.metrics.referrals"), value: String(stats.totals.totalReferrals) },
-          { label: t("affiliate.metrics.commission"), value: `RM ${stats.totals.totalCommission.toFixed(2)}` },
+          { label: t("affiliate.metrics.commission"), value: formatMYR(stats.totals.totalCommission) },
       ]} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -555,7 +555,7 @@ export default function AdminAffiliatePage() {
                     {i + 1}. {e.userName} <span className="capitalize text-muted-foreground font-normal">({e.tierName})</span>
                   </span>
                   <span className="text-muted-foreground">
-                    {t("affiliate.referralCount", { count: e.referrals })} · <span className="font-semibold text-foreground">{MYR_CODE} {e.commission.toFixed(2)}</span>
+                    {t("affiliate.referralCount", { count: e.referrals })} · <span className="font-semibold text-foreground">{formatMYR(e.commission)}</span>
                   </span>
                 </div>
               ))}
@@ -864,7 +864,7 @@ export default function AdminAffiliatePage() {
                   <td className="px-4 py-2.5 text-muted-foreground">{new Date(r.createdAt).toLocaleDateString(locale)}</td>
                   <td className="px-4 py-2.5 text-foreground capitalize">{t(`affiliate.status.${r.status}`)}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
-                    {MYR_CODE} {r.commissionAmount.toFixed(2)}
+                    {formatMYR(r.commissionAmount)}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {r.status === "pending" ? (

@@ -6,7 +6,7 @@ import { useAuth } from "@/components/providers/auth";
 import { supabase } from "@/backend/supabase";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 interface PendingSummary {
@@ -97,7 +97,7 @@ export default function AdminRewardsPage() {
             <p className="text-2xl font-bold text-foreground">—</p>
           ) : (
             <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">
-              {MYR_CODE} {(pending?.totalRM ?? 0).toFixed(2)}
+              {formatMYR(pending?.totalRM ?? 0)}
             </p>
           )}
           <p className="text-xs text-muted-foreground mt-1">{t("rewards.movedToEarnings")}</p>

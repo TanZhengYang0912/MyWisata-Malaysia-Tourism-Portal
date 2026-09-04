@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { getEmailConfig } from '@/lib/email/config';
 import { generateReceiptPdf, type ReceiptData } from '@/lib/pdf/receipt';
+import { formatMYR } from '@/lib/i18n/format';
 
 export type OrderReceiptPayload = ReceiptData & { recipientEmail: string };
 
@@ -32,16 +33,16 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     <tr>
       <td style="padding:8px;border:1px solid #ddd">${item.activityName}<br><span style="color:#777;font-size:12px">${item.variantLabel}</span></td>
       <td style="text-align:right;padding:8px;border:1px solid #ddd">${item.qty}</td>
-      <td style="text-align:right;padding:8px;border:1px solid #ddd">MYR ${(item.unitPrice * item.qty).toFixed(2)}</td>
+      <td style="text-align:right;padding:8px;border:1px solid #ddd">${formatMYR(item.unitPrice * item.qty)}</td>
     </tr>`).join('')}
     ${payload.discount > 0 ? `
     <tr>
       <td colspan="2" style="padding:8px;border:1px solid #ddd;text-align:right">Discount${payload.voucherCode ? ` (${payload.voucherCode})` : ''}:</td>
-      <td style="text-align:right;padding:8px;border:1px solid #ddd;color:#c0392b">-MYR ${payload.discount.toFixed(2)}</td>
+      <td style="text-align:right;padding:8px;border:1px solid #ddd;color:#c0392b">${formatMYR(payload.discount)}</td>
     </tr>` : ''}
     <tr style="font-weight:bold;background:#f5f5f5">
       <td colspan="2" style="padding:8px;border:1px solid #ddd;text-align:right">Total:</td>
-      <td style="text-align:right;padding:8px;border:1px solid #ddd">MYR ${payload.total.toFixed(2)}</td>
+      <td style="text-align:right;padding:8px;border:1px solid #ddd">${formatMYR(payload.total)}</td>
     </tr>
   </table>
   <p style="color:#777;font-size:13px">Order ID: ${payload.orderId}</p>
@@ -56,9 +57,9 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     `Hi ${payload.recipientName},`,
     'Thank you for your order. Please find your receipt attached.',
     '',
-    ...payload.items.map(i => `• ${i.activityName} (${i.variantLabel}) x${i.qty}: MYR ${(i.unitPrice * i.qty).toFixed(2)}`),
-    payload.discount > 0 ? `Discount: -MYR ${payload.discount.toFixed(2)}` : '',
-    `Total: MYR ${payload.total.toFixed(2)}`,
+    ...payload.items.map(i => `• ${i.activityName} (${i.variantLabel}) x${i.qty}: ${formatMYR(i.unitPrice * i.qty)}`),
+    payload.discount > 0 ? `Discount: ${formatMYR(payload.discount)}` : '',
+    `Total: ${formatMYR(payload.total)}`,
     '',
     `Order ID: ${payload.orderId}`,
   ].filter(line => line !== undefined).join('\n');

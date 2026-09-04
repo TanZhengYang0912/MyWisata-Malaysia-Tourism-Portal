@@ -22,24 +22,21 @@ export const CUSTOMER_NAV: CustomerNavigationItem[] = [
   { href: "/customer", label: "Home", labelKey: "navigation.home", icon: Home },
   { href: "/customer/explore", label: "Explore", labelKey: "navigation.explore", icon: Compass },
   { href: "/customer/partners", label: "Partners", labelKey: "navigation.search", icon: Store },
-  { href: "/customer/trip", label: "Trip", labelKey: "navigation.map", icon: Map },
-  { href: "/customer/chat", label: "Chat", labelKey: "navigation.chat", icon: MessageCircle },
-  { href: "/customer/activity?tab=itinerary", label: "My Activity", labelKey: "navigation.activity", icon: ReceiptText },
-  { href: "/customer/saved", label: "Saved", labelKey: "navigation.wishlist", icon: Heart },
+  { href: "/customer/trip", label: "Trip", labelKey: "navigation.trip", icon: Map },
 ];
 
 export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
   {
-    label: "Account",
-    labelKey: "accountGroups.account",
+    label: "My Trips & Saved",
+    labelKey: "accountGroups.myTravel",
     items: [
-      { href: "/customer/profile", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
-      { href: "/customer/notifications", label: "Notifications", labelKey: "accountItems.notifications", description: "Bookings, wallet and account updates", icon: Bell },
-      { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
+      { href: "/customer/saved", label: "Saved", labelKey: "accountItems.saved", description: "Saved places and destinations", icon: Heart },
+      { href: "/customer/activity?tab=itinerary", label: "My Activity", labelKey: "accountItems.activity", description: "Itineraries and activities", icon: Compass },
+      { href: "/customer/chat", label: "Messages", labelKey: "accountItems.chat", description: "Conversations with partners", icon: MessageCircle },
     ],
   },
   {
-    label: "Payments & verification",
+    label: "Orders & Wallet",
     labelKey: "accountGroups.paymentsVerification",
     items: [
       { href: "/customer/orders", label: "My Orders", labelKey: "accountItems.orders", description: "Purchases, bookings and receipts", icon: ReceiptText },
@@ -48,14 +45,16 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
     ],
   },
   {
-    label: "Help",
-    labelKey: "accountGroups.help",
+    label: "Account & Preferences",
+    labelKey: "accountGroups.account",
     items: [
-      { href: "/customer/support", label: "Support", labelKey: "accountItems.support", description: "Get help with your trip", icon: Inbox },
+      { href: "/customer/profile", label: "Profile & Verification", labelKey: "accountItems.profile", description: "Choose and manage independent verification", icon: ShieldCheck },
+      { href: "/customer/preferences", label: "Preferences", labelKey: "accountItems.preferences", description: "Tune your recommendation feed", icon: SlidersHorizontal },
+      { href: "/customer/support", label: "Support & Help", labelKey: "accountItems.support", description: "Get help with your trip", icon: Inbox },
     ],
   },
   {
-    label: "More",
+    label: "Partner & More",
     labelKey: "accountGroups.more",
     items: [
       { href: "/customer/affiliate", label: "Earn & Share", labelKey: "accountItems.earnShare", description: "Manage affiliate activity", icon: Gift },

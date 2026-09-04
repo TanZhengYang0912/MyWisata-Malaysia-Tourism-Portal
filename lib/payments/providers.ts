@@ -7,7 +7,7 @@ export const SIMULATOR_CHECKOUT_PROVIDERS = [
 ] as const;
 
 export type SimulatorCheckoutProvider = typeof SIMULATOR_CHECKOUT_PROVIDERS[number];
-export type CheckoutProviderName = 'stripe' | 'platform_wallet' | SimulatorCheckoutProvider;
+export type CheckoutProviderName = 'stripe' | 'platform_wallet' | 'platform' | SimulatorCheckoutProvider;
 
 export function isSimulatorCheckoutProvider(value: unknown): value is SimulatorCheckoutProvider {
   return typeof value === 'string'
@@ -21,6 +21,9 @@ export function resolveCheckoutProvider(
   const method = paymentMethod.trim().toLowerCase();
   const provider = requestedProvider?.trim().toLowerCase();
 
+  if (method === 'free_reservation') {
+    if (!provider || provider === 'platform') return 'platform';
+  }
   if (method === 'stripe_card' || method === 'wallet_split') {
     if (!provider || provider === 'stripe') return 'stripe';
   }

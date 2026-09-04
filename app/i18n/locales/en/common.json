@@ -213,6 +213,20 @@
     "itemCountPlural_one": "Shopping cart, {{count}} items",
     "itemCountPlural_other": "Shopping cart, {{count}} items"
   },
+  "command": {
+    "title": "Command Palette",
+    "searchAdminPlaceholder": "Type a command or search queues… (⌘K)",
+    "searchVendorPlaceholder": "Type a command or jump to workspace… (⌘K)",
+    "noResults": "No commands or pages found.",
+    "navigation": "Navigation",
+    "queue": "Review Queues",
+    "actions": "Quick Actions",
+    "admin": "Administration",
+    "preferences": "Preferences",
+    "navigate": "to navigate",
+    "select": "to select",
+    "openPalette": "Command Palette"
+  },
   "strictMigration": {
     "verifiedContributor": "Verified contributor",
     "accountFallbackName": "Account",

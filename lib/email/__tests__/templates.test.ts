@@ -12,7 +12,7 @@ describe('transaction email templates', () => {
     });
 
     expect(result.subject).toContain('Top-up');
-    expect(result.html).toContain('RM 25.00');
+    expect(result.html).toContain('RM25.00');
     expect(result.text).toContain('evt_123');
     expect(result.html).not.toContain('990101-14-5678');
     expect(result.html).not.toContain('re_');
@@ -28,7 +28,7 @@ describe('transaction email templates', () => {
     });
 
     expect(result.subject).toBe('Withdrawal failed');
-    expect(result.html).toContain('RM 100.00');
+    expect(result.html).toContain('RM100.00');
     expect(result.text).toContain('wd_123');
   });
 });

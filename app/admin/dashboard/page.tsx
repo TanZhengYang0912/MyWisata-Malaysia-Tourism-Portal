@@ -9,7 +9,8 @@ import { getWithdrawals } from "@/backend/domains/commerce";
 import { getVendorRecommendations } from "@/backend/domains/discovery";
 import { isWithdrawalReviewableStatus } from "@/lib/wallet/withdrawal-display";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { formatMYR } from "@/lib/i18n/format";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 
 type DashboardData = {
@@ -24,8 +25,6 @@ type DashboardData = {
   activity: number[];
   oldestWithdrawalAt: string | null;
 };
-
-const formatRM = (value: number, locale: AppLocale) => `RM ${value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function formatAge(createdAt: string | null, translate: (key: string, options?: Record<string, unknown>) => string) {
   if (!createdAt) return translate("dashboard.age.noOpenRequests");
@@ -98,7 +97,7 @@ export default function AdminDashboardPage() {
   const maxActivity = Math.max(...(data?.activity ?? [0]), 1);
 
   const actionRows = data ? [
-    { title: t("dashboard.lanes.withdrawals.title"), count: data.withdrawals, detail: t("dashboard.lanes.withdrawals.detail", { amount: formatRM(data.pendingPayoutValue, locale) }), href: "/admin/withdrawals", cta: t("dashboard.lanes.withdrawals.cta"), icon: Banknote, tone: data.withdrawals > 0 ? "amber" : "quiet" },
+    { title: t("dashboard.lanes.withdrawals.title"), count: data.withdrawals, detail: t("dashboard.lanes.withdrawals.detail", { amount: formatMYR(data.pendingPayoutValue, locale) }), href: "/admin/withdrawals", cta: t("dashboard.lanes.withdrawals.cta"), icon: Banknote, tone: data.withdrawals > 0 ? "amber" : "quiet" },
     { title: t("dashboard.lanes.kyc.title"), count: data.kyc, detail: t("dashboard.lanes.kyc.detail"), href: "/admin/kyc", cta: t("dashboard.lanes.kyc.cta"), icon: Shield, tone: data.kyc > 0 ? "blue" : "quiet" },
     { title: t("dashboard.lanes.support.title"), count: data.tickets, detail: t("dashboard.lanes.support.detail"), href: "/admin/support", cta: t("dashboard.lanes.support.cta"), icon: AlertCircle, tone: data.tickets > 0 ? "rose" : "quiet" },
     { title: t("dashboard.lanes.vendors.title"), count: data.vendors, detail: t("dashboard.lanes.vendors.detail"), href: "/admin/vendors", cta: t("dashboard.lanes.vendors.cta"), icon: Package, tone: data.vendors > 0 ? "blue" : "quiet" },
@@ -120,7 +119,7 @@ export default function AdminDashboardPage() {
           <section aria-label={t("dashboard.approvalSummary")} className="grid grid-cols-2 gap-3 xl:grid-cols-5">
             {[
               { label: t("dashboard.metrics.needsAttention"), value: totalAttention, supporting: t("dashboard.metrics.fiveQueues"), icon: AlertCircle, accent: "text-amber-700 bg-amber-50" },
-              { label: t("dashboard.metrics.pendingPayout"), value: formatRM(data.pendingPayoutValue, locale), supporting: t("dashboard.metrics.withdrawalRequests", { count: data.withdrawals }), icon: Banknote, accent: "text-amber-700 bg-amber-50" },
+              { label: t("dashboard.metrics.pendingPayout"), value: formatMYR(data.pendingPayoutValue, locale), supporting: t("dashboard.metrics.withdrawalRequests", { count: data.withdrawals }), icon: Banknote, accent: "text-amber-700 bg-amber-50" },
               { label: t("dashboard.metrics.overdue"), value: data.overdueWithdrawals, supporting: t("dashboard.metrics.reviewTarget"), icon: TimerReset, accent: "text-red-700 bg-red-50" },
               { label: t("dashboard.metrics.dualApproval"), value: data.dualApproval, supporting: t("dashboard.metrics.twoApprovers"), icon: UsersRound, accent: "text-primary bg-primary/10" },
               { label: t("dashboard.metrics.openSupport"), value: data.tickets, supporting: t("dashboard.metrics.openConversations"), icon: AlertCircle, accent: "text-rose-700 bg-rose-50" },
@@ -162,7 +161,7 @@ export default function AdminDashboardPage() {
             </div>
           </section>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] px-5 py-4 text-sm"><div><span className="font-semibold text-foreground">{t("dashboard.walletShortcut")}</span><span className="ml-2 text-muted-foreground">{data.withdrawals > 0 ? t("dashboard.walletPending", { count: data.withdrawals, amount: formatRM(data.pendingPayoutValue, locale) }) : t("dashboard.walletClear")}</span></div><Link href="/admin/withdrawals" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{t("dashboard.openApprovals")} <ArrowUpRight size={15} /></Link></div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] px-5 py-4 text-sm"><div><span className="font-semibold text-foreground">{t("dashboard.walletShortcut")}</span><span className="ml-2 text-muted-foreground">{data.withdrawals > 0 ? t("dashboard.walletPending", { count: data.withdrawals, amount: formatMYR(data.pendingPayoutValue, locale) }) : t("dashboard.walletClear")}</span></div><Link href="/admin/withdrawals" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">{t("dashboard.openApprovals")} <ArrowUpRight size={15} /></Link></div>
         </>}
     </AdminPageShell>
   );

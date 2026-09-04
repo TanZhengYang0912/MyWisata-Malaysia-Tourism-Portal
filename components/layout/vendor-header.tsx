@@ -1,15 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Building2, LogOut } from 'lucide-react';
+import { Bell, Building2, LogOut, Search } from 'lucide-react';
 import { NotificationBell } from '@/components/shared/notification-bell';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { AppearanceControl } from '@/components/shared/appearance-control';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
+import { GlobalCommandPalette } from '@/components/shared/global-command-palette';
 
 function roleLabel(isOutletManager: boolean, isVendorOwner: boolean) {
   if (isOutletManager) return 'shell.roles.outletManager';
@@ -24,6 +25,7 @@ export default function VendorHeader() {
   const { user, loading, isOutletManager, isVendorOwner } = useAuth();
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const vendorId = user?.activeVendorId ?? null;
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -35,7 +37,8 @@ export default function VendorHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 bg-background/95 px-4 backdrop-blur-md sm:px-6">
+    <>
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 bg-background/95 px-4 backdrop-blur-md sm:px-6">
         <Link href="/vendor/dashboard" className="flex min-w-0 items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
             <Building2 size={18} />
@@ -48,6 +51,19 @@ export default function VendorHeader() {
             </span>
           </span>
         </Link>
+
+        {/* Global Search / Command Launcher */}
+        <button
+          type="button"
+          onClick={() => setCommandPaletteOpen(true)}
+          aria-label={tCommon('command.openPalette', { defaultValue: 'Command Palette' })}
+          className="flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Search size={14} className="text-muted-foreground" />
+          <span className="hidden md:inline">{tCommon('command.searchVendorPlaceholder', { defaultValue: 'Type a command or jump to workspace…' })}</span>
+          <span className="md:hidden">{tCommon('actions.search', { defaultValue: 'Search' })}</span>
+          <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+        </button>
 
         <div className="flex shrink-0 items-center gap-2">
           <LanguageSwitcher compact className="hidden w-28 sm:flex" />
@@ -67,6 +83,14 @@ export default function VendorHeader() {
             <LogOut size={15} aria-hidden="true" />
           </button>
         </div>
-    </header>
+      </header>
+
+      <GlobalCommandPalette
+        scope="vendor"
+        triggerOpen={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+      />
+    </>
   );
 }
+

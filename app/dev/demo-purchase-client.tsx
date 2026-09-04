@@ -11,7 +11,7 @@ import { getActivities } from "@/backend/domains/catalogue";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import type { Activity } from "@/backend/core/types";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 export function DemoPurchaseClient() {
   const { currentUser, loading } = useAuth();
@@ -82,7 +82,7 @@ export function DemoPurchaseClient() {
           <div key={activity.id} className="flex items-center justify-between gap-4 rounded-xl border border-border p-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{activity.name}</p>
-              <p className="text-xs text-muted-foreground">{MYR_CODE} {activity.price}</p>
+              <p className="text-xs text-muted-foreground">{formatMYR(Number(activity.price))}</p>
             </div>
             <div className="text-right">
               <Button size="sm" disabled={busyId === activity.id} onClick={() => simulate(activity.id)}>

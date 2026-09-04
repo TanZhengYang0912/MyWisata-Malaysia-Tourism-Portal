@@ -1,4 +1,5 @@
 const PUBLIC_CUSTOMER_ROOTS = [
+  "/customer",
   "/customer/recommendations",
   "/customer/wallet",
   "/customer/affiliate",

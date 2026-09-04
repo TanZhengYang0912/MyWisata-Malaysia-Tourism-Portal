@@ -4,6 +4,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { isRecommendationRewardAdmin } from '@/lib/recommendations/admin-guard';
 import { enqueueUserTransactionEmail } from '@/lib/email/events';
 import { clearMaturedRecommendationRewards } from '@/lib/recommendations/reward-clearing';
+import { formatMYR } from '@/lib/i18n/format';
 
 async function notifyRewardLifecycle(
   service: ReturnType<typeof createServiceClient>,
@@ -14,8 +15,8 @@ async function notifyRewardLifecycle(
   const available = action === 'available';
   const title = available ? 'Your recommendation reward is now available' : 'Your pending recommendation reward was reversed';
   const body = available
-    ? `RM ${amountRm.toFixed(2)} is now available in your wallet after the 7-day hold and KYC approval.`
-    : `RM ${amountRm.toFixed(2)} was reversed because the related order was cancelled or refunded.`;
+    ? `${formatMYR(amountRm)} is now available in your wallet after the 7-day hold and KYC approval.`
+    : `${formatMYR(amountRm)} was reversed because the related order was cancelled or refunded.`;
 
   const notification = service.from('notifications').insert({
     user_id: reward.userId,

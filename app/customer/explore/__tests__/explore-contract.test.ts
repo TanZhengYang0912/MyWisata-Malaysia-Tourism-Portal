@@ -42,4 +42,22 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("rounded-2xl border border-border bg-card p-2 shadow-sm");
     expect(exploreSource).toContain("bg-primary text-white shadow-sm");
   });
+
+  it("orders explore destination zones by tourism prominence starting with Federal Territory", () => {
+    const zoneMatch = exploreSource.match(/const ZONE_ORDER = \[([\s\S]*?)\];/);
+    expect(zoneMatch).toBeTruthy();
+    const parsedZones = (zoneMatch?.[1] ?? "")
+      .split(",")
+      .map((s) => s.trim().replace(/['"]/g, ""))
+      .filter(Boolean);
+    expect(parsedZones[0]).toBe("Federal Territory");
+    expect(parsedZones).toEqual([
+      "Federal Territory",
+      "Northern Malaysia",
+      "Central Malaysia",
+      "Southern Malaysia",
+      "Borneo Malaysia",
+      "East Coast Malaysia",
+    ]);
+  });
 });

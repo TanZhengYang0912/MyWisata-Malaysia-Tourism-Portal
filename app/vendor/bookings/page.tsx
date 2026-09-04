@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, Check, ChevronRight, CirclePlus, Clock3, Eye, MapPin, Save, Search, SlidersHorizontal, Users, X } from 'lucide-react';
+import { CalendarDays, Check, ChevronRight, CirclePlus, Clock3, Download, Eye, MapPin, Save, Search, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { StatusBadge } from '@/components/ui/badge';
 import SlotForm from '@/components/vendor/slot-form';
@@ -13,6 +13,8 @@ import { createClient } from '@/lib/supabase/client';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { selectBookingOutlet } from '@/lib/vendor/booking-scope';
+import { useDebounce } from '@/hooks/use-debounce';
+import { exportToCsv, type CsvColumn } from '@/lib/export-csv';
 
 type Tab = 'reservations' | 'operating-hours';
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -110,10 +112,12 @@ export default function VendorBookingsPage() {
     setExceptions(exceptionEntries(selectedScheduleOutlet));
   }, [selectedScheduleOutlet]);
 
+  const debouncedQ = useDebounce(filters.q, 300);
+
   const loadData = useCallback(async (requestedPage = 1) => {
     if (!vendorId) return;
     setLoading(true); setError('');
-    const params = new URLSearchParams({ page: String(requestedPage), pageSize: '10', q: filters.q, status: filters.status, from: filters.from, to: filters.to });
+    const params = new URLSearchParams({ page: String(requestedPage), pageSize: '10', q: debouncedQ, status: filters.status, from: filters.from, to: filters.to });
     if (filters.outletId) params.set('outletId', filters.outletId);
     if (filters.productId) params.set('productId', filters.productId);
     const endpoint = tab === 'reservations' ? 'bookings' : 'slots';
@@ -124,9 +128,24 @@ export default function VendorBookingsPage() {
       setPagination(payload.data?.pagination || emptyPagination);
       if (tab === 'reservations') { setBookings(payload.data?.items || []); setStats(payload.data?.stats || {}); } else setSlots(payload.data?.items || []);
     } catch (requestError) { setError(requestError instanceof Error ? requestError.message : t('ui.bookings.loadFailed')); } finally { setLoading(false); }
-  }, [filters, tab, t, vendorId]);
+  }, [debouncedQ, filters.status, filters.from, filters.to, filters.outletId, filters.productId, tab, t, vendorId]);
 
-  useEffect(() => { loadData(1); }, [loadData]);
+  useEffect(() => { void loadData(1); }, [loadData]);
+
+  function handleExportBookings() {
+    if (!bookings.length) return;
+    const columns: CsvColumn<Booking>[] = [
+      { header: 'Reference', accessor: (b) => b.display_id || b.id },
+      { header: 'Customer', accessor: (b) => b.customer?.full_name || 'Guest' },
+      { header: 'Email', accessor: (b) => b.customer?.email || '' },
+      { header: 'Product / Experience', accessor: (b) => b.slot?.products?.name || b.orderItem?.product_name || '' },
+      { header: 'Date & Time', accessor: (b) => b.slot?.starts_at ? new Date(b.slot.starts_at).toLocaleString() : '' },
+      { header: 'Quantity', accessor: (b) => b.orderItem?.quantity ?? 1 },
+      { header: 'Status', accessor: (b) => b.status },
+      { header: 'Check In Time', accessor: (b) => b.check_in_at ? new Date(b.check_in_at).toLocaleString() : '' },
+    ];
+    exportToCsv(`bookings-${new Date().toISOString().split('T')[0]}`, columns, bookings);
+  }
 
   async function checkIn(bookingId: string) {
     if (!vendorId) return;
@@ -186,7 +205,19 @@ export default function VendorBookingsPage() {
     <div className="space-y-5">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div><div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><CalendarDays size={15} /> {t('ui.bookings.bookingOperations')}</div><h1 className="text-2xl font-bold tracking-tight text-gray-950">{t('ui.bookings.title')}</h1><p className="mt-1 max-w-2xl text-sm text-gray-500">{t('ui.bookings.description')}</p></div>
-        <button type="button" onClick={() => setShowSlotForm(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"><CirclePlus size={17} /> {t('ui.bookings.addSlot')}</button>
+        <div className="flex items-center gap-2">
+          {tab === 'reservations' && (
+            <button
+              type="button"
+              onClick={handleExportBookings}
+              disabled={loading || bookings.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
+            >
+              <Download size={16} /> {t('actions.exportCsv', { defaultValue: 'Export CSV' })}
+            </button>
+          )}
+          <button type="button" onClick={() => setShowSlotForm(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"><CirclePlus size={17} /> {t('ui.bookings.addSlot')}</button>
+        </div>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.confirmed')}</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.confirmed || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.checked_in')}</p><p className="mt-1 text-2xl font-bold text-primary">{stats.checked_in || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.cancelled')}</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.cancelled || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm"><p className="text-xs text-primary">{t('ui.bookings.outletsManaged')}</p><p className="mt-1 text-2xl font-bold text-primary">{outlets.length}</p><p className="mt-1 text-xs text-primary">{t('ui.bookings.allVendorOutlets')}</p></div></div>

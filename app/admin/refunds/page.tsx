@@ -18,7 +18,7 @@ import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/a
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { formatMYR } from "@/lib/i18n/format";
 
 type RefundRow = {
   id: string;
@@ -50,10 +50,6 @@ const SIMULATOR_PROVIDERS = new Set([
   "grabpay_simulator",
   "bank_transfer_simulator",
 ]);
-
-function formatRM(value: number) {
-  return `${MYR_CODE} ${value.toFixed(2)}`;
-}
 
 function providerLabel(
   provider: string | null,
@@ -258,7 +254,7 @@ export default function AdminRefundsPage() {
             },
             {
               label: t("refunds.metrics.pendingRefundValue"),
-              value: formatRM(visiblePendingValue),
+              value: formatMYR(visiblePendingValue, locale),
               detail: t("refunds.metrics.visiblePageTotal"),
             },
             {
@@ -417,7 +413,7 @@ export default function AdminRefundsPage() {
                         </div>
                         <div>
                           <p className="font-[family-name:var(--font-mono)] text-sm font-bold text-foreground">
-                            {formatRM(refund.amountRm)}
+                            {formatMYR(refund.amountRm, locale)}
                           </p>
                           <p className="mt-1 text-[11px] text-muted-foreground">
                             {refund.method ?? "—"}

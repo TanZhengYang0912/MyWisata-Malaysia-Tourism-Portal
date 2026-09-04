@@ -64,6 +64,17 @@ export const recommendationConvertSchema = z.object({
   bonusAmount: rmMoney.optional().default(12.50),
 }).strict();
 
+// ── Place community ───────────────────────────────────────
+
+export const placeCommentCreateSchema = z.object({
+  body: z.string().trim().min(8).max(600),
+  isAnonymous: z.boolean().optional().default(false),
+}).strict();
+
+export const placeCommentDeleteSchema = z.object({
+  commentId: uuid,
+}).strict();
+
 // ── Wallet & Withdrawal ────────────────────────────────────
 
 export const withdrawalSubmitSchema = z.object({
@@ -107,7 +118,7 @@ export const checkoutPrepareSchema = z.object({
   selectedKeys: z.array(z.string().min(1).max(300)).max(100).optional(),
   voucherCode: z.string().trim().max(50).nullable().optional(),
   claimId: uuid.nullable().optional(),
-  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card']),
+  paymentMethod: z.enum(['stripe_card', 'ewallet', 'bank_transfer', 'wallet', 'wallet_split', 'mock_card', 'free_reservation']),
   paymentProvider: z.enum([
     'tng_ewallet_simulator',
     'grabpay_simulator',
