@@ -16,6 +16,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { translateMessage } from '@/lib/chat/translate';
+import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 
 const chatTranslateSchema = z.object({
   messageId: z.string().uuid(),
@@ -46,11 +47,14 @@ export async function POST(request: Request) {
   // doesn't exist), same 403 either way, no extra information leaked.
   const { data: thread, error: threadError } = await authClient
     .from('chat_threads')
-    .select('id')
+    .select('id,customer_id,outlet_id')
     .eq('id', message.thread_id)
     .maybeSingle();
   if (threadError) return apiFail('DB_ERROR', threadError.message, 500);
   if (!thread) return apiFail('FORBIDDEN', 'Not a participant in this conversation', 403);
+  if (!(await accessibleChatThreadIds(authClient, user.id, [thread])).has(thread.id)) {
+    return apiFail('FORBIDDEN', 'Not a participant in this conversation', 403);
+  }
 
   // Cache first — a message's text is immutable once sent, so a
   // (messageId, targetLang) pair only ever needs the LLM call once.

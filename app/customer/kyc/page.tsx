@@ -5,7 +5,7 @@ import type { TFunction } from "i18next";
 import { useEffect, useRef, useState } from "react";
 import {
   ShieldCheck, Upload, CheckCircle2, Clock, FileCheck2,
-  Info, AlertTriangle,
+  Info, AlertTriangle, ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { z } from "zod";
@@ -161,6 +161,14 @@ export default function KycPage() {
         title={tCustomer("ui.profileSections.identityVerification")}
         description={tCustomer("ui.kyc.description")}
         icon={<ShieldCheck size={14} />}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/customer/profile">
+              <ArrowLeft size={16} />
+              {tCustomer("ui.profile.backToProfile")}
+            </Link>
+          </Button>
+        }
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">

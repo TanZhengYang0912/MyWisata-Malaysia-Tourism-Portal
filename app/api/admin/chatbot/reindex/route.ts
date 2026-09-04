@@ -1,7 +1,7 @@
 // P4 — Member 4: KB re-embedding (CLAUDE-PHASE2.md Feature A)
 // POST /api/admin/chatbot/reindex — embeds every active KB doc whose
 // embedded_at is null or older than updated_at. Idempotent: a doc already
-// embedded since its last edit is skipped. Gated on super_admin/approver,
+// embedded since its last edit is skipped. Gated on super_admin,
 // checked server-side. Also called automatically by the KB editor's save
 // handler for the single doc just saved — this route exists for bulk
 // catch-up (e.g. after the migration first adds the embedding column, or if
@@ -10,15 +10,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
 
 export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can reindex the knowledge base', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can reindex the knowledge base', 403);
   }
   if (!process.env.LLM_API_KEY) {
     return apiFail('NOT_CONFIGURED', 'LLM_API_KEY is not set — nothing to embed with', 400);

@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // branches are exercised only incidentally, not exhaustively.
 
 const getUser = vi.fn();
-const isSuperAdminOrApprover = vi.fn();
+const isSuperAdmin = vi.fn();
 const createServiceClient = vi.fn();
 const notifyTicketReply = vi.fn();
 const logModerationFlag = vi.fn();
@@ -17,7 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser } }),
 }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
-vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdminOrApprover }));
+vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 vi.mock('@/lib/support/notify', () => ({ notifyTicketReply }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag }));
 vi.mock('@/lib/moderation/admin-conduct', () => ({ logAdminConductFlagIfNeeded }));
@@ -66,7 +66,7 @@ function mockClient(ticket: { status?: string; assigned_to?: string | null } = {
 describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', () => {
   beforeEach(() => {
     getUser.mockReset();
-    isSuperAdminOrApprover.mockReset();
+    isSuperAdmin.mockReset();
     createServiceClient.mockReset();
     notifyTicketReply.mockReset().mockResolvedValue(undefined);
     logModerationFlag.mockReset().mockResolvedValue(undefined);
@@ -75,7 +75,7 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
   });
 
   it('flags an admin reply containing profanity, targeting the ticket owner', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     mockClient();
 
     const response = await callRoute('this fucking service is broken');
@@ -91,7 +91,7 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
   });
 
   it('does not flag a customer reply, even with profanity', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(false);
+    isSuperAdmin.mockResolvedValue(false);
     getUser.mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } }); // the caller IS the ticket owner
     mockClient();
 
@@ -105,7 +105,7 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
     // The route only gates on senderRole==='admin' — the no-op-when-clean
     // decision lives inside logAdminConductFlagIfNeeded itself (see
     // lib/moderation/__tests__/admin-conduct.test.ts), not at the call site.
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     mockClient();
 
     const response = await callRoute('Thanks for reaching out, let me check on that.');

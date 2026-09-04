@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { reportChatSchema } from '@/lib/validation/conduct-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { createChatConductReport } from '@/lib/moderation/chat-conduct-reports';
 
 export async function POST(request: Request) {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-    const isParticipant = ticket.user_id === user.id || (await isSuperAdminOrApprover(supabase, user.id));
+    const isParticipant = ticket.user_id === user.id || (await isSuperAdmin(supabase, user.id));
     if (!isParticipant) return apiFail('FORBIDDEN', 'Not a participant in this ticket', 403);
 
     partyAId = ticket.user_id;

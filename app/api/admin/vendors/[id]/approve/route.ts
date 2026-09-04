@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, vendorApproveSchema);
   if (!parsed.ok) return parsed.response;
   const { action, reason } = parsed.data;
-  const canReviewOrdinaryVendor = roleNames.includes('super_admin') || roleNames.includes('approver');
+  const canReviewOrdinaryVendor = roleNames.includes('super_admin');
   const canReviewClaimedVendor = roleNames.includes('super_admin') || roleNames.includes('admin');
   if ((action === 'approve' && !canReviewOrdinaryVendor && !canReviewClaimedVendor)
       || (action !== 'approve' && !canReviewOrdinaryVendor)) {

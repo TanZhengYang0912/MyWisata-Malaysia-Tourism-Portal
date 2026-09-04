@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { reviewModerationFlag } from '@/lib/moderation/flags';
 
 interface Props {
@@ -16,8 +16,8 @@ export async function PATCH(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can review moderation flags', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can review moderation flags', 403);
   }
 
   // moderation_flags has no UPDATE policy (read-only via RLS by design —

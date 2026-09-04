@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   capabilityGateCopyKey,
   customerCapabilityRecoveryActions,
@@ -7,6 +8,27 @@ import {
 } from "@/components/customer/customer-capability-gate-dialog";
 
 describe("customer capability gate dialog contract", () => {
+  it("keeps the decorative shield alongside the title in a centered row", () => {
+    const source = readFileSync("components/customer/customer-capability-gate-dialog.tsx", "utf8");
+    expect(source).toMatch(/<DialogTitle className="[^"]*flex items-center[^"]*">\s*<span className="[^"]*shrink-0[^"]*">\s*<ShieldCheck aria-hidden="true" \/>/);
+    expect(source).toMatch(/<\/span>\s*<span>\{copyKey \? t\(`\$\{copyKey\}\.title`\) : ""\}<\/span>\s*<\/DialogTitle>\s*<DialogDescription>/);
+  });
+
+  it("offers one login-page action with a safe return path for guests", () => {
+    const request = {
+      capability: "checkout" as const,
+      decision: { allowed: false, blockerCode: "SIGN_IN_REQUIRED" as const, currentTier: null, requiredTier: null, nextAction: "sign_in" as const },
+      nextPath: "/customer/profile?tab=account#preferences",
+    };
+    expect(customerCapabilityRecoveryActions(request)).toEqual([
+      { href: "/login?next=%2Fcustomer%2Fprofile%3Ftab%3Daccount%23preferences", copyKey: "ui.capabilityGate.blockers.SIGN_IN_REQUIRED" },
+    ]);
+    expect(customerCapabilityRecoveryHrefs({ ...request, nextPath: "//attacker.test" })).toEqual([
+      "/login?next=%2Fcustomer",
+    ]);
+    expect(customerCapabilityRecoveryActions({ ...request, decision: { ...request.decision, blockerCode: "EMAIL_VERIFICATION_REQUIRED", nextAction: "verify_email" } })).toHaveLength(1);
+  });
+
   it("routes only to the exact recovery step while retaining safe intent", () => {
     expect(customerCapabilityRecoveryHref({
       capability: "checkout",

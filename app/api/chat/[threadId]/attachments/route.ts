@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { buildChatAttachmentPath, validateChatAttachment } from '@/lib/chat/attachment';
 import { maskChatBody } from '@/lib/chat/moderation';
+import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 
 interface Props {
   params: Promise<{ threadId: string }>;
@@ -13,10 +14,12 @@ async function requireParticipant(threadId: string) {
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) return { error: apiFail('UNAUTHORIZED', 'Sign in required', 401) };
 
-  // chat_threads_participant RLS scopes this to threads the caller can see.
-  const { data: thread, error } = await authClient.from('chat_threads').select('id,customer_id').eq('id', threadId).maybeSingle();
+  const { data: thread, error } = await authClient.from('chat_threads').select('id,customer_id,outlet_id').eq('id', threadId).maybeSingle();
   if (error) return { error: apiFail('DB_ERROR', error.message, 500) };
   if (!thread) return { error: apiFail('NOT_FOUND', 'Conversation not found', 404) };
+  if (!(await accessibleChatThreadIds(authClient, user.id, [thread])).has(thread.id)) {
+    return { error: apiFail('FORBIDDEN', 'Not a participant in this conversation', 403) };
+  }
 
   return { user, thread };
 }

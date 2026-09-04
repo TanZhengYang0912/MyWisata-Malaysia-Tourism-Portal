@@ -7,7 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getLatestReplyTimestamps, isUnread } from '@/lib/support/unread';
 
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const isAdmin = await isSuperAdminOrApprover(supabase, user.id);
+  const isAdmin = await isSuperAdmin(supabase, user.id);
 
   if (isAdmin) {
     const { data: tickets } = await service

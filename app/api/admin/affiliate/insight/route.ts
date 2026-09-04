@@ -1,6 +1,6 @@
 // P4 — Member 4: AI performance insight (admin, platform-wide).
 // CLAUDE-FUNNEL-AI.md Part 2. Gated the same as the rest of /admin/affiliate
-// (super_admin or approver) — this reads the same aggregate data already
+// (super_admin) — this reads the same aggregate data already
 // visible on that page, just narrated.
 //
 // Anomalies are sourced from the existing zero_conversion fraud flags (the
@@ -11,7 +11,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getAffiliateAdminStats } from '@/lib/affiliate/admin-stats';
 import { getFraudFlags } from '@/lib/affiliate/fraud';
 import { generateAdminInsight, ruleBasedAdminInsight, type AdminInsightStats, type AdminAnomaly } from '@/lib/affiliate/insight';
@@ -20,8 +20,8 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can view affiliate insight', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can view affiliate insight', 403);
   }
 
   const [stats, flags] = await Promise.all([

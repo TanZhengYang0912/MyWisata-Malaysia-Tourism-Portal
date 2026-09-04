@@ -133,6 +133,26 @@ describe("GET /api/auth/me", () => {
     expect(body.user.verificationFacts.emailVerified).toBe(false);
   });
 
+  it("does not infer phone or KYC verification from a legacy tier", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "users") return queryResult({
+        id: "user-1", email: "traveller@example.com", full_name: "Traveller",
+        avatar_url: null, tier: "kyc_verified", kyc_status: "unverified",
+        email_verified_at: "2026-08-01T00:00:00.000Z",
+        phone_verified_at: null, profile_completed_at: null, status: "active",
+      });
+      if (table === "user_roles" || table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const body = await (await GET()).json();
+
+    expect(body.user.verificationFacts).toMatchObject({
+      phoneVerified: false, kycStatus: "unverified", profileComplete: false,
+    });
+  });
+
   it("fails closed for an unknown account status", async () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "users") return queryResult({

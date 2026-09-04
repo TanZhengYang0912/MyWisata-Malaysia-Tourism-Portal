@@ -1,12 +1,12 @@
 // P4 — Member 4: editable commission tiers (CLAUDE-PHASE2.md Feature B)
 // PATCH /api/admin/affiliate/tiers/[id] — body { ratePercent?, minReferrals? }
-// Gated on super_admin/approver, checked server-side.
+// Gated on super_admin, checked server-side.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { updateTierSchema } from '@/lib/validation/affiliate-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,8 +17,8 @@ export async function PATCH(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can edit commission tiers', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can edit commission tiers', 403);
   }
 
   const parsed = await parseBody(request, updateTierSchema);

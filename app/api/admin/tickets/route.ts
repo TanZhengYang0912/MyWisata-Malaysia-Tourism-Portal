@@ -1,7 +1,7 @@
 // P4 — Member 4: admin ticket list + queue stats
 // GET /api/admin/tickets?category=&status=&assignedToMe=&unreadOnly= — see
 // CLAUDE.md Step 9, extended with dashboard stats + more filters per
-// CLAUDE-FIXES-2.md item 3. Gated on super_admin/approver, checked server-side.
+// CLAUDE-FIXES-2.md item 3. Gated on super_admin, checked server-side.
 //
 // Reads support_tickets.category directly rather than going through
 // identity.ts::getSupportTickets() — that function maps category: t.body
@@ -15,15 +15,15 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getLatestReplyTimestamps, getEarliestReplyTimestamps, isUnread } from '@/lib/support/unread';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can view support tickets', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can view support tickets', 403);
   }
 
   const url = new URL(request.url);

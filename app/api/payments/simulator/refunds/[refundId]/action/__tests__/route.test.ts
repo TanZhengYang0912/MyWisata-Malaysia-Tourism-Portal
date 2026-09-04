@@ -49,7 +49,7 @@ describe('POST simulator refund action', () => {
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', secret);
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
-    mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'approver' } }]));
+    mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult({
       id: REFUND_ID,
       order_id: ORDER_ID,
@@ -120,7 +120,7 @@ describe('POST simulator refund action', () => {
     expect(JSON.parse(secondBody).eventId).not.toBe(JSON.parse(firstBody).eventId);
   });
 
-  it('requires an admin or approver role', async () => {
+  it('requires a Super Admin role', async () => {
     mocks.authFrom.mockReturnValue(queryResult([]));
     const response = await POST(request({ outcome: 'failed' }), {
       params: Promise.resolve({ refundId: REFUND_ID }),

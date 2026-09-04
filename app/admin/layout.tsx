@@ -10,6 +10,7 @@ import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { isWalletApproverPath } from "@/lib/auth/post-login-destination";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -62,7 +63,7 @@ const NAV: AdminNavItem[] = [
   { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
   { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
   // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
-  // this NAV (which admin/approver both see). Filtered in render below.
+  // this NAV. Filtered in render below.
   { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
   // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: moved out of the AI Assistant
   // page into its own nav entry — it's staff-conduct review, not an AI
@@ -78,6 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pathname = usePathname();
   const router = useRouter();
+  const approverOutsideWallet = currentUser?.role === "approver" && !isWalletApproverPath(pathname);
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
@@ -86,6 +88,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [pendingCountsReady, setPendingCountsReady] = useState(false);
   const [unreadRecommendations, setUnreadRecommendations] = useState(0);
 
+  useEffect(() => {
+    if (!loading && approverOutsideWallet) router.replace("/admin/withdrawals");
+  }, [loading, approverOutsideWallet, router]);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -93,7 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.role === "approver") return;
     let cancelled = false;
     async function poll() {
       try {
@@ -172,7 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, [currentUser?.role]);
 
-  if (loading || !currentUser) {
+  if (loading || !currentUser || approverOutsideWallet) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -211,7 +217,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {NAV.filter((item) =>
             (!item.superAdminOnly || currentUser.role === "super_admin")
-            && (!item.allowedRoles || item.allowedRoles.includes(currentUser.role)),
+            && (!item.allowedRoles || item.allowedRoles.includes(currentUser.role))
+            && (currentUser.role !== "approver" || isWalletApproverPath(item.href)),
           ).map((item) => {
             // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
             const count = item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);

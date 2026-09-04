@@ -34,6 +34,17 @@ export async function GET() {
   const canReviewWithdrawals = roleNames.some((name) => name === 'approver' || name === 'super_admin');
 
   const service = createServiceClient();
+  if (!canReviewContent) {
+    const withdrawals = await service.from('withdrawal_requests')
+      .select('id', { count: 'exact', head: true })
+      .in('status', [...WITHDRAWAL_REVIEW_STATUSES]);
+    if (withdrawals.error) {
+      console.error('[admin-navigation-counts]', withdrawals.error);
+      return apiFail('DB_ERROR', 'Unable to load admin queue counts', 500);
+    }
+    return apiOk({ withdrawals: withdrawals.count ?? 0 });
+  }
+
   const [[vendors, outlets, products, vouchers, refunds, chatReports], [kyc, recommendations], withdrawals] = await Promise.all([
     Promise.all([
       service.from('vendors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),

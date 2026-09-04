@@ -160,11 +160,12 @@
   "ui": {
     "capabilityGate": {
       "notNow": "Not now",
+      "continueBrowsing": "Continue browsing",
       "blockers": {
         "SIGN_IN_REQUIRED": {
           "title": "Sign in to continue",
-          "description": "You can keep browsing as a guest. Sign in only when you are ready to use this feature.",
-          "cta": "Sign in"
+          "description": "This action requires an account. Would you like to sign in or create an account? You can also keep browsing as a guest.",
+          "cta": "Sign in / Register"
         },
         "EMAIL_VERIFICATION_REQUIRED": {
           "title": "Verify your email",
@@ -1402,6 +1403,38 @@
       "availableWithdraw": "Available to withdraw",
       "destination": "Destination",
       "transactionHistory": "Transaction History",
+      "historyFilters": {
+        "type": "Transaction type",
+        "direction": "Money in / out",
+        "from": "From date",
+        "to": "To date",
+        "clear": "Clear filters",
+        "timezone": "Dates use Malaysia time (UTC+08:00), including both selected days.",
+        "loading": "Loading transactions…",
+        "error": "Could not load transactions. Please try again.",
+        "retry": "Try again",
+        "noMatches": "No transactions match these filters.",
+        "invalidDate": "Enter a valid date.",
+        "invalidRange": "The end date must be on or after the start date.",
+        "invalidFilter": "Choose valid filters and try again.",
+        "page": "Page {{page}} of {{pages}} · {{total}} transactions",
+        "previous": "Previous",
+        "next": "Next",
+        "types": {
+          "all": "All types",
+          "topup": "Top-ups",
+          "spend": "Purchases",
+          "earnings": "Earnings",
+          "withdrawals": "Withdrawals",
+          "refund": "Refunds",
+          "adjustment": "Adjustments"
+        },
+        "directions": {
+          "all": "All directions",
+          "credit": "Money in (+)",
+          "debit": "Money out (−)"
+        }
+      },
       "transactionType": {
         "topup": "Wallet top-up",
         "spend": "Purchase",

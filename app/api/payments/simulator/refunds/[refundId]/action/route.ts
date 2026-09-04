@@ -35,8 +35,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
-  if (!roleNames.includes('super_admin') && !roleNames.includes('approver')) {
-    return NextResponse.json({ error: 'Admin role required' }, { status: 403 });
+  if (!roleNames.includes('super_admin')) {
+    return NextResponse.json({ error: 'Super Admin role required' }, { status: 403 });
   }
 
   const service = createServiceClient();

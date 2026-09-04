@@ -1,7 +1,7 @@
 // P4 — Member 4: link re-enable (CLAUDE-PHASE2.md Feature C, Section 4:
 // "Admin can re-enable it from the dashboard")
 // PATCH /api/admin/affiliate/links/[id] — body { action: 'reactivate' }
-// Gated on super_admin/approver, checked server-side. There is no matching
+// Gated on super_admin, checked server-side. There is no matching
 // manual "disable" action here — disabling only ever happens via the
 // auto-disable path (lib/affiliate/fraud.ts) or the fraud-flags "Confirm &
 // disable" action, both of which already write their own audit_logs entry.
@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { reactivateLinkSchema } from '@/lib/validation/affiliate-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { reactivateLink } from '@/lib/affiliate/fraud';
 
 interface Props {
@@ -22,8 +22,8 @@ export async function PATCH(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can re-enable an affiliate link', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can re-enable an affiliate link', 403);
   }
 
   const parsed = await parseBody(request, reactivateLinkSchema);

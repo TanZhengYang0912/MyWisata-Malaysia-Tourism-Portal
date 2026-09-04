@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
@@ -26,15 +26,20 @@ const ROLE_LABEL: Record<Role, string> = {
 };
 
 export default function LoginPage() {
+  return <Suspense><LoginContent /></Suspense>;
+}
+
+function LoginContent() {
   const { switchUser } = useAuth();
   const { t: tAuth } = useTranslation("auth");
   const { t: tCommon } = useTranslation("common");
   const GENERIC_ERROR = tAuth("errors.generic");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [roleFilter, setRoleFilter] = useState<Role | null>(null);
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [mode, setMode] = useState<AuthMode>(() => searchParams.get("mode") === "signup" ? "signup" : "signin");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [email, setEmail] = useState("");

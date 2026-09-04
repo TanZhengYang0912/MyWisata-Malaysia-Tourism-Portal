@@ -1,7 +1,6 @@
 // GET /api/chat/unread-count — total unread chat messages across every thread
-// the caller participates in. RLS (chat_messages_participant) already scopes
-// "every thread the caller participates in" per role, so no role branching
-// is needed here — customer, vendor owner, and outlet manager all just work.
+// the caller participates in. Explicitly scope threads because legacy RLS
+// still grants Wallet Approver a broader administrative read permission.
 //
 // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2: messages in a thread the caller
 // has muted don't count toward this badge — "no notifications for that
@@ -10,15 +9,22 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: threads, error: threadError } = await supabase.from('chat_threads').select('id,customer_id,outlet_id');
+  if (threadError) return apiFail('DB_ERROR', 'Unable to load conversations', 500);
+  const threadIds = [...await accessibleChatThreadIds(supabase, user.id, threads ?? [])];
+  if (!threadIds.length) return apiOk({ count: 0 });
+
   const { data: messages, error } = await supabase
     .from('chat_messages')
     .select('id, thread_id')
+    .in('thread_id', threadIds)
     .neq('sender_id', user.id);
   if (error) return apiFail('DB_ERROR', error.message, 500);
 

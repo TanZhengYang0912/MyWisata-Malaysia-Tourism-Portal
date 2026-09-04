@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -16,6 +17,12 @@ export async function POST(_request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const { data: thread, error: threadError } = await supabase.from('chat_threads').select('id,customer_id,outlet_id').eq('id', id).maybeSingle();
+  if (threadError) return apiFail('DB_ERROR', 'Unable to load conversation', 500);
+  if (!thread || !(await accessibleChatThreadIds(supabase, user.id, [thread])).has(thread.id)) {
+    return apiFail('FORBIDDEN', 'Not a participant in this chat', 403);
+  }
 
   const { error } = await supabase.from('chat_thread_mutes').insert({ thread_id: id, user_id: user.id });
   if (error) {

@@ -5,6 +5,7 @@ import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
 import type { Booking, CartItem, Order, OrderItem, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
+import { buildCustomerHistoryQuery, type CustomerHistoryFilters } from "@/lib/wallet/customer-transaction-filters";
 
 
 // ─── Supabase cart ──────────────────────────────────────────────────────────
@@ -442,6 +443,26 @@ export async function getWalletTransactions(userId: string, limit = 100): Promis
     .limit(limit);
   if (error) throw error;
   return (data as unknown as WalletTransactionRow[]).map(mapWalletTransaction);
+}
+
+export async function getCustomerWalletTransactionPage(userId: string, filters: CustomerHistoryFilters): Promise<{ transactions: WalletTransaction[]; total: number }> {
+  const filter = buildCustomerHistoryQuery(filters);
+  if (!userId.trim() || !filter.ok) throw new Error("Invalid customer history query");
+  let query = supabase.from("wallet_transactions")
+    .select(WALLET_TRANSACTION_SELECT, { count: "exact" })
+    .eq("user_id", userId)
+    // Settlement audit entries duplicate the customer-facing reservation debit.
+    .neq("type", "withdrawal_complete");
+  if (filter.types) query = query.in("type", filter.types);
+  if (filter.direction) query = query.eq("direction", filter.direction);
+  if (filter.fromInclusive) query = query.gte("created_at", filter.fromInclusive);
+  if (filter.toExclusive) query = query.lt("created_at", filter.toExclusive);
+  const { data, error, count } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(filter.offset, filter.offset + filter.pageSize - 1);
+  if (error) throw error;
+  return { transactions: (data as unknown as WalletTransactionRow[]).map(mapWalletTransaction), total: count ?? 0 };
 }
 
 export async function requestWithdrawal(userId: string, amount: number): Promise<WithdrawalRequest> {

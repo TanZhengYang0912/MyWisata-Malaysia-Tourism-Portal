@@ -13,8 +13,8 @@ export async function POST(request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: isAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-  if (!isAdmin) return apiFail('FORBIDDEN', 'Admin role required', 403);
+  const { data: isAdmin, error: roleError } = await supabase.rpc('is_super_admin', { uid: user.id });
+  if (roleError || isAdmin !== true) return apiFail('FORBIDDEN', 'Admin role required', 403);
 
   let body: { days?: number; reason?: string } = {};
   try { body = await request.json(); } catch { return apiFail('INVALID_BODY', 'days is required', 400); }
@@ -39,8 +39,8 @@ export async function DELETE(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: isAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-  if (!isAdmin) return apiFail('FORBIDDEN', 'Admin role required', 403);
+  const { data: isAdmin, error: roleError } = await supabase.rpc('is_super_admin', { uid: user.id });
+  if (roleError || isAdmin !== true) return apiFail('FORBIDDEN', 'Admin role required', 403);
 
   // Lifts every currently-active ban for this user rather than one row —
   // an admin who mis-blocked shouldn't have to know how many ban rows exist.

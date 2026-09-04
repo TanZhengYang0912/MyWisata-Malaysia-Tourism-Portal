@@ -21,13 +21,15 @@ interface TicketForNotify {
   assigned_to: string | null;
 }
 
-/** All users holding an admin-capable role (super_admin or approver) — same definition as the is_admin() SQL function. */
+/** Current support staff only; Wallet Approver is not a support role. */
 async function getAdminUserIds(service: SupabaseClient): Promise<string[]> {
-  const { data: roles } = await service.from('roles').select('id').in('name', ['super_admin', 'approver']);
+  const { data: roles, error: roleError } = await service.from('roles').select('id').in('name', ['super_admin']);
+  if (roleError) return [];
   const roleIds = (roles ?? []).map((r) => r.id);
   if (!roleIds.length) return [];
 
-  const { data: userRoles } = await service.from('user_roles').select('user_id').in('role_id', roleIds);
+  const { data: userRoles, error: assignmentError } = await service.from('user_roles').select('user_id').in('role_id', roleIds);
+  if (assignmentError) return [];
   return [...new Set((userRoles ?? []).map((r) => r.user_id))];
 }
 
@@ -67,7 +69,8 @@ export async function notifyTicketReply(
       return;
     }
 
-    const recipients = ticket.assigned_to ? [ticket.assigned_to] : await getAdminUserIds(service);
+    const admins = await getAdminUserIds(service);
+    const recipients = ticket.assigned_to && admins.includes(ticket.assigned_to) ? [ticket.assigned_to] : admins;
     if (recipients.length === 0) return;
     await service.from('notifications').insert(
       recipients.map((userId) => ({
@@ -106,7 +109,8 @@ export async function notifyTicketResolved(service: SupabaseClient, ticket: Tick
 /** Notifies the assigned admin (else every admin) when a customer reopens a resolved ticket. CLAUDE-FIXES-2.md item 5. */
 export async function notifyTicketReopened(service: SupabaseClient, ticket: TicketForNotify): Promise<void> {
   try {
-    const recipients = ticket.assigned_to ? [ticket.assigned_to] : await getAdminUserIds(service);
+    const admins = await getAdminUserIds(service);
+    const recipients = ticket.assigned_to && admins.includes(ticket.assigned_to) ? [ticket.assigned_to] : admins;
     if (recipients.length === 0) return;
     await service.from('notifications').insert(
       recipients.map((userId) => ({

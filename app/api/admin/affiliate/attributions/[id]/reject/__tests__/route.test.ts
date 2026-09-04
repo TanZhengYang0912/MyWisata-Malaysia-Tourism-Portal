@@ -7,8 +7,8 @@ vi.mock('@/lib/supabase/server', () => ({ createClient }));
 const createServiceClient = vi.fn();
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 
-const isSuperAdminOrApprover = vi.fn();
-vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdminOrApprover }));
+const isSuperAdmin = vi.fn();
+vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 
 const rejectAttribution = vi.fn();
 vi.mock('@/lib/affiliate/clearing', () => ({ rejectAttribution }));
@@ -44,15 +44,15 @@ describe('POST /api/admin/affiliate/attributions/[id]/reject', () => {
     expect(rejectAttribution).not.toHaveBeenCalled();
   });
 
-  it('rejects a caller who is not super_admin/approver', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(false);
+  it('rejects a caller who is not super_admin', async () => {
+    isSuperAdmin.mockResolvedValue(false);
     const response = await call();
     expect(response.status).toBe(403);
     expect(rejectAttribution).not.toHaveBeenCalled();
   });
 
   it('rejects a pending attribution with no reason', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     rejectAttribution.mockResolvedValue({ rejected: true });
 
     const response = await call({});
@@ -64,7 +64,7 @@ describe('POST /api/admin/affiliate/attributions/[id]/reject', () => {
   });
 
   it('passes a reason through when provided', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     rejectAttribution.mockResolvedValue({ rejected: true });
 
     await call({ reason: 'Looks like self-referral via a second account' });
@@ -73,14 +73,14 @@ describe('POST /api/admin/affiliate/attributions/[id]/reject', () => {
   });
 
   it('rejects an empty-string reason (schema requires at least 1 char if present)', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     const response = await call({ reason: '' });
     expect(response.status).toBe(422);
     expect(rejectAttribution).not.toHaveBeenCalled();
   });
 
   it('returns 400 when the attribution is already resolved', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     rejectAttribution.mockResolvedValue({ rejected: false, error: 'Attribution is not pending (already resolved)' });
 
     const response = await call();

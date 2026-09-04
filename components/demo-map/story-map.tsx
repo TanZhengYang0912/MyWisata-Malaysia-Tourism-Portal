@@ -7,6 +7,8 @@ import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, 
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
@@ -147,6 +149,7 @@ function StateDetailPanel({
 
 export function StoryMap({ initialActivities }: { initialActivities: ComputedActivity[] }) {
   const { t } = useTranslation("customer");
+  const gate = useCustomerCapabilityGate();
   const { savedIds, toggleSaved } = useWishlist();
   const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
@@ -347,7 +350,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
                 </div>
-                <button type="button" aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} aria-pressed={saved} onClick={() => toggleSaved(selectedActivity.id)} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
+                <button type="button" aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} aria-pressed={saved} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
