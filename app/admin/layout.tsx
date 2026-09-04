@@ -277,13 +277,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
-            aria-label={tCommon("command.openPalette", { defaultValue: "Command Palette" })}
+            aria-label={tCommon("command.openPalette")}
             className="mr-auto flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search size={14} className="text-muted-foreground" />
-            <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder", { defaultValue: "Type a command or search queues…" })}</span>
-            <span className="sm:hidden">{tCommon("actions.search", { defaultValue: "Search" })}</span>
-            <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+            <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder")}</span>
+            <span className="sm:hidden">{tCommon("actions.search")}</span>
+            <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{tCommon("keyboard.cmdK")}</kbd>
           </button>
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact className="w-28" />

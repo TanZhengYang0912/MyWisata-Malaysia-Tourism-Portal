@@ -279,9 +279,9 @@ export function buildAnalyticsSnapshot(input: AnalyticsInput, filter: AnalyticsF
   const peakProduct = products[0];
   const peakOutlet = outlets[0];
   const insights: AnalyticsInsight[] = [];
-  if (peakProduct) insights.push({ kind: 'top_product', titleKey: 'analytics.insights.topProductTitle', descriptionKey: 'analytics.insights.topProductDescription', value: peakProduct.name });
-  if (peakCell) insights.push({ kind: 'peak_window', titleKey: 'analytics.insights.peakWindowTitle', descriptionKey: 'analytics.insights.peakWindowDescription', value: `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][peakCell.weekday]} ${peakCell.hour}:00` });
-  if (peakOutlet) insights.push({ kind: 'outlet_concentration', titleKey: 'analytics.insights.outletConcentrationTitle', descriptionKey: 'analytics.insights.outletConcentrationDescription', value: `${peakOutlet.revenueShare}%` });
+  if (peakProduct) insights.push({ kind: 'top_product', titleKey: 'ui.analytics.insights.topProductTitle', descriptionKey: 'ui.analytics.insights.topProductDescription', value: peakProduct.name });
+  if (peakCell) insights.push({ kind: 'peak_window', titleKey: 'ui.analytics.insights.peakWindowTitle', descriptionKey: 'ui.analytics.insights.peakWindowDescription', value: `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][peakCell.weekday]} ${peakCell.hour}:00` });
+  if (peakOutlet) insights.push({ kind: 'outlet_concentration', titleKey: 'ui.analytics.insights.outletConcentrationTitle', descriptionKey: 'ui.analytics.insights.outletConcentrationDescription', value: `${peakOutlet.revenueShare}%` });
 
   return {
     range: input.range,

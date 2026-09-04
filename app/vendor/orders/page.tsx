@@ -132,7 +132,7 @@ export default function VendorOrdersPage() {
           disabled={loading || items.length === 0}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
         >
-          <Download size={16} /> {t('actions.exportCsv', { defaultValue: 'Export CSV' })}
+          <Download size={16} /> {t('actions.exportCsv')}
         </button>
       </header>
 

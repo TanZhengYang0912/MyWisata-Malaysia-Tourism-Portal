@@ -232,9 +232,15 @@
       "statuses": {
         "title": "Status pengesahan anda",
         "description": "Semakan ini adalah berasingan. Anda boleh memulakan mana-mana pilihan yang tersedia.",
-        "phone": { "title": "Telefon" },
-        "profile": { "title": "Profil" },
-        "kyc": { "title": "KYC" },
+        "phone": {
+          "title": "Telefon"
+        },
+        "profile": {
+          "title": "Profil"
+        },
+        "kyc": {
+          "title": "KYC"
+        },
         "states": {
           "complete": "Selesai",
           "available": "Belum selesai — mulakan apabila diperlukan",
@@ -439,7 +445,12 @@
       "availableTimes": "Masa tersedia",
       "selectSlot": "Pilih slot masa untuk teruskan.",
       "qrUnavailable": "QR tidak tersedia",
-      "qrCodeLabel": "Kod QR tempahan"
+      "qrCodeLabel": "Kod QR tempahan",
+      "qtyLabel": "Kuantiti:",
+      "freeAdmission": "Kemasukan Percuma",
+      "remaining": "baki",
+      "multiEntryPass": "Pelbagai Masuk: {{used}} / {{limit}} baki",
+      "groupPass": "Pas Kumpulan: {{used}} / {{limit}} baki"
     },
     "promotion": {
       "previous": "Promosi sebelumnya",
@@ -1800,7 +1811,8 @@
       "filterShow": "Tunjukkan",
       "filterAreaLabel": "Tapis tempat mengikut kawasan",
       "allAreas": "Semua kawasan",
-      "selectedAreas": "{{count}} kawasan dipilih",
+      "selectedAreas_one": "{{count}} kawasan dipilih",
+      "selectedAreas_other": "{{count}} kawasan dipilih",
       "searchAreas": "Cari kawasan",
       "noAreasMatch": "Tiada kawasan sepadan dengan carian anda.",
       "activityFallback": "Terokai pengalaman ini di destinasi tersebut.",
@@ -1843,9 +1855,12 @@
         "charCount": "{{current}} / {{max}}",
         "minCharWarning": "Sekurang-kurangnya 8 aksara ({{current}}/8)",
         "justNow": "Sebentar tadi",
-        "minutesAgo": "{{count}}m lalu",
-        "hoursAgo": "{{count}}j lalu",
-        "daysAgo": "{{count}}h lalu"
+        "minutesAgo_one": "{{count}}m lalu",
+        "minutesAgo_other": "{{count}}m lalu",
+        "hoursAgo_one": "{{count}}j lalu",
+        "hoursAgo_other": "{{count}}j lalu",
+        "daysAgo_one": "{{count}}h lalu",
+        "daysAgo_other": "{{count}}h lalu"
       }
     },
     "saved": {

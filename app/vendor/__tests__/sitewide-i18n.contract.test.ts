@@ -87,6 +87,7 @@ const priorTaskFiles = new Set([
   "components/shared/notification-center.tsx",
   "components/shared/resilient-image.tsx",
   "components/shared/report-chat-button.tsx",
+  "components/shared/route-scroll-reset.tsx",
   "components/shared/share-button.tsx",
   "components/shared/status-badge.tsx",
   "components/shared/ticket-thread.tsx",

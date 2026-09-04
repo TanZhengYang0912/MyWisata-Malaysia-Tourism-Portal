@@ -226,7 +226,7 @@ export default function CatalogueReviewPage() {
                       type="button"
                       disabled={!hasPrevious}
                       onClick={goToPrevious}
-                      title={t('actions.previous', { defaultValue: 'Previous' })}
+                      title={t('actions.previous')}
                       className="rounded-lg p-1 text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30"
                     >
                       <ChevronLeft size={16} />
@@ -235,7 +235,7 @@ export default function CatalogueReviewPage() {
                       type="button"
                       disabled={!hasNext}
                       onClick={goToNext}
-                      title={t('actions.next', { defaultValue: 'Next' })}
+                      title={t('actions.next')}
                       className="rounded-lg p-1 text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-30"
                     >
                       <ChevronRight size={16} />

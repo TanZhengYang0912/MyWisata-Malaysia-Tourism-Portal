@@ -132,20 +132,60 @@
       "vendor_account": "账户"
     },
     "events": {
-      "withdrawalApproved": { "title": "提现已批准——付款处理中", "body": "您的提现已获批准，很快会转入您选择的收款账户。" },
-      "withdrawalSecondApprovalPending": { "title": "提现已部分批准——等待第二次审核", "body": "您的提现已通过第一次审核，还需要一次审核。" },
-      "withdrawalSubmitted": { "title": "提现申请已提交", "body": "您的提现正在等待审核。状态有变化时，我们会通知您。" },
-      "withdrawalPaid": { "title": "款项已发送至您的账户", "body": "您的提现已转出，请在 1–3 个工作日内查看银行账户。" },
-      "withdrawalFailed": { "title": "提现付款失败", "body": "提现付款失败，余额已恢复。如有疑问，请联系客服。" },
-      "withdrawalRiskReviewed": { "title": "提现风险审核已完成", "body": "您的提现已通过额外风险审核，正在等待最终批准。" },
-      "withdrawalOverdue": { "title": "提现审核所需时间超出预期", "body": "您的提现正在延长审核中。如需补充资料，我们的团队会联系您。" },
-      "withdrawalResumed": { "title": "提现审核已恢复", "body": "您的提现审核已恢复，目前正在进行新一轮审核。" },
-      "withdrawalRejected": { "title": "提现申请已拒绝" },
-      "withdrawalHold": { "title": "提现需要进一步审核" },
-      "walletAdjustment": { "title": "钱包余额已调整", "body": "管理员调整了您的钱包余额。请打开钱包查看最新余额。" },
-      "walletRefund": { "title": "钱包退款已处理", "body": "您的全额退款已退回原付款使用的钱包余额。" },
-      "recommendationApproved": { "title": "您的推荐已获批准", "body": "感谢您的推荐！我们很快会联系该商家。" },
-      "recommendationApprovedWithName": { "title": "您的推荐“{{vendorName}}”已获批准", "body": "感谢您的推荐！我们很快会联系该商家。" }
+      "withdrawalApproved": {
+        "title": "提现已批准——付款处理中",
+        "body": "您的提现已获批准，很快会转入您选择的收款账户。"
+      },
+      "withdrawalSecondApprovalPending": {
+        "title": "提现已部分批准——等待第二次审核",
+        "body": "您的提现已通过第一次审核，还需要一次审核。"
+      },
+      "withdrawalSubmitted": {
+        "title": "提现申请已提交",
+        "body": "您的提现正在等待审核。状态有变化时，我们会通知您。"
+      },
+      "withdrawalPaid": {
+        "title": "款项已发送至您的账户",
+        "body": "您的提现已转出，请在 1–3 个工作日内查看银行账户。"
+      },
+      "withdrawalFailed": {
+        "title": "提现付款失败",
+        "body": "提现付款失败，余额已恢复。如有疑问，请联系客服。"
+      },
+      "withdrawalRiskReviewed": {
+        "title": "提现风险审核已完成",
+        "body": "您的提现已通过额外风险审核，正在等待最终批准。"
+      },
+      "withdrawalOverdue": {
+        "title": "提现审核所需时间超出预期",
+        "body": "您的提现正在延长审核中。如需补充资料，我们的团队会联系您。"
+      },
+      "withdrawalResumed": {
+        "title": "提现审核已恢复",
+        "body": "您的提现审核已恢复，目前正在进行新一轮审核。"
+      },
+      "withdrawalRejected": {
+        "title": "提现申请已拒绝"
+      },
+      "withdrawalHold": {
+        "title": "提现需要进一步审核"
+      },
+      "walletAdjustment": {
+        "title": "钱包余额已调整",
+        "body": "管理员调整了您的钱包余额。请打开钱包查看最新余额。"
+      },
+      "walletRefund": {
+        "title": "钱包退款已处理",
+        "body": "您的全额退款已退回原付款使用的钱包余额。"
+      },
+      "recommendationApproved": {
+        "title": "您的推荐已获批准",
+        "body": "感谢您的推荐！我们很快会联系该商家。"
+      },
+      "recommendationApprovedWithName": {
+        "title": "您的推荐“{{vendorName}}”已获批准",
+        "body": "感谢您的推荐！我们很快会联系该商家。"
+      }
     }
   },
   "ticket": {
@@ -231,5 +271,32 @@
     "verifiedContributor": "已验证贡献者",
     "accountFallbackName": "账户",
     "chatbotTicketCreated": "完成——工单 #{{id}} 已创建。我们的团队会回复；你可以在“我的工单”中查看。"
+  },
+  "theme": {
+    "light": "浅色主题",
+    "dark": "深色主题"
+  },
+  "keyboard": {
+    "esc": "ESC",
+    "cmdK": "⌘K"
+  },
+  "brand": {
+    "speed": "MyWisata Speed"
+  },
+  "ui": {
+    "place": {
+      "localNotes": {
+        "justNow": "刚刚",
+        "minutesAgo": "{{count}}分钟前",
+        "minutesAgo_one": "{{count}}分钟前",
+        "minutesAgo_other": "{{count}}分钟前",
+        "hoursAgo": "{{count}}小时前",
+        "hoursAgo_one": "{{count}}小时前",
+        "hoursAgo_other": "{{count}}小时前",
+        "daysAgo": "{{count}}天前",
+        "daysAgo_one": "{{count}}天前",
+        "daysAgo_other": "{{count}}天前"
+      }
+    }
   }
 }

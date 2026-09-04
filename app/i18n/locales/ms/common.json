@@ -132,20 +132,60 @@
       "vendor_account": "Akaun"
     },
     "events": {
-      "withdrawalApproved": { "title": "Pengeluaran diluluskan — pembayaran sedang diproses", "body": "Pengeluaran anda telah diluluskan dan akan dipindahkan ke destinasi bayaran yang dipilih tidak lama lagi." },
-      "withdrawalSecondApprovalPending": { "title": "Pengeluaran diluluskan sebahagian — menunggu semakan kedua", "body": "Pengeluaran anda menerima kelulusan pertama dan memerlukan satu lagi semakan." },
-      "withdrawalSubmitted": { "title": "Permohonan pengeluaran dihantar", "body": "Pengeluaran anda sedang menunggu semakan. Kami akan memaklumkan anda apabila status berubah." },
-      "withdrawalPaid": { "title": "Bayaran dihantar ke akaun anda", "body": "Pengeluaran anda telah dipindahkan. Sila semak akaun bank anda dalam 1–3 hari bekerja." },
-      "withdrawalFailed": { "title": "Bayaran pengeluaran gagal", "body": "Bayaran pengeluaran anda gagal. Baki anda telah dipulihkan. Sila hubungi sokongan." },
-      "withdrawalRiskReviewed": { "title": "Semakan risiko pengeluaran selesai", "body": "Pengeluaran anda melepasi semakan risiko tambahan dan sedang menunggu kelulusan akhir." },
-      "withdrawalOverdue": { "title": "Semakan pengeluaran mengambil masa lebih lama daripada jangkaan", "body": "Pengeluaran anda sedang melalui semakan lanjutan. Pasukan kami akan menghubungi anda jika maklumat tambahan diperlukan." },
-      "withdrawalResumed": { "title": "Semakan pengeluaran disambung semula", "body": "Semakan pengeluaran anda telah disambung semula. Semakan kelulusan baharu sedang dijalankan." },
-      "withdrawalRejected": { "title": "Permohonan pengeluaran ditolak" },
-      "withdrawalHold": { "title": "Pengeluaran memerlukan semakan tambahan" },
-      "walletAdjustment": { "title": "Baki dompet diselaraskan", "body": "Pentadbir telah membuat pelarasan pada dompet anda. Buka Dompet untuk melihat baki terkini." },
-      "walletRefund": { "title": "Bayaran balik dompet diproses", "body": "Bayaran balik penuh anda telah dikembalikan ke baki Dompet yang digunakan untuk bayaran asal." },
-      "recommendationApproved": { "title": "Cadangan anda diluluskan", "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi." },
-      "recommendationApprovedWithName": { "title": "Cadangan anda \"{{vendorName}}\" telah diluluskan", "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi." }
+      "withdrawalApproved": {
+        "title": "Pengeluaran diluluskan — pembayaran sedang diproses",
+        "body": "Pengeluaran anda telah diluluskan dan akan dipindahkan ke destinasi bayaran yang dipilih tidak lama lagi."
+      },
+      "withdrawalSecondApprovalPending": {
+        "title": "Pengeluaran diluluskan sebahagian — menunggu semakan kedua",
+        "body": "Pengeluaran anda menerima kelulusan pertama dan memerlukan satu lagi semakan."
+      },
+      "withdrawalSubmitted": {
+        "title": "Permohonan pengeluaran dihantar",
+        "body": "Pengeluaran anda sedang menunggu semakan. Kami akan memaklumkan anda apabila status berubah."
+      },
+      "withdrawalPaid": {
+        "title": "Bayaran dihantar ke akaun anda",
+        "body": "Pengeluaran anda telah dipindahkan. Sila semak akaun bank anda dalam 1–3 hari bekerja."
+      },
+      "withdrawalFailed": {
+        "title": "Bayaran pengeluaran gagal",
+        "body": "Bayaran pengeluaran anda gagal. Baki anda telah dipulihkan. Sila hubungi sokongan."
+      },
+      "withdrawalRiskReviewed": {
+        "title": "Semakan risiko pengeluaran selesai",
+        "body": "Pengeluaran anda melepasi semakan risiko tambahan dan sedang menunggu kelulusan akhir."
+      },
+      "withdrawalOverdue": {
+        "title": "Semakan pengeluaran mengambil masa lebih lama daripada jangkaan",
+        "body": "Pengeluaran anda sedang melalui semakan lanjutan. Pasukan kami akan menghubungi anda jika maklumat tambahan diperlukan."
+      },
+      "withdrawalResumed": {
+        "title": "Semakan pengeluaran disambung semula",
+        "body": "Semakan pengeluaran anda telah disambung semula. Semakan kelulusan baharu sedang dijalankan."
+      },
+      "withdrawalRejected": {
+        "title": "Permohonan pengeluaran ditolak"
+      },
+      "withdrawalHold": {
+        "title": "Pengeluaran memerlukan semakan tambahan"
+      },
+      "walletAdjustment": {
+        "title": "Baki dompet diselaraskan",
+        "body": "Pentadbir telah membuat pelarasan pada dompet anda. Buka Dompet untuk melihat baki terkini."
+      },
+      "walletRefund": {
+        "title": "Bayaran balik dompet diproses",
+        "body": "Bayaran balik penuh anda telah dikembalikan ke baki Dompet yang digunakan untuk bayaran asal."
+      },
+      "recommendationApproved": {
+        "title": "Cadangan anda diluluskan",
+        "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi."
+      },
+      "recommendationApprovedWithName": {
+        "title": "Cadangan anda \"{{vendorName}}\" telah diluluskan",
+        "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi."
+      }
     }
   },
   "ticket": {
@@ -231,5 +271,32 @@
     "verifiedContributor": "Penyumbang disahkan",
     "accountFallbackName": "Akaun",
     "chatbotTicketCreated": "Selesai — tiket #{{id}} telah dicipta. Pasukan kami akan membalas; anda boleh melihatnya di bawah Tiket Saya."
+  },
+  "theme": {
+    "light": "Tema Cerah",
+    "dark": "Tema Gelap"
+  },
+  "keyboard": {
+    "esc": "ESC",
+    "cmdK": "⌘K"
+  },
+  "brand": {
+    "speed": "MyWisata Speed"
+  },
+  "ui": {
+    "place": {
+      "localNotes": {
+        "justNow": "Sebentar tadi",
+        "minutesAgo": "{{count}}m lalu",
+        "minutesAgo_one": "{{count}}m lalu",
+        "minutesAgo_other": "{{count}}m lalu",
+        "hoursAgo": "{{count}}j lalu",
+        "hoursAgo_one": "{{count}}j lalu",
+        "hoursAgo_other": "{{count}}j lalu",
+        "daysAgo": "{{count}}h lalu",
+        "daysAgo_one": "{{count}}h lalu",
+        "daysAgo_other": "{{count}}h lalu"
+      }
+    }
   }
 }

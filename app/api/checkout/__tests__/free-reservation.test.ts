@@ -14,6 +14,10 @@ vi.mock("@/lib/auth/customer-capabilities.server", () => ({
   customerCapabilityFailure: vi.fn(),
 }));
 
+vi.mock("@/lib/cache/catalogue-cache", () => ({
+  getCachedActivities: vi.fn(),
+}));
+
 vi.mock("@/backend/domains/catalogue", () => ({
   getActivities: vi.fn(),
 }));
@@ -31,6 +35,7 @@ vi.mock("@/lib/stripe", () => ({
 import { createClient } from "@/lib/supabase/server";
 import { resolveServerCustomerCapability, customerCapabilityFailure } from "@/lib/auth/customer-capabilities.server";
 import { getActivities } from "@/backend/domains/catalogue";
+import { getCachedActivities } from "@/lib/cache/catalogue-cache";
 import { stripe } from "@/lib/stripe";
 
 describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
@@ -115,7 +120,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
       rpc: mockRpc,
     } as any);
 
-    vi.mocked(getActivities).mockResolvedValue([
+    const activitiesData = [
       {
         id: activityId,
         outletId,
@@ -131,7 +136,9 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
         requiresBooking: true,
         variants: [{ id: variantId, label: "Standard", price: 0 }],
       } as any,
-    ]);
+    ];
+    vi.mocked(getActivities).mockResolvedValue(activitiesData);
+    vi.mocked(getCachedActivities).mockResolvedValue(activitiesData);
 
     return { mockRpc };
   }

@@ -56,13 +56,13 @@ export default function VendorHeader() {
         <button
           type="button"
           onClick={() => setCommandPaletteOpen(true)}
-          aria-label={tCommon('command.openPalette', { defaultValue: 'Command Palette' })}
+          aria-label={tCommon('command.openPalette')}
           className="flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Search size={14} className="text-muted-foreground" />
-          <span className="hidden md:inline">{tCommon('command.searchVendorPlaceholder', { defaultValue: 'Type a command or jump to workspace…' })}</span>
-          <span className="md:hidden">{tCommon('actions.search', { defaultValue: 'Search' })}</span>
-          <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+          <span className="hidden md:inline">{tCommon('command.searchVendorPlaceholder')}</span>
+          <span className="md:hidden">{tCommon('actions.search')}</span>
+          <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{tCommon('keyboard.cmdK')}</kbd>
         </button>
 
         <div className="flex shrink-0 items-center gap-2">

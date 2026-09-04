@@ -1,6 +1,6 @@
 export default function AdminLoading() {
   return (
-    <div className="space-y-6 animate-pulse" aria-busy="true" aria-label="Loading admin content">
+    <div className="space-y-6 animate-pulse" aria-busy="true" aria-hidden="true">
       {/* Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-2">

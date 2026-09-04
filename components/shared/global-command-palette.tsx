@@ -100,16 +100,16 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
       const adminItems: CommandItem[] = [
         {
           id: 'admin-overview',
-          title: tAdmin('navigation.Overview', { defaultValue: 'Overview' }),
-          category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+          title: tAdmin('navigation.Overview'),
+          category: tCommon('command.navigation'),
           href: '/admin/dashboard',
           icon: Activity,
           keywords: ['home', 'dashboard', 'overview'],
         },
         {
           id: 'admin-vendors',
-          title: tAdmin('navigation.Vendor Approvals', { defaultValue: 'Vendor Approvals' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.Vendor Approvals'),
+          category: tCommon('command.queue'),
           href: '/admin/vendors',
           icon: Package,
           badge: pendingCounts.vendors,
@@ -117,8 +117,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-catalogue',
-          title: tAdmin('navigation.Catalogue Review', { defaultValue: 'Catalogue Review' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.Catalogue Review'),
+          category: tCommon('command.queue'),
           href: '/admin/catalogue',
           icon: ClipboardCheck,
           badge: pendingCounts.catalogue,
@@ -126,8 +126,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-kyc',
-          title: tAdmin('navigation.KYC Review', { defaultValue: 'KYC Review' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.KYC Review'),
+          category: tCommon('command.queue'),
           href: '/admin/kyc',
           icon: Shield,
           badge: pendingCounts.kyc,
@@ -135,8 +135,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-withdrawals',
-          title: tAdmin('navigation.Withdrawals', { defaultValue: 'Withdrawals' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.Withdrawals'),
+          category: tCommon('command.queue'),
           href: '/admin/withdrawals',
           icon: DollarSign,
           badge: pendingCounts.withdrawals,
@@ -144,8 +144,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-support',
-          title: tAdmin('navigation.Support Tickets', { defaultValue: 'Support Tickets' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.Support Tickets'),
+          category: tCommon('command.queue'),
           href: '/admin/support',
           icon: Inbox,
           badge: pendingCounts.tickets,
@@ -153,8 +153,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-recommendations',
-          title: tAdmin('navigation.Recommendations', { defaultValue: 'Recommendations' }),
-          category: tCommon('command.queue', { defaultValue: 'Review Queues' }),
+          title: tAdmin('navigation.Recommendations'),
+          category: tCommon('command.queue'),
           href: '/admin/recommendations',
           icon: Gem,
           badge: pendingCounts.recommendations,
@@ -162,16 +162,16 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         },
         {
           id: 'admin-reports',
-          title: tAdmin('navigation.Payout Reports', { defaultValue: 'Payout Reports' }),
-          category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+          title: tAdmin('navigation.Payout Reports'),
+          category: tCommon('command.navigation'),
           href: '/admin/reports/payouts',
           icon: Banknote,
           keywords: ['reports', 'payouts', 'statements'],
         },
         {
           id: 'admin-chatbot',
-          title: tAdmin('navigation.Chatbot', { defaultValue: 'Chatbot' }),
-          category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+          title: tAdmin('navigation.Chatbot'),
+          category: tCommon('command.navigation'),
           href: '/admin/chatbot',
           icon: Bot,
           keywords: ['ai', 'chatbot', 'faq', 'knowledge'],
@@ -182,32 +182,32 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         adminItems.push(
           {
             id: 'admin-users',
-            title: tAdmin('navigation.User Management', { defaultValue: 'User Management' }),
-            category: tCommon('command.admin', { defaultValue: 'Administration' }),
+            title: tAdmin('navigation.User Management'),
+            category: tCommon('command.admin'),
             href: '/admin/users',
             icon: UsersRound,
             keywords: ['users', 'roles', 'customers', 'vendors'],
           },
           {
             id: 'admin-access-control',
-            title: tAdmin('navigation.Access Control', { defaultValue: 'Access Control' }),
-            category: tCommon('command.admin', { defaultValue: 'Administration' }),
+            title: tAdmin('navigation.Access Control'),
+            category: tCommon('command.admin'),
             href: '/admin/access-control',
             icon: ShieldCog,
             keywords: ['security', 'permissions', 'access'],
           },
           {
             id: 'admin-wallet-settings',
-            title: tAdmin('navigation.Wallet Settings', { defaultValue: 'Wallet Settings' }),
-            category: tCommon('command.admin', { defaultValue: 'Administration' }),
+            title: tAdmin('navigation.Wallet Settings'),
+            category: tCommon('command.admin'),
             href: '/admin/wallet/settings',
             icon: Settings2,
             keywords: ['wallet', 'limits', 'thresholds'],
           },
           {
             id: 'admin-ai-assistant',
-            title: tAdmin('navigation.AI Assistant', { defaultValue: 'AI Assistant' }),
-            category: tCommon('command.admin', { defaultValue: 'Administration' }),
+            title: tAdmin('navigation.AI Assistant'),
+            category: tCommon('command.admin'),
             href: '/admin/ai-assistant',
             icon: Sparkles,
             keywords: ['ai', 'copilot', 'assistant'],
@@ -218,8 +218,8 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
       // Actions
       adminItems.push({
         id: 'toggle-theme',
-        title: theme === 'dark' ? tCommon('theme.light', { defaultValue: 'Light Theme' }) : tCommon('theme.dark', { defaultValue: 'Dark Theme' }),
-        category: tCommon('command.preferences', { defaultValue: 'Preferences' }),
+        title: theme === 'dark' ? tCommon('theme.light') : tCommon('theme.dark'),
+        category: tCommon('command.preferences'),
         action: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
         icon: theme === 'dark' ? Sun : Moon,
         keywords: ['theme', 'dark', 'light', 'mode'],
@@ -232,80 +232,80 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
     return [
       {
         id: 'vendor-dashboard',
-        title: tVendor('navigation.Dashboard', { defaultValue: 'Dashboard' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Dashboard'),
+        category: tCommon('command.navigation'),
         href: '/vendor/dashboard',
         icon: LayoutDashboard,
         keywords: ['home', 'overview', 'stats', 'analytics'],
       },
       {
         id: 'vendor-action-product',
-        title: tVendor('ui.products.addProduct', { defaultValue: '+ Add New Product' }),
-        category: tCommon('command.actions', { defaultValue: 'Quick Actions' }),
+        title: tVendor('ui.products.addProduct'),
+        category: tCommon('command.actions'),
         href: '/vendor/products',
         icon: CirclePlus,
         keywords: ['new product', 'create listing', 'add item'],
       },
       {
         id: 'vendor-action-slot',
-        title: tVendor('ui.bookings.addSlot', { defaultValue: '+ Add Booking Slot' }),
-        category: tCommon('command.actions', { defaultValue: 'Quick Actions' }),
+        title: tVendor('ui.bookings.addSlot'),
+        category: tCommon('command.actions'),
         href: '/vendor/bookings',
         icon: CirclePlus,
         keywords: ['new slot', 'operating hours', 'schedule', 'capacity'],
       },
       {
         id: 'vendor-bookings',
-        title: tVendor('navigation.Bookings', { defaultValue: 'Bookings & Reservations' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Bookings'),
+        category: tCommon('command.navigation'),
         href: '/vendor/bookings',
         icon: CalendarDays,
         keywords: ['booking', 'reservation', 'slot', 'check-in'],
       },
       {
         id: 'vendor-orders',
-        title: tVendor('navigation.Orders', { defaultValue: 'Orders' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Orders'),
+        category: tCommon('command.navigation'),
         href: '/vendor/orders',
         icon: ShoppingBag,
         keywords: ['order', 'fulfillment', 'sales'],
       },
       {
         id: 'vendor-products',
-        title: tVendor('navigation.Products', { defaultValue: 'Products & Listings' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Products'),
+        category: tCommon('command.navigation'),
         href: '/vendor/products',
         icon: UtensilsCrossed,
         keywords: ['product', 'food', 'experience', 'listing'],
       },
       {
         id: 'vendor-outlets',
-        title: tVendor('navigation.Outlets', { defaultValue: 'Outlets' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Outlets'),
+        category: tCommon('command.navigation'),
         href: '/vendor/outlets',
         icon: MapPinned,
         keywords: ['outlet', 'branch', 'store', 'shop'],
       },
       {
         id: 'vendor-vouchers',
-        title: tVendor('navigation.Vouchers', { defaultValue: 'Vouchers' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Vouchers'),
+        category: tCommon('command.navigation'),
         href: '/vendor/vouchers',
         icon: TicketPercent,
         keywords: ['voucher', 'discount', 'promotion', 'coupon'],
       },
       {
         id: 'vendor-wallet',
-        title: tVendor('navigation.Wallet', { defaultValue: 'Wallet & Payouts' }),
-        category: tCommon('command.navigation', { defaultValue: 'Navigation' }),
+        title: tVendor('navigation.Wallet'),
+        category: tCommon('command.navigation'),
         href: '/vendor/wallet',
         icon: Wallet,
         keywords: ['wallet', 'balance', 'withdraw', 'payout', 'finance'],
       },
       {
         id: 'toggle-theme',
-        title: theme === 'dark' ? tCommon('theme.light', { defaultValue: 'Light Theme' }) : tCommon('theme.dark', { defaultValue: 'Dark Theme' }),
-        category: tCommon('command.preferences', { defaultValue: 'Preferences' }),
+        title: theme === 'dark' ? tCommon('theme.light') : tCommon('theme.dark'),
+        category: tCommon('command.preferences'),
         action: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
         icon: theme === 'dark' ? Sun : Moon,
         keywords: ['theme', 'dark', 'light', 'mode'],
@@ -358,7 +358,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
     <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogContent className="max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-0 shadow-2xl">
         <DialogTitle className="sr-only">
-          {tCommon('command.title', { defaultValue: 'Command Palette' })}
+          {tCommon('command.title')}
         </DialogTitle>
 
         {/* Input Header */}
@@ -375,13 +375,13 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
             onKeyDown={handleKeyDown}
             placeholder={
               scope === 'admin'
-                ? tCommon('command.searchAdminPlaceholder', { defaultValue: 'Type a command or search queues...' })
-                : tCommon('command.searchVendorPlaceholder', { defaultValue: 'Type a command or jump to workspace...' })
+                ? tCommon('command.searchAdminPlaceholder')
+                : tCommon('command.searchVendorPlaceholder')
             }
             className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
           <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            ESC
+            {tCommon('keyboard.esc')}
           </kbd>
         </div>
 
@@ -389,7 +389,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         <div className="max-h-80 overflow-y-auto p-2">
           {filtered.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              {tCommon('command.noResults', { defaultValue: 'No commands or pages found.' })}
+              {tCommon('command.noResults')}
             </div>
           ) : (
             <div className="space-y-1">
@@ -449,15 +449,15 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
             <span>
               <kbd className="rounded border border-border bg-card px-1 font-mono">↑</kbd>{' '}
               <kbd className="rounded border border-border bg-card px-1 font-mono">↓</kbd>{' '}
-              {tCommon('command.navigate', { defaultValue: 'to navigate' })}
+              {tCommon('command.navigate')}
             </span>
             <span>
               <kbd className="rounded border border-border bg-card px-1 font-mono">↵</kbd>{' '}
-              {tCommon('command.select', { defaultValue: 'to select' })}
+              {tCommon('command.select')}
             </span>
           </div>
           <div className="flex items-center gap-1 font-semibold text-primary">
-            <span>MyWisata Speed</span>
+            <span>{tCommon('brand.speed')}</span>
           </div>
         </div>
       </DialogContent>

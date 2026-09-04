@@ -304,11 +304,11 @@ export default function CheckoutPage() {
                       )}
                       <div className="mt-2 flex items-center gap-2">
                         <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
-                          Qty: {item.qty}
+                          {tCustomer('ui.booking.qtyLabel')} {item.qty}
                         </span>
                         {lineTotal === 0 && (
                           <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600">
-                            Free Admission
+                            {tCustomer('ui.booking.freeAdmission')}
                           </span>
                         )}
                       </div>

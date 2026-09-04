@@ -64,8 +64,9 @@ export function BookingQrCode({
       <canvas ref={canvasRef} aria-label={t("ui.booking.qrCodeLabel")} className="max-w-full rounded-xl bg-white shadow-sm" />
       {remaining !== null && entryLimit !== undefined && entryLimit > 1 && (
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-          {policy === "multi_entry" ? "Multi-Entry: " : "Group Pass: "}
-          {remaining} / {entryLimit} remaining
+          {policy === "multi_entry"
+            ? t('ui.booking.multiEntryPass', { used: remaining, limit: entryLimit })
+            : t('ui.booking.groupPass', { used: remaining, limit: entryLimit })}
         </span>
       )}
     </div>

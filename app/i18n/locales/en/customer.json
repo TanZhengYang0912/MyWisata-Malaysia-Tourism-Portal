@@ -232,9 +232,15 @@
       "statuses": {
         "title": "Your verification status",
         "description": "These checks are independent. You can start any available option.",
-        "phone": { "title": "Phone" },
-        "profile": { "title": "Profile" },
-        "kyc": { "title": "KYC" },
+        "phone": {
+          "title": "Phone"
+        },
+        "profile": {
+          "title": "Profile"
+        },
+        "kyc": {
+          "title": "KYC"
+        },
         "states": {
           "complete": "Complete",
           "available": "Not completed — start when needed",
@@ -439,7 +445,12 @@
       "availableTimes": "Available times",
       "selectSlot": "Select a time slot to continue.",
       "qrUnavailable": "QR unavailable",
-      "qrCodeLabel": "Booking QR code"
+      "qrCodeLabel": "Booking QR code",
+      "qtyLabel": "Qty:",
+      "freeAdmission": "Free Admission",
+      "remaining": "remaining",
+      "multiEntryPass": "Multi-Entry: {{used}} / {{limit}} remaining",
+      "groupPass": "Group Pass: {{used}} / {{limit}} remaining"
     },
     "promotion": {
       "previous": "Previous promotion",
@@ -1800,7 +1811,8 @@
       "filterShow": "Show",
       "filterAreaLabel": "Filter places by area",
       "allAreas": "All areas",
-      "selectedAreas": "{{count}} areas selected",
+      "selectedAreas_one": "{{count}} area selected",
+      "selectedAreas_other": "{{count}} areas selected",
       "searchAreas": "Search areas",
       "noAreasMatch": "No areas match your search.",
       "activityFallback": "Explore this experience at the destination.",
@@ -1843,9 +1855,12 @@
         "charCount": "{{current}} / {{max}}",
         "minCharWarning": "Minimum 8 characters ({{current}}/8)",
         "justNow": "Just now",
-        "minutesAgo": "{{count}}m ago",
-        "hoursAgo": "{{count}}h ago",
-        "daysAgo": "{{count}}d ago"
+        "minutesAgo_one": "{{count}}m ago",
+        "minutesAgo_other": "{{count}}m ago",
+        "hoursAgo_one": "{{count}}h ago",
+        "hoursAgo_other": "{{count}}h ago",
+        "daysAgo_one": "{{count}}d ago",
+        "daysAgo_other": "{{count}}d ago"
       }
     },
     "saved": {

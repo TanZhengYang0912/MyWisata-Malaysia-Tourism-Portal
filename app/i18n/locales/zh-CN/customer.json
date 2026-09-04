@@ -232,9 +232,15 @@
       "statuses": {
         "title": "你的验证状态",
         "description": "这些验证彼此独立，你可以开始任何可用选项。",
-        "phone": { "title": "手机" },
-        "profile": { "title": "个人资料" },
-        "kyc": { "title": "KYC" },
+        "phone": {
+          "title": "手机"
+        },
+        "profile": {
+          "title": "个人资料"
+        },
+        "kyc": {
+          "title": "KYC"
+        },
         "states": {
           "complete": "已完成",
           "available": "尚未完成——需要时再开始",
@@ -439,7 +445,12 @@
       "availableTimes": "可用时间",
       "selectSlot": "请选择时段继续。",
       "qrUnavailable": "二维码不可用",
-      "qrCodeLabel": "预订二维码"
+      "qrCodeLabel": "预订二维码",
+      "qtyLabel": "数量:",
+      "freeAdmission": "免费入场",
+      "remaining": "剩余",
+      "multiEntryPass": "多次入场: {{used}} / {{limit}} 剩余",
+      "groupPass": "团体通票: {{used}} / {{limit}} 剩余"
     },
     "promotion": {
       "previous": "上一个推广项目",
@@ -1800,7 +1811,8 @@
       "filterShow": "显示",
       "filterAreaLabel": "按地区筛选地点",
       "allAreas": "所有地区",
-      "selectedAreas": "已选择 {{count}} 个地区",
+      "selectedAreas_one": "已选择 {{count}} 个地区",
+      "selectedAreas_other": "已选择 {{count}} 个地区",
       "searchAreas": "搜索地区",
       "noAreasMatch": "没有匹配的地区。",
       "activityFallback": "探索此目的地提供的体验。",
@@ -1843,9 +1855,12 @@
         "charCount": "{{current}} / {{max}}",
         "minCharWarning": "至少输入 8 个字符 ({{current}}/8)",
         "justNow": "刚刚",
-        "minutesAgo": "{{count}}分钟前",
-        "hoursAgo": "{{count}}小时前",
-        "daysAgo": "{{count}}天前"
+        "minutesAgo_one": "{{count}}分钟前",
+        "minutesAgo_other": "{{count}}分钟前",
+        "hoursAgo_one": "{{count}}小时前",
+        "hoursAgo_other": "{{count}}小时前",
+        "daysAgo_one": "{{count}}天前",
+        "daysAgo_other": "{{count}}天前"
       }
     },
     "saved": {

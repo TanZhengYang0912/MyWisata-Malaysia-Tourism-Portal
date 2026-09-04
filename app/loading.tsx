@@ -1,6 +1,6 @@
 export default function GlobalLoading() {
   return (
-    <div className="min-h-[50vh] w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-pulse" aria-busy="true" aria-label="Loading page">
+    <div className="min-h-[50vh] w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-pulse" aria-busy="true" aria-hidden="true">
       {/* Top indicator bar */}
       <div className="h-1 w-full bg-muted overflow-hidden rounded mb-8">
         <div className="h-full w-1/3 bg-primary/40 rounded animate-pulse" />
