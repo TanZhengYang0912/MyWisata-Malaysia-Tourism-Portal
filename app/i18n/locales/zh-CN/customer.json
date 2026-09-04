@@ -160,11 +160,12 @@
   "ui": {
     "capabilityGate": {
       "notNow": "暂时不要",
+      "continueBrowsing": "继续浏览",
       "blockers": {
         "SIGN_IN_REQUIRED": {
           "title": "登录后继续",
-          "description": "你可以继续以访客身份浏览；需要使用这项功能时再登录即可。",
-          "cta": "登录"
+          "description": "此操作需要登录账号，是否前往登录或注册？你也可以继续以访客身份浏览。",
+          "cta": "登录／注册"
         },
         "EMAIL_VERIFICATION_REQUIRED": {
           "title": "验证电子邮箱",
@@ -1402,6 +1403,38 @@
       "availableWithdraw": "可提现",
       "destination": "收款方式",
       "transactionHistory": "交易记录",
+      "historyFilters": {
+        "type": "交易类型",
+        "direction": "收支方向",
+        "from": "开始日期",
+        "to": "结束日期",
+        "clear": "清除筛选",
+        "timezone": "日期采用马来西亚时间（UTC+08:00），包含所选起止日期。",
+        "loading": "正在加载交易记录…",
+        "error": "无法加载交易记录，请重试。",
+        "retry": "重试",
+        "noMatches": "没有符合筛选条件的交易。",
+        "invalidDate": "请输入有效日期。",
+        "invalidRange": "结束日期不能早于开始日期。",
+        "invalidFilter": "请选择有效的筛选条件后重试。",
+        "page": "第 {{page}} / {{pages}} 页 · 共 {{total}} 笔交易",
+        "previous": "上一页",
+        "next": "下一页",
+        "types": {
+          "all": "全部类型",
+          "topup": "充值",
+          "spend": "消费",
+          "earnings": "收益",
+          "withdrawals": "提现",
+          "refund": "退款",
+          "adjustment": "余额调整"
+        },
+        "directions": {
+          "all": "全部收支",
+          "credit": "收入（+）",
+          "debit": "支出（−）"
+        }
+      },
       "transactionType": {
         "topup": "钱包充值",
         "spend": "购买",

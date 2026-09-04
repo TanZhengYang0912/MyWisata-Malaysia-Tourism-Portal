@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   createServiceClient: vi.fn(),
   resolveServerCustomerCapability: vi.fn(),
   clearMaturedCommissions: vi.fn(),
-  isSuperAdminOrApprover: vi.fn(),
+  isSuperAdmin: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
@@ -24,7 +24,7 @@ vi.mock("@/lib/vendor-notifications/event-policy", () => ({
   VENDOR_EVENT_MATRIX: { newOrder: { audience: "vendor", category: "orders", email: false } },
 }));
 vi.mock("@/lib/affiliate/clearing", () => ({ clearMaturedCommissions: mocks.clearMaturedCommissions }));
-vi.mock("@/lib/affiliate/admin-guard", () => ({ isSuperAdminOrApprover: mocks.isSuperAdminOrApprover }));
+vi.mock("@/lib/affiliate/admin-guard", () => ({ isSuperAdmin: mocks.isSuperAdmin }));
 
 import { POST as simulatePurchase } from "@/app/api/dev/simulate-purchase/route";
 import { POST as forceClear } from "@/app/api/dev/force-clear/route";

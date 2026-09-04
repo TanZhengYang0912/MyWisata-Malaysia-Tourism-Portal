@@ -3,18 +3,16 @@
 import { MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/providers/auth";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 export function OutletChatButton({ outletId }: { outletId: string }) {
   const { t } = useTranslation("customer");
-  const { currentUser } = useAuth();
+  const gate = useCustomerCapabilityGate();
   const router = useRouter();
 
   async function handleChat() {
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
+    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
     const response = await fetch("/api/customer/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

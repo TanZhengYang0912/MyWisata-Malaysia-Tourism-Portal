@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, ChevronDown, Globe, ShoppingCart, Tag } from "lucide-react";
+import { ArrowRightLeft, Bell, ChevronDown, Globe, ShoppingCart, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { ChatbotWidget } from "@/components/shared/chatbot-widget";
@@ -19,7 +19,9 @@ import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
-import { guestLoginHref } from "@/lib/auth/guest-mode";
+import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
+import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
 
@@ -43,6 +45,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
+  const gate = useCustomerCapabilityGate();
   const { count } = useCart();
   const { savedIds } = useWishlist();
   const { savedStates } = useSavedDestinations();
@@ -166,10 +169,21 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const customerDisplayName = currentUser
     ? getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"))
     : tCommon("account.guestMenu");
-  const guestSafeHref = (href: string) => currentUser || isPublicCustomerPath(href.split("?")[0]) ? href : guestLoginHref(href);
+  function confirmGuestNavigation(event: MouseEvent<HTMLDivElement>) {
+    if (currentUser || event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
+    const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (!anchor || anchor.hasAttribute("download")) return;
+    const nextPath = guestProtectedCustomerPath(anchor.getAttribute("href")!, window.location.href);
+    if (!nextPath) return;
+    // Capture runs before Link and descendant click handlers can navigate or mutate.
+    event.preventDefault();
+    event.stopPropagation();
+    gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, nextPath);
+    setAccountMenuOpen(false);
+  }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
             <Link href={currentUser ? "/customer" : "/customer/explore"} className="flex items-center gap-2 shrink-0">
@@ -183,7 +197,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             {CUSTOMER_NAV.map((item) => (
               <Link
                 key={item.href}
-                href={guestSafeHref(item.href)}
+                href={item.href}
                 className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
                 aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
                 style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
@@ -205,7 +219,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <LanguageSwitcher compact className="hidden md:flex w-28" />
             <AppearanceControl />
-            <NotificationBell />
+            {currentUser ? <NotificationBell key={currentUser.id} /> : (
+              <button type="button" aria-label={tCommon("accessibility.notifications")} onClick={() => gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")} className={HEADER_ICON_BUTTON_CLASS}>
+                <Bell size={18} />
+              </button>
+            )}
             <Link
               href="/customer/cart"
               aria-label={count > 0
@@ -272,7 +290,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                         return (
                           <Link
                             key={item.href}
-                            href={guestSafeHref(item.href)}
+                            href={item.href}
                             role="menuitem"
                             aria-current={active ? "page" : undefined}
                             onClick={() => setAccountMenuOpen(false)}
@@ -316,7 +334,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}
-              href={guestSafeHref(item.href)}
+              href={item.href}
               className="relative flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
               aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
               style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}

@@ -93,18 +93,22 @@ describe('GET /api/admin/navigation/counts', () => {
     expect(mocks.from).not.toHaveBeenCalledWith('withdrawal_requests');
   });
 
-  it('does not query or return KYC or recommendation metadata to an approver', async () => {
+  it('only queries and returns withdrawal metadata to an approver', async () => {
     mockRoles('approver');
 
     const response = await GET();
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data).toMatchObject({ withdrawals: 6 });
-    expect(body.data).not.toHaveProperty('kyc');
-    expect(body.data).not.toHaveProperty('recommendations');
-    expect(mocks.from).not.toHaveBeenCalledWith('kyc_submissions');
-    expect(mocks.from).not.toHaveBeenCalledWith('vendor_recommendations');
+    expect(body.data).toEqual({ withdrawals: 6 });
+    expect(mocks.from.mock.calls).toEqual([['withdrawal_requests']]);
+  });
+
+  it('preserves both queue groups for an account with admin and approver roles', async () => {
+    mockRoles('admin', 'approver');
+    const response = await GET();
+    const body = await response.json();
+    expect(body.data).toEqual({ vendors: 2, catalogue: 8, kyc: 5, withdrawals: 6, refunds: 7, chatReports: 8, recommendations: 9 });
   });
 
   it('does not expose database error details', async () => {

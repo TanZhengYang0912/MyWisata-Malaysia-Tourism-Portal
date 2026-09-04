@@ -1,12 +1,12 @@
 // P4 — Member 4: admin per-attribution review — manual "Accept" on a single
 // pending commission (/admin/affiliate's "All attributions" table).
-// Gated on super_admin/approver, checked server-side, matching every other
+// Gated on super_admin, checked server-side, matching every other
 // admin route in this module.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { acceptAttribution } from '@/lib/affiliate/clearing';
 
 interface Props {
@@ -18,8 +18,8 @@ export async function POST(_request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can review commissions', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can review commissions', 403);
   }
 
   const service = createServiceClient();

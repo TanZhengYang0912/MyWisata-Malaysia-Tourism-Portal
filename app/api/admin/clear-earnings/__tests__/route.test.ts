@@ -1,15 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), getUser: vi.fn() }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ rpc: mocks.rpc })),
+  createClient: vi.fn(async () => ({
+    rpc: mocks.rpc,
+    auth: { getUser: mocks.getUser },
+    from: () => ({ select: () => ({ eq: async () => ({ data: [{ roles: { name: 'super_admin' } }], error: null }) }) }),
+  })),
 }));
 
 import { POST } from '../route';
 
 describe('POST /api/admin/clear-earnings', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'super-admin' } }, error: null });
+  });
+
+  it('does not invoke clearance for an unauthenticated caller', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    expect((await POST()).status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
 
   it('uses the database RPC that authorizes the actor and locks eligible subjects', async () => {
     mocks.rpc.mockResolvedValue({ data: 3, error: null });

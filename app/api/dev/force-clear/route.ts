@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { clearMaturedCommissions } from '@/lib/affiliate/clearing';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
 
 export async function POST() {
@@ -15,8 +15,8 @@ export async function POST() {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(authClient, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can force-clear demo commissions', 403);
+  if (!(await isSuperAdmin(authClient, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can force-clear demo commissions', 403);
   }
 
   const service = createServiceClient();

@@ -10,7 +10,7 @@ export async function GET() {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   const roleNames = (roles ?? []).map((row: any) => row.roles?.name);
-  if (!roleNames.includes('super_admin') && !roleNames.includes('approver')) {
+  if (!roleNames.includes('super_admin')) {
     return apiFail('FORBIDDEN', 'Admin role required', 403);
   }
 

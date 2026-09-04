@@ -56,13 +56,14 @@ describe('profile completion display contract', () => {
     expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(continuation\) router\.push\(continuation\)/);
   });
 
-  it('keeps KYC directly available without Profile or tier prerequisites', () => {
+  it('keeps KYC independent while offering optional navigation back to Profile', () => {
     const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
 
     expect(kycPage).toContain('verificationFacts?.kycStatus');
     expect(kycPage).not.toContain('TIER_STEPS');
     expect(kycPage).not.toContain('isProfileComplete');
-    expect(kycPage).not.toContain('href="/customer/profile"');
+    expect(kycPage).toContain('href="/customer/profile"');
+    expect(kycPage).toContain('tCustomer("ui.profile.backToProfile")');
   });
 
   it('uses the same upload and camera picker in wizard and completed Profile settings', () => {

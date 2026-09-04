@@ -4,13 +4,13 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   createServiceClient: vi.fn(),
   clearMaturedCommissions: vi.fn(),
-  isSuperAdminOrApprover: vi.fn(),
+  isSuperAdmin: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock("@/lib/affiliate/clearing", () => ({ clearMaturedCommissions: mocks.clearMaturedCommissions }));
-vi.mock("@/lib/affiliate/admin-guard", () => ({ isSuperAdminOrApprover: mocks.isSuperAdminOrApprover }));
+vi.mock("@/lib/affiliate/admin-guard", () => ({ isSuperAdmin: mocks.isSuperAdmin }));
 
 import { POST } from "@/app/api/dev/force-clear/route";
 
@@ -33,14 +33,14 @@ describe("development force-clear authorization", () => {
       }),
     });
     mocks.clearMaturedCommissions.mockResolvedValue({ confirmed: 1 });
-    mocks.isSuperAdminOrApprover.mockResolvedValue(false);
+    mocks.isSuperAdmin.mockResolvedValue(false);
   });
 
   it("rejects a signed-in non-admin before service-role work", async () => {
     const response = await POST();
 
     expect(response.status).toBe(403);
-    expect(mocks.isSuperAdminOrApprover).toHaveBeenCalledWith(expect.anything(), "user-1");
+    expect(mocks.isSuperAdmin).toHaveBeenCalledWith(expect.anything(), "user-1");
     expect(mocks.createServiceClient).not.toHaveBeenCalled();
     expect(mocks.clearMaturedCommissions).not.toHaveBeenCalled();
   });

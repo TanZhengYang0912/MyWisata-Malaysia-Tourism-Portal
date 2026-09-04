@@ -7,8 +7,8 @@ vi.mock('@/lib/supabase/server', () => ({ createClient }));
 const createServiceClient = vi.fn();
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 
-const isSuperAdminOrApprover = vi.fn();
-vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdminOrApprover }));
+const isSuperAdmin = vi.fn();
+vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 
 const acceptAttribution = vi.fn();
 vi.mock('@/lib/affiliate/clearing', () => ({ acceptAttribution }));
@@ -40,15 +40,15 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
     expect(acceptAttribution).not.toHaveBeenCalled();
   });
 
-  it('rejects a caller who is not super_admin/approver', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(false);
+  it('rejects a caller who is not super_admin', async () => {
+    isSuperAdmin.mockResolvedValue(false);
     const response = await call();
     expect(response.status).toBe(403);
     expect(acceptAttribution).not.toHaveBeenCalled();
   });
 
   it('accepts a pending attribution and returns the outcome', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     acceptAttribution.mockResolvedValue({ outcome: 'confirmed', amountRM: 1.65 });
 
     const response = await call();
@@ -60,7 +60,7 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
   });
 
   it('surfaces a real error outcome as a 500', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     acceptAttribution.mockResolvedValue({ outcome: 'error', error: 'click not found' });
 
     const response = await call();
@@ -68,7 +68,7 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
   });
 
   it('returns 200 for a skipped outcome (e.g. already resolved) rather than an error', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     acceptAttribution.mockResolvedValue({ outcome: 'skipped', error: 'Already confirmed' });
 
     const response = await call();

@@ -160,11 +160,12 @@
   "ui": {
     "capabilityGate": {
       "notNow": "Bukan sekarang",
+      "continueBrowsing": "Terus melayari",
       "blockers": {
         "SIGN_IN_REQUIRED": {
           "title": "Log masuk untuk meneruskan",
-          "description": "Anda boleh terus melayari sebagai tetamu. Log masuk hanya apabila anda bersedia menggunakan fungsi ini.",
-          "cta": "Log masuk"
+          "description": "Tindakan ini memerlukan akaun. Adakah anda mahu log masuk atau mencipta akaun? Anda juga boleh terus melayari sebagai tetamu.",
+          "cta": "Log masuk / Daftar"
         },
         "EMAIL_VERIFICATION_REQUIRED": {
           "title": "Sahkan e-mel anda",
@@ -1402,6 +1403,38 @@
       "availableWithdraw": "Boleh dikeluarkan",
       "destination": "Destinasi",
       "transactionHistory": "Sejarah Transaksi",
+      "historyFilters": {
+        "type": "Jenis transaksi",
+        "direction": "Wang masuk / keluar",
+        "from": "Dari tarikh",
+        "to": "Hingga tarikh",
+        "clear": "Kosongkan penapis",
+        "timezone": "Tarikh mengikut waktu Malaysia (UTC+08:00), termasuk kedua-dua hari yang dipilih.",
+        "loading": "Memuatkan transaksi…",
+        "error": "Transaksi tidak dapat dimuatkan. Sila cuba lagi.",
+        "retry": "Cuba lagi",
+        "noMatches": "Tiada transaksi sepadan dengan penapis ini.",
+        "invalidDate": "Masukkan tarikh yang sah.",
+        "invalidRange": "Tarikh akhir mesti pada atau selepas tarikh mula.",
+        "invalidFilter": "Pilih penapis yang sah dan cuba lagi.",
+        "page": "Halaman {{page}} daripada {{pages}} · {{total}} transaksi",
+        "previous": "Sebelumnya",
+        "next": "Seterusnya",
+        "types": {
+          "all": "Semua jenis",
+          "topup": "Tambah nilai",
+          "spend": "Pembelian",
+          "earnings": "Pendapatan",
+          "withdrawals": "Pengeluaran",
+          "refund": "Bayaran balik",
+          "adjustment": "Pelarasan"
+        },
+        "directions": {
+          "all": "Semua arah",
+          "credit": "Wang masuk (+)",
+          "debit": "Wang keluar (−)"
+        }
+      },
       "transactionType": {
         "topup": "Tambah nilai dompet",
         "spend": "Pembelian",

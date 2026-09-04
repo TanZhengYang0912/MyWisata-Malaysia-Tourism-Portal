@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 
 interface Props {
   params: Promise<{ threadId: string }>;
@@ -29,9 +30,12 @@ export async function POST(request: Request, { params }: Props) {
   // chat_threads_participant RLS scopes this to threads the caller can see —
   // customer, vendor owner, outlet manager, or admin. A miss means not a participant.
   const { data: thread, error: threadError } = await authClient
-    .from('chat_threads').select('id').eq('id', threadId).maybeSingle();
+    .from('chat_threads').select('id,customer_id,outlet_id').eq('id', threadId).maybeSingle();
   if (threadError) return apiFail('DB_ERROR', threadError.message, 500);
   if (!thread) return apiFail('NOT_FOUND', 'Conversation not found', 404);
+  if (!(await accessibleChatThreadIds(authClient, user.id, [thread])).has(thread.id)) {
+    return apiFail('FORBIDDEN', 'Not a participant in this conversation', 403);
+  }
 
   // Reporters have no SELECT policy on chat_reports (only admins do), so rate
   // limiting/reputation reads need the service client — this is internal

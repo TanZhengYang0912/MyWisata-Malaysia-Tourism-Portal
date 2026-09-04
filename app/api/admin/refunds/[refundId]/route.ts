@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: Props) {
   const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const names = (roles ?? []).map((row: any) => row.roles?.name);
-  if (!names.includes('super_admin') && !names.includes('approver')) return apiFail('FORBIDDEN', 'Admin role required', 403);
+  if (!names.includes('super_admin')) return apiFail('FORBIDDEN', 'Super Admin role required', 403);
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'action is required', 422);
   const service = createServiceClient();

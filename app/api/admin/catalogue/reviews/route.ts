@@ -15,7 +15,7 @@ async function requireAdmin() {
   if (error) return { error: apiFail('DB_ERROR', error.message, 500) } as const;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const names = (roles ?? []).map((row: any) => relation(row.roles)?.name);
-  if (!names.some((name: string) => ['super_admin', 'approver'].includes(name))) {
+  if (!names.includes('super_admin')) {
     return { error: apiFail('FORBIDDEN', 'Administrator access required', 403) } as const;
   }
   return { db: createServiceClient(), user } as const;

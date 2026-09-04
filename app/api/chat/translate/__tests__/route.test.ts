@@ -69,7 +69,7 @@ describe('POST /api/chat/translate', () => {
       if (table === 'chat_message_translations') return queryStub({ data: { translated_text: 'Helo' }, error: null });
       throw new Error(`unexpected table ${table}`);
     });
-    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1' }, error: null }));
+    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1', customer_id: USER_ID, outlet_id: 'outlet-1' }, error: null }));
 
     const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'bm' }));
     const body = await response.json();
@@ -89,7 +89,7 @@ describe('POST /api/chat/translate', () => {
       }
       throw new Error(`unexpected table ${table}`);
     });
-    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1' }, error: null }));
+    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1', customer_id: USER_ID, outlet_id: 'outlet-1' }, error: null }));
     translateMessage.mockResolvedValue('Helo, ini tersedia?');
 
     const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'bm' }));
@@ -110,7 +110,7 @@ describe('POST /api/chat/translate', () => {
       if (table === 'chat_message_translations') return queryStub({ data: null, error: null });
       throw new Error(`unexpected table ${table}`);
     });
-    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1' }, error: null }));
+    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1', customer_id: USER_ID, outlet_id: 'outlet-1' }, error: null }));
     translateMessage.mockRejectedValue(new Error('Gemini timed out'));
 
     const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'zh' }));

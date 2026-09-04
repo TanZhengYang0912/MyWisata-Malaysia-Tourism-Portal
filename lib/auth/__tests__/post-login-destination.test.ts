@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
 
 describe("post-login destination", () => {
+  it.each([null, "/admin/dashboard", "/admin/vendors", "/admin/wallet/settings", "/admin/refunds", "/admin/withdrawals-exports", "/admin/withdrawals/../users"])("lands wallet approvers in their withdrawal queue for %s", (next) => {
+    expect(postLoginDestination("approver", next)).toBe("/admin/withdrawals");
+  });
+
+  it("retains withdrawal details and neutral authentication returns for approvers", () => {
+    expect(postLoginDestination("approver", "/admin/withdrawals/request-id?tab=evidence#history"))
+      .toBe("/admin/withdrawals/request-id?tab=evidence#history");
+    expect(postLoginDestination("approver", "/reset-password")).toBe("/reset-password");
+    expect(postLoginDestination("super_admin", "/admin/vendors")).toBe("/admin/vendors");
+    expect(postLoginDestination("admin", null)).toBe("/admin/dashboard");
+  });
+
   it("keeps customers on the requested customer path", () => {
     expect(postLoginDestination("customer", "/customer/vendor/vendor-1/outlet/outlet-1"))
       .toBe("/customer/vendor/vendor-1/outlet/outlet-1");

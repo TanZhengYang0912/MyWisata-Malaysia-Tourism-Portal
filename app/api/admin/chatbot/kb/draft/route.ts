@@ -2,7 +2,7 @@
 // POST /api/admin/chatbot/kb/draft — body { question }. Returns a draft
 // { title, body, keywords, category } for the admin's existing KB form to
 // prefill; never saves anything itself (see lib/chatbot/kb-draft.ts's
-// header). Gated on super_admin/approver, same as every other
+// header). Gated on super_admin, same as every other
 // /admin/chatbot route.
 //
 // category is classifyTicket(question) — the EXACT same keyword classifier
@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { draftKbEntrySchema } from '@/lib/validation/chatbot-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { draftKbEntry } from '@/lib/chatbot/kb-draft';
 import { answerQuestion as matchKeyword, type KbDoc } from '@/lib/chatbot/match';
 import { classifyTicket } from '@/lib/chatbot/classify';
@@ -25,8 +25,8 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can draft KB entries', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can draft KB entries', 403);
   }
 
   const parsed = await parseBody(request, draftKbEntrySchema);

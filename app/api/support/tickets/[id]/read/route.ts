@@ -7,7 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -23,7 +23,7 @@ export async function PATCH(_request: Request, { params }: Props) {
   const { data: ticket } = await service.from('support_tickets').select('id, user_id').eq('id', id).maybeSingle();
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-  const isAdmin = await isSuperAdminOrApprover(supabase, user.id);
+  const isAdmin = await isSuperAdmin(supabase, user.id);
   const isOwner = ticket.user_id === user.id;
   if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
 

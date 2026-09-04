@@ -8,6 +8,12 @@ const layoutSource = readFileSync(
 );
 
 describe('admin navigation shell', () => {
+  it('routes approvers away from unrelated pages and does not poll support unread counts', () => {
+    expect(layoutSource).toContain('if (!currentUser || currentUser.role === "approver") return;');
+    expect(layoutSource).toContain('router.replace("/admin/withdrawals")');
+    expect(readFileSync(resolve(process.cwd(), 'app/page.tsx'), 'utf8')).toContain('approver: "/admin/withdrawals"');
+  });
+
   it('keeps the sidebar fixed while the navigation list can scroll independently', () => {
     expect(layoutSource).toContain('className="flex h-screen overflow-hidden"');
     expect(layoutSource).toContain('className="flex h-screen w-60 shrink-0 flex-col bg-gray-900"');

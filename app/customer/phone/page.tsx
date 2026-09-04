@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Phone } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Phone } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
@@ -37,6 +37,14 @@ export default function PhoneVerificationPage() {
         title={tCustomer("ui.phoneVerification.title")}
         description={tCustomer("ui.phoneVerification.description")}
         icon={<Phone size={14} />}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/customer/profile">
+              <ArrowLeft size={16} />
+              {tCustomer("ui.profile.backToProfile")}
+            </Link>
+          </Button>
+        }
       />
       <CustomerPageShell wide className="pt-0 sm:pt-0">
         {verificationFacts?.phoneVerified ? (
@@ -46,6 +54,11 @@ export default function PhoneVerificationPage() {
               <div>
                 <h2 className="font-bold text-foreground">{tCustomer("ui.phoneVerification.completeTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.phoneVerification.completeDescription")}</p>
+                {currentUser.phone && (
+                  <p className="mt-2 text-sm text-foreground">
+                    {tCustomer("ui.profileWizard.phoneNumber")}: <span dir="ltr">{currentUser.phone}</span>
+                  </p>
+                )}
               </div>
             </div>
             {continuation && <Button asChild className="mt-5"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}

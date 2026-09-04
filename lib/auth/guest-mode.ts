@@ -1,4 +1,20 @@
+import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
+
 export const GUEST_EXPLORE_PATH = "/guest/explore";
+
+/** Private in-app link destinations that need guest confirmation before navigation. */
+export function guestProtectedCustomerPath(href: string, baseUrl: string): string | null {
+  try {
+    const base = new URL(baseUrl);
+    const target = new URL(href, base);
+    if (target.origin !== base.origin || target.username || target.password) return null;
+    if (target.pathname !== "/customer" && !target.pathname.startsWith("/customer/")) return null;
+    if (isPublicCustomerPath(target.pathname)) return null;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return null;
+  }
+}
 
 export function postLoginPath(next: string | null): string | null {
   return next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : null;

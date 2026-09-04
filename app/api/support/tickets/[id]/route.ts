@@ -7,7 +7,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,7 +28,7 @@ export async function GET(_request: Request, { params }: Props) {
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
   const isOwner = ticket.user_id === user.id;
-  const isAdmin = await isSuperAdminOrApprover(supabase, user.id);
+  const isAdmin = await isSuperAdmin(supabase, user.id);
   if (!isOwner && !isAdmin) return apiFail('FORBIDDEN', 'Not your ticket', 403);
 
   let transcript: { id: string; role: string; body: string; created_at: string; kbRefs: { title: string; score: number | null }[] }[] = [];

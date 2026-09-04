@@ -1,14 +1,14 @@
 // P4 — Member 4: KB editor (CLAUDE-PHASE2.md Feature A)
 // PATCH /api/admin/chatbot/kb/[id] — edit or deactivate (isActive: false) a
 // doc. Any change to title/body sets updated_at and best-effort re-embeds
-// inline, same as the create route. Gated on super_admin/approver, checked
+// inline, same as the create route. Gated on super_admin, checked
 // server-side.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { updateKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
 
 interface Props {
@@ -20,8 +20,8 @@ export async function PATCH(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can edit the knowledge base', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can edit the knowledge base', 403);
   }
 
   const parsed = await parseBody(request, updateKbDocumentSchema);

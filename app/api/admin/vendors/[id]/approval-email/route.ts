@@ -1,6 +1,6 @@
 // P4 — Member 4: send a vendor approval (welcome) email.
 // POST /api/admin/vendors/[id]/approval-email — body { email, subject,
-// body }. Gated on super_admin/approver. Requires the vendor to be
+// body }. Gated on super_admin. Requires the vendor to be
 // currently `approved` (vendors.status is never touched by this route —
 // see lib/vendors/approval-draft.ts's header and the migration comment for
 // why: status is load-bearing in ~12 other places, from RLS policies down
@@ -20,7 +20,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { sendCustomVendorEmail } from '@/lib/email/sender';
 import { recordAudit } from '@/lib/audit';
 
@@ -39,8 +39,8 @@ export async function POST(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can send an approval email', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can send an approval email', 403);
   }
 
   const parsed = await parseBody(request, schema);

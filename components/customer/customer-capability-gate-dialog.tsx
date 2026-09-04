@@ -76,6 +76,11 @@ export function customerCapabilityRecoveryActions(
   request: CustomerCapabilityGateRequest,
 ): CustomerCapabilityRecoveryAction[] {
   const safeNext = postLoginPath(request.nextPath) ?? "/customer";
+  if (request.decision.blockerCode === "SIGN_IN_REQUIRED") {
+    const href = guestLoginHref(safeNext);
+    const copyKey = capabilityGateCopyKey("SIGN_IN_REQUIRED");
+    return [{ href, copyKey }];
+  }
   const qualificationPaths = request.decision.qualificationPaths ?? [];
   if (qualificationPaths.length > 0) {
     return qualificationPaths.flatMap((path) => {
@@ -126,15 +131,17 @@ export function CustomerCapabilityGateProvider({ children }: { children: React.R
       <Dialog open={Boolean(request)} onOpenChange={(open) => { if (!open) setRequest(null); }}>
         <DialogContent>
           <DialogHeader>
-            <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <ShieldCheck aria-hidden="true" />
-            </div>
-            <DialogTitle>{copyKey ? t(`${copyKey}.title`) : ""}</DialogTitle>
+            <DialogTitle className="flex items-center gap-3 pr-6 text-left">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <ShieldCheck aria-hidden="true" />
+              </span>
+              <span>{copyKey ? t(`${copyKey}.title`) : ""}</span>
+            </DialogTitle>
             <DialogDescription>{descriptionKeys.map((key) => t(key)).join(" ")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setRequest(null)}>
-              {t("ui.capabilityGate.notNow")}
+              {t(blockerCode === "SIGN_IN_REQUIRED" ? "ui.capabilityGate.continueBrowsing" : "ui.capabilityGate.notNow")}
             </Button>
             {recoveryActions.map((action) => (
               <Button

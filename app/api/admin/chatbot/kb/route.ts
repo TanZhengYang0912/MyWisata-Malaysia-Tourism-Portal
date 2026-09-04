@@ -1,21 +1,21 @@
 // P4 — Member 4: KB editor (CLAUDE-PHASE2.md Feature A)
 // GET  /api/admin/chatbot/kb — every doc (active + inactive), for the admin table
 // POST /api/admin/chatbot/kb — create a doc, then best-effort embed it inline
-// Gated on super_admin/approver, checked server-side.
+// Gated on super_admin, checked server-side.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { createKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can view the knowledge base', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can view the knowledge base', 403);
   }
 
   const service = createServiceClient();
@@ -45,8 +45,8 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can edit the knowledge base', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can edit the knowledge base', 403);
   }
 
   const parsed = await parseBody(request, createKbDocumentSchema);

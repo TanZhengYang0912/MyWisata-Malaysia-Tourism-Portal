@@ -2,13 +2,13 @@
 // PATCH /api/admin/tickets/[id] — body { status? } and/or { category? }. See
 // CLAUDE.md Step 9, extended with a manual category override per
 // CLAUDE-FIXES-2.md item 6 ("AI classification is a helper, not an authority").
-// Gated on super_admin/approver, checked server-side.
+// Gated on super_admin, checked server-side.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { updateTicketStatusSchema } from '@/lib/validation/chatbot-schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { notifyTicketResolved } from '@/lib/support/notify';
 
 interface Props {
@@ -20,8 +20,8 @@ export async function PATCH(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can update support tickets', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can update support tickets', 403);
   }
 
   const parsed = await parseBody(request, updateTicketStatusSchema);

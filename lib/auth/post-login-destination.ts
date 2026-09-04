@@ -6,12 +6,16 @@ const HOME_BY_ROLE: Record<Role, string> = {
   vendor_owner: "/vendor/dashboard",
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",
-  approver: "/admin/dashboard",
+  approver: "/admin/withdrawals",
   super_admin: "/admin/dashboard",
 };
 
 const ROLE_PREFIXES = ["/customer", "/vendor", "/admin"] as const;
 const ROLE_NEUTRAL_PATHS = ["/", "/reset-password", "/vendor-invite"] as const;
+
+export function isWalletApproverPath(pathname: string): boolean {
+  return pathname === "/admin/withdrawals" || pathname.startsWith("/admin/withdrawals/");
+}
 
 function rolePrefix(role: Role): string {
   if (role === "customer") return "/customer";
@@ -35,6 +39,9 @@ export function postLoginDestination(role: Role, next: string | null): string {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
   const prefix = rolePrefix(role);
+  if (role === "approver" && requestedPrefix === "/admin" && !isWalletApproverPath(pathname)) {
+    return HOME_BY_ROLE.approver;
+  }
   if (requestedPrefix === prefix || (!requestedPrefix && isRoleNeutralPath(pathname))) {
     return normalizedNext;
   }

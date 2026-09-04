@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
-const isSuperAdminOrApprover = vi.fn();
+const isSuperAdmin = vi.fn();
 const sendCustomVendorEmail = vi.fn();
 const recordAudit = vi.fn();
 const createServiceClient = vi.fn();
@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser } }),
 }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
-vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdminOrApprover }));
+vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 vi.mock('@/lib/email/sender', () => ({ sendCustomVendorEmail }));
 vi.mock('@/lib/audit', () => ({ recordAudit }));
 
@@ -50,12 +50,12 @@ function mockVendorRow(overrides: Record<string, unknown> = {}) {
 describe('POST /api/admin/vendors/[id]/approval-email', () => {
   beforeEach(() => {
     getUser.mockReset();
-    isSuperAdminOrApprover.mockReset();
+    isSuperAdmin.mockReset();
     sendCustomVendorEmail.mockReset();
     recordAudit.mockReset();
     createServiceClient.mockReset();
     getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
-    isSuperAdminOrApprover.mockResolvedValue(true);
+    isSuperAdmin.mockResolvedValue(true);
     sendCustomVendorEmail.mockResolvedValue({ id: 'msg-1' });
     recordAudit.mockResolvedValue(null);
   });
@@ -66,8 +66,8 @@ describe('POST /api/admin/vendors/[id]/approval-email', () => {
     expect(response.status).toBe(401);
   });
 
-  it('requires super_admin or approver', async () => {
-    isSuperAdminOrApprover.mockResolvedValue(false);
+  it('requires super_admin', async () => {
+    isSuperAdmin.mockResolvedValue(false);
     const response = await callRoute(VALID_BODY);
     expect(response.status).toBe(403);
   });

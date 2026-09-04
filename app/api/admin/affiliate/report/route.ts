@@ -5,7 +5,7 @@
 // attributions). Same three data sources the page itself already fetches
 // (getAffiliateAdminStats, getFraudCounters, getFraudAnalytics) — no new
 // queries, just a PDF rendering of what's already shown. Gated on
-// super_admin/approver, same as every other route on this admin page.
+// super_admin, same as every other route on this admin page.
 //
 // Returns a raw application/pdf Response, not the repo's apiOk() JSON
 // envelope — same class of exception as
@@ -17,7 +17,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getAffiliateAdminStats } from '@/lib/affiliate/admin-stats';
 import { getFraudCounters } from '@/lib/affiliate/fraud';
 import { getFraudAnalytics, type FraudAnalyticsRange } from '@/lib/affiliate/fraud-analytics';
@@ -29,8 +29,8 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can export the affiliate report', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can export the affiliate report', 403);
   }
 
   const rangeParam = new URL(request.url).searchParams.get('range');

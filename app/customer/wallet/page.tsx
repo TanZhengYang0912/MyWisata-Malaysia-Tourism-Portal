@@ -9,11 +9,10 @@ import {
 import { useAuth } from "@/components/providers/auth";
 import {
   getMyWithdrawals,
-  getWalletTransactions,
 } from "@/backend/domains/commerce";
 import { Button } from "@/components/ui/button";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
-import type { WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
+import type { WithdrawalRequest } from "@/backend/core/types";
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { normalizeTngDestinationIdentifier, selectDefaultPayoutDestination, type PayoutDestination } from "@/lib/payouts/destinations";
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM, shouldExposeStripePayoutSetup } from "@/lib/stripe/jit-visibility";
@@ -53,7 +52,7 @@ function WalletContent() {
 
   const [buckets, setBuckets]         = useState<WalletBuckets | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus>("idle");
   const [readiness, setReadiness] = useState<CustomerWalletCapabilities | null>(null);
 
@@ -179,18 +178,13 @@ function WalletContent() {
 
   const refreshWalletState = useCallback(async (destinationId: string) => {
     if (!currentUser) return;
-    const [, withdrawalsResult, transactionsResult] = await Promise.allSettled([
+    const [, withdrawalsResult] = await Promise.allSettled([
       refreshWalletSummary(destinationId),
       getMyWithdrawals(currentUser.id),
-      getWalletTransactions(currentUser.id),
     ]);
     if (!isActiveRef.current) return;
     setWithdrawals(withdrawalsResult.status === "fulfilled" ? withdrawalsResult.value : []);
-    if (transactionsResult.status === "fulfilled") {
-      setTransactions(transactionsResult.value);
-    } else {
-      setTransactions([]);
-    }
+    setHistoryRefreshKey((key) => key + 1);
   }, [currentUser, refreshWalletSummary]);
 
   useEffect(() => {
@@ -198,7 +192,6 @@ function WalletContent() {
       setBuckets(null);
       setReadiness(null);
       setWithdrawals(null);
-      setTransactions([]);
       setDestinations([]);
       setSelectedDestinationId("");
       return;
@@ -616,7 +609,7 @@ function WalletContent() {
       )}
 
       <WithdrawalList pending={pending} />
-      <CustomerTransactionHistory transactions={transactions} />
+      {currentUser && <CustomerTransactionHistory key={currentUser.id} userId={currentUser.id} refreshKey={historyRefreshKey} />}
       </CustomerPageShell>
     </>
   );

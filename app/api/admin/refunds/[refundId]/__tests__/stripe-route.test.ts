@@ -41,7 +41,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
-    mocks.rolesSelect.mockResolvedValue({ data: [{ roles: { name: 'approver' } }] });
+    mocks.rolesSelect.mockResolvedValue({ data: [{ roles: { name: 'super_admin' } }] });
     mocks.serviceFrom.mockImplementation((table: string) => queryResult(table === 'refunds' ? {
       id: REFUND_ID,
       order_id: '44444444-4444-4444-8444-444444444444',

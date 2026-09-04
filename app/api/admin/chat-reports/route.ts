@@ -8,8 +8,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: isAdmin } = await supabase.rpc('is_admin', { uid: user.id });
-  if (!isAdmin) return apiFail('FORBIDDEN', 'Admin role required', 403);
+  const { data: isAdmin, error: roleError } = await supabase.rpc('is_super_admin', { uid: user.id });
+  if (roleError || isAdmin !== true) return apiFail('FORBIDDEN', 'Admin role required', 403);
 
   const { data, error } = await supabase
     .from('chat_reports')

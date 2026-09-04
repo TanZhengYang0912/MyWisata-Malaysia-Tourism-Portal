@@ -3,13 +3,13 @@
 // comes from the URL). Returns a draft { subject, body } for the admin's
 // "Send approval email" modal to prefill; never saves anything or sends
 // any email itself (see lib/vendors/approval-draft.ts's header). Gated on
-// super_admin/approver, same as the Send route this feeds into.
+// super_admin, same as the Send route this feeds into.
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdminOrApprover } from '@/lib/affiliate/admin-guard';
+import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { draftVendorApprovalEmail } from '@/lib/vendors/approval-draft';
 
 const schema = z.object({}).strict();
@@ -21,8 +21,8 @@ export async function POST(request: Request, { params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdminOrApprover(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only admin or approver can draft an approval email', 403);
+  if (!(await isSuperAdmin(supabase, user.id))) {
+    return apiFail('FORBIDDEN', 'Only Super Admin can draft an approval email', 403);
   }
 
   const parsed = await parseBody(request, schema);
