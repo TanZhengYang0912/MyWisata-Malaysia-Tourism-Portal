@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 type Props = {
   open: boolean;
   title: string;
-  description: string;
+  description: string | ReactNode;
   confirmLabel: string;
   confirmVariant?: "default" | "destructive";
   busy?: boolean;
@@ -44,7 +44,9 @@ export function AdminConfirmDialog({ open, title, description, confirmLabel, con
                 <X size={17} />
               </button>
             </div>
-            <p id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">{tAdmin(description)}</p>
+            <div id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">
+              {typeof description === "string" ? tAdmin(description) : description}
+            </div>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
