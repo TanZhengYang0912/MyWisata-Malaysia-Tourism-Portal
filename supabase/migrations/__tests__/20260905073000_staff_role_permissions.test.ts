@@ -62,6 +62,9 @@ describe("dedicated staff role permissions migration", () => {
   it("defines a self-bound, fail-closed permission resolver", () => {
     const sql = migrationSql();
     const normalized = normalizedSql(sql);
+    const resolverStart = sql.indexOf("CREATE OR REPLACE FUNCTION public.has_staff_permission");
+    const resolverEnd = sql.indexOf("CREATE OR REPLACE FUNCTION public.create_staff_role");
+    const resolverSql = sql.slice(resolverStart, resolverEnd);
 
     expect(normalized).toContain("CREATE OR REPLACE FUNCTION public.has_staff_permission( p_user_id UUID, p_permission_key TEXT )");
     expect(sql).toContain("SECURITY DEFINER");
@@ -73,6 +76,11 @@ describe("dedicated staff role permissions migration", () => {
     expect(sql).toMatch(/staff_role_assignments[\s\S]+?revoked_at\s+IS NULL/i);
     expect(sql).toMatch(/EXCEPTION\s+WHEN OTHERS THEN/i);
     expect(sql).toContain("RETURN FALSE;");
+    expect(resolverSql).toMatch(/legacy_assignment\.vendor_id\s+IS NULL/i);
+    expect(resolverSql).toMatch(/legacy_assignment\.outlet_id\s+IS NULL/i);
+    expect(resolverSql).toMatch(/legacy_role\.name\s+IN\s+\('admin',\s*'approver',\s*'super_admin'\)/i);
+    expect(resolverSql).toMatch(/legacy_role\.name\s*=\s*'admin'[\s\S]+?admin\.kyc\.review[\s\S]+?admin\.vendor\.manage/i);
+    expect(resolverSql).toMatch(/legacy_role\.name\s*=\s*'approver'[\s\S]+?admin\.withdrawal\.approve/i);
   });
 
   it("guards every governance RPC with Super Admin authorization and strict validation", () => {
@@ -88,8 +96,26 @@ describe("dedicated staff role permissions migration", () => {
       expect(normalized).toContain(`CREATE OR REPLACE FUNCTION ${signature}`);
     }
 
-    const governanceSql = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.create_staff_role"));
-    expect(governanceSql).toMatch(/IF auth\.uid\(\) IS NULL OR NOT public\.is_super_admin\(auth\.uid\(\)\) THEN/i);
+    const governanceStart = sql.indexOf("CREATE OR REPLACE FUNCTION public.create_staff_role");
+    const governanceSql = sql.slice(governanceStart);
+    const governanceFunctionNames = [
+      "create_staff_role",
+      "update_staff_role",
+      "assign_staff_role",
+      "revoke_staff_role_assignment",
+    ];
+    for (const functionName of governanceFunctionNames) {
+      const functionStart = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${functionName}`);
+      const functionEnd = sql.indexOf("CREATE OR REPLACE FUNCTION public.", functionStart + 1);
+      const functionSql = sql.slice(functionStart, functionEnd === -1 ? undefined : functionEnd);
+      expect(functionSql).toMatch(/v_actor\s*:=\s*public\.require_active_global_staff_super_admin\(\)/i);
+    }
+
+    const helperStart = sql.indexOf("CREATE OR REPLACE FUNCTION public.require_active_global_staff_super_admin");
+    const helperSql = sql.slice(helperStart, governanceStart);
+    expect(helperSql).toMatch(/actor\.status\s*=\s*'active'/i);
+    expect(helperSql).toMatch(/assignment\.vendor_id\s+IS NULL[\s\S]+?assignment\.outlet_id\s+IS NULL/i);
+    expect(helperSql).toMatch(/role\.name\s*=\s*'super_admin'/i);
     expect(governanceSql).toContain("validate_staff_permission_keys");
     expect(governanceSql).toContain("system_role_protected");
     expect(governanceSql).toContain("legacy_role.name IN ('admin', 'approver', 'super_admin')");
@@ -133,7 +159,32 @@ describe("dedicated staff role permissions migration", () => {
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.update_staff_role\(UUID, TEXT, TEXT, TEXT\[\], BOOLEAN, TEXT\) FROM PUBLIC, anon/i);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.assign_staff_role\(UUID, UUID, TEXT\) FROM PUBLIC, anon/i);
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.revoke_staff_role_assignment\(UUID, TEXT\) FROM PUBLIC, anon/i);
+    expect(sql).toMatch(/REVOKE ALL ON FUNCTION public\.require_active_global_staff_super_admin\(\) FROM PUBLIC, anon, authenticated, service_role/i);
     expect(sql).toMatch(/CREATE POLICY staff_roles_super_admin_read/i);
     expect(sql).toMatch(/CREATE POLICY staff_role_assignments_super_admin_read/i);
+  });
+
+  it("revokes direct DML from service_role and keeps only governed table reads", () => {
+    const sql = migrationSql();
+
+    for (const table of [
+      "staff_permissions",
+      "staff_roles",
+      "staff_role_permissions",
+      "staff_role_assignments",
+    ]) {
+      expect(sql).toMatch(new RegExp(
+        `REVOKE (?:ALL|INSERT, UPDATE, DELETE(?:, TRUNCATE)?) ON TABLE public\\.${table} FROM[^;]*service_role`,
+        "i",
+      ));
+    }
+    expect(sql).toMatch(/GRANT SELECT ON TABLE public\.staff_permissions[\s\S]+?TO authenticated, service_role/i);
+  });
+
+  it("requires unscoped coarse roles for assignments and compatibility backfill", () => {
+    const sql = migrationSql();
+
+    expect(sql).toMatch(/legacy_assignment\.vendor_id\s+IS NULL[\s\S]+?legacy_assignment\.outlet_id\s+IS NULL/i);
+    expect(sql).toMatch(/staff_role_assignments[\s\S]+?legacy_assignment\.vendor_id\s+IS NULL[\s\S]+?legacy_assignment\.outlet_id\s+IS NULL/i);
   });
 });

@@ -118,6 +118,8 @@ SELECT DISTINCT staff_role.id, legacy_assignment.user_id, NULL
       WHEN 'approver' THEN 'Legacy Wallet Approver'
     END
  WHERE legacy_role.name IN ('admin', 'approver')
+   AND legacy_assignment.vendor_id IS NULL
+   AND legacy_assignment.outlet_id IS NULL
    AND NOT EXISTS (
      SELECT 1
        FROM public.staff_role_assignments AS existing_assignment
@@ -225,14 +227,60 @@ BEGIN
     RETURN FALSE;
   END IF;
 
+  -- A configurable staff assignment is additive only. The target must still
+  -- hold a global coarse staff role; revoking that role immediately removes
+  -- every dedicated capability, including one granted by a custom role.
+  IF NOT EXISTS (
+    SELECT 1
+      FROM public.user_roles AS coarse_assignment
+      JOIN public.roles AS legacy_role
+        ON legacy_role.id = coarse_assignment.role_id
+     WHERE coarse_assignment.user_id = p_user_id
+       AND coarse_assignment.vendor_id IS NULL
+       AND coarse_assignment.outlet_id IS NULL
+       AND legacy_role.name IN ('admin', 'approver', 'super_admin')
+  ) THEN
+    RETURN FALSE;
+  END IF;
+
   IF EXISTS (
     SELECT 1
       FROM public.user_roles AS legacy_assignment
       JOIN public.roles AS legacy_role
         ON legacy_role.id = legacy_assignment.role_id
      WHERE legacy_assignment.user_id = p_user_id
+       AND legacy_assignment.vendor_id IS NULL
+       AND legacy_assignment.outlet_id IS NULL
        AND legacy_role.name = 'super_admin'
   ) THEN
+    RETURN TRUE;
+  END IF;
+
+  IF EXISTS (
+       SELECT 1
+         FROM public.user_roles AS legacy_assignment
+         JOIN public.roles AS legacy_role
+           ON legacy_role.id = legacy_assignment.role_id
+        WHERE legacy_assignment.user_id = p_user_id
+          AND legacy_assignment.vendor_id IS NULL
+          AND legacy_assignment.outlet_id IS NULL
+          AND legacy_role.name = 'admin'
+     )
+     AND p_permission_key IN ('admin.kyc.review', 'admin.vendor.manage') THEN
+    RETURN TRUE;
+  END IF;
+
+  IF EXISTS (
+       SELECT 1
+         FROM public.user_roles AS legacy_assignment
+         JOIN public.roles AS legacy_role
+           ON legacy_role.id = legacy_assignment.role_id
+        WHERE legacy_assignment.user_id = p_user_id
+          AND legacy_assignment.vendor_id IS NULL
+          AND legacy_assignment.outlet_id IS NULL
+          AND legacy_role.name = 'approver'
+     )
+     AND p_permission_key = 'admin.withdrawal.approve' THEN
     RETURN TRUE;
   END IF;
 
@@ -256,6 +304,48 @@ EXCEPTION
 END;
 $$;
 
+-- Do not rely on the legacy helper for governance. This private guard binds
+-- each mutation to an active user with an unscoped global Super Admin role.
+CREATE OR REPLACE FUNCTION public.require_active_global_staff_super_admin()
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_actor UUID := auth.uid();
+BEGIN
+  IF v_actor IS NULL THEN
+    RAISE EXCEPTION 'super_admin_required';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM public.users AS actor
+     WHERE actor.id = v_actor
+       AND actor.status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'super_admin_required';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM public.user_roles AS assignment
+      JOIN public.roles AS role
+        ON role.id = assignment.role_id
+     WHERE assignment.user_id = v_actor
+       AND assignment.vendor_id IS NULL
+       AND assignment.outlet_id IS NULL
+       AND role.name = 'super_admin'
+  ) THEN
+    RAISE EXCEPTION 'super_admin_required';
+  END IF;
+
+  RETURN v_actor;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.create_staff_role(
   p_name TEXT,
   p_description TEXT,
@@ -267,13 +357,11 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_actor UUID := auth.uid();
+  v_actor UUID;
   v_role_id UUID;
   v_keys TEXT[];
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.is_super_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'super_admin_required';
-  END IF;
+  v_actor := public.require_active_global_staff_super_admin();
   PERFORM public.validate_staff_reason(p_reason);
   IF p_name IS NULL OR char_length(BTRIM(p_name)) NOT BETWEEN 1 AND 100 THEN
     RAISE EXCEPTION 'staff_role_name_required';
@@ -326,14 +414,12 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_actor UUID := auth.uid();
+  v_actor UUID;
   v_role public.staff_roles%ROWTYPE;
   v_keys TEXT[];
   v_before_keys TEXT[];
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.is_super_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'super_admin_required';
-  END IF;
+  v_actor := public.require_active_global_staff_super_admin();
   PERFORM public.validate_staff_reason(p_reason);
   IF p_name IS NULL OR char_length(BTRIM(p_name)) NOT BETWEEN 1 AND 100 THEN
     RAISE EXCEPTION 'staff_role_name_required';
@@ -399,13 +485,11 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_actor UUID := auth.uid();
+  v_actor UUID;
   v_role public.staff_roles%ROWTYPE;
   v_assignment_id UUID;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.is_super_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'super_admin_required';
-  END IF;
+  v_actor := public.require_active_global_staff_super_admin();
   PERFORM public.validate_staff_reason(p_reason);
   IF p_role_id IS NULL OR p_user_id IS NULL THEN
     RAISE EXCEPTION 'staff_assignment_target_required';
@@ -438,6 +522,8 @@ BEGIN
       JOIN public.roles AS legacy_role
         ON legacy_role.id = legacy_assignment.role_id
      WHERE legacy_assignment.user_id = p_user_id
+       AND legacy_assignment.vendor_id IS NULL
+       AND legacy_assignment.outlet_id IS NULL
        AND legacy_role.name IN ('admin', 'approver', 'super_admin')
   ) THEN
     RAISE EXCEPTION 'coarse_staff_role_required';
@@ -472,12 +558,10 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_actor UUID := auth.uid();
+  v_actor UUID;
   v_assignment public.staff_role_assignments%ROWTYPE;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.is_super_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'super_admin_required';
-  END IF;
+  v_actor := public.require_active_global_staff_super_admin();
   PERFORM public.validate_staff_reason(p_reason);
 
   SELECT *
@@ -552,15 +636,16 @@ CREATE POLICY staff_role_assignments_super_admin_read
 -- Browser sessions can read governed state only as Super Admins and cannot
 -- mutate any RBAC table directly. Service-role reads support server adapters;
 -- writes remain RPC-only as well.
-REVOKE ALL ON TABLE public.staff_permissions FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON TABLE public.staff_roles FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON TABLE public.staff_role_permissions FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON TABLE public.staff_role_assignments FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.staff_permissions FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE public.staff_roles FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE public.staff_role_permissions FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON TABLE public.staff_role_assignments FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.staff_permissions, public.staff_roles,
   public.staff_role_permissions, public.staff_role_assignments TO authenticated, service_role;
 
 REVOKE ALL ON FUNCTION public.validate_staff_reason(TEXT) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.validate_staff_permission_keys(TEXT[]) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.require_active_global_staff_super_admin() FROM PUBLIC, anon, authenticated, service_role;
 
 REVOKE ALL ON FUNCTION public.has_staff_permission(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.has_staff_permission(UUID, TEXT) TO authenticated, service_role;
