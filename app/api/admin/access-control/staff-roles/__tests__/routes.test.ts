@@ -243,6 +243,18 @@ describe("staff role management API", () => {
   });
 
   it.each([
+    ["create name", () => rolesRoute.POST(request("POST", { ...createBody, name: "123456789012345678901" }))],
+    ["create description", () => rolesRoute.POST(request("POST", { ...createBody, description: "x".repeat(101) }))],
+    ["update name", () => roleRoute.PATCH(request("PATCH", { ...updateBody, name: "123456789012345678901" }), { params: Promise.resolve({ roleId: ROLE_ID }) })],
+    ["update description", () => roleRoute.PATCH(request("PATCH", { ...updateBody, description: "x".repeat(101) }), { params: Promise.resolve({ roleId: ROLE_ID }) })],
+  ] as const)("rejects overlong staff role metadata for %s", async (_name, call) => {
+    const response = await call();
+
+    expect(response.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ["duplicate role", "duplicate key value violates unique constraint", "CONFLICT", "create"],
     ["duplicate assignment", "staff_role_assignments_live_unique", "CONFLICT", "assign"],
     ["system role", "system_role_protected", "SYSTEM_ROLE_PROTECTED", "update"],

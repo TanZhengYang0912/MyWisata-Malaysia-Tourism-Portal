@@ -43,6 +43,13 @@ export type StaffRoleAssignmentRecord = {
   createdAt: string | null;
 };
 
+export type StaffRoleCandidate = {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+};
+
 export type PageResult<T> = {
   items: T[];
   page: number;

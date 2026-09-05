@@ -11,8 +11,8 @@ const reasonSchema = z.string().trim().min(10).max(500);
 const permissionKeySchema = z.enum(STAFF_PERMISSION_KEYS);
 
 const createStaffRoleSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).nullable().optional().default(null),
+  name: z.string().trim().min(1).max(20),
+  description: z.string().trim().max(100).nullable().optional().default(null),
   permissionKeys: z.array(permissionKeySchema).max(STAFF_PERMISSION_KEYS.length)
     .refine((keys) => new Set(keys).size === keys.length, "Permission keys must be unique"),
   reason: reasonSchema,

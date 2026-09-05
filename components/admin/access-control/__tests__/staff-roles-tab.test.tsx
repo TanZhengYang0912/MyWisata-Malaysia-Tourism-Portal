@@ -18,6 +18,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("lucide-react", () => ({
   CheckCircle2: (props: Record<string, unknown>) => <svg {...props} />,
   RefreshCw: (props: Record<string, unknown>) => <svg {...props} />,
+  Search: (props: Record<string, unknown>) => <svg {...props} />,
   ShieldCheck: (props: Record<string, unknown>) => <svg {...props} />,
   UserPlus: (props: Record<string, unknown>) => <svg {...props} />,
 }));
@@ -57,6 +58,23 @@ async function click(element: TestElement) {
   });
 }
 
+async function submit(element: TestElement) {
+  await act(async () => {
+    element.dispatchEvent(new TestEvent("submit", { bubbles: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+async function selectValue(element: TestElement, value: string) {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), "value")?.set;
+    setter?.call(element, value);
+    element.dispatchEvent(new TestEvent("change", { bubbles: true }));
+    await Promise.resolve();
+  });
+}
+
 async function selectPermission(key: string) {
   const label = findOne(container, (element) =>
     element.tagName === "LABEL" && element.textContent.includes(key));
@@ -90,10 +108,36 @@ describe("StaffRolesTab", () => {
         });
       }
       if (url === "/api/admin/access-control/staff-roles" && !init?.method) {
-        return response({ data: { roles: [], assignments: [] }, error: null });
+        return response({
+          data: {
+            roles: [
+              { id: "legacy-admin", name: "Legacy Admin", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.kyc.review", "admin.vendor.manage"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "legacy-wallet", name: "Legacy Wallet Approver", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.withdrawal.approve"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "custom-role", name: "Campaign Manager", description: "Campaign access", isSystem: false, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: "actor", createdAt: null, updatedAt: null },
+            ],
+            assignments: [],
+          },
+          error: null,
+        });
       }
       if (url === "/api/admin/access-control/staff-roles" && init?.method === "POST") {
         return response({ data: { roleId: "role-1", auditEventId: "audit-1" }, error: null }, 201);
+      }
+      if (url === "/api/admin/access-control/staff-candidates?search=Ali") {
+        return response({
+          data: {
+            candidates: [{
+              id: "22222222-2222-4222-8222-222222222222",
+              email: "ali@example.com",
+              name: "Ali Staff",
+              roles: ["admin"],
+            }],
+          },
+          error: null,
+        });
+      }
+      if (url === "/api/admin/access-control/staff-roles/legacy-wallet/assignments" && init?.method === "POST") {
+        return response({ data: { assignmentId: "assignment-1", auditEventId: "audit-2" }, error: null }, 201);
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -122,7 +166,7 @@ describe("StaffRolesTab", () => {
     const inputs = findElements(container, (element) => element.tagName === "INPUT");
     const textareas = findElements(container, (element) => element.tagName === "TEXTAREA");
     expect(container.textContent).toContain("admin.kyc.review");
-    await setValue(inputs.find((input) => input.type === "text")!, "Operations Reviewer");
+    await setValue(inputs.find((input) => (input as TestElement & { name?: string }).name === "role-name")!, "Operations Reviewer");
     await setValue(textareas[0]!, "Reviews vendors and KYC");
     await selectPermission("admin.kyc.review");
     await selectPermission("admin.vendor.manage");
@@ -140,6 +184,64 @@ describe("StaffRolesTab", () => {
       description: "Reviews vendors and KYC",
       permissionKeys: ["admin.kyc.review", "admin.vendor.manage"],
       reason: "Lecturer demonstration role",
+    });
+  });
+
+  it("keeps Legacy definitions read-only while exposing their templates for assignment", async () => {
+    await act(async () => {
+      root?.render(<StaffRolesTab onViewAudit={vi.fn()} />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    const legacyRole = findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("Legacy Admin"));
+    const customRole = findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("Campaign Manager"));
+    expect(legacyRole.disabled).toBe(true);
+    expect(customRole.disabled).toBe(false);
+
+    const roleSelect = findOne(container, (element) => element.tagName === "SELECT");
+    expect(roleSelect.textContent).toContain("Legacy Admin");
+    expect(roleSelect.textContent).toContain("Legacy Wallet Approver");
+
+  });
+
+  it("searches staff by identity and submits the selected UUID for a Legacy template", async () => {
+    await act(async () => {
+      root?.render(<StaffRolesTab onViewAudit={vi.fn()} />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    const roleSelect = findOne(container, (element) => element.tagName === "SELECT");
+    await selectValue(roleSelect, "legacy-wallet");
+    const searchInput = findOne(container, (element) =>
+      (element as TestElement & { name?: string }).name === "staff-search");
+    await setValue(searchInput, "Ali");
+    await submit(findOne(container, (element) => element.tagName === "FORM"));
+    await act(async () => { await Promise.resolve(); });
+
+    const candidate = findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("ali@example.com"));
+    await click(candidate);
+    expect(container.textContent).toContain("Ali Staff");
+
+    const textareas = findElements(container, (element) => element.tagName === "TEXTAREA");
+    const assignmentReason = textareas[textareas.length - 1];
+    await setValue(assignmentReason, "Add a second wallet approver");
+    await click(findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.assign")));
+
+    const assignmentPost = mocks.fetch.mock.calls.find(([url, init]) =>
+      url === "/api/admin/access-control/staff-roles/legacy-wallet/assignments"
+      && (init as RequestInit | undefined)?.method === "POST");
+    expect(assignmentPost).toBeDefined();
+    expect(JSON.parse(String((assignmentPost?.[1] as RequestInit).body))).toEqual({
+      userId: "22222222-2222-4222-8222-222222222222",
+      reason: "Add a second wallet approver",
     });
   });
 });

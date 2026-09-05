@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, RefreshCw, ShieldCheck, UserPlus } from "lucide-react";
+import { CheckCircle2, RefreshCw, Search, ShieldCheck, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +10,7 @@ import type {
   ApiEnvelope,
   AuditFocus,
   MutationReceipt,
+  StaffRoleCandidate,
   StaffPermissionRecord,
   StaffRoleAssignmentRecord,
   StaffRoleRecord,
@@ -23,6 +24,7 @@ type RolesPayload = {
 };
 
 type PermissionsPayload = { permissions: StaffPermissionRecord[] };
+type CandidatesPayload = { candidates: StaffRoleCandidate[] };
 
 type RoleForm = {
   id: string | null;
@@ -49,11 +51,14 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   const [permissions, setPermissions] = useState<StaffPermissionRecord[]>([]);
   const [form, setForm] = useState<RoleForm>(EMPTY_FORM);
   const [assignmentRoleId, setAssignmentRoleId] = useState("");
-  const [assignmentUserId, setAssignmentUserId] = useState("");
+  const [staffSearch, setStaffSearch] = useState("");
+  const [staffCandidates, setStaffCandidates] = useState<StaffRoleCandidate[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<StaffRoleCandidate | null>(null);
   const [assignmentReason, setAssignmentReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchingStaff, setSearchingStaff] = useState(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
 
@@ -154,26 +159,56 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   }
 
   async function assignRole() {
+    if (!selectedStaff) return;
     setSaving(true);
     setError("");
     try {
       const response = await fetch(`/api/admin/access-control/staff-roles/${assignmentRoleId}/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: assignmentUserId.trim(), reason: assignmentReason.trim() }),
+        body: JSON.stringify({ userId: selectedStaff.id, reason: assignmentReason.trim() }),
       });
       const body = await response.json() as ApiEnvelope<MutationReceipt>;
       if (!response.ok || !body.data) {
         throw new Error(errorMessage(body, t("accessControl.errors.assignStaffRole")));
       }
       setReceipt(body.data);
-      setAssignmentUserId("");
+      setStaffSearch("");
+      setStaffCandidates([]);
+      setSelectedStaff(null);
       setAssignmentReason("");
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("accessControl.errors.assignStaffRole"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function searchStaff(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const search = staffSearch.trim();
+    if (!search) return;
+    setSearchingStaff(true);
+    setError("");
+    setSelectedStaff(null);
+    try {
+      const query = new URLSearchParams({ search });
+      const response = await fetch(`/api/admin/access-control/staff-candidates?${query.toString()}`, {
+        cache: "no-store",
+      });
+      const body = await response.json() as ApiEnvelope<CandidatesPayload>;
+      if (!response.ok || !body.data) {
+        throw new Error(errorMessage(body, t("accessControl.errors.loadStaffCandidates")));
+      }
+      setStaffCandidates(body.data.candidates);
+    } catch (caught) {
+      setStaffCandidates([]);
+      setError(caught instanceof Error
+        ? caught.message
+        : t("accessControl.errors.loadStaffCandidates"));
+    } finally {
+      setSearchingStaff(false);
     }
   }
 
@@ -187,8 +222,8 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold">{t(form.id ? "accessControl.staffRoles.editTitle" : "accessControl.staffRoles.createTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.editorHelp")}</p></div><Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}><RefreshCw className={loading ? "animate-spin" : ""} />{t("accessControl.actions.refresh")}</Button></div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Field label={t("accessControl.staffRoles.name")}><input name="role-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className={`${adminFilterControlClassName} w-full`} /></Field>
-          <Field label={t("accessControl.staffRoles.description")}><textarea name="role-description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="min-h-20 w-full rounded-xl border border-border bg-background p-3 text-sm" /></Field>
+          <Field label={t("accessControl.staffRoles.name")}><input name="role-name" maxLength={20} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className={`${adminFilterControlClassName} w-full`} /></Field>
+          <Field label={t("accessControl.staffRoles.description")}><textarea name="role-description" maxLength={100} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="min-h-20 w-full rounded-xl border border-border bg-background p-3 text-sm" /></Field>
         </div>
         {form.id && <label className="mt-3 flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>{t("accessControl.staffRoles.active")}</span></label>}
         <fieldset className="mt-4 space-y-4"><legend className="text-sm font-semibold">{t("accessControl.staffRoles.permissions")}</legend>{permissionsByModule.map(([module, modulePermissions]) => <div key={module} className="rounded-xl border border-border p-4"><h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{module}</h3><div className="mt-3 grid gap-3 sm:grid-cols-2">{modulePermissions.map((permission) => <label key={permission.key} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm"><input type="checkbox" checked={form.permissionKeys.includes(permission.key)} onChange={(event) => togglePermission(permission.key, event.target.checked)} /><span><span className="block font-mono text-xs font-semibold">{permission.key}</span><span className="mt-1 block text-xs text-muted-foreground">{permission.description}</span></span></label>)}</div></div>)}</fieldset>
@@ -197,9 +232,23 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       </section>
 
       <div className="space-y-5">
-        <section className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t("accessControl.staffRoles.rolesTitle")}</h2><div className="mt-3 space-y-2">{roles.map((role) => <button key={role.id} type="button" onClick={() => editRole(role)} className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left hover:bg-muted/30"><span><span className="block font-medium">{role.name}</span><span className="text-xs text-muted-foreground">{t("accessControl.staffRoles.permissionCount", { count: role.permissionKeys.length })}</span></span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span></button>)}</div>{!loading && roles.length === 0 && <p className="mt-4 text-sm text-muted-foreground">{t("accessControl.states.noStaffRoles")}</p>}</section>
+        <section className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t("accessControl.staffRoles.rolesTitle")}</h2><div className="mt-3 space-y-2">{roles.map((role) => <button key={role.id} type="button" disabled={role.isSystem} onClick={() => editRole(role)} className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left enabled:hover:bg-muted/30 disabled:cursor-default"><span><span className="flex items-center gap-2 font-medium">{role.name}{role.isSystem && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t("accessControl.staffRoles.systemRole")}</span>}</span><span className="text-xs text-muted-foreground">{t("accessControl.staffRoles.permissionCount", { count: role.permissionKeys.length })}</span></span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span></button>)}</div>{!loading && roles.length === 0 && <p className="mt-4 text-sm text-muted-foreground">{t("accessControl.states.noStaffRoles")}</p>}</section>
 
-        <section className="rounded-2xl border border-border bg-card p-5"><div className="flex items-center gap-2"><UserPlus className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("accessControl.staffRoles.assignmentTitle")}</h2></div><Field label={t("accessControl.staffRoles.role")}><select value={assignmentRoleId} onChange={(event) => setAssignmentRoleId(event.target.value)} className={`${adminFilterControlClassName} w-full`}><option value="">{t("accessControl.staffRoles.selectRole")}</option>{roles.filter((role) => role.isActive).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></Field><Field label={t("accessControl.staffRoles.userId")}><input value={assignmentUserId} onChange={(event) => setAssignmentUserId(event.target.value)} className={`${adminFilterControlClassName} w-full`} /></Field><Field label={t("accessControl.forms.reason")}><textarea value={assignmentReason} onChange={(event) => setAssignmentReason(event.target.value)} maxLength={500} className="min-h-20 w-full rounded-xl border border-border bg-background p-3 text-sm" /></Field><div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground"><span>{t("accessControl.staffRoles.assignmentCount", { count: assignments.filter((item) => !item.revokedAt).length })}</span><Button size="sm" disabled={!assignmentRoleId || !assignmentUserId.trim() || assignmentReason.trim().length < 10 || saving} onClick={() => void assignRole()}>{t("accessControl.staffRoles.assign")}</Button></div></section>
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2"><UserPlus className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("accessControl.staffRoles.assignmentTitle")}</h2></div>
+          <Field label={t("accessControl.staffRoles.role")}><select value={assignmentRoleId} onChange={(event) => setAssignmentRoleId(event.target.value)} className={`${adminFilterControlClassName} w-full`}><option value="">{t("accessControl.staffRoles.selectRole")}</option>{roles.filter((role) => role.isActive).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></Field>
+          <Field label={t("accessControl.staffRoles.staffMember")}>
+            <form onSubmit={(event) => void searchStaff(event)} className="flex gap-2">
+              <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input name="staff-search" maxLength={100} value={staffSearch} onChange={(event) => { setStaffSearch(event.target.value); setStaffCandidates([]); setSelectedStaff(null); }} placeholder={t("accessControl.staffRoles.staffSearchPlaceholder")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
+              <Button type="submit" size="sm" variant="outline" disabled={!staffSearch.trim() || searchingStaff}>{t("accessControl.staffRoles.searchStaff")}</Button>
+            </form>
+          </Field>
+          {staffCandidates.length > 0 && <div className="mt-2 space-y-2 rounded-xl border border-border p-2">{staffCandidates.map((candidate) => <button key={candidate.id} type="button" onClick={() => { setSelectedStaff(candidate); setStaffCandidates([]); }} className="block w-full rounded-lg p-2 text-left text-sm hover:bg-muted/50"><span className="block font-medium">{candidate.name}</span><span className="block text-xs text-muted-foreground">{candidate.email} · {candidate.roles.join(", ")}</span></button>)}</div>}
+          {selectedStaff && <div className="mt-2 rounded-xl border border-primary/25 bg-primary/10 p-3 text-sm"><span className="block font-medium">{selectedStaff.name}</span><span className="text-xs text-muted-foreground">{selectedStaff.email} · {selectedStaff.roles.join(", ")}</span></div>}
+          {!searchingStaff && staffSearch.trim() && !selectedStaff && staffCandidates.length === 0 && <p className="mt-2 text-xs text-muted-foreground">{t("accessControl.staffRoles.searchHelp")}</p>}
+          <Field label={t("accessControl.forms.reason")}><textarea name="assignment-reason" value={assignmentReason} onChange={(event) => setAssignmentReason(event.target.value)} maxLength={500} className="min-h-20 w-full rounded-xl border border-border bg-background p-3 text-sm" /></Field>
+          <div className="mt-3 flex justify-between gap-3 text-xs text-muted-foreground"><span>{t("accessControl.staffRoles.assignmentCount", { count: assignments.filter((item) => !item.revokedAt).length })}</span><Button size="sm" disabled={!assignmentRoleId || !selectedStaff || assignmentReason.trim().length < 10 || saving} onClick={() => void assignRole()}>{t("accessControl.staffRoles.assign")}</Button></div>
+        </section>
       </div>
     </div>
     <AdminConfirmDialog open={confirmOpen} title={t("accessControl.staffRoles.confirmTitle")} description={t("accessControl.staffRoles.confirmDescription")} confirmLabel="accessControl.staffRoles.confirmSave" busy={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void saveRole()} />

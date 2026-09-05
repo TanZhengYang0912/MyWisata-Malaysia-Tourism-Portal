@@ -9,8 +9,8 @@ type Context = { params: Promise<{ roleId: string }> };
 
 const roleIdSchema = z.string().uuid();
 const updateStaffRoleSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).nullable().optional().default(null),
+  name: z.string().trim().min(1).max(20),
+  description: z.string().trim().max(100).nullable().optional().default(null),
   permissionKeys: z.array(z.enum(STAFF_PERMISSION_KEYS)).max(STAFF_PERMISSION_KEYS.length)
     .refine((keys) => new Set(keys).size === keys.length, "Permission keys must be unique"),
   active: z.boolean(),
