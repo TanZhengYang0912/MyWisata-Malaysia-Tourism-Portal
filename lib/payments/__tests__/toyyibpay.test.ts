@@ -80,6 +80,24 @@ describe('ToyyibPay checkout adapter', () => {
     );
   });
 
+  it('accepts HTTP localhost callback URLs only outside production', async () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json([{ BillCode: 'A1b2C3d4' }])));
+    const localRequest = {
+      ...request,
+      returnUrl: 'http://localhost:3000/customer/checkout?toyyibpay_return=1',
+      callbackUrl: 'http://localhost:3000/api/payments/toyyibpay/callback',
+    };
+
+    await expect(new ToyyibPayProvider().createPayment(localRequest)).resolves.toMatchObject({
+      providerPaymentId: 'A1b2C3d4',
+    });
+
+    vi.stubEnv('NODE_ENV', 'production');
+    await expect(new ToyyibPayProvider().createPayment(localRequest))
+      .rejects.toThrow('toyyibpay_invalid_request');
+  });
+
   it('fails closed for missing or unsafe production configuration', async () => {
     vi.stubEnv('TOYYIBPAY_USER_SECRET_KEY', '');
     const missing = new ToyyibPayProvider();

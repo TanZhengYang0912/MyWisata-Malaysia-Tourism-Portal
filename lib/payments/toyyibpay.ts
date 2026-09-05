@@ -44,6 +44,18 @@ function readConfiguration(): ToyyibPayConfig | null {
   return { userSecretKey, categoryCode, baseUrl: SANDBOX_BASE_URL };
 }
 
+function isAllowedServerUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'https:') return true;
+    return process.env.NODE_ENV !== 'production'
+      && url.protocol === 'http:'
+      && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function isValidPaymentRequest(input: CheckoutPaymentRequest): boolean {
   if (!Number.isSafeInteger(input.amountSen) || input.amountSen <= 0 || input.currency !== 'MYR') {
     return false;
@@ -54,12 +66,7 @@ function isValidPaymentRequest(input: CheckoutPaymentRequest): boolean {
     return false;
   }
 
-  try {
-    return new URL(input.returnUrl).protocol === 'https:'
-      && new URL(input.callbackUrl).protocol === 'https:';
-  } catch {
-    return false;
-  }
+  return isAllowedServerUrl(input.returnUrl) && isAllowedServerUrl(input.callbackUrl);
 }
 
 async function postForm(
