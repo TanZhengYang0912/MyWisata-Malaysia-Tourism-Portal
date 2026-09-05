@@ -102,6 +102,7 @@ export const ADMIN_I18N_FILES = [
 
 /** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
+  "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
