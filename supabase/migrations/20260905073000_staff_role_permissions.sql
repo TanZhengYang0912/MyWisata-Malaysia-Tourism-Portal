@@ -108,7 +108,7 @@ DELETE FROM public.staff_role_permissions AS role_permission
 -- Admin or Wallet Approver role. Backfilled rows are intentionally attributed
 -- to no actor because they are a schema migration, not a browser action.
 INSERT INTO public.staff_role_assignments (role_id, user_id, assigned_by)
-SELECT DISTINCT staff_role.id, legacy_assignment.user_id, NULL
+SELECT DISTINCT staff_role.id, legacy_assignment.user_id, NULL::UUID
   FROM public.user_roles AS legacy_assignment
   JOIN public.roles AS legacy_role
     ON legacy_role.id = legacy_assignment.role_id

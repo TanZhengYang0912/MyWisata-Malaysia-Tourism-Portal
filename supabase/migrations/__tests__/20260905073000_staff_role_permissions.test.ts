@@ -187,4 +187,12 @@ describe("dedicated staff role permissions migration", () => {
     expect(sql).toMatch(/legacy_assignment\.vendor_id\s+IS NULL[\s\S]+?legacy_assignment\.outlet_id\s+IS NULL/i);
     expect(sql).toMatch(/staff_role_assignments[\s\S]+?legacy_assignment\.vendor_id\s+IS NULL[\s\S]+?legacy_assignment\.outlet_id\s+IS NULL/i);
   });
+
+  it("casts the migration-authored assignment actor to the UUID column type", () => {
+    const sql = migrationSql();
+
+    expect(sql).toMatch(
+      /INSERT INTO public\.staff_role_assignments\s*\(role_id,\s*user_id,\s*assigned_by\)[\s\S]+?SELECT DISTINCT\s+staff_role\.id,\s*legacy_assignment\.user_id,\s*NULL::UUID/i,
+    );
+  });
 });
