@@ -95,6 +95,48 @@ describe('POST /api/admin/kyc/review', () => {
     expect(response.status).toBe(409);
   });
 
+  it.each([
+    ['kyc_permission_required', 403, 'FORBIDDEN'],
+    ['self_dealing', 403, 'SELF_DEALING'],
+    ['invalid_reason_code', 422, 'VALIDATION_FAILED'],
+    ['reason_detail_too_short', 422, 'VALIDATION_FAILED'],
+  ])('maps the known database error %s without exposing raw details', async (databaseError, status, code) => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: `${databaseError}: internal relation detail` } });
+
+    const response = await POST(new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({
+        submissionId: '33333333-3333-4333-8333-333333333333',
+        userId,
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(status);
+    const body = await response.json();
+    expect(body.error.code).toBe(code);
+    expect(JSON.stringify(body)).not.toContain('internal relation detail');
+  });
+
+  it('returns a generic safe 500 for unknown database errors', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'sensitive_table secret diagnostic' } });
+
+    const response = await POST(new Request('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({
+        submissionId: '33333333-3333-4333-8333-333333333333',
+        userId,
+        action: 'approve',
+      }),
+    }));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      data: null,
+      error: { code: 'RPC_ERROR', message: 'KYC review could not be completed' },
+    });
+  });
+
   it('returns the independent KYC outcome without a synthetic tier', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
 

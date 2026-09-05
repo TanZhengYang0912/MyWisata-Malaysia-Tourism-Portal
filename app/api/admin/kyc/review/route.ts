@@ -20,13 +20,21 @@ export async function POST(request: Request) {
   });
 
   if (rpcErr) {
-    if (rpcErr.message.includes('admin_required'))
-      return apiFail('FORBIDDEN', 'Admin role required', 403);
-    if (rpcErr.message.includes('kyc_not_active_or_not_found'))
+    const message = rpcErr.message ?? '';
+    if (message.includes('admin_required') || message.includes('kyc_permission_required'))
+      return apiFail('FORBIDDEN', 'KYC review permission required', 403);
+    if (message.includes('self_dealing'))
+      return apiFail('SELF_DEALING', 'You cannot review your own KYC submission', 403);
+    if (message.includes('kyc_not_active_or_not_found'))
       return apiFail('CONFLICT', 'No active KYC submission found for this user', 409);
-    if (rpcErr.message.includes('kyc_not_assigned'))
+    if (message.includes('kyc_not_assigned'))
       return apiFail('CONFLICT', 'This KYC submission is assigned to another reviewer', 409);
-    return apiFail('RPC_ERROR', rpcErr.message, 500);
+    if (message.includes('invalid_action') || message.includes('reason_not_allowed')
+        || message.includes('invalid_reason_code') || message.includes('reason_code_not_allowed')
+        || message.includes('reason_detail_not_allowed') || message.includes('reason_detail_too_short')) {
+      return apiFail('VALIDATION_FAILED', 'KYC review request failed validation', 422);
+    }
+    return apiFail('RPC_ERROR', 'KYC review could not be completed', 500);
   }
 
   const kycStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'pending';

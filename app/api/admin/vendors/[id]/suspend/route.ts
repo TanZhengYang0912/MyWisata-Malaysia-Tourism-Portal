@@ -1,6 +1,6 @@
 // P2 — Member 2 owns B1: Admin suspend/unsuspend vendor
 
-import { auditAndNotify } from '@/lib/audit';
+import { sendNotification } from '@/lib/audit';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorSuspendSchema } from '@/lib/validation/vendor-schemas';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -52,25 +52,15 @@ export async function POST(request: Request, { params }: Props) {
   }
   if (!statusData) return apiFail('DB_ERROR', 'Vendor status change returned no result', 500);
 
-  await auditAndNotify(
-    {
-      action: `vendor.${action}ed`,
-      entityType: 'vendor',
-      entityId: vendorId,
-      beforeData: { status: vendor.status },
-      afterData: { status: newStatus },
-      note: reason,
-    },
-    [{
-      userId: vendor.owner_id,
-      type: `vendor_${action}ed`,
-      title: action === 'suspend'
-        ? `Your vendor "${vendor.name}" has been suspended`
-        : `Your vendor "${vendor.name}" has been reactivated`,
-      body: reason ?? undefined,
-      link: '/vendor/dashboard',
-    }],
-  );
+  await sendNotification({
+    userId: vendor.owner_id,
+    type: `vendor_${action}ed`,
+    title: action === 'suspend'
+      ? `Your vendor "${vendor.name}" has been suspended`
+      : `Your vendor "${vendor.name}" has been reactivated`,
+    body: reason ?? undefined,
+    link: '/vendor/dashboard',
+  });
 
   void emitVendorNotification({
     eventKey: `vendor:${action}:${vendorId}`,

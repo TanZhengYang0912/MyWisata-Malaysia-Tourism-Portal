@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   onboardingUpsert: vi.fn(),
   roleUpsert: vi.fn(),
   auditAndNotify: vi.fn(),
+  sendNotification: vi.fn(),
   emitVendorNotification: vi.fn(),
   createServiceClient: vi.fn(),
   requireStaffPermission: vi.fn(),
@@ -25,7 +26,10 @@ vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission: mocks
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: mocks.createServiceClient,
 }));
-vi.mock('@/lib/audit', () => ({ auditAndNotify: mocks.auditAndNotify }));
+vi.mock('@/lib/audit', () => ({
+  auditAndNotify: mocks.auditAndNotify,
+  sendNotification: mocks.sendNotification,
+}));
 vi.mock('@/lib/vendor-notifications/emit', () => ({
   emitVendorNotification: mocks.emitVendorNotification,
 }));
@@ -56,6 +60,7 @@ describe('POST /api/admin/vendors/:id/approve', () => {
     mocks.onboardingUpsert.mockResolvedValue({ error: null });
     mocks.roleUpsert.mockResolvedValue({ error: null });
     mocks.auditAndNotify.mockResolvedValue(undefined);
+    mocks.sendNotification.mockResolvedValue('notification-1');
     mocks.emitVendorNotification.mockResolvedValue(undefined);
     mocks.createServiceClient.mockReturnValue({ from: vi.fn() });
     mocks.rpc.mockResolvedValue({
@@ -155,10 +160,11 @@ describe('POST /api/admin/vendors/:id/approve', () => {
 
     expect(response.status).toBe(403);
     expect(mocks.auditAndNotify).not.toHaveBeenCalled();
+    expect(mocks.sendNotification).not.toHaveBeenCalled();
     expect(mocks.emitVendorNotification).not.toHaveBeenCalled();
   });
 
-  it('returns and audits claimed recommendation conversion identifiers', async () => {
+  it('returns conversion identifiers and sends the owner notification without a duplicate route audit', async () => {
     const response = await POST(request(), context);
 
     await expect(response.json()).resolves.toMatchObject({
@@ -170,16 +176,12 @@ describe('POST /api/admin/vendors/:id/approve', () => {
         conversionId: CONVERSION_ID,
       },
     });
-    expect(mocks.auditAndNotify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        afterData: expect.objectContaining({
-          status: 'approved',
-          recommendationId: RECOMMENDATION_ID,
-          conversionId: CONVERSION_ID,
-        }),
-      }),
-      expect.any(Array),
-    );
+    expect(mocks.auditAndNotify).not.toHaveBeenCalled();
+    expect(mocks.sendNotification).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'owner-1',
+      type: 'vendor_approved',
+      link: '/vendor/dashboard',
+    }));
   });
 
   it('allows an admin role to reach the claimed-vendor approval RPC', async () => {

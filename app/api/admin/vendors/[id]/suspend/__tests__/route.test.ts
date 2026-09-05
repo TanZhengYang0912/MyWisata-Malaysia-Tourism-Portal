@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   requireStaffPermission: vi.fn(),
   auditAndNotify: vi.fn(),
+  sendNotification: vi.fn(),
   emitVendorNotification: vi.fn(),
   createServiceClient: vi.fn(),
 }));
@@ -20,7 +21,10 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 vi.mock("@/lib/staff-permissions/server", () => ({ requireStaffPermission: mocks.requireStaffPermission }));
-vi.mock("@/lib/audit", () => ({ auditAndNotify: mocks.auditAndNotify }));
+vi.mock("@/lib/audit", () => ({
+  auditAndNotify: mocks.auditAndNotify,
+  sendNotification: mocks.sendNotification,
+}));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock("@/lib/vendor-notifications/emit", () => ({ emitVendorNotification: mocks.emitVendorNotification }));
 
@@ -59,6 +63,7 @@ describe("POST /api/admin/vendors/:id/suspend", () => {
       error: null,
     });
     mocks.auditAndNotify.mockResolvedValue(undefined);
+    mocks.sendNotification.mockResolvedValue("notification-1");
     mocks.emitVendorNotification.mockResolvedValue(undefined);
     mocks.createServiceClient.mockReturnValue({});
   });
@@ -88,6 +93,12 @@ describe("POST /api/admin/vendors/:id/suspend", () => {
       p_action: "suspend",
       p_reason: "Repeated policy violations",
     });
+    expect(mocks.auditAndNotify).not.toHaveBeenCalled();
+    expect(mocks.sendNotification).toHaveBeenCalledWith(expect.objectContaining({
+      userId: "owner-1",
+      type: "vendor_suspended",
+      link: "/vendor/dashboard",
+    }));
     expect(await response.json()).toMatchObject({ data: { id: VENDOR_ID, status: "suspended" } });
   });
 });

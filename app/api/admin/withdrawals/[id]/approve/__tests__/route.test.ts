@@ -153,6 +153,16 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
     expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
   });
 
+  it('fails closed if the database permission is revoked after the route guard', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'withdrawal_permission_required' } });
+
+    const res = await POST(request(), params());
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: { code: 'FORBIDDEN' } });
+    expect(mocks.executeApprovedWithdrawalPayout).not.toHaveBeenCalled();
+  });
+
   it('returns pending_second_approval for first approval on a dual-approval request', async () => {
     mockWithdrawal({ requires_dual_approval: true });
     mocks.rpc.mockImplementation((name: string) => {

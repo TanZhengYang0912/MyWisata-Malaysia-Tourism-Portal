@@ -1,8 +1,8 @@
 // P2 — Member 2 owns B1: Admin approve/reject vendor
-// Uses auditAndNotify() (Gate 5) for every state change
+// The secured database RPC records the state-change audit transactionally.
 
 import { createServiceClient } from '@/lib/supabase/service';
-import { auditAndNotify } from '@/lib/audit';
+import { sendNotification } from '@/lib/audit';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorApproveSchema } from '@/lib/validation/vendor-schemas';
@@ -61,36 +61,18 @@ export async function POST(request: Request, { params }: Props) {
   if (!review) return apiFail('RPC_ERROR', 'Vendor review returned no result', 500);
 
   if (action === 'request_information') {
-    await auditAndNotify({
-      action: 'vendor.information_requested', entityType: 'vendor', entityId: vendorId,
-      beforeData: { onboarding_status: 'submitted' }, afterData: { onboarding_status: 'needs_information' }, note: reason,
-    }, [{ userId: vendor.owner_id, type: 'vendor_information_requested', title: `More information is needed for "${vendor.name}"`, body: reason ?? 'Please update your vendor application.', link: '/vendor/dashboard' }]);
+    await sendNotification({ userId: vendor.owner_id, type: 'vendor_information_requested', title: `More information is needed for "${vendor.name}"`, body: reason ?? 'Please update your vendor application.', link: '/vendor/dashboard' });
     return apiOk({ id: vendorId, status: vendor.status, onboardingStatus: 'needs_information' });
   }
 
   if (action === 'approve') {
-    // Audit + notify vendor owner
-    await auditAndNotify(
-      {
-        action: 'vendor.approved',
-        entityType: 'vendor',
-        entityId: vendorId,
-        beforeData: { status: vendor.status },
-        afterData: {
-          status: 'approved',
-          converted: review.converted ?? false,
-          recommendationId: review.recommendation_id ?? null,
-          conversionId: review.conversion_id ?? null,
-        },
-      },
-      [{
-        userId: vendor.owner_id,
-        type: 'vendor_approved',
-        title: `Your vendor "${vendor.name}" has been approved!`,
-        body: 'You can now manage your outlets and products.',
-        link: '/vendor/dashboard',
-      }],
-    );
+    await sendNotification({
+      userId: vendor.owner_id,
+      type: 'vendor_approved',
+      title: `Your vendor "${vendor.name}" has been approved!`,
+      body: 'You can now manage your outlets and products.',
+      link: '/vendor/dashboard',
+    });
     void emitVendorNotification({
       eventKey: `vendor:approved:${vendorId}`,
       vendorId,
@@ -114,23 +96,13 @@ export async function POST(request: Request, { params }: Props) {
       conversionId: review.conversion_id ?? null,
     });
   } else {
-    await auditAndNotify(
-      {
-        action: 'vendor.rejected',
-        entityType: 'vendor',
-        entityId: vendorId,
-        beforeData: { status: 'pending' },
-        afterData: { status: 'rejected', rejection_reason: reason },
-        note: reason,
-      },
-      [{
-        userId: vendor.owner_id,
-        type: 'vendor_rejected',
-        title: `Your vendor "${vendor.name}" was rejected`,
-        body: reason ?? 'No reason provided.',
-        link: '/vendor/dashboard',
-      }],
-    );
+    await sendNotification({
+      userId: vendor.owner_id,
+      type: 'vendor_rejected',
+      title: `Your vendor "${vendor.name}" was rejected`,
+      body: reason ?? 'No reason provided.',
+      link: '/vendor/dashboard',
+    });
     void emitVendorNotification({
       eventKey: `vendor:rejected:${vendorId}`,
       vendorId,
