@@ -1,10 +1,10 @@
-import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
+import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const { db, response } = await requireAccessControlSuperAdmin();
+  const { db, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
 
   const { data, error } = await db

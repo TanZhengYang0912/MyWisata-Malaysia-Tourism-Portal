@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
-import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
+import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { STAFF_PERMISSION_KEYS } from "@/lib/staff-permissions/types";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 
@@ -52,7 +52,7 @@ function staffRoleFailure(message: string) {
 }
 
 export async function GET() {
-  const { db, response } = await requireAccessControlSuperAdmin();
+  const { db, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
 
   const [rolesResult, permissionsResult, assignmentsResult] = await Promise.all([
@@ -101,7 +101,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { db, user, response } = await requireAccessControlSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 

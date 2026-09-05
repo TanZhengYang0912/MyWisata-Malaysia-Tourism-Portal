@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
-import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
 import { STAFF_PERMISSION_KEYS } from "@/lib/staff-permissions/types";
+import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { apiFail, parseBody } from "@/lib/validation/schemas";
 
 type Context = { params: Promise<{ roleId: string }> };
@@ -39,7 +39,7 @@ function staffRoleFailure(message: string) {
 }
 
 export async function PATCH(request: Request, context: Context) {
-  const { db, user, response } = await requireAccessControlSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 

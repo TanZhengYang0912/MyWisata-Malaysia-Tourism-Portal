@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
-import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
+import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { apiFail, parseBody } from "@/lib/validation/schemas";
 
 type Context = { params: Promise<{ roleId: string }> };
@@ -48,7 +48,7 @@ async function validatedRoleId(context: Context) {
 }
 
 export async function POST(request: Request, context: Context) {
-  const { db, user, response } = await requireAccessControlSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
@@ -78,7 +78,7 @@ export async function POST(request: Request, context: Context) {
 }
 
 export async function DELETE(request: Request, context: Context) {
-  const { db, user, response } = await requireAccessControlSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
   if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 

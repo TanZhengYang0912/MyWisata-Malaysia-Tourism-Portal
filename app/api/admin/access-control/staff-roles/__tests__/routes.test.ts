@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireSuperAdmin: vi.fn(),
+  requireStaffGovernance: vi.fn(),
   listState: vi.fn(),
   rpc: vi.fn(),
   from: vi.fn(),
@@ -9,6 +10,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/entitlements/admin-guard", () => ({
   requireAccessControlSuperAdmin: mocks.requireSuperAdmin,
+}));
+vi.mock("@/lib/staff-permissions/server", () => ({
+  requireStaffRoleManagementSuperAdmin: mocks.requireStaffGovernance,
 }));
 vi.mock("@/lib/entitlements/admin", () => ({
   listAccessControlState: mocks.listState,
@@ -44,11 +48,13 @@ function createDb() {
 }
 
 function allowSuperAdmin() {
-  mocks.requireSuperAdmin.mockResolvedValue({
+  const allowed = {
     db: createDb(),
     user: { id: ACTOR_ID },
     response: null,
-  });
+  };
+  mocks.requireSuperAdmin.mockResolvedValue(allowed);
+  mocks.requireStaffGovernance.mockResolvedValue(allowed);
 }
 
 function request(method: string, body?: Record<string, unknown>) {
@@ -110,7 +116,7 @@ describe("staff role management API", () => {
   ] as const;
 
   it.each(guardedCalls)("requires Super Admin for %s", async (_name, call) => {
-    mocks.requireSuperAdmin.mockResolvedValue({
+    mocks.requireStaffGovernance.mockResolvedValue({
       db: createDb(),
       user: { id: USER_ID },
       response: Response.json({ data: null, error: { code: "FORBIDDEN" } }, { status: 403 }),
@@ -119,6 +125,20 @@ describe("staff role management API", () => {
     const response = await call();
 
     expect(response.status).toBe(403);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(guardedCalls)("blocks suspended or scoped governance before handling %s", async (_name, call) => {
+    mocks.requireStaffGovernance.mockResolvedValue({
+      db: createDb(),
+      user: { id: ACTOR_ID },
+      response: Response.json({ data: null, error: { code: "FORBIDDEN" } }, { status: 403 }),
+    });
+
+    const response = await call();
+
+    expect(response.status).toBe(403);
+    expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
