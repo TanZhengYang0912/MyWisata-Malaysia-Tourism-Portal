@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
@@ -19,8 +19,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: withdrawalId } = await params;
-  const db = await createClient();
-  const { data: { user: authUser } } = await db.auth.getUser();
+  const { db, user: authUser, response } = await requireStaffPermission('admin.withdrawal.approve');
+  if (response) return response;
   if (!authUser) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const parsed = await parseBody(request, approveSchema);

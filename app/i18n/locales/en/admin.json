@@ -37,6 +37,7 @@
       "capabilities": "Capabilities",
       "policies": "Policies",
       "assignments": "Assignments",
+      "staff-roles": "Staff Roles",
       "audit-log": "Audit Log"
     },
     "actions": {
@@ -74,6 +75,7 @@
       "noPolicies": "No policies match these filters.",
       "noVersions": "This policy has no versions.",
       "noAssignments": "No assignments match these filters.",
+      "noStaffRoles": "No staff roles are configured.",
       "noAuditEvents": "No audit events match these filters."
     },
     "errors": {
@@ -86,12 +88,16 @@
       "policyAction": "Unable to complete the policy action.",
       "loadAssignments": "Unable to load assignments.",
       "assignmentAction": "Unable to complete the assignment action.",
+      "loadStaffRoles": "Unable to load staff roles.",
+      "saveStaffRole": "Unable to save the staff role.",
+      "assignStaffRole": "Unable to assign the staff role.",
       "loadAudit": "Unable to load the Audit Log."
     },
     "feedback": {
       "capabilityUpdated": "Capability governance metadata updated.",
       "policyUpdated": "Policy action completed.",
-      "assignmentUpdated": "Assignment action completed."
+      "assignmentUpdated": "Assignment action completed.",
+      "staffRoleUpdated": "Staff role action completed."
     },
     "filters": {
       "searchCapabilities": "Search capability key",
@@ -163,6 +169,7 @@
       "pending_approval": "Pending approval",
       "scheduled": "Scheduled",
       "active": "Active",
+      "inactive": "Inactive",
       "retired": "Retired",
       "expired": "Expired",
       "revoked": "Revoked"
@@ -178,6 +185,31 @@
     "forms": {
       "reason": "Governance reason",
       "reasonPlaceholder": "Explain the business or security reason (at least 10 characters)."
+    },
+    "staffRoles": {
+      "createTitle": "Create staff role",
+      "editTitle": "Edit staff role",
+      "editorHelp": "Choose only the permissions this staff role needs. Every change is confirmed and audited.",
+      "name": "Role name",
+      "description": "Description",
+      "active": "Role is active",
+      "permissions": "Permissions by module",
+      "reviewSave": "Review role change",
+      "rolesTitle": "Configured roles",
+      "permissionCount": "{{count}} permissions",
+      "permissionCount_one": "{{count}} permission",
+      "permissionCount_other": "{{count}} permissions",
+      "assignmentTitle": "Assign a staff role",
+      "role": "Role",
+      "selectRole": "Select an active role",
+      "userId": "Staff user UUID",
+      "assignmentCount": "{{count}} active assignments",
+      "assignmentCount_one": "{{count}} active assignment",
+      "assignmentCount_other": "{{count}} active assignments",
+      "assign": "Assign role",
+      "confirmTitle": "Confirm staff role change",
+      "confirmDescription": "The permission change will be recorded in the Audit Log.",
+      "confirmSave": "Save staff role"
     },
     "confirm": {
       "capabilityTitle": "Confirm capability change",

@@ -1,17 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { kycReviewSchema, parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { db: supabase, user, response } = await requireStaffPermission('admin.kyc.review');
+  if (response) return response;
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_kyc', {
-    uid: user.id,
-  });
-  if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
-  }
 
   const parsed = await parseBody(request, kycReviewSchema);
   if (!parsed.ok) return parsed.response;

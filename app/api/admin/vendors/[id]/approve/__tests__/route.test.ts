@@ -11,15 +11,17 @@ const mocks = vi.hoisted(() => ({
   auditAndNotify: vi.fn(),
   emitVendorNotification: vi.fn(),
   createServiceClient: vi.fn(),
+  requireStaffPermission: vi.fn(),
 }));
 
+function db() {
+  return { auth: { getUser: mocks.getUser }, from: mocks.from, rpc: mocks.rpc };
+}
+
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
-    auth: { getUser: mocks.getUser },
-    from: mocks.from,
-    rpc: mocks.rpc,
-  })),
+  createClient: vi.fn(async () => db()),
 }));
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission: mocks.requireStaffPermission }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: mocks.createServiceClient,
 }));
@@ -48,6 +50,7 @@ describe('POST /api/admin/vendors/:id/approve', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null });
+    mocks.requireStaffPermission.mockResolvedValue({ db: db(), user: { id: 'admin-1' }, response: null });
     mocks.vendorUpdateEq.mockResolvedValue({ error: null });
     mocks.vendorUpdate.mockReturnValue({ eq: mocks.vendorUpdateEq });
     mocks.onboardingUpsert.mockResolvedValue({ error: null });
@@ -112,12 +115,33 @@ describe('POST /api/admin/vendors/:id/approve', () => {
     });
   });
 
+  it('requires admin.vendor.manage before parsing or creating service clients', async () => {
+    mocks.requireStaffPermission.mockResolvedValue({
+      db: db(),
+      user: { id: 'admin-1' },
+      response: Response.json({ data: null, error: { code: 'FORBIDDEN' } }, { status: 403 }),
+    });
+
+    const response = await POST(new Request(`http://localhost/api/admin/vendors/${VENDOR_ID}/approve`, {
+      method: 'POST',
+      body: '{invalid-json',
+    }), context);
+
+    expect(response.status).toBe(403);
+    expect(mocks.requireStaffPermission).toHaveBeenCalledWith('admin.vendor.manage');
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
+  });
+
   it('uses one atomic RPC instead of separate approve writes', async () => {
     const response = await POST(request(), context);
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_approve_claimed_vendor', {
+    expect(mocks.rpc).toHaveBeenCalledWith('staff_review_vendor', {
       p_vendor_id: VENDOR_ID,
+      p_action: 'approve',
+      p_reason: null,
     });
     expect(mocks.vendorUpdate).not.toHaveBeenCalled();
     expect(mocks.onboardingUpsert).not.toHaveBeenCalled();
@@ -185,8 +209,10 @@ describe('POST /api/admin/vendors/:id/approve', () => {
     const response = await POST(request(), context);
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('admin_approve_claimed_vendor', {
+    expect(mocks.rpc).toHaveBeenCalledWith('staff_review_vendor', {
       p_vendor_id: VENDOR_ID,
+      p_action: 'approve',
+      p_reason: null,
     });
   });
 });

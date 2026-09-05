@@ -37,6 +37,7 @@
       "capabilities": "能力",
       "policies": "策略",
       "assignments": "分配",
+      "staff-roles": "员工角色",
       "audit-log": "审计日志"
     },
     "actions": {
@@ -74,6 +75,7 @@
       "noPolicies": "没有符合筛选条件的策略。",
       "noVersions": "此策略尚无版本。",
       "noAssignments": "没有符合筛选条件的分配。",
+      "noStaffRoles": "尚未配置员工角色。",
       "noAuditEvents": "没有符合筛选条件的审计事件。"
     },
     "errors": {
@@ -86,12 +88,16 @@
       "policyAction": "无法完成策略操作。",
       "loadAssignments": "无法加载分配。",
       "assignmentAction": "无法完成分配操作。",
+      "loadStaffRoles": "无法加载员工角色。",
+      "saveStaffRole": "无法保存员工角色。",
+      "assignStaffRole": "无法分配员工角色。",
       "loadAudit": "无法加载审计日志。"
     },
     "feedback": {
       "capabilityUpdated": "能力治理元数据已更新。",
       "policyUpdated": "策略操作已完成。",
-      "assignmentUpdated": "分配操作已完成。"
+      "assignmentUpdated": "分配操作已完成。",
+      "staffRoleUpdated": "员工角色操作已完成。"
     },
     "filters": {
       "searchCapabilities": "搜索能力键",
@@ -163,6 +169,7 @@
       "pending_approval": "待审批",
       "scheduled": "已排程",
       "active": "生效中",
+      "inactive": "未启用",
       "retired": "已退役",
       "expired": "已过期",
       "revoked": "已撤销"
@@ -178,6 +185,31 @@
     "forms": {
       "reason": "治理原因",
       "reasonPlaceholder": "说明业务或安全原因（至少 10 个字符）。"
+    },
+    "staffRoles": {
+      "createTitle": "创建员工角色",
+      "editTitle": "编辑员工角色",
+      "editorHelp": "只选择该员工角色所需的权限。每次变更都会经过确认并记录审计。",
+      "name": "角色名称",
+      "description": "说明",
+      "active": "角色已启用",
+      "permissions": "按模块划分的权限",
+      "reviewSave": "复核角色变更",
+      "rolesTitle": "已配置角色",
+      "permissionCount": "{{count}} 项权限",
+      "permissionCount_one": "{{count}} 项权限",
+      "permissionCount_other": "{{count}} 项权限",
+      "assignmentTitle": "分配员工角色",
+      "role": "角色",
+      "selectRole": "选择已启用角色",
+      "userId": "员工用户 UUID",
+      "assignmentCount": "{{count}} 项生效分配",
+      "assignmentCount_one": "{{count}} 项生效分配",
+      "assignmentCount_other": "{{count}} 项生效分配",
+      "assign": "分配角色",
+      "confirmTitle": "确认员工角色变更",
+      "confirmDescription": "权限变更将记录到审计日志。",
+      "confirmSave": "保存员工角色"
     },
     "confirm": {
       "capabilityTitle": "确认能力变更",

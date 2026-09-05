@@ -37,6 +37,7 @@
       "capabilities": "Keupayaan",
       "policies": "Polisi",
       "assignments": "Tugasan",
+      "staff-roles": "Peranan Kakitangan",
       "audit-log": "Log Audit"
     },
     "actions": {
@@ -74,6 +75,7 @@
       "noPolicies": "Tiada polisi sepadan dengan penapis ini.",
       "noVersions": "Polisi ini belum mempunyai versi.",
       "noAssignments": "Tiada tugasan sepadan dengan penapis ini.",
+      "noStaffRoles": "Tiada peranan kakitangan dikonfigurasikan.",
       "noAuditEvents": "Tiada peristiwa audit sepadan dengan penapis ini."
     },
     "errors": {
@@ -86,12 +88,16 @@
       "policyAction": "Tindakan polisi tidak dapat diselesaikan.",
       "loadAssignments": "Tugasan tidak dapat dimuatkan.",
       "assignmentAction": "Tindakan tugasan tidak dapat diselesaikan.",
+      "loadStaffRoles": "Peranan kakitangan tidak dapat dimuatkan.",
+      "saveStaffRole": "Peranan kakitangan tidak dapat disimpan.",
+      "assignStaffRole": "Peranan kakitangan tidak dapat diberikan.",
       "loadAudit": "Log Audit tidak dapat dimuatkan."
     },
     "feedback": {
       "capabilityUpdated": "Metadata tadbir urus keupayaan telah dikemas kini.",
       "policyUpdated": "Tindakan polisi telah selesai.",
-      "assignmentUpdated": "Tindakan tugasan telah selesai."
+      "assignmentUpdated": "Tindakan tugasan telah selesai.",
+      "staffRoleUpdated": "Tindakan peranan kakitangan telah selesai."
     },
     "filters": {
       "searchCapabilities": "Cari kunci keupayaan",
@@ -163,6 +169,7 @@
       "pending_approval": "Menunggu kelulusan",
       "scheduled": "Dijadualkan",
       "active": "Aktif",
+      "inactive": "Tidak aktif",
       "retired": "Ditamatkan",
       "expired": "Luput",
       "revoked": "Ditarik balik"
@@ -178,6 +185,31 @@
     "forms": {
       "reason": "Sebab tadbir urus",
       "reasonPlaceholder": "Terangkan sebab perniagaan atau keselamatan (sekurang-kurangnya 10 aksara)."
+    },
+    "staffRoles": {
+      "createTitle": "Cipta peranan kakitangan",
+      "editTitle": "Edit peranan kakitangan",
+      "editorHelp": "Pilih hanya kebenaran yang diperlukan. Setiap perubahan disahkan dan diaudit.",
+      "name": "Nama peranan",
+      "description": "Penerangan",
+      "active": "Peranan aktif",
+      "permissions": "Kebenaran mengikut modul",
+      "reviewSave": "Semak perubahan peranan",
+      "rolesTitle": "Peranan dikonfigurasikan",
+      "permissionCount": "{{count}} kebenaran",
+      "permissionCount_one": "{{count}} kebenaran",
+      "permissionCount_other": "{{count}} kebenaran",
+      "assignmentTitle": "Berikan peranan kakitangan",
+      "role": "Peranan",
+      "selectRole": "Pilih peranan aktif",
+      "userId": "UUID pengguna kakitangan",
+      "assignmentCount": "{{count}} tugasan aktif",
+      "assignmentCount_one": "{{count}} tugasan aktif",
+      "assignmentCount_other": "{{count}} tugasan aktif",
+      "assign": "Berikan peranan",
+      "confirmTitle": "Sahkan perubahan peranan kakitangan",
+      "confirmDescription": "Perubahan kebenaran akan direkodkan dalam Log Audit.",
+      "confirmSave": "Simpan peranan kakitangan"
     },
     "confirm": {
       "capabilityTitle": "Sahkan perubahan keupayaan",

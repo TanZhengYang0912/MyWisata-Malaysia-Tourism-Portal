@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
 const rpc = vi.fn();
+const requireStaffPermission = vi.fn();
+
+const db = { auth: { getUser }, rpc };
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser }, rpc }),
+  createClient: async () => db,
 }));
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission }));
 
 const { POST } = await import('../route');
 
@@ -15,10 +19,9 @@ describe('POST /api/admin/kyc/review', () => {
   beforeEach(() => {
     getUser.mockReset();
     rpc.mockReset();
-    rpc.mockImplementation(async (name: string) => {
-      if (name === 'can_review_kyc') return { data: true, error: null };
-      return { data: null, error: null };
-    });
+    requireStaffPermission.mockReset();
+    rpc.mockResolvedValue({ data: null, error: null });
+    requireStaffPermission.mockResolvedValue({ db, user: { id: '22222222-2222-4222-8222-222222222222' }, response: null });
   });
 
   it('sends structured catalog reasons to the hardened RPC', async () => {
@@ -56,33 +59,29 @@ describe('POST /api/admin/kyc/review', () => {
     }));
 
     expect(response.status).toBe(422);
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
-      uid: '22222222-2222-4222-8222-222222222222',
-    });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('rejects callers without the KYC review capability before deciding', async () => {
-    getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
-    rpc.mockResolvedValueOnce({ data: false, error: null });
+  it('requires admin.kyc.review before parsing the body or deciding', async () => {
+    requireStaffPermission.mockResolvedValue({
+      db,
+      user: { id: '22222222-2222-4222-8222-222222222222' },
+      response: Response.json({ data: null, error: { code: 'FORBIDDEN' } }, { status: 403 }),
+    });
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
-      body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, action: 'approve' }),
+      body: '{invalid-json',
     }));
 
     expect(response.status).toBe(403);
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
-      uid: '22222222-2222-4222-8222-222222222222',
-    });
+    expect(requireStaffPermission).toHaveBeenCalledWith('admin.kyc.review');
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('returns a conflict when a reviewer tries to decide another reviewer assignment', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
-    rpc
-      .mockResolvedValueOnce({ data: true, error: null })
-      .mockResolvedValueOnce({ data: null, error: { message: 'kyc_not_assigned' } });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'kyc_not_assigned' } });
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',

@@ -9,9 +9,10 @@ import { AuditLogTab } from "@/components/admin/access-control/audit-log-tab";
 import { CapabilitiesTab } from "@/components/admin/access-control/capabilities-tab";
 import { OverviewTab } from "@/components/admin/access-control/overview-tab";
 import { PoliciesTab } from "@/components/admin/access-control/policies-tab";
+import { StaffRolesTab } from "@/components/admin/access-control/staff-roles-tab";
 import type { AccessControlTabId, AuditFocus, EntityFocus } from "@/components/admin/access-control/types";
 
-const TAB_IDS: AccessControlTabId[] = ["overview", "capabilities", "policies", "assignments", "audit-log"];
+const TAB_IDS: AccessControlTabId[] = ["overview", "capabilities", "policies", "assignments", "staff-roles", "audit-log"];
 
 export function AccessControlTabs() {
   const { t } = useTranslation("admin");
@@ -41,6 +42,7 @@ export function AccessControlTabs() {
       {activeTab === "capabilities" && <CapabilitiesTab focusId={entityFocus?.tab === "capabilities" ? entityFocus.id : null} onViewAudit={viewAuditEvent} />}
       {activeTab === "policies" && <PoliciesTab focusId={entityFocus?.tab === "policies" ? entityFocus.id : null} onViewAudit={viewAuditEvent} />}
       {activeTab === "assignments" && <AssignmentsTab focusId={entityFocus?.tab === "assignments" ? entityFocus.id : null} onViewAudit={viewAuditEvent} />}
+      {activeTab === "staff-roles" && <StaffRolesTab onViewAudit={viewAuditEvent} />}
       {activeTab === "audit-log" && <AuditLogTab focus={auditFocus} onViewEntity={viewEntity} />}
     </section>
   );
