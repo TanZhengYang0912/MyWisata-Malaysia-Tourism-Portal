@@ -505,6 +505,8 @@ export interface SearchFilters {
   state?: string | null;
   vendorId?: string | null;
   priceMax?: number;
+  freeOnly?: boolean;
+  bookableOnly?: boolean;
   openOnly?: boolean;
   near?: { lat: number; lng: number };
   sort?: "recommended" | "price_asc" | "rating_desc" | "distance_asc";
@@ -530,12 +532,14 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
   }
   if (filters.hiddenGemOnly) results = results.filter((a) => a.isHiddenGem);
   if (filters.state && filters.state !== "All Malaysia") {
-    results = results.filter((a) => a.outlet.state === filters.state);
+    results = results.filter((a) => (a.place?.state ?? a.outlet.state) === filters.state);
   }
   results = filterActivitiesByVendor(results, filters.vendorId);
   if (filters.priceMax !== undefined) {
     results = results.filter((a) => a.price <= filters.priceMax!);
   }
+  if (filters.freeOnly) results = results.filter((a) => a.price === 0);
+  if (filters.bookableOnly) results = results.filter((a) => a.requiresBooking);
   if (filters.openOnly) {
     results = results.filter((a) => a.outlet.open);
   }
