@@ -48,7 +48,29 @@ export function ExploreClient({
     return () => globalThis.clearTimeout(timeout);
   }, [filters.q]);
 
-  const searchQuery = useMemo(() => ({ ...filters, q: debouncedQuery }), [debouncedQuery, filters]);
+  const searchQuery = useMemo(() => ({
+    q: debouncedQuery.trim(),
+    state: filters.state,
+    categories: filters.categories,
+    types: filters.types,
+    priceMax: filters.priceMax,
+    freeOnly: filters.freeOnly,
+    bookableOnly: filters.bookableOnly,
+    hiddenGemOnly: filters.hiddenGemOnly,
+    familyFriendlyOnly: filters.familyFriendlyOnly,
+    coupleFriendlyOnly: filters.coupleFriendlyOnly,
+  }), [
+    debouncedQuery,
+    filters.state,
+    filters.categories,
+    filters.types,
+    filters.priceMax,
+    filters.freeOnly,
+    filters.bookableOnly,
+    filters.hiddenGemOnly,
+    filters.familyFriendlyOnly,
+    filters.coupleFriendlyOnly,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,9 +215,13 @@ export function ExploreClient({
           <section className="mb-8 space-y-6">
             <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
             <DiscoveryCategoryFilter
-              category={filters.categories.length === 1 ? filters.categories[0] : null}
+              category={filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null}
               hasActiveFilters={hasActiveFilters}
-              onCategoryChange={(category) => updateFilters({ categories: category ? [category] : [], types: [] })}
+              onCategoryChange={(category) => updateFilters(
+                category === "hidden_gem"
+                  ? { categories: [], types: [], hiddenGemOnly: true }
+                  : { categories: category ? [category] : [], types: [], hiddenGemOnly: false },
+              )}
               onClear={clearFilters}
             />
             <DiscoveryAdvancedFilters value={filters} onChange={updateFilters} />

@@ -29,11 +29,13 @@ vi.mock("react-i18next", () => ({
       "ui.discovery.coupleFriendlyOnly": "Couple Friendly",
       "ui.discovery.showAll": `Show all (${options?.count ?? ""})`,
       "categories.activity": "Activity",
+      "categories.hiddenGem": "Hidden Gem",
+      "ui.discovery.searchLabel": "Search",
       "ui.map.types.nature": "Nature",
     } as Record<string, string>)[key] ?? key,
   }),
 }));
-vi.mock("@/backend/domains/catalogue", () => ({ CATEGORIES: [{ id: "activity", labelKey: "categories.activity" }], STATES_MY: ["All Malaysia", "Sabah"], searchActivities: mocks.searchActivities }));
+vi.mock("@/backend/domains/catalogue", () => ({ CATEGORIES: [{ id: "activity", labelKey: "categories.activity" }, { id: "hidden_gem", labelKey: "categories.hiddenGem" }], STATES_MY: ["All Malaysia", "Sabah"], searchActivities: mocks.searchActivities }));
 vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity }: { activity: { id: string; name: string } }) => <article data-testid={`activity-${activity.id}`}>{activity.name}</article> }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 
@@ -75,6 +77,16 @@ async function click(element: TestElement) {
   });
 }
 
+async function setInputValue(input: TestElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+  setter?.call(input, value);
+  await act(async () => {
+    input.dispatchEvent(new TestEvent("input", { bubbles: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 async function render(root: ReturnType<typeof createRoot>, element: React.ReactElement) {
   await act(async () => {
     root.render(element);
@@ -102,6 +114,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     act(() => root.unmount());
     document.body.removeChild(container);
   });
@@ -140,5 +153,35 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(labelled(container, "State").value).toBe("Sabah");
     expect(labelled(container, "Nature").getAttribute("aria-pressed")).toBe("true");
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
+  });
+
+  it("maps the Hidden Gem category card to the badge flag instead of an invalid category branch", async () => {
+    mocks.params = new URLSearchParams();
+    await render(root, <ExploreClient initialActivities={activities} />);
+    await click(button(container, "Experiences"));
+
+    const hiddenGemCategory = findElements(container, (element) => element.tagName === "BUTTON" && element.textContent === "Hidden Gem")[0];
+    await click(hiddenGemCategory);
+    expect(String(mocks.replace.mock.lastCall?.[0])).toContain("hiddenGem=1");
+    expect(String(mocks.replace.mock.lastCall?.[0])).not.toContain("category=hidden_gem");
+
+    await click(hiddenGemCategory);
+    expect(String(mocks.replace.mock.lastCall?.[0])).not.toContain("hiddenGem=1");
+  });
+
+  it("debounces only text search requests and sends its trimmed value", async () => {
+    mocks.params = new URLSearchParams();
+    await render(root, <ExploreClient initialActivities={activities} />);
+    mocks.searchActivities.mockClear();
+    await click(button(container, "Experiences"));
+    vi.useFakeTimers();
+
+    await setInputValue(labelled(container, "Search"), "  rain forest  ");
+    expect(mocks.searchActivities).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(249); });
+    expect(mocks.searchActivities).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(mocks.searchActivities).toHaveBeenCalledTimes(1);
+    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ q: "rain forest" }));
   });
 });
