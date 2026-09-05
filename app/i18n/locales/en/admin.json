@@ -26,7 +26,43 @@
     "Chatbot": "Chatbot",
     "AI Assistant": "AI Assistant",
     "Staff Conduct": "Staff Conduct",
-    "Access Control": "Access Control"
+    "Access Control": "Access Control",
+    "Sponsored Placements": "Sponsored Placements"
+  },
+  "sponsoredPlacements": {
+    "eyebrow": "Discovery campaigns",
+    "title": "Sponsored placements",
+    "description": "Create, review and pause clearly labelled sponsored discovery placements.",
+    "form": {
+      "title": "Create campaign draft",
+      "product": "Product",
+      "chooseProduct": "Choose an active approved product",
+      "startsAt": "Starts at",
+      "endsAt": "Ends at",
+      "priority": "Priority",
+      "allStates": "All states",
+      "state": "State",
+      "allCategories": "All categories",
+      "category": "Category",
+      "chooseCategory": "Choose a category",
+      "create": "Create draft"
+    },
+    "errors": {
+      "load": "Unable to load sponsored placements.",
+      "create": "Unable to create the campaign draft.",
+      "transition": "Unable to update the campaign.",
+      "forbidden": "You do not have permission to manage sponsored placements."
+    },
+    "states": {
+      "loading": "Loading sponsored placements…",
+      "empty": "No sponsored placement campaigns yet."
+    },
+    "prompts": { "rejectReason": "Enter a rejection reason (at least 5 characters)." },
+    "actions": { "submit": "Submit", "approve": "Approve", "reject": "Reject", "pause": "Pause" },
+    "categories": { "food": "Food", "activity": "Activity", "accommodation": "Accommodation", "retail": "Retail" },
+    "list": { "title": "Campaigns" },
+    "scope": { "allStates": "All states", "allCategories": "All categories" },
+    "status": { "draft": "Draft", "pending_approval": "Pending approval", "approved": "Approved", "rejected": "Rejected", "paused": "Paused" }
   },
   "accessControl": {
     "eyebrow": "Security governance",

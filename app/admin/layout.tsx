@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
@@ -50,6 +50,7 @@ const NAV: AdminNavItem[] = [
   { href: "/admin/dashboard", label: "Overview", icon: Activity },
   { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
   { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
+  { href: "/admin/sponsored-placements", label: "Sponsored Placements", icon: Megaphone, allowedRoles: CONTENT_REVIEW_ROLES },
   { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
   { href: "/admin/access-control", label: "Access Control", icon: ShieldCog, superAdminOnly: true },
   { href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES },

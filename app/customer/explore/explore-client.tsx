@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,6 +13,9 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
 import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { createClient } from "@/lib/supabase/client";
+import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
+import type { DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
 
 type ExploreTab = "destinations" | "experiences";
 
@@ -37,10 +40,16 @@ export function ExploreClient({
   const { t } = useTranslation("customer");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const db = useMemo(() => (
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ? createClient()
+      : null
+  ), []);
+  const impressedPlacementIds = useRef(new Set<string>());
   const [tab, setTab] = useState<ExploreTab>("destinations");
   const [filters, setFilters] = useState<DiscoveryQuery>(() => parseDiscoveryQuery(new URLSearchParams(searchParams.toString())));
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
-  const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
+  const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
   const [visibleLimit, setVisibleLimit] = useState(8);
 
   useEffect(() => {
@@ -74,11 +83,69 @@ export function ExploreClient({
 
   useEffect(() => {
     let cancelled = false;
-    searchActivities(searchQuery).then((nextActivities) => {
-      if (!cancelled) setActivities(nextActivities);
+    const requestedAt = new Date().toISOString();
+    const placementsRequest = db
+      ? db
+        .from("sponsored_discovery_placements")
+        .select("id,product_id,state,category_slug,starts_at,ends_at,priority,status")
+        .eq("status", "approved")
+        .lte("starts_at", requestedAt)
+        .gt("ends_at", requestedAt)
+      : Promise.resolve({ data: [], error: null });
+    Promise.all([
+      searchActivities(searchQuery),
+      placementsRequest,
+    ]).then(([nextActivities, placementsResult]) => {
+      if (cancelled) return;
+      const placements = placementsResult.error ? [] : ((placementsResult.data ?? []) as Array<{
+        id: string;
+        product_id: string;
+        state: string | null;
+        category_slug: string | null;
+        starts_at: string;
+        ends_at: string;
+        priority: number;
+        status: SponsoredPlacement["status"];
+      }>).map((placement): SponsoredPlacement => ({
+        id: placement.id,
+        productId: placement.product_id,
+        state: placement.state,
+        categorySlug: placement.category_slug,
+        startsAt: placement.starts_at,
+        endsAt: placement.ends_at,
+        priority: placement.priority,
+        status: placement.status,
+      }));
+      setActivities(rankDiscoveryResults({
+        activities: nextActivities,
+        placements,
+        filters: searchQuery,
+        now: requestedAt,
+      }));
+    }).catch(() => {
+      if (!cancelled) setActivities([]);
     });
     return () => { cancelled = true; };
-  }, [searchQuery]);
+  }, [db, searchQuery]);
+
+  const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
+    if (!activity.sponsorship) return;
+    void fetch(`/api/sponsored-placements/${activity.sponsorship.placementId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, productId: activity.id }),
+      keepalive: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    for (const activity of activities) {
+      const placementId = activity.sponsorship?.placementId;
+      if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
+      impressedPlacementIds.current.add(placementId);
+      recordSponsoredEvent(activity, "impression");
+    }
+  }, [activities, recordSponsoredEvent]);
 
   const hasActiveFilters = Boolean(
     filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null ||
@@ -147,7 +214,7 @@ export function ExploreClient({
       {tab === "destinations" && (
         <div>
           {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} />
+          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
 
           {/* Destination cards grid */}
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -248,7 +315,7 @@ export function ExploreClient({
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
                 {activities.slice(0, visibleLimit).map((a) => (
-                  <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" />
+                  <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                 ))}
               </div>
             )}

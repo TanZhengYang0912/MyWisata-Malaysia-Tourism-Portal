@@ -26,7 +26,43 @@
     "Chatbot": "Chatbot",
     "AI Assistant": "Pembantu AI",
     "Staff Conduct": "Kelakuan kakitangan",
-    "Access Control": "Kawalan akses"
+    "Access Control": "Kawalan akses",
+    "Sponsored Placements": "Penempatan ditaja"
+  },
+  "sponsoredPlacements": {
+    "eyebrow": "Kempen penemuan",
+    "title": "Penempatan ditaja",
+    "description": "Cipta, semak dan jeda penempatan penemuan ditaja yang dilabel dengan jelas.",
+    "form": {
+      "title": "Cipta draf kempen",
+      "product": "Produk",
+      "chooseProduct": "Pilih produk aktif yang diluluskan",
+      "startsAt": "Bermula pada",
+      "endsAt": "Berakhir pada",
+      "priority": "Keutamaan",
+      "allStates": "Semua negeri",
+      "state": "Negeri",
+      "allCategories": "Semua kategori",
+      "category": "Kategori",
+      "chooseCategory": "Pilih kategori",
+      "create": "Cipta draf"
+    },
+    "errors": {
+      "load": "Tidak dapat memuatkan penempatan ditaja.",
+      "create": "Tidak dapat mencipta draf kempen.",
+      "transition": "Tidak dapat mengemas kini kempen.",
+      "forbidden": "Anda tiada kebenaran untuk mengurus penempatan ditaja."
+    },
+    "states": {
+      "loading": "Memuatkan penempatan ditaja…",
+      "empty": "Belum ada kempen penempatan ditaja."
+    },
+    "prompts": { "rejectReason": "Masukkan sebab penolakan (sekurang-kurangnya 5 aksara)." },
+    "actions": { "submit": "Hantar", "approve": "Luluskan", "reject": "Tolak", "pause": "Jeda" },
+    "categories": { "food": "Makanan", "activity": "Aktiviti", "accommodation": "Penginapan", "retail": "Runcit" },
+    "list": { "title": "Kempen" },
+    "scope": { "allStates": "Semua negeri", "allCategories": "Semua kategori" },
+    "status": { "draft": "Draf", "pending_approval": "Menunggu kelulusan", "approved": "Diluluskan", "rejected": "Ditolak", "paused": "Dijeda" }
   },
   "accessControl": {
     "eyebrow": "Tadbir urus keselamatan",

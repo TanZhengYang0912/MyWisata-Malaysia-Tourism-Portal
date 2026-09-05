@@ -26,7 +26,43 @@
     "Chatbot": "聊天机器人",
     "AI Assistant": "AI 助手",
     "Staff Conduct": "员工行为",
-    "Access Control": "访问控制"
+    "Access Control": "访问控制",
+    "Sponsored Placements": "赞助展示位"
+  },
+  "sponsoredPlacements": {
+    "eyebrow": "探索推广活动",
+    "title": "赞助展示位",
+    "description": "创建、审核和暂停带有清晰赞助标识的探索展示位。",
+    "form": {
+      "title": "创建活动草稿",
+      "product": "产品",
+      "chooseProduct": "选择已审核通过的有效产品",
+      "startsAt": "开始时间",
+      "endsAt": "结束时间",
+      "priority": "优先级",
+      "allStates": "所有州属",
+      "state": "州属",
+      "allCategories": "所有类别",
+      "category": "类别",
+      "chooseCategory": "选择类别",
+      "create": "创建草稿"
+    },
+    "errors": {
+      "load": "无法加载赞助展示位。",
+      "create": "无法创建活动草稿。",
+      "transition": "无法更新活动。",
+      "forbidden": "您没有管理赞助展示位的权限。"
+    },
+    "states": {
+      "loading": "正在加载赞助展示位…",
+      "empty": "暂无赞助展示活动。"
+    },
+    "prompts": { "rejectReason": "请输入拒绝原因（至少 5 个字符）。" },
+    "actions": { "submit": "提交", "approve": "批准", "reject": "拒绝", "pause": "暂停" },
+    "categories": { "food": "美食", "activity": "活动", "accommodation": "住宿", "retail": "零售" },
+    "list": { "title": "活动" },
+    "scope": { "allStates": "所有州属", "allCategories": "所有类别" },
+    "status": { "draft": "草稿", "pending_approval": "待批准", "approved": "已批准", "rejected": "已拒绝", "paused": "已暂停" }
   },
   "accessControl": {
     "eyebrow": "安全治理",

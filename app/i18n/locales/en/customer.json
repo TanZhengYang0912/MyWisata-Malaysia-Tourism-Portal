@@ -325,6 +325,7 @@
     },
     "labels": {
       "hiddenGem": "Hidden Gem",
+      "sponsored": "Sponsored",
       "verifiedVendor": "Verified Vendor",
       "publicPlace": "Public place",
       "placeBasedExperience": "Place-based experience",

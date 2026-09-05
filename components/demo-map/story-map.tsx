@@ -32,6 +32,10 @@ const BADGE_OPTIONS: { key: BadgeKey; label: string }[] = [
   { key: "couple_friendly", label: "Couple Friendly" },
 ];
 
+type StoryMapActivity = ComputedActivity & {
+  sponsorship: { placementId: string; label: "Sponsored" } | null;
+};
+
 function StateDetailPanel({
   selectedStateId,
   stateCounts,
@@ -41,7 +45,7 @@ function StateDetailPanel({
 }: {
   selectedStateId: string | null;
   stateCounts: StateCounts;
-  activities: ComputedActivity[];
+  activities: StoryMapActivity[];
   onSelectState: (stateId: string | null) => void;
   onSelectPlace: (placeId: string) => void;
 }) {
@@ -88,7 +92,7 @@ function StateDetailPanel({
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
-                      <span className="min-w-0 truncate text-sm font-bold text-foreground">{activity.name}</span>
+                      <span className="min-w-0"><span className="block truncate text-sm font-bold text-foreground">{activity.name}</span>{activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}</span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
                     </button>
                   ))}
@@ -147,10 +151,12 @@ export function StoryMap({
   activities,
   filters,
   onFilterChange,
+  onSponsoredClick,
 }: {
-  activities: ComputedActivity[];
+  activities: StoryMapActivity[];
   filters: DiscoveryQuery;
   onFilterChange: (patch: Partial<DiscoveryQuery>) => void;
+  onSponsoredClick?: (activity: StoryMapActivity) => void;
 }) {
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
@@ -296,6 +302,7 @@ export function StoryMap({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
+                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-400 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}
                   </div>
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
@@ -305,7 +312,7 @@ export function StoryMap({
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                 <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{formatMYR(Number(selectedActivity.price))}</span></div>
-                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
+                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
             </div>
@@ -379,6 +386,7 @@ export function StoryMap({
                         )}
                          <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
+                          {activity.sponsorship && <span className="mt-0.5 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950 2xl:text-[10px]">{t("ui.labels.sponsored")}</span>}
                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</p>
                          </div>
                         <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{formatMYR(Number(activity.price))}</span>
