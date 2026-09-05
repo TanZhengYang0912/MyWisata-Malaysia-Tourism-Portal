@@ -170,6 +170,21 @@ export interface ComputedActivity extends Activity {
   distanceKm?: number;
 }
 
+export type SponsoredPlacement = {
+  id: string;
+  productId: string;
+  state: string | null;
+  categorySlug: string | null;
+  startsAt: string;
+  endsAt: string;
+  priority: number;
+  status: "draft" | "pending_approval" | "approved" | "rejected" | "paused";
+};
+
+export type DiscoveryResult = ComputedActivity & {
+  sponsorship: { placementId: string; label: "Sponsored" } | null;
+};
+
 export interface ProductReview {
   id: string;
   rating: number;
