@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Implemented and verified locally. Database deployment is pending migration-ledger reconciliation.
+**Status:** Implemented, verified, and deployed to the linked database on 2026-09-06.
 
 **Goal:** Make Staff Roles understandable and usable by enforcing short custom-role metadata, allowing immutable Legacy role templates to be assigned to multiple eligible staff users, and replacing manual UUID entry with name/email search.
 
@@ -126,3 +126,9 @@ The current Staff Roles page accepts 100-character names, 1000-character descrip
 - [x] Perform one focused read-only permission/privacy review, classifying findings as must-fix or follow-up.
 - [x] Inspect `git diff --check` and the scoped diff; do not include unrelated dirty-worktree changes.
 - [x] Commit only the files owned by this plan with a scoped message.
+
+## Deployment record
+
+- Verified the linked schema already contained every material object from migrations `20260905073000` through `20260905075000` before repairing their history entries to `applied`.
+- Applied `20260906011500_staff_role_assignment_ux.sql` through `supabase db push --linked`.
+- Confirmed the final linked migration list is aligned and a follow-up dry run reports the remote database is up to date.
