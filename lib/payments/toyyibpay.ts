@@ -26,6 +26,14 @@ type ToyyibPayConfig = {
   baseUrl: typeof SANDBOX_BASE_URL | typeof PRODUCTION_BASE_URL;
 };
 
+export type ToyyibPayPaymentEvidence = {
+  status: CheckoutPaymentStatus;
+  rawStatus: '1' | '2' | '3' | '4';
+  amountSen: number;
+  providerEventReference: string;
+  externalReference: string;
+};
+
 function readConfiguration(): ToyyibPayConfig | null {
   const userSecretKey = process.env.TOYYIBPAY_USER_SECRET_KEY?.trim() ?? '';
   const categoryCode = process.env.TOYYIBPAY_CATEGORY_CODE?.trim() ?? '';
@@ -67,6 +75,20 @@ function isValidPaymentRequest(input: CheckoutPaymentRequest): boolean {
   }
 
   return isAllowedServerUrl(input.returnUrl) && isAllowedServerUrl(input.callbackUrl);
+}
+
+function mapTransactionStatus(status: string): CheckoutPaymentStatus | null {
+  if (status === '1') return 'succeeded';
+  if (status === '2' || status === '4') return 'pending';
+  if (status === '3') return 'failed';
+  return null;
+}
+
+function parseProviderAmountSen(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^\d{1,10}(?:\.\d{1,2})?$/.test(value)) return null;
+  const [ringgit, sen = ''] = value.split('.');
+  const result = Number(ringgit) * 100 + Number(sen.padEnd(2, '0'));
+  return Number.isSafeInteger(result) && result > 0 ? result : null;
 }
 
 async function postForm(
@@ -156,6 +178,61 @@ export class ToyyibPayProvider implements CheckoutPaymentProvider {
   }
 
   async getPaymentStatus(providerPaymentId: string): Promise<CheckoutPaymentStatus> {
+    const payload = await this.getBillTransactions(providerPaymentId);
+    if (payload.length === 0) return 'pending';
+
+    const statuses = payload.map((item) => String(
+      (item as { billpaymentStatus?: unknown } | null)?.billpaymentStatus ?? '',
+    ));
+    if (statuses.some((status) => mapTransactionStatus(status) === null)) {
+      throw new Error('toyyibpay_invalid_response');
+    }
+    if (statuses.includes('1')) return 'succeeded';
+    if (statuses.some((status) => status === '2' || status === '4')) return 'pending';
+    return 'failed';
+  }
+
+  async getPaymentEvidence(providerPaymentId: string): Promise<ToyyibPayPaymentEvidence | null> {
+    const payload = await this.getBillTransactions(providerPaymentId);
+    if (payload.length === 0) return null;
+
+    const evidence = payload.map((item): ToyyibPayPaymentEvidence => {
+      const record = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+      const rawStatus = String(record.billpaymentStatus ?? '');
+      const status = mapTransactionStatus(rawStatus);
+      const amountSen = parseProviderAmountSen(record.billpaymentAmount);
+      const providerEventReference = typeof record.billpaymentInvoiceNo === 'string'
+        ? record.billpaymentInvoiceNo.trim()
+        : '';
+      const externalReference = typeof record.billExternalReferenceNo === 'string'
+        ? record.billExternalReferenceNo.trim()
+        : '';
+      if (
+        !status
+        || !['1', '2', '3', '4'].includes(rawStatus)
+        || amountSen === null
+        || !/^[A-Za-z0-9_-]{1,253}$/.test(providerEventReference)
+        || !externalReference
+        || externalReference.length > 255
+      ) {
+        throw new Error('toyyibpay_invalid_response');
+      }
+      return {
+        status,
+        rawStatus: rawStatus as ToyyibPayPaymentEvidence['rawStatus'],
+        amountSen,
+        providerEventReference,
+        externalReference,
+      };
+    });
+
+    return evidence.find((item) => item.status === 'succeeded')
+      ?? evidence.find((item) => item.status === 'pending')
+      ?? evidence[0]
+      ?? null;
+  }
+
+  private async getBillTransactions(providerPaymentId: string): Promise<unknown[]> {
     const config = readConfiguration();
     if (!config) throw new Error('toyyibpay_not_configured');
     if (!BILL_CODE_PATTERN.test(providerPaymentId)) throw new Error('toyyibpay_invalid_request');
@@ -163,25 +240,12 @@ export class ToyyibPayProvider implements CheckoutPaymentProvider {
     const payload = await postForm(
       this.fetchImplementation,
       `${config.baseUrl}/index.php/api/getBillTransactions`,
-      new URLSearchParams({
-        userSecretKey: config.userSecretKey,
-        billCode: providerPaymentId,
-      }),
+      new URLSearchParams({ billCode: providerPaymentId }),
       this.timeoutMs,
     );
 
     if (!Array.isArray(payload)) throw new Error('toyyibpay_invalid_response');
-    if (payload.length === 0) return 'pending';
-
-    const statuses = payload.map((item) => String(
-      (item as { billpaymentStatus?: unknown } | null)?.billpaymentStatus ?? '',
-    ));
-    if (statuses.some((status) => !['1', '2', '3'].includes(status))) {
-      throw new Error('toyyibpay_invalid_response');
-    }
-    if (statuses.includes('1')) return 'succeeded';
-    if (statuses.includes('2')) return 'pending';
-    return 'failed';
+    return payload;
   }
 }
 

@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/tng-mock-callbacks",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-toyyibpay-checkouts",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

@@ -161,6 +161,24 @@ describe('ToyyibPay checkout adapter', () => {
     expect(Object.fromEntries(body)).toMatchObject({
       billCode: 'A1b2C3d4',
     });
+    expect(body.has('userSecretKey')).toBe(false);
+  });
+
+  it('returns strict reconciliation evidence and maps provider status 4 to pending', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json([{
+      billpaymentStatus: '4',
+      billpaymentAmount: '50.00',
+      billpaymentInvoiceNo: 'TP24000001',
+      billExternalReferenceNo: request.checkoutSessionId,
+    }])));
+
+    await expect(new ToyyibPayProvider().getPaymentEvidence('A1b2C3d4')).resolves.toEqual({
+      status: 'pending',
+      rawStatus: '4',
+      amountSen: 5000,
+      providerEventReference: 'TP24000001',
+      externalReference: request.checkoutSessionId,
+    });
   });
 });
 

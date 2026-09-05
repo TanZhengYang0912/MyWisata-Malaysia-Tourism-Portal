@@ -84,6 +84,13 @@ describe('POST /api/payments/toyyibpay/callback', () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it('rejects an ambiguous provider reference before building the status-qualified event id', async () => {
+    const response = await POST(callbackRequest({ refno: 'TP:collision' }));
+    expect(response.status).toBe(400);
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('rejects an unknown checkout and stored BillCode or amount mismatches', async () => {
     mocks.from.mockImplementationOnce(() => queryResult(null));
     expect((await POST(callbackRequest())).status).toBe(404);

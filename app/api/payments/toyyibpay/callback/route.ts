@@ -42,6 +42,7 @@ export async function POST(request: Request) {
 
   if (
     !refno
+    || !/^[A-Za-z0-9_-]{1,253}$/.test(refno)
     || !status
     || !['1', '2', '3'].includes(status)
     || !billcode
