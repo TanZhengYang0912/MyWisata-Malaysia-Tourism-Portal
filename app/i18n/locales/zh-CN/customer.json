@@ -1942,7 +1942,17 @@
       "labuan": "纳闽"
     },
     "discovery": {
-      "searchLabel": "搜索地点和体验"
+      "searchLabel": "搜索地点和体验",
+      "advancedFilters": "高级筛选",
+      "state": "州",
+      "maximumPrice": "最高价格",
+      "freeOnly": "免费入场",
+      "bookableOnly": "需要预订",
+      "hiddenGemOnly": "隐藏宝藏",
+      "familyFriendlyOnly": "亲子友好",
+      "coupleFriendlyOnly": "情侣友好",
+      "showAll_one": "显示全部（{{count}}）",
+      "showAll_other": "显示全部（{{count}}）"
     },
     "placeActivity": {
       "title": "这里可做的活动",

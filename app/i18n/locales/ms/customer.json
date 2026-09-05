@@ -1942,7 +1942,17 @@
       "labuan": "Labuan"
     },
     "discovery": {
-      "searchLabel": "Cari tempat dan pengalaman"
+      "searchLabel": "Cari tempat dan pengalaman",
+      "advancedFilters": "Penapis lanjutan",
+      "state": "Negeri",
+      "maximumPrice": "Harga maksimum",
+      "freeOnly": "Kemasukan percuma",
+      "bookableOnly": "Tempahan diperlukan",
+      "hiddenGemOnly": "Permata Tersembunyi",
+      "familyFriendlyOnly": "Mesra Keluarga",
+      "coupleFriendlyOnly": "Mesra Pasangan",
+      "showAll_one": "Tunjukkan semua ({{count}})",
+      "showAll_other": "Tunjukkan semua ({{count}})"
     },
     "placeActivity": {
       "title": "Aktiviti di sini",

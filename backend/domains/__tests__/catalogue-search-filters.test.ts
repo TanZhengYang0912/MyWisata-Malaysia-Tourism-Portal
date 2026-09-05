@@ -30,9 +30,9 @@ const PRODUCTS = [
     tags: null,
     created_at: "2026-01-01T00:00:00Z",
     attributes: null,
-    is_hidden_gem: false,
-    type_slugs: null,
-    is_family_friendly: false,
+    is_hidden_gem: true,
+    type_slugs: ["nature"],
+    is_family_friendly: true,
     is_couple_friendly: false,
     place_state: null,
     place_district: null,
@@ -57,14 +57,14 @@ const PRODUCTS = [
     created_at: "2026-01-02T00:00:00Z",
     attributes: null,
     is_hidden_gem: false,
-    type_slugs: null,
+    type_slugs: ["seafood"],
     is_family_friendly: false,
-    is_couple_friendly: false,
+    is_couple_friendly: true,
     place_state: null,
     place_district: null,
     place_lat: null,
     place_lng: null,
-    categories: { name: "Activity", slug: "activity" },
+    categories: { name: "Food", slug: "food" },
     outlet_offers: [],
     product_variants: [],
     price_rules: [],
@@ -83,8 +83,8 @@ const PRODUCTS = [
     created_at: "2026-01-03T00:00:00Z",
     attributes: null,
     is_hidden_gem: false,
-    type_slugs: null,
-    is_family_friendly: false,
+    type_slugs: ["adventure"],
+    is_family_friendly: true,
     is_couple_friendly: false,
     place_state: "Sabah",
     place_district: "Kinabatangan",
@@ -159,5 +159,15 @@ describe("searchActivities discovery filters", () => {
 
   it("matches a place-bound activity by its place state before its provider outlet", async () => {
     expect((await searchActivities({ state: "Sabah" }, makeDb())).map((item) => item.id)).toEqual(["sabah-place", "sabah-outlet"]);
+  });
+
+  it("keeps category branches and their type selections with OR semantics", async () => {
+    expect((await searchActivities({ categories: ["activity", "food"], types: ["activity:nature", "food:seafood"] }, makeDb())).map((item) => item.id))
+      .toEqual(["free-bookable", "paid-bookable"]);
+  });
+
+  it("combines the category branch with the StoryMap badge OR group", async () => {
+    expect((await searchActivities({ categories: ["activity"], types: ["activity:nature", "activity:adventure"], familyFriendlyOnly: true, coupleFriendlyOnly: true }, makeDb())).map((item) => item.id))
+      .toEqual(["free-bookable", "sabah-place"]);
   });
 });

@@ -21,12 +21,12 @@ describe("customer discovery filter contract", () => {
     expect(filterSource).toContain("lg:grid-cols-5");
   });
 
-  it("combines Explore search with category filtering and supports Clear", () => {
-    expect(exploreSource).toContain("const [query, setQuery] = useState(\"\")");
-    expect(exploreSource).toContain("searchActivities({ q: query.trim() || undefined");
-    expect(exploreSource).toContain("getDiscoverySearchFilter(category)");
+  it("connects Explore search and filters to the shared discovery query", () => {
+    expect(exploreSource).toContain("parseDiscoveryQuery");
+    expect(exploreSource).toContain("serializeDiscoveryQuery");
+    expect(exploreSource).toContain("DiscoveryAdvancedFilters");
     expect(exploreSource).toContain("onClear");
-    expect(exploreSource).toContain("setQuery(\"\")");
+    expect(exploreSource).toContain("visibleLimit");
     expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
   });
 

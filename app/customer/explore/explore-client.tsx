@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
 import { Compass, Map } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { DiscoveryAdvancedFilters, DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
-import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
+import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
 
 type ExploreTab = "destinations" | "experiences";
 
@@ -34,28 +35,43 @@ export function ExploreClient({
   placeCountByState?: Record<string, number>;
 }) {
   const { t } = useTranslation("customer");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<ExploreTab>("destinations");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DiscoveryQuery>(() => parseDiscoveryQuery(new URLSearchParams(searchParams.toString())));
+  const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
-  const firstRender = useRef(true);
+  const [visibleLimit, setVisibleLimit] = useState(8);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      searchActivities({ q: query.trim() || undefined, ...getDiscoverySearchFilter(category) }).then(setActivities);
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [category, query]);
+    const timeout = globalThis.setTimeout(() => setDebouncedQuery(filters.q), 250);
+    return () => globalThis.clearTimeout(timeout);
+  }, [filters.q]);
 
-  const hasActiveFilters = Boolean(query.trim() || category);
+  const searchQuery = useMemo(() => ({ ...filters, q: debouncedQuery }), [debouncedQuery, filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    searchActivities(searchQuery).then((nextActivities) => {
+      if (!cancelled) setActivities(nextActivities);
+    });
+    return () => { cancelled = true; };
+  }, [searchQuery]);
+
+  const hasActiveFilters = Boolean(
+    filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null ||
+    filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly,
+  );
+
+  const updateFilters = (patch: Partial<DiscoveryQuery>) => {
+    const next = { ...filters, ...patch };
+    setFilters(next);
+    router.replace(`/customer/explore?${serializeDiscoveryQuery(next).toString()}`.replace(/\?$/, ""));
+    setVisibleLimit(8);
+  };
 
   const clearFilters = () => {
-    setQuery("");
-    setCategory(null);
+    updateFilters({ q: "", state: null, categories: [], types: [], priceMax: null, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
   };
 
   return (
@@ -109,7 +125,7 @@ export function ExploreClient({
       {tab === "destinations" && (
         <div>
           {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap initialActivities={activities} />
+          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} />
 
           {/* Destination cards grid */}
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -175,13 +191,14 @@ export function ExploreClient({
       {tab === "experiences" && (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <section className="mb-8 space-y-6">
-            <DiscoverySearchField value={query} onChange={setQuery} placeholder={t("ui.map.searchExperience")} />
+            <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
             <DiscoveryCategoryFilter
-              category={category}
+              category={filters.categories.length === 1 ? filters.categories[0] : null}
               hasActiveFilters={hasActiveFilters}
-              onCategoryChange={setCategory}
+              onCategoryChange={(category) => updateFilters({ categories: category ? [category] : [], types: [] })}
               onClear={clearFilters}
             />
+            <DiscoveryAdvancedFilters value={filters} onChange={updateFilters} />
           </section>
 
           {/* Experience cards */}
@@ -189,10 +206,10 @@ export function ExploreClient({
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  {query
+                  {filters.q
                     ? t("ui.explore.allExperiences")
-                    : category
-                    ? t("ui.explore.categoryExperiences", { category })
+                    : filters.categories.length === 1
+                    ? t("ui.explore.categoryExperiences", { category: filters.categories[0] })
                     : t("ui.explore.allExperiences")}
                 </h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: activities.length })}</p>
@@ -204,10 +221,15 @@ export function ExploreClient({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
-                {activities.slice(0, 16).map((a) => (
+                {activities.slice(0, visibleLimit).map((a) => (
                   <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" />
                 ))}
               </div>
+            )}
+            {activities.length > 8 && visibleLimit < activities.length && (
+              <button type="button" onClick={() => setVisibleLimit(activities.length)} className="mt-6 rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
+                {t("ui.discovery.showAll", { count: activities.length })}
+              </button>
             )}
           </section>
         </div>
