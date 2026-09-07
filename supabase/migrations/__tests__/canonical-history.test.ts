@@ -24,6 +24,7 @@ const approvedForwardMigrations = [
   "20260905075000_toyyibpay_checkout.sql",
   "20260906011500_staff_role_assignment_ux.sql",
   "20260906030400_fix_anonymous_vendor_reads.sql",
+  "20260906040000_staff_invitations.sql",
 ];
 
 function migrationFiles() {
