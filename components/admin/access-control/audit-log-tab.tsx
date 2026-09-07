@@ -1,11 +1,17 @@
 "use client";
 
-import { ArrowUpRight, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { Button } from "@/components/ui/button";
+import {
+  auditActionSummaryKey,
+  deriveAuditChanges,
+  hasTechnicalAuditPayload,
+  type AuditPrimitive,
+} from "@/components/admin/access-control/audit-log-presentation";
 import { buildAccessControlQuery, errorMessage, focusTargetForAuditEvent } from "@/components/admin/access-control/types";
 import type { ApiEnvelope, AuditFocus, AuditRecord, EntityFocus, PageResult } from "@/components/admin/access-control/types";
 
@@ -48,7 +54,88 @@ export function AuditLogTab({ focus, onViewEntity }: { focus: AuditFocus | null;
   </div>;
 }
 
-function AuditRow({ item, selected, expanded, policyVersion, trace, target, onExpand, onViewEntity }: { item: AuditRecord; selected: boolean; expanded: boolean; policyVersion: string | null; trace: string | null; target: EntityFocus | null; onExpand: () => void; onViewEntity: () => void }) { const { t } = useTranslation("admin"); return <><tr className={selected ? "bg-primary/10" : "hover:bg-muted/30"}><td className="px-4 py-4 align-top whitespace-nowrap text-xs">{formatDate(item.createdAt)}</td><td className="px-4 py-4 align-top max-w-40 truncate font-mono text-xs">{item.actorId ?? t("accessControl.audit.systemActor")}</td><td className="px-4 py-4 align-top min-w-56"><p className="font-mono text-xs font-semibold">{item.action}</p>{item.reason && <p className="mt-1 max-w-64 truncate text-xs text-muted-foreground">{item.reason}</p>}</td><td className="px-4 py-4 align-top min-w-48"><p className="text-xs">{item.entityType}</p><p className="max-w-40 truncate font-mono text-xs text-muted-foreground">{item.entityId ?? t("accessControl.states.none")}</p>{target && <button type="button" onClick={onViewEntity} className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{t("accessControl.actions.openTarget")}<ArrowUpRight className="h-3 w-3" /></button>}</td><td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{policyVersion ?? "—"}</td><td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{trace ?? "—"}</td><td className="px-4 py-4 align-top whitespace-nowrap text-right"><Button size="sm" variant="outline" onClick={onExpand}>{expanded ? t("accessControl.actions.hide") : t("accessControl.actions.inspect")}</Button></td></tr>{expanded && <tr><td colSpan={7} className="bg-muted/20 px-5 py-4"><div className="grid gap-3 md:grid-cols-2"><AuditPayload title={t("accessControl.audit.before")} value={item.before} /><AuditPayload title={t("accessControl.audit.after")} value={item.after} /></div></td></tr>}</>; }
+function AuditRow({ item, selected, expanded, policyVersion, trace, target, onExpand, onViewEntity }: { item: AuditRecord; selected: boolean; expanded: boolean; policyVersion: string | null; trace: string | null; target: EntityFocus | null; onExpand: () => void; onViewEntity: () => void }) {
+  const { t } = useTranslation("admin");
+  const actionSummary = t(`accessControl.audit.actionSummaries.${auditActionSummaryKey(item.action)}`);
+
+  return <>
+    <tr className={selected ? "bg-primary/10" : "hover:bg-muted/30"}>
+      <td className="px-4 py-4 align-top whitespace-nowrap text-xs">{formatDate(item.createdAt)}</td>
+      <td className="px-4 py-4 align-top max-w-40 truncate font-mono text-xs">{item.actorId ?? t("accessControl.audit.systemActor")}</td>
+      <td className="px-4 py-4 align-top min-w-56">
+        <p className="text-sm font-semibold text-foreground">{actionSummary}</p>
+        <p className="mt-1 font-mono text-[11px] text-muted-foreground">{item.action}</p>
+        {item.reason && <p className="mt-1 max-w-64 truncate text-xs text-muted-foreground">{item.reason}</p>}
+      </td>
+      <td className="px-4 py-4 align-top min-w-48"><p className="text-xs">{item.entityType}</p><p className="max-w-40 truncate font-mono text-xs text-muted-foreground">{item.entityId ?? t("accessControl.states.none")}</p>{target && <button type="button" onClick={onViewEntity} className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{t("accessControl.actions.openTarget")}<ArrowUpRight className="h-3 w-3" /></button>}</td>
+      <td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{policyVersion ?? "—"}</td>
+      <td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{trace ?? "—"}</td>
+      <td className="px-4 py-4 align-top whitespace-nowrap text-right"><Button size="sm" variant="outline" onClick={onExpand}>{expanded ? t("accessControl.actions.hide") : t("accessControl.actions.inspect")}</Button></td>
+    </tr>
+    {expanded && <tr><td colSpan={7} className="bg-muted/20 px-5 py-4"><div className="space-y-3">
+      <AuditChangeSummary before={item.before} after={item.after} />
+      {hasTechnicalAuditPayload(item.before, item.after) && <details className="rounded-xl border border-border bg-card p-3">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("accessControl.audit.technicalDetails")}</summary>
+        <div className="mt-3 grid gap-3 md:grid-cols-2"><AuditPayload title={t("accessControl.audit.before")} value={item.before} /><AuditPayload title={t("accessControl.audit.after")} value={item.after} /></div>
+      </details>}
+    </div></td></tr>}
+  </>;
+}
+
+const AUDIT_FIELD_LABELS: Readonly<Record<string, string>> = {
+  status: "status",
+  submissionId: "submissionId",
+  submission_id: "submissionId",
+  reasonCode: "reasonCode",
+  reason_code: "reasonCode",
+  enabled: "enabled",
+  effect: "effect",
+  riskLevel: "riskLevel",
+  risk_level: "riskLevel",
+  customerVisible: "customerVisible",
+  customer_visible: "customerVisible",
+  manuallyAssignable: "manuallyAssignable",
+  manually_assignable: "manuallyAssignable",
+  generation: "generation",
+};
+
+const AUDIT_VALUE_LABELS = new Set([
+  "pending", "pending_approval", "approved", "rejected", "info_requested",
+  "active", "inactive", "enabled", "disabled", "allow", "deny", "scheduled",
+  "revoked", "processing", "failed", "held",
+]);
+
+function AuditChangeSummary({ before, after }: { before: Record<string, unknown> | null; after: Record<string, unknown> | null }) {
+  const { t } = useTranslation("admin");
+  const changes = deriveAuditChanges(before, after);
+  const translate = (key: string) => t(key);
+  return <section aria-label={t("accessControl.audit.changeSummary")} className="rounded-xl border border-border bg-card p-3">
+    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("accessControl.audit.changeSummary")}</h4>
+    {changes.length === 0
+      ? <p className="mt-2 text-xs text-muted-foreground">{t("accessControl.audit.noChangeSummary")}</p>
+      : <dl className="mt-2 divide-y divide-border">{changes.map((change) => <div key={change.field} className="grid gap-2 py-2 text-xs sm:grid-cols-[minmax(120px,0.7fr)_minmax(0,1fr)] sm:items-center">
+        <dt className="font-medium text-foreground">{auditFieldLabel(translate, change.field)}</dt>
+        <dd className="flex min-w-0 items-center gap-2 text-muted-foreground">
+          <span className="min-w-0 break-all">{auditValueLabel(translate, change.before)}</span>
+          <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 break-all font-medium text-foreground">{auditValueLabel(translate, change.after)}</span>
+        </dd>
+      </div>)}</dl>}
+  </section>;
+}
+
+function auditFieldLabel(t: (key: string) => string, fieldName: string) {
+  const key = AUDIT_FIELD_LABELS[fieldName];
+  return key ? t(`accessControl.audit.fieldLabels.${key}`) : fieldName;
+}
+
+function auditValueLabel(t: (key: string) => string, value: AuditPrimitive | undefined) {
+  if (value === undefined) return t("accessControl.audit.valueLabels.missing");
+  if (value === null) return t("accessControl.audit.valueLabels.null");
+  if (typeof value === "boolean") return t(`accessControl.audit.valueLabels.${value}`);
+  if (typeof value === "string" && AUDIT_VALUE_LABELS.has(value)) return t(`accessControl.audit.valueLabels.${value}`);
+  return String(value);
+}
 function AuditPayload({ title, value }: { title: string; value: Record<string, unknown> | null }) { return <div className="rounded-xl border border-border bg-card p-3"><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4><pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all text-xs text-foreground">{value ? JSON.stringify(value, null, 2) : "—"}</pre></div>; }
 function field(value: Record<string, unknown> | null, key: string) { return value && typeof value[key] === "string" ? value[key] as string : null; }
 function formatDate(value: string) { const timestamp = Date.parse(value); return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : value; }
