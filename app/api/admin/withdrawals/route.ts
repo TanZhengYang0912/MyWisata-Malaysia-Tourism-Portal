@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import type { WithdrawalListResponse } from '@/lib/wallet/withdrawal-review';
 import { WITHDRAWAL_REVIEW_STATUSES } from '@/lib/wallet/withdrawal-display';
@@ -20,11 +21,9 @@ const listSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: isApprover, error: roleError } = await db.rpc('is_approver', { uid: user.id });
-  if (roleError || !isApprover) return apiFail('FORBIDDEN', 'Wallet Approver access required', 403);
+  const { response } = await requireStaffPermission('admin.withdrawal.approve');
+  if (response) return response;
+  const service = createServiceClient();
 
   const url = new URL(request.url);
   const parsed = listSchema.safeParse(Object.fromEntries(url.searchParams));
@@ -40,7 +39,7 @@ export async function GET(request: Request) {
   const riskRelation = risk
     ? 'withdrawal_risk_assessments!inner(risk_level, overridden_at)'
     : 'withdrawal_risk_assessments(risk_level, overridden_at)';
-  let query = db
+  let query = service
     .from('withdrawal_requests')
     .select(`
       id, user_id, amount, status, requires_dual_approval, created_at, updated_at,
@@ -89,7 +88,7 @@ export async function GET(request: Request) {
   });
 
   const total = count ?? 0;
-  const response: WithdrawalListResponse = {
+  const payload: WithdrawalListResponse = {
     items,
     total,
     page,
@@ -97,5 +96,5 @@ export async function GET(request: Request) {
     totalPages: Math.ceil(total / pageSize),
   };
 
-  return apiOk(response);
+  return apiOk(payload);
 }

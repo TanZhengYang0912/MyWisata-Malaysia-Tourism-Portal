@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import {
@@ -8,16 +8,8 @@ import {
 } from '@/lib/kyc/admin-submission';
 
 export async function GET() {
-  const authenticated = await createClient();
-  const { data: { user } } = await authenticated.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: canReview, error: capabilityError } = await authenticated.rpc('can_review_kyc', {
-    uid: user.id,
-  });
-  if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'KYC reviewer role required', 403);
-  }
+  const { response } = await requireStaffPermission('admin.kyc.review');
+  if (response) return response;
 
   const service = createServiceClient();
   const { data, error } = await service

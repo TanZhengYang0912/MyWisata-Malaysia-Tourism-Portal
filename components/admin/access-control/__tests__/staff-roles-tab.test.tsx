@@ -13,7 +13,7 @@ import {
 const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }),
 }));
 vi.mock("lucide-react", () => ({
   CheckCircle2: (props: Record<string, unknown>) => <svg {...props} />,
@@ -134,9 +134,16 @@ describe("StaffRolesTab", () => {
               { id: "custom-role", name: "Campaign Manager", description: "Campaign access", isSystem: false, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: "actor", createdAt: null, updatedAt: null },
             ],
             assignments: roleAssignments,
+            employees: [],
           },
           error: null,
         });
+      }
+      if (url === "/api/admin/access-control/staff-invitations" && !init?.method) {
+        return response({ data: { invitations: [] }, error: null });
+      }
+      if (url === "/api/admin/access-control/staff-invitations" && init?.method === "POST") {
+        return response({ data: { id: "invite-1", status: "pending", deliveryStatus: "sent" }, error: null }, 201);
       }
       if (url === "/api/admin/access-control/staff-roles" && init?.method === "POST") {
         return response({ data: { roleId: "role-1", auditEventId: "audit-1" }, error: null }, 201);
@@ -157,7 +164,7 @@ describe("StaffRolesTab", () => {
       if (url === "/api/admin/access-control/staff-candidates?search=Nobody") {
         return response({ data: { candidates: [] }, error: null });
       }
-      if (url === "/api/admin/access-control/staff-roles/legacy-wallet/assignments" && init?.method === "POST") {
+      if (url === "/api/admin/access-control/staff-roles/custom-role/assignments" && init?.method === "POST") {
         return response({ data: { assignmentId: "assignment-1", auditEventId: "audit-2" }, error: null }, 201);
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -224,12 +231,37 @@ describe("StaffRolesTab", () => {
     expect(findElements(legacyWalletCard, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.editRole"))).toHaveLength(0);
 
-    const roleSelect = findOne(container, (element) => element.tagName === "SELECT");
-    expect(roleSelect.textContent).toContain("Legacy Admin");
-    expect(roleSelect.textContent).toContain("Legacy Wallet Approver");
+    const roleSelects = findElements(container, (element) => element.tagName === "SELECT");
+    expect(roleSelects.every((roleSelect) => !roleSelect.textContent.includes("Legacy Admin"))).toBe(true);
+    expect(roleSelects.every((roleSelect) => !roleSelect.textContent.includes("Legacy Wallet Approver"))).toBe(true);
     await click(findOne(legacyWalletCard, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.useRole")));
-    expect(roleSelect.value).toBe("legacy-wallet");
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.useTemplate")));
+    const roleName = findOne(container, (element) => (element as TestElement & { name?: string }).name === "role-name");
+    expect(roleName.value).toBe("Wallet Approver");
+  });
+
+  it("reviews and sends a new employee invitation using only a custom role", async () => {
+    await act(async () => { root?.render(<StaffRolesTab onViewAudit={vi.fn()} />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+
+    const email = findOne(container, (element) => element.getAttribute("id") === "invitation-email");
+    const reason = findOne(container, (element) => element.getAttribute("id") === "invitation-reason");
+    await setValue(email, "new.staff@example.com");
+    await setValue(reason, "Invite a dedicated campaign operations employee");
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewInvitation")));
+    const dialog = findOne(container, (element) => element.getAttribute("data-confirm-dialog") === "true");
+    expect(dialog.textContent).toContain("new.staff@example.com");
+    expect(dialog.textContent).toContain("Campaign Manager");
+    expect(dialog.textContent).toContain("accessControl.staffRoles.permissionLabels.mapCampaignManage");
+    await click(findOne(dialog, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.sendInvitation")));
+
+    const post = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/admin/access-control/staff-invitations" && (init as RequestInit | undefined)?.method === "POST");
+    expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({
+      email: "new.staff@example.com",
+      staffRoleId: "custom-role",
+      locale: "en",
+      reason: "Invite a dedicated campaign operations employee",
+    });
   });
 
   it("previews and confirms the exact additive permissions before submitting the selected UUID", async () => {
@@ -240,8 +272,8 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    const roleSelect = findOne(container, (element) => element.tagName === "SELECT");
-    await selectValue(roleSelect, "legacy-wallet");
+    const roleSelect = findElements(container, (element) => element.tagName === "SELECT").at(-1)!;
+    await selectValue(roleSelect, "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
     await setValue(searchInput, "Ali");
@@ -262,15 +294,15 @@ describe("StaffRolesTab", () => {
     const dialog = findOne(container, (element) => element.getAttribute("data-confirm-dialog") === "true");
     expect(dialog.textContent).toContain("Ali Staff");
     expect(dialog.textContent).toContain("ali@example.com");
-    expect(dialog.textContent).toContain("Legacy Wallet Approver");
-    expect(dialog.textContent).toContain("accessControl.staffRoles.permissionLabels.withdrawalApprove");
+    expect(dialog.textContent).toContain("Campaign Manager");
+    expect(dialog.textContent).toContain("accessControl.staffRoles.permissionLabels.mapCampaignManage");
     expect(dialog.textContent).toContain("Add a second wallet approver");
     expect(dialog.textContent).toContain("accessControl.staffRoles.existingPermissionsUnchanged");
     await click(findOne(dialog, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.grantPermissions")));
 
     const assignmentPost = mocks.fetch.mock.calls.find(([url, init]) =>
-      url === "/api/admin/access-control/staff-roles/legacy-wallet/assignments"
+      url === "/api/admin/access-control/staff-roles/custom-role/assignments"
       && (init as RequestInit | undefined)?.method === "POST");
     expect(assignmentPost).toBeDefined();
     expect(JSON.parse(String((assignmentPost?.[1] as RequestInit).body))).toEqual({
@@ -282,7 +314,7 @@ describe("StaffRolesTab", () => {
   it("blocks an active duplicate role assignment", async () => {
     roleAssignments = [{
       id: "assignment-existing",
-      roleId: "legacy-wallet",
+      roleId: "custom-role",
       userId: "22222222-2222-4222-8222-222222222222",
       assignedBy: "actor",
       revokedAt: null,
@@ -295,8 +327,8 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    const roleSelect = findOne(container, (element) => element.tagName === "SELECT");
-    await selectValue(roleSelect, "legacy-wallet");
+    const roleSelect = findElements(container, (element) => element.tagName === "SELECT").at(-1)!;
+    await selectValue(roleSelect, "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
     await setValue(searchInput, "Ali");
@@ -311,14 +343,14 @@ describe("StaffRolesTab", () => {
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant"));
     expect(reviewButton.disabled).toBe(true);
     expect(mocks.fetch.mock.calls.some(([url, init]) =>
-      url === "/api/admin/access-control/staff-roles/legacy-wallet/assignments"
+      url === "/api/admin/access-control/staff-roles/custom-role/assignments"
       && (init as RequestInit | undefined)?.method === "POST")).toBe(false);
   });
 
   it("allows a previously revoked role to be assigned again", async () => {
     roleAssignments = [{
       id: "assignment-revoked",
-      roleId: "legacy-wallet",
+      roleId: "custom-role",
       userId: "22222222-2222-4222-8222-222222222222",
       assignedBy: "actor",
       revokedAt: "2026-09-05T00:00:00.000Z",
@@ -331,7 +363,7 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    await selectValue(findOne(container, (element) => element.tagName === "SELECT"), "legacy-wallet");
+    await selectValue(findElements(container, (element) => element.tagName === "SELECT").at(-1)!, "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
     await setValue(searchInput, "Ali");

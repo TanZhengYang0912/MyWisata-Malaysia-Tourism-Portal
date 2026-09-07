@@ -7,6 +7,7 @@ const HOME_BY_ROLE: Record<Role, string> = {
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",
   approver: "/admin/withdrawals",
+  staff: "/staff",
   super_admin: "/admin/dashboard",
 };
 
@@ -20,12 +21,14 @@ export function isWalletApproverPath(pathname: string): boolean {
 function rolePrefix(role: Role): string {
   if (role === "customer") return "/customer";
   if (role === "vendor_owner" || role === "outlet_manager") return "/vendor";
+  if (role === "staff") return "/staff";
   return "/admin";
 }
 
 function isRoleNeutralPath(pathname: string): boolean {
   return ROLE_NEUTRAL_PATHS.includes(pathname as typeof ROLE_NEUTRAL_PATHS[number])
-    || pathname.startsWith("/outlet-manager-invitations/");
+    || pathname.startsWith("/outlet-manager-invitations/")
+    || pathname.startsWith("/staff-invitations/");
 }
 
 export function postLoginDestination(role: Role, next?: string | null): string {
@@ -36,7 +39,7 @@ export function postLoginDestination(role: Role, next?: string | null): string {
   const pathname = parsedNext.pathname;
 
   // Preserve only essential post-auth completion flows (password reset or invitation tokens)
-  if (pathname === "/reset-password" || pathname === "/vendor-invite" || pathname.startsWith("/outlet-manager-invitations/")) {
+  if (pathname === "/reset-password" || pathname === "/vendor-invite" || pathname.startsWith("/outlet-manager-invitations/") || pathname.startsWith("/staff-invitations/")) {
     return `${pathname}${parsedNext.search}${parsedNext.hash}`;
   }
 

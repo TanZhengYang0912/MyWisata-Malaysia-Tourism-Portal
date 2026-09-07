@@ -43,6 +43,23 @@ describe("Admin page-shell presentation", () => {
     expect(markup.indexOf("Prioritize open cases.")).toBeLessThan(markup.indexOf("Refresh"));
   });
 
+  it("keeps a fragment eyebrow icon and label on the same aligned row", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPageHeader
+        eyebrow={
+          <>
+            <svg aria-hidden="true" />
+            Malaysia Vendor Network
+          </>
+        }
+        title="Vendor Approval"
+      />,
+    );
+
+    expect(markup).toContain('class="mb-2 inline-flex items-center gap-2');
+    expect(markup.indexOf("<svg")).toBeLessThan(markup.indexOf("Malaysia Vendor Network"));
+  });
+
   it("renders supplied metrics and omits the grid when there are no items", () => {
     const metricsMarkup = renderToStaticMarkup(
       <AdminMetricGrid

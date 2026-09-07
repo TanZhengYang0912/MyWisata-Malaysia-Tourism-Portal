@@ -96,7 +96,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
         checkout_session_id: "cs-free-1",
         order_id: "order-free-1",
         payment_id: "pay-free-1",
-        status: "succeeded",
+        status: "paid",
       },
       error: null,
     });
@@ -161,6 +161,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
 
     expect(json.data.order_id).toBe("order-free-1");
     expect(json.data.total).toBe(0);
+    expect(json.data.status).toBe("paid");
 
     // Verified: No Stripe checkout session was created
     expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();

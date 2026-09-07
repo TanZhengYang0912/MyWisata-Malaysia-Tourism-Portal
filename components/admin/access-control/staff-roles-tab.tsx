@@ -10,6 +10,8 @@ import type {
   ApiEnvelope,
   AuditFocus,
   MutationReceipt,
+  StaffEmployeeRecord,
+  StaffInvitationRecord,
   StaffRoleCandidate,
   StaffPermissionRecord,
   StaffRoleAssignmentRecord,
@@ -21,10 +23,12 @@ import { Button } from "@/components/ui/button";
 type RolesPayload = {
   roles: StaffRoleRecord[];
   assignments: StaffRoleAssignmentRecord[];
+  employees: StaffEmployeeRecord[];
 };
 
 type PermissionsPayload = { permissions: StaffPermissionRecord[] };
 type CandidatesPayload = { candidates: StaffRoleCandidate[] };
+type InvitationsPayload = { invitations: StaffInvitationRecord[] };
 
 type RoleForm = {
   id: string | null;
@@ -52,9 +56,11 @@ const PERMISSION_LABEL_KEYS: Partial<Record<string, string>> = {
 };
 
 export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus) => void }) {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const [roles, setRoles] = useState<StaffRoleRecord[]>([]);
   const [assignments, setAssignments] = useState<StaffRoleAssignmentRecord[]>([]);
+  const [employees, setEmployees] = useState<StaffEmployeeRecord[]>([]);
+  const [invitations, setInvitations] = useState<StaffInvitationRecord[]>([]);
   const [permissions, setPermissions] = useState<StaffPermissionRecord[]>([]);
   const [form, setForm] = useState<RoleForm>(EMPTY_FORM);
   const [assignmentRoleId, setAssignmentRoleId] = useState("");
@@ -63,6 +69,10 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   const [staffSearchAttempted, setStaffSearchAttempted] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffRoleCandidate | null>(null);
   const [assignmentReason, setAssignmentReason] = useState("");
+  const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationRoleId, setInvitationRoleId] = useState("");
+  const [invitationReason, setInvitationReason] = useState("");
+  const [inviteConfirmOpen, setInviteConfirmOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [assignmentConfirmOpen, setAssignmentConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -77,22 +87,31 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     setLoading(true);
     setError("");
     try {
-      const [permissionsResponse, rolesResponse] = await Promise.all([
+      const [permissionsResponse, rolesResponse, invitationsResponse] = await Promise.all([
         fetch("/api/admin/access-control/staff-permissions", { cache: "no-store" }),
         fetch("/api/admin/access-control/staff-roles", { cache: "no-store" }),
+        fetch("/api/admin/access-control/staff-invitations", { cache: "no-store" }),
       ]);
       const permissionsBody = await permissionsResponse.json() as ApiEnvelope<PermissionsPayload>;
       const rolesBody = await rolesResponse.json() as ApiEnvelope<RolesPayload>;
+      const invitationsBody = await invitationsResponse.json() as ApiEnvelope<InvitationsPayload>;
       if (!permissionsResponse.ok || !permissionsBody.data) {
         throw new Error(errorMessage(permissionsBody, t("accessControl.errors.loadStaffRoles")));
       }
       if (!rolesResponse.ok || !rolesBody.data) {
         throw new Error(errorMessage(rolesBody, t("accessControl.errors.loadStaffRoles")));
       }
+      if (!invitationsResponse.ok || !invitationsBody.data) {
+        throw new Error(errorMessage(invitationsBody, t("accessControl.errors.loadStaffRoles")));
+      }
       setPermissions(permissionsBody.data.permissions);
       setRoles(rolesBody.data.roles);
       setAssignments(rolesBody.data.assignments);
-      setAssignmentRoleId((current) => current || rolesBody.data?.roles.find((role) => role.isActive)?.id || "");
+      setEmployees(rolesBody.data.employees ?? []);
+      setInvitations(invitationsBody.data.invitations);
+      const firstCustomRole = rolesBody.data.roles.find((role) => role.isActive && !role.isSystem)?.id ?? "";
+      setAssignmentRoleId((current) => current || firstCustomRole);
+      setInvitationRoleId((current) => current || firstCustomRole);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadStaffRoles"));
     } finally {
@@ -118,6 +137,10 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     [permissions],
   );
   const selectedAssignmentRole = roles.find((role) => role.id === assignmentRoleId) ?? null;
+  const selectedInvitationRole = roles.find((role) => role.id === invitationRoleId && !role.isSystem) ?? null;
+  const invitationLocale = i18n.resolvedLanguage?.toLowerCase().startsWith("zh")
+    ? "zh-CN"
+    : i18n.resolvedLanguage?.toLowerCase().startsWith("ms") ? "ms" : "en";
   const selectedAssignmentPermissions = selectedAssignmentRole?.permissionKeys.map((key) => ({
     key,
     label: permissionLabel(key),
@@ -151,6 +174,15 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     setAssignmentRoleId(roleId);
     setAssignmentConfirmOpen(false);
     setTimeout(() => staffSearchInputRef.current?.focus(), 0);
+  }
+
+  function copyRoleTemplate(role: StaffRoleRecord) {
+    const proposedName = role.name === "Legacy Wallet Approver"
+      ? "Wallet Approver"
+      : role.name === "Legacy Admin" ? "Admin Reviewer" : `${role.name} Copy`.slice(0, 20);
+    setForm({ ...EMPTY_FORM, name: proposedName, description: role.description ?? "", permissionKeys: [...role.permissionKeys] });
+    setFeedbackMessage("");
+    setReceipt(null);
   }
 
   function togglePermission(key: string, selected: boolean) {
@@ -234,6 +266,61 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     }
   }
 
+  async function sendInvitation() {
+    if (!selectedInvitationRole) return;
+    setSaving(true); setError("");
+    try {
+      const response = await fetch("/api/admin/access-control/staff-invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: invitationEmail.trim(),
+          staffRoleId: selectedInvitationRole.id,
+          locale: invitationLocale,
+          reason: invitationReason.trim(),
+        }),
+      });
+      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
+      setInvitationEmail(""); setInvitationReason(""); setInviteConfirmOpen(false);
+      setFeedbackMessage(t("accessControl.staffRoles.invitationSent"));
+      await load();
+    } catch (caught) {
+      setInviteConfirmOpen(false);
+      setError(caught instanceof Error ? caught.message : t("accessControl.staffRoles.invitationError"));
+    } finally { setSaving(false); }
+  }
+
+  async function resendInvitation(invitationId: string) {
+    setSaving(true); setError("");
+    try {
+      const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/resend`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale: invitationLocale }),
+      });
+      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
+      setFeedbackMessage(t("accessControl.staffRoles.invitationResent"));
+      await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.staffRoles.invitationError")); }
+    finally { setSaving(false); }
+  }
+
+  async function revokeInvitation(invitationId: string) {
+    const reason = window.prompt(t("accessControl.staffRoles.revokeReasonPrompt"))?.trim();
+    if (!reason || reason.length < 10) return;
+    setSaving(true); setError("");
+    try {
+      const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/revoke`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }),
+      });
+      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
+      setFeedbackMessage(t("accessControl.staffRoles.invitationRevoked"));
+      await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.staffRoles.invitationError")); }
+    finally { setSaving(false); }
+  }
+
   async function searchStaff(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const search = staffSearch.trim();
@@ -265,6 +352,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   }
 
   const roleSaveDisabled = !form.name.trim() || form.reason.trim().length < 10;
+  const invitationReviewDisabled = !selectedInvitationRole || !/^\S+@\S+\.\S+$/.test(invitationEmail.trim()) || invitationReason.trim().length < 10 || saving;
   const assignmentReviewDisabled = !selectedAssignmentRole
     || !selectedStaff
     || assignmentReason.trim().length < 10
@@ -324,10 +412,22 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
             </li>)}</ul>
             <div className="mt-3 flex justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
-              <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => selectRoleForAssignment(role.id)}>{t("accessControl.staffRoles.useRole")}</Button>
+              <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
+              {!role.isSystem && <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => { setInvitationRoleId(role.id); selectRoleForAssignment(role.id); }}>{t("accessControl.staffRoles.useRole")}</Button>}
             </div>
           </article>)}</div>
           {!loading && roles.length === 0 && <p className="mt-4 text-sm text-muted-foreground">{t("accessControl.states.noStaffRoles")}</p>}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2"><UserPlus className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("accessControl.staffRoles.inviteTitle")}</h2></div>
+          <p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.inviteHelp")}</p>
+          <Field htmlFor="invitation-role" label={t("accessControl.staffRoles.inviteRole")}><select id="invitation-role" value={invitationRoleId} onChange={(event) => setInvitationRoleId(event.target.value)} className={`${adminFilterControlClassName} w-full`}><option value="">{t("accessControl.staffRoles.selectCustomRole")}</option>{roles.filter((role) => role.isActive && !role.isSystem).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></Field>
+          <Field htmlFor="invitation-email" label={t("accessControl.staffRoles.inviteEmail")}><input id="invitation-email" type="email" value={invitationEmail} onChange={(event) => setInvitationEmail(event.target.value)} placeholder={t("accessControl.staffRoles.inviteEmailPlaceholder")} className={`${adminFilterControlClassName} w-full`} /></Field>
+          <Field htmlFor="invitation-reason" label={t("accessControl.staffRoles.inviteReason")}><textarea id="invitation-reason" value={invitationReason} onChange={(event) => setInvitationReason(event.target.value)} maxLength={500} className="min-h-20 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.staffRoles.inviteReasonPlaceholder")} /></Field>
+          {selectedInvitationRole && <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3"><p className="text-sm font-semibold">{selectedInvitationRole.name}</p><ul className="mt-2 space-y-1">{selectedInvitationRole.permissionKeys.map((key) => <li key={key} className="text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul></div>}
+          <Button className="mt-4 w-full" disabled={invitationReviewDisabled} onClick={() => setInviteConfirmOpen(true)}>{t("accessControl.staffRoles.reviewInvitation")}</Button>
+          <div className="mt-5 border-t border-border pt-4"><h3 className="text-sm font-semibold">{t("accessControl.staffRoles.pendingInvitations")}</h3>{invitations.filter((item) => item.status === "pending").length === 0 ? <p className="mt-2 text-xs text-muted-foreground">{t("accessControl.staffRoles.noPendingInvitations")}</p> : <ul className="mt-2 space-y-2">{invitations.filter((item) => item.status === "pending").map((item) => <li key={item.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold text-foreground">{item.invitedEmail}</p><p className="mt-1 text-muted-foreground"><span>{item.roleName}</span><span aria-hidden="true"> · </span><span>{t(`accessControl.staffRoles.delivery.${item.deliveryStatus}`)}</span></p><div className="mt-2 flex gap-2"><Button size="sm" variant="outline" disabled={saving} onClick={() => void resendInvitation(item.id)}>{t("accessControl.staffRoles.resendInvitation")}</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeInvitation(item.id)}>{t("accessControl.staffRoles.revokeInvitation")}</Button></div></li>)}</ul>}</div>
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-5">
@@ -339,7 +439,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               <p className="mt-1 text-xs text-muted-foreground">{t("accessControl.staffRoles.stepRoleHelp")}</p>
               <select id="assignment-role" value={assignmentRoleId} onChange={(event) => { setAssignmentRoleId(event.target.value); setAssignmentConfirmOpen(false); }} className={`${adminFilterControlClassName} mt-3 w-full`}>
                 <option value="">{t("accessControl.staffRoles.selectRole")}</option>
-                {roles.filter((role) => role.isActive).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                {roles.filter((role) => role.isActive && !role.isSystem).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
               </select>
               {selectedAssignmentRole && <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{selectedAssignmentRole.name}</span><span className="rounded-full bg-background px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{t(selectedAssignmentRole.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></div>
@@ -371,10 +471,12 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
             </li>
           </ol>
           <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground"><span>{t("accessControl.staffRoles.assignmentCount", { count: assignments.filter((item) => !item.revokedAt).length })}</span><Button size="sm" disabled={assignmentReviewDisabled} onClick={() => setAssignmentConfirmOpen(true)}>{t("accessControl.staffRoles.reviewGrant", { count: selectedAssignmentPermissions.length })}</Button></div>
+          {employees.length > 0 && <div className="mt-5 border-t border-border pt-4"><h3 className="text-sm font-semibold">{t("accessControl.staffRoles.joinedEmployees")}</h3><ul className="mt-2 space-y-2">{employees.map((employee) => <li key={employee.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold text-foreground">{employee.name}</p><p className="text-muted-foreground">{employee.email}</p><p className="mt-1 text-muted-foreground">{t("accessControl.staffRoles.assignmentCount", { count: employee.assignments.length })}</p></li>)}</ul></div>}
         </section>
       </div>
     </div>
     <AdminConfirmDialog open={confirmOpen} title={t("accessControl.staffRoles.confirmTitle")} description={t("accessControl.staffRoles.confirmDescription")} confirmLabel="accessControl.staffRoles.confirmSave" busy={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void saveRole()} />
+    <AdminConfirmDialog open={inviteConfirmOpen} title={t("accessControl.staffRoles.confirmInvitationTitle")} description={selectedInvitationRole ? <div className="space-y-2 text-sm"><p>{invitationEmail.trim()}</p><p className="font-semibold">{selectedInvitationRole.name}</p><ul>{selectedInvitationRole.permissionKeys.map((key) => <li key={key}>{permissionLabel(key)}</li>)}</ul><p>{invitationReason.trim()}</p></div> : t("accessControl.staffRoles.inviteHelp")} confirmLabel="accessControl.staffRoles.sendInvitation" busy={saving} onCancel={() => setInviteConfirmOpen(false)} onConfirm={() => void sendInvitation()} />
     <AdminConfirmDialog
       open={assignmentConfirmOpen}
       title={t("accessControl.staffRoles.confirmGrantTitle")}

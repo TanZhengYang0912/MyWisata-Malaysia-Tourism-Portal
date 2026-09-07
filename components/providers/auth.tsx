@@ -12,6 +12,7 @@ import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/
 import { isAppLocale } from "@/lib/i18n/locale";
 import type { VerificationFacts } from "@/lib/entitlements/types";
 import type { Role, User } from "@/backend/core/types";
+import type { StaffPermissionKey } from "@/lib/staff-permissions/types";
 
 interface AuthContextValue {
   currentUser: User | null;
@@ -22,6 +23,8 @@ interface AuthContextValue {
   capabilities: CustomerCapabilitySnapshot;
   verificationFacts: VerificationFacts | null;
   entitlementGeneration: number;
+  staffRoleNames: string[];
+  staffPermissionKeys: StaffPermissionKey[];
   loading: boolean;
   switchUser: (id: string, user?: User) => Promise<User | null>;
   refreshUser: () => Promise<void>;
@@ -47,6 +50,8 @@ type AuthMeUser = {
   capabilities: CustomerCapabilitySnapshot;
   verificationFacts: VerificationFacts;
   entitlementGeneration: number;
+  staffRoleNames: string[];
+  staffPermissionKeys: StaffPermissionKey[];
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -56,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationFacts, setVerificationFacts] = useState<VerificationFacts | null>(null);
   const [entitlementGeneration, setEntitlementGeneration] = useState(0);
   const [activeOutletName, setActiveOutletName] = useState<string | null>(null);
+  const [staffRoleNames, setStaffRoleNames] = useState<string[]>([]);
+  const [staffPermissionKeys, setStaffPermissionKeys] = useState<StaffPermissionKey[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
@@ -84,6 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],
       verificationFacts: row.verificationFacts,
       entitlementGeneration: row.entitlementGeneration,
+      staffRoleNames: row.staffRoleNames,
+      staffPermissionKeys: row.staffPermissionKeys,
       vendorId: row.activeVendorId ?? undefined,
       outletId: row.activeOutletIds[0] ?? undefined,
     };
@@ -92,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setVerificationFacts(row.verificationFacts);
     setEntitlementGeneration(row.entitlementGeneration);
     setActiveOutletName(row.activeOutletName);
+    setStaffRoleNames(row.staffRoleNames);
+    setStaffPermissionKeys(row.staffPermissionKeys);
     setCurrentUserId(authUserId);
     return user;
   }, [tAuth]);
@@ -110,6 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setVerificationFacts(null);
         setEntitlementGeneration(0);
         setActiveOutletName(null);
+        setStaffRoleNames([]);
+        setStaffPermissionKeys([]);
         setLoading(false);
         return;
       }
@@ -124,6 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setVerificationFacts(null);
       setEntitlementGeneration(0);
       setActiveOutletName(null);
+      setStaffRoleNames([]);
+      setStaffPermissionKeys([]);
       setLoading(false);
     });
 
@@ -133,6 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCapabilities(GUEST_CAPABILITIES);
         setVerificationFacts(null);
         setEntitlementGeneration(0);
+        setStaffRoleNames([]);
+        setStaffPermissionKeys([]);
         setLoading(false);
         return;
       }
@@ -144,6 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setVerificationFacts(null);
           setEntitlementGeneration(0);
           setActiveOutletName(null);
+          setStaffRoleNames([]);
+          setStaffPermissionKeys([]);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -196,6 +215,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     capabilities,
     verificationFacts,
     entitlementGeneration,
+    staffRoleNames,
+    staffPermissionKeys,
     loading,
     switchUser,
     refreshUser,

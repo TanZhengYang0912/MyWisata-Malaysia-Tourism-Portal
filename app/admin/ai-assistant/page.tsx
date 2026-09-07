@@ -38,6 +38,16 @@ function readLocalStorage(key: string): string {
   return typeof window === "undefined" ? "" : (window.localStorage.getItem(key) ?? "");
 }
 
+export function AdminAiMessage({ role, text }: ChatMessage) {
+  return (
+    <div data-message-role={role} className={`flex w-full ${role === "user" ? "justify-end" : "justify-start"}`}>
+      <div className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap lg:max-w-3xl ${role === "user" ? "bg-primary text-white" : "bg-background text-foreground shadow-sm"}`}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
 function AskPanel() {
   const { t } = useTranslation("admin");
   const [sessionKey, setSessionKey] = useState<string | null>(() =>
@@ -113,8 +123,8 @@ function AskPanel() {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-5xl overflow-hidden border-border/80 shadow-[0_12px_32px_rgba(1,0,102,0.06)]">
-      <CardContent className="flex min-h-[480px] flex-col p-0" style={{ height: "min(640px, calc(100vh - 18rem))" }}>
+    <Card className="w-full overflow-hidden border-border/80 shadow-[0_12px_32px_rgba(1,0,102,0.06)]">
+      <CardContent className="flex min-h-[480px] flex-col p-0" style={{ height: "min(800px, calc(100vh - 18rem + 160px))" }}>
         <div className="flex items-center gap-2 border-b border-border bg-card px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Bot size={16} />
@@ -122,20 +132,15 @@ function AskPanel() {
           <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title")}</h2>
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto bg-muted/20 px-5 py-5">
-          <div className="mx-auto w-full max-w-3xl space-y-2">
-            {loadingHistory && <p className="text-xs text-muted-foreground">{t("aiAssistant.ask.restoring")}</p>}
+          <div className="w-full space-y-2">
+            {loadingHistory && <p className="mx-auto w-full max-w-3xl text-xs text-muted-foreground">{t("aiAssistant.ask.restoring")}</p>}
             {!loadingHistory && messages.length === 0 && (
-              <p className="rounded-xl border border-dashed border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+              <p className="mx-auto w-full max-w-3xl rounded-xl border border-dashed border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
                 {t("aiAssistant.ask.empty")}
               </p>
             )}
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-background text-foreground shadow-sm"}`}
-              >
-                {m.text}
-              </div>
+              <AdminAiMessage key={i} role={m.role} text={m.text} />
             ))}
           </div>
         </div>
@@ -177,9 +182,7 @@ export default function AdminAiAssistantPage() {
   return (
     <AdminPageShell>
       <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("aiAssistant.title")}</span>} title={t("aiAssistant.title")} description={t("aiAssistant.description")} />
-      <div className="flex w-full justify-center">
-        <AskPanel />
-      </div>
+      <AskPanel />
     </AdminPageShell>
   );
 }

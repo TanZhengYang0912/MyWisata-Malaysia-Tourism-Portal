@@ -17,10 +17,9 @@
 // never happened.
 
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { sendCustomVendorEmail } from '@/lib/email/sender';
 import { recordAudit } from '@/lib/audit';
 
@@ -36,12 +35,8 @@ interface Props { params: Promise<{ id: string }> }
 
 export async function POST(request: Request, { params }: Props) {
   const { id: vendorId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdmin(supabase, user.id))) {
-    return apiFail('FORBIDDEN', 'Only Super Admin can send an approval email', 403);
-  }
+  const { response } = await requireStaffPermission('admin.vendor.manage');
+  if (response) return response;
 
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;

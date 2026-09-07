@@ -70,12 +70,24 @@ export async function GET() {
     return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
   }
 
+  const assignedUserIds = [...new Set((assignmentsResult.data ?? []).map((assignment) => assignment.user_id))];
+  const usersResult = assignedUserIds.length === 0
+    ? { data: [], error: null }
+    : await db.from("users")
+      .select("id,email,full_name,display_name,status")
+      .in("id", assignedUserIds);
+  if (usersResult.error) {
+    return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
+  }
+
   const keysByRole = new Map<string, string[]>();
   for (const row of permissionsResult.data ?? []) {
     const key = permissionKeyFromRelation(row.staff_permissions);
     if (!key) continue;
     keysByRole.set(row.role_id, [...(keysByRole.get(row.role_id) ?? []), key]);
   }
+
+  const activeAssignments = (assignmentsResult.data ?? []).filter((assignment) => assignment.revoked_at === null);
 
   return apiOk({
     roles: (rolesResult.data ?? []).map((role) => ({
@@ -96,6 +108,15 @@ export async function GET() {
       assignedBy: assignment.assigned_by,
       revokedAt: assignment.revoked_at,
       createdAt: assignment.created_at,
+    })),
+    employees: (usersResult.data ?? []).map((employee) => ({
+      id: employee.id,
+      email: employee.email,
+      name: employee.full_name ?? employee.display_name ?? employee.email,
+      status: employee.status,
+      assignments: activeAssignments
+        .filter((assignment) => assignment.user_id === employee.id)
+        .map((assignment) => ({ id: assignment.id, roleId: assignment.role_id, createdAt: assignment.created_at })),
     })),
   });
 }

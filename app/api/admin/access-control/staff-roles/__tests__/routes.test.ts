@@ -32,7 +32,7 @@ const AUDIT_ID = "55555555-5555-4555-8555-555555555555";
 function queryBuilder(data: unknown[] = []) {
   const result = { data, error: null };
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "order", "limit"]) {
+  for (const method of ["select", "eq", "in", "order", "limit"]) {
     builder[method] = vi.fn(() => builder);
   }
   builder.maybeSingle = vi.fn(async () => ({ data: data[0] ?? null, error: null }));

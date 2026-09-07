@@ -13,6 +13,12 @@ describe("post-login destination", () => {
     expect(postLoginDestination("admin", null)).toBe("/admin/dashboard");
   });
 
+  it("lands Staff on its permission-aware home and preserves Staff invitation completion", () => {
+    expect(postLoginDestination("staff", null)).toBe("/staff");
+    expect(postLoginDestination("customer", "/staff-invitations/invite-token"))
+      .toBe("/staff-invitations/invite-token");
+  });
+
   it("lands customers strictly on their fixed /customer home page", () => {
     expect(postLoginDestination("customer", "/customer/vendor/vendor-1/outlet/outlet-1")).toBe("/customer");
     expect(postLoginDestination("customer", "/customer/checkout")).toBe("/customer");

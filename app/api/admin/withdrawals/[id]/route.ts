@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import type { WithdrawalReviewDetail } from '@/lib/wallet/withdrawal-review';
 import { deriveWithdrawalAvailableActions } from '@/lib/wallet/withdrawal-capabilities';
@@ -17,16 +18,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: withdrawalId } = await params;
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: isApprover, error: roleError } = await db.rpc('is_approver', { uid: user.id });
-  if (roleError || !isApprover) return apiFail('FORBIDDEN', 'Wallet Approver access required', 403);
+  const { db, user, response } = await requireStaffPermission('admin.withdrawal.approve');
+  if (response) return response;
+  const service = createServiceClient();
   const { data: isSuperAdmin } = await db.rpc('is_super_admin', { uid: user.id });
 
   // Fetch withdrawal with safe joined fields only. Explicitly excludes KYC document paths,
   // IC/passport numbers, raw bank account details and Stripe secrets.
-  const { data: row, error } = await db
+  const { data: row, error } = await service
     .from('withdrawal_requests')
     .select(`
       id, user_id, amount, status, requires_dual_approval, destination_label,

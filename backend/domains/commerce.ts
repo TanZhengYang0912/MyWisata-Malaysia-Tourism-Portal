@@ -37,9 +37,17 @@ async function getOrCreateCart(userId: string): Promise<{ id: string }> {
 
 async function getCartRows(userId: string): Promise<CartItemRow[]> {
   const cart = await getOrCreateCart(userId);
-  const { data, error } = await supabase.from("cart_items").select(CART_ITEM_SELECT).eq("cart_id", cart.id).order("created_at");
+  const { data, error } = await supabase
+    .from("cart_items")
+    .select(CART_ITEM_SELECT)
+    .eq("cart_id", cart.id)
+    .order("last_added_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as unknown as CartItemRow[];
+  return ((data ?? []) as unknown as CartItemRow[]).filter((row) =>
+    Boolean(relation(row.product_variants)?.product_id ?? relation(row.booking_slots)?.product_id),
+  );
 }
 
 function mapCartItem(row: CartItemRow): CartItem {
@@ -63,7 +71,13 @@ export async function addToCart(userId: string, item: CartItem): Promise<CartIte
     && row.outlet_id === (item.outletId ?? null),
   );
   if (existing) {
-    const { error } = await supabase.from("cart_items").update({ quantity: existing.quantity + item.qty }).eq("id", existing.id);
+    const { error } = await supabase
+      .from("cart_items")
+      .update({
+        quantity: existing.quantity + item.qty,
+        last_added_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("cart_items").insert({ cart_id: cart.id, variant_id: item.variantId || null, slot_id: item.slotId ?? null, outlet_id: item.outletId ?? null, quantity: item.qty, unit_price: item.priceOverride ?? 0 });
@@ -448,6 +462,24 @@ type WalletTransactionRow = {
   created_at: string;
 };
 
+type ExternalPurchaseRow = {
+  id: string;
+  user_id: string;
+  status: string;
+  total_amount: number;
+  payment_method: string | null;
+  created_at: string;
+};
+
+type ExternalRefundRow = {
+  id: string;
+  order_id: string;
+  amount: number;
+  status: string;
+  processed_at: string | null;
+  created_at: string;
+};
+
 const WALLET_TRANSACTION_SELECT = "id,user_id,wallet_id,order_id,withdrawal_id,type,amount_sen,bucket,direction,note,created_at";
 
 function mapWalletTransaction(row: WalletTransactionRow): WalletTransaction {
@@ -466,6 +498,38 @@ function mapWalletTransaction(row: WalletTransactionRow): WalletTransaction {
   };
 }
 
+function mapExternalPurchase(row: ExternalPurchaseRow): WalletTransaction {
+  return {
+    id: `order:${row.id}`,
+    userId: row.user_id,
+    walletId: null,
+    orderId: row.id,
+    withdrawalId: null,
+    type: "spend",
+    amount: Number(row.total_amount),
+    bucket: "external",
+    direction: "debit",
+    note: row.payment_method ? `Paid with ${row.payment_method}` : "External purchase",
+    createdAt: row.created_at,
+  };
+}
+
+function mapExternalRefund(row: ExternalRefundRow, userId: string): WalletTransaction {
+  return {
+    id: `refund:${row.id}`,
+    userId,
+    walletId: null,
+    orderId: row.order_id,
+    withdrawalId: null,
+    type: "refund",
+    amount: Number(row.amount),
+    bucket: "external",
+    direction: "credit",
+    note: "External purchase refund",
+    createdAt: row.processed_at ?? row.created_at,
+  };
+}
+
 export async function getWalletTransactions(userId: string, limit = 100): Promise<WalletTransaction[]> {
   const { data, error } = await supabase
     .from("wallet_transactions")
@@ -480,21 +544,79 @@ export async function getWalletTransactions(userId: string, limit = 100): Promis
 export async function getCustomerWalletTransactionPage(userId: string, filters: CustomerHistoryFilters): Promise<{ transactions: WalletTransaction[]; total: number }> {
   const filter = buildCustomerHistoryQuery(filters);
   if (!userId.trim() || !filter.ok) throw new Error("Invalid customer history query");
-  let query = supabase.from("wallet_transactions")
+  const fetchLimit = filter.offset + filter.pageSize;
+  let walletQuery = supabase.from("wallet_transactions")
     .select(WALLET_TRANSACTION_SELECT, { count: "exact" })
     .eq("user_id", userId)
     // Settlement audit entries duplicate the customer-facing reservation debit.
     .neq("type", "withdrawal_complete");
-  if (filter.types) query = query.in("type", filter.types);
-  if (filter.direction) query = query.eq("direction", filter.direction);
-  if (filter.fromInclusive) query = query.gte("created_at", filter.fromInclusive);
-  if (filter.toExclusive) query = query.lt("created_at", filter.toExclusive);
-  const { data, error, count } = await query
+  if (filter.types) walletQuery = walletQuery.in("type", filter.types);
+  if (filter.direction) walletQuery = walletQuery.eq("direction", filter.direction);
+  if (filter.fromInclusive) walletQuery = walletQuery.gte("created_at", filter.fromInclusive);
+  if (filter.toExclusive) walletQuery = walletQuery.lt("created_at", filter.toExclusive);
+  const walletPromise = walletQuery
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
-    .range(filter.offset, filter.offset + filter.pageSize - 1);
-  if (error) throw error;
-  return { transactions: (data as unknown as WalletTransactionRow[]).map(mapWalletTransaction), total: count ?? 0 };
+    .range(0, fetchLimit - 1);
+
+  const includeExternalPurchases = (!filter.types || filter.types.includes("spend"))
+    && (!filter.direction || filter.direction === "debit");
+  const purchasePromise = includeExternalPurchases
+    ? (() => {
+        let query = supabase.from("orders")
+          .select("id,user_id,status,total_amount,payment_method,created_at", { count: "exact" })
+          .eq("user_id", userId)
+          .in("status", ["paid", "completed", "refunded"])
+          .not("payment_method", "in", "(wallet,wallet_split)");
+        if (filter.fromInclusive) query = query.gte("created_at", filter.fromInclusive);
+        if (filter.toExclusive) query = query.lt("created_at", filter.toExclusive);
+        return query
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(0, fetchLimit - 1);
+      })()
+    : Promise.resolve({ data: [], error: null, count: 0 });
+
+  const includeExternalRefunds = (!filter.types || filter.types.includes("refund"))
+    && (!filter.direction || filter.direction === "credit");
+  const refundPromise = includeExternalRefunds
+    ? (() => {
+        let query = supabase.from("refunds")
+          .select("id,order_id,amount,status,processed_at,created_at,orders!inner(user_id,payment_method)", { count: "exact" })
+          .eq("status", "processed")
+          .eq("orders.user_id", userId)
+          .not("orders.payment_method", "in", "(wallet,wallet_split)");
+        if (filter.fromInclusive) query = query.gte("processed_at", filter.fromInclusive);
+        if (filter.toExclusive) query = query.lt("processed_at", filter.toExclusive);
+        return query
+          .order("processed_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(0, fetchLimit - 1);
+      })()
+    : Promise.resolve({ data: [], error: null, count: 0 });
+
+  const [walletResult, purchaseResult, refundResult] = await Promise.all([
+    walletPromise,
+    purchasePromise,
+    refundPromise,
+  ]);
+  if (walletResult.error) throw walletResult.error;
+  if (purchaseResult.error) throw purchaseResult.error;
+  if (refundResult.error) throw refundResult.error;
+
+  const transactions = [
+    ...(walletResult.data as unknown as WalletTransactionRow[]).map(mapWalletTransaction),
+    ...(purchaseResult.data as unknown as ExternalPurchaseRow[]).map(mapExternalPurchase),
+    ...(refundResult.data as unknown as ExternalRefundRow[]).map((row) => mapExternalRefund(row, userId)),
+  ].sort((left, right) =>
+    Date.parse(right.createdAt) - Date.parse(left.createdAt)
+      || right.id.localeCompare(left.id),
+  );
+
+  return {
+    transactions: transactions.slice(filter.offset, filter.offset + filter.pageSize),
+    total: (walletResult.count ?? 0) + (purchaseResult.count ?? 0) + (refundResult.count ?? 0),
+  };
 }
 
 export async function requestWithdrawal(userId: string, amount: number): Promise<WithdrawalRequest> {

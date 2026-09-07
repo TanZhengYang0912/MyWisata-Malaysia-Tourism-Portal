@@ -50,6 +50,28 @@ export type StaffRoleCandidate = {
   roles: string[];
 };
 
+export type StaffEmployeeRecord = {
+  id: string;
+  email: string;
+  name: string;
+  status: string;
+  assignments: Array<{ id: string; roleId: string; createdAt: string | null }>;
+};
+
+export type StaffInvitationRecord = {
+  id: string;
+  invitedEmail: string;
+  roleName: string;
+  permissionKeys: string[];
+  status: "pending" | "accepted" | "revoked";
+  deliveryStatus: "pending" | "sending" | "sent" | "failed";
+  sendAttemptCount: number;
+  expiresAt: string;
+  createdAt?: string | null;
+  acceptedAt?: string | null;
+  revokedAt?: string | null;
+};
+
 export type PageResult<T> = {
   items: T[];
   page: number;

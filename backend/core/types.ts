@@ -12,6 +12,7 @@ export type Role =
   | "outlet_manager"
   | "admin"
   | "approver"
+  | "staff"
   | "super_admin";
 
 export interface User {
@@ -28,6 +29,8 @@ export interface User {
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
   verificationFacts?: VerificationFacts;
   entitlementGeneration?: number;
+  staffRoleNames?: string[];
+  staffPermissionKeys?: import("@/lib/staff-permissions/types").StaffPermissionKey[];
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -41,6 +44,8 @@ export interface AuthState {
   capabilities: CustomerCapabilitySnapshot;
   verificationFacts: VerificationFacts | null;
   entitlementGeneration: number;
+  staffRoleNames: string[];
+  staffPermissionKeys: import("@/lib/staff-permissions/types").StaffPermissionKey[];
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────
@@ -534,7 +539,7 @@ export interface WithdrawalRequest {
 export interface WalletTransaction {
   id: string;
   userId: string;
-  walletId: string;
+  walletId: string | null;
   orderId: string | null;
   withdrawalId: string | null;
   type: string;

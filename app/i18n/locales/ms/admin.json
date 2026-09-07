@@ -238,8 +238,8 @@
       "permissionCount": "{{count}} kebenaran",
       "permissionCount_one": "{{count}} kebenaran",
       "permissionCount_other": "{{count}} kebenaran",
-      "assignmentTitle": "Berikan kebenaran kepada kakitangan",
-      "assignmentHelp": "Pilih peranan kebenaran, pilih kakitangan, kemudian rekodkan sebab akses diperlukan.",
+      "assignmentTitle": "Kakitangan sedia ada & kebenaran",
+      "assignmentHelp": "Cari kakitangan yang telah menyertai, kemudian tambah Peranan Kakitangan tersuai dengan sebab yang diaudit.",
       "role": "Peranan",
       "selectRole": "Pilih peranan aktif",
       "userId": "UUID pengguna kakitangan",
@@ -251,6 +251,7 @@
       "systemPreset": "Pratetap sistem",
       "customRole": "Peranan tersuai",
       "useRole": "Gunakan peranan ini",
+      "useTemplate": "Salin sebagai peranan baharu",
       "editRole": "Edit peranan",
       "stepRole": "1. Pilih peranan kebenaran",
       "stepRoleHelp": "Kebenaran peranan terpilih akan ditambahkan kepada kakitangan.",
@@ -259,7 +260,7 @@
       "addsPermissions_other": "Menambah {{count}} kebenaran",
       "existingPermissionsUnchanged": "Ini menambah kebenaran. Kebenaran sedia ada tidak akan dibuang.",
       "stepEmployee": "2. Pilih kakitangan",
-      "employeeHelp": "Cari Admin, Pelulus, atau Super Admin yang aktif mengikut nama atau e-mel.",
+      "employeeHelp": "Cari kakitangan yang telah menyertai mengikut nama atau e-mel. Kakitangan baharu mesti menggunakan bahagian jemputan di atas.",
       "selectedEmployee": "Kakitangan dipilih",
       "searchingStaff": "Sedang mencari…",
       "noStaffResults": "Tiada kakitangan aktif yang layak sepadan dengan nama atau e-mel tersebut.",
@@ -288,7 +289,8 @@
       "assign": "Berikan peranan",
       "confirmTitle": "Sahkan perubahan peranan kakitangan",
       "confirmDescription": "Perubahan kebenaran akan direkodkan dalam Log Audit.",
-      "confirmSave": "Simpan peranan kakitangan"
+      "confirmSave": "Simpan peranan kakitangan",
+      "inviteTitle": "Jemput kakitangan baharu", "inviteHelp": "Pilih Peranan Kakitangan tersuai dan hantar jemputan tujuh hari ke e-mel pekerja khusus. Pekerja menyemak dan menerima kebenaran tepat.", "inviteRole": "Peranan Kakitangan tersuai", "selectCustomRole": "Pilih peranan tersuai", "inviteEmail": "E-mel kakitangan", "inviteEmailPlaceholder": "pekerja@contoh.com", "inviteReason": "Sebab tadbir urus", "inviteReasonPlaceholder": "Terangkan mengapa kakitangan baharu ini memerlukan kebenaran tersebut.", "reviewInvitation": "Semak jemputan", "confirmInvitationTitle": "Sahkan jemputan kakitangan", "sendInvitation": "Hantar e-mel jemputan", "pendingInvitations": "Jemputan belum selesai", "noPendingInvitations": "Tiada jemputan belum selesai.", "resendInvitation": "Hantar semula", "revokeInvitation": "Batalkan", "revokeReasonPrompt": "Masukkan sebab pembatalan (sekurang-kurangnya 10 aksara).", "invitationSent": "E-mel jemputan dihantar.", "invitationResent": "E-mel jemputan dihantar semula dengan pautan baharu.", "invitationRevoked": "Jemputan dibatalkan.", "invitationError": "Tidak dapat memproses jemputan kakitangan.", "joinedEmployees": "Kakitangan yang telah menyertai", "delivery": { "pending": "Menunggu", "sending": "Menghantar", "sent": "E-mel dihantar", "failed": "Penghantaran gagal" }
     },
     "confirm": {
       "capabilityTitle": "Sahkan perubahan keupayaan",

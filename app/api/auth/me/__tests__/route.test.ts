@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   from: vi.fn(),
+  rpc: vi.fn(),
   resolveServerCustomerCapabilities: vi.fn(),
 }));
 
@@ -10,6 +11,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     auth: { getUser: mocks.getUser },
     from: mocks.from,
+    rpc: mocks.rpc,
   })),
 }));
 
@@ -43,6 +45,7 @@ describe("GET /api/auth/me", () => {
         },
       },
     });
+    mocks.rpc.mockResolvedValue({ data: { roleNames: [], permissionKeys: [] }, error: null });
     mocks.from.mockImplementation((table: string) => {
       if (table === "users") {
         return queryResult({
@@ -115,6 +118,49 @@ describe("GET /api/auth/me", () => {
     expect(mocks.resolveServerCustomerCapabilities).toHaveBeenCalledWith("user-1");
   });
 
+  it("returns self-only Staff role names and effective permissions", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "users") return queryResult({
+        id: "user-1", email: "staff@example.com", full_name: "Staff Member", avatar_url: null,
+        kyc_status: "unverified", tier: "email_verified", email_verified_at: "2026-08-01T00:00:00.000Z",
+        phone_verified_at: null, profile_completed_at: null, status: "active",
+      });
+      if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "staff" }, outlets: null }]);
+      if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
+      throw new Error(`unexpected table ${table}`);
+    });
+    mocks.rpc.mockResolvedValue({
+      data: { roleNames: ["KYC Reviewer"], permissionKeys: ["admin.kyc.review"] },
+      error: null,
+    });
+
+    const body = await (await GET()).json();
+
+    expect(mocks.rpc).toHaveBeenCalledWith("get_my_staff_access");
+    expect(body.user.staffRoleNames).toEqual(["KYC Reviewer"]);
+    expect(body.user.staffPermissionKeys).toEqual(["admin.kyc.review"]);
+  });
+
+  it("keeps a claimed but unaccepted Staff invitation identity roleless", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "users") return queryResult({
+        id: "user-1", email: "pending.staff@example.com", full_name: "Pending Staff", avatar_url: null,
+        kyc_status: "unverified", tier: "email_verified", email_verified_at: "2026-08-01T00:00:00.000Z",
+        phone_verified_at: null, profile_completed_at: null, status: "active",
+      });
+      if (table === "user_roles" || table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ error: "Role assignment pending" });
+    expect(mocks.resolveServerCustomerCapabilities).not.toHaveBeenCalled();
+  });
+
   it("uses the public user email fact instead of provider confirmation metadata", async () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "users") return queryResult({
@@ -122,7 +168,7 @@ describe("GET /api/auth/me", () => {
         kyc_status: "unverified", tier: "email_verified", email_verified_at: null,
         phone_verified_at: null, profile_completed_at: null, status: "active",
       });
-      if (table === "user_roles") return queryResult([]);
+      if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "customer" }, outlets: null }]);
       if (table === "outlet_managers") return queryResult([]);
       if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
@@ -141,7 +187,8 @@ describe("GET /api/auth/me", () => {
         email_verified_at: "2026-08-01T00:00:00.000Z",
         phone_verified_at: null, profile_completed_at: null, status: "active",
       });
-      if (table === "user_roles" || table === "outlet_managers") return queryResult([]);
+      if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "customer" }, outlets: null }]);
+      if (table === "outlet_managers") return queryResult([]);
       if (table === "preference_survey_responses") return queryResult({ interests: [] });
       throw new Error(`unexpected table ${table}`);
     });

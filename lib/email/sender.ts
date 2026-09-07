@@ -11,11 +11,14 @@ import {
   type TransactionEmailInput,
   type VendorEmailInput,
 } from '@/lib/email/templates';
+import { renderStaffInvitationEmail } from '@/lib/email/staff-invitation';
+import type { StaffInvitationEmailInput } from '@/lib/staff-invitations/types';
 
 export type SendTransactionEmailInput = TransactionEmailInput & { to: string };
 export type SendAccountEmailInput = AccountEmailInput & { to: string };
 export type SendRecommendationEmailInput = RecommendationEmailInput & { to: string };
 export type SendVendorEmailInput = VendorEmailInput & { to: string };
+export type SendStaffInvitationEmailInput = StaffInvitationEmailInput & { to: string };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
@@ -67,6 +70,10 @@ export function sendRecommendationEmail(input: SendRecommendationEmailInput): Pr
 
 export function sendVendorEmail(input: SendVendorEmailInput): Promise<{ id: string }> {
   return sendRenderedEmail(input.to, renderVendorEmail(input));
+}
+
+export function sendStaffInvitationEmail(input: SendStaffInvitationEmailInput): Promise<{ id: string }> {
+  return sendRenderedEmail(input.to, renderStaffInvitationEmail(input));
 }
 
 export type SendCustomVendorEmailInput = { to: string; subject: string; body: string };

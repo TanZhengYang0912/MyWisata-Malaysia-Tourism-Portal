@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Approved for inline execution.
+**Status:** Implemented, verified, and deployed to the linked Supabase project; live SMTP recipient smoke test remains pending a dedicated test recipient.
 
 **Goal:** Let a Super Admin email a seven-day Staff Role invitation to a new dedicated employee account, let the verified recipient explicitly accept it, and give that Staff identity access only to the four work areas represented by active Staff Role assignments.
 
@@ -107,17 +107,17 @@
 - Produces RPCs `prepare_staff_invitation(TEXT, UUID, TEXT, TEXT, TIMESTAMPTZ)`, `prepare_staff_invitation_resend(UUID, TEXT, TIMESTAMPTZ)`, `finalize_staff_invitation_delivery(UUID, TEXT, BOOLEAN)`, `revoke_staff_invitation(UUID, TEXT)`, `accept_staff_invitation(TEXT)`, and `get_my_staff_access()`.
 - Produces lifecycle rows keyed by UUID with only `token_hash`, never raw token.
 
-- [ ] **Step 1: Write the failing migration contract**
+- [x] **Step 1: Write the failing migration contract**
 
 Assert the migration contains the `staff` role seed, invitation constraints/indexes, RLS with no anon table grant, token-hash parameters, role/email/snapshot checks, `FOR UPDATE`, Customer-role bypass only for a live Staff invite, verified-email acceptance, terminal accepted/revoked states, and audit inserts. Assert it does not contain an `invite_url` or `raw_token` column.
 
-- [ ] **Step 2: Run the migration test RED**
+- [x] **Step 2: Run the migration test RED**
 
 Run: `npx vitest run supabase/migrations/__tests__/20260906040000_staff_invitations.test.ts`
 
 Expected: FAIL because the migration does not exist.
 
-- [ ] **Step 3: Implement the schema and lifecycle RPCs**
+- [x] **Step 3: Implement the schema and lifecycle RPCs**
 
 Use the exact table core:
 
@@ -150,11 +150,11 @@ CREATE TABLE public.staff_invitations (
 
 `accept_staff_invitation()` must lock by token hash, require `email_confirmed_at`, compare normalized email, compare current sorted permission keys/name with snapshots, insert the global `staff` role and one Staff Role assignment, mark accepted, and audit in one transaction.
 
-- [ ] **Step 4: Update auth provisioning and permission compatibility**
+- [x] **Step 4: Update auth provisioning and permission compatibility**
 
 In `handle_new_auth_user()`, lock one unexpired pending invitation by normalized email. When found, create/update `public.users`, bind `claimed_by`, create the wallet for compatibility, and skip Customer role insertion. Otherwise execute the unchanged Customer path. Make `has_staff_permission()` accept coarse `staff`; keep Super Admin implicit. Make `can_review_kyc()` and withdrawal `is_approver()` delegate only to the matching permission for Staff while retaining legacy results.
 
-- [ ] **Step 5: Run migration contract GREEN**
+- [x] **Step 5: Run migration contract GREEN**
 
 Run the Task 1 Vitest file and `git diff --check`.
 
@@ -175,17 +175,17 @@ Expected: PASS and no whitespace errors.
 **Interfaces:**
 - Produces `normalizeStaffInvitationEmail(email)`, `createStaffInvitationToken()`, `hashStaffInvitationToken(token)`, `staffInvitationOrigin(env)`, `buildStaffInvitationUrl(origin, token)`, `sendStaffInvitationEmail(input)`.
 
-- [ ] **Step 1: Write RED tests**
+- [x] **Step 1: Write RED tests**
 
 Cover trim/lowercase without dot/plus collapsing, 32-byte randomness, SHA-256 hash, rejection of missing/untrusted origins, localhost HTTP allowance, production HTTPS enforcement, HTML escaping, Malaysia expiry display, localized permission labels, and absence of governance reason/UUID/technical keys.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `npx vitest run lib/staff-invitations/__tests__/server.test.ts lib/email/__tests__/staff-invitation.test.ts`
 
 Expected: FAIL on missing modules.
 
-- [ ] **Step 3: Implement helpers and renderer**
+- [x] **Step 3: Implement helpers and renderer**
 
 Use `randomBytes(32).toString('hex')`, `createHash('sha256')`, and only `NEXT_PUBLIC_SITE_URL` from server environment. Reuse `escapeHtml()` and the existing Nodemailer transport through:
 
@@ -196,7 +196,7 @@ export function sendStaffInvitationEmail(input: SendStaffInvitationEmailInput) {
 }
 ```
 
-- [ ] **Step 4: Run helper/email tests GREEN**
+- [x] **Step 4: Run helper/email tests GREEN**
 
 Expected: all Task 2 tests pass.
 
@@ -212,15 +212,15 @@ Expected: all Task 2 tests pass.
 - Consumes Task 1 RPCs and Task 2 SMTP helpers.
 - Produces JSON summaries with `id`, email, role snapshot, permissions, lifecycle state, delivery state, attempts, and expiry. No response contains a token or URL.
 
-- [ ] **Step 1: Write guarded route tests**
+- [x] **Step 1: Write guarded route tests**
 
 Test guard-before-parse/service/SMTP, strict Zod bodies, role-bearing email conflict, duplicate pending conflict, roleless rebind, prepare→SMTP→finalize ordering, sanitized SMTP failure, stale-sending unknown display, resend cooldown/rotation, revoke reason, and token/URL absence.
 
-- [ ] **Step 2: Run route tests RED**
+- [x] **Step 2: Run route tests RED**
 
 Expected: missing route modules or handlers.
 
-- [ ] **Step 3: Implement list/create/resend/revoke**
+- [x] **Step 3: Implement list/create/resend/revoke**
 
 All routes start with `requireStaffRoleManagementSuperAdmin()`. Only after success may they create a service client or send SMTP. Creation/resend returns:
 
@@ -233,11 +233,11 @@ return apiOk({
 }, { status: created ? 201 : 200 });
 ```
 
-- [ ] **Step 4: Extend existing-employee data**
+- [x] **Step 4: Extend existing-employee data**
 
 Allow `staff` in Staff candidate eligibility and include employee name/email plus active assignments in the Staff Roles GET response. Do not make system role definitions editable.
 
-- [ ] **Step 5: Run administrative API tests GREEN**
+- [x] **Step 5: Run administrative API tests GREEN**
 
 Run all Staff invitation, Staff Role, and Staff candidate route tests.
 
@@ -253,23 +253,23 @@ Run all Staff invitation, Staff Role, and Staff candidate route tests.
 - GET returns the invited email, role name, human-readable permissions, expiry, and safe state with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 - POST requires a verified matching authenticated identity and calls `accept_staff_invitation(hash)`.
 
-- [ ] **Step 1: Write RED route and UI tests**
+- [x] **Step 1: Write RED route and UI tests**
 
 Cover invalid/expired/revoked/used/role-changed links, no-store headers, signed-out review, fixed invited email, sign-in, name/password registration, verification pending/resend, Google return path, wrong-session switch account, acceptance, and redirect `/staff`.
 
-- [ ] **Step 2: Implement preview and acceptance route**
+- [x] **Step 2: Implement preview and acceptance route**
 
 Hash the path token immediately, query only by hash through the server, never log the path, map database errors to stable non-enumerating codes, and never return governance reason or technical permission keys.
 
-- [ ] **Step 3: Implement the recipient page**
+- [x] **Step 3: Implement the recipient page**
 
 Reuse password policy and Supabase auth calls from `app/login/page.tsx`. Use the exact callback target `/auth/callback?next=/staff-invitations/[token]`; do not store the token in local/session storage.
 
-- [ ] **Step 4: Preserve the safe return path**
+- [x] **Step 4: Preserve the safe return path**
 
 Add only `/staff-invitations/` to the invitation allowlist in `postLoginDestination()`. Keep arbitrary `next` values mapped to role homes.
 
-- [ ] **Step 5: Run recipient/auth tests GREEN**
+- [x] **Step 5: Run recipient/auth tests GREEN**
 
 Expected: Task 4 suites pass.
 
@@ -286,23 +286,23 @@ Expected: Task 4 suites pass.
 - `staffNavigationFor(permissionKeys)` returns only the four allowed work links.
 - `staffCanAccessPath(permissionKeys, pathname)` returns false for every unrelated Admin route.
 
-- [ ] **Step 1: Write RED exhaustive-role and nav tests**
+- [x] **Step 1: Write RED exhaustive-role and nav tests**
 
 Assert `staff` resolves to `/staff`, has priority below Super Admin/Admin/Approver but above Customer, can preserve only invitation return paths, and maps each permission to exactly one work area.
 
-- [ ] **Step 2: Add `staff` to shared role contracts**
+- [x] **Step 2: Add `staff` to shared role contracts**
 
 Update every exhaustive `Record<Role, ...>` and `ROLE_NAMES`. Keep demo account endpoints from fabricating Staff users.
 
-- [ ] **Step 3: Expose self-only effective access**
+- [x] **Step 3: Expose self-only effective access**
 
 Call `get_my_staff_access()` from `/api/auth/me`; return empty arrays for non-Staff. Populate the provider fields without exposing assignment rows belonging to other people.
 
-- [ ] **Step 4: Implement `/staff` and Staff-mode Admin layout**
+- [x] **Step 4: Implement `/staff` and Staff-mode Admin layout**
 
 Allow `useRequireRole(['admin','approver','super_admin','staff'])`. For Staff, block rendering children unless `staffCanAccessPath()` succeeds, hide counts/search/command palette, and render only `staffNavigationFor()`. Legacy roles keep existing behavior.
 
-- [ ] **Step 5: Run role/auth/layout/home tests GREEN**
+- [x] **Step 5: Run role/auth/layout/home tests GREEN**
 
 Expected: all Task 5 targeted suites pass.
 
@@ -317,23 +317,23 @@ Expected: all Task 5 targeted suites pass.
 - Consumes Task 3 invitation summaries and joined employee summaries.
 - Reuses existing role create/update and assignment/revocation endpoints.
 
-- [ ] **Step 1: Write RED component tests**
+- [x] **Step 1: Write RED component tests**
 
 Assert three distinct areas: create custom role, invite new employee, employees and permissions. Verify invitation review includes fixed email/role/human labels/seven-day expiry but excludes governance reason from recipient content; send success shows delivery; failed/unknown supports resend; revoke requires a new reason; existing Staff role adjustment remains additive.
 
-- [ ] **Step 2: Implement invitation card**
+- [x] **Step 2: Implement invitation card**
 
 Fields are active role, email, and governance reason. Review dialog submits POST only after confirmation. Never show or copy an invite URL.
 
-- [ ] **Step 3: Implement employee and pending-invite management**
+- [x] **Step 3: Implement employee and pending-invite management**
 
 List joined Staff separately from pending/history invitations. Assignment chooses an existing joined employee; resend and revoke act only on invitation IDs.
 
-- [ ] **Step 4: Add English, Malay, and Chinese copy**
+- [x] **Step 4: Add English, Malay, and Chinese copy**
 
 Add the same keys to all locale files and run `npm run verify:i18n`.
 
-- [ ] **Step 5: Run Staff Roles UI tests GREEN**
+- [x] **Step 5: Run Staff Roles UI tests GREEN**
 
 Expected: component and i18n tests pass.
 
@@ -347,27 +347,27 @@ Expected: component and i18n tests pass.
 **Interfaces:**
 - Every protected handler calls `requireStaffPermission(key)` before parsing, service-client construction, signed URL creation, or data query.
 
-- [ ] **Step 1: Write authorization matrix tests**
+- [x] **Step 1: Write authorization matrix tests**
 
 For each permission, assert its list/detail/mutation/supporting endpoints succeed with that permission and return 403 without it. Assert a Staff identity with one permission cannot access the other three modules. Assert Super Admin and legacy role regressions remain green.
 
-- [ ] **Step 2: Gate KYC reads and documents**
+- [x] **Step 2: Gate KYC reads and documents**
 
 Replace ad-hoc `can_review_kyc` route checks with `requireStaffPermission('admin.kyc.review')`; retain database assignment/self-dealing checks and 300-second signed URLs.
 
-- [ ] **Step 3: Gate withdrawal reads and ordinary review actions**
+- [x] **Step 3: Gate withdrawal reads and ordinary review actions**
 
 Use `requireStaffPermission('admin.withdrawal.approve')` for list/detail/approve/reject/hold/resume. Keep fraud override and payout retry at their stricter existing authority unless their RPC explicitly authorizes Staff.
 
-- [ ] **Step 4: Gate vendor list and supporting actions**
+- [x] **Step 4: Gate vendor list and supporting actions**
 
 Move vendor list/filter queries into `app/api/admin/vendors/route.ts`; update the page to call it. Add the same permission guard to approval/suspension and email/recommendation support routes.
 
-- [ ] **Step 5: Confirm sponsored placement seams**
+- [x] **Step 5: Confirm sponsored placement seams**
 
 Retain existing permission guards and add missing direct-route denial assertions.
 
-- [ ] **Step 6: Run the four-module authorization suites GREEN**
+- [x] **Step 6: Run the four-module authorization suites GREEN**
 
 Expected: all affected API/page tests pass.
 
@@ -378,21 +378,21 @@ Expected: all affected API/page tests pass.
 **Files:**
 - Modify: this plan only for evidence/checkmarks unless a confirmed must-fix defect is found.
 
-- [ ] **Step 1: Run targeted tests once after the final code change**
+- [x] **Step 1: Run targeted tests once after the final code change**
 
 Run the Staff invitation/RBAC/auth/layout/i18n/KYC/withdrawal/vendor/sponsored suites from Tasks 1–7.
 
-- [ ] **Step 2: Run repository checks**
+- [x] **Step 2: Run repository checks**
 
 Run `npx tsc --noEmit`, `npm run lint`, and `npm run verify:i18n`.
 
 Expected: TypeScript and i18n pass; ESLint has zero errors. Pre-existing warnings must be reported separately and not expanded into unrelated cleanup.
 
-- [ ] **Step 3: Run a fresh read-only permission/privacy review**
+- [x] **Step 3: Run a fresh read-only permission/privacy review**
 
 Use `luna_worker` to verify no raw token/URL escapes API or logs, no service client precedes authorization, Staff nav/API paths fail closed, and signed KYC URLs expose no internal storage path. Fix only confirmed must-fix security/privacy/authorization/core-flow violations, then perform at most one focused re-review.
 
-- [ ] **Step 4: Apply the migration to the linked Supabase project**
+- [x] **Step 4: Apply the migration to the linked Supabase project**
 
 Run `supabase migration list`, then `supabase db push` only if the linked local/remote histories are aligned. Re-run `supabase migration list` and confirm `20260906040000` is present locally and remotely.
 
@@ -400,6 +400,17 @@ Run `supabase migration list`, then `supabase db push` only if the linked local/
 
 With SMTP configured, create an invitation using a new dedicated email, verify only a summary returns, open the emailed link, register/verify or Google-sign-in with the matching email, accept, reach `/staff`, and confirm only the assigned work card/API is available. If SMTP credentials or a disposable email are unavailable, stop before sending and report the exact external prerequisite.
 
-- [ ] **Step 6: Record evidence and hand off**
+- [x] **Step 6: Record evidence and hand off**
+
+Execution evidence (2026-09-06):
+
+- Targeted Staff/RBAC/API/UI verification: 47 files, 378 tests passed.
+- `npx tsc --noEmit`: passed.
+- `npm run lint`: passed with 67 pre-existing warnings and no errors.
+- `npm run verify:i18n`: passed with complete English/Malay/Chinese coverage and 38 pre-existing punctuation-style warnings.
+- Independent least-privilege/privacy review found two must-fix issues (token-page referrer policy and roleless OAuth fallback); both were fixed and their focused tests passed before the final suite.
+- Linked Supabase migration history was aligned before deployment; `20260906040000_staff_invitations.sql` was applied successfully and the follow-up migration list confirmed `20260906040000` locally and remotely.
+- The Access Control Staff Roles screen was refreshed against the deployed database: invitation loading succeeded, permissions and Legacy copy-only templates loaded, and the joined-employee section populated.
+- A real recipient email was not provided, so no live SMTP invitation was sent during verification.
 
 Update this plan's status and checkboxes, commit only in-scope files, and report migration state, test results, any pre-existing warnings, and any external smoke-test limitation.

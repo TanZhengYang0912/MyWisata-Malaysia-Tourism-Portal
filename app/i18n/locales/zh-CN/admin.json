@@ -238,8 +238,8 @@
       "permissionCount": "{{count}} 项权限",
       "permissionCount_one": "{{count}} 项权限",
       "permissionCount_other": "{{count}} 项权限",
-      "assignmentTitle": "给员工授予权限",
-      "assignmentHelp": "选择权限角色、选择员工，然后记录为什么需要这项访问权限。",
+      "assignmentTitle": "现有员工与权限",
+      "assignmentHelp": "搜索已经加入的员工，然后通过审计原因为其增加另一个自定义员工角色。",
       "role": "角色",
       "selectRole": "选择已启用角色",
       "userId": "员工用户 UUID",
@@ -251,6 +251,7 @@
       "systemPreset": "系统预设",
       "customRole": "自定义角色",
       "useRole": "使用此角色",
+      "useTemplate": "复制为新角色",
       "editRole": "编辑角色",
       "stepRole": "1. 选择权限角色",
       "stepRoleHelp": "所选角色的权限将新增给员工。",
@@ -259,7 +260,7 @@
       "addsPermissions_other": "将新增 {{count}} 项权限",
       "existingPermissionsUnchanged": "此操作只会新增权限，不会移除员工现有权限。",
       "stepEmployee": "2. 选择员工",
-      "employeeHelp": "按姓名或邮箱搜索已启用的管理员、审批员或超级管理员。",
+      "employeeHelp": "按姓名或邮箱搜索已经加入的员工。新员工请使用上方的邀请区。",
       "selectedEmployee": "已选择员工",
       "searchingStaff": "搜索中…",
       "noStaffResults": "没有找到符合该姓名或邮箱的已启用员工。",
@@ -288,7 +289,8 @@
       "assign": "分配角色",
       "confirmTitle": "确认员工角色变更",
       "confirmDescription": "权限变更将记录到审计日志。",
-      "confirmSave": "保存员工角色"
+      "confirmSave": "保存员工角色",
+      "inviteTitle": "邀请新员工", "inviteHelp": "选择一个自定义员工角色，把有效期七天的邀请发送到员工专用邮箱。员工会先查看准确权限，再自行接受。", "inviteRole": "自定义员工角色", "selectCustomRole": "选择自定义角色", "inviteEmail": "员工邮箱", "inviteEmailPlaceholder": "yuangong@example.com", "inviteReason": "治理原因", "inviteReasonPlaceholder": "说明为什么这位新员工需要这些权限。", "reviewInvitation": "复核邀请", "confirmInvitationTitle": "确认员工邀请", "sendInvitation": "发送邀请邮件", "pendingInvitations": "待接受邀请", "noPendingInvitations": "目前没有待接受邀请。", "resendInvitation": "重新发送", "revokeInvitation": "撤销", "revokeReasonPrompt": "请输入撤销原因（至少 10 个字符）。", "invitationSent": "邀请邮件已发送。", "invitationResent": "邀请已用新链接重新发送。", "invitationRevoked": "邀请已撤销。", "invitationError": "无法处理员工邀请。", "joinedEmployees": "已加入员工", "delivery": { "pending": "等待中", "sending": "发送中", "sent": "邮件已发送", "failed": "发送失败" }
     },
     "confirm": {
       "capabilityTitle": "确认能力变更",

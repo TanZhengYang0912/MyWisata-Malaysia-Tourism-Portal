@@ -12,6 +12,7 @@ import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { GlobalCommandPalette } from "@/components/shared/global-command-palette";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { isWalletApproverPath } from "@/lib/auth/post-login-destination";
+import { staffDestinations } from "@/lib/staff-permissions/navigation";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -75,7 +76,7 @@ const NAV: AdminNavItem[] = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useRequireRole(["admin", "approver", "super_admin"]);
+  const { currentUser, staffPermissionKeys = [], loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
 
@@ -90,6 +91,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   const approverOutsideWallet = currentUser?.role === "approver" && !isWalletApproverPath(pathname);
+  const staffNavigationHrefs = new Set(staffDestinations(staffPermissionKeys).map((destination) => destination.href));
+  const staffOutsideAssignedWork = currentUser?.role === "staff"
+    && ![...staffNavigationHrefs].some((href) => pathname === href || pathname.startsWith(`${href}/`));
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
@@ -103,6 +107,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!loading && approverOutsideWallet) router.replace("/admin/withdrawals");
   }, [loading, approverOutsideWallet, router]);
 
+  useEffect(() => {
+    if (!loading && staffOutsideAssignedWork) router.replace("/staff");
+  }, [loading, router, staffOutsideAssignedWork]);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -111,6 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!currentUser || currentUser.role === "approver") return;
+    if (currentUser.role === "staff") return;
     let cancelled = false;
     async function poll() {
       try {
@@ -141,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.role === "staff") return;
     let cancelled = false;
     async function pollPendingCounts() {
       try {
@@ -212,7 +221,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, [currentUser?.role]);
 
-  if (loading || !currentUser || approverOutsideWallet) {
+  if (loading || !currentUser || approverOutsideWallet || staffOutsideAssignedWork) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -250,12 +259,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {NAV.filter((item) =>
-            (!item.superAdminOnly || currentUser.role === "super_admin")
-            && (!item.allowedRoles || item.allowedRoles.includes(currentUser.role))
+            (currentUser.role !== "staff" || staffNavigationHrefs.has(item.href))
+            && (!item.superAdminOnly || currentUser.role === "super_admin")
+            && (currentUser.role === "staff" || !item.allowedRoles || item.allowedRoles.includes(currentUser.role))
             && (currentUser.role !== "approver" || isWalletApproverPath(item.href)),
           ).map((item) => {
             // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
-            const count = item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
+            const count = currentUser.role === "staff" ? 0 : item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
             return (
               <Link
                 key={item.href}
@@ -275,7 +285,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       <div ref={mainContentRef} data-scroll-container="admin-main" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6">
-          <button
+          {currentUser.role !== "staff" && <button
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
             aria-label={tCommon("command.openPalette")}
@@ -285,7 +295,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder")}</span>
             <span className="sm:hidden">{tCommon("actions.search")}</span>
             <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{tCommon("keyboard.cmdK")}</kbd>
-          </button>
+          </button>}
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact className="w-28" />
             <AppearanceControl />
@@ -301,13 +311,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
         {children}
-        <GlobalCommandPalette
+        {currentUser.role !== "staff" && <GlobalCommandPalette
           scope="admin"
           userRole={currentUser.role}
           pendingCounts={pendingCounts}
           triggerOpen={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
-        />
+        />}
       </div>
     </div>
   );

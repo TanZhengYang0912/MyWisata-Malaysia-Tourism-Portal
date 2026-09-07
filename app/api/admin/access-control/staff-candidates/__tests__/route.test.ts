@@ -37,6 +37,7 @@ describe("staff role candidates API", () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "roles") {
         return queryBuilder([
+          { id: 0, name: "staff" },
           { id: 1, name: "admin" },
           { id: 2, name: "approver" },
           { id: 3, name: "super_admin" },

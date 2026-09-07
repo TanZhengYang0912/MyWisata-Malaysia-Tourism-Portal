@@ -4,7 +4,7 @@ import { apiFail, apiOk } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
-const ELIGIBLE_STAFF_ROLES = ["admin", "approver", "super_admin"] as const;
+const ELIGIBLE_STAFF_ROLES = ["staff", "admin", "approver", "super_admin"] as const;
 
 export async function GET(request: Request) {
   const { response } = await requireStaffRoleManagementSuperAdmin();

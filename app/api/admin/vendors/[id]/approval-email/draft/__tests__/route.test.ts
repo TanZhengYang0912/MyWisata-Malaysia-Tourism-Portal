@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
-const isSuperAdmin = vi.fn();
+const rpc = vi.fn();
 const draftVendorApprovalEmail = vi.fn();
 const createServiceClient = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({ auth: { getUser } }),
+  createClient: async () => ({ auth: { getUser }, rpc }),
 }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
-vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 vi.mock('@/lib/vendors/approval-draft', () => ({ draftVendorApprovalEmail }));
 
 const { POST } = await import('../route');
@@ -50,11 +49,11 @@ function mockVendorRow(overrides: Record<string, unknown> = {}) {
 describe('POST /api/admin/vendors/[id]/approval-email/draft', () => {
   beforeEach(() => {
     getUser.mockReset();
-    isSuperAdmin.mockReset();
+    rpc.mockReset();
     draftVendorApprovalEmail.mockReset();
     createServiceClient.mockReset();
     getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
-    isSuperAdmin.mockResolvedValue(true);
+    rpc.mockResolvedValue({ data: true, error: null });
   });
 
   it('requires an authenticated user', async () => {
@@ -63,10 +62,11 @@ describe('POST /api/admin/vendors/[id]/approval-email/draft', () => {
     expect(response.status).toBe(401);
   });
 
-  it('requires super_admin', async () => {
-    isSuperAdmin.mockResolvedValue(false);
+  it('requires the vendor management permission', async () => {
+    rpc.mockResolvedValue({ data: false, error: null });
     const response = await callRoute();
     expect(response.status).toBe(403);
+    expect(createServiceClient).not.toHaveBeenCalled();
   });
 
   it('404s for an unknown vendor', async () => {

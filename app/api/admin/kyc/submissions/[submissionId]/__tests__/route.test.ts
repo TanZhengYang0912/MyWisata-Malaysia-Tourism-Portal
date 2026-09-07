@@ -198,8 +198,9 @@ describe('GET /api/admin/kyc/submissions/[submissionId]', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(rpc).toHaveBeenCalledWith('can_review_kyc', {
-      uid: '33333333-3333-4333-8333-333333333333',
+    expect(rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: '33333333-3333-4333-8333-333333333333',
+      p_permission_key: 'admin.kyc.review',
     });
     expect(createServiceClient).not.toHaveBeenCalled();
   });
