@@ -10,6 +10,7 @@ const AUDIT_PAYLOAD_ALLOWLIST = new Set([
   "policyId",
   "policyVersionId",
   "assignmentId",
+  "submissionId",
   "subjectType",
   "subjectId",
   "effect",
@@ -18,6 +19,7 @@ const AUDIT_PAYLOAD_ALLOWLIST = new Set([
   "effectiveUntil",
   "generation",
   "traceReference",
+  "reasonCode",
   "reason",
 ]);
 
