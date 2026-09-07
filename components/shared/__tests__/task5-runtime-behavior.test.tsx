@@ -245,4 +245,22 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Close translated confirmation"));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it("renders rich confirmation details without changing the confirmation handler", async () => {
+    const onConfirm = vi.fn();
+    await render(
+      <AdminConfirmDialog
+        open
+        title="batchActions.approve"
+        description={<strong>Employee and permission summary</strong>}
+        confirmLabel="batchActions.approve"
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(container.textContent).toContain("Employee and permission summary");
+    await click(findButton("Approve translated"));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
 });

@@ -123,6 +123,7 @@ export const checkoutPrepareSchema = z.object({
     'tng_ewallet_simulator',
     'grabpay_simulator',
     'bank_transfer_simulator',
+    'toyyibpay',
   ]).nullable().optional(),
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();

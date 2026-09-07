@@ -10,6 +10,7 @@ const HOME_BY_ROLE: Record<string, string> = {
   outlet_manager: "/vendor/dashboard",
   admin: "/admin/dashboard",
   approver: "/admin/withdrawals",
+  staff: "/staff",
   super_admin: "/admin/dashboard",
 };
 

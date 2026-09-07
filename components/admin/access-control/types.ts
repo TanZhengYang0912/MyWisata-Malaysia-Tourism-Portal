@@ -1,4 +1,4 @@
-export type AccessControlTabId = "overview" | "capabilities" | "policies" | "assignments" | "audit-log";
+export type AccessControlTabId = "overview" | "capabilities" | "policies" | "assignments" | "staff-roles" | "audit-log";
 
 export type ApiError = { code?: string; message?: string };
 export type ApiEnvelope<T> = { data?: T | null; error?: ApiError | null };
@@ -10,6 +10,66 @@ export type MutationReceipt = {
   policyId?: string;
   policyVersionId?: string;
   assignmentId?: string;
+  roleId?: string;
+};
+
+export type StaffPermissionRecord = {
+  id: string;
+  key: string;
+  module: string;
+  action: string;
+  description: string | null;
+  isSystem?: boolean;
+};
+
+export type StaffRoleRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  isActive: boolean;
+  permissionKeys: string[];
+  createdBy: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type StaffRoleAssignmentRecord = {
+  id: string;
+  roleId: string;
+  userId: string;
+  assignedBy: string | null;
+  revokedAt: string | null;
+  createdAt: string | null;
+};
+
+export type StaffRoleCandidate = {
+  id: string;
+  email: string;
+  name: string;
+  roles: string[];
+};
+
+export type StaffEmployeeRecord = {
+  id: string;
+  email: string;
+  name: string;
+  status: string;
+  assignments: Array<{ id: string; roleId: string; createdAt: string | null }>;
+};
+
+export type StaffInvitationRecord = {
+  id: string;
+  invitedEmail: string;
+  roleName: string;
+  permissionKeys: string[];
+  status: "pending" | "accepted" | "revoked";
+  deliveryStatus: "pending" | "sending" | "sent" | "failed";
+  sendAttemptCount: number;
+  expiresAt: string;
+  createdAt?: string | null;
+  acceptedAt?: string | null;
+  revokedAt?: string | null;
 };
 
 export type PageResult<T> = {

@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: mocks.createClient,
+}));
+vi.mock('@/lib/supabase/service', () => ({
+  createServiceClient: mocks.createServiceClient,
 }));
 
 import { GET } from '../route';
@@ -83,6 +87,7 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const rpc = vi.fn((name: string) => {
+      if (name === 'has_staff_permission') return Promise.resolve({ data: true, error: null });
       if (name === 'is_approver') return Promise.resolve({ data: true, error: null });
       if (name === 'get_withdrawal_settlement_proof') return Promise.resolve({
         data: {
@@ -100,8 +105,20 @@ describe('GET /api/admin/withdrawals/:id runtime behavior', () => {
     mocks.createClient.mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: APPROVER_ID } }, error: null }) },
       rpc,
-      from: vi.fn(() => withdrawalQuery()),
     });
+    mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => withdrawalQuery()) });
+  });
+
+  it('does not use service-role reads when the caller lacks withdrawal permission', async () => {
+    mocks.createClient.mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: APPROVER_ID } }, error: null }) },
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    });
+
+    const response = await GET(request(), params());
+
+    expect(response.status).toBe(403);
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
   it('still opens the withdrawal detail when the optional review-source RPC is unavailable', async () => {

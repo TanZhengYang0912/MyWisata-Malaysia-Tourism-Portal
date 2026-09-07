@@ -26,6 +26,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "strictMigration.recommendationPhotoStatus",
   ]),
   ms: new Set([
+    "accessControl.audit.fieldLabels.status",
     "navigation.Chatbot",
     "affiliate.columns.status",
     "catalogue.entity.outlet",
@@ -102,6 +103,7 @@ export const ADMIN_I18N_FILES = [
 
 /** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
+  "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
@@ -113,6 +115,11 @@ export const PRIOR_TASK_FILES = [
   "components/admin/staff-conduct-filtering.ts",
   "components/admin/withdrawal-review-detail.tsx",
   "components/admin/withdrawal-review-queue-row.tsx",
+] as const;
+
+/** Pure presentation helpers are part of the inventory but do not render text directly. */
+export const ADMIN_NON_RENDERING_FILES = [
+  "components/admin/access-control/audit-log-presentation.ts",
 ] as const;
 
 /** Non-rendering code is inventory-visible but does not need a translation hook. */
@@ -128,7 +135,11 @@ export const NON_RENDERING_HELPERS = [
   "statusClass",
 ] as const;
 
-const expectedComponentInventory = [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES].sort();
+const expectedComponentInventory = [
+  ...ADMIN_I18N_FILES,
+  ...PRIOR_TASK_FILES,
+  ...ADMIN_NON_RENDERING_FILES,
+].sort();
 
 const SURFACE_ASSERTIONS = {
   filters: ["components/admin/segmented-filter.tsx", "{item.label}"],
@@ -185,7 +196,7 @@ describe("admin component sitewide i18n contract", () => {
 
   it("keeps the exact exclusive inventory and explicit prior-task boundary", () => {
     expect(componentInventory()).toEqual(expectedComponentInventory);
-    for (const file of [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES]) {
+    for (const file of [...ADMIN_I18N_FILES, ...PRIOR_TASK_FILES, ...ADMIN_NON_RENDERING_FILES]) {
       expect(() => read(file), file).not.toThrow();
     }
     expect(PRIOR_TASK_FILES).toContain("components/admin/segmented-filter.tsx");

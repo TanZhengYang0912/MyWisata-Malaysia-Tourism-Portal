@@ -6,7 +6,7 @@
 // on the recommendation-review capability, same as the Send route.
 
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { draftVendorInviteEmail } from '@/lib/recommendations/invite-draft';
@@ -14,15 +14,8 @@ import { draftVendorInviteEmail } from '@/lib/recommendations/invite-draft';
 const schema = z.object({ recommendationId: z.string().uuid() }).strict();
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_recommendation', {
-    uid: user.id,
-  });
-  if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
-  }
+  const { response } = await requireStaffPermission('admin.vendor.manage');
+  if (response) return response;
 
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;

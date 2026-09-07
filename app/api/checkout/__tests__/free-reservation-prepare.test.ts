@@ -121,7 +121,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
           data: {
             checkout_session_id: CHECKOUT_ID,
             order_id: ORDER_ID,
-            status: 'succeeded',
+            status: 'paid',
             expires_at: '2026-09-15T10:00:00Z',
           },
           error: null,
@@ -140,7 +140,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.data.order_id).toBe(ORDER_ID);
-    expect(body.data.status).toBe('succeeded');
+    expect(body.data.status).toBe('paid');
     expect(mocks.stripeCreate).not.toHaveBeenCalled();
     expect(mocks.rpc).toHaveBeenCalledWith(
       'prepare_checkout',

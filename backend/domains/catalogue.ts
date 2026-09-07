@@ -501,10 +501,17 @@ export interface SearchFilters {
   /** Canonical real category slug; legacy display-name callers may use category. */
   categorySlug?: RealCategorySlug | null;
   category?: string | null;
+  categories?: string[];
+  /** `${categorySlug}:${typeSlug}` tokens. */
+  types?: string[];
   hiddenGemOnly?: boolean;
+  familyFriendlyOnly?: boolean;
+  coupleFriendlyOnly?: boolean;
   state?: string | null;
   vendorId?: string | null;
-  priceMax?: number;
+  priceMax?: number | null;
+  freeOnly?: boolean;
+  bookableOnly?: boolean;
   openOnly?: boolean;
   near?: { lat: number; lng: number };
   sort?: "recommended" | "price_asc" | "rating_desc" | "distance_asc";
@@ -523,19 +530,50 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
         a.outlet.state.toLowerCase().includes(q),
     );
   }
-  if (filters.categorySlug) results = results.filter((a) => a.categorySlug === filters.categorySlug);
-  if (filters.category) {
-    const canonical = canonicalCategorySlug(filters.category);
-    results = results.filter((a) => canonical ? a.categorySlug === canonical : a.category === filters.category);
+  const selectedCategories = [
+    ...(filters.categories ?? []),
+    ...(filters.categorySlug ? [filters.categorySlug] : []),
+    ...(filters.category ? [filters.category] : []),
+  ];
+  const typesByCategory = new Map<string, Set<string>>();
+  for (const token of filters.types ?? []) {
+    const [rawCategory, type] = token.split(":", 2);
+    const category = canonicalCategorySlug(rawCategory);
+    if (!category || !type) continue;
+    const types = typesByCategory.get(category) ?? new Set<string>();
+    types.add(type);
+    typesByCategory.set(category, types);
   }
-  if (filters.hiddenGemOnly) results = results.filter((a) => a.isHiddenGem);
+  const categoryBranches = new Set(
+    [...selectedCategories, ...typesByCategory.keys()]
+      .map(canonicalCategorySlug)
+      .filter((category): category is RealCategorySlug => category !== null),
+  );
+  if (categoryBranches.size > 0) {
+    results = results.filter((activity) => {
+      const category = canonicalCategorySlug(activity.categorySlug);
+      if (!category || !categoryBranches.has(category)) return false;
+      const selectedTypes = typesByCategory.get(category);
+      return !selectedTypes || (activity.typeSlugs ?? []).some((type) => selectedTypes.has(type));
+    });
+  }
+  if (filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) {
+    results = results.filter((activity) =>
+      (filters.hiddenGemOnly && activity.isHiddenGem) ||
+      (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
+      (filters.coupleFriendlyOnly && activity.isCoupleFriendly),
+    );
+  }
   if (filters.state && filters.state !== "All Malaysia") {
-    results = results.filter((a) => a.outlet.state === filters.state);
+    results = results.filter((a) => (a.place?.state ?? a.outlet.state) === filters.state);
   }
   results = filterActivitiesByVendor(results, filters.vendorId);
-  if (filters.priceMax !== undefined) {
-    results = results.filter((a) => a.price <= filters.priceMax!);
+  const priceMax = filters.priceMax;
+  if (priceMax != null) {
+    results = results.filter((a) => a.price <= priceMax);
   }
+  if (filters.freeOnly) results = results.filter((a) => a.price === 0);
+  if (filters.bookableOnly) results = results.filter((a) => a.requiresBooking);
   if (filters.openOnly) {
     results = results.filter((a) => a.outlet.open);
   }

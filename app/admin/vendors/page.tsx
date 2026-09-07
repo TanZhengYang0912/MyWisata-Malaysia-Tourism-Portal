@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import {
   Archive,
@@ -22,7 +22,6 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
@@ -112,12 +111,7 @@ function initials(name: string) {
     .join('') || 'V';
 }
 
-function safeSearch(value: string) {
-  return value.trim().replace(/[%,]/g, ' ');
-}
-
 export default function AdminVendorsPage() {
-  const supabase = useMemo(() => createClient(), []);
   const { t } = useTranslation('admin');
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, welcomed: 0, rejected: 0, suspended: 0 });
@@ -143,68 +137,29 @@ export default function AdminVendorsPage() {
     setError(null);
 
     try {
-      const term = safeSearch(search);
-      let ownerIdsForKyc: string[] | null = null;
-      let ownerIdsForSearch: string[] = [];
+      const query = new URLSearchParams({
+        page: String(page),
+        filter,
+        search,
+        state: stateFilter,
+        kyc: kycFilter,
+      });
+      const response = await fetch(`/api/admin/vendors?${query}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => ({})) as {
+        data?: {
+          vendors: VendorData[];
+          total: number;
+          counts: Record<FilterStatus, number>;
+          approvedRecommendations: ApprovedRec[];
+        };
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? t('ui.vendors.errors.load'));
 
-      if (kycFilter !== 'all' || term) {
-        let ownerQuery = supabase.from('users').select('id');
-        if (kycFilter !== 'all') ownerQuery = ownerQuery.eq('kyc_status', kycFilter);
-        if (term) ownerQuery = ownerQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
-        const { data: matchedOwners, error: ownerError } = await ownerQuery.limit(100);
-        if (ownerError) throw ownerError;
-        const ids = (matchedOwners ?? []).map((owner: { id: string }) => owner.id);
-        if (kycFilter !== 'all') ownerIdsForKyc = ids;
-        if (term) ownerIdsForSearch = ids;
-      }
-
-      let matchingVendorIds: string[] | null = null;
-      if (stateFilter !== 'all') {
-        const { data: matchingOutlets, error: outletError } = await supabase
-          .from('outlets')
-          .select('vendor_id')
-          .eq('state', stateFilter);
-        if (outletError) throw outletError;
-        matchingVendorIds = [...new Set((matchingOutlets ?? []).map((outlet: { vendor_id: string }) => outlet.vendor_id))];
-      }
-
-      let query = supabase
-        .from('vendors')
-        .select('id,name,slug,status,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-
-      if (filter === 'approved') query = query.eq('status', 'approved').is('approval_email_sent_at', null);
-      else if (filter === 'welcomed') query = query.eq('status', 'approved').not('approval_email_sent_at', 'is', null);
-      else if (filter !== 'all') query = query.eq('status', filter);
-      if (ownerIdsForKyc) query = query.in('owner_id', ownerIdsForKyc.length ? ownerIdsForKyc : ['00000000-0000-0000-0000-000000000000']);
-      if (matchingVendorIds) query = query.in('id', matchingVendorIds.length ? matchingVendorIds : ['00000000-0000-0000-0000-000000000000']);
-      if (term) {
-        const clauses = [`name.ilike.%${term}%`, `slug.ilike.%${term}%`];
-        if (/^[0-9a-f-]{36}$/i.test(term)) clauses.push(`id.eq.${term}`);
-        if (ownerIdsForSearch.length) clauses.push(`owner_id.in.(${ownerIdsForSearch.join(',')})`);
-        query = query.or(clauses.join(','));
-      }
-
-      const [{ data, error: vendorError, count }, ...statusResults] = await Promise.all([
-        query,
-        ...(['all', 'pending', 'approved', 'welcomed', 'rejected', 'suspended'] as FilterStatus[]).map(async (status) => {
-          let countQuery = supabase.from('vendors').select('id', { count: 'exact', head: true });
-          if (status === 'approved') countQuery = countQuery.eq('status', 'approved').is('approval_email_sent_at', null);
-          else if (status === 'welcomed') countQuery = countQuery.eq('status', 'approved').not('approval_email_sent_at', 'is', null);
-          else if (status !== 'all') countQuery = countQuery.eq('status', status);
-          const result = await countQuery;
-          return { status, count: result.count ?? 0, error: result.error };
-        }),
-      ]);
-
-      if (vendorError) throw vendorError;
-      const failedCount = statusResults.find((result) => result.error);
-      if (failedCount?.error) throw failedCount.error;
-
-      setVendors((data ?? []) as VendorData[]);
-      setTotal(count ?? 0);
-      setCounts(Object.fromEntries(statusResults.map((result) => [result.status, result.count])) as Record<FilterStatus, number>);
+      setVendors(payload.data.vendors);
+      setTotal(payload.data.total);
+      setCounts(payload.data.counts);
+      setApprovedRecs(payload.data.approvedRecommendations);
       setSelectedIds([]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t('ui.vendors.errors.load'));
@@ -213,7 +168,7 @@ export default function AdminVendorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, kycFilter, page, search, stateFilter, supabase]);
+  }, [filter, kycFilter, page, search, stateFilter, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadVendors(), search ? 250 : 0);
@@ -225,14 +180,6 @@ export default function AdminVendorsPage() {
     const timer = window.setTimeout(() => setNotice(null), 3500);
     return () => window.clearTimeout(timer);
   }, [notice]);
-
-  useEffect(() => {
-    supabase
-      .from('vendor_recommendations')
-      .select('id, vendor_name')
-      .eq('status', 'approved')
-      .then(({ data }) => setApprovedRecs((data ?? []) as ApprovedRec[]));
-  }, [supabase]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const currentPageSelected = vendors.filter((vendor) => selectedIds.includes(vendor.id));

@@ -23,6 +23,7 @@ type AuthMode = "signin" | "signup" | "verify" | "forgot";
 const ROLE_LABEL: Record<Role, string> = {
   customer: "Customer", vendor_owner: "Vendor Owner", outlet_manager: "Outlet Manager",
   admin: "Admin", approver: "Approver", super_admin: "Super Admin",
+  staff: "Staff",
 };
 
 export default function LoginPage() {

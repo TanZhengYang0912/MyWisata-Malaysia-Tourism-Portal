@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
 import { Compass, Map } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { DiscoveryAdvancedFilters, DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
-import { getDiscoverySearchFilter } from "@/lib/customer/discovery-categories";
+import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { createClient } from "@/lib/supabase/client";
+import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
+import type { DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
 
 type ExploreTab = "destinations" | "experiences";
 
@@ -34,28 +38,129 @@ export function ExploreClient({
   placeCountByState?: Record<string, number>;
 }) {
   const { t } = useTranslation("customer");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const db = useMemo(() => (
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      ? createClient()
+      : null
+  ), []);
+  const impressedPlacementIds = useRef(new Set<string>());
   const [tab, setTab] = useState<ExploreTab>("destinations");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
-  const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
-  const firstRender = useRef(true);
+  const [filters, setFilters] = useState<DiscoveryQuery>(() => parseDiscoveryQuery(new URLSearchParams(searchParams.toString())));
+  const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
+  const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
+  const [visibleLimit, setVisibleLimit] = useState(8);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      searchActivities({ q: query.trim() || undefined, ...getDiscoverySearchFilter(category) }).then(setActivities);
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [category, query]);
+    const timeout = globalThis.setTimeout(() => setDebouncedQuery(filters.q), 250);
+    return () => globalThis.clearTimeout(timeout);
+  }, [filters.q]);
 
-  const hasActiveFilters = Boolean(query.trim() || category);
+  const searchQuery = useMemo(() => ({
+    q: debouncedQuery.trim(),
+    state: filters.state,
+    categories: filters.categories,
+    types: filters.types,
+    priceMax: filters.priceMax,
+    freeOnly: filters.freeOnly,
+    bookableOnly: filters.bookableOnly,
+    hiddenGemOnly: filters.hiddenGemOnly,
+    familyFriendlyOnly: filters.familyFriendlyOnly,
+    coupleFriendlyOnly: filters.coupleFriendlyOnly,
+  }), [
+    debouncedQuery,
+    filters.state,
+    filters.categories,
+    filters.types,
+    filters.priceMax,
+    filters.freeOnly,
+    filters.bookableOnly,
+    filters.hiddenGemOnly,
+    filters.familyFriendlyOnly,
+    filters.coupleFriendlyOnly,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const requestedAt = new Date().toISOString();
+    const placementsRequest = db
+      ? db
+        .from("sponsored_discovery_placements")
+        .select("id,product_id,state,category_slug,starts_at,ends_at,priority,status")
+        .eq("status", "approved")
+        .lte("starts_at", requestedAt)
+        .gt("ends_at", requestedAt)
+      : Promise.resolve({ data: [], error: null });
+    Promise.all([
+      searchActivities(searchQuery),
+      placementsRequest,
+    ]).then(([nextActivities, placementsResult]) => {
+      if (cancelled) return;
+      const placements = placementsResult.error ? [] : ((placementsResult.data ?? []) as Array<{
+        id: string;
+        product_id: string;
+        state: string | null;
+        category_slug: string | null;
+        starts_at: string;
+        ends_at: string;
+        priority: number;
+        status: SponsoredPlacement["status"];
+      }>).map((placement): SponsoredPlacement => ({
+        id: placement.id,
+        productId: placement.product_id,
+        state: placement.state,
+        categorySlug: placement.category_slug,
+        startsAt: placement.starts_at,
+        endsAt: placement.ends_at,
+        priority: placement.priority,
+        status: placement.status,
+      }));
+      setActivities(rankDiscoveryResults({
+        activities: nextActivities,
+        placements,
+        filters: searchQuery,
+        now: requestedAt,
+      }));
+    }).catch(() => {
+      if (!cancelled) setActivities([]);
+    });
+    return () => { cancelled = true; };
+  }, [db, searchQuery]);
+
+  const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
+    if (!activity.sponsorship) return;
+    void fetch(`/api/sponsored-placements/${activity.sponsorship.placementId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, productId: activity.id }),
+      keepalive: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    for (const activity of activities) {
+      const placementId = activity.sponsorship?.placementId;
+      if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
+      impressedPlacementIds.current.add(placementId);
+      recordSponsoredEvent(activity, "impression");
+    }
+  }, [activities, recordSponsoredEvent]);
+
+  const hasActiveFilters = Boolean(
+    filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null ||
+    filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly,
+  );
+
+  const updateFilters = (patch: Partial<DiscoveryQuery>) => {
+    const next = { ...filters, ...patch };
+    setFilters(next);
+    router.replace(`/customer/explore?${serializeDiscoveryQuery(next).toString()}`.replace(/\?$/, ""));
+    setVisibleLimit(8);
+  };
 
   const clearFilters = () => {
-    setQuery("");
-    setCategory(null);
+    updateFilters({ q: "", state: null, categories: [], types: [], priceMax: null, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
   };
 
   return (
@@ -109,7 +214,7 @@ export function ExploreClient({
       {tab === "destinations" && (
         <div>
           {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap initialActivities={activities} />
+          <StoryMap activities={activities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
 
           {/* Destination cards grid */}
           <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -175,13 +280,18 @@ export function ExploreClient({
       {tab === "experiences" && (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <section className="mb-8 space-y-6">
-            <DiscoverySearchField value={query} onChange={setQuery} placeholder={t("ui.map.searchExperience")} />
+            <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
             <DiscoveryCategoryFilter
-              category={category}
+              category={filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null}
               hasActiveFilters={hasActiveFilters}
-              onCategoryChange={setCategory}
+              onCategoryChange={(category) => updateFilters(
+                category === "hidden_gem"
+                  ? { categories: [], types: [], hiddenGemOnly: true }
+                  : { categories: category ? [category] : [], types: [], hiddenGemOnly: false },
+              )}
               onClear={clearFilters}
             />
+            <DiscoveryAdvancedFilters value={filters} onChange={updateFilters} />
           </section>
 
           {/* Experience cards */}
@@ -189,10 +299,10 @@ export function ExploreClient({
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  {query
+                  {filters.q
                     ? t("ui.explore.allExperiences")
-                    : category
-                    ? t("ui.explore.categoryExperiences", { category })
+                    : filters.categories.length === 1
+                    ? t("ui.explore.categoryExperiences", { category: filters.categories[0] })
                     : t("ui.explore.allExperiences")}
                 </h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">{t("ui.explore.results", { count: activities.length })}</p>
@@ -204,10 +314,15 @@ export function ExploreClient({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
-                {activities.slice(0, 16).map((a) => (
-                  <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" />
+                {activities.slice(0, visibleLimit).map((a) => (
+                  <ActivityCard key={a.id} activity={a} returnTo="/customer/explore" onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                 ))}
               </div>
+            )}
+            {activities.length > 8 && visibleLimit < activities.length && (
+              <button type="button" onClick={() => setVisibleLimit(activities.length)} className="mt-6 rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
+                {t("ui.discovery.showAll", { count: activities.length })}
+              </button>
             )}
           </section>
         </div>

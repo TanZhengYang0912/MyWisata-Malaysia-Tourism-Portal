@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireSuperAdmin: vi.fn(),
+  createServiceClient: vi.fn(),
   listState: vi.fn(),
   createVersion: vi.fn(),
   approveVersion: vi.fn(),
@@ -14,6 +15,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/entitlements/admin-guard", () => ({
   requireAccessControlSuperAdmin: mocks.requireSuperAdmin,
+}));
+
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: mocks.createServiceClient,
 }));
 
 vi.mock("@/lib/entitlements/admin", () => ({
@@ -101,7 +106,7 @@ function jsonError(code: string, status: number) {
 function queryBuilder(rows: unknown[] = []) {
   const result = { data: rows, error: null, count: rows.length };
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "gte", "lte", "lt", "like", "ilike", "or", "contains", "order", "range", "limit"]) {
+  for (const method of ["select", "eq", "gte", "lte", "lt", "like", "ilike", "or", "in", "contains", "order", "range", "limit"]) {
     builder[method] = vi.fn(() => builder);
   }
   builder.maybeSingle = vi.fn(async () => ({ data: rows[0] ?? null, error: null }));
@@ -402,6 +407,84 @@ describe("Access Control Audit Log", () => {
       reason: null,
     });
     expect(JSON.stringify(body)).not.toMatch(/secret@example|60123456789|sk_live_secret|kyc\/private/);
+  });
+
+  it("shows the safe KYC status transition for an existing audit event", async () => {
+    const createdAt = "2026-09-04T20:51:34.398775+00:00";
+    const submissionId = "eba05685-84be-4e41-95cb-2d083d2870a1";
+    const auditBuilder = queryBuilder([{
+      id: AUDIT_ID,
+      actor_id: ACTOR_ID,
+      action: "kyc.approve",
+      entity_type: "kyc_submission",
+      entity_id: submissionId,
+      before_data: null,
+      after_data: { submission_id: submissionId, reason_code: null },
+      created_at: createdAt,
+    }]);
+    const reviewBuilder = queryBuilder([{
+      submission_id: submissionId,
+      from_status: "pending",
+      to_status: "approved",
+      action: "approve",
+      reason_category: null,
+      internal_note: "private review note",
+      customer_message: "private customer message",
+      created_at: createdAt,
+    }]);
+    mocks.requireSuperAdmin.mockResolvedValue({
+      db: {
+        from: vi.fn(() => auditBuilder),
+        rpc: vi.fn(async () => ({ data: true, error: null })),
+      },
+      user: { id: ACTOR_ID },
+      response: null,
+    });
+    mocks.createServiceClient.mockReturnValue({
+      from: vi.fn(() => reviewBuilder),
+    });
+
+    const response = await auditRoute.GET(new Request("http://localhost/api/admin/access-control/audit-log"));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data.items[0]).toMatchObject({
+      before: { status: "pending" },
+      after: {
+        status: "approved",
+        submissionId,
+        reasonCode: null,
+      },
+    });
+    expect(JSON.stringify(body)).not.toMatch(/private review note|private customer message/);
+  });
+
+  it("does not use service-role KYC data without active global Super Admin authority", async () => {
+    const createdAt = "2026-09-04T20:51:34.398775+00:00";
+    const submissionId = "eba05685-84be-4e41-95cb-2d083d2870a1";
+    const auditBuilder = queryBuilder([{
+      id: AUDIT_ID,
+      actor_id: ACTOR_ID,
+      action: "kyc.approve",
+      entity_type: "kyc_submission",
+      entity_id: submissionId,
+      before_data: null,
+      after_data: { submission_id: submissionId, reason_code: null },
+      created_at: createdAt,
+    }]);
+    mocks.requireSuperAdmin.mockResolvedValue({
+      db: {
+        from: vi.fn(() => auditBuilder),
+        rpc: vi.fn(async () => ({ data: false, error: null })),
+      },
+      user: { id: ACTOR_ID },
+      response: null,
+    });
+    mocks.createServiceClient.mockReturnValue({ from: vi.fn() });
+
+    const response = await auditRoute.GET(new Request("http://localhost/api/admin/access-control/audit-log"));
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("FORBIDDEN");
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
   it("never exposes free-form audit notes that can contain unbounded secrets", async () => {

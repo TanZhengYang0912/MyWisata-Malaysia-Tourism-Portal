@@ -12,6 +12,7 @@ describe('checkout payment provider mapping', () => {
     ['ewallet', 'tng_ewallet_simulator', 'tng_ewallet_simulator'],
     ['ewallet', 'grabpay_simulator', 'grabpay_simulator'],
     ['bank_transfer', 'bank_transfer_simulator', 'bank_transfer_simulator'],
+    ['bank_transfer', 'toyyibpay', 'toyyibpay'],
   ] as const)('maps %s with %s to %s', (method, requested, expected) => {
     expect(resolveCheckoutProvider(method, requested)).toBe(expected);
   });
@@ -20,6 +21,7 @@ describe('checkout payment provider mapping', () => {
     ['ewallet', undefined],
     ['bank_transfer', undefined],
     ['bank_transfer', 'tng_ewallet_simulator'],
+    ['ewallet', 'toyyibpay'],
     ['ewallet', 'bank_transfer_simulator'],
     ['stripe_card', 'grabpay_simulator'],
     ['mock_card', undefined],

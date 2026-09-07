@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiFail, apiOk } from '@/lib/validation/schemas';
 import { createRecommendationInviteToken } from '@/lib/recommendations/invite-token';
@@ -22,15 +22,8 @@ const schema = z
   });
 
 export async function POST(request: Request) {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const { data: canReview, error: capabilityError } = await db.rpc('can_review_recommendation', {
-    uid: user.id,
-  });
-  if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
-  }
+  const { response } = await requireStaffPermission('admin.vendor.manage');
+  if (response) return response;
 
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;

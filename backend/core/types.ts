@@ -12,6 +12,7 @@ export type Role =
   | "outlet_manager"
   | "admin"
   | "approver"
+  | "staff"
   | "super_admin";
 
 export interface User {
@@ -28,6 +29,8 @@ export interface User {
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";
   verificationFacts?: VerificationFacts;
   entitlementGeneration?: number;
+  staffRoleNames?: string[];
+  staffPermissionKeys?: import("@/lib/staff-permissions/types").StaffPermissionKey[];
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -41,6 +44,8 @@ export interface AuthState {
   capabilities: CustomerCapabilitySnapshot;
   verificationFacts: VerificationFacts | null;
   entitlementGeneration: number;
+  staffRoleNames: string[];
+  staffPermissionKeys: import("@/lib/staff-permissions/types").StaffPermissionKey[];
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────
@@ -169,6 +174,21 @@ export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
 }
+
+export type SponsoredPlacement = {
+  id: string;
+  productId: string;
+  state: string | null;
+  categorySlug: string | null;
+  startsAt: string;
+  endsAt: string;
+  priority: number;
+  status: "draft" | "pending_approval" | "approved" | "rejected" | "paused";
+};
+
+export type DiscoveryResult = ComputedActivity & {
+  sponsorship: { placementId: string; label: "Sponsored" } | null;
+};
 
 export interface ProductReview {
   id: string;
@@ -519,7 +539,7 @@ export interface WithdrawalRequest {
 export interface WalletTransaction {
   id: string;
   userId: string;
-  walletId: string;
+  walletId: string | null;
   orderId: string | null;
   withdrawalId: string | null;
   type: string;

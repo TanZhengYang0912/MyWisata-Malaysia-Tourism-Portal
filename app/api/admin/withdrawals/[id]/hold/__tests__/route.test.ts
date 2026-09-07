@@ -12,6 +12,9 @@ describe('POST /api/admin/withdrawals/:id/hold', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
+    mocks.rpc.mockImplementation((name: string) => name === 'has_staff_permission'
+      ? Promise.resolve({ data: true, error: null })
+      : Promise.resolve({ data: null, error: null }));
   });
 
   it('does not call a mutation for a missing or short hold reason', async () => {
@@ -21,6 +24,6 @@ describe('POST /api/admin/withdrawals/:id/hold', () => {
 
     expect(response.status).toBe(422);
     expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('hold_wallet_withdrawal', expect.anything());
   });
 });

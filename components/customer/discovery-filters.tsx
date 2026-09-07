@@ -2,8 +2,10 @@
 
 import { Search as SearchIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CATEGORIES } from "@/backend/domains/catalogue";
+import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
 import { CategoryIcon } from "@/components/customer/category-icon";
+import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
+import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 
 interface DiscoverySearchFieldProps {
   value: string;
@@ -78,6 +80,79 @@ export function DiscoveryCategoryFilter({
             </button>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+type DiscoveryAdvancedFiltersProps = {
+  value: Pick<DiscoveryQuery, "state" | "categories" | "types" | "priceMax" | "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly">;
+  onChange: (patch: Partial<DiscoveryQuery>) => void;
+};
+
+export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedFiltersProps) {
+  const { t } = useTranslation("customer");
+  const toggleCategory = (category: string) => {
+    const selected = value.categories.includes(category);
+    onChange({
+      categories: selected ? value.categories.filter((item) => item !== category) : [...value.categories, category],
+      types: selected ? value.types.filter((token) => !token.startsWith(`${category}:`)) : value.types,
+    });
+  };
+  const toggleType = (category: string, type: string, allTypes: string[]) => {
+    const token = `${category}:${type}`;
+    const currentTypes = value.types.filter((item) => item.startsWith(`${category}:`));
+    const allTypesSelected = value.categories.includes(category) && currentTypes.length === 0;
+    const types = allTypesSelected
+      ? [...value.types, ...allTypes.filter((item) => item !== type).map((item) => `${category}:${item}`)]
+      : value.types.includes(token) ? value.types.filter((item) => item !== token) : [...value.types, token];
+    const categoryTypes = types.filter((item) => item.startsWith(`${category}:`));
+    onChange({
+      categories: categoryTypes.length === 0 ? value.categories.filter((item) => item !== category) : value.categories.includes(category) ? value.categories : [...value.categories, category],
+      types: categoryTypes.length === allTypes.length ? types.filter((item) => !item.startsWith(`${category}:`)) : types,
+    });
+  };
+  const toggleBoolean = (key: "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly") => onChange({ [key]: !value[key] });
+
+  return (
+    <section aria-label={t("ui.discovery.advancedFilters")} className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2">
+      <label className="text-sm font-bold text-foreground">
+        <span>{t("ui.discovery.state")}</span>
+        <select aria-label={t("ui.discovery.state")} value={value.state ?? ""} onChange={(event) => onChange({ state: event.target.value || null })} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
+          <option value="">{t("ui.map.allStatesTerritories")}</option>
+          {STATES_MY.filter((state) => state !== "All Malaysia").map((state) => <option key={state} value={state}>{state}</option>)}
+        </select>
+      </label>
+      <label className="text-sm font-bold text-foreground">
+        <span>{t("ui.discovery.maximumPrice")}</span>
+        <input aria-label={t("ui.discovery.maximumPrice")} type="number" min="0" value={value.priceMax ?? ""} onChange={(event) => onChange({ priceMax: event.target.value === "" ? null : Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+      </label>
+      <div className="sm:col-span-2">
+        <p className="text-sm font-bold text-foreground">{t("ui.explore.filterByCategory")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {CATEGORIES.filter((category) => category.id !== "hidden_gem").map((category) => (
+            <button key={category.id} type="button" aria-label={t(category.labelKey ?? `categories.${category.id}`)} aria-pressed={value.categories.includes(category.id)} onClick={() => toggleCategory(category.id)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value.categories.includes(category.id) ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(category.labelKey ?? `categories.${category.id}`)}</button>
+          ))}
+        </div>
+      </div>
+      <div className="sm:col-span-2 space-y-3">
+        {Object.entries(CATEGORY_DETAILS).map(([category, detail]) => (
+          <div key={category}>
+            <p className="text-xs font-bold text-muted-foreground">{t(`categories.${category}`)}</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {detail.types.map((type) => {
+                const token = `${category}:${type.slug}`;
+                const selected = value.types.includes(token) || (value.categories.includes(category) && !value.types.some((item) => item.startsWith(`${category}:`)));
+                return <button key={token} type="button" aria-label={t(`ui.map.types.${type.slug}`)} aria-pressed={selected} onClick={() => toggleType(category, type.slug, detail.types.map((option) => option.slug))} className={`rounded-full border px-2 py-1 text-xs ${selected ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{t(`ui.map.types.${type.slug}`)}</button>;
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sm:col-span-2 flex flex-wrap gap-2">
+        {([
+          ["freeOnly", "ui.discovery.freeOnly"], ["bookableOnly", "ui.discovery.bookableOnly"], ["hiddenGemOnly", "ui.discovery.hiddenGemOnly"], ["familyFriendlyOnly", "ui.discovery.familyFriendlyOnly"], ["coupleFriendlyOnly", "ui.discovery.coupleFriendlyOnly"],
+        ] as const).map(([key, label]) => <button key={key} type="button" aria-label={t(label)} aria-pressed={value[key]} onClick={() => toggleBoolean(key)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value[key] ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(label)}</button>)}
       </div>
     </section>
   );

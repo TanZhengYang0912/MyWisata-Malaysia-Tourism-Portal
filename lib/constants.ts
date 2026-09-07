@@ -45,7 +45,7 @@ export const WITHDRAWAL_STATUS = [
 ] as const;
 
 export const ROLE_NAMES = [
-  'super_admin', 'approver', 'vendor_owner', 'outlet_manager', 'customer',
+  'super_admin', 'approver', 'staff', 'vendor_owner', 'outlet_manager', 'customer',
 ] as const;
 
 export const PRODUCT_TYPES = [

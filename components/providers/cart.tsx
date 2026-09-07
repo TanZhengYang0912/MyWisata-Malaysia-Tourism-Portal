@@ -42,7 +42,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(false);
-    getActivities().then((nextActivities) => { if (active) setActivities(nextActivities); });
+    getActivities()
+      .then((nextActivities) => { if (active) setActivities(nextActivities); })
+      .catch(() => { if (active) setActivities([]); });
     if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => {
       if (!active) return;
       setItems(nextItems);

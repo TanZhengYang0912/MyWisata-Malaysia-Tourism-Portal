@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { auditAndNotify } from '@/lib/audit';
 
@@ -9,16 +9,8 @@ const linkSchema = z.object({
 }).strict();
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const { data: canReview, error: capabilityError } = await supabase.rpc('can_review_recommendation', {
-    uid: user.id,
-  });
-  if (capabilityError || canReview !== true) {
-    return apiFail('FORBIDDEN', 'Recommendation reviewer role required', 403);
-  }
+  const { db: supabase, response } = await requireStaffPermission('admin.vendor.manage');
+  if (response) return response;
 
   const parsed = await parseBody(request, linkSchema);
   if (!parsed.ok) return parsed.response;

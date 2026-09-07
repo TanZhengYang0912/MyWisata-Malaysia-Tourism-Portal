@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { executeApprovedWithdrawalPayout } from '@/lib/payouts/execute-approved-withdrawal';
 import { scheduleTngMockCallbackAcceleration } from '@/lib/payouts/tng-mock-callbacks';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
@@ -19,8 +19,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: withdrawalId } = await params;
-  const db = await createClient();
-  const { data: { user: authUser } } = await db.auth.getUser();
+  const { db, user: authUser, response } = await requireStaffPermission('admin.withdrawal.approve');
+  if (response) return response;
   if (!authUser) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const parsed = await parseBody(request, approveSchema);
@@ -56,7 +56,7 @@ export async function POST(
 
   if (approvalError) {
     const message = approvalError.message ?? '';
-    if (message.includes('approver_required')) return apiFail('FORBIDDEN', 'Approver or Super Admin access required', 403);
+    if (message.includes('approver_required') || message.includes('withdrawal_permission_required')) return apiFail('FORBIDDEN', 'Withdrawal approval permission required', 403);
     if (message.includes('self_dealing')) return apiFail('SELF_DEALING', 'You cannot approve your own withdrawal. Ask another Approver or Super Admin to process it.', 403);
     if (message.includes('withdrawal_not_found')) return apiFail('NOT_FOUND', 'Withdrawal not found', 404);
     if (message.includes('withdrawal_not_approvable')) return apiFail('INVALID_STATE', 'This withdrawal is no longer awaiting approval. Refresh the page to review its latest status.', 409);

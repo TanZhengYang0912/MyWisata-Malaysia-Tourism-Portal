@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
@@ -10,9 +10,9 @@ import { useWishlist } from "@/components/providers/wishlist";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
-import { searchActivities } from "@/backend/domains/catalogue";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
+import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import { MalaysiaStateMap, type StateCounts } from "./malaysia-state-map";
 import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
@@ -32,10 +32,9 @@ const BADGE_OPTIONS: { key: BadgeKey; label: string }[] = [
   { key: "couple_friendly", label: "Couple Friendly" },
 ];
 
-// Per category: undefined = category excluded; "all" = every type included;
-// a Set = only those specific types included. Lets "Food + Activity/Nature
-// only" style selections work without a separate subcategory data model.
-type TypeSelection = Record<string, "all" | Set<string>>;
+type StoryMapActivity = ComputedActivity & {
+  sponsorship: { placementId: string; label: "Sponsored" } | null;
+};
 
 function StateDetailPanel({
   selectedStateId,
@@ -46,7 +45,7 @@ function StateDetailPanel({
 }: {
   selectedStateId: string | null;
   stateCounts: StateCounts;
-  activities: ComputedActivity[];
+  activities: StoryMapActivity[];
   onSelectState: (stateId: string | null) => void;
   onSelectPlace: (placeId: string) => void;
 }) {
@@ -93,7 +92,7 @@ function StateDetailPanel({
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
-                      <span className="min-w-0 truncate text-sm font-bold text-foreground">{activity.name}</span>
+                      <span className="min-w-0"><span className="block truncate text-sm font-bold text-foreground">{activity.name}</span>{activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}</span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
                     </button>
                   ))}
@@ -148,62 +147,31 @@ function StateDetailPanel({
   );
 }
 
-export function StoryMap({ initialActivities }: { initialActivities: ComputedActivity[] }) {
+export function StoryMap({
+  activities,
+  filters,
+  onFilterChange,
+  onSponsoredClick,
+}: {
+  activities: StoryMapActivity[];
+  filters: DiscoveryQuery;
+  onFilterChange: (patch: Partial<DiscoveryQuery>) => void;
+  onSponsoredClick?: (activity: StoryMapActivity) => void;
+}) {
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
   const { savedIds, toggleSaved } = useWishlist();
-  const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
-  const [activities, setActivities] = useState<ComputedActivity[]>(initialActivities);
-  const [selectedTypes, setSelectedTypes] = useState<TypeSelection>({});
-  const [selectedBadges, setSelectedBadges] = useState<Set<BadgeKey>>(new Set());
   const [filtersOpen, setFiltersOpen] = useState(false);
-
-  // Skip the very first run: the default view is already server-rendered via
-  // initialActivities. Only refetch once state actually changes — category/type/
-  // badge filtering happens client-side below (multi-select can't map onto the
-  // single-category server filter).
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    const stateName = selectedStateId ? getState(selectedStateId)?.name ?? "All Malaysia" : "All Malaysia";
-    searchActivities({ state: stateName }).then(setActivities);
-  }, [selectedStateId]);
-
-  const activeFilterCount = Object.keys(selectedTypes).length + selectedBadges.size;
-  const filteredActivities = useMemo(() => {
-    const hasTypeFilter = Object.keys(selectedTypes).length > 0;
-    const hasBadgeFilter = selectedBadges.size > 0;
-    if (!hasTypeFilter && !hasBadgeFilter) return activities;
-    return activities.filter((a) => {
-      if (hasTypeFilter) {
-        const sel = selectedTypes[a.categorySlug ?? ""];
-        if (sel === undefined) return false;
-        if (sel !== "all" && !(a.typeSlugs ?? []).some((t) => sel.has(t))) return false;
-      }
-      if (hasBadgeFilter) {
-        const matchesBadge =
-          (selectedBadges.has("hidden_gem") && a.isHiddenGem) ||
-          (selectedBadges.has("family_friendly") && a.isFamilyFriendly) ||
-          (selectedBadges.has("couple_friendly") && a.isCoupleFriendly);
-        if (!matchesBadge) return false;
-      }
-      return true;
-    });
-  }, [activities, selectedTypes, selectedBadges]);
-
-  const selectedActivity = filteredActivities.find((a) => a.id === selectedPlaceId) ?? null;
+  const selectedStateId = DEMO_STATES.find((state) => state.name === filters.state)?.id ?? null;
+  const activeFilterCount = filters.categories.length + filters.types.length + Number(filters.hiddenGemOnly) + Number(filters.familyFriendlyOnly) + Number(filters.coupleFriendlyOnly);
+  const selectedActivity = activities.find((a) => a.id === selectedPlaceId) ?? null;
   const saved = selectedActivity ? savedIds.has(selectedActivity.id) : false;
 
-  // Per-state category breakdown for the permanent map label cards — always
-  // computed from the full, unfiltered Malaysia-wide set so it doesn't flicker
-  // as filters/state selection change.
+  // The map and cards receive the same ordered Explore result set.
   const stateCounts = useMemo(() => {
     const byState: StateCounts = {};
-    for (const activity of initialActivities) {
+    for (const activity of activities) {
       const place = activityToMapPlace(activity);
       const category = activity.categorySlug;
       const meta = category ? CATEGORY_META[category] : undefined;
@@ -214,54 +182,42 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
       else bucket.push({ category, count: 1 });
     }
     return byState;
-  }, [initialActivities]);
+  }, [activities]);
 
   function selectState(stateId: string | null) {
-    setSelectedStateId(stateId);
+    onFilterChange({ state: stateId ? getState(stateId)?.name ?? null : null });
     setSelectedPlaceId(null);
   }
 
   function toggleCategory(slug: string) {
-    setSelectedTypes((prev) => {
-      const next = { ...prev };
-      if (next[slug] !== undefined) delete next[slug];
-      else next[slug] = "all";
-      return next;
+    const selected = filters.categories.includes(slug);
+    onFilterChange({
+      categories: selected ? filters.categories.filter((category) => category !== slug) : [...filters.categories, slug],
+      types: selected ? filters.types.filter((token) => !token.startsWith(`${slug}:`)) : filters.types,
     });
   }
   function toggleType(categorySlug: string, typeSlug: string, allTypeSlugs: string[]) {
-    setSelectedTypes((prev) => {
-      const next = { ...prev };
-      const current = next[categorySlug];
-      if (current === undefined) {
-        next[categorySlug] = new Set([typeSlug]);
-        return next;
-      }
-      const set = current === "all" ? new Set(allTypeSlugs) : new Set(current);
-      if (set.has(typeSlug)) set.delete(typeSlug);
-      else set.add(typeSlug);
-      if (set.size === 0) delete next[categorySlug];
-      else if (set.size === allTypeSlugs.length) next[categorySlug] = "all";
-      else next[categorySlug] = set;
-      return next;
+    const token = `${categorySlug}:${typeSlug}`;
+    const currentTypes = filters.types.filter((type) => type.startsWith(`${categorySlug}:`));
+    const allTypesSelected = filters.categories.includes(categorySlug) && currentTypes.length === 0;
+    const types = allTypesSelected
+      ? [...filters.types, ...allTypeSlugs.filter((type) => type !== typeSlug).map((type) => `${categorySlug}:${type}`)]
+      : filters.types.includes(token) ? filters.types.filter((type) => type !== token) : [...filters.types, token];
+    const categoryTypes = types.filter((type) => type.startsWith(`${categorySlug}:`));
+    onFilterChange({
+      categories: categoryTypes.length === 0 ? filters.categories.filter((category) => category !== categorySlug) : filters.categories.includes(categorySlug) ? filters.categories : [...filters.categories, categorySlug],
+      types: categoryTypes.length === allTypeSlugs.length ? types.filter((type) => !type.startsWith(`${categorySlug}:`)) : types,
     });
   }
   function isTypeChecked(categorySlug: string, typeSlug: string) {
-    const current = selectedTypes[categorySlug];
-    if (current === undefined) return false;
-    return current === "all" || current.has(typeSlug);
+    return filters.types.includes(`${categorySlug}:${typeSlug}`) || (filters.categories.includes(categorySlug) && !filters.types.some((type) => type.startsWith(`${categorySlug}:`)));
   }
   function toggleBadge(key: BadgeKey) {
-    setSelectedBadges((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+    const filterKey = key === "hidden_gem" ? "hiddenGemOnly" : key === "family_friendly" ? "familyFriendlyOnly" : "coupleFriendlyOnly";
+    onFilterChange({ [filterKey]: !filters[filterKey] });
   }
   function clearFilters() {
-    setSelectedTypes({});
-    setSelectedBadges(new Set());
+    onFilterChange({ categories: [], types: [], hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
   }
 
   const categoryFilterPanel = (
@@ -280,7 +236,6 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
       <div className="mt-3 max-h-[min(45vh,20rem)] overflow-y-auto pr-1">
         {Object.entries(CATEGORY_DETAILS).map(([slug, detail]) => {
-          const meta = CATEGORY_META[slug];
           const allTypeSlugs = detail.types.map((t) => t.slug);
           return (
             <div key={slug} className="mb-2.5 last:mb-0">
@@ -298,7 +253,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
         })}
 
         <label className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-sm font-bold text-foreground">
-          <input type="checkbox" checked={selectedBadges.has("hidden_gem")} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
+          <input type="checkbox" checked={filters.hiddenGemOnly} onChange={() => toggleBadge("hidden_gem")} className="h-3.5 w-3.5 accent-primary" />
           <span className="flex-1">{HIDDEN_GEM_SYMBOL} {t("ui.labels.hiddenGem")}</span>
           <span className="text-[11px] font-normal text-muted-foreground">{activities.filter((activity) => activity.isHiddenGem).length}</span>
         </label>
@@ -308,7 +263,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
           <div className="flex flex-col gap-1">
             {BADGE_OPTIONS.map((b) => (
               <label key={b.key} className="flex items-center gap-2 text-xs text-foreground">
-                <input type="checkbox" checked={selectedBadges.has(b.key)} onChange={() => toggleBadge(b.key)} className="h-3.5 w-3.5 accent-primary" />
+                <input type="checkbox" checked={b.key === "family_friendly" ? filters.familyFriendlyOnly : filters.coupleFriendlyOnly} onChange={() => toggleBadge(b.key)} className="h-3.5 w-3.5 accent-primary" />
                 {t(`ui.map.badges.${b.key}`)}
               </label>
             ))}
@@ -318,7 +273,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
 
       {activeFilterCount > 0 && (
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-          <span className="text-[11px] text-muted-foreground">{t("ui.map.activeFilters", { count: activeFilterCount })}</span>
+            <span className="text-[11px] text-muted-foreground">{t("ui.map.activeFilters", { count: activeFilterCount })}</span>
           <button type="button" onClick={clearFilters} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">{t("ui.actions.clearFilters")}</button>
         </div>
       )}
@@ -347,6 +302,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
+                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-400 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}
                   </div>
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
@@ -356,7 +312,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                 <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{formatMYR(Number(selectedActivity.price))}</span></div>
-                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
+                <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
             </div>
@@ -366,7 +322,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
           <StateDetailPanel
             selectedStateId={selectedStateId}
             stateCounts={stateCounts}
-            activities={filteredActivities}
+            activities={activities}
             onSelectState={selectState}
             onSelectPlace={setSelectedPlaceId}
           />
@@ -381,23 +337,23 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {selectedStateId && <button type="button" onClick={() => selectState(null)} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[10px] font-bold text-muted-foreground transition hover:border-primary hover:text-primary"><X size={12} /> {t("ui.map.allStatesTerritories")}</button>}
-                <span className="text-xs font-semibold text-muted-foreground">{t("ui.map.placesHere", { count: filteredActivities.length })}</span>
+                <span className="text-xs font-semibold text-muted-foreground">{t("ui.map.placesHere", { count: activities.length })}</span>
               </div>
             </div>
 
             <div className="mt-1 flex shrink-0 flex-wrap gap-1.5 2xl:mt-2" aria-label={t("ui.map.experienceFilters")}>
               <button type="button" onClick={clearFilters} className={`rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${activeFilterCount === 0 ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}>{t("ui.search.allMalaysia")}</button>
-              {Object.entries(CATEGORY_META).map(([slug, meta]) => (
+              {Object.entries(CATEGORY_META).map(([slug]) => (
                 <button
                   key={slug}
                   type="button"
                   onClick={() => toggleCategory(slug)}
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedTypes[slug] !== undefined ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filters.categories.includes(slug) ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}
                 >
                   <CategoryIcon category={slug} size={14} strokeWidth={1.8} /> {t(`categories.${slug}`)}
                 </button>
               ))}
-              <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${selectedBadges.has("hidden_gem") ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
+              <button type="button" onClick={() => toggleBadge("hidden_gem")} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filters.hiddenGemOnly ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}><CategoryIcon category="hidden_gem" size={12} strokeWidth={1.8} /> {t("ui.labels.hiddenGem")}</button>
               <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="explore-category-filter" className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold transition 2xl:px-3 2xl:py-1 2xl:text-[11px] ${filtersOpen || activeFilterCount > 0 ? "border-primary/30 bg-secondary text-primary" : "border-border text-muted-foreground hover:bg-secondary"}`}>
                 <SlidersHorizontal size={13} /> {t("ui.map.moreFilters")}{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
               </button>
@@ -406,11 +362,11 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
             {filtersOpen && categoryFilterPanel}
 
             <div className="mt-2 min-h-0 overflow-hidden 2xl:mt-3">
-              {filteredActivities.length === 0 ? (
+              {activities.length === 0 ? (
                 <div className="rounded-2xl border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">{t("ui.states.loadingError")}</div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {filteredActivities.slice(0, 8).map((activity) => (
+                  {activities.slice(0, 8).map((activity) => (
                     <button
                       key={activity.id}
                       type="button"
@@ -430,6 +386,7 @@ export function StoryMap({ initialActivities }: { initialActivities: ComputedAct
                         )}
                          <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
+                          {activity.sponsorship && <span className="mt-0.5 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950 2xl:text-[10px]">{t("ui.labels.sponsored")}</span>}
                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</p>
                          </div>
                         <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{formatMYR(Number(activity.price))}</span>

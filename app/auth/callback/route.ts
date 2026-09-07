@@ -30,6 +30,13 @@ export async function GET(request: Request) {
   const assignments = (roleRows ?? []).map((row: { role_name?: string | null }) => ({
     roles: { name: row.role_name },
   }));
+  if (assignments.length === 0) {
+    const parsedNext = next ? new URL(next, "https://mywisata.invalid") : null;
+    const invitationDestination = parsedNext?.pathname.startsWith("/staff-invitations/")
+      ? `${parsedNext.pathname}${parsedNext.search}${parsedNext.hash}`
+      : "/";
+    return NextResponse.redirect(new URL(invitationDestination, url.origin));
+  }
   const role = pickDemoRole((assignments ?? []) as DemoRoleAssignment[]);
   return NextResponse.redirect(new URL(postLoginDestination(role, next), url.origin));
 }

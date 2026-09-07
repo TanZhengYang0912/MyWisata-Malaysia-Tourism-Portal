@@ -98,14 +98,17 @@ describe('POST /api/admin/vendors/recommendation-invite', () => {
     });
   });
 
-  it('requires the recommendation review capability', async () => {
+  it('requires the vendor management permission', async () => {
     const response = await POST(request());
 
     expect(response.status).toBe(201);
-    expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', { uid: 'admin-1' });
+    expect(mocks.rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: 'admin-1',
+      p_permission_key: 'admin.vendor.manage',
+    });
   });
 
-  it('denies a caller without the recommendation review capability', async () => {
+  it('denies a caller without the vendor management permission', async () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
 
     const response = await POST(request());

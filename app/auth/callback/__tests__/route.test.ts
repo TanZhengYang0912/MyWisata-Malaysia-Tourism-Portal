@@ -61,11 +61,22 @@ describe("GET /auth/callback", () => {
   it.each([
     ["vendor invitation", "%2Fvendor-invite%3Frecommendation%3Dinvite-token", "/vendor-invite?recommendation=invite-token"],
     ["outlet-manager invitation", "%2Foutlet-manager-invitations%2Finvite-token", "/outlet-manager-invitations/invite-token"],
+    ["staff invitation", "%2Fstaff-invitations%2Finvite-token", "/staff-invitations/invite-token"],
     ["password reset", "%2Freset-password", "/reset-password"],
   ])("keeps a safe role-neutral %s destination", async (_label, next, expected) => {
     const response = await GET(new Request(`http://localhost/auth/callback?code=oauth-code&next=${next}`));
 
     expect(response.headers.get("location")).toBe(`http://localhost${expected}`);
+  });
+
+  it("keeps a roleless invited Staff identity on its invitation and out of Customer pages", async () => {
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+
+    const invitationResponse = await GET(new Request("http://localhost/auth/callback?code=oauth-code&next=%2Fstaff-invitations%2Finvite-token"));
+    const unrelatedResponse = await GET(new Request("http://localhost/auth/callback?next=%2Fcustomer"));
+
+    expect(invitationResponse.headers.get("location")).toBe("http://localhost/staff-invitations/invite-token");
+    expect(unrelatedResponse.headers.get("location")).toBe("http://localhost/");
   });
 
   it("checks the normalized path before applying the role boundary", async () => {

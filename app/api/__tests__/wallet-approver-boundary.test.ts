@@ -77,6 +77,7 @@ beforeEach(() => {
     throw reachedBusinessData;
   });
   mocks.rpc.mockImplementation((name: string) => {
+    if (name === 'has_staff_permission') return Promise.resolve({ data: roles.some((role) => ['admin', 'super_admin'].includes(role)), error: null });
     if (name === 'is_admin' || name === 'is_approver') return Promise.resolve({ data: roles.some((r) => ['super_admin', 'approver'].includes(r)), error: null });
     if (name === 'is_super_admin') return Promise.resolve({ data: roles.includes('super_admin'), error: null });
     throw reachedBusinessData;

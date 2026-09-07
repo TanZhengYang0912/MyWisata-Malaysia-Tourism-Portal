@@ -16,15 +16,21 @@ const mocks = vi.hoisted(() => ({
   tngIsConfigured:       vi.fn(),
   executeApprovedWithdrawalPayout: vi.fn(),
   scheduleTngMockCallbackAcceleration: vi.fn(),
+  requireStaffPermission: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
+function db() {
+  return {
     auth: { getUser: mocks.getUser },
-    rpc:  mocks.rpc,
+    rpc: mocks.rpc,
     from: mocks.from,
-  })),
+  };
+}
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(async () => db()),
 }));
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffPermission: mocks.requireStaffPermission }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ rpc: mocks.rpc })),
 }));
@@ -106,6 +112,7 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
       data: { user: { id: U2_ID } },
       error: null,
     });
+    mocks.requireStaffPermission.mockResolvedValue({ db: db(), user: { id: U2_ID }, response: null });
     mocks.enqueueWithdrawalEmail.mockResolvedValue(undefined);
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
     mocks.tngIsConfigured.mockReturnValue(true);
@@ -121,19 +128,39 @@ describe('POST /api/admin/withdrawals/:id/approve', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    mocks.requireStaffPermission.mockResolvedValue({
+      db: db(),
+      user: null,
+      response: Response.json({ data: null, error: { code: 'UNAUTHORIZED' } }, { status: 401 }),
+    });
     const res = await POST(request(), params());
     expect(res.status).toBe(401);
   });
 
-  it('returns 403 when caller is an ordinary customer (approver_required)', async () => {
-    mockWithdrawal();
-    mocks.rpc.mockResolvedValue({
-      data: null,
-      error: { message: 'approver_required' },
+  it('requires admin.withdrawal.approve before parsing or starting moderation', async () => {
+    mocks.requireStaffPermission.mockResolvedValue({
+      db: db(),
+      user: { id: U2_ID },
+      response: Response.json({ data: null, error: { code: 'FORBIDDEN' } }, { status: 403 }),
     });
-    const res = await POST(request(), params());
+    const res = await POST(new Request(`http://localhost/api/admin/withdrawals/${W_ID}/approve`, {
+      method: 'POST',
+      body: '{invalid-json',
+    }), params());
     expect(res.status).toBe(403);
+    expect(mocks.requireStaffPermission).toHaveBeenCalledWith('admin.withdrawal.approve');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
+  });
+
+  it('fails closed if the database permission is revoked after the route guard', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'withdrawal_permission_required' } });
+
+    const res = await POST(request(), params());
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: { code: 'FORBIDDEN' } });
+    expect(mocks.executeApprovedWithdrawalPayout).not.toHaveBeenCalled();
   });
 
   it('returns pending_second_approval for first approval on a dual-approval request', async () => {

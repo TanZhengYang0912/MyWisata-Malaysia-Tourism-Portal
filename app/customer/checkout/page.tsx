@@ -31,21 +31,26 @@ type PaymentChoice = {
   labelKey: string;
   icon: typeof CreditCard;
   paymentMethod: "stripe_card" | "ewallet" | "bank_transfer" | "wallet" | "wallet_split";
-  paymentProvider: "tng_ewallet_simulator" | "grabpay_simulator" | "bank_transfer_simulator" | null;
+  paymentProvider: "tng_ewallet_simulator" | "grabpay_simulator" | "bank_transfer_simulator" | "toyyibpay" | null;
   simulated?: boolean;
 };
+
+const TOYYIBPAY_ENABLED = process.env.NEXT_PUBLIC_TOYYIBPAY_ENABLED === "true";
+const TOYYIBPAY_SANDBOX = process.env.NEXT_PUBLIC_TOYYIBPAY_ENV !== "production";
 
 const ALL_METHODS = [
   { id: "stripe_card", labelKey: "strictMigration.checkout.methods.stripeCard", icon: CreditCard, paymentMethod: "stripe_card", paymentProvider: null },
   { id: "tng_ewallet", labelKey: "strictMigration.checkout.methods.tng", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "tng_ewallet_simulator", simulated: true },
   { id: "grabpay", labelKey: "strictMigration.checkout.methods.grabpay", icon: Smartphone, paymentMethod: "ewallet", paymentProvider: "grabpay_simulator", simulated: true },
   { id: "bank_transfer", labelKey: "strictMigration.checkout.methods.bankTransfer", icon: CreditCard, paymentMethod: "bank_transfer", paymentProvider: "bank_transfer_simulator", simulated: true },
+  { id: "toyyibpay", labelKey: TOYYIBPAY_SANDBOX ? "strictMigration.checkout.methods.toyyibpaySandbox" : "strictMigration.checkout.methods.toyyibpay", icon: CreditCard, paymentMethod: "bank_transfer", paymentProvider: "toyyibpay" },
   { id: "wallet", labelKey: "strictMigration.checkout.methods.wallet", icon: Wallet, paymentMethod: "wallet", paymentProvider: null },
   { id: "wallet_split", labelKey: "strictMigration.checkout.methods.walletSplit", icon: Wallet, paymentMethod: "wallet_split", paymentProvider: null },
 ] satisfies PaymentChoice[];
 
 const METHODS: PaymentChoice[] = ALL_METHODS.filter(
-  (choice) => !choice.simulated || process.env.NODE_ENV !== "production",
+  (choice) => (choice.id !== "toyyibpay" || TOYYIBPAY_ENABLED)
+    && (!choice.simulated || process.env.NODE_ENV !== "production"),
 );
 
 type WalletSummary = {
@@ -65,6 +70,7 @@ export default function CheckoutPage() {
   const [methodId, setMethodId] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [toyyibPayReturned, setToyyibPayReturned] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -95,6 +101,7 @@ export default function CheckoutPage() {
     const params = new URLSearchParams(window.location.search);
     setVoucherCode(params.get("voucher"));
     setClaimId(params.get("claim"));
+    setToyyibPayReturned(params.get("toyyibpay_return") === "1");
   }, []);
 
   useEffect(() => {
@@ -156,6 +163,29 @@ export default function CheckoutPage() {
   const walletInsufficient = !isFreeReservation && walletSummaryLoaded && walletSpendableSen < totalSen;
   const selectedMethod = METHODS.find((choice) => choice.id === methodId) ?? METHODS[0]!;
 
+  if (toyyibPayReturned) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <CalendarClock className="mt-0.5 shrink-0 text-primary" size={22} aria-hidden="true" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                {tCustomer("ui.checkout.toyyibpayAwaitingTitle")}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {tCustomer("ui.checkout.toyyibpayAwaitingDescription")}
+              </p>
+              <Link href="/customer/orders" className="mt-4 inline-flex font-semibold text-primary hover:underline">
+                {tCustomer("ui.checkout.viewOrders")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -198,7 +228,7 @@ export default function CheckoutPage() {
         setPaying(false);
         return;
       }
-      const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
+      const prepared = await prepareResponse.json() as { data?: { checkout_session_id?: string; order_id?: string; stripeUrl?: string; simulatorUrl?: string; toyyibpayUrl?: string; externalAmountSen?: number }; error?: CheckoutErrorPayload };
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         throw new Error(getCheckoutErrorMessage(prepared.error));
       }
@@ -211,6 +241,10 @@ export default function CheckoutPage() {
       }
       if (prepared.data.stripeUrl) {
         window.location.href = prepared.data.stripeUrl;
+        return;
+      }
+      if (prepared.data.toyyibpayUrl) {
+        window.location.href = prepared.data.toyyibpayUrl;
         return;
       }
       if (prepared.data.simulatorUrl) {
@@ -366,7 +400,7 @@ export default function CheckoutPage() {
                 )}
 
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <ShieldCheck size={13} /> {tCustomer("ui.checkout.stripeNotice")}
+                  <ShieldCheck size={13} /> {tCustomer("ui.checkout.paymentNotice")}
                 </p>
               </>
             )}
@@ -425,6 +459,8 @@ export default function CheckoutPage() {
                 ? tCustomer("ui.checkout.reserveFreeSpot")
                 : selectedMethod.simulated
                 ? tCustomer("ui.checkout.continueSimulator")
+                : selectedMethod.paymentProvider === "toyyibpay"
+                ? tCustomer(TOYYIBPAY_SANDBOX ? "ui.checkout.continueToyyibPaySandbox" : "ui.checkout.continueToyyibPay")
                 : selectedMethod.paymentMethod === "wallet"
                 ? tCustomer("ui.checkout.payWallet")
                 : tCustomer("ui.checkout.continueStripe")}
@@ -442,4 +478,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

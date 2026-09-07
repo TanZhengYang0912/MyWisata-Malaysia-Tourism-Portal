@@ -325,6 +325,7 @@
     },
     "labels": {
       "hiddenGem": "Hidden Gem",
+      "sponsored": "Sponsored",
       "verifiedVendor": "Verified Vendor",
       "publicPlace": "Public place",
       "placeBasedExperience": "Place-based experience",
@@ -411,6 +412,12 @@
       "total": "Total",
       "paymentMethod": "Payment method",
       "stripeNotice": "Stripe uses the existing test-mode integration. Other methods remain demo flows until their provider is connected.",
+      "paymentNotice": "Secure provider confirmation protects every external payment.",
+      "continueToyyibPay": "Continue to ToyyibPay",
+      "continueToyyibPaySandbox": "Continue to ToyyibPay Sandbox",
+      "toyyibpayAwaitingTitle": "Awaiting provider confirmation",
+      "toyyibpayAwaitingDescription": "Your order will update after ToyyibPay confirms the payment. Returning to this page does not mark it as paid.",
+      "viewOrders": "View orders",
       "walletInsufficient": "Wallet payment is unavailable for this order because your spendable balance is too low. Pending rewards and withdrawal reserves cannot be used for checkout.",
       "continueSimulator": "Continue to payment simulator",
       "payWallet": "Pay with MyWisata Wallet",
@@ -1942,7 +1949,17 @@
       "labuan": "Labuan"
     },
     "discovery": {
-      "searchLabel": "Search places and experiences"
+      "searchLabel": "Search places and experiences",
+      "advancedFilters": "Advanced filters",
+      "state": "State",
+      "maximumPrice": "Maximum price",
+      "freeOnly": "Free entry",
+      "bookableOnly": "Booking required",
+      "hiddenGemOnly": "Hidden Gem",
+      "familyFriendlyOnly": "Family Friendly",
+      "coupleFriendlyOnly": "Couple Friendly",
+      "showAll_one": "Show all ({{count}})",
+      "showAll_other": "Show all ({{count}})"
     },
     "placeActivity": {
       "title": "Things to do here",
@@ -2585,7 +2602,9 @@
         "stripeCard": "Card via Stripe test mode",
         "tng": "Touch ’n Go eWallet — simulator",
         "grabpay": "GrabPay — simulator",
-        "bankTransfer": "Bank transfer — simulator",
+        "bankTransfer": "Bank transfer — Demo simulator",
+        "toyyibpay": "ToyyibPay online banking",
+        "toyyibpaySandbox": "ToyyibPay — Sandbox",
         "wallet": "MyWisata wallet balance",
         "walletSplit": "Wallet first + card remainder"
       },

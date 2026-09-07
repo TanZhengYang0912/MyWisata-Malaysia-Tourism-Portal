@@ -7,7 +7,7 @@ export const SIMULATOR_CHECKOUT_PROVIDERS = [
 ] as const;
 
 export type SimulatorCheckoutProvider = typeof SIMULATOR_CHECKOUT_PROVIDERS[number];
-export type CheckoutProviderName = 'stripe' | 'platform_wallet' | 'platform' | SimulatorCheckoutProvider;
+export type CheckoutProviderName = 'stripe' | 'platform_wallet' | 'platform' | 'toyyibpay' | SimulatorCheckoutProvider;
 
 export function isSimulatorCheckoutProvider(value: unknown): value is SimulatorCheckoutProvider {
   return typeof value === 'string'
@@ -34,6 +34,9 @@ export function resolveCheckoutProvider(
     if (provider === 'tng_ewallet_simulator' || provider === 'grabpay_simulator') return provider;
   }
   if (method === 'bank_transfer' && provider === 'bank_transfer_simulator') {
+    return provider;
+  }
+  if (method === 'bank_transfer' && provider === 'toyyibpay') {
     return provider;
   }
 

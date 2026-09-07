@@ -57,11 +57,14 @@ describe('POST /api/admin/vendors/recommendation-invite/draft', () => {
     expect(response.status).toBe(401);
   });
 
-  it('requires the recommendation review capability', async () => {
+  it('requires the vendor management permission', async () => {
     rpc.mockResolvedValue({ data: false, error: null });
     const response = await POST(request({ recommendationId: RECOMMENDATION_ID }));
     expect(response.status).toBe(403);
-    expect(rpc).toHaveBeenCalledWith('can_review_recommendation', { uid: 'admin-1' });
+    expect(rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: 'admin-1',
+      p_permission_key: 'admin.vendor.manage',
+    });
   });
 
   it('404s for an unknown recommendation', async () => {

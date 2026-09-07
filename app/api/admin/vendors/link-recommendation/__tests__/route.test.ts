@@ -29,7 +29,7 @@ describe('POST /api/admin/vendors/link-recommendation', () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
   });
 
-  it('rejects callers without recommendation review capability before reading conversion data', async () => {
+  it('rejects callers without vendor management permission before reading conversion data', async () => {
     const response = await POST(new Request('http://localhost/api/admin/vendors/link-recommendation', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -40,8 +40,9 @@ describe('POST /api/admin/vendors/link-recommendation', () => {
     }));
 
     expect(response.status).toBe(403);
-    expect(mocks.rpc).toHaveBeenCalledWith('can_review_recommendation', {
-      uid: '11111111-1111-4111-8111-111111111111',
+    expect(mocks.rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: '11111111-1111-4111-8111-111111111111',
+      p_permission_key: 'admin.vendor.manage',
     });
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.auditAndNotify).not.toHaveBeenCalled();

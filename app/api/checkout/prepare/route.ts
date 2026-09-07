@@ -16,6 +16,8 @@ import {
 import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { ToyyibPayProvider } from '@/lib/payments/toyyibpay';
+import { resolvePaymentAppUrl, resolveToyyibPayActionUrl } from '@/lib/payments/app-url';
 
 type Relation<T> = T | T[] | null;
 type CartRow = {
@@ -68,6 +70,7 @@ export async function POST(request: Request) {
     }, { status: 422 });
   }
   const simulatorProvider = isSimulatorCheckoutProvider(checkoutProvider) ? checkoutProvider : null;
+  const isToyyibPay = checkoutProvider === 'toyyibpay';
   if (simulatorProvider && !isPaymentSimulatorEnabled()) {
     return NextResponse.json({
       data: null,
@@ -76,6 +79,18 @@ export async function POST(request: Request) {
         message: 'This simulated payment method is unavailable in the current environment.',
       },
     }, { status: 503 });
+  }
+  if (isToyyibPay && !user.email?.trim()) {
+    return NextResponse.json({
+      data: null,
+      error: { code: 'TOYYIBPAY_EMAIL_REQUIRED', message: 'An email address is required for this payment method.' },
+    }, { status: 422 });
+  }
+  if (isToyyibPay && !user.phone?.trim()) {
+    return NextResponse.json({
+      data: null,
+      error: { code: 'TOYYIBPAY_PHONE_REQUIRED', message: 'A phone number is required for this payment method.' },
+    }, { status: 422 });
   }
   const walletSplit = normalized.paymentMethod === 'wallet_split';
   const requestHash = buildCheckoutRequestHash(normalized);
@@ -223,6 +238,138 @@ export async function POST(request: Request) {
     response = { ...response, walletAmountSen: Number(split.wallet_amount_sen), externalAmountSen: Number(split.external_amount_sen) };
   }
   const externalAmountSen = walletSplit ? Number(response.externalAmountSen) : Math.round(totals.total * 100);
+  if (isToyyibPay && prepared?.status !== 'paid') {
+    const provider = new ToyyibPayProvider();
+    if (!provider.isConfigured()) {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'TOYYIBPAY_UNAVAILABLE', message: 'ToyyibPay is not configured.' },
+      }, { status: 503 });
+    }
+
+    let appUrl: string;
+    try {
+      appUrl = resolvePaymentAppUrl();
+    } catch {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'PAYMENT_APP_URL_INVALID', message: 'The payment return URL is not configured safely.' },
+      }, { status: 503 });
+    }
+
+    const checkoutSessionId = String(prepared.checkout_session_id);
+    const orderId = String(prepared.order_id);
+    const service = createServiceClient();
+    const { data: beginData, error: beginError } = await service.rpc('begin_toyyibpay_checkout', {
+      p_checkout_session_id: checkoutSessionId,
+    });
+    if (beginError || !beginData || typeof beginData !== 'object') {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'TOYYIBPAY_PREPARE_FAILED', message: 'The ToyyibPay checkout could not be prepared.' },
+      }, { status: 503 });
+    }
+
+    const begin = beginData as Record<string, unknown>;
+    if (begin.state === 'indeterminate') {
+      return NextResponse.json({
+        data: null,
+        error: {
+          code: 'TOYYIBPAY_CREATE_INDETERMINATE',
+          message: 'A previous ToyyibPay bill attempt requires reconciliation before retrying.',
+        },
+      }, { status: 409 });
+    }
+    if (begin.state === 'created' && typeof begin.provider_payment_id === 'string') {
+      if (
+        begin.checkout_session_id !== checkoutSessionId
+        || begin.order_id !== orderId
+        || begin.currency !== 'MYR'
+        || Number(begin.amount_sen) !== externalAmountSen
+      ) {
+        return NextResponse.json({
+          data: null,
+          error: { code: 'TOYYIBPAY_PREPARE_CONFLICT', message: 'The provider checkout does not match this order.' },
+        }, { status: 409 });
+      }
+      try {
+        return NextResponse.json({
+          data: { ...response, toyyibpayUrl: resolveToyyibPayActionUrl(begin.provider_payment_id) },
+          error: null,
+        });
+      } catch {
+        return NextResponse.json({
+          data: null,
+          error: { code: 'TOYYIBPAY_UNAVAILABLE', message: 'ToyyibPay is not configured.' },
+        }, { status: 503 });
+      }
+    }
+
+    const amountSen = Number(begin.amount_sen);
+    if (
+      begin.state !== 'ready'
+      || begin.checkout_session_id !== checkoutSessionId
+      || begin.order_id !== orderId
+      || begin.currency !== 'MYR'
+      || amountSen !== externalAmountSen
+      || !Number.isSafeInteger(amountSen)
+      || amountSen <= 0
+    ) {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'TOYYIBPAY_PREPARE_CONFLICT', message: 'The provider checkout does not match this order.' },
+      }, { status: 409 });
+    }
+
+    let providerSession;
+    try {
+      providerSession = await provider.createPayment({
+        checkoutSessionId,
+        orderId,
+        amountSen,
+        currency: 'MYR',
+        customer: {
+          name: typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name.trim()
+            ? user.user_metadata.full_name.trim()
+            : user.email!.split('@')[0],
+          email: user.email!.trim(),
+          phone: user.phone!.trim(),
+        },
+        returnUrl: `${appUrl}/customer/checkout?toyyibpay_return=1`,
+        callbackUrl: `${appUrl}/api/payments/toyyibpay/callback`,
+      });
+    } catch {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'TOYYIBPAY_PREPARE_FAILED', message: 'ToyyibPay could not create the payment bill.' },
+      }, { status: 503 });
+    }
+
+    const { data: completeData, error: completeError } = await service.rpc('complete_toyyibpay_checkout', {
+      p_checkout_session_id: checkoutSessionId,
+      p_provider_payment_id: providerSession.providerPaymentId,
+    });
+    if (
+      completeError
+      || !completeData
+      || typeof completeData !== 'object'
+      || (completeData as Record<string, unknown>).state !== 'created'
+      || (completeData as Record<string, unknown>).provider_payment_id !== providerSession.providerPaymentId
+    ) {
+      return NextResponse.json({
+        data: null,
+        error: {
+          code: 'TOYYIBPAY_CREATE_INDETERMINATE',
+          message: 'The ToyyibPay bill was created but could not be attached automatically.',
+        },
+      }, { status: 503 });
+    }
+
+    return NextResponse.json({
+      data: { ...response, toyyibpayUrl: providerSession.actionUrl },
+      error: null,
+    });
+  }
   if (simulatorProvider && prepared?.status !== 'paid') {
     const checkoutSessionId = String(prepared.checkout_session_id);
     const simulatorSession = createSimulatorPaymentSession({

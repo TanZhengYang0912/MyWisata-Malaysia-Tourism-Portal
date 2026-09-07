@@ -13,6 +13,18 @@ const approvedForwardMigrations = [
   "20260904230000_external_booking_sync.sql",
   "20260904233000_ticket_passes_and_audit.sql",
   "20260904240000_free_activity_reservations.sql",
+  "20260905062500_cart_last_added_order.sql",
+  "20260905070000_fix_free_reservation_checkout.sql",
+  "20260905071000_harden_free_reservation_checkout.sql",
+  "20260905072000_align_free_reservation_price_rules.sql",
+  "20260905073000_staff_role_permissions.sql",
+  "20260905073500_staff_permission_enforcement.sql",
+  "20260905074000_sponsored_discovery_placements.sql",
+  "20260905074500_sponsored_campaign_workflow.sql",
+  "20260905075000_toyyibpay_checkout.sql",
+  "20260906011500_staff_role_assignment_ux.sql",
+  "20260906030400_fix_anonymous_vendor_reads.sql",
+  "20260906040000_staff_invitations.sql",
 ];
 
 function migrationFiles() {

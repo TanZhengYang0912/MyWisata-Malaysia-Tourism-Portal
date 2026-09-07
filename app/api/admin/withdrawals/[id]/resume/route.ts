@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
@@ -12,9 +12,8 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = await createClient();
-  const { data: { user }, error: authError } = await db.auth.getUser();
-  if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const { db, user, response } = await requireStaffPermission('admin.withdrawal.approve');
+  if (response) return response;
   const parsed = await parseBody(request, resumeSchema);
   if (!parsed.ok) return parsed.response;
   const validated = walletReasonSchema.safeParse({ action: 'resume', ...parsed.data });

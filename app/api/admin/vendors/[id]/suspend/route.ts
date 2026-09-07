@@ -1,32 +1,19 @@
 // P2 — Member 2 owns B1: Admin suspend/unsuspend vendor
 
-import { createClient } from '@/lib/supabase/server';
-import { auditAndNotify } from '@/lib/audit';
+import { sendNotification } from '@/lib/audit';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { vendorSuspendSchema } from '@/lib/validation/vendor-schemas';
 import { createServiceClient } from '@/lib/supabase/service';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
 interface Props { params: Promise<{ id: string }> }
 
 export async function POST(request: Request, { params }: Props) {
   const { id: vendorId } = await params;
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const { db: supabase, user, response } = await requireStaffPermission('admin.vendor.manage');
+  if (response) return response;
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  // Role check
-  const { data: roles } = await supabase
-    .from('user_roles')
-    .select('roles(name)')
-    .eq('user_id', user.id);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const roleNames = (roles ?? []).map((r: any) => (r.roles as Record<string, any>)?.name as string);
-  if (!roleNames.includes('super_admin')) {
-    return apiFail('FORBIDDEN', 'Only super admin can suspend vendors', 403);
-  }
 
   const parsed = await parseBody(request, vendorSuspendSchema);
   if (!parsed.ok) return parsed.response;
@@ -49,32 +36,31 @@ export async function POST(request: Request, { params }: Props) {
 
   const newStatus = action === 'suspend' ? 'suspended' : 'approved';
 
-  const { error } = await supabase
-    .from('vendors')
-    .update({ status: newStatus })
-    .eq('id', vendorId);
+  const { data: statusData, error } = await supabase.rpc('staff_set_vendor_suspension', {
+    p_vendor_id: vendorId,
+    p_action: action,
+    p_reason: reason ?? null,
+  });
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    const message = error.message ?? '';
+    if (message.includes('vendor_permission_required')) return apiFail('FORBIDDEN', 'Vendor management permission required', 403);
+    if (message.includes('vendor_not_found')) return apiFail('NOT_FOUND', 'Vendor not found', 404);
+    if (message.includes('vendor_invalid_state')) return apiFail('INVALID_STATE', 'Vendor is not in a valid state for this action', 409);
+    if (message.includes('vendor_suspension_action_invalid')) return apiFail('VALIDATION_FAILED', 'Vendor suspension action is invalid', 422);
+    return apiFail('DB_ERROR', 'Vendor status could not be changed', 500);
+  }
+  if (!statusData) return apiFail('DB_ERROR', 'Vendor status change returned no result', 500);
 
-  await auditAndNotify(
-    {
-      action: `vendor.${action}ed`,
-      entityType: 'vendor',
-      entityId: vendorId,
-      beforeData: { status: vendor.status },
-      afterData: { status: newStatus },
-      note: reason,
-    },
-    [{
-      userId: vendor.owner_id,
-      type: `vendor_${action}ed`,
-      title: action === 'suspend'
-        ? `Your vendor "${vendor.name}" has been suspended`
-        : `Your vendor "${vendor.name}" has been reactivated`,
-      body: reason ?? undefined,
-      link: '/vendor/dashboard',
-    }],
-  );
+  await sendNotification({
+    userId: vendor.owner_id,
+    type: `vendor_${action}ed`,
+    title: action === 'suspend'
+      ? `Your vendor "${vendor.name}" has been suspended`
+      : `Your vendor "${vendor.name}" has been reactivated`,
+    body: reason ?? undefined,
+    link: '/vendor/dashboard',
+  });
 
   void emitVendorNotification({
     eventKey: `vendor:${action}:${vendorId}`,

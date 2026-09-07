@@ -23,6 +23,9 @@ describe('POST /api/admin/withdrawals/:id/reject', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
+    mocks.rpc.mockImplementation((name: string) => name === 'has_staff_permission'
+      ? Promise.resolve({ data: true, error: null })
+      : Promise.resolve({ data: null, error: null }));
   });
 
   it('requires a ten-character reason before moderation or release RPC', async () => {
@@ -30,12 +33,14 @@ describe('POST /api/admin/withdrawals/:id/reject', () => {
 
     expect(response.status).toBe(422);
     expect(mocks.moderateWalletAction).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith('reject_wallet_withdrawal', expect.anything());
   });
 
   it('sends the server-observed IP with a clean rejection reason', async () => {
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
-    mocks.rpc.mockResolvedValue({ data: { user_id: '33333333-3333-4333-8333-333333333333', amount_rm: 50 }, error: null });
+    mocks.rpc.mockImplementation((name: string) => name === 'has_staff_permission'
+      ? Promise.resolve({ data: true, error: null })
+      : Promise.resolve({ data: { user_id: '33333333-3333-4333-8333-333333333333', amount_rm: 50 }, error: null }));
 
     const response = await POST(request({ reasonCategory: 'bank_details_mismatch', reason: 'The payout details could not be verified.' }), { params: Promise.resolve({ id: '22222222-2222-4222-8222-222222222222' }) });
 

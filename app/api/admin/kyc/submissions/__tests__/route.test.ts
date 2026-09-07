@@ -34,8 +34,9 @@ describe('GET /api/admin/kyc/submissions', () => {
     const response = await GET();
 
     expect(response.status).toBe(403);
-    expect(mocks.rpc).toHaveBeenCalledWith('can_review_kyc', {
-      uid: '11111111-1111-4111-8111-111111111111',
+    expect(mocks.rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: '11111111-1111-4111-8111-111111111111',
+      p_permission_key: 'admin.kyc.review',
     });
     expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });

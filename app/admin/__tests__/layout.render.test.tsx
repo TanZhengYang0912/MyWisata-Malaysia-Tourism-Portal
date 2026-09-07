@@ -6,10 +6,11 @@ const mocks = vi.hoisted(() => ({
   role: "approver" as Role,
   pathname: "/admin/withdrawals",
   replace: vi.fn(),
+  staffPermissionKeys: [] as string[],
 }));
 
 vi.mock("@/components/providers/auth", () => ({
-  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, loading: false }),
+  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, staffPermissionKeys: mocks.staffPermissionKeys, loading: false }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
@@ -35,6 +36,7 @@ describe("admin navigation role rendering", () => {
   beforeEach(() => {
     mocks.role = "approver";
     mocks.pathname = "/admin/withdrawals";
+    mocks.staffPermissionKeys = [];
   });
 
   it("shows only Withdrawals to wallet approvers", () => {
@@ -53,11 +55,11 @@ describe("admin navigation role rendering", () => {
     expect(renderLayout()).toContain("Protected page content");
   });
 
-  it("preserves all 18 Super Admin navigation entries", () => {
+  it("preserves all 19 Super Admin navigation entries", () => {
     mocks.role = "super_admin";
     mocks.pathname = "/admin/dashboard";
     expect(navigationHrefs(renderLayout())).toEqual([
-      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/users", "/admin/access-control",
+      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/users", "/admin/access-control",
       "/admin/kyc", "/admin/withdrawals", "/admin/refunds", "/admin/wallet/settings", "/admin/wallet/approvers",
       "/admin/reports/payouts", "/admin/recommendations", "/admin/support", "/admin/chat-reports",
       "/admin/affiliate", "/admin/chatbot", "/admin/ai-assistant", "/admin/staff-conduct",
@@ -68,8 +70,17 @@ describe("admin navigation role rendering", () => {
     mocks.role = "admin";
     mocks.pathname = "/admin/dashboard";
     expect(navigationHrefs(renderLayout())).toEqual([
-      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/kyc", "/admin/refunds",
+      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/kyc", "/admin/refunds",
       "/admin/recommendations", "/admin/support", "/admin/chat-reports", "/admin/affiliate", "/admin/chatbot",
     ]);
+  });
+
+  it("shows Staff only the work areas granted by effective permissions", () => {
+    mocks.role = "staff";
+    mocks.pathname = "/admin/kyc";
+    mocks.staffPermissionKeys = ["admin.kyc.review", "admin.vendor.manage"];
+    const markup = renderLayout();
+    expect(navigationHrefs(markup)).toEqual(["/admin/vendors", "/admin/kyc"]);
+    expect(markup).not.toContain("command.searchAdminPlaceholder");
   });
 });
