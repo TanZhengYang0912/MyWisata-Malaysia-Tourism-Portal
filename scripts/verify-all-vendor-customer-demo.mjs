@@ -55,6 +55,17 @@ async function readAll(table, select) {
   }
 }
 
+async function listAllAuthUserIds() {
+  const ids = [];
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`Auth user read failed: ${error.message}`);
+    const authUsers = data?.users ?? [];
+    ids.push(...authUsers.map((user) => user.id));
+    if (authUsers.length < 1000) return ids;
+  }
+}
+
 function activeApproved(row) {
   return row.status === "active" && (!row.review_status || row.review_status === "approved");
 }
@@ -63,15 +74,20 @@ function names(rows) {
   return rows.map((row) => ({ id: row.id, name: row.name, slug: row.slug }));
 }
 
+function assignedRoleName(assignment) {
+  const role = Array.isArray(assignment.roles) ? assignment.roles[0] : assignment.roles;
+  return role?.name ?? null;
+}
+
 async function main() {
-  const [vendors, outlets, products, outletOffers, users, orders, orderItems, reviews, chatThreads, chatMessages, bookings, bookingSlots, vouchers, payments, refunds, wallets, walletTransactions, withdrawalRequests, walletAdjustments, payoutDestinations, kycSubmissions, kycOcrResults] = await Promise.all([
+  const [vendors, outlets, products, outletOffers, users, orders, orderItems, reviews, chatThreads, chatMessages, bookings, bookingSlots, vouchers, payments, refunds, wallets, walletTransactions, withdrawalRequests, walletAdjustments, payoutDestinations, kycSubmissions, kycOcrResults, outletManagers, userRoles, notifications, authUserIds] = await Promise.all([
     readAll("vendors", "id,owner_id,name,slug,status"),
     readAll("outlets", "id,vendor_id,name,slug,status,review_status"),
     readAll("products", "id,vendor_id,outlet_id,name,requires_booking,status,review_status"),
     readAll("outlet_offers", "id,product_id,outlet_id,status"),
     readAll("users", "id,status,kyc_status"),
     readAll("orders", "id,user_id,status,total_amount,payment_method"),
-    readAll("order_items", "id,order_id,vendor_id,outlet_id,product_id,slot_id"),
+    readAll("order_items", "id,order_id,vendor_id,outlet_id,product_id,slot_id,line_total"),
     readAll("reviews", "id,user_id,order_item_id,vendor_id,outlet_id,product_id,is_visible"),
     readAll("chat_threads", "id,customer_id,outlet_id,vendor_id"),
     readAll("chat_messages", "id,thread_id,sender_id"),
@@ -81,12 +97,16 @@ async function main() {
     readAll("payments", "id,order_id,method,amount,status"),
     readAll("refunds", "id,payment_id,order_id,amount,status,processed_at"),
     readAll("wallets", "id,user_id,topup_sen,earnings_sen,pending_earnings_sen,reserved_earnings_sen,withdrawn_earnings_sen"),
-    readAll("wallet_transactions", "id,user_id,wallet_id,order_id,withdrawal_id,type,amount_sen,bucket,direction,note"),
+    readAll("wallet_transactions", "id,user_id,wallet_id,order_id,withdrawal_id,idempotency_key,type,amount_sen,bucket,direction,note"),
     readAll("withdrawal_requests", "id,user_id,wallet_id,destination_id,amount,status"),
     readAll("wallet_adjustments", "id,user_id,wallet_transaction_id,actor_id,reason"),
     readAll("payout_destinations", "id,user_id,provider,provider_reference,verification_status,masked_ref"),
     readAll("kyc_submissions", "id,user_id,status,ic_hash,ic_hash_version"),
     readAll("kyc_ocr_results", "submission_id,status,document_number_hmac,provider_model"),
+    readAll("outlet_managers", "user_id,outlet_id"),
+    readAll("user_roles", "user_id,roles(name)"),
+    readAll("notifications", "id,user_id,vendor_id,outlet_id,audience_role,category,event_key"),
+    listAllAuthUserIds(),
   ]);
 
   const approvedVendors = vendors.filter((vendor) => vendor.status === "approved");
@@ -266,6 +286,175 @@ async function main() {
     (vendor) => !activeOutlets.some((outlet) => outlet.vendor_id === vendor.id),
   );
 
+  const authIdSet = new Set(authUserIds);
+  const roleKeys = new Set(
+    userRoles.map((assignment) => `${assignment.user_id}:${assignedRoleName(assignment)}`),
+  );
+  const activeOutletIds = new Set(activeOutlets.map((outlet) => outlet.id));
+  const activeManagerAssignments = outletManagers.filter((assignment) => activeOutletIds.has(assignment.outlet_id));
+  const managerAssignmentKeys = new Set(
+    activeManagerAssignments.map((assignment) => `${assignment.user_id}:${assignment.outlet_id}`),
+  );
+  const walletByUserId = new Map(wallets.map((wallet) => [wallet.user_id, wallet]));
+  const ownerAuthMissing = approvedVendors
+    .filter((vendor) => !authIdSet.has(vendor.owner_id))
+    .map((vendor) => ({ vendorId: vendor.id, ownerId: vendor.owner_id }));
+  const managerAuthMissing = activeManagerAssignments
+    .filter((assignment) => !authIdSet.has(assignment.user_id))
+    .map((assignment) => ({ outletId: assignment.outlet_id, managerId: assignment.user_id }));
+  const ownerRoleMismatches = approvedVendors
+    .filter((vendor) => !roleKeys.has(`${vendor.owner_id}:vendor_owner`))
+    .map((vendor) => ({ vendorId: vendor.id, ownerId: vendor.owner_id }));
+  const managerRoleMismatches = activeManagerAssignments
+    .filter((assignment) => !roleKeys.has(`${assignment.user_id}:outlet_manager`))
+    .map((assignment) => ({ outletId: assignment.outlet_id, managerId: assignment.user_id }));
+
+  const demoEarnings = walletTransactions.filter((transaction) =>
+    transaction.idempotency_key?.startsWith("vendor-account-demo:earning:"),
+  );
+  const approvedVendorById = new Map(approvedVendors.map((vendor) => [vendor.id, vendor]));
+  const qualifyingItemsByVendorOrder = new Map();
+  for (const item of qualifyingOrderItems) {
+    const key = `${item.vendor_id}:${item.order_id}`;
+    if (!qualifyingItemsByVendorOrder.has(key)) qualifyingItemsByVendorOrder.set(key, []);
+    qualifyingItemsByVendorOrder.get(key).push(item);
+  }
+  const validDemoEarningsByVendor = new Map();
+  const ownerEarningOwnershipMismatches = demoEarnings.flatMap((transaction) => {
+    const match = /^vendor-account-demo:earning:([0-9a-f-]{36}):([0-9a-f-]{36})$/i.exec(
+      transaction.idempotency_key ?? "",
+    );
+    const vendorId = match?.[1];
+    const orderId = match?.[2];
+    const vendor = vendorId ? approvedVendorById.get(vendorId) : null;
+    const items = vendorId && orderId
+      ? qualifyingItemsByVendorOrder.get(`${vendorId}:${orderId}`) ?? []
+      : [];
+    const expectedAmountSen = Math.round(
+      items.reduce((total, item) => total + Number(item.line_total), 0) * 100,
+    );
+    const valid = Boolean(
+      vendor
+      && orderId === transaction.order_id
+      && transaction.idempotency_key === `vendor-account-demo:earning:${vendor.id}:${transaction.order_id}`
+      && transaction.user_id === vendor.owner_id
+      && transaction.wallet_id === walletByUserId.get(vendor.owner_id)?.id
+      && transaction.type === "earnings"
+      && transaction.direction === "credit"
+      && transaction.bucket === "earnings"
+      && expectedAmountSen > 0
+      && Number(transaction.amount_sen) === expectedAmountSen
+    );
+    if (valid) {
+      if (!validDemoEarningsByVendor.has(vendor.id)) validDemoEarningsByVendor.set(vendor.id, []);
+      validDemoEarningsByVendor.get(vendor.id).push(transaction);
+      return [];
+    }
+    return [{
+      transactionId: transaction.id,
+      userId: transaction.user_id,
+      orderId: transaction.order_id,
+      idempotencyKey: transaction.idempotency_key,
+      amountSen: Number(transaction.amount_sen),
+      expectedAmountSen,
+    }];
+  });
+  const ownerOrderEarningMissing = approvedVendors.flatMap((vendor) => {
+    const matching = validDemoEarningsByVendor.get(vendor.id) ?? [];
+    return matching.length > 0 ? [] : [{ vendorId: vendor.id, ownerId: vendor.owner_id }];
+  });
+  const ownerOrderEarningCardinalityMismatches = approvedVendors.flatMap((vendor) => {
+    const matching = validDemoEarningsByVendor.get(vendor.id) ?? [];
+    return matching.length === 1 ? [] : [{
+      vendorId: vendor.id,
+      ownerId: vendor.owner_id,
+      validEarningCount: matching.length,
+    }];
+  });
+  const vendorOwnerWalletReconciliationMismatches = [...new Set(approvedVendors.map((vendor) => vendor.owner_id))]
+    .flatMap((ownerId) => {
+      const wallet = walletByUserId.get(ownerId);
+      if (!wallet) return [{ ownerId, code: "vendor_owner_wallet_missing" }];
+      const ledgerEarningsSen = walletTransactions
+        .filter((transaction) => transaction.user_id === ownerId && transaction.wallet_id === wallet.id)
+        .reduce((total, transaction) => {
+          if (transaction.bucket !== "earnings" || transaction.type === "withdrawal_complete") return total;
+          return total + (transaction.direction === "credit" ? 1 : -1) * Number(transaction.amount_sen);
+        }, 0);
+      return Number(wallet.earnings_sen) === ledgerEarningsSen ? [] : [{
+        ownerId,
+        walletId: wallet.id,
+        storedSen: Number(wallet.earnings_sen),
+        ledgerSen: ledgerEarningsSen,
+      }];
+    });
+
+  const ownerOrderNotificationMissing = approvedVendors.flatMap((vendor) => {
+    const eventKey = `vendor-account-demo:notification:order:owner:${vendor.id}:${vendor.owner_id}`;
+    const notification = notifications.find((candidate) => candidate.event_key === eventKey);
+    return notification
+      && notification.user_id === vendor.owner_id
+      && notification.vendor_id === vendor.id
+      && notification.outlet_id === null
+      && notification.audience_role === "vendor_owner"
+      && notification.category === "vendor_orders"
+      ? []
+      : [{ vendorId: vendor.id, ownerId: vendor.owner_id }];
+  });
+  const ownerWalletNotificationMissing = approvedVendors.flatMap((vendor) => {
+    const prefix = `vendor-account-demo:notification:wallet:${vendor.id}:`;
+    const notification = notifications.find((candidate) => candidate.event_key?.startsWith(prefix));
+    return notification
+      && notification.user_id === vendor.owner_id
+      && notification.vendor_id === vendor.id
+      && notification.outlet_id === null
+      && notification.audience_role === "vendor_owner"
+      && notification.category === "vendor_wallet"
+      ? []
+      : [{ vendorId: vendor.id, ownerId: vendor.owner_id }];
+  });
+  const managerNotificationMissing = activeManagerAssignments.flatMap((assignment) => {
+    const outlet = outletById.get(assignment.outlet_id);
+    const eventKey = `vendor-account-demo:notification:order:manager:${assignment.outlet_id}:${assignment.user_id}`;
+    const notification = notifications.find((candidate) => candidate.event_key === eventKey);
+    return notification
+      && notification.user_id === assignment.user_id
+      && notification.vendor_id === outlet?.vendor_id
+      && notification.outlet_id === assignment.outlet_id
+      && notification.audience_role === "outlet_manager"
+      && notification.category === "vendor_orders"
+      ? []
+      : [{ outletId: assignment.outlet_id, managerId: assignment.user_id }];
+  });
+  const managerNotificationScopeMismatches = notifications
+    .filter((notification) =>
+      notification.event_key?.startsWith("vendor-account-demo:notification:order:manager:"),
+    )
+    .flatMap((notification) => {
+      const outlet = outletById.get(notification.outlet_id);
+      if (
+        notification.audience_role === "outlet_manager"
+        && managerAssignmentKeys.has(`${notification.user_id}:${notification.outlet_id}`)
+        && outlet?.vendor_id === notification.vendor_id
+      ) return [];
+      return [{
+        notificationId: notification.id,
+        userId: notification.user_id,
+        vendorId: notification.vendor_id,
+        outletId: notification.outlet_id,
+      }];
+    });
+  const managerOwnerOnlyNotificationMismatches = notifications
+    .filter((notification) =>
+      notification.audience_role === "outlet_manager"
+      && ["vendor_wallet", "vendor_account"].includes(notification.category),
+    )
+    .map((notification) => ({
+      notificationId: notification.id,
+      userId: notification.user_id,
+      category: notification.category,
+    }));
+
   const alice = users.find((user) => user.id === ALICE_ID);
   const aliceWallet = wallets.find((wallet) => wallet.user_id === ALICE_ID);
   const aliceTransactions = walletTransactions.filter((transaction) => transaction.user_id === ALICE_ID);
@@ -420,6 +609,19 @@ async function main() {
     reviewOwnershipMismatches,
     bookingPathMismatches,
     chatThreadMismatches,
+    ownerAuthMissing,
+    managerAuthMissing,
+    ownerRoleMismatches,
+    managerRoleMismatches,
+    ownerOrderEarningMissing,
+    ownerOrderEarningCardinalityMismatches,
+    ownerEarningOwnershipMismatches,
+    vendorOwnerWalletReconciliationMismatches,
+    ownerOrderNotificationMissing,
+    ownerWalletNotificationMissing,
+    managerNotificationMissing,
+    managerNotificationScopeMismatches,
+    managerOwnerOnlyNotificationMismatches,
     aliceWalletHistoryFailures,
     walletReconciliationMismatches,
   };
@@ -438,6 +640,9 @@ async function main() {
       vouchers: vouchers.length,
       refunds: refunds.length,
       walletTransactions: walletTransactions.length,
+      vendorNotifications: notifications.filter((notification) => notification.vendor_id).length,
+      vendorOwners: approvedVendors.length,
+      outletManagers: activeManagerAssignments.length,
     },
     coverage: {
       vendorsWithOrders: approvedVendors.filter((vendor) => vendorsWithOrders.has(vendor.id)).length,
@@ -449,6 +654,10 @@ async function main() {
       outletsWithChats: activeOutlets.filter((outlet) => outletsWithChats.has(outlet.id)).length,
       bookableOutletsWithBookings: activeOutlets.filter((outlet) => bookableOutletIds.has(outlet.id) && outletsWithBookings.has(outlet.id)).length,
       bookableOutlets: bookableOutletIds.size,
+      ownersWithOrderEarnings: approvedVendors.length - ownerOrderEarningCardinalityMismatches.length,
+      ownersWithOrderNotifications: approvedVendors.length - ownerOrderNotificationMissing.length,
+      ownersWithWalletNotifications: approvedVendors.length - ownerWalletNotificationMissing.length,
+      managersWithOperationalNotifications: activeManagerAssignments.length - managerNotificationMissing.length,
     },
     aliceWalletHistory: {
       kycApproved: alice?.kyc_status === "approved",

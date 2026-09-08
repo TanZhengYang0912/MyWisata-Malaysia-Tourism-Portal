@@ -15,15 +15,21 @@ describe("vendor customer demo scripts", () => {
     );
     expect(seedSource).toContain("process.env.VENDOR_CUSTOMER_DEMO_SEED !== \"1\"");
     expect(seedSource).toContain("buildVendorCustomerDemoPlan");
+    expect(seedSource).toContain("buildVendorAccountDemoPlan");
     expect(seedSource).toContain("phone_verified_at");
     expect(seedSource).toContain("commerceCustomers");
     expect(seedSource).toContain("seedAliceWalletDemo");
     expect(seedSource).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
     expect(seedSource).toContain("KYC_IC_HMAC_KEY");
     expect(seedSource).not.toMatch(/from\(["']wallet_transactions["']\)\.(insert|upsert|update|delete)/);
-    for (const table of ["vendors", "outlets", "products", "outlet_offers", "users", "chat_threads", "customer_wishlists"]) {
+    for (const table of ["vendors", "outlets", "products", "outlet_offers", "users", "chat_threads", "customer_wishlists", "outlet_managers", "user_roles", "orders", "order_items", "wallets", "wallet_transactions", "notifications"]) {
       expect(seedSource).toContain(`readAll("${table}"`);
     }
+    expect(seedSource).toContain("supabase.auth.admin.listUsers");
+    expect(seedSource).toContain('supabase.rpc("seed_demo_vendor_order_earning"');
+    expect(seedSource).toContain('upsertRows("notifications"');
+    expect(seedSource).toContain('"event_key"');
+    expect(seedSource).not.toContain("enqueueVendorNotificationEmails");
     expect(seedSource).toContain("existingWishlistIds");
     expect(seedSource).toContain("existingWishlistKeys");
   });
@@ -75,12 +81,27 @@ describe("vendor customer demo scripts", () => {
     expect(verifySource).toContain("CUSTOMER_IDS");
     expect(verifySource).toContain("aliceWalletHistory");
     expect(verifySource).toContain("walletReconciliationMismatches");
+    expect(verifySource).toContain("ownerAuthMissing");
+    expect(verifySource).toContain("managerAuthMissing");
+    expect(verifySource).toContain("ownerRoleMismatches");
+    expect(verifySource).toContain("managerRoleMismatches");
+    expect(verifySource).toContain("ownerOrderEarningMissing");
+    expect(verifySource).toContain("ownerOrderEarningCardinalityMismatches");
+    expect(verifySource).toContain("ownerEarningOwnershipMismatches");
+    expect(verifySource).toContain("vendorOwnerWalletReconciliationMismatches");
+    expect(verifySource).toContain("expectedAmountSen");
+    expect(verifySource).toContain("ownerOrderNotificationMissing");
+    expect(verifySource).toContain("ownerWalletNotificationMissing");
+    expect(verifySource).toContain("managerNotificationMissing");
+    expect(verifySource).toContain("managerNotificationScopeMismatches");
+    expect(verifySource).toContain("managerOwnerOnlyNotificationMismatches");
+    expect(verifySource).toContain("supabase.auth.admin.listUsers");
     expect(verifySource).toContain("DEMO_DESTINATION_REFERENCE");
     expect(verifySource).toContain("WITHDRAWAL_AMOUNT_SEN");
     expect(verifySource).toContain("wallet_transaction_id");
     expect(verifySource).toContain("actor_id");
     expect(verifySource).toContain('ocr.status === "matched"');
-    for (const table of ["wallets", "wallet_transactions", "withdrawal_requests", "wallet_adjustments", "refunds", "payments", "payout_destinations"]) {
+    for (const table of ["wallets", "wallet_transactions", "withdrawal_requests", "wallet_adjustments", "refunds", "payments", "payout_destinations", "outlet_managers", "user_roles", "notifications"]) {
       expect(verifySource).toContain(`readAll("${table}"`);
     }
     expect(verifySource).toContain('user.status === "active"');

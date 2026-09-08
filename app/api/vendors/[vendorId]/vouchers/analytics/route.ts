@@ -9,13 +9,12 @@ type EventRow = { voucher_id: string; user_id: string | null; event_type: string
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
   if (!access.ok) return access.response;
   const url = new URL(request.url);
   const outletId = url.searchParams.get('outletId');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
-  if (outletId && access.access.isOutletManager && !access.access.outletIds.includes(outletId)) return apiFail('FORBIDDEN', 'This outlet is outside your assigned scope', 403);
   if (outletId && !access.access.outletIds.includes(outletId)) return apiFail('FORBIDDEN', 'This outlet is outside your vendor scope', 403);
 
   const db = access.access.serviceDb;
