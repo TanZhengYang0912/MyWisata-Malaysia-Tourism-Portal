@@ -108,23 +108,23 @@ export function selectPartnerAdvertisements(input: {
 }): DiscoveryResult[];
 ```
 
-- [ ] **Step 1: Write failing pure helper tests**
+- [x] **Step 1: Write failing pure helper tests**
 
 Create fixtures for three vendors and sponsored/organic activities. Assert featured-first, featured-only, A–Z, and outlet-count ordering. Add advertisement assertions that query, outlet state, and canonical category remove mismatches before `rankDiscoveryResults`, while approved effective matching placements retain priority order and sponsorship metadata.
 
-- [ ] **Step 2: Run the helper test RED**
+- [x] **Step 2: Run the helper test RED**
 
 Run `npx vitest run lib/customer/__tests__/partner-directory.test.ts`.
 
 Expected: FAIL because `partner-directory.ts` does not exist.
 
-- [ ] **Step 3: Implement the pure helper**
+- [x] **Step 3: Implement the pure helper**
 
 Implement featured-first ordering as featured membership descending followed by `name.localeCompare`, name sorting by `name.localeCompare`, and outlet sorting by count descending then name. Filter to featured IDs before sorting when `view === "featured"`; never mutate the input array.
 
 For advertisements, normalize the query, filter activities against product name/description, vendor name, city/state, selected state, and canonical activity category. Then call `rankDiscoveryResults` with a complete `DiscoveryQuery` built from the current query/state/category and return only sponsored results.
 
-- [ ] **Step 4: Run the helper test GREEN**
+- [x] **Step 4: Run the helper test GREEN**
 
 Run:
 
