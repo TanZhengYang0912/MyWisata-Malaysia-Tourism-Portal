@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   refresh: vi.fn(),
   push: vi.fn(),
+  resolvedLanguage: "en" as string,
   showFeedback: vi.fn(),
   useRouter: vi.fn(),
   useTranslation: vi.fn(),
@@ -361,7 +362,8 @@ describe("LanguageSwitcher", () => {
     mocks.push.mockReset();
     mocks.showFeedback.mockReset();
     mocks.useRouter.mockReturnValue({ refresh: mocks.refresh, push: mocks.push });
-    mocks.useTranslation.mockReturnValue({ t: translate, i18n: { resolvedLanguage: "en" } });
+    mocks.resolvedLanguage = "en";
+    mocks.useTranslation.mockImplementation(() => ({ t: translate, i18n: { resolvedLanguage: mocks.resolvedLanguage } }));
     mocks.useActionFeedback.mockReturnValue({ showFeedback: mocks.showFeedback });
     vi.stubGlobal("fetch", mocks.fetch);
     container = document.createElement("div");
@@ -392,6 +394,16 @@ describe("LanguageSwitcher", () => {
     expect(select.tabIndex).toBeGreaterThanOrEqual(0);
     expect(label.htmlFor).toBe(select.id);
     expect(label.textContent).toBe("Language");
+  });
+
+  it("follows the locale rendered by the i18n provider after a rerender", async () => {
+    let select = await renderSwitcher();
+    expect(select.value).toBe("en");
+
+    mocks.resolvedLanguage = "zh-CN";
+    select = await renderSwitcher();
+
+    expect(select.value).toBe("zh-CN");
   });
 
   it("disables the real select while the locale request is pending", async () => {
@@ -426,7 +438,7 @@ describe("LanguageSwitcher", () => {
     });
 
     const liveRegion = findOne(container, (element) => element.getAttribute("aria-live") === "polite");
-    expect(select.value).toBe("zh-CN");
+    expect(select.value).toBe("en");
     expect(mocks.fetch).toHaveBeenCalledWith("/api/locale", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -436,6 +448,10 @@ describe("LanguageSwitcher", () => {
     expect(liveRegion.textContent).toBe("Language preference saved.");
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(mocks.push).not.toHaveBeenCalled();
+
+    mocks.resolvedLanguage = "zh-CN";
+    const refreshedSelect = await renderSwitcher();
+    expect(refreshedSelect.value).toBe("zh-CN");
   });
 
   it("reports errors while keeping the previous visible selection unchanged", async () => {
