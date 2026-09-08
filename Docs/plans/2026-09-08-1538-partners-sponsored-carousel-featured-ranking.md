@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Preserve the existing customer shell, brand tokens, vendor/activity routes, trusted image helpers, and responsive card language.
-- Reuse `sponsored_discovery_placements`; do not add a database migration, API route, or vendor-level campaign model.
+- Reuse `sponsored_discovery_placements`; add only the approved public-projection security migration, with no API route or vendor-level campaign model.
 - A Sponsored badge means paid placement; a Verified local partner badge means approved vendor status; featured is only a directory ranking/filter signal.
 - Sponsored cards open `/customer/activity/[id]`; vendor cards continue opening `/customer/vendor/[id]`.
 - Search, state, and category criteria affect both advertisements and vendors; partner-view and sort controls affect vendors only.
@@ -38,6 +38,8 @@ Create:
 - `lib/customer/__tests__/partner-directory.test.ts`: pure helper coverage.
 - `components/customer/sponsored-partner-rail.tsx`: sponsored card rail, scroll controls, and analytics triggers.
 - `components/customer/__tests__/sponsored-partner-rail.test.tsx`: rail interaction/render contract.
+- `supabase/migrations/20260908162000_sponsored_public_projection.sql`: safe public placement RPC and base-table read hardening.
+- `supabase/migrations/__tests__/20260908162000_sponsored_public_projection.test.ts`: security contract for that forward migration.
 
 Modify:
 
@@ -47,6 +49,8 @@ Modify:
 - `app/customer/search/__tests__/featured-vendor-filtering.test.ts`
 - `app/customer/search/__tests__/vendor-card-sizing.test.ts`
 - `app/customer/search/__tests__/partners-viewport-spacing.test.ts`
+- `app/customer/explore/explore-client.tsx`
+- `supabase/migrations/__tests__/canonical-history.test.ts`
 - `app/i18n/locales/en/customer.json`
 - `app/i18n/locales/ms/customer.json`
 - `app/i18n/locales/zh-CN/customer.json`
@@ -55,7 +59,7 @@ Modify:
 
 Files not touched:
 
-- `supabase/migrations/**`
+- unrelated `supabase/migrations/**`
 - `app/admin/sponsored-placements/**`
 - vendor, outlet, activity detail, cart, checkout, and payment flows
 - Home and Explore discovery presentation
@@ -63,7 +67,7 @@ Files not touched:
 
 New dependencies: none.
 
-Database changes: none.
+Database changes: one forward-only security migration; no table shape or campaign lifecycle change.
 
 Primary risks:
 
@@ -136,6 +140,44 @@ Expected: both files pass, including the existing maximum-four and deterministic
 
 ---
 
+### Task 1A: Harden the public sponsored-placement projection
+
+**Files:**
+
+- Create: `supabase/migrations/20260908162000_sponsored_public_projection.sql`
+- Create: `supabase/migrations/__tests__/20260908162000_sponsored_public_projection.test.ts`
+- Modify: `supabase/migrations/__tests__/canonical-history.test.ts`
+- Modify: `app/customer/explore/explore-client.tsx`
+
+**Interfaces:**
+
+- Produces: `list_active_sponsored_discovery_placements()` returning exactly `id, product_id, state, category_slug, starts_at, ends_at, priority, status`.
+- Preserves: Staff base-table reads through the existing `sponsored_discovery_placements_staff_read` RLS policy and all existing event API/RPC validation.
+
+- [x] **Step 1: Write the failing migration security contract**
+
+Assert the migration revokes public base-table SELECT, drops the public active-row policy, grants authenticated SELECT only for Staff RLS evaluation, creates a no-argument STABLE `SECURITY DEFINER` RPC with a fixed search path and exact eight-column return, filters approved/effective rows internally, and grants execute to anon/authenticated. Assert no internal review/audit column appears in the function return or SELECT list.
+
+- [x] **Step 2: Run the migration contract RED**
+
+Run `npx vitest run supabase/migrations/__tests__/20260908162000_sponsored_public_projection.test.ts supabase/migrations/__tests__/canonical-history.test.ts`.
+
+Expected: FAIL because the forward migration does not exist.
+
+- [x] **Step 3: Implement the security migration and canonical history entry**
+
+Create the RPC, revoke anon/authenticated direct reads, re-grant authenticated base SELECT so only the existing Staff RLS policy can return rows, and add the migration filename to `approvedForwardMigrations`.
+
+- [x] **Step 4: Switch Explore to the safe RPC**
+
+Replace its direct `.from("sponsored_discovery_placements").select(...)` chain with `.rpc("list_active_sponsored_discovery_placements")`; preserve the same mapped `SponsoredPlacement` shape and empty-on-error behaviour.
+
+- [x] **Step 5: Run the security contract GREEN**
+
+Run the new migration contract, canonical history, existing sponsored migration/workflow tests, discovery ranking tests, and Explore contract tests.
+
+---
+
 ### Task 2: Server-sponsored projection and horizontal advertisement rail
 
 **Files:**
@@ -160,7 +202,7 @@ export function SponsoredPartnerRail({ advertisements }: {
 
 - [ ] **Step 1: Write failing server and rail tests**
 
-Update the Partners contract to require an active approved query selecting only `id,product_id,state,category_slug,starts_at,ends_at,priority,status`. Assert the server maps snake_case rows to `SponsoredPlacement` and passes no audit/event data.
+Update the Partners contract to require `rpc("list_active_sponsored_discovery_placements")`. Assert the server maps the exact safe snake_case rows to `SponsoredPlacement` and passes no audit/event data.
 
 Create the component test with mocked `IntersectionObserver`, `Element.prototype.scrollBy`, translation, and `fetch`. Assert empty hiding, Sponsored card content, activity route, horizontal snap classes, previous/next movement, one visible impression, and exact click event JSON.
 
@@ -176,7 +218,7 @@ Expected: FAIL because the prop, server query, and rail do not exist.
 
 - [ ] **Step 3: Add the safe server projection**
 
-In `PartnersPage`, compute one `requestedAt` timestamp and add an active placement query to the existing `Promise.all`: approved status, `starts_at <= requestedAt`, and `ends_at > requestedAt`. Map only the selected fields into `SponsoredPlacement`. Treat a query error as an empty list so advertising failure never breaks the organic directory.
+In `PartnersPage`, compute one `requestedAt` timestamp and add `db.rpc("list_active_sponsored_discovery_placements")` to the existing `Promise.all`. Map only the eight returned fields into `SponsoredPlacement`. Treat an RPC error as an empty list so advertising failure never breaks the organic directory.
 
 - [ ] **Step 4: Build the rail component**
 

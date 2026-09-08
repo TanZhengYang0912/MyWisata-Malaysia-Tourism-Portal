@@ -86,11 +86,7 @@ export function ExploreClient({
     const requestedAt = new Date().toISOString();
     const placementsRequest = db
       ? db
-        .from("sponsored_discovery_placements")
-        .select("id,product_id,state,category_slug,starts_at,ends_at,priority,status")
-        .eq("status", "approved")
-        .lte("starts_at", requestedAt)
-        .gt("ends_at", requestedAt)
+        .rpc("list_active_sponsored_discovery_placements")
       : Promise.resolve({ data: [], error: null });
     Promise.all([
       searchActivities(searchQuery),

@@ -1,6 +1,6 @@
 # Partners Sponsored Carousel and Featured Ranking Design
 
-**Status:** Approved design; implementation pending
+**Status:** Approved design; security amendment approved during implementation
 
 ## Context
 
@@ -30,7 +30,11 @@ The requested change separates three concepts:
 - `components/customer/activity-card.tsx` establishes the existing Sponsored label convention.
 - Existing vendor visuals, category labels, design tokens, icons, and customer translations remain the visual foundation.
 
-No new database table, migration, dependency, route, or sponsored-administration workflow is required.
+No new database table, dependency, route, or sponsored-administration workflow is required.
+
+### Approved security amendment
+
+The existing base placement table grants public row reads, which also exposes internal review columns because RLS cannot restrict columns. Before connecting another customer surface, add a forward-only migration that removes public base-table reads and exposes a no-argument `SECURITY DEFINER` RPC returning only the eight customer-safe placement fields. Authenticated Staff with `admin.map_campaign.manage` retain base-table reads through the existing Staff RLS policy; customer Explore and Partners switch to the safe RPC.
 
 ## User Experience
 
@@ -73,7 +77,7 @@ Sponsored advertisements respect the active query, state, and category criteria.
 ## Data Flow
 
 1. The server page continues loading activities, approved vendors, and recommended vendors.
-2. It additionally loads currently effective, approved sponsored-placement rows using the existing public read policy.
+2. It additionally loads currently effective, approved sponsored-placement rows using the customer-safe placement RPC.
 3. The page passes placements to the client without private campaign or audit data.
 4. The client maps placements to activities and applies the existing deterministic sponsored ranker with the current query/state/category filters.
 5. The client creates a featured vendor ID set from `recommendedVendors`, filters the vendor directory, applies the selected sort, and paginates the result.
@@ -134,7 +138,7 @@ In scope:
 
 Out of scope:
 
-- New database schema or migration.
+- New campaign tables or changes to campaign semantics. The approved public-projection security migration is in scope.
 - Vendor-level sponsored campaigns.
 - Changes to Admin Sponsored Placements.
 - Auto-playing carousels.
