@@ -240,6 +240,26 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).toContain("Advertisement activity-1");
   });
 
+  it("reveals desktop navigation on carousel hover or focus while keeping touch controls visible", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
+
+    const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
+    const previous = findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement");
+    const next = findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement");
+
+    expect(viewport.className).toContain("group/carousel");
+    for (const control of [previous, next]) {
+      const classNames = control.className.split(/\s+/);
+      expect(classNames).toContain("md:opacity-0");
+      expect(classNames).toContain("md:group-hover/carousel:opacity-100");
+      expect(classNames).toContain("md:group-focus-within/carousel:opacity-100");
+      expect(classNames).not.toContain("opacity-0");
+    }
+  });
+
   it("returns to the first advertisement when filtering replaces the active placement", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),

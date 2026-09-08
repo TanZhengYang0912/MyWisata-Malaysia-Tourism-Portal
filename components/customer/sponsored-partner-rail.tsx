@@ -183,7 +183,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
 
         <div
           data-testid="sponsored-partner-rail"
-          className="relative w-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"
+          className="group/carousel relative w-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"
           aria-roledescription="carousel"
         >
           <article
@@ -237,7 +237,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
               type="button"
               aria-label={t("ui.search.previousAdvertisement")}
               onClick={() => moveBy(-1, true)}
-              className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-background/90 text-primary shadow-lg backdrop-blur transition hover:scale-105 hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 sm:left-5"
+              className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-background/90 text-primary opacity-100 shadow-lg backdrop-blur transition-[opacity,transform,border-color] hover:scale-105 hover:border-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 sm:left-5 md:opacity-0 md:group-hover/carousel:opacity-100 md:group-focus-within/carousel:opacity-100"
             >
               <ArrowLeft size={17} aria-hidden="true" />
             </button>
@@ -245,7 +245,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
               type="button"
               aria-label={t("ui.search.nextAdvertisement")}
               onClick={() => moveBy(1, true)}
-              className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-background/90 text-primary shadow-lg backdrop-blur transition hover:scale-105 hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 sm:right-5"
+              className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-background/90 text-primary opacity-100 shadow-lg backdrop-blur transition-[opacity,transform,border-color] hover:scale-105 hover:border-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 sm:right-5 md:opacity-0 md:group-hover/carousel:opacity-100 md:group-focus-within/carousel:opacity-100"
             >
               <ArrowRight size={17} aria-hidden="true" />
             </button>
