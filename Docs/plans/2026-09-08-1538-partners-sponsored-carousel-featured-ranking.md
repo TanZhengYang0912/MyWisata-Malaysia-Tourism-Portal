@@ -200,13 +200,13 @@ export function SponsoredPartnerRail({ advertisements }: {
 
 `SearchClient` gains `sponsoredPlacements: SponsoredPlacement[]`.
 
-- [ ] **Step 1: Write failing server and rail tests**
+- [x] **Step 1: Write failing server and rail tests**
 
 Update the Partners contract to require `rpc("list_active_sponsored_discovery_placements")`. Assert the server maps the exact safe snake_case rows to `SponsoredPlacement` and passes no audit/event data.
 
 Create the component test with mocked `IntersectionObserver`, `Element.prototype.scrollBy`, translation, and `fetch`. Assert empty hiding, Sponsored card content, activity route, horizontal snap classes, previous/next movement, one visible impression, and exact click event JSON.
 
-- [ ] **Step 2: Run the server/rail tests RED**
+- [x] **Step 2: Run the server/rail tests RED**
 
 Run:
 
@@ -216,21 +216,21 @@ npx vitest run app/customer/search/__tests__/search-contract.test.ts components/
 
 Expected: FAIL because the prop, server query, and rail do not exist.
 
-- [ ] **Step 3: Add the safe server projection**
+- [x] **Step 3: Add the safe server projection**
 
 In `PartnersPage`, compute one `requestedAt` timestamp and add `db.rpc("list_active_sponsored_discovery_placements")` to the existing `Promise.all`. Map only the eight returned fields into `SponsoredPlacement`. Treat an RPC error as an empty list so advertising failure never breaks the organic directory.
 
-- [ ] **Step 4: Build the rail component**
+- [x] **Step 4: Build the rail component**
 
 Use a semantic section with a translated heading and a `flex snap-x snap-mandatory gap-5 overflow-x-auto` viewport. Cards use a name-card-like minimum width, existing activity images, library icons, and an explicit Sponsored badge.
 
 Use `IntersectionObserver` at a `0.5` threshold and a `Set<string>` ref to record each placement impression once. Reuse `/api/sponsored-placements/[id]/events`; analytics failures are ignored. Previous/next controls call `scrollBy` with approximately 80% of the viewport width and expose translated labels.
 
-- [ ] **Step 5: Connect the rail to `SearchClient`**
+- [x] **Step 5: Connect the rail to `SearchClient`**
 
 Add `sponsoredPlacements` to the props and compute advertisements with `selectPartnerAdvertisements`. Render the rail where the old featured-vendor grid appeared. Pass current query, state, category, and one stable mount-time ISO timestamp. Remove only the old featured grid; keep `recommendedVendors` because it drives featured directory ranking.
 
-- [ ] **Step 6: Run the server/rail tests GREEN**
+- [x] **Step 6: Run the server/rail tests GREEN**
 
 Run:
 

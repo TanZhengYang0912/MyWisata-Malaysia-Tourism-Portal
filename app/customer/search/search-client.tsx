@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { STATES_MY, searchActivities } from "@/backend/domains/catalogue";
-import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
+import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
@@ -18,6 +18,8 @@ import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { formatMYR } from "@/lib/i18n/format";
+import { selectPartnerAdvertisements } from "@/lib/customer/partner-directory";
+import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-rail";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -129,12 +131,13 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, recommendationPersonalized }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; recommendationPersonalized: boolean }) {
+export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, recommendationPersonalized, sponsoredPlacements }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; recommendationPersonalized: boolean; sponsoredPlacements: SponsoredPlacement[] }) {
   const { t } = useTranslation("customer");
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const advertisementRankingTimestamp = useRef(new Date().toISOString()).current;
 
   const categoriesByVendor = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -164,6 +167,15 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     const matchesCategory = !category || labels.has(category);
     return matchesState && matchesCategory;
   }), [categoriesByVendor, category, recommendedVendors, state]);
+
+  const advertisements = useMemo(() => selectPartnerAdvertisements({
+    activities: initialResults,
+    placements: sponsoredPlacements,
+    query,
+    state,
+    category,
+    now: advertisementRankingTimestamp,
+  }), [advertisementRankingTimestamp, category, initialResults, query, sponsoredPlacements, state]);
 
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / RESULTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -215,19 +227,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       </section>
 
 
-      {/* Featured Vendors */}
-      {!query && filteredRecommendedVendors.length > 0 && (
-        <section className="border-b border-border">
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">{t("ui.search.recommendFeatured")}</h2>
-            <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {filteredRecommendedVendors.slice(0, 4).map((vendor, index) => (
-                <VendorDirectoryCard key={vendor.id} vendor={vendor} categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]} index={index} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <SponsoredPartnerRail advertisements={advertisements} />
 
       {/* All Vendors */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
