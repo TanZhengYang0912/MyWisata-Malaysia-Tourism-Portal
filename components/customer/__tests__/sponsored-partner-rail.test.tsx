@@ -14,6 +14,11 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
 }));
 
+const SECOND_PLACEMENT_ID = "22222222-2222-4222-8222-222222222222";
+const THIRD_PLACEMENT_ID = "33333333-3333-4333-8333-333333333333";
+const FOURTH_PLACEMENT_ID = "44444444-4444-4444-8444-444444444444";
+const FIFTH_PLACEMENT_ID = "55555555-5555-4555-8555-555555555555";
+
 vi.stubGlobal("fetch", mocks.fetch);
 vi.mock("next/link", () => ({ default: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
 vi.mock("react-i18next", () => ({
@@ -36,7 +41,7 @@ function advertisement(id: string, placementId = "11111111-1111-4111-8111-111111
   return {
     id,
     outletId: `outlet-${id}`,
-    name: "Heritage Night Walk",
+    name: `Advertisement ${id}`,
     category: "Activity",
     categorySlug: "activity",
     description: "Guided street art experience",
@@ -72,6 +77,8 @@ let createRoot: typeof import("react-dom/client").createRoot;
 let document: TestDocument;
 let observerCallback: IntersectionObserverCallback | null = null;
 let observedTargets: Element[] = [];
+let reducedMotion = false;
+let mediaQueryListeners: Array<(event: { matches: boolean }) => void> = [];
 
 class TestIntersectionObserver {
   constructor(callback: IntersectionObserverCallback) {
@@ -105,6 +112,25 @@ async function click(element: TestElement) {
   });
 }
 
+async function dispatch(element: TestElement | TestDocument, event: TestEvent) {
+  await act(async () => {
+    element.dispatchEvent(event);
+    await Promise.resolve();
+  });
+}
+
+async function advanceTimers(milliseconds: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(milliseconds);
+    await Promise.resolve();
+  });
+}
+
+function setReducedMotion(matches: boolean) {
+  reducedMotion = matches;
+  for (const listener of mediaQueryListeners) listener({ matches });
+}
+
 describe("SponsoredPartnerRail", () => {
   let container: TestElement;
   let root: ReturnType<typeof createRoot>;
@@ -115,9 +141,25 @@ describe("SponsoredPartnerRail", () => {
   });
 
   beforeEach(() => {
+    vi.useFakeTimers();
     mocks.fetch.mockReset().mockResolvedValue(Response.json({ data: { recorded: true }, error: null }));
     observerCallback = null;
     observedTargets = [];
+    reducedMotion = false;
+    mediaQueryListeners = [];
+    Object.defineProperty(document.defaultView, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        get matches() { return reducedMotion; },
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => mediaQueryListeners.push(listener),
+        removeEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+          mediaQueryListeners = mediaQueryListeners.filter((candidate) => candidate !== listener);
+        },
+      })),
+    });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -127,6 +169,7 @@ describe("SponsoredPartnerRail", () => {
   afterEach(() => {
     act(() => root.unmount());
     document.body.removeChild(container);
+    vi.useRealTimers();
   });
 
   it("hides the complete section when there are no eligible advertisements", async () => {
@@ -134,86 +177,156 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("renders a sponsored name-card rail that opens the activity", async () => {
-    await render(root, <SponsoredPartnerRail advertisements={[advertisement("activity-1")]} />);
+  it("renders one full-width sponsored banner without a horizontal track", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
 
     expect(container.textContent).toContain("Sponsored recommendations");
     expect(container.textContent).toContain("Sponsored");
-    expect(container.textContent).toContain("Heritage Night Walk");
+    expect(container.textContent).toContain("Advertisement activity-1");
+    expect(container.textContent).not.toContain("Advertisement activity-2");
     expect(container.textContent).toContain("George Town Walks");
     expect(container.textContent).toContain("George Town, Penang");
     expect(findOne(container, (element) => element.tagName === "A").getAttribute("href")).toBe("/customer/activity/activity-1");
+    expect(findElements(container, (element) => element.tagName === "ARTICLE")).toHaveLength(1);
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    expect(viewport.className).toContain("overflow-x-auto");
-    expect(viewport.className).toContain("snap-x");
-    expect(findElements(container, (element) => element.tagName === "ARTICLE")[0].className).toContain("snap-start");
+    expect(viewport.className).toContain("w-full");
+    expect(viewport.className).toContain("overflow-hidden");
+    expect(viewport.className).not.toContain("overflow-x-auto");
+    expect(viewport.className).not.toContain("snap-x");
+    expect(findElements(container, (element) => element.tagName === "ARTICLE")[0].className).not.toContain("snap-start");
   });
 
-  it("scrolls backward and forward with the named desktop controls", async () => {
+  it("advances every three seconds and loops from the last advertisement to the first", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
-      advertisement("activity-2", "22222222-2222-4222-8222-222222222222"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
-    const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    const scrollBy = vi.fn();
-    Object.defineProperty(viewport, "clientWidth", { configurable: true, value: 1000 });
-    Object.defineProperty(viewport, "scrollWidth", { configurable: true, value: 2000 });
-    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 500 });
-    Object.defineProperty(viewport, "scrollBy", { configurable: true, value: scrollBy });
-    await act(async () => {
-      viewport.dispatchEvent(new TestEvent("scroll"));
-      await Promise.resolve();
-    });
 
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement"));
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
-
-    expect(scrollBy).toHaveBeenNthCalledWith(1, { left: -800, behavior: "smooth" });
-    expect(scrollBy).toHaveBeenNthCalledWith(2, { left: 800, behavior: "smooth" });
+    expect(container.textContent).toContain("Advertisement activity-1");
+    await advanceTimers(2999);
+    expect(container.textContent).toContain("Advertisement activity-1");
+    await advanceTimers(1);
+    expect(container.textContent).toContain("Advertisement activity-2");
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-1");
   });
 
-  it("disables navigation controls at the relevant scroll edge", async () => {
+  it("loops in both manual directions and resets the autoplay interval", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
-      advertisement("activity-2", "22222222-2222-4222-8222-222222222222"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
-    const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    Object.defineProperty(viewport, "clientWidth", { configurable: true, value: 1000 });
-    Object.defineProperty(viewport, "scrollWidth", { configurable: true, value: 2000 });
-    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 0 });
-
-    await act(async () => {
-      viewport.dispatchEvent(new TestEvent("scroll"));
-      await Promise.resolve();
-    });
 
     const previous = findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement");
     const next = findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement");
-    expect(previous.getAttribute("disabled")).not.toBeNull();
+    expect(previous.getAttribute("disabled")).toBeNull();
     expect(next.getAttribute("disabled")).toBeNull();
 
-    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 1000 });
-    await act(async () => {
-      viewport.dispatchEvent(new TestEvent("scroll"));
-      await Promise.resolve();
-    });
+    await click(previous);
+    expect(container.textContent).toContain("Advertisement activity-2");
+    await click(next);
+    expect(container.textContent).toContain("Advertisement activity-1");
 
-    expect(previous.getAttribute("disabled")).toBeNull();
-    expect(next.getAttribute("disabled")).not.toBeNull();
+    await advanceTimers(2000);
+    await click(next);
+    expect(container.textContent).toContain("Advertisement activity-2");
+    await advanceTimers(2999);
+    expect(container.textContent).toContain("Advertisement activity-2");
+    await advanceTimers(1);
+    expect(container.textContent).toContain("Advertisement activity-1");
   });
 
-  it("records one visible impression and an exact click event without extra metadata", async () => {
-    await render(root, <SponsoredPartnerRail advertisements={[advertisement("activity-1")]} />);
+  it("returns to the first advertisement when filtering replaces the active placement", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    expect(container.textContent).toContain("Advertisement activity-2");
+
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-3", THIRD_PLACEMENT_ID),
+      advertisement("activity-4", FOURTH_PLACEMENT_ID),
+    ]} />);
+
+    expect(container.textContent).toContain("Advertisement activity-3");
+    expect(container.textContent).not.toContain("Advertisement activity-4");
+
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-5", FIFTH_PLACEMENT_ID),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
+
+    expect(container.textContent).toContain("Advertisement activity-5");
+    expect(container.textContent).not.toContain("Advertisement activity-2");
+  });
+
+  it("pauses autoplay during pointer and keyboard interaction", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
+    const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
+    await dispatch(viewport, Object.assign(new TestEvent("mouseover", { bubbles: true }), { relatedTarget: null }));
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-1");
+    await dispatch(viewport, Object.assign(new TestEvent("mouseout", { bubbles: true }), { relatedTarget: null }));
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-2");
+
+    const currentLink = findOne(viewport, (element) => element.tagName === "A");
+    await dispatch(currentLink, new TestEvent("focusin", { bubbles: true }));
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-2");
+    const focusOut = new TestEvent("focusout", { bubbles: true }) as TestEvent & { relatedTarget: TestElement | null };
+    focusOut.relatedTarget = document.body;
+    await dispatch(currentLink, focusOut);
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-1");
+  });
+
+  it("pauses when hidden or reduced motion is requested while keeping manual controls", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    await dispatch(document, new TestEvent("visibilitychange"));
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-1");
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    await dispatch(document, new TestEvent("visibilitychange"));
+    await act(async () => {
+      setReducedMotion(true);
+      await Promise.resolve();
+    });
+    await advanceTimers(3000);
+    expect(container.textContent).toContain("Advertisement activity-1");
+
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    expect(container.textContent).toContain("Advertisement activity-2");
+  });
+
+  it("records one impression for each visible slide and an exact click event without extra metadata", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", SECOND_PLACEMENT_ID),
+    ]} />);
     expect(observedTargets).toHaveLength(1);
-    const target = observedTargets[0];
+    const firstTarget = observedTargets[0];
 
     await act(async () => {
       observerCallback?.([
-        { isIntersecting: true, intersectionRatio: 0.75, target } as IntersectionObserverEntry,
+        { isIntersecting: true, intersectionRatio: 0.75, target: firstTarget } as IntersectionObserverEntry,
       ], {} as IntersectionObserver);
       observerCallback?.([
-        { isIntersecting: true, intersectionRatio: 1, target } as IntersectionObserverEntry,
+        { isIntersecting: true, intersectionRatio: 1, target: firstTarget } as IntersectionObserverEntry,
       ], {} as IntersectionObserver);
       await Promise.resolve();
     });
@@ -227,13 +340,31 @@ describe("SponsoredPartnerRail", () => {
       }),
     );
 
-    await click(findOne(container, (element) => element.tagName === "A"));
+    await advanceTimers(3000);
+    expect(observedTargets).toHaveLength(2);
+    const secondTarget = observedTargets[1];
+    await act(async () => {
+      observerCallback?.([
+        { isIntersecting: true, intersectionRatio: 1, target: secondTarget } as IntersectionObserverEntry,
+      ], {} as IntersectionObserver);
+      await Promise.resolve();
+    });
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(mocks.fetch).toHaveBeenLastCalledWith(
-      "/api/sponsored-placements/11111111-1111-4111-8111-111111111111/events",
+      `/api/sponsored-placements/${SECOND_PLACEMENT_ID}/events`,
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ eventType: "click", productId: "activity-1" }),
+        body: JSON.stringify({ eventType: "impression", productId: "activity-2" }),
+      }),
+    );
+
+    await click(findOne(container, (element) => element.tagName === "A"));
+    expect(mocks.fetch).toHaveBeenCalledTimes(3);
+    expect(mocks.fetch).toHaveBeenLastCalledWith(
+      `/api/sponsored-placements/${SECOND_PLACEMENT_ID}/events`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ eventType: "click", productId: "activity-2" }),
       }),
     );
   });
