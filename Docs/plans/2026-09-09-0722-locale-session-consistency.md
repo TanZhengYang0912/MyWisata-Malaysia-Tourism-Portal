@@ -78,4 +78,12 @@
 
 ## Verification Evidence
 
-- Pending implementation.
+- TDD red: 4 targeted assertions failed before the first implementation change; the expanded Demo-switch boundary then failed once before its catch scope was widened.
+- TDD green: 3 focused files, 10 tests passed after implementation.
+- Final affected suite: 8 files, 38 tests passed.
+- `npx tsc --noEmit`: passed with exit code 0.
+- `npm run lint`: passed with exit code 0; repository baseline remains at 67 warnings and 0 errors, including the pre-existing unused `ROLE_LABEL` warning in `app/login/page.tsx`.
+- `git diff --check`: passed.
+- Browser: English, Simplified Chinese, and Bahasa Melayu each showed matching selector and page copy while the URL remained `/customer/partners`; the browser was restored to English.
+- Final `luna_worker` review: no confirmed must-fix issue; local-scope cleanup covers email failure plus Demo fetch, response, and profile-load failures without changing successful routing.
+- Implementation commit: `3a3ada9` (`fix: keep locale and login identity consistent`).
