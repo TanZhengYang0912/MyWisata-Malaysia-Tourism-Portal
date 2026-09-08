@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Approved for inline execution
+**Status:** Implemented and verified locally; linked-database migration deployment pending
 
 **Goal:** Replace the Partners page’s featured-vendor block with a filter-aware sponsored advertisement rail, identify every approved vendor as a verified local partner, and make featured-first the default directory order with usable view and sort controls.
 
@@ -306,7 +306,7 @@ Expected: all focused tests pass and all three locale files retain complete cove
 - Modify: this plan for status, checkmarks, and evidence.
 - Modify production files only if a confirmed blocking defect is found.
 
-- [ ] **Step 1: Run focused functional verification**
+- [x] **Step 1: Run focused functional verification**
 
 Run once after the final code change:
 
@@ -323,7 +323,7 @@ npx vitest run \
 
 Expected: all focused files pass.
 
-- [ ] **Step 2: Run repository checks**
+- [x] **Step 2: Run repository checks**
 
 ```bash
 npx tsc --noEmit
@@ -334,7 +334,7 @@ git diff --check
 
 Expected: TypeScript and i18n pass; lint has zero errors. Record unrelated pre-existing warnings without expanding scope.
 
-- [ ] **Step 3: Perform the required bounded independent review**
+- [x] **Step 3: Perform the required bounded independent review**
 
 Use `luna_worker` for a read-only check that the page projects no campaign audit/internal fields, cannot record events for a mismatched product, keeps Sponsored and Verified labels distinct, and does not weaken existing event API validation. Fix only confirmed authorization/privacy/core-flow failures.
 
@@ -342,10 +342,23 @@ Use `luna_worker` for a read-only check that the page projects no campaign audit
 
 Open `/customer/partners` in the browser selected by the current Product Design context. At the reference desktop viewport and one narrow/mobile viewport, verify the sponsored rail, controls, routes, badges, filtering, sorting, pagination reset, and absence of console errors.
 
-- [ ] **Step 5: Complete blocking design QA**
+- [x] **Step 5: Complete blocking design QA**
 
 Capture the reference screenshot and implemented page at the same desktop viewport/state. Write `design-qa.md` with severity-ranked differences. Fix P0/P1/P2 findings once, recapture, and set exactly `final result: passed` only when layout, card density, horizontal affordance, labels, spacing, and responsive behaviour pass. Record P3 polish as follow-up.
 
-- [ ] **Step 6: Record evidence and hand off**
+- [x] **Step 6: Record evidence and hand off**
 
 Update this plan’s status/checkmarks with exact commands and outcomes. Report the working local Partners URL, major visible changes, test results, pre-existing warnings, and any absence of approved live campaign data that prevented a populated rail smoke test.
+
+## Verification Evidence
+
+- Focused suite after the final code change: `12` files, `172` tests passed.
+- Focused rail suite after the edge-control repair: `5/5` passed.
+- Final independent re-review: passed; the only original must-fix (scroll-edge disabling) is closed and no new authorization, privacy, data-loss, or core-flow issue was found.
+- `npm run lint`: passed with `0` errors and `67` unrelated pre-existing warnings; changed production/test files have no lint findings.
+- `npm run verify:i18n`: passed with `100%` English, Simplified Chinese, and Bahasa Melayu coverage; the repository still reports `38` unrelated punctuation warnings.
+- `git diff --check`: passed.
+- `npx tsc --noEmit`: passed before concurrent workspace files appeared. The final rerun is blocked only by the unrelated untracked `scripts/__tests__/vendor-account-demo.test.ts`, whose inferred fixture arrays are currently typed as `never[]`; this task does not modify that concurrent work.
+- Chrome browser verification at `1904 x 1060`: default Featured first, Name A–Z, Featured only, pagination reset, and Verified local partner badges were exercised. The final light-theme default-state capture passed design QA.
+- The narrow/mobile browser pass and populated advertisement smoke test remain unavailable in this run: the current browser surface exposes no viewport override, and the connected database has zero sponsored placement records. Responsive layout and populated rail behavior are covered by focused contracts/component tests.
+- `npx --yes supabase@latest migration list` did not return before the bounded timeout, so `20260908162000_sponsored_public_projection.sql` was not pushed. It must be deployed together with the application change before sponsored records are enabled.

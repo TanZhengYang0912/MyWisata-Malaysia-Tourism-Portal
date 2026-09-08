@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Building2, MapPin } from "lucide-react";
 import type { DiscoveryResult } from "@/backend/core/types";
@@ -18,6 +18,20 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const cardsRef = useRef(new Map<string, HTMLElement>());
   const impressedPlacementIds = useRef(new Set<string>());
+  const [scrollControls, setScrollControls] = useState({
+    canScrollBackward: false,
+    canScrollForward: advertisements.length > 1,
+  });
+
+  const updateScrollControls = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const maximumScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    setScrollControls({
+      canScrollBackward: viewport.scrollLeft > 1,
+      canScrollForward: viewport.scrollLeft < maximumScrollLeft - 1,
+    });
+  }, []);
 
   const recordEvent = useCallback((advertisement: DiscoveryResult, eventType: "impression" | "click") => {
     const placementId = placementIdFor(advertisement);
@@ -57,6 +71,15 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
     return () => observer.disconnect();
   }, [advertisements, recordEvent]);
 
+  useEffect(() => {
+    const timeoutId = setTimeout(updateScrollControls, 0);
+    window.addEventListener("resize", updateScrollControls);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", updateScrollControls);
+    };
+  }, [advertisements, updateScrollControls]);
+
   if (advertisements.length === 0) return null;
 
   const scrollRail = (direction: -1 | 1) => {
@@ -80,16 +103,18 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
             <button
               type="button"
               aria-label={t("ui.search.previousAdvertisement")}
+              disabled={!scrollControls.canScrollBackward}
               onClick={() => scrollRail(-1)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ArrowLeft size={17} aria-hidden="true" />
             </button>
             <button
               type="button"
               aria-label={t("ui.search.nextAdvertisement")}
+              disabled={!scrollControls.canScrollForward}
               onClick={() => scrollRail(1)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ArrowRight size={17} aria-hidden="true" />
             </button>
@@ -99,6 +124,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
         <div
           ref={viewportRef}
           data-testid="sponsored-partner-rail"
+          onScroll={updateScrollControls}
           className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:thin]"
         >
           {advertisements.map((advertisement) => {

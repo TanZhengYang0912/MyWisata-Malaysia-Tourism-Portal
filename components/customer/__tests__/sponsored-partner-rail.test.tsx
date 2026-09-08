@@ -32,7 +32,7 @@ vi.mock("react-i18next", () => ({
 
 import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-rail";
 
-function advertisement(id: string): DiscoveryResult {
+function advertisement(id: string, placementId = "11111111-1111-4111-8111-111111111111"): DiscoveryResult {
   return {
     id,
     outletId: `outlet-${id}`,
@@ -64,7 +64,7 @@ function advertisement(id: string): DiscoveryResult {
       rating: 4.8,
       reviews: 24,
     },
-    sponsorship: { placementId: "11111111-1111-4111-8111-111111111111", label: "Sponsored" },
+    sponsorship: { placementId, label: "Sponsored" },
   };
 }
 
@@ -151,17 +151,56 @@ describe("SponsoredPartnerRail", () => {
   });
 
   it("scrolls backward and forward with the named desktop controls", async () => {
-    await render(root, <SponsoredPartnerRail advertisements={[advertisement("activity-1")]} />);
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", "22222222-2222-4222-8222-222222222222"),
+    ]} />);
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
     const scrollBy = vi.fn();
     Object.defineProperty(viewport, "clientWidth", { configurable: true, value: 1000 });
+    Object.defineProperty(viewport, "scrollWidth", { configurable: true, value: 2000 });
+    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 500 });
     Object.defineProperty(viewport, "scrollBy", { configurable: true, value: scrollBy });
+    await act(async () => {
+      viewport.dispatchEvent(new TestEvent("scroll"));
+      await Promise.resolve();
+    });
 
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement"));
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
 
     expect(scrollBy).toHaveBeenNthCalledWith(1, { left: -800, behavior: "smooth" });
     expect(scrollBy).toHaveBeenNthCalledWith(2, { left: 800, behavior: "smooth" });
+  });
+
+  it("disables navigation controls at the relevant scroll edge", async () => {
+    await render(root, <SponsoredPartnerRail advertisements={[
+      advertisement("activity-1"),
+      advertisement("activity-2", "22222222-2222-4222-8222-222222222222"),
+    ]} />);
+    const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
+    Object.defineProperty(viewport, "clientWidth", { configurable: true, value: 1000 });
+    Object.defineProperty(viewport, "scrollWidth", { configurable: true, value: 2000 });
+    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 0 });
+
+    await act(async () => {
+      viewport.dispatchEvent(new TestEvent("scroll"));
+      await Promise.resolve();
+    });
+
+    const previous = findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement");
+    const next = findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement");
+    expect(previous.getAttribute("disabled")).not.toBeNull();
+    expect(next.getAttribute("disabled")).toBeNull();
+
+    Object.defineProperty(viewport, "scrollLeft", { configurable: true, value: 1000 });
+    await act(async () => {
+      viewport.dispatchEvent(new TestEvent("scroll"));
+      await Promise.resolve();
+    });
+
+    expect(previous.getAttribute("disabled")).toBeNull();
+    expect(next.getAttribute("disabled")).not.toBeNull();
   });
 
   it("records one visible impression and an exact click event without extra metadata", async () => {

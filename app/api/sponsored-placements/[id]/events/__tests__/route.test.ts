@@ -73,9 +73,8 @@ describe("public sponsored placement event route", () => {
     const explore = readFileSync(resolve(root, "app/customer/explore/explore-client.tsx"), "utf8");
     const route = readFileSync(resolve(root, "app/api/sponsored-placements/[id]/events/route.ts"), "utf8");
     expect(explore).toContain("rankDiscoveryResults");
-    expect(explore).toContain('.eq("status", "approved")');
-    expect(explore).toContain('.lte("starts_at", requestedAt)');
-    expect(explore).toContain('.gt("ends_at", requestedAt)');
+    expect(explore).toContain('.rpc("list_active_sponsored_discovery_placements")');
+    expect(explore).not.toContain('.from("sponsored_discovery_placements")');
     expect(explore).toContain("impressedPlacementIds.current.has(placementId)");
     expect(explore).toContain('recordSponsoredEvent(activity, "impression")');
     expect(explore).toContain('recordSponsoredEvent(a, "click")');

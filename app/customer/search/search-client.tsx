@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { STATES_MY, searchActivities } from "@/backend/domains/catalogue";
@@ -135,7 +135,6 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[] }) {
   const { t } = useTranslation("customer");
   const [query, setQuery] = useState(initialQuery);
@@ -144,7 +143,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   const [currentPage, setCurrentPage] = useState(1);
   const [partnerView, setPartnerView] = useState<PartnerView>("all");
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("featured");
-  const advertisementRankingTimestamp = useRef(new Date().toISOString()).current;
+  const [advertisementRankingTimestamp] = useState(() => new Date().toISOString());
 
   const categoriesByVendor = useMemo(() => {
     const map = new Map<string, Set<string>>();
