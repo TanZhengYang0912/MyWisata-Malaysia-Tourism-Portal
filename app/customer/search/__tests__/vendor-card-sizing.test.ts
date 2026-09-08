@@ -16,4 +16,9 @@ describe("partner vendor card sizing contract", () => {
   it("keeps the vendor grids stretched across each responsive row", () => {
     expect(source).toContain("grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4");
   });
+
+  it("shows the approved-vendor trust badge without sponsored or featured claims", () => {
+    expect(source).toContain('t("ui.search.verifiedLocalPartner")');
+    expect(source).not.toContain('t("ui.labels.verifiedVendor")');
+  });
 });

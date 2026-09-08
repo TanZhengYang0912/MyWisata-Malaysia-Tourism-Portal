@@ -259,11 +259,11 @@ Expected: all pass; no campaign audit field or raw internal record is projected.
 - Consumes: `rankPartnerDirectory`, `PartnerView`, `PartnerSort`, and `recommendedVendors`.
 - Produces: an ordered, filtered, then paginated vendor directory; no new shared interface.
 
-- [ ] **Step 1: Update tests to describe the new directory**
+- [x] **Step 1: Update tests to describe the new directory**
 
 Replace the obsolete “featured section only when no query” contract with assertions for a featured ID set, `partnerView` default `all`, `partnerSort` default `featured`, ranking before page slicing, page reset on controls, translated options, the verified-local-partner badge, absence of the old featured grid, and equal-height responsive vendor cards.
 
-- [ ] **Step 2: Run the directory contract tests RED**
+- [x] **Step 2: Run the directory contract tests RED**
 
 Run:
 
@@ -273,19 +273,19 @@ npx vitest run app/customer/search/__tests__/featured-vendor-filtering.test.ts a
 
 Expected: FAIL on the missing state, controls, ranking call, and translation key.
 
-- [ ] **Step 3: Implement featured-first directory behaviour**
+- [x] **Step 3: Implement featured-first directory behaviour**
 
 Add partner view/sort state and a memoized featured vendor ID set from `recommendedVendors`. Apply query/state/category filtering first, call `rankPartnerDirectory`, then calculate pages and slice. Put two labelled selects above the results grid. Reset `currentPage` in every view/sort handler.
 
-- [ ] **Step 4: Change the vendor trust badge**
+- [x] **Step 4: Change the vendor trust badge**
 
 Keep the shield icon and visual placement, but render `t("ui.search.verifiedLocalPartner")` on every approved `VendorDirectoryCard`. Do not add Sponsored or Featured badges to organic vendor cards.
 
-- [ ] **Step 5: Add complete three-locale copy**
+- [x] **Step 5: Add complete three-locale copy**
 
 Add equivalent `ui.search` strings for sponsored recommendations/description, verified local partner, partner view, all/featured-only, partner sorting, featured-first/name/outlet-count, and previous/next advertisement. Provide natural Simplified Chinese and Bahasa Melayu translations.
 
-- [ ] **Step 6: Run directory and i18n tests GREEN**
+- [x] **Step 6: Run directory and i18n tests GREEN**
 
 Run:
 

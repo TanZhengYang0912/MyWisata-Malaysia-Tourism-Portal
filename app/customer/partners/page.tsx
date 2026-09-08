@@ -59,7 +59,6 @@ export default async function PartnersPage({ searchParams }: Props) {
       initialResults={results}
       initialVendors={approvedVendors}
       recommendedVendors={recommendedVendors}
-      recommendationPersonalized={recommendationPersonalized}
       sponsoredPlacements={sponsoredPlacements}
     />
   );
