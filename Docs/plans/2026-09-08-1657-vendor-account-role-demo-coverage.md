@@ -1,0 +1,127 @@
+# Vendor Account Role Demo Coverage Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Give every seeded Vendor Owner and Outlet Manager login-capable, role-scoped, customer-linked demonstration data without weakening financial or Outlet authorization boundaries.
+
+**Architecture:** Extend the existing guarded Vendor/customer demo workflow with a pure account-coverage planner. A service-role-only PostgreSQL procedure atomically converts a qualifying Customer order into one idempotent, order-linked Vendor Owner earning; the seed adds deterministic role-scoped in-app notifications, and the existing read-only verifier gains per-account Auth, Wallet, and notification checks.
+
+**Tech Stack:** Node.js ESM, TypeScript/Vitest, Supabase JavaScript client, PostgreSQL migration/RPC, existing Wallet ledger and Vendor notification schema.
+
+## Global Constraints
+
+- Reuse existing Vendors, Outlets, Products, Customer orders, Wallets, Owner profiles, and Manager assignments.
+- Do not create, delete, replace, or rename catalogue entities or users.
+- Require `VENDOR_CUSTOMER_DEMO_SEED=1` for remote writes.
+- Restrict financial demo credits to `@demo.local` Vendor Owners and `service_role`.
+- Persist the actual qualifying `order_id` on every generated Wallet earning.
+- Do not create KYC or Withdrawal data for every Vendor Owner.
+- Do not expose Owner Wallet or Vendor-wide data to Outlet Managers.
+- Add no package dependency.
+
+---
+
+### Task 1: Pure Vendor account coverage planner
+
+**Files:**
+
+- Create: `scripts/lib/vendor-account-demo.mjs`
+- Create: `scripts/__tests__/vendor-account-demo.test.ts`
+
+**Interfaces:**
+
+- Produces `buildVendorAccountDemoPlan(input)`.
+- Returns `earningActions`, `notificationRows`, `issues`, and coverage statistics.
+- Selects only paid/completed Customer orders whose order item Vendor and Outlet ownership agree.
+
+- [ ] **Step 1: Write failing tests** for deterministic order selection, missing Owner/Manager/Auth paths, Owner notification scope, Manager assigned-Outlet scope, and rejection of cross-Vendor order items.
+- [ ] **Step 2: Run** `npx vitest run scripts/__tests__/vendor-account-demo.test.ts` and require failure because the planner does not exist.
+- [ ] **Step 3: Implement the minimal pure planner** using the existing stable UUID helper and explicit role-scoped notification rows.
+- [ ] **Step 4: Rerun the focused test** and require all assertions to pass.
+
+### Task 2: Governed idempotent Vendor order earning
+
+**Files:**
+
+- Create: `supabase/migrations/20260908165700_demo_vendor_order_earnings.sql`
+- Create: `supabase/migrations/__tests__/20260908165700_demo_vendor_order_earnings.test.ts`
+
+**Interfaces:**
+
+- Produces `public.seed_demo_vendor_order_earning(p_vendor_id UUID, p_order_id UUID, p_note TEXT) RETURNS JSONB`.
+- The function derives the Owner, Wallet, and Vendor order total; inserts an `earnings` ledger entry with `order_id` and deterministic `idempotency_key`; updates the Wallet and inserts audit/Wallet notification rows atomically.
+
+- [ ] **Step 1: Write a failing SQL contract test** for service-role enforcement, demo-domain restriction, approved Vendor/order validation, order-linked ledger insertion, idempotency, audit logging, and Owner-only Wallet notification scope.
+- [ ] **Step 2: Run the migration test** and require failure because the migration does not exist.
+- [ ] **Step 3: Implement the database function** with locked Wallet mutation and insert-first idempotency.
+- [ ] **Step 4: Rerun the migration test** and require it to pass.
+
+### Task 3: Extend the guarded seed
+
+**Files:**
+
+- Modify: `scripts/seed-all-vendor-customer-demo.mjs`
+- Modify: `scripts/__tests__/vendor-customer-demo-script.test.ts`
+
+**Interfaces:**
+
+- Reads `outlet_managers`, `user_roles`, `roles`, `orders`, `order_items`, `wallets`, `wallet_transactions`, and `notifications` in addition to the existing catalogue data.
+- Uses Auth Admin listing only for preflight verification.
+- Calls `seed_demo_vendor_order_earning` for missing actions and upserts operational notifications by `event_key`.
+
+- [ ] **Step 1: Add failing source-contract assertions** for the new planner, required reads, Auth preflight, RPC call, notification upsert, and absence of email enqueueing.
+- [ ] **Step 2: Run focused script tests** and confirm the new assertions fail.
+- [ ] **Step 3: Implement account-plan loading and writes** after existing customer relationships are upserted.
+- [ ] **Step 4: Rerun focused tests** and require them to pass.
+
+### Task 4: Extend read-only remote verification
+
+**Files:**
+
+- Modify: `scripts/verify-all-vendor-customer-demo.mjs`
+- Modify: `scripts/__tests__/vendor-customer-demo-script.test.ts`
+
+**Interfaces:**
+
+- Adds failures for missing Owner/Manager Auth, role/assignment mismatches, missing order-linked Owner earnings, invalid earning ownership, missing Owner notifications, missing Manager notifications, cross-Outlet Manager notification scope, and Owner-only categories delivered to managers.
+
+- [ ] **Step 1: Add failing verifier contract assertions** for account coverage and role isolation outputs.
+- [ ] **Step 2: Run the source-contract test** and confirm failure.
+- [ ] **Step 3: Implement the read-only checks and structured totals** without mutation methods.
+- [ ] **Step 4: Rerun focused tests** and require them to pass.
+
+### Task 5: Deploy, seed, and verify
+
+**Files:**
+
+- Modify: `Docs/plans/2026-09-08-1657-vendor-account-role-demo-coverage.md` only to record completion evidence.
+
+- [ ] **Step 1: Run focused tests,** `npm run lint`, and `npx tsc --noEmit` before remote mutation.
+- [ ] **Step 2: Push the single migration** to the linked Supabase project and verify it appears in migration history.
+- [ ] **Step 3: Run** `npm run seed:vendor-customer-demo` once, then again to prove idempotency.
+- [ ] **Step 4: Run** `npm run verify:vendor-customer-demo` and require full catalogue plus account-role coverage with zero mismatches.
+- [ ] **Step 5: Run the final focused/full verification once**, inspect `git diff --check`, and record exact counts in this plan.
+- [ ] **Step 6: Request one bounded read-only `luna_worker` review** of permission isolation, financial linkage, and sensitive-data exposure before the final handoff.
+
+## Files Not Being Touched
+
+- Vendor or Customer UI under `app/vendor`, `app/customer`, and `components`.
+- Authentication routes and role-navigation components.
+- Existing KYC, Withdrawal, payout, refund, and provider settlement procedures.
+- Legacy migrations, `supabase/seed.sql`, and catalogue/state seed migrations.
+- Stripe configuration and production email delivery.
+
+## New Dependencies
+
+None.
+
+## Database Changes
+
+One new service-role-only, demo-domain-restricted RPC is added. Existing data is not deleted or rewritten; new Wallet ledger, audit, and notification rows are append-only, while the corresponding Wallet balance is updated in the same database transaction.
+
+## Risks
+
+- Financial-looking demo credits affect Vendor Owner Wallet totals; notes, event keys, and audit actions explicitly identify them as demo order settlements.
+- The Supabase seed performs multiple RPC calls; deterministic database idempotency makes interruption and rerun safe.
+- A historical cross-Vendor order item must block planning rather than crediting the wrong Owner.
+- Auth Admin listing is server-side only and must never log tokens, password hashes, or service credentials.
