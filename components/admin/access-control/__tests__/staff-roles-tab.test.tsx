@@ -131,6 +131,7 @@ describe("StaffRolesTab", () => {
             roles: [
               { id: "legacy-admin", name: "Legacy Admin", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.kyc.review", "admin.vendor.manage"], createdBy: null, createdAt: null, updatedAt: null },
               { id: "legacy-wallet", name: "Legacy Wallet Approver", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.withdrawal.approve"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "sponsor-template", name: "Sponsored Placement Manager", description: "Sponsored Placements template", isSystem: true, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: null, createdAt: null, updatedAt: null },
               { id: "custom-role", name: "Campaign Manager", description: "Campaign access", isSystem: false, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: "actor", createdAt: null, updatedAt: null },
             ],
             assignments: roleAssignments,
@@ -238,6 +239,38 @@ describe("StaffRolesTab", () => {
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.useTemplate")));
     const roleName = findOne(container, (element) => (element as TestElement & { name?: string }).name === "role-name");
     expect(roleName.value).toBe("Wallet Approver");
+  });
+
+  it("copies the Sponsored Placement Manager template into an assignable role draft", async () => {
+    await act(async () => {
+      root?.render(<StaffRolesTab onViewAudit={vi.fn()} />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    const templateCard = findOne(container, (element) =>
+      element.tagName === "ARTICLE" && element.textContent.includes("Sponsored Placement Manager"));
+    expect(templateCard.textContent).toContain("admin.map_campaign.manage");
+    expect(findElements(templateCard, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.editRole"))).toHaveLength(0);
+    const roleSelects = findElements(container, (element) => element.tagName === "SELECT");
+    expect(roleSelects.every((roleSelect) => !roleSelect.textContent.includes("Sponsored Placement Manager"))).toBe(true);
+
+    await click(findOne(templateCard, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.useTemplate")));
+
+    const roleName = findOne(container, (element) =>
+      (element as TestElement & { name?: string }).name === "role-name");
+    expect(roleName.value).toBe("Sponsor Manager");
+
+    const permissionLabels = findElements(container, (element) =>
+      element.tagName === "LABEL" && element.textContent.includes("admin."));
+    const selectedPermissionKeys = permissionLabels
+      .filter((label) => (findOne(label, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked)
+      .map((label) => label.textContent);
+    expect(selectedPermissionKeys).toHaveLength(1);
+    expect(selectedPermissionKeys[0]).toContain("admin.map_campaign.manage");
   });
 
   it("reviews and sends a new employee invitation using only a custom role", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { Loader2, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -46,6 +46,12 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
     }
   }
 
+  function handlePhoneKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    void sendOtp();
+  }
+
   async function verifyOtp() {
     if (!/^\d{6}$/.test(otp.trim())) {
       setError(tCustomer("ui.profileWizard.invalidOtp"));
@@ -75,6 +81,12 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
     }
   }
 
+  function handleOtpKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" || busy) return;
+    event.preventDefault();
+    void verifyOtp();
+  }
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
       <div className="flex items-center gap-2">
@@ -93,6 +105,8 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
               onChange={(value) => { setPhone(value); setError(null); }}
               disabled={busy}
               error={Boolean(error)}
+              autoFocus
+              onKeyDown={handlePhoneKeyDown}
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
           </div>
@@ -113,6 +127,9 @@ export function PhoneVerificationCard({ onVerified }: PhoneVerificationCardProps
               maxLength={6}
               value={otp}
               onChange={(event) => { setOtp(event.target.value); setError(null); }}
+              disabled={busy}
+              autoFocus
+              onKeyDown={handleOtpKeyDown}
               placeholder="123456"
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 tracking-widest text-center"
               style={{ borderColor: error ? "var(--destructive)" : "var(--border)" }}

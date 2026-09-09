@@ -125,7 +125,7 @@ async function main() {
       customer.status === "active",
   );
   if (commerceCustomers.length === 0) {
-    throw new Error("None of the established demo customers is independently phone verified for commerce.");
+    throw new Error("None of the established demo customers is independently email/phone verified for commerce.");
   }
 
   const userIds = new Set(users.map((user) => user.id));
