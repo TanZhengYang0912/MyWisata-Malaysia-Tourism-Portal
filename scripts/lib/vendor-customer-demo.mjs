@@ -5,6 +5,21 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const ADMIN_ID = "aaaaaaaa-0000-0000-0000-000000000001";
 const ALICE_ID = "aaaaaaaa-0000-0000-0000-000000000005";
 
+export const OUTLET_TIMELINE_SCENARIOS = Object.freeze([
+  { key: "upcoming", dayOffset: 0, status: "paid", fulfilStatus: "pending", quantity: 1, review: false, useVoucher: false },
+  { key: "completed", dayOffset: -2, status: "completed", fulfilStatus: "fulfilled", quantity: 2, review: true, useVoucher: true },
+  { key: "recent-completed", dayOffset: -5, status: "completed", fulfilStatus: "fulfilled", quantity: 1, review: false, useVoucher: false },
+  { key: "month-paid", dayOffset: -10, status: "paid", fulfilStatus: "ready", quantity: 2, review: false, useVoucher: false },
+  { key: "month-completed", dayOffset: -18, status: "completed", fulfilStatus: "fulfilled", quantity: 1, review: true, useVoucher: true },
+  { key: "month-cancelled", dayOffset: -27, status: "cancelled", fulfilStatus: "cancelled", quantity: 1, review: false, useVoucher: false },
+  { key: "previous-completed-a", dayOffset: -36, status: "completed", fulfilStatus: "fulfilled", quantity: 2, review: false, useVoucher: true },
+  { key: "previous-completed-b", dayOffset: -52, status: "completed", fulfilStatus: "fulfilled", quantity: 1, review: false, useVoucher: false },
+  { key: "annual-completed-a", dayOffset: -90, status: "completed", fulfilStatus: "fulfilled", quantity: 2, review: true, useVoucher: true },
+  { key: "annual-completed-b", dayOffset: -150, status: "completed", fulfilStatus: "fulfilled", quantity: 1, review: false, useVoucher: false },
+  { key: "annual-completed-c", dayOffset: -240, status: "completed", fulfilStatus: "fulfilled", quantity: 2, review: true, useVoucher: true },
+  { key: "annual-completed-d", dayOffset: -330, status: "completed", fulfilStatus: "fulfilled", quantity: 1, review: false, useVoucher: false },
+]);
+
 export function stableUuid(value) {
   const hex = crypto.createHash("md5").update(value).digest("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
@@ -18,6 +33,19 @@ function dateFrom(now, dayOffset, hour = 10) {
   const date = new Date(now.getTime() + dayOffset * DAY_MS);
   date.setUTCHours(hour, 0, 0, 0);
   return date;
+}
+
+function malaysiaTimelineDate(now, dayOffset, hour = 10) {
+  const malaysiaNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const malaysiaDayStart = Date.UTC(
+    malaysiaNow.getUTCFullYear(),
+    malaysiaNow.getUTCMonth(),
+    malaysiaNow.getUTCDate() + dayOffset,
+  ) - 8 * 60 * 60 * 1000;
+  const preferred = new Date(malaysiaDayStart + hour * 60 * 60 * 1000);
+
+  if (dayOffset !== 0 || preferred <= now) return preferred;
+  return new Date(Math.max(malaysiaDayStart, now.getTime() - 30 * 60 * 1000));
 }
 
 function money(value) {
@@ -134,19 +162,29 @@ function addAliceRefund(rows, commerceCustomers, now, issues) {
   });
 }
 
-function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, customer, scenario, outletIndex, voucher, now }) {
-  const booking = Boolean(product.requires_booking && directProduct);
-  const completed = scenario === "completed";
-  const cancelled = !completed && product.requires_booking && !directProduct;
-  const createdAt = completed ? dateFrom(now, -28 - (outletIndex % 21), 8) : dateFrom(now, -2, 9);
-  const slotStart = completed ? dateFrom(createdAt, 7, 10) : dateFrom(now, 3 + (outletIndex % 14), 10 + (outletIndex % 5));
+function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, customer, scenario, outletIndex, scenarioIndex, voucher, now }) {
+  const offeredBookableWithoutSlot = Boolean(product.requires_booking && !directProduct);
+  const effectiveStatus = offeredBookableWithoutSlot && scenario.status === "paid"
+    ? "cancelled"
+    : scenario.status;
+  const completed = effectiveStatus === "completed";
+  const cancelled = effectiveStatus === "cancelled";
+  const booking = Boolean(product.requires_booking && directProduct && !cancelled);
+  const createdAt = malaysiaTimelineDate(now, scenario.dayOffset, 10 + ((outletIndex + scenarioIndex) % 6));
+  const slotStart = completed
+    ? new Date(createdAt.getTime() + 4 * 60 * 60 * 1000)
+    : dateFrom(now, 3 + ((outletIndex + scenarioIndex) % 14), 10 + (outletIndex % 5));
   const slotEnd = new Date(slotStart.getTime() + 2 * 60 * 60 * 1000);
   const completedAt = completed ? new Date(slotEnd.getTime() + 30 * 60 * 1000) : null;
-  const quantity = completed ? 1 + (outletIndex % 2) : 1;
+  const paidAt = new Date(Math.min(createdAt.getTime() + 30 * 60 * 1000, now.getTime()));
+  const cancelledAt = cancelled
+    ? new Date(Math.min(createdAt.getTime() + 60 * 60 * 1000, now.getTime()))
+    : null;
+  const quantity = scenario.key === "completed" ? 1 + (outletIndex % 2) : scenario.quantity;
   const subtotal = money(unitPrice * quantity);
-  const discount = completed ? money(subtotal * 0.1) : 0;
+  const discount = scenario.useVoucher && completed ? money(subtotal * 0.1) : 0;
   const total = money(subtotal - discount);
-  const key = `${DEMO_PREFIX}:${outlet.id}:${scenario}`;
+  const key = `${DEMO_PREFIX}:${outlet.id}:${scenario.key}`;
   const orderId = stableUuid(`${key}:order`);
   const itemId = stableUuid(`${key}:order-item`);
   const slotId = booking ? stableUuid(`${key}:slot`) : null;
@@ -154,20 +192,20 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
   rows.orders.push({
     id: orderId,
     user_id: customer.id,
-    status: completed ? "completed" : cancelled ? "cancelled" : "paid",
+    status: effectiveStatus,
     subtotal,
     discount_amount: discount,
     total_amount: total,
     currency: "MYR",
     payment_method: "mock_card",
-    voucher_code: completed ? voucher.code : null,
+    voucher_code: discount > 0 ? voucher.code : null,
     notes: `Demo purchase at ${outlet.name}`,
-    paid_at: cancelled ? null : iso(new Date(createdAt.getTime() + 30 * 60 * 1000)),
+    paid_at: cancelled ? null : iso(paidAt),
     completed_at: completedAt ? iso(completedAt) : null,
-    cancelled_at: cancelled ? iso(new Date(createdAt.getTime() + 60 * 60 * 1000)) : null,
+    cancelled_at: cancelledAt ? iso(cancelledAt) : null,
     created_at: iso(createdAt),
     updated_at: cancelled
-      ? iso(new Date(createdAt.getTime() + 60 * 60 * 1000))
+      ? iso(cancelledAt)
       : iso(completedAt ?? createdAt),
   });
 
@@ -185,7 +223,7 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
     unit_price: unitPrice,
     quantity,
     line_total: subtotal,
-    fulfil_status: completed ? "fulfilled" : cancelled ? "cancelled" : "pending",
+    fulfil_status: cancelled ? "cancelled" : scenario.fulfilStatus,
     fulfilled_at: completedAt ? iso(completedAt) : null,
     created_at: iso(createdAt),
   });
@@ -198,7 +236,7 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
     amount: total,
     status: cancelled ? "cancelled" : "succeeded",
     gateway_ref: `DEMO-${stableUuid(key).replaceAll("-", "").slice(0, 16).toUpperCase()}`,
-    processed_at: iso(new Date(createdAt.getTime() + 30 * 60 * 1000)),
+    processed_at: iso(paidAt),
     created_at: iso(createdAt),
     updated_at: iso(createdAt),
   });
@@ -228,38 +266,43 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
     });
   }
 
-  if (!completed) return;
-
-  rows.reviews.push({
-    id: stableUuid(`${key}:review`),
-    user_id: customer.id,
-    order_item_id: itemId,
-    vendor_id: vendor.id,
-    outlet_id: outlet.id,
-    product_id: product.id,
-    rating: 4 + (outletIndex % 2),
-    title: outletIndex % 2 === 0 ? "A memorable local experience" : "Worth adding to the itinerary",
-    body: `We enjoyed ${product.name} at ${outlet.name}. The experience felt well organised and welcoming.`,
-    is_visible: true,
-    created_at: iso(new Date(completedAt.getTime() + DAY_MS)),
-  });
-  rows.voucherRedemptions.push({
-    id: stableUuid(`${key}:voucher-redemption`),
-    voucher_id: voucher.id,
-    order_id: orderId,
-    user_id: customer.id,
-    discount,
-    created_at: iso(createdAt),
-  });
   rows.interactions.push({
     id: stableUuid(`${key}:interaction:view`),
     user_id: customer.id,
     event_type: "view",
     entity_type: "product",
     entity_id: product.id,
-    dwell_ms: 20_000 + (outletIndex % 8) * 4_000,
+    dwell_ms: 20_000 + ((outletIndex + scenarioIndex) % 8) * 4_000,
     created_at: iso(new Date(createdAt.getTime() - DAY_MS)),
   });
+
+  if (!completed) return;
+
+  if (scenario.review) {
+    rows.reviews.push({
+      id: stableUuid(`${key}:review`),
+      user_id: customer.id,
+      order_item_id: itemId,
+      vendor_id: vendor.id,
+      outlet_id: outlet.id,
+      product_id: product.id,
+      rating: 4 + ((outletIndex + scenarioIndex) % 2),
+      title: (outletIndex + scenarioIndex) % 2 === 0 ? "A memorable local experience" : "Worth adding to the itinerary",
+      body: `We enjoyed ${product.name} at ${outlet.name}. The experience felt well organised and welcoming.`,
+      is_visible: true,
+      created_at: iso(new Date(completedAt.getTime() + DAY_MS)),
+    });
+  }
+  if (discount > 0) {
+    rows.voucherRedemptions.push({
+      id: stableUuid(`${key}:voucher-redemption`),
+      voucher_id: voucher.id,
+      order_id: orderId,
+      user_id: customer.id,
+      discount,
+      created_at: iso(createdAt),
+    });
+  }
   rows.wishlists.push({
     id: stableUuid(`${key}:wishlist`),
     user_id: customer.id,
@@ -337,7 +380,7 @@ export function buildVendorCustomerDemoPlan({
     const voucher = voucherByVendor.get(outlet.vendor_id);
     if (!vendor || !voucher) return;
 
-    const eligible = productRows
+    const eligibleProducts = productRows
       .map((product) => productAvailableAtOutlet(product, outlet, offersByOutlet))
       .filter(Boolean)
       .sort((left, right) => {
@@ -347,9 +390,10 @@ export function buildVendorCustomerDemoPlan({
           if (!candidate.product.requires_booking) return 2;
           return 3;
         };
-        return score(left) - score(right);
-      })[0];
-    if (!eligible) {
+        const scoreDifference = score(left) - score(right);
+        return scoreDifference || left.product.name.localeCompare(right.product.name);
+      });
+    if (eligibleProducts.length === 0) {
       issues.push({
         code: "outlet_without_eligible_product",
         vendorId: outlet.vendor_id,
@@ -359,33 +403,30 @@ export function buildVendorCustomerDemoPlan({
       return;
     }
 
-    const customer = commerceCustomers[outletIndex % commerceCustomers.length];
-    addPurchase(rows, {
-      vendor,
-      outlet,
-      product: eligible.product,
-      unitPrice: eligible.price,
-      directProduct: eligible.direct,
-      customer,
-      scenario: "completed",
-      outletIndex,
-      voucher,
-      now,
-    });
-    if (eligible.product.requires_booking) {
+    const purchasePool = eligibleProducts.some(
+      (candidate) => candidate.direct || !candidate.product.requires_booking,
+    )
+      ? eligibleProducts.filter((candidate) => candidate.direct || !candidate.product.requires_booking)
+      : eligibleProducts;
+
+    OUTLET_TIMELINE_SCENARIOS.forEach((scenario, scenarioIndex) => {
+      const eligible = ["completed", "upcoming"].includes(scenario.key)
+        ? eligibleProducts[0]
+        : purchasePool[(outletIndex + scenarioIndex) % purchasePool.length];
       addPurchase(rows, {
         vendor,
         outlet,
         product: eligible.product,
         unitPrice: eligible.price,
         directProduct: eligible.direct,
-        customer: commerceCustomers[(outletIndex + 1) % commerceCustomers.length],
-        scenario: "upcoming",
+        customer: commerceCustomers[(outletIndex + scenarioIndex) % commerceCustomers.length],
+        scenario,
         outletIndex,
+        scenarioIndex,
         voucher,
         now,
       });
-    }
+    });
 
     if (!outletsWithChat.has(outlet.id)) {
       const chatCustomer = customers[(outletIndex + 2) % customers.length];
@@ -407,8 +448,8 @@ export function buildVendorCustomerDemoPlan({
           id: stableUuid(`${threadKey}:message:customer`),
           thread_id: threadId,
           sender_id: chatCustomer.id,
-          body: `Hi, is ${eligible.product.name} available when I visit ${outlet.name}?`,
-          context_product_id: eligible.product.id,
+          body: `Hi, is ${purchasePool[0].product.name} available when I visit ${outlet.name}?`,
+          context_product_id: purchasePool[0].product.id,
           created_at: iso(createdAt),
         },
         {
@@ -416,7 +457,7 @@ export function buildVendorCustomerDemoPlan({
           thread_id: threadId,
           sender_id: vendor.owner_id,
           body: `Yes, our team at ${outlet.name} can help you plan the visit. Please share your preferred date.`,
-          context_product_id: eligible.product.id,
+          context_product_id: purchasePool[0].product.id,
           created_at: iso(repliedAt),
         },
       );
@@ -446,6 +487,12 @@ export function buildVendorCustomerDemoPlan({
       vendors: approvedVendors.length,
       outlets: activeOutlets.length,
       coveredOutlets: new Set(rows.orderItems.map((item) => item.outlet_id)).size,
+      timelineOrders: activeOutlets.length * OUTLET_TIMELINE_SCENARIOS.length,
+      commerceCustomers: new Set(
+        rows.orders
+          .filter((order) => order.notes.startsWith("Demo purchase at "))
+          .map((order) => order.user_id),
+      ).size,
     },
   };
 }

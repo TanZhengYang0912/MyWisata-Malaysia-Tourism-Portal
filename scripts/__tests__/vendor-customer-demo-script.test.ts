@@ -95,6 +95,12 @@ describe("vendor customer demo scripts", () => {
     expect(verifySource).toContain("managerNotificationMissing");
     expect(verifySource).toContain("managerNotificationScopeMismatches");
     expect(verifySource).toContain("managerOwnerOnlyNotificationMismatches");
+    expect(verifySource).toContain("outletTimelineCoverageFailures");
+    expect(verifySource).toContain("outletTimelinePeriodMismatches");
+    expect(verifySource).toContain("outletTimelineCustomerDiversityMismatches");
+    expect(verifySource).toContain("outletTimelineLifecycleMismatches");
+    expect(verifySource).toContain("cancelled_at is missing or in the future");
+    expect(verifySource).toContain("outletsWithCompleteTimeline");
     expect(verifySource).toContain("supabase.auth.admin.listUsers");
     expect(verifySource).toContain("DEMO_DESTINATION_REFERENCE");
     expect(verifySource).toContain("WITHDRAWAL_AMOUNT_SEN");

@@ -8,6 +8,8 @@ import {
 const customers = [
   { id: "aaaaaaaa-0000-0000-0000-000000000005", email: "customer1@demo.local", full_name: "Customer Alice" },
   { id: "aaaaaaaa-0000-0000-0000-000000000006", email: "customer2@demo.local", full_name: "Customer Bob" },
+  { id: "aaaaaaaa-0000-0000-0000-000000000007", email: "customer3@demo.local", full_name: "Customer Charlie" },
+  { id: "aaaaaaaa-0000-0000-0000-000000000008", email: "customer4@demo.local", full_name: "Customer Diana" },
 ];
 
 const vendors = [
@@ -38,6 +40,51 @@ const baseInput = {
 };
 
 describe("vendor customer demo planner", () => {
+  it("creates a twelve-order customer timeline for every active outlet", () => {
+    const plan = buildVendorCustomerDemoPlan(baseInput);
+    const timelineOrders = plan.rows.orders.filter((order) =>
+      String(order.notes ?? "").startsWith("Demo purchase at "),
+    );
+    const timelineOrderIds = new Set(timelineOrders.map((order) => String(order.id)));
+
+    for (const outlet of outlets) {
+      const outletItems = plan.rows.orderItems.filter(
+        (item) => item.outlet_id === outlet.id && timelineOrderIds.has(String(item.order_id)),
+      );
+      const outletOrders = outletItems.map((item) =>
+        timelineOrders.find((order) => order.id === item.order_id),
+      );
+
+      expect(outletOrders).toHaveLength(12);
+      expect(new Set(outletOrders.map((order) => order?.user_id))).toEqual(
+        new Set(customers.map((customer) => customer.id)),
+      );
+      expect(outletOrders.map((order) => order?.status)).toEqual([
+        "paid",
+        "completed",
+        "completed",
+        "paid",
+        "completed",
+        "cancelled",
+        "completed",
+        "completed",
+        "completed",
+        "completed",
+        "completed",
+        "completed",
+      ]);
+
+      const agesInDays = outletOrders.map((order) =>
+        Math.floor((baseInput.now.getTime() - new Date(String(order?.created_at ?? 0)).getTime()) / (24 * 60 * 60 * 1000)),
+      );
+      expect(agesInDays.filter((age) => age <= 0)).toHaveLength(1);
+      expect(agesInDays.filter((age) => age <= 7)).toHaveLength(3);
+      expect(agesInDays.filter((age) => age <= 30)).toHaveLength(6);
+      expect(agesInDays.filter((age) => age > 30 && age <= 60)).toHaveLength(2);
+      expect(agesInDays.filter((age) => age > 60 && age <= 365)).toHaveLength(4);
+    }
+  });
+
   it("builds a deterministic processed refund tied to Alice's own order and payment", () => {
     const first = buildVendorCustomerDemoPlan(baseInput);
     const second = buildVendorCustomerDemoPlan(baseInput);
@@ -71,14 +118,14 @@ describe("vendor customer demo planner", () => {
     const plan = buildVendorCustomerDemoPlan(baseInput);
 
     expect(plan.issues).toEqual([]);
-    expect(plan.rows.orders).toHaveLength(4);
-    expect(plan.rows.orderItems).toHaveLength(4);
-    expect(plan.rows.bookingSlots).toHaveLength(2);
-    expect(plan.rows.bookings).toHaveLength(2);
-    expect(plan.rows.reviews).toHaveLength(2);
+    expect(plan.rows.orders).toHaveLength(25);
+    expect(plan.rows.orderItems).toHaveLength(25);
+    expect(plan.rows.bookingSlots).toHaveLength(11);
+    expect(plan.rows.bookings).toHaveLength(11);
+    expect(plan.rows.reviews).toHaveLength(8);
     expect(plan.rows.chatThreads).toHaveLength(2);
     expect(plan.rows.vouchers).toHaveLength(2);
-    expect(plan.rows.voucherRedemptions).toHaveLength(2);
+    expect(plan.rows.voucherRedemptions).toHaveLength(10);
 
     const offeredItem = plan.rows.orderItems.find((item) => item.outlet_id === outlets[1].id);
     expect(offeredItem).toMatchObject({
@@ -122,12 +169,18 @@ describe("vendor customer demo planner", () => {
     });
 
     expect(plan.issues).toEqual([]);
-    expect(plan.rows.orders).toHaveLength(3);
-    expect(plan.rows.orderItems).toHaveLength(3);
+    expect(plan.rows.orders).toHaveLength(13);
+    expect(plan.rows.orderItems).toHaveLength(13);
     expect(plan.rows.bookingSlots).toHaveLength(0);
     expect(plan.rows.bookings).toHaveLength(0);
     expect(plan.rows.orderItems.every((item) => item.slot_id === null)).toBe(true);
-    expect(plan.rows.orders.map((order) => order.status)).toEqual(["completed", "cancelled", "refunded"]);
+    expect(plan.rows.orders.filter((order) => order.status === "completed")).toHaveLength(9);
+    expect(plan.rows.orders.filter((order) => order.status === "cancelled")).toHaveLength(3);
+    expect(plan.rows.orders.filter((order) => order.status === "refunded")).toHaveLength(1);
+    expect(plan.rows.orders
+      .filter((order) => order.status === "cancelled")
+      .every((order) => new Date(String(order.cancelled_at)).getTime() <= baseInput.now.getTime()))
+      .toBe(true);
   });
 
   it("rejects a cross-vendor outlet offer instead of fabricating an invalid order", () => {
@@ -229,8 +282,8 @@ describe("vendor customer demo planner", () => {
       ],
     });
 
-    expect(plan.rows.orderItems).toHaveLength(3);
+    expect(plan.rows.orderItems).toHaveLength(13);
     expect(plan.rows.orderItems.every((item) => item.product_id === directBookableProduct.id)).toBe(true);
-    expect(plan.rows.bookings).toHaveLength(2);
+    expect(plan.rows.bookings).toHaveLength(11);
   });
 });
