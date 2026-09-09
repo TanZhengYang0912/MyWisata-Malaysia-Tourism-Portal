@@ -245,44 +245,66 @@ BEGIN
   ) INTO v_has_collision;
 
   IF v_has_collision THEN
+    WITH ordered_affected AS (
+      SELECT
+        placement.id,
+        product.name AS product_name,
+        placement.priority AS from_position,
+        (v_priority + ROW_NUMBER() OVER (
+          ORDER BY placement.priority ASC, placement.id ASC
+        ))::INTEGER AS target_position
+      FROM public.sponsored_discovery_placements AS placement
+      JOIN public.products AS product ON product.id = placement.product_id
+      WHERE placement.status = 'approved'
+        AND placement.id IS DISTINCT FROM p_placement_id
+        AND placement.state IS NOT DISTINCT FROM v_state
+        AND placement.category_slug IS NOT DISTINCT FROM v_category_slug
+        AND placement.starts_at < v_ends_at
+        AND placement.ends_at > v_starts_at
+        AND placement.priority >= v_priority
+    )
     SELECT COALESCE(JSONB_AGG(
       JSONB_BUILD_OBJECT(
-        'placementId', placement.id,
-        'productName', product.name,
-        'fromPosition', placement.priority,
-        'toPosition', placement.priority + 1
-      ) ORDER BY placement.priority ASC, placement.id ASC
+        'placementId', affected.id,
+        'productName', affected.product_name,
+        'fromPosition', affected.from_position,
+        'toPosition', affected.target_position
+      ) ORDER BY affected.target_position ASC, affected.id ASC
     ), '[]'::JSONB)
     INTO v_shifts
-    FROM public.sponsored_discovery_placements AS placement
-    JOIN public.products AS product ON product.id = placement.product_id
-    WHERE placement.status = 'approved'
-      AND placement.id IS DISTINCT FROM p_placement_id
-      AND placement.state IS NOT DISTINCT FROM v_state
-      AND placement.category_slug IS NOT DISTINCT FROM v_category_slug
-      AND placement.starts_at < v_ends_at
-      AND placement.ends_at > v_starts_at
-      AND placement.priority >= v_priority
-      AND placement.priority < 4;
+    FROM ordered_affected AS affected
+    WHERE affected.target_position <= 4
+      AND affected.target_position <> affected.from_position;
 
+    WITH ordered_affected AS (
+      SELECT
+        placement.id,
+        product.name AS product_name,
+        placement.priority AS from_position,
+        (v_priority + ROW_NUMBER() OVER (
+          ORDER BY placement.priority ASC, placement.id ASC
+        ))::INTEGER AS target_position
+      FROM public.sponsored_discovery_placements AS placement
+      JOIN public.products AS product ON product.id = placement.product_id
+      WHERE placement.status = 'approved'
+        AND placement.id IS DISTINCT FROM p_placement_id
+        AND placement.state IS NOT DISTINCT FROM v_state
+        AND placement.category_slug IS NOT DISTINCT FROM v_category_slug
+        AND placement.starts_at < v_ends_at
+        AND placement.ends_at > v_starts_at
+        AND placement.priority >= v_priority
+    )
     SELECT COALESCE(JSONB_AGG(
       JSONB_BUILD_OBJECT(
-        'placementId', placement.id,
-        'productName', product.name,
-        'fromPosition', 4,
+        'placementId', affected.id,
+        'productName', affected.product_name,
+        'fromPosition', affected.from_position,
         'toStatus', 'paused'
-      ) ORDER BY placement.id ASC
+      ) ORDER BY affected.target_position ASC, affected.id ASC
     ), '[]'::JSONB)
     INTO v_paused
-    FROM public.sponsored_discovery_placements AS placement
-    JOIN public.products AS product ON product.id = placement.product_id
-    WHERE placement.status = 'approved'
-      AND placement.id IS DISTINCT FROM p_placement_id
-      AND placement.state IS NOT DISTINCT FROM v_state
-      AND placement.category_slug IS NOT DISTINCT FROM v_category_slug
-      AND placement.starts_at < v_ends_at
-      AND placement.ends_at > v_starts_at
-      AND placement.priority = 4;
+    FROM ordered_affected AS affected
+    WHERE affected.target_position > 4;
   END IF;
 
   IF JSONB_ARRAY_LENGTH(v_paused) > 0 THEN
@@ -529,26 +551,27 @@ BEGIN
     v_has_collision := COALESCE((v_preview ->> 'hasCollision')::BOOLEAN, FALSE);
 
     IF v_has_collision THEN
+      WITH ordered_affected AS (
+        SELECT
+          placement.id,
+          (v_placement.priority + ROW_NUMBER() OVER (
+            ORDER BY placement.priority ASC, placement.id ASC
+          ))::INTEGER AS target_position
+        FROM public.sponsored_discovery_placements AS placement
+        WHERE placement.status = 'approved'
+          AND placement.id <> v_placement.id
+          AND placement.state IS NOT DISTINCT FROM v_placement.state
+          AND placement.category_slug IS NOT DISTINCT FROM v_placement.category_slug
+          AND placement.starts_at < v_placement.ends_at
+          AND placement.ends_at > v_placement.starts_at
+          AND placement.priority >= v_placement.priority
+      )
       UPDATE public.sponsored_discovery_placements AS placement
-         SET status = 'paused', updated_at = now()
-       WHERE placement.status = 'approved'
-         AND placement.id <> v_placement.id
-         AND placement.state IS NOT DISTINCT FROM v_placement.state
-         AND placement.category_slug IS NOT DISTINCT FROM v_placement.category_slug
-         AND placement.starts_at < v_placement.ends_at
-         AND placement.ends_at > v_placement.starts_at
-         AND placement.priority = 4;
-
-      UPDATE public.sponsored_discovery_placements AS placement
-         SET priority = priority + 1, updated_at = now()
-       WHERE placement.status = 'approved'
-         AND placement.id <> v_placement.id
-         AND placement.state IS NOT DISTINCT FROM v_placement.state
-         AND placement.category_slug IS NOT DISTINCT FROM v_placement.category_slug
-         AND placement.starts_at < v_placement.ends_at
-         AND placement.ends_at > v_placement.starts_at
-         AND placement.priority >= v_placement.priority
-         AND placement.priority < 4;
+         SET priority = LEAST(affected.target_position, 4),
+             status = CASE WHEN affected.target_position > 4 THEN 'paused' ELSE placement.status END,
+             updated_at = now()
+        FROM ordered_affected AS affected
+       WHERE placement.id = affected.id;
     END IF;
 
     UPDATE public.sponsored_discovery_placements

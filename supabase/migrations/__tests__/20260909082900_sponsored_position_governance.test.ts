@@ -57,8 +57,9 @@ describe("sponsored position governance migration", () => {
 
     expect(transition).toMatch(/FOR UPDATE/i);
     expect(transition).toMatch(/starts_at < v_placement\.ends_at[\s\S]+ends_at > v_placement\.starts_at/i);
-    expect(transition).toMatch(/priority = priority \+ 1/i);
-    expect(transition).toMatch(/priority = 4[\s\S]+status = 'paused'/i);
+    expect(transition).toMatch(/ROW_NUMBER\(\) OVER[\s\S]+AS target_position/i);
+    expect(transition).toMatch(/priority = LEAST\(affected\.target_position, 4\)/i);
+    expect(transition).toMatch(/target_position > 4 THEN 'paused'/i);
     expect(transition).toContain("sponsored_creator_self_approval_denied");
   });
 
