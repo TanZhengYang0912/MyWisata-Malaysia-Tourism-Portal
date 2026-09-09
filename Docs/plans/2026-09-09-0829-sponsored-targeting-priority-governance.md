@@ -133,7 +133,7 @@ git commit -m "feat: rank sponsored placements by scope and position"
 **Interfaces:**
 - Produces SQL function `preview_sponsored_discovery_placement(p_placement_id uuid, p_product_id uuid, p_state text, p_category_slug text, p_starts_at timestamptz, p_ends_at timestamptz, p_priority integer) returns jsonb`.
 - Updates SQL function `create_sponsored_discovery_placement(..., p_preview_version text) returns sponsored_discovery_placements`.
-- Updates SQL function `transition_sponsored_discovery_placement(p_placement_id uuid, p_action text, p_reason text, p_preview_version text default null) returns sponsored_discovery_placements`.
+- Updates SQL function `transition_sponsored_discovery_placement(p_placement_id uuid, p_action text, p_reason text, p_preview_version text) returns jsonb`; callers pass `NULL` for non-approval actions, while approval requires a token.
 - Preview JSON shape: `{ previewVersion, requestedPosition, shifts, paused, archived, summary }`, where each affected item contains only campaign ID, product name, previous position, next position, and status change.
 
 - [ ] **Step 1: Write a failing migration contract test**
@@ -163,7 +163,7 @@ Expected: FAIL because the migration does not exist.
 In one migration:
 
 1. Drop the old `priority between 0 and 1000` and status constraints.
-2. Rank existing approved rows per normalized exact scope (`coalesce(state, '*')`, `coalesce(category_slug, '*')`) by old priority descending, start time, and ID; assign positions 1–4 and pause overflow.
+2. Rank existing approved rows per normalized exact scope (`coalesce(state, '*')`, `coalesce(category_slug, '*')`) by old priority descending, start time, and ID; assign positions 1–4 without pausing legacy rows whose effective date windows may not overlap.
 3. Clamp non-approved rows deterministically to 1–4.
 4. Mark paused rows older than the newest two as `archived` using `row_number() over (partition by status order by updated_at desc, id desc)`.
 5. Add `priority between 1 and 4` and status including `archived` constraints and an index on status/scope/dates/priority.
@@ -394,4 +394,13 @@ git commit -m "docs: record sponsored governance verification"
 
 ## Verification Record
 
-Not executed yet.
+Executed on 2026-09-09:
+
+- TDD red/green cycles completed for targeting/ranking, SQL governance contracts, preview/create/approve APIs, impact dialog, Admin lifecycle views, and related legacy contracts.
+- Final focused verification: 13 test files, 89 tests passed.
+- TypeScript: `npx tsc --noEmit --pretty false` exited 0.
+- Lint: `npm run lint` exited 0 with 0 errors and 67 pre-existing warnings outside the changed feature files.
+- Full suite: 616 files passed, 7 skipped; 2,981 tests passed, 20 skipped. Three related stale contracts were repaired. The remaining canonical migration-history failure is caused by three other workspace migration files (`20260908165700`, `20260908180000`, and untracked `20260909054100`) that are outside this approved scope; this plan's `20260909082900` migration is registered.
+- Database contract verification passed, but a disposable PostgreSQL migration run was unavailable because Docker/Podman is not installed on the host.
+- Browser smoke verification was blocked because the Mac was locked and automatic unlock failed. Automated render and interaction coverage verifies the Position selector, canonical state selector, creator preview, approver preview, confirmation token, lifecycle filters, and two-item paused view.
+- Independent security review confirmed database permission checks, removal of legacy RPC bypasses, server-derived preview tokens, advisory/row locks, product locking, fail-closed legacy ownership, canonical scope validation, and the eight-field public projection. Its two final must-fix findings were repaired by preserving legacy scheduled campaigns and persisting automatic pause/archive causes in `review_note` for audit.
