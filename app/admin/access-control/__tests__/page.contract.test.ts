@@ -25,6 +25,10 @@ describe("unified Access Control console", () => {
     expect(source).toContain("disabled");
     expect(source).toContain("AdminConfirmDialog");
     expect(source).toContain("auditEventId");
+    expect(source).toContain('from "@/components/ui/dialog"');
+    expect(source).toContain("<DialogContent");
+    expect(source).toContain("max-h-[85dvh]");
+    expect(source).not.toContain("{edit && <section");
   });
 
   it("supports governed policy and assignment actions with linked audit receipts", () => {
@@ -38,6 +42,11 @@ describe("unified Access Control console", () => {
     expect(policies).toContain("auditEventId");
     expect(policies).toContain("setPolicyConfirmOpen(true)");
     expect(policies).not.toContain('["pending_approval", "scheduled"].includes(version.status)');
+    expect(policies).toContain('from "@/components/ui/dialog"');
+    expect(policies).toContain("<DialogContent");
+    expect(policies).toContain("max-h-[85dvh]");
+    expect(policies).not.toContain("{selected && <section");
+    expect(policies).not.toContain("{pending && <section");
     expect(assignments).toContain('/api/admin/access-control/assignments');
     expect(assignments).toContain("/revoke");
     expect(assignments).toContain("auditEventId");
