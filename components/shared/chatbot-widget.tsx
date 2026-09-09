@@ -20,6 +20,13 @@
 // ChatLanguage value remains independent from the UI locale: answer text is
 // rendered exactly as returned, while this widget's fixed chrome follows the
 // app translation runtime.
+//
+// Widget merge (2026-09): what used to be a single-mode AI chat panel is now
+// a Shopee-Chat-style split view — this component owns the shared chrome
+// (toggle bubble, top bar, panel sizing) and the left/right pane routing;
+// the AI-support conversation logic below is otherwise unchanged, just
+// rendered in the right pane instead of filling the whole panel. Vendor
+// threads live in the sibling components under chat-widget/.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -28,8 +35,11 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { FaqCategory } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
+import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
 import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
+import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
@@ -117,10 +127,13 @@ async function postFeedback(payload: Record<string, unknown>) {
 
 export function ChatbotWidget() {
   // Lifted to context (CLAUDE-SUPPORT-MUTE-REPORT.md Feature 1) so other
-  // entry points — e.g. the profile page's "Contact Support" button — can
-  // open this same widget instance instead of building a second chat surface.
-  const { open, setOpen } = useSupportChat();
+  // entry points — the profile page's "Contact Support" button, outlet and
+  // activity page "Message vendor" buttons — can open this same widget
+  // instance instead of building a second chat surface.
+  const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
+  const { currentUser } = useAuth();
   const { t } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
   // Lazy initializer, not an effect: reading localStorage here is
   // synchronous and doesn't need a render cycle. Guarded for SSR, where
   // `window` doesn't exist — sessionKey is never rendered into JSX, so a
@@ -161,8 +174,13 @@ export function ChatbotWidget() {
   }
 
   useEffect(() => {
+    // Also depends on `selected`: the message list div only exists in the DOM
+    // while the Support pane is the one showing (conditionally rendered), so
+    // switching to a vendor thread and back remounts it at scroll position 0
+    // (oldest message) — this re-fires on that remount too, not just on new
+    // messages, so reselecting Support always lands back at the latest one.
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, selected]);
 
   // CLAUDE-VOICE-INPUT.md Part 2: "current language" = the most recent bot
   // reply's detected language (the only per-conversation language signal
@@ -277,12 +295,12 @@ export function ChatbotWidget() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 print:hidden">
-      {open && (
+      {open ? (
         <div
-          className="mb-3 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background shadow-xl flex flex-col overflow-hidden"
-          style={{ height: 420 }}
+          className="flex w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
+          style={{ height: 460, maxHeight: "calc(100vh - 6rem)" }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-primary text-white">
+          <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
             <span className="text-sm font-semibold">{t("chatbot.title")}</span>
             <div className="flex items-center gap-3">
               <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
@@ -294,205 +312,234 @@ export function ChatbotWidget() {
             </div>
           </div>
 
-          <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-            {messages.length === 0 && (
-              <div className="mt-8 flex flex-col items-center gap-2.5">
-                <p className="text-xs text-muted-foreground text-center">
-                  {t("chatbot.emptyPrompt")}
-                </p>
-                {!faqOpen && (
+          <div className="flex min-h-0 flex-1">
+            <div className={`min-h-0 ${selected ? "hidden sm:flex sm:flex-none" : "flex flex-1 sm:flex-none"}`}>
+              <ChatWidgetInbox currentUserId={currentUser?.id ?? null} selected={selected} onSelect={selectChat} />
+            </div>
+
+            {selected?.kind === "vendor" && currentUser ? (
+              <ChatWidgetVendorThread threadId={selected.threadId} currentUserId={currentUser.id} onBack={() => selectChat(null)} />
+            ) : selected?.kind === "support" ? (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <button onClick={() => selectChat(null)} className="flex items-center gap-1.5 border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground sm:hidden">
+                  <ChevronLeft size={14} /> {t("actions.back")}
+                </button>
+
+                <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+                  {messages.length === 0 && (
+                    <div className="mt-8 flex flex-col items-center gap-2.5">
+                      <p className="text-xs text-muted-foreground text-center">
+                        {t("chatbot.emptyPrompt")}
+                      </p>
+                      {!faqOpen && (
+                        <button
+                          type="button"
+                          onClick={toggleFaq}
+                          className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                        >
+                          <HelpCircle size={13} /> {t("chatbot.faq.browse")}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {messages.map((m, i) => {
+                    return (
+                    <div key={i}>
+                      <div
+                        className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
+                      >
+                        {m.text}
+                      </div>
+                      {m.role === "bot" && m.feedbackStage && (
+                        <div className="mt-1.5 max-w-[85%]">
+                          {m.feedbackStage === "awaiting_helpful" && (
+                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+                              <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful")}</span>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
+                                {t("chatbot.yes")}
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
+                                {t("chatbot.no")}
+                              </Button>
+                            </div>
+                          )}
+                          {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp")}</p>}
+                          {m.feedbackStage === "awaiting_ticket" && (
+                            <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={() => createTicket(i)}
+                                  disabled={creatingTicketFor === m.messageId}
+                                >
+                                  {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket") : t("chatbot.yes")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={() => declineTicket(i)}
+                                  disabled={creatingTicketFor === m.messageId}
+                                >
+                                  {t("chatbot.no")}
+                                </Button>
+                              </div>
+                              {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
+                            </div>
+                          )}
+                          {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem")}</p>}
+                          {m.feedbackStage === "ticket_created" && (
+                            <div className="px-1">
+                              <p className="text-xs text-muted-foreground">
+                                {t("strictMigration.chatbotTicketCreated", { id: m.ticketId?.slice(0, 8).toUpperCase() })}
+                              </p>
+                              <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
+                                {t("chatbot.viewMyTickets")}
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+
+                {/* FAQ shortcuts — category chips, then that category's real KB
+                    questions. Tapping a question asks it exactly as written. */}
+                {faqOpen && (
+                  <div className="max-h-52 overflow-y-auto border-t border-border bg-muted/40 px-3 py-2.5">
+                    {faq === undefined && (
+                      <p className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
+                    )}
+                    {faq === null && (
+                      <p className="text-xs text-destructive">{t("chatbot.faq.error")}</p>
+                    )}
+                    {faq && faq.length === 0 && (
+                      <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
+                    )}
+                    {faq && faq.length > 0 && faqCategory === null && (
+                      <>
+                        <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {t("chatbot.faq.pickCategory")}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {faq.map((c) => (
+                            <button
+                              key={c.category}
+                              type="button"
+                              onClick={() => setFaqCategory(c.category)}
+                              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
+                            >
+                              {faqCategoryLabel(c.category)}
+                              <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {faq && faqCategory !== null && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setFaqCategory(null)}
+                          className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory)}
+                        </button>
+                        <div className="flex flex-col gap-1">
+                          {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
+                            <button
+                              key={q.id}
+                              type="button"
+                              disabled={sending}
+                              onClick={() => {
+                                setFaqOpen(false);
+                                setFaqCategory(null);
+                                void sendMessage(q.question);
+                              }}
+                              className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {q.question}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {speech.error && <p className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+                <div className={`flex items-center gap-2 px-3 py-3 ${speech.error ? "" : "border-t border-border"}`}>
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendMessage();
+                    }}
+                    placeholder={t("chatbot.inputPlaceholder")}
+                    className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
+                    disabled={sending}
+                  />
                   <button
                     type="button"
                     onClick={toggleFaq}
-                    className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+                    aria-label={t("chatbot.faq.toggle")}
+                    aria-expanded={faqOpen}
+                    title={t("chatbot.faq.toggle")}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                      faqOpen
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
                   >
-                    <HelpCircle size={13} /> {t("chatbot.faq.browse")}
+                    <HelpCircle size={15} />
                   </button>
-                )}
-              </div>
-            )}
-            {messages.map((m, i) => {
-              return (
-              <div key={i}>
-                <div
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${m.role === "user" ? "ml-auto bg-primary text-white" : "bg-muted text-foreground"}`}
-                >
-                  {m.text}
+                  {speech.isSupported && (
+                    <button
+                      type="button"
+                      onClick={() => (speech.isListening ? speech.stop() : speech.start())}
+                      disabled={sending}
+                      aria-label={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
+                      title={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        speech.isListening
+                          ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
+                          : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                    >
+                      {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                    </button>
+                  )}
+                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || !input.trim()}>
+                    <Send size={14} aria-hidden="true" />
+                  </Button>
                 </div>
-                {m.role === "bot" && m.feedbackStage && (
-                  <div className="mt-1.5 max-w-[85%]">
-                    {m.feedbackStage === "awaiting_helpful" && (
-                      <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
-                        <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful")}</span>
-                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
-                          {t("chatbot.yes")}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
-                          {t("chatbot.no")}
-                        </Button>
-                      </div>
-                    )}
-                    {m.feedbackStage === "helpful_done" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.gladToHelp")}</p>}
-                    {m.feedbackStage === "awaiting_ticket" && (
-                      <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => createTicket(i)}
-                            disabled={creatingTicketFor === m.messageId}
-                          >
-                            {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket") : t("chatbot.yes")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2.5 text-xs"
-                            onClick={() => declineTicket(i)}
-                            disabled={creatingTicketFor === m.messageId}
-                          >
-                            {t("chatbot.no")}
-                          </Button>
-                        </div>
-                        {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
-                      </div>
-                    )}
-                    {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem")}</p>}
-                    {m.feedbackStage === "ticket_created" && (
-                      <div className="px-1">
-                        <p className="text-xs text-muted-foreground">
-                          {t("strictMigration.chatbotTicketCreated", { id: m.ticketId?.slice(0, 8).toUpperCase() })}
-                        </p>
-                        <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
-                          {t("chatbot.viewMyTickets")}
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
-              );
-            })}
-          </div>
-
-          {/* FAQ shortcuts — category chips, then that category's real KB
-              questions. Tapping a question asks it exactly as written. */}
-          {faqOpen && (
-            <div className="max-h-52 overflow-y-auto border-t border-border bg-muted/40 px-3 py-2.5">
-              {faq === undefined && (
-                <p className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
-              )}
-              {faq === null && (
-                <p className="text-xs text-destructive">{t("chatbot.faq.error")}</p>
-              )}
-              {faq && faq.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
-              )}
-              {faq && faq.length > 0 && faqCategory === null && (
-                <>
-                  <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("chatbot.faq.pickCategory")}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {faq.map((c) => (
-                      <button
-                        key={c.category}
-                        type="button"
-                        onClick={() => setFaqCategory(c.category)}
-                        className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
-                      >
-                        {faqCategoryLabel(c.category)}
-                        <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {faq && faqCategory !== null && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setFaqCategory(null)}
-                    className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory)}
-                  </button>
-                  <div className="flex flex-col gap-1">
-                    {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
-                      <button
-                        key={q.id}
-                        type="button"
-                        disabled={sending}
-                        onClick={() => {
-                          setFaqOpen(false);
-                          setFaqCategory(null);
-                          void sendMessage(q.question);
-                        }}
-                        className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {q.question}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {speech.error && <p className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{SPEECH_ERROR_TEXT[speech.error]}</p>}
-          <div className={`flex items-center gap-2 px-3 py-3 ${speech.error ? "" : "border-t border-border"}`}>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendMessage();
-              }}
-              placeholder={t("chatbot.inputPlaceholder")}
-              className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
-              disabled={sending}
-            />
-            <button
-              type="button"
-              onClick={toggleFaq}
-              aria-label={t("chatbot.faq.toggle")}
-              aria-expanded={faqOpen}
-              title={t("chatbot.faq.toggle")}
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                faqOpen
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
-            >
-              <HelpCircle size={15} />
-            </button>
-            {speech.isSupported && (
-              <button
-                type="button"
-                onClick={() => (speech.isListening ? speech.stop() : speech.start())}
-                disabled={sending}
-                aria-label={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
-                title={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                  speech.isListening
-                    ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
-                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
-              </button>
+            ) : (
+              <div className="hidden min-h-0 flex-1 flex-col items-center justify-center px-6 text-center sm:flex">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-secondary text-primary">
+                  <MessageCircle size={28} />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">{tCustomer("strictMigration.chat.selectConversation")}</h2>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">{tCustomer("strictMigration.chat.selectConversationHint")}</p>
+              </div>
             )}
-            <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || !input.trim()}>
-              <Send size={14} aria-hidden="true" />
-            </Button>
           </div>
         </div>
+      ) : (
+        <Button size="icon" className="relative h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen(true)} title={t("chatbot.openChat")} aria-label={t("accessibility.openChat")}>
+          <MessageCircle size={22} />
+          {unreadChatCount > 0 && (
+            <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-destructive px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">
+              {unreadChatCount > 99 ? "99+" : unreadChatCount}
+            </span>
+          )}
+        </Button>
       )}
-
-      <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen((o) => !o)} title={t("chatbot.openChat")} aria-label={t("accessibility.openChat")}>
-        <MessageCircle size={22} />
-      </Button>
     </div>
   );
 }

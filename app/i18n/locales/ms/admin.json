@@ -757,6 +757,7 @@
   },
   "aiAssistant": {
     "ask": {
+      "clear": "Kosongkan sembang",
       "empty": "cth. “Berapa banyak cadangan yang menunggu minggu ini?” atau “Tunjukkan pengeluaran melebihi 500”. Jawapan hanya datang daripada pertanyaan agregat berdaftar — bukan data pelanggan mentah.",
       "placeholder": "Tanya soalan…",
       "restoring": "Memulihkan perbualan…",

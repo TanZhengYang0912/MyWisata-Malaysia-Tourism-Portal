@@ -29,10 +29,6 @@
       "label": "My Activity",
       "description": "Itineraries and activities"
     },
-    "chat": {
-      "label": "Messages",
-      "description": "Conversations with partners"
-    },
     "Profile": {
       "label": "Profile & Verification",
       "description": "Choose and manage independent verification"
@@ -2263,8 +2259,7 @@
       "addCaption": "Add a caption…",
       "filters": {
         "all": "All",
-        "unread": "Unread",
-        "needsReply": "Needs your reply"
+        "unread": "Unread"
       },
       "loadFailed": "Unable to load messages",
       "noConversations": "No conversations yet",
@@ -2331,6 +2326,7 @@
       "copied": "Copied",
       "copy": "Copy",
       "myLink": "My affiliate link",
+      "linkHint": "Share this link — you earn commission when someone clicks it and books.",
       "generating": "Generating…",
       "generateLink": "Generate my link"
     },

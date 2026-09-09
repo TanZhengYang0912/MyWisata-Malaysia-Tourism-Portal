@@ -225,6 +225,12 @@ class TestWindow {
   addEventListener() {}
   removeEventListener() {}
   getComputedStyle() { return {}; }
+  // Delegates to the real timers — components polling via `window.setInterval`
+  // (not the bare global) need this to exist on the fake window at all.
+  setInterval(...args: Parameters<typeof setInterval>) { return setInterval(...args); }
+  clearInterval(...args: Parameters<typeof clearInterval>) { return clearInterval(...args); }
+  setTimeout(...args: Parameters<typeof setTimeout>) { return setTimeout(...args); }
+  clearTimeout(...args: Parameters<typeof clearTimeout>) { return clearTimeout(...args); }
 }
 
 export class TestDocument extends TestNode {
@@ -261,7 +267,7 @@ export function installTestDom() {
   const scope = globalThis as unknown as Record<string, unknown>;
   scope.document = document;
   scope.window = document.defaultView;
-  Object.defineProperty(scope, "navigator", { configurable: true, value: { userAgent: "node" } });
+  Object.defineProperty(scope, "navigator", { configurable: true, value: { userAgent: "node", language: "en-US" } });
   scope.HTMLElement = TestElement;
   scope.Element = TestElement;
   scope.SVGElement = TestElement;

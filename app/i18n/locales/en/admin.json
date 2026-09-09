@@ -757,6 +757,7 @@
   },
   "aiAssistant": {
     "ask": {
+      "clear": "Clear chat",
       "empty": "e.g. “How many recommendations are pending this week?” or “Show me withdrawals over 500”. Answers only come from registered aggregate queries — never raw customer data.",
       "placeholder": "Ask a question…",
       "restoring": "Restoring conversation…",

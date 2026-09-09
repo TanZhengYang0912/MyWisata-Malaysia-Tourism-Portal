@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_MENU_GROUPS,
   CUSTOMER_NAV,
+  PARTNER_MENU_ITEMS,
   getCustomerDisplayName,
   getAllAccountRoutes,
   isCustomerNavActive,
@@ -25,7 +26,6 @@ describe("customer header navigation", () => {
     expect(getAllAccountRoutes()).toEqual([
       "/customer/saved",
       "/customer/activity?tab=itinerary",
-      "/customer/chat",
       "/customer/orders",
       "/customer/vouchers",
       "/customer/wallet",
@@ -41,7 +41,14 @@ describe("customer header navigation", () => {
       "My Trips & Saved",
       "Orders & Wallet",
       "Account & Preferences",
-      "Partner & More",
+    ]);
+
+    // Pulled out of the account dropdown into its own header-level dropdown —
+    // still discoverable, just not nested three levels deep in the profile menu.
+    expect(PARTNER_MENU_ITEMS.map((item) => item.href)).toEqual([
+      "/customer/affiliate",
+      "/customer/profile/register-vendor",
+      "/customer/recommendations",
     ]);
   });
 

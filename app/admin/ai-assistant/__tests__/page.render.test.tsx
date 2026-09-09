@@ -19,8 +19,16 @@ describe("Admin AI Assistant presentation", () => {
 
     expect(cardClasses).toContain("w-full");
     expect(cardClasses).not.toContain("max-w-5xl");
-    expect(markup.match(/max-w-3xl/g)).toHaveLength(2);
-    expect(markup).toContain("height:min(800px, calc(100vh - 18rem + 160px))");
+    // Message column stays max-w-3xl; the composer is deliberately narrower
+    // (max-w-xl) — a one-line question box that wide read as oversized.
+    expect(markup.match(/max-w-3xl/g)).toHaveLength(1);
+    expect(markup).toContain("max-w-xl");
+    expect(markup).toContain("height:min(640px, calc(100vh - 20rem))");
+  });
+
+  it("only offers Clear chat once there's a conversation to clear", () => {
+    const emptyMarkup = renderToStaticMarkup(<AdminAiAssistantPage />);
+    expect(emptyMarkup).not.toContain("aiAssistant.ask.clear");
   });
 
   it("places AI messages on the left and admin messages on the right", async () => {

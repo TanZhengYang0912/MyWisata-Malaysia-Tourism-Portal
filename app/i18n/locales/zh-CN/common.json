@@ -198,7 +198,7 @@
     "loadingAttachment": "加载中…"
   },
   "chatbot": {
-    "title": "MyWisata 客服",
+    "title": "聊天",
     "myTickets": "我的工单",
     "closeChat": "关闭聊天",
     "emptyPrompt": "可以询问奖励、联盟链接、提现、预订或验证相关问题。",
@@ -229,6 +229,10 @@
     "voice": {
       "start": "语音输入消息",
       "stop": "停止聆听"
+    },
+    "list": {
+      "supportLabel": "MyWisata 客服",
+      "signInPrompt": "登录后即可与商家聊天。"
     }
   },
   "account": {

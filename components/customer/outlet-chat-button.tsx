@@ -2,14 +2,14 @@
 
 import { MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "next/navigation";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { useSupportChat } from "@/components/providers/support-chat";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
 export function OutletChatButton({ outletId }: { outletId: string }) {
   const { t } = useTranslation("customer");
   const gate = useCustomerCapabilityGate();
-  const router = useRouter();
+  const { selectChat } = useSupportChat();
 
   async function handleChat() {
     if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
@@ -20,7 +20,7 @@ export function OutletChatButton({ outletId }: { outletId: string }) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload.data?.id) return;
-    router.push(`/customer/chat/${payload.data.id}`);
+    selectChat({ kind: "vendor", threadId: payload.data.id });
   }
 
   return (

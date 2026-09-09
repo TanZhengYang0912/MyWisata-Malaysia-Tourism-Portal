@@ -29,10 +29,6 @@
       "label": "我的活动",
       "description": "行程与活动记录"
     },
-    "chat": {
-      "label": "站内消息",
-      "description": "与商家的咨询对话"
-    },
     "Profile": {
       "label": "资料与验证",
       "description": "选择并管理独立验证"
@@ -2263,8 +2259,7 @@
       "addCaption": "添加说明……",
       "filters": {
         "all": "全部",
-        "unread": "未读",
-        "needsReply": "需要您的回复"
+        "unread": "未读"
       },
       "loadFailed": "无法加载消息",
       "noConversations": "还没有对话",
@@ -2331,6 +2326,7 @@
       "copied": "已复制",
       "copy": "复制",
       "myLink": "我的联盟推广链接",
+      "linkHint": "分享此链接——当有人点击并完成预订时，您将获得佣金。",
       "generating": "正在生成…",
       "generateLink": "生成我的链接"
     },

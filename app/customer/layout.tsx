@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, Bell, ChevronDown, Globe, ShoppingCart, Tag } from "lucide-react";
+import { ArrowRightLeft, Bell, ChevronDown, Globe, ShoppingCart, Store, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -22,7 +22,7 @@ import { SavedDestinationsProvider, useSavedDestinations } from "@/components/pr
 import { TripProvider } from "@/components/providers/trip";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
-import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
+import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, PARTNER_MENU_ITEMS, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
@@ -59,6 +59,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const partnerMenuRef = useRef<HTMLDivElement>(null);
+  const [partnerMenuOpen, setPartnerMenuOpen] = useState(false);
   // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
   // unread admin reply anywhere in my tickets. Polled — no realtime chat
   // infra exists elsewhere in this repo to piggyback on.
@@ -109,31 +111,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [currentUser]);
 
-  const [unreadChats, setUnreadChats] = useState(0);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    let cancelled = false;
-    async function load() {
-      try {
-        const res = await fetch("/api/chat/unread-count");
-        const body = (await res.json()) as { data: { count: number } | null };
-        if (!cancelled && res.ok && body.data) setUnreadChats(body.data.count);
-      } catch {
-        // best-effort — a failed refresh just leaves the last-known count showing
-      }
-    }
-    void load();
-    const channel = supabase
-      .channel(`nav-chat-unread-${currentUser.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, () => void load())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reads" }, () => void load())
-      .subscribe();
-    return () => {
-      cancelled = true;
-      void supabase.removeChannel(channel);
-    };
-  }, [currentUser]);
+  // Vendor-chat unread count moved into SupportChatProvider — it's now the
+  // floating widget's own toggle-bubble badge, not the account avatar's,
+  // since vendor chat has no affordance left in the account menu at all.
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -155,6 +135,27 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (!partnerMenuOpen) return;
+
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (partnerMenuRef.current && !partnerMenuRef.current.contains(event.target as Node)) {
+        setPartnerMenuOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setPartnerMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [partnerMenuOpen]);
 
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
@@ -189,6 +190,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     event.stopPropagation();
     gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, nextPath);
     setAccountMenuOpen(false);
+    setPartnerMenuOpen(false);
   }
 
   return (
@@ -238,6 +240,54 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </Link>
+
+            {/* Was nested inside the account dropdown as its own "Partner &
+                More" group — pulled out to its own header-level dropdown,
+                between the cart and the account menu, per explicit request:
+                one click instead of three levels deep in the profile menu. */}
+            <div ref={partnerMenuRef} className="relative flex h-full shrink-0 items-center">
+              <button
+                type="button"
+                onClick={() => setPartnerMenuOpen((open) => !open)}
+                aria-expanded={partnerMenuOpen}
+                aria-haspopup="menu"
+                aria-label={tCustomer("accountGroups.more")}
+                title={tCustomer("accountGroups.more")}
+                className={HEADER_ICON_BUTTON_CLASS}
+              >
+                <Store size={18} />
+              </button>
+
+              {partnerMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label={tCustomer("accountGroups.more")}
+                  className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                >
+                  {PARTNER_MENU_ITEMS.map((item) => {
+                    const active = isCustomerNavActive(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        role="menuitem"
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setPartnerMenuOpen(false)}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary ${active ? "bg-secondary" : ""}`}
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+                          <item.icon size={16} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-foreground">{tCustomer(`${item.labelKey}.label`)}</span>
+                          <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
@@ -253,7 +303,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             >
               <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
                 {currentUser?.avatarInitial ?? "G"}
-                {(unreadChats > 0 || unreadTickets > 0) && (
+                {unreadTickets > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
                 )}
               </span>
@@ -310,11 +360,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                                     {savedCount > 99 ? "99+" : savedCount}
                                   </span>
                                 )}
-                                {item.href === "/customer/chat" && unreadChats > 0 && (
-                                  <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[0.625rem] font-bold text-white">
-                                    {unreadChats > 99 ? "99+" : unreadChats}
-                                  </span>
-                                )}
                               </span>
                               <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                             </span>
@@ -361,7 +406,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="flex-1 min-h-0">{children}</main>
-      {!pathname.startsWith("/customer/chat") && <ChatbotWidget />}
+      <ChatbotWidget />
     </div>
   );
 }

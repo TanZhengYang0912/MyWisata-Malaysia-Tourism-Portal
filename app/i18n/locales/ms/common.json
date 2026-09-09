@@ -198,7 +198,7 @@
     "loadingAttachment": "Memuatkan…"
   },
   "chatbot": {
-    "title": "Sokongan MyWisata",
+    "title": "Sembang",
     "myTickets": "Tiket Saya",
     "closeChat": "Tutup sembang",
     "emptyPrompt": "Tanya tentang ganjaran, pautan afiliasi, pengeluaran, tempahan atau pengesahan.",
@@ -229,6 +229,10 @@
     "voice": {
       "start": "Sebut mesej anda",
       "stop": "Berhenti mendengar"
+    },
+    "list": {
+      "supportLabel": "Sokongan MyWisata",
+      "signInPrompt": "Log masuk untuk berbual dengan vendor."
     }
   },
   "account": {

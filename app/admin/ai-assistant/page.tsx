@@ -17,7 +17,7 @@
 // and lib/admin-ai/draft.ts if this generic version is ever needed again.
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Send, Shield } from "lucide-react";
+import { Bot, Send, Shield, Trash2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,6 +88,14 @@ function AskPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Runs on every messages change — including the restore effect above,
+  // which set the whole history in one go without ever scrolling to it, so
+  // reopening this page always showed the oldest message first instead of
+  // the latest. Matches components/shared/chatbot-widget.tsx's same fix.
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
   async function send() {
     const question = input.trim();
     if (!question || sending) return;
@@ -117,19 +125,43 @@ function AskPanel() {
     } catch {
       setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable") }]);
     } finally {
-      setSending(false);
-      requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }));
+      setSending(false); // the [messages] effect above handles scrolling to the new reply
+    }
+  }
+
+  // Local reset only — abandons the current session key rather than
+  // deleting it server-side, so the next question just starts a fresh
+  // chatbot_sessions row (POST /api/admin-ai/ask already creates one
+  // whenever no sessionKey is recognized). History isn't lost, just
+  // unlinked from this tab.
+  function clearChat() {
+    setMessages([]);
+    setSessionKey(null);
+    setInputState("");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      window.localStorage.removeItem(DRAFT_QUESTION_KEY);
     }
   }
 
   return (
     <Card className="w-full overflow-hidden border-border/80 shadow-[0_12px_32px_rgba(1,0,102,0.06)]">
-      <CardContent className="flex min-h-[480px] flex-col p-0" style={{ height: "min(800px, calc(100vh - 18rem + 160px))" }}>
+      {/* Was min(800px, vh - 128px) — on a typical viewport that reserved far
+          less than the admin top bar + page header actually take, so the
+          composer sat below the fold and needed a page scroll to reach.
+          20rem reserves enough for that chrome; 640px keeps the panel from
+          growing needlessly tall on very tall screens. */}
+      <CardContent className="flex min-h-[420px] flex-col p-0" style={{ height: "min(640px, calc(100vh - 20rem))" }}>
         <div className="flex items-center gap-2 border-b border-border bg-card px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Bot size={16} />
           </span>
           <h2 className="text-sm font-bold text-foreground">{t("aiAssistant.ask.title")}</h2>
+          {messages.length > 0 && (
+            <Button variant="ghost" size="sm" className="ml-auto gap-1.5 text-xs text-muted-foreground hover:text-destructive" onClick={clearChat} disabled={sending}>
+              <Trash2 size={13} /> {t("aiAssistant.ask.clear")}
+            </Button>
+          )}
         </div>
         <div ref={listRef} className="flex-1 overflow-y-auto bg-muted/20 px-5 py-5">
           <div className="w-full space-y-2">
@@ -145,7 +177,9 @@ function AskPanel() {
           </div>
         </div>
         <div className="border-t border-border bg-card px-5 py-4">
-          <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+          {/* Narrower than the max-w-3xl message column on purpose — a
+              one-line question box stretched that wide read as oversized. */}
+          <div className="mx-auto flex w-full max-w-xl items-center gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}

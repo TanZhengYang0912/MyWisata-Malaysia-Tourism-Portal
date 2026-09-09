@@ -198,7 +198,7 @@
     "loadingAttachment": "Loading…"
   },
   "chatbot": {
-    "title": "MyWisata Support",
+    "title": "Chats",
     "myTickets": "My Tickets",
     "closeChat": "Close chat",
     "emptyPrompt": "Ask about rewards, affiliate links, withdrawals, booking, or verification.",
@@ -229,6 +229,10 @@
     "voice": {
       "start": "Speak your message",
       "stop": "Stop listening"
+    },
+    "list": {
+      "supportLabel": "MyWisata Support",
+      "signInPrompt": "Sign in to chat with vendors."
     }
   },
   "account": {

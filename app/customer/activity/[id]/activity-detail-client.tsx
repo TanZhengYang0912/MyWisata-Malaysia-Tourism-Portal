@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -25,6 +25,7 @@ import { getDetailBody } from "./bodies";
 import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { useSupportChat } from "@/components/providers/support-chat";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -39,10 +40,10 @@ export function ActivityDetailClient({
   outletChoices?: OutletChoice[];
 }) {
   const { t } = useTranslation("customer");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
+  const { selectChat } = useSupportChat();
   const { addItem } = useCart();
   const vendorDiscovery = searchParams.get("source") === "vendor";
   const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
@@ -177,7 +178,7 @@ export function ActivityDetailClient({
       body: JSON.stringify({ body: `Re: ${activity!.name}`, contextProductId: activity!.id }),
     });
     if (!messageResponse.ok) return;
-    router.push(`/customer/chat/${payload.data.id}`);
+    selectChat({ kind: "vendor", threadId: payload.data.id });
   }
 
   return (

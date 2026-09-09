@@ -6,22 +6,49 @@ import { TestEvent, findOne, installTestDom, type TestDocument, type TestElement
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   useTranslation: vi.fn(),
+  useAuth: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
 vi.mock("next/link", () => ({ default: (props: { children?: React.ReactNode }) => <a {...props} /> }));
 vi.mock("lucide-react", () => {
   const Icon = (props: Record<string, unknown>) => <svg {...props} />;
-  // Mic/MicOff (voice input) and ChevronLeft/HelpCircle (FAQ shortcuts) are
-  // also reachable from ChatbotWidget — the mock must cover every icon the
-  // component can render, not only the ones it rendered when this was written.
+  // The widget merge pulled the vendor-chat list (ChatWidgetInbox) and thread
+  // view (ChatWidgetVendorThread -> ChatThreadPanel) into ChatbotWidget's own
+  // render tree, unconditionally imported — this mock must cover every icon
+  // any of those files can render, not only ChatbotWidget's own.
   return {
-    AlertTriangle: Icon, Bell: Icon, CheckCheck: Icon, ChevronLeft: Icon, HelpCircle: Icon,
-    MessageCircle: Icon, Mic: Icon, MicOff: Icon, Send: Icon, X: Icon,
+    AlertTriangle: Icon, ArrowLeft: Icon, Bell: Icon, BellOff: Icon, Check: Icon, CheckCheck: Icon,
+    ChevronLeft: Icon, FileText: Icon, Flag: Icon, HelpCircle: Icon, Languages: Icon, MessageCircle: Icon,
+    Mic: Icon, MicOff: Icon, Paperclip: Icon, Reply: Icon, Search: Icon, Send: Icon, SlidersHorizontal: Icon,
+    Tag: Icon, X: Icon,
   };
 });
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));
 vi.mock("@/components/utils", () => ({ cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }));
+vi.mock("@/components/providers/auth", () => ({ useAuth: mocks.useAuth }));
+// support-chat.tsx (unread-count realtime) and use-chat-presence.ts (online
+// dot) both call this at module/hook scope — without a mock, the real
+// createBrowserClient throws immediately for missing env vars, before any
+// test body runs.
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    channel: () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const channel: any = {
+        on: () => channel,
+        subscribe: (cb?: (status: string) => void) => {
+          cb?.("SUBSCRIBED");
+          return channel;
+        },
+        track: async () => undefined,
+        presenceState: () => ({}),
+      };
+      return channel;
+    },
+    removeChannel: () => undefined,
+  }),
+}));
 
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
@@ -43,6 +70,7 @@ const translations: Record<string, string> = {
   "common:chatbot.send": "Send translated message",
   "common:chatbot.somethingWrong": "Translated network fallback",
   "common:chatbot.title": "Translated support title",
+  "common:chatbot.list.supportLabel": "Translated support label",
   "common:chatbot.wantTicket": "Translated ticket offer",
   "common:chatbot.yes": "Yes translated",
   "common:filters.filter": "Translated filter",
@@ -116,6 +144,9 @@ describe("Task 5 shared runtime behavior", () => {
       t: namespace === "admin" ? adminTranslate : commonTranslate,
       i18n: { resolvedLanguage: "en" },
     }));
+    // Default: guest. The one vendor-thread test below overrides this with a
+    // real currentUser — everything else never touches vendor-chat fetches.
+    mocks.useAuth.mockReturnValue({ currentUser: null });
     vi.stubGlobal("fetch", mocks.fetch);
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -219,6 +250,9 @@ describe("Task 5 shared runtime behavior", () => {
 
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    // The bubble now opens the split view empty (nothing selected) — pick
+    // the pinned Support row before the AI-chat pane (and its composer) exists.
+    await click(findButton("Translated support label"));
 
     const input = findOne(container, (element) => element.tagName === "INPUT");
     expect(input.getAttribute("placeholder")).toBe("Translated question");
@@ -235,6 +269,43 @@ describe("Task 5 shared runtime behavior", () => {
 
     await click(findButton("Yes translated"));
     expect(ticketPayload).toEqual({ sessionKey: "chat-session-1", subject: question, body: question });
+  });
+
+  it("opens a vendor thread from the merged widget's left pane", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1" } });
+    const apiThread = {
+      id: "thread-1",
+      customer_id: "cust-1",
+      outlet_id: "outlet-1",
+      vendor_id: "vendor-1",
+      last_message_at: "2026-03-05T14:06:00.000Z",
+      created_at: "2026-03-05T14:00:00.000Z",
+      outlets: { id: "outlet-1", name: "Sunset Diving", city: "Kota Kinabalu", state: "Sabah" },
+      chat_messages: [],
+    };
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [apiThread], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/customer/chat/thread-1") return response({ data: apiThread });
+      if (url.endsWith("/read") || url.endsWith("/delivered")) return response({ data: null });
+      throw new Error(`Unexpected chat request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    // ChatWidgetInbox's list load is its own async fetch chain (threads, then
+    // mutes) — give it another tick beyond click()'s own two before the row exists.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const vendorRow = findButton("Sunset Diving");
+    await click(vendorRow);
+
+    const composer = findOne(container, (element) => element.tagName === "TEXTAREA");
+    expect(composer).toBeTruthy();
   });
 
   it("keeps translated segmented-filter and confirmation-dialog labels connected to their original handlers", async () => {

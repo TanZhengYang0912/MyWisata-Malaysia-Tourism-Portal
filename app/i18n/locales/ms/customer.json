@@ -29,10 +29,6 @@
       "label": "Aktiviti Saya",
       "description": "Jadual perjalanan dan aktiviti"
     },
-    "chat": {
-      "label": "Mesej",
-      "description": "Perbualan dengan rakan kongsi"
-    },
     "Profile": {
       "label": "Profil & Pengesahan",
       "description": "Pilih dan urus pengesahan berasingan"
@@ -2263,8 +2259,7 @@
       "addCaption": "Tambah kapsyen…",
       "filters": {
         "all": "Semua",
-        "unread": "Belum dibaca",
-        "needsReply": "Memerlukan balasan anda"
+        "unread": "Belum dibaca"
       },
       "loadFailed": "Tidak dapat memuatkan mesej",
       "noConversations": "Belum ada perbualan",
@@ -2331,6 +2326,7 @@
       "copied": "Disalin",
       "copy": "Salin",
       "myLink": "Pautan ahli gabungan saya",
+      "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
       "generateLink": "Jana pautan saya"
     },

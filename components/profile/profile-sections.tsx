@@ -35,7 +35,7 @@ function StatusBadge({ label, good = false }: { label: string; good?: boolean })
 
 export function ProfileSections({ shellClassName, showHeader = true, wide = false }: { shellClassName?: string; showHeader?: boolean; wide?: boolean } = {}) {
   const { currentUser, refreshUser } = useAuth();
-  const { setOpen: setSupportChatOpen } = useSupportChat();
+  const { selectChat } = useSupportChat();
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
   const router = useRouter();
@@ -216,7 +216,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.support")} description={tCustomer("ui.profileSections.supportDescription")}>
-        <Button variant="outline" size="sm" onClick={() => setSupportChatOpen(true)}>
+        <Button variant="outline" size="sm" onClick={() => selectChat({ kind: "support" })}>
           <MessageCircle size={14} className="mr-1.5" /> {tCustomer("ui.profileSections.contactSupport")}
         </Button>
       </SectionCard>

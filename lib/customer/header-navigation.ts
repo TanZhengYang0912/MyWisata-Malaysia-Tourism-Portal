@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Compass, Gift, Heart, Home, Inbox, Map, MessageCircle, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
+import { Bell, Compass, Gift, Heart, Home, Inbox, Map, ReceiptText, ShieldCheck, SlidersHorizontal, Star, Store, Tag, WalletCards } from "lucide-react";
 
 export type CustomerNavigationItem = {
   href: string;
@@ -32,7 +32,6 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
     items: [
       { href: "/customer/saved", label: "Saved", labelKey: "accountItems.saved", description: "Saved places and destinations", icon: Heart },
       { href: "/customer/activity?tab=itinerary", label: "My Activity", labelKey: "accountItems.activity", description: "Itineraries and activities", icon: Compass },
-      { href: "/customer/chat", label: "Messages", labelKey: "accountItems.chat", description: "Conversations with partners", icon: MessageCircle },
     ],
   },
   {
@@ -53,19 +52,19 @@ export const ACCOUNT_MENU_GROUPS: CustomerAccountGroup[] = [
       { href: "/customer/support", label: "Support & Help", labelKey: "accountItems.support", description: "Get help with your trip", icon: Inbox },
     ],
   },
-  {
-    label: "Partner & More",
-    labelKey: "accountGroups.more",
-    items: [
-      { href: "/customer/affiliate", label: "Earn & Share", labelKey: "accountItems.earnShare", description: "Manage affiliate activity", icon: Gift },
-      { href: "/customer/profile/register-vendor", label: "Become a Vendor", labelKey: "accountItems.becomeVendor", description: "Apply to list your business", icon: Store },
-      { href: "/customer/recommendations", label: "Recommend a Vendor", labelKey: "accountItems.recommendVendor", description: "Share local discoveries", icon: Star },
-    ],
-  },
+];
+
+// Was the account dropdown's "Partner & More" group — pulled out to its own
+// header-level dropdown (to the right of the account menu) so it's a
+// one-click surface rather than nested inside the profile menu.
+export const PARTNER_MENU_ITEMS: CustomerAccountItem[] = [
+  { href: "/customer/affiliate", label: "Earn & Share", labelKey: "accountItems.earnShare", description: "Manage affiliate activity", icon: Gift },
+  { href: "/customer/profile/register-vendor", label: "Become a Vendor", labelKey: "accountItems.becomeVendor", description: "Apply to list your business", icon: Store },
+  { href: "/customer/recommendations", label: "Recommend a Vendor", labelKey: "accountItems.recommendVendor", description: "Share local discoveries", icon: Star },
 ];
 
 export function getAllAccountRoutes(): string[] {
-  return ACCOUNT_MENU_GROUPS.flatMap((group) => group.items.map((item) => item.href));
+  return [...ACCOUNT_MENU_GROUPS.flatMap((group) => group.items.map((item) => item.href)), ...PARTNER_MENU_ITEMS.map((item) => item.href)];
 }
 
 export function getCustomerDisplayName(user: { name?: string | null; email?: string | null }, localizedFallback: string): string {

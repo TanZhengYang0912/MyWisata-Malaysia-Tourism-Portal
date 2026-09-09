@@ -331,34 +331,40 @@ export default function AffiliateDashboardPage() {
 
       <AffiliateRankCard />
 
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
-        <div className="flex items-center gap-2 min-w-0">
-          <Link2 size={16} className="text-teal shrink-0" />
+      <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link2 size={16} className="text-teal shrink-0" />
+            {stats.affiliateCode ? (
+              <span className="text-sm font-semibold text-foreground font-[family-name:var(--font-mono)] truncate">
+                {stats.affiliateUrl}
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.noLink")}</span>
+            )}
+          </div>
           {stats.affiliateCode ? (
-            <span className="text-sm font-semibold text-foreground font-[family-name:var(--font-mono)] truncate">
-              {stats.affiliateUrl}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={copyLink}>
+                <Copy size={14} /> {copied ? tCustomer("strictMigration.affiliate.copied") : tCustomer("strictMigration.affiliate.copy")}
+              </Button>
+              {/* CLAUDE-P4-EXTRAS-2.md Extra 4: the generic "my code" QR — no
+                  slug, same URL the Copy button copies. Eligibility is already
+                  enforced by this page's own gate above (an ineligible user
+                  never reaches this section), unlike the per-product QR on
+                  ShareButton, which has to resolve eligibility itself. */}
+              <AffiliateQrCode resolveUrl={() => stats.affiliateUrl!} label={tCustomer("strictMigration.affiliate.myLink")} />
+            </div>
           ) : (
-            <span className="text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.noLink")}</span>
+            <Button size="sm" onClick={generateLink} disabled={generating} className="shrink-0">
+              {generating ? tCustomer("strictMigration.affiliate.generating") : tCustomer("strictMigration.affiliate.generateLink")}
+            </Button>
           )}
         </div>
-        {stats.affiliateCode ? (
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" onClick={copyLink}>
-              <Copy size={14} /> {copied ? tCustomer("strictMigration.affiliate.copied") : tCustomer("strictMigration.affiliate.copy")}
-            </Button>
-            {/* CLAUDE-P4-EXTRAS-2.md Extra 4: the generic "my code" QR — no
-                slug, same URL the Copy button copies. Eligibility is already
-                enforced by this page's own gate above (an ineligible user
-                never reaches this section), unlike the per-product QR on
-                ShareButton, which has to resolve eligibility itself. */}
-            <AffiliateQrCode resolveUrl={() => stats.affiliateUrl!} label={tCustomer("strictMigration.affiliate.myLink")} />
-          </div>
-        ) : (
-          <Button size="sm" onClick={generateLink} disabled={generating} className="shrink-0">
-            {generating ? tCustomer("strictMigration.affiliate.generating") : tCustomer("strictMigration.affiliate.generateLink")}
-          </Button>
-        )}
+        {/* The link only does anything when someone else clicks it (redirect +
+            attribution cookie at app/r/[code]) — opening it yourself is a
+            no-op, so say what it's for rather than leaving that implicit. */}
+        {stats.affiliateCode && <p className="mt-2 text-xs text-muted-foreground">{tCustomer("strictMigration.affiliate.linkHint")}</p>}
       </div>
 
       {/* CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1: campaign/UTM tagging.
