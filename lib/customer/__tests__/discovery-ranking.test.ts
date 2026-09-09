@@ -50,7 +50,7 @@ function placement(
     categorySlug: null,
     startsAt: "2026-09-01T00:00:00.000Z",
     endsAt: "2026-09-30T00:00:00.000Z",
-    priority: 100,
+    priority: 1,
     status: "approved",
     ...overrides,
   };
@@ -70,15 +70,15 @@ const filters: DiscoveryQuery = {
 };
 
 describe("rankDiscoveryResults", () => {
-  it("caps six eligible placements to four unique sponsored products in deterministic order", () => {
+  it("caps eligible placements to four unique sponsored products in one-based position order", () => {
     const activities = [activity("a"), activity("b"), activity("c"), activity("d")];
     const placements = [
-      placement("placement-f", "a", { priority: 200, startsAt: "2026-09-03T00:00:00.000Z" }),
-      placement("placement-e", "b", { priority: 300 }),
-      placement("placement-d", "d", { priority: 200, startsAt: "2026-09-02T00:00:00.000Z" }),
-      placement("placement-c", "c", { priority: 200, startsAt: "2026-09-02T00:00:00.000Z" }),
-      placement("placement-b", "a", { priority: 400 }),
-      placement("placement-a", "b", { priority: 100 }),
+      placement("placement-f", "a", { priority: 3, startsAt: "2026-09-03T00:00:00.000Z" }),
+      placement("placement-e", "b", { priority: 2 }),
+      placement("placement-d", "d", { priority: 4, startsAt: "2026-09-02T00:00:00.000Z" }),
+      placement("placement-c", "c", { priority: 3, startsAt: "2026-09-02T00:00:00.000Z" }),
+      placement("placement-b", "a", { priority: 1 }),
+      placement("placement-a", "b", { priority: 4 }),
     ];
 
     const result = rankDiscoveryResults({
@@ -103,6 +103,7 @@ describe("rankDiscoveryResults", () => {
     const placements = [
       placement("eligible-placement", "eligible", { state: "Sabah", categorySlug: "activity" }),
       placement("draft", "eligible", { status: "draft" }),
+      placement("archived", "eligible", { status: "archived" }),
       placement("future", "eligible", { startsAt: "2026-09-06T00:00:00.000Z" }),
       placement("expired", "eligible", { endsAt: "2026-09-05T00:00:00.000Z" }),
       placement("wrong-state", "eligible", { state: "Penang" }),
@@ -128,8 +129,8 @@ describe("rankDiscoveryResults", () => {
     const result = rankDiscoveryResults({
       activities,
       placements: [
-        placement("placement-d", "d", { priority: 50 }),
-        placement("placement-b", "b", { priority: 100 }),
+        placement("placement-d", "d", { priority: 2 }),
+        placement("placement-b", "b", { priority: 1 }),
       ],
       filters,
       now: "2026-09-05T00:00:00.000Z",
@@ -151,6 +152,40 @@ describe("rankDiscoveryResults", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+
+  it("orders exact targeting before broader fallback even when fallback has Position 1", () => {
+    const result = rankDiscoveryResults({
+      activities: [activity("exact"), activity("state"), activity("category"), activity("broad")],
+      placements: [
+        placement("broad-placement", "broad", { priority: 1 }),
+        placement("category-placement", "category", { categorySlug: "activity", priority: 1 }),
+        placement("state-placement", "state", { state: "Sabah", priority: 4 }),
+        placement("exact-placement", "exact", { state: "Sabah", categorySlug: "activity", priority: 4 }),
+      ],
+      filters,
+      now: "2026-09-05T00:00:00.000Z",
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["exact", "state", "category", "broad"]);
+  });
+
+  it("uses broad campaigns to fill remaining sponsored slots", () => {
+    const result = rankDiscoveryResults({
+      activities: [activity("exact"), activity("fallback"), activity("organic")],
+      placements: [
+        placement("fallback-placement", "fallback", { priority: 1 }),
+        placement("exact-placement", "exact", { state: "Sabah", categorySlug: "activity", priority: 2 }),
+      ],
+      filters,
+      now: "2026-09-05T00:00:00.000Z",
+    });
+
+    expect(result.map((item) => [item.id, item.sponsorship?.placementId ?? null])).toEqual([
+      ["exact", "exact-placement"],
+      ["fallback", "fallback-placement"],
+      ["organic", null],
+    ]);
   });
 
   it("does not manufacture sponsorship from untrusted browser filter claims", () => {
