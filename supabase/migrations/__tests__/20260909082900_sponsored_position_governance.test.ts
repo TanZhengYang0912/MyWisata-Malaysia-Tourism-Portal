@@ -20,6 +20,8 @@ describe("sponsored position governance migration", () => {
     expect(sql).toMatch(/'archived'/i);
     expect(sql).toMatch(/ROW_NUMBER\(\) OVER[\s\S]+PARTITION BY[\s\S]+state[\s\S]+category_slug/i);
     expect(sql).toMatch(/ROW_NUMBER\(\) OVER[\s\S]+PARTITION BY status[\s\S]+updated_at DESC/i);
+    const legacyNormalization = sql.match(/WITH ranked_approved AS \([\s\S]+?FROM ranked_approved AS ranked[\s\S]+?;/i)?.[0] ?? "";
+    expect(legacyNormalization).not.toMatch(/status\s*=\s*CASE[\s\S]+THEN 'paused'/i);
   });
 
   it("calculates impact and a server-owned preview version", () => {
@@ -60,6 +62,8 @@ describe("sponsored position governance migration", () => {
     expect(transition).toMatch(/ROW_NUMBER\(\) OVER[\s\S]+AS target_position/i);
     expect(transition).toMatch(/priority = LEAST\(affected\.target_position, 4\)/i);
     expect(transition).toMatch(/target_position > 4 THEN 'paused'/i);
+    expect(transition).toMatch(/review_note\s*=\s*CASE[\s\S]+Automatically paused: displaced by approval/i);
+    expect(transition).toMatch(/Automatically archived: paused retention limit/i);
     expect(transition).toContain("sponsored_creator_self_approval_denied");
   });
 

@@ -72,8 +72,10 @@ WITH ranked_approved AS (
 )
 UPDATE public.sponsored_discovery_placements AS placement
 SET priority = LEAST(ranked.position, 4)::INTEGER,
-    status = CASE WHEN ranked.position > 4 THEN 'paused' ELSE placement.status END,
-    updated_at = CASE WHEN ranked.position > 4 THEN now() ELSE placement.updated_at END
+    updated_at = CASE
+      WHEN placement.priority IS DISTINCT FROM LEAST(ranked.position, 4)::INTEGER THEN now()
+      ELSE placement.updated_at
+    END
 FROM ranked_approved AS ranked
 WHERE placement.id = ranked.id;
 
@@ -569,6 +571,14 @@ BEGIN
       UPDATE public.sponsored_discovery_placements AS placement
          SET priority = LEAST(affected.target_position, 4),
              status = CASE WHEN affected.target_position > 4 THEN 'paused' ELSE placement.status END,
+             review_note = CASE
+               WHEN affected.target_position > 4 THEN FORMAT(
+                 'Automatically paused: displaced by approval %s at Position %s',
+                 v_placement.id,
+                 v_placement.priority
+               )
+               ELSE placement.review_note
+             END,
              updated_at = now()
         FROM ordered_affected AS affected
        WHERE placement.id = affected.id;
@@ -602,7 +612,17 @@ BEGIN
       WHERE status = 'paused'
     )
     UPDATE public.sponsored_discovery_placements AS placement
-       SET status = 'archived', updated_at = now()
+       SET status = 'archived',
+           review_note = CONCAT_WS(
+             ' · ',
+             NULLIF(placement.review_note, ''),
+             FORMAT(
+               'Automatically archived: paused retention limit after %s on campaign %s',
+               p_action,
+               p_placement_id
+             )
+           ),
+           updated_at = now()
       FROM ranked_paused AS ranked
      WHERE placement.id = ranked.id
        AND ranked.pause_rank > 2;
