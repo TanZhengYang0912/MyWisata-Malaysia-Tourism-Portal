@@ -40,29 +40,56 @@
       "startsAt": "开始时间",
       "endsAt": "结束时间",
       "priority": "优先级",
+      "position": "展示顺序",
+      "positionOption": "第 {{position}} 位",
       "allStates": "所有州属",
       "state": "州属",
+      "chooseState": "选择州属",
       "allCategories": "所有类别",
       "category": "类别",
       "chooseCategory": "选择类别",
-      "create": "创建草稿"
+      "create": "创建草稿",
+      "review": "预览活动影响"
     },
     "errors": {
       "load": "无法加载赞助展示位。",
       "create": "无法创建活动草稿。",
       "transition": "无法更新活动。",
+      "preview": "无法计算活动影响。",
+      "stalePreview": "活动顺序已改变。请重新查看最新影响后再确认。",
       "forbidden": "您没有管理赞助展示位的权限。"
     },
     "states": {
       "loading": "正在加载赞助展示位…",
-      "empty": "暂无赞助展示活动。"
+      "empty": "暂无赞助展示活动。",
+      "emptyGroup": "此分类目前没有活动。"
     },
     "prompts": { "rejectReason": "请输入拒绝原因（至少 5 个字符）。" },
     "actions": { "submit": "提交", "approve": "批准", "reject": "拒绝", "pause": "暂停" },
     "categories": { "food": "美食", "activity": "活动", "accommodation": "住宿", "retail": "零售" },
-    "list": { "title": "活动" },
+    "list": { "title": "活动", "position": "第 {{position}} 位" },
+    "lifecycle": {
+      "active": "生效中 / 已排期",
+      "pending": "待批准",
+      "drafts": "草稿",
+      "paused": "最近暂停",
+      "archived": "已归档"
+    },
+    "preview": {
+      "createTitle": "复核草稿影响",
+      "approveTitle": "复核批准影响",
+      "position": "要求的展示顺序",
+      "shifts": "将往后移动的活动",
+      "paused": "将被暂停的活动",
+      "archived": "将移入归档的暂停记录",
+      "noImpact": "目前没有其他活动会被移动。",
+      "to": "移至",
+      "cancel": "取消",
+      "confirmCreate": "确认创建草稿",
+      "confirmApprove": "确认批准"
+    },
     "scope": { "allStates": "所有州属", "allCategories": "所有类别" },
-    "status": { "draft": "草稿", "pending_approval": "待批准", "approved": "已批准", "rejected": "已拒绝", "paused": "已暂停" }
+    "status": { "draft": "草稿", "pending_approval": "待批准", "approved": "已批准", "rejected": "已拒绝", "paused": "已暂停", "archived": "已归档" }
   },
   "accessControl": {
     "eyebrow": "安全治理",

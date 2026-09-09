@@ -40,29 +40,56 @@
       "startsAt": "Starts at",
       "endsAt": "Ends at",
       "priority": "Priority",
+      "position": "Position",
+      "positionOption": "Position {{position}}",
       "allStates": "All states",
       "state": "State",
+      "chooseState": "Choose a state",
       "allCategories": "All categories",
       "category": "Category",
       "chooseCategory": "Choose a category",
-      "create": "Create draft"
+      "create": "Create draft",
+      "review": "Review campaign impact"
     },
     "errors": {
       "load": "Unable to load sponsored placements.",
       "create": "Unable to create the campaign draft.",
       "transition": "Unable to update the campaign.",
+      "preview": "Unable to calculate campaign impact.",
+      "stalePreview": "The campaign order changed. Review this refreshed impact before confirming again.",
       "forbidden": "You do not have permission to manage sponsored placements."
     },
     "states": {
       "loading": "Loading sponsored placements…",
-      "empty": "No sponsored placement campaigns yet."
+      "empty": "No sponsored placement campaigns yet.",
+      "emptyGroup": "No campaigns in this view."
     },
     "prompts": { "rejectReason": "Enter a rejection reason (at least 5 characters)." },
     "actions": { "submit": "Submit", "approve": "Approve", "reject": "Reject", "pause": "Pause" },
     "categories": { "food": "Food", "activity": "Activity", "accommodation": "Accommodation", "retail": "Retail" },
-    "list": { "title": "Campaigns" },
+    "list": { "title": "Campaigns", "position": "Position {{position}}" },
+    "lifecycle": {
+      "active": "Active / Scheduled",
+      "pending": "Pending",
+      "drafts": "Drafts",
+      "paused": "Recently paused",
+      "archived": "Archived"
+    },
+    "preview": {
+      "createTitle": "Review draft impact",
+      "approveTitle": "Review approval impact",
+      "position": "Requested position",
+      "shifts": "Campaigns moving down",
+      "paused": "Campaigns that will pause",
+      "archived": "Paused history moving to archive",
+      "noImpact": "No current campaign will move.",
+      "to": "to",
+      "cancel": "Cancel",
+      "confirmCreate": "Confirm draft",
+      "confirmApprove": "Confirm approval"
+    },
     "scope": { "allStates": "All states", "allCategories": "All categories" },
-    "status": { "draft": "Draft", "pending_approval": "Pending approval", "approved": "Approved", "rejected": "Rejected", "paused": "Paused" }
+    "status": { "draft": "Draft", "pending_approval": "Pending approval", "approved": "Approved", "rejected": "Rejected", "paused": "Paused", "archived": "Archived" }
   },
   "accessControl": {
     "eyebrow": "Security governance",
