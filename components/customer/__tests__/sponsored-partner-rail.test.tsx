@@ -26,6 +26,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string, options?: Record<string, unknown>) => ({
       "ui.search.sponsoredRecommendations": "Sponsored recommendations",
       "ui.search.sponsoredDescription": "Paid placements matched to your current search.",
+      "ui.search.sponsoredCarousel": "Sponsored recommendations carousel",
       "ui.search.previousAdvertisement": "Previous advertisement",
       "ui.search.nextAdvertisement": "Next advertisement",
       "ui.labels.sponsored": "Sponsored",
@@ -193,6 +194,7 @@ describe("SponsoredPartnerRail", () => {
     expect(findElements(container, (element) => element.tagName === "ARTICLE")).toHaveLength(1);
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
+    expect(viewport.getAttribute("aria-roledescription")).toBe("Sponsored recommendations carousel");
     expect(viewport.className).toContain("w-full");
     expect(viewport.className).toContain("overflow-hidden");
     expect(viewport.className).not.toContain("overflow-x-auto");

@@ -184,7 +184,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
         <div
           data-testid="sponsored-partner-rail"
           className="group/carousel relative w-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"
-          aria-roledescription="carousel"
+          aria-roledescription={t("ui.search.sponsoredCarousel")}
         >
           <article
             key={placementId}
