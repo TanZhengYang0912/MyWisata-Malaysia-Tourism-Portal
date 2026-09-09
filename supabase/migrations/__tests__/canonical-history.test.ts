@@ -26,6 +26,7 @@ const approvedForwardMigrations = [
   "20260906030400_fix_anonymous_vendor_reads.sql",
   "20260906040000_staff_invitations.sql",
   "20260908162000_sponsored_public_projection.sql",
+  "20260909082900_sponsored_position_governance.sql",
 ];
 
 function migrationFiles() {

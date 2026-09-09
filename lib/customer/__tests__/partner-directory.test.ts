@@ -141,12 +141,12 @@ describe("selectPartnerAdvertisements", () => {
     },
   });
 
-  it("keeps matching sponsored activities in campaign priority order", () => {
+  it("keeps matching sponsored activities in one-based campaign position order", () => {
     const result = selectPartnerAdvertisements({
       activities: [penangActivity, sabahActivity],
       placements: [
-        placement("lower", "penang", { priority: 50 }),
-        placement("higher", "sabah", { priority: 200 }),
+        placement("second", "penang", { priority: 2 }),
+        placement("first", "sabah", { priority: 1 }),
       ],
       query: "",
       state: null,
@@ -156,8 +156,8 @@ describe("selectPartnerAdvertisements", () => {
 
     expect(result.map((item) => item.id)).toEqual(["sabah", "penang"]);
     expect(result.map((item) => item.sponsorship)).toEqual([
-      { placementId: "higher", label: "Sponsored" },
-      { placementId: "lower", label: "Sponsored" },
+      { placementId: "first", label: "Sponsored" },
+      { placementId: "second", label: "Sponsored" },
     ]);
   });
 

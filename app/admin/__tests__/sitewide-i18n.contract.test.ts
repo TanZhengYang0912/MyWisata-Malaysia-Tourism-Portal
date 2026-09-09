@@ -112,6 +112,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/kyc-review-detail.tsx",
   "components/admin/kyc-review-queue-row.tsx",
   "components/admin/segmented-filter.tsx",
+  "components/admin/sponsored-placements/impact-dialog.tsx",
   "components/admin/staff-conduct-filtering.ts",
   "components/admin/withdrawal-review-detail.tsx",
   "components/admin/withdrawal-review-queue-row.tsx",
