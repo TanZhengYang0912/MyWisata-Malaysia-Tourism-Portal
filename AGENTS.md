@@ -15,8 +15,10 @@ Tech Stack:
 
 Before making any code changes:
 
-1. Read docs/requirements.md.
-2. Read any relevant documentation under /docs.
+1. Inventory the real documentation available under `Docs/`.
+2. Read the relevant existing ADRs, research, audits, and plans. Do not assume a
+   named document exists; report a missing referenced document once and continue
+   with the available repository evidence.
 3. Search for existing implementations before creating new ones.
 4. Produce an implementation plan.
 5. Wait for approval unless explicitly instructed to proceed.
@@ -40,6 +42,51 @@ Treat requests such as "do not implement yet" or "do not execute yet" as a
 restriction on writes, not on read-only investigation, unless the user also
 explicitly asks not to inspect. The user should not need to prompt the agent to
 discover and explain existing implementations first.
+
+---
+
+## Mandatory Reuse Gate
+
+This gate applies to every feature, UI change, refactor, and bug fix. Requests
+mentioning "reuse", "same", "consistent", or "similar" make this gate especially
+important.
+
+Before writing a plan or modifying code:
+
+1. Search for reuse at every layer, not only for an exact component:
+   - route-local implementations
+   - domain components
+   - `components/admin`
+   - `components/shared`
+   - `components/ui`
+   - design tokens and shared class names
+   - formatting, validation, and data-conversion helpers
+   - tests that define an existing UI or behavior contract
+2. Produce a concise **Reuse Audit** containing:
+   - candidate
+   - exact file path
+   - what can be reused
+   - decision: reuse, extend, or reject
+   - reason for every rejected candidate
+3. Do not conclude that something is missing merely because an exact component
+   does not exist. Continue searching for lower-level primitives, tokens, helpers,
+   and behavior that can be composed.
+4. Every implementation plan must contain a **Reuse Decisions** section. A plan
+   without this section is incomplete.
+5. Creating a new shared component requires repository-search evidence that:
+   - no suitable implementation already exists;
+   - extending an existing component would be inappropriate; and
+   - at least two concrete consumers exist, or the user explicitly requested a
+     reusable abstraction.
+6. If "keep changes minimal" conflicts with reuse, prefer existing primitives and
+   tokens unless reuse would change behavior, accessibility, or domain rules.
+7. Even when the user says "execute directly" or "do not write a plan", do not
+   skip the read-only reuse audit. Report it briefly in commentary, then execute.
+8. When adding a file under an exact component inventory contract, update that
+   contract and its tests in the same change.
+
+The reuse search is complete only after the agent states **Reuse audit complete**
+and provides the decisions above.
 
 ---
 
@@ -162,29 +209,24 @@ risk under the rules above.
 
 ## Documentation
 
-Architecture:
-docs/architecture.md
+The repository's documentation root is `Docs/`. Inventory it before relying on a
+specific filename. Relevant maintained material currently lives in:
 
-Authentication:
-docs/auth.md
+- `Docs/adr/` — architecture and security decisions
+- `Docs/audits/` — completed audits
+- `Docs/research/` — implementation research
+- `Docs/plans/` — approved, active, and deferred implementation plans
 
-Database:
-docs/database.md
-
-Testing:
-docs/testing.md
-
-Coding Standards:
-docs/coding-standards.md
-
-Prompt Rules:
-docs/ai-guidelines.md
+Do not fabricate or duplicate missing `requirements.md`, `architecture.md`,
+`auth.md`, `database.md`, `testing.md`, `coding-standards.md`, or
+`ai-guidelines.md` files. Use the existing evidence and note genuine documentation
+gaps in the implementation plan when relevant.
 
 ---
 
 ## Plans
 
-All plans live in `docs/plans/`.
+All plans live in `Docs/plans/`.
 
 Never write plans to `~/.claude/plans/` — that directory is global and mixes
 plans from other projects. It is scratch only.
@@ -212,4 +254,4 @@ contains both:
 3. Phases — ordered lowest-risk first, with files to modify
 4. Verification — how to prove each phase works
 
-Deferred plans stay in `docs/plans/` with their status marked at the top.
+Deferred plans stay in `Docs/plans/` with their status marked at the top.

@@ -2,14 +2,14 @@ import { z } from "zod";
 
 import { STATES_MY } from "@/lib/customer/malaysia-states";
 import { requireStaffPermission } from "@/lib/staff-permissions/server";
-import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
 const specificStates = STATES_MY.filter((state) => state !== "All Malaysia") as [string, ...string[]];
 
 const placementCreateSchema = z.object({
-  productId: z.string().uuid(),
+  productId: databaseUuidSchema,
   startsAt: z.string().datetime({ offset: true }),
   endsAt: z.string().datetime({ offset: true }),
   position: z.number().int().min(1).max(4),

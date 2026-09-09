@@ -358,13 +358,14 @@ async function seedRoles(vendorId, outletIds, ownerIds = [OWNER_ID], managerIds 
   const { error: roleInsertErr } = await supabase.from('roles').upsert(defaultRoles, { onConflict: 'name' });
   if (roleInsertErr) throw new Error(`Failed to ensure default roles: ${roleInsertErr.message}`);
 
-  const { data: roles, error } = await supabase.from('roles').select('id,name').in('name', ['super_admin', 'admin', 'approver', 'vendor_owner', 'outlet_manager']);
+  const { data: roles, error } = await supabase.from('roles').select('id,name').in('name', ['super_admin', 'admin', 'approver', 'vendor_owner', 'outlet_manager', 'customer']);
   if (error) throw error;
   const roleByName = Object.fromEntries((roles || []).map((role) => [role.name, role.id]));
   const assignments = [
     { user_id: DEMO_USERS[0][0], role_id: roleByName.super_admin, vendor_id: null, outlet_id: null },
     { user_id: DEMO_USERS[1][0], role_id: roleByName.approver, vendor_id: null, outlet_id: null },
     { user_id: DEMO_USERS[13][0], role_id: roleByName.admin, vendor_id: null, outlet_id: null },
+    ...CUSTOMER_IDS.map((customerId) => ({ user_id: customerId, role_id: roleByName.customer, vendor_id: null, outlet_id: null })),
     ...ownerIds.map((ownerId) => ({ user_id: ownerId, role_id: roleByName.vendor_owner, vendor_id: vendorId, outlet_id: null })),
     ...outletIds.slice(0, managerIds.length).map((outletId, index) => ({ user_id: managerIds[index], role_id: roleByName.outlet_manager, vendor_id: null, outlet_id: outletId })),
   ];

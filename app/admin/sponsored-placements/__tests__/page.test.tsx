@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
     "sponsoredPlacements.form.product": "Product",
     "sponsoredPlacements.form.startsAt": "Starts at",
     "sponsoredPlacements.form.endsAt": "Ends at",
+    "sponsoredPlacements.form.timezone": "Malaysia time (UTC+08:00)",
+    "sponsoredPlacements.form.invalidRange": "End time must be later than start time.",
     "sponsoredPlacements.form.position": "Position",
     "sponsoredPlacements.form.chooseState": "Choose a state",
     "sponsoredPlacements.form.allStates": "All states",
@@ -23,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     "sponsoredPlacements.lifecycle.drafts": "Drafts",
     "sponsoredPlacements.lifecycle.paused": "Recently paused",
     "sponsoredPlacements.lifecycle.archived": "Archived",
+    "sponsoredPlacements.accessibility.lifecycleFilters": "Campaign lifecycle filters",
     "sponsoredPlacements.preview.confirmCreate": "Confirm draft",
     "sponsoredPlacements.errors.forbidden": "You do not have permission to manage sponsored placements.",
     "sponsoredPlacements.states.loading": "Loading sponsored placements…",
@@ -31,7 +34,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.stubGlobal("fetch", mocks.fetch);
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: mocks.t }),
+  useTranslation: () => ({ t: mocks.t, i18n: { resolvedLanguage: "en" } }),
 }));
 
 import SponsoredPlacementsPage from "../page";
@@ -97,6 +100,7 @@ describe("SponsoredPlacementsPage", () => {
     expect(findOne(container, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "Product")).not.toBeNull();
     expect(findOne(container, (element) => element.tagName === "INPUT" && element.type === "datetime-local" && element.getAttribute("aria-label") === "Starts at")).not.toBeNull();
     expect(findOne(container, (element) => element.tagName === "INPUT" && element.type === "datetime-local" && element.getAttribute("aria-label") === "Ends at")).not.toBeNull();
+    expect(container.textContent).toContain("Malaysia time (UTC+08:00)");
     expect(findOne(container, (element) => element.tagName === "INPUT" && element.type === "checkbox" && element.getAttribute("aria-label") === "All states")).not.toBeNull();
     expect(findOne(container, (element) => element.tagName === "INPUT" && element.type === "checkbox" && element.getAttribute("aria-label") === "All categories")).not.toBeNull();
     const position = findOne(container, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "Position");
@@ -120,6 +124,42 @@ describe("SponsoredPlacementsPage", () => {
     expect(container.textContent).toContain("Drafts");
     expect(container.textContent).toContain("Recently paused");
     expect(container.textContent).toContain("Archived");
+    const lifecycleFilters = findOne(container, (element) => element.getAttribute("role") === "tablist");
+    expect(lifecycleFilters.getAttribute("aria-label")).toBe("Campaign lifecycle filters");
+    expect(findElements(lifecycleFilters, (element) => element.getAttribute("role") === "tab")).toHaveLength(5);
+    expect(stateSelect.className).toContain("h-10");
+  });
+
+  it("uses shared Admin primitives and Malaysia time for campaign presentation", async () => {
+    mocks.fetch.mockResolvedValue(Response.json({
+      data: {
+        products: [],
+        placements: [{
+          id: "22222222-2222-4222-8222-222222222222",
+          product_id: "11111111-1111-4111-8111-111111111111",
+          state: null,
+          category_slug: null,
+          starts_at: "2026-10-01T00:00:00.000Z",
+          ends_at: "2026-10-31T00:00:00.000Z",
+          priority: 1,
+          status: "approved",
+          products: { id: "11111111-1111-4111-8111-111111111111", name: "Rainforest Walk" },
+        }],
+        archivedPlacements: [],
+      },
+      error: null,
+    }));
+
+    await render(root, <SponsoredPlacementsPage />);
+
+    expect(container.textContent).toContain("Oct 1, 2026, 8:00 AM");
+    const approved = findOne(container, (element) => element.tagName === "SPAN" && element.textContent === "sponsoredPlacements.status.approved");
+    expect(approved.className).toContain("bg-primary/15");
+
+    const source = readFileSync(resolve(process.cwd(), "app/admin/sponsored-placements/page.tsx"), "utf8");
+    expect(source).toContain("<AdminSegmentedFilter");
+    expect(source).toContain("<Button");
+    expect(source).not.toContain("<button");
   });
 
   it("previews a draft before it sends the create mutation", async () => {
@@ -157,6 +197,7 @@ describe("SponsoredPlacementsPage", () => {
     await change(findOne(container, (element) => element.getAttribute("aria-label") === "Product"), "11111111-1111-4111-8111-111111111111");
     await change(findOne(container, (element) => element.getAttribute("aria-label") === "Starts at"), "2026-10-01T08:00");
     await change(findOne(container, (element) => element.getAttribute("aria-label") === "Ends at"), "2026-10-31T08:00");
+    expect(findOne(container, (element) => element.getAttribute("aria-label") === "Ends at").getAttribute("min")).toBe("2026-10-01T08:00");
 
     const form = findOne(container, (element) => element.tagName === "FORM");
     await act(async () => {
@@ -168,6 +209,10 @@ describe("SponsoredPlacementsPage", () => {
 
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(mocks.fetch.mock.calls[1][0]).toBe("/api/admin/sponsored-placements/preview");
+    expect(JSON.parse(String((mocks.fetch.mock.calls[1][1] as RequestInit).body))).toMatchObject({
+      startsAt: "2026-10-01T00:00:00.000Z",
+      endsAt: "2026-10-31T00:00:00.000Z",
+    });
     expect(findOne(container, (element) => element.getAttribute("role") === "alertdialog")).not.toBeNull();
     expect(mocks.fetch.mock.calls.some((call) => call[0] === "/api/admin/sponsored-placements" && (call[1] as RequestInit | undefined)?.method === "POST")).toBe(false);
 
@@ -185,6 +230,15 @@ describe("SponsoredPlacementsPage", () => {
       position: 1,
       previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
     });
+  });
+
+  it("blocks impact preview when the end is not later than the start", async () => {
+    await render(root, <SponsoredPlacementsPage />);
+    await change(findOne(container, (element) => element.getAttribute("aria-label") === "Starts at"), "2026-10-01T08:00");
+    await change(findOne(container, (element) => element.getAttribute("aria-label") === "Ends at"), "2026-10-01T08:00");
+
+    expect(container.textContent).toContain("End time must be later than start time.");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.type === "submit").disabled).toBe(true);
   });
 
   it("previews an approval before it sends the transition mutation", async () => {

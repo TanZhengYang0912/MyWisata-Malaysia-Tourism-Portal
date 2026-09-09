@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 const PLACEMENT_ID = "22222222-2222-4222-8222-222222222222";
+const LEGACY_PRODUCT_ID = "a54fe0fb-042c-e2e4-9dde-c18a8444cb8e";
+const LEGACY_PLACEMENT_ID = "c6687de8-6f0d-d239-5981-3f7562cc7b36";
 
 const mocks = vi.hoisted(() => ({
   requireStaffPermission: vi.fn(),
@@ -107,6 +109,29 @@ describe("admin sponsored placement routes", () => {
     });
   });
 
+  it("creates a draft for an existing PostgreSQL UUID product without RFC version bits", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { id: PLACEMENT_ID, product_id: LEGACY_PRODUCT_ID, status: "draft" },
+      error: null,
+    });
+
+    const response = await collectionRoute.POST(request("POST", {
+      productId: LEGACY_PRODUCT_ID,
+      startsAt: "2026-10-01T00:00:00.000Z",
+      endsAt: "2026-10-31T00:00:00.000Z",
+      position: 2,
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
+      allStates: true,
+      allCategories: true,
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "create_sponsored_discovery_placement",
+      expect.objectContaining({ p_product_id: LEGACY_PRODUCT_ID }),
+    );
+  });
+
   it("rejects invalid dates and unknown fields without calling the database", async () => {
     const response = await collectionRoute.POST(request("POST", {
       productId: PRODUCT_ID,
@@ -156,6 +181,20 @@ describe("admin sponsored placement routes", () => {
       p_note: null,
       p_preview_version: action === "approve" ? "8d54a9a8c4dd8d27fbb2f6eecdf7d707" : null,
     });
+  });
+
+  it("transitions a legacy PostgreSQL UUID placement", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: LEGACY_PLACEMENT_ID, status: "paused" }, error: null });
+
+    const response = await itemRoute.PATCH(request("PATCH", { action: "pause" }), {
+      params: Promise.resolve({ id: LEGACY_PLACEMENT_ID }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "transition_sponsored_discovery_placement",
+      expect.objectContaining({ p_placement_id: LEGACY_PLACEMENT_ID }),
+    );
   });
 
   it("requires a bounded reason for rejection", async () => {

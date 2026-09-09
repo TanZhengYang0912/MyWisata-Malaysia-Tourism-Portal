@@ -3,14 +3,14 @@ import { z } from "zod";
 import { STATES_MY } from "@/lib/customer/malaysia-states";
 import { sponsoredImpactPreviewSchema } from "@/lib/sponsored-placements/impact";
 import { requireStaffPermission } from "@/lib/staff-permissions/server";
-import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 
 const specificStates = STATES_MY.filter((state) => state !== "All Malaysia") as [string, ...string[]];
 const categorySchema = z.enum(["food", "activity", "accommodation", "retail"]);
 
 const createPreviewSchema = z.object({
   mode: z.literal("create"),
-  productId: z.string().uuid(),
+  productId: databaseUuidSchema,
   startsAt: z.string().datetime({ offset: true }),
   endsAt: z.string().datetime({ offset: true }),
   position: z.number().int().min(1).max(4),
@@ -32,7 +32,7 @@ const createPreviewSchema = z.object({
 
 const approvePreviewSchema = z.object({
   mode: z.literal("approve"),
-  placementId: z.string().uuid(),
+  placementId: databaseUuidSchema,
 }).strict();
 
 const previewRequestSchema = z.discriminatedUnion("mode", [

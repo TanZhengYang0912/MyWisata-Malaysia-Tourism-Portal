@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Implemented and verified locally; linked-database migration deployment pending
+**Status:** Implemented, deployed to the linked database, Demo advertisements seeded, and live browser verified
 
 **Goal:** Replace the Partners page’s featured-vendor block with a filter-aware sponsored advertisement rail, identify every approved vendor as a verified local partner, and make featured-first the default directory order with usable view and sort controls.
 
@@ -338,7 +338,7 @@ Expected: TypeScript and i18n pass; lint has zero errors. Record unrelated pre-e
 
 Use `luna_worker` for a read-only check that the page projects no campaign audit/internal fields, cannot record events for a mismatched product, keeps Sponsored and Verified labels distinct, and does not weaken existing event API validation. Fix only confirmed authorization/privacy/core-flow failures.
 
-- [ ] **Step 4: Verify the live page in the existing browser**
+- [x] **Step 4: Verify the live page in the existing browser**
 
 Open `/customer/partners` in the browser selected by the current Product Design context. At the reference desktop viewport and one narrow/mobile viewport, verify the sponsored rail, controls, routes, badges, filtering, sorting, pagination reset, and absence of console errors.
 
@@ -360,5 +360,6 @@ Update this plan’s status/checkmarks with exact commands and outcomes. Report 
 - `git diff --check`: passed.
 - `npx tsc --noEmit`: passed before concurrent workspace files appeared. The final rerun is blocked only by the unrelated untracked `scripts/__tests__/vendor-account-demo.test.ts`, whose inferred fixture arrays are currently typed as `never[]`; this task does not modify that concurrent work.
 - Chrome browser verification at `1904 x 1060`: default Featured first, Name A–Z, Featured only, pagination reset, and Verified local partner badges were exercised. The final light-theme default-state capture passed design QA.
-- The narrow/mobile browser pass and populated advertisement smoke test remain unavailable in this run: the current browser surface exposes no viewport override, and the connected database has zero sponsored placement records. Responsive layout and populated rail behavior are covered by focused contracts/component tests.
-- `npx --yes supabase@latest migration list` did not return before the bounded timeout, so `20260908162000_sponsored_public_projection.sql` was not pushed. It must be deployed together with the application change before sponsored records are enabled.
+- The linked database now exposes `list_active_sponsored_discovery_placements()` to anon/authenticated callers without exposing the base table or internal review fields.
+- `npm run seed:sponsored-demo` created four deterministic, approved, effective Demo placements from existing active/approved/discoverable products.
+- Live `/customer/partners` verification confirmed four labelled Sponsored cards, a `1024px` rail viewport over `1940px` of content, and the Next control moving `scrollLeft` from `0` to approximately `872px`.

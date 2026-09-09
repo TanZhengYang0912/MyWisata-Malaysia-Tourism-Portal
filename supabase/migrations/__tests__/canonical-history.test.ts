@@ -26,6 +26,9 @@ const approvedForwardMigrations = [
   "20260906030400_fix_anonymous_vendor_reads.sql",
   "20260906040000_staff_invitations.sql",
   "20260908162000_sponsored_public_projection.sql",
+  "20260908165700_demo_vendor_order_earnings.sql",
+  "20260908180000_harden_demo_vendor_order_earnings.sql",
+  "20260909054100_restore_demo_customer_roles.sql",
   "20260909082900_sponsored_position_governance.sql",
 ];
 

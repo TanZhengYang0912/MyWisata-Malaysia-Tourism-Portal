@@ -5,9 +5,16 @@ import { Megaphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminDateTimeRangeField } from "@/components/admin/date-time-range-field";
+import { adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { SponsoredImpactDialog } from "@/components/admin/sponsored-placements/impact-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Button } from "@/components/ui/button";
 import { STATES_MY } from "@/lib/customer/malaysia-states";
+import { isInvalidDateTimeRange, malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
+import { formatDateTime } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { SponsoredImpactPreview } from "@/lib/sponsored-placements/impact";
 
 type ProductOption = { id: string; name: string };
@@ -50,7 +57,8 @@ const POSITION_OPTIONS = [1, 2, 3, 4] as const;
 const LIFECYCLE_FILTERS: LifecycleFilter[] = ["active", "pending", "drafts", "paused", "archived"];
 
 export default function SponsoredPlacementsPage() {
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [archivedPlacements, setArchivedPlacements] = useState<Placement[]>([]);
@@ -68,6 +76,7 @@ export default function SponsoredPlacementsPage() {
   const [state, setState] = useState("");
   const [allCategories, setAllCategories] = useState(true);
   const [categorySlug, setCategorySlug] = useState("");
+  const invalidDateTimeRange = isInvalidDateTimeRange(startsAt, endsAt);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,14 +118,15 @@ export default function SponsoredPlacementsPage() {
 
   async function prepareCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (invalidDateTimeRange) return;
     setBusy(true);
     setError(null);
     try {
       const previewRequest: CreatePreviewRequest = {
         mode: "create",
         productId,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
+        startsAt: malaysiaDateTimeLocalToIso(startsAt),
+        endsAt: malaysiaDateTimeLocalToIso(endsAt),
         position,
         allStates,
         ...(allStates ? {} : { state }),
@@ -258,6 +268,11 @@ export default function SponsoredPlacementsPage() {
   }, [archivedPlacements, placements]);
 
   const displayedPlacements = groupedPlacements[lifecycle];
+  const lifecycleItems = LIFECYCLE_FILTERS.map((filter) => ({
+    value: filter,
+    label: t(`sponsoredPlacements.lifecycle.${filter}`),
+    count: groupedPlacements[filter].length,
+  }));
 
   function actionsFor(placement: Placement) {
     if (placement.status === "draft") return [{ action: "submit" as const, label: t("sponsoredPlacements.actions.submit") }];
@@ -291,22 +306,25 @@ export default function SponsoredPlacementsPage() {
             <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <label className="text-sm font-semibold text-foreground">
                 {t("sponsoredPlacements.form.product")}
-                <select required aria-label={t("sponsoredPlacements.form.product")} value={productId} onChange={(event) => setProductId(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
+                <select required aria-label={t("sponsoredPlacements.form.product")} value={productId} onChange={(event) => setProductId(event.target.value)} className={`${adminFilterControlClassName} mt-2 w-full`}>
                   <option value="">{t("sponsoredPlacements.form.chooseProduct")}</option>
                   {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
                 </select>
               </label>
-              <label className="text-sm font-semibold text-foreground">
-                {t("sponsoredPlacements.form.startsAt")}
-                <input required type="datetime-local" aria-label={t("sponsoredPlacements.form.startsAt")} value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />
-              </label>
-              <label className="text-sm font-semibold text-foreground">
-                {t("sponsoredPlacements.form.endsAt")}
-                <input required type="datetime-local" aria-label={t("sponsoredPlacements.form.endsAt")} value={endsAt} onChange={(event) => setEndsAt(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />
-              </label>
+              <AdminDateTimeRangeField
+                startsAt={startsAt}
+                endsAt={endsAt}
+                onStartsAtChange={setStartsAt}
+                onEndsAtChange={setEndsAt}
+                startsAtLabel={t("sponsoredPlacements.form.startsAt")}
+                endsAtLabel={t("sponsoredPlacements.form.endsAt")}
+                timezoneLabel={t("sponsoredPlacements.form.timezone")}
+                invalidRangeMessage={t("sponsoredPlacements.form.invalidRange")}
+                required
+              />
               <label className="text-sm font-semibold text-foreground">
                 {t("sponsoredPlacements.form.position")}
-                <select required aria-label={t("sponsoredPlacements.form.position")} value={position} onChange={(event) => setPosition(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
+                <select required aria-label={t("sponsoredPlacements.form.position")} value={position} onChange={(event) => setPosition(Number(event.target.value))} className={`${adminFilterControlClassName} mt-2 w-full`}>
                   {POSITION_OPTIONS.map((value) => <option key={value} value={value}>{t("sponsoredPlacements.form.positionOption", { position: value })}</option>)}
                 </select>
               </label>
@@ -315,7 +333,7 @@ export default function SponsoredPlacementsPage() {
               <div className="rounded-xl border border-border p-3">
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" aria-label={t("sponsoredPlacements.form.allStates")} checked={allStates} onChange={(event) => setAllStates(event.target.checked)} /> {t("sponsoredPlacements.form.allStates")}</label>
                 {!allStates && (
-                  <select required aria-label={t("sponsoredPlacements.form.state")} value={state} onChange={(event) => setState(event.target.value)} className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
+                  <select required aria-label={t("sponsoredPlacements.form.state")} value={state} onChange={(event) => setState(event.target.value)} className={`${adminFilterControlClassName} mt-3 w-full`}>
                     <option value="">{t("sponsoredPlacements.form.chooseState")}</option>
                     {STATES_MY.filter((candidate) => candidate !== "All Malaysia").map((candidate) => <option key={candidate} value={candidate}>{candidate}</option>)}
                   </select>
@@ -323,30 +341,30 @@ export default function SponsoredPlacementsPage() {
               </div>
               <div className="rounded-xl border border-border p-3">
                 <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" aria-label={t("sponsoredPlacements.form.allCategories")} checked={allCategories} onChange={(event) => setAllCategories(event.target.checked)} /> {t("sponsoredPlacements.form.allCategories")}</label>
-                {!allCategories && <select required aria-label={t("sponsoredPlacements.form.category")} value={categorySlug} onChange={(event) => setCategorySlug(event.target.value)} className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"><option value="">{t("sponsoredPlacements.form.chooseCategory")}</option>{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{t(`sponsoredPlacements.categories.${category}`)}</option>)}</select>}
+                {!allCategories && <select required aria-label={t("sponsoredPlacements.form.category")} value={categorySlug} onChange={(event) => setCategorySlug(event.target.value)} className={`${adminFilterControlClassName} mt-3 w-full`}><option value="">{t("sponsoredPlacements.form.chooseCategory")}</option>{CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{t(`sponsoredPlacements.categories.${category}`)}</option>)}</select>}
               </div>
             </div>
-            <button disabled={busy} type="submit" className="mt-4 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{t("sponsoredPlacements.form.review")}</button>
+            <Button disabled={busy || invalidDateTimeRange} type="submit" className="mt-4 rounded-full font-bold">{t("sponsoredPlacements.form.review")}</Button>
           </form>
 
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-5 py-4">
               <h2 className="font-bold text-foreground">{t("sponsoredPlacements.list.title")}</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {LIFECYCLE_FILTERS.map((filter) => (
-                  <button key={filter} type="button" onClick={() => setLifecycle(filter)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${lifecycle === filter ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:bg-secondary"}`}>
-                    {t(`sponsoredPlacements.lifecycle.${filter}`)} ({groupedPlacements[filter].length})
-                  </button>
-                ))}
-              </div>
+              <AdminSegmentedFilter
+                value={lifecycle}
+                items={lifecycleItems}
+                onChange={(value) => setLifecycle(value as LifecycleFilter)}
+                ariaLabel="sponsoredPlacements.accessibility.lifecycleFilters"
+                className="mt-3"
+              />
             </div>
             {displayedPlacements.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">{t("sponsoredPlacements.states.emptyGroup")}</p> : <div className="divide-y divide-border">{displayedPlacements.map((placement) => (
               <article key={placement.id} className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(180px,1fr)_150px_100px_120px_minmax(180px,auto)] md:items-center">
                 <div><p className="font-semibold text-foreground">{productName(placement)}</p><p className="mt-1 text-xs text-muted-foreground">{placement.state ?? t("sponsoredPlacements.scope.allStates")} · {placement.category_slug ? t(`sponsoredPlacements.categories.${placement.category_slug}`) : t("sponsoredPlacements.scope.allCategories")}</p></div>
-                <div className="text-xs text-muted-foreground"><p>{new Date(placement.starts_at).toLocaleString()}</p><p>{new Date(placement.ends_at).toLocaleString()}</p></div>
+                <div className="text-xs text-muted-foreground"><p>{formatDateTime(placement.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</p><p>{formatDateTime(placement.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</p></div>
                 <p className="text-sm font-bold text-foreground">{t("sponsoredPlacements.list.position", { position: placement.priority })}</p>
-                <div><StatusBadge status={t(`sponsoredPlacements.status.${placement.status}`)} /></div>
-                <div className="flex flex-wrap justify-end gap-2">{actionsFor(placement).map(({ action, label }) => <button key={action} disabled={busy} type="button" onClick={() => action === "approve" ? void prepareApproval(placement) : void transition(placement, action)} className="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-primary hover:bg-secondary disabled:opacity-50">{label}</button>)}</div>
+                <div><StatusBadge status={placement.status} label={t(`sponsoredPlacements.status.${placement.status}`)} /></div>
+                <div className="flex flex-wrap justify-end gap-2">{actionsFor(placement).map(({ action, label }) => <Button key={action} disabled={busy} type="button" size="sm" variant="outline" onClick={() => action === "approve" ? void prepareApproval(placement) : void transition(placement, action)} className="rounded-full text-xs font-bold text-primary">{label}</Button>)}</div>
               </article>
             ))}</div>}
           </section>

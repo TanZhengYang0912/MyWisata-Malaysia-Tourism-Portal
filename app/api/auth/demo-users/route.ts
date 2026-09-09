@@ -43,14 +43,19 @@ export async function GET() {
     if (error) throw error;
     if (authError) throw authError;
 
-    // Only accounts with a real auth.users row can actually sign in — the
-    // per-vendor-owner seed migration gives every vendor a data-only
-    // public.users row for consistency, but most were never wired up with a
-    // password. This route must never offer one of those in the picker.
+    // Only accounts with both a real auth.users row and a real role assignment
+    // can complete /api/auth/me. A roleless row must not inherit the customer
+    // display fallback and appear to be a usable account in the picker.
+    //
+    // Most per-vendor-owner seed rows are data-only and intentionally have no
+    // password, so the Auth identity check remains necessary as well.
     const loginableIds = new Set(authData.users.map((authUser) => authUser.id));
 
     const users = ((data || []) as DemoUserRow[])
-      .filter((row) => loginableIds.has(row.id))
+      .filter((row) => (
+        loginableIds.has(row.id)
+        && pickDemoAssignment(row.user_roles || []) !== undefined
+      ))
       .map((row) => {
       const assignments = row.user_roles || [];
       const role = pickDemoRole(assignments);

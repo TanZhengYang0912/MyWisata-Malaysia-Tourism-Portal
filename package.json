@@ -19,6 +19,7 @@
     "seed:chat-volume": "CHAT_VOLUME_SEED=1 node scripts/seed-chat-volume.mjs",
     "seed:remote-scenarios": "node scripts/seed-remote-scenarios.mjs",
     "seed:vendor-customer-demo": "VENDOR_CUSTOMER_DEMO_SEED=1 node scripts/seed-all-vendor-customer-demo.mjs",
+    "seed:sponsored-demo": "SPONSORED_DEMO_SEED=1 node scripts/seed-sponsored-demo.mjs",
     "verify:remote-demo": "node scripts/verify-remote-demo.mjs",
     "verify:remote-scenarios": "node scripts/verify-remote-scenarios.mjs",
     "verify:vendor-customer-demo": "node scripts/verify-all-vendor-customer-demo.mjs",

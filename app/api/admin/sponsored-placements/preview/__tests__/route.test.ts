@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 const PLACEMENT_ID = "22222222-2222-4222-8222-222222222222";
+const LEGACY_PRODUCT_ID = "a54fe0fb-042c-e2e4-9dde-c18a8444cb8e";
+const LEGACY_PLACEMENT_ID = "c6687de8-6f0d-d239-5981-3f7562cc7b36";
 
 const mocks = vi.hoisted(() => ({
   requireStaffPermission: vi.fn(),
@@ -98,6 +100,45 @@ describe("sponsored placement impact preview route", () => {
       p_ends_at: null,
       p_priority: null,
     });
+  });
+
+  it("accepts legacy PostgreSQL UUID identifiers in proposals and affected rows", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        ...preview,
+        shifts: [{
+          ...preview.shifts[0],
+          placementId: LEGACY_PLACEMENT_ID,
+        }],
+      },
+      error: null,
+    });
+
+    const response = await POST(request({
+      mode: "create",
+      productId: LEGACY_PRODUCT_ID,
+      startsAt: "2026-10-01T00:00:00.000Z",
+      endsAt: "2026-10-31T00:00:00.000Z",
+      position: 2,
+      allStates: true,
+      allCategories: true,
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "preview_sponsored_discovery_placement",
+      expect.objectContaining({ p_product_id: LEGACY_PRODUCT_ID }),
+    );
+  });
+
+  it("accepts a legacy PostgreSQL UUID placement for approval preview", async () => {
+    const response = await POST(request({ mode: "approve", placementId: LEGACY_PLACEMENT_ID }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "preview_sponsored_discovery_placement",
+      expect.objectContaining({ p_placement_id: LEGACY_PLACEMENT_ID }),
+    );
   });
 
   it.each([0, 5])("rejects invalid Position %s before calling the database", async (position) => {

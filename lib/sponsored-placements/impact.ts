@@ -1,16 +1,18 @@
 import { z } from "zod";
 
+import { databaseUuidSchema } from "@/lib/validation/schemas";
+
 const positionSchema = z.number().int().min(1).max(4);
 
 const shiftedPlacementSchema = z.object({
-  placementId: z.string().uuid(),
+  placementId: databaseUuidSchema,
   productName: z.string().min(1).max(500),
   fromPosition: positionSchema,
   toPosition: positionSchema,
 }).strict();
 
 const statusChangeSchema = z.object({
-  placementId: z.string().uuid(),
+  placementId: databaseUuidSchema,
   productName: z.string().min(1).max(500),
   fromPosition: positionSchema,
   toStatus: z.enum(["paused", "archived"]),

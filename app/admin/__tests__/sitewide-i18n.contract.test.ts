@@ -108,6 +108,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",
+  "components/admin/date-time-range-field.tsx",
   "components/admin/filter-bar.tsx",
   "components/admin/kyc-review-detail.tsx",
   "components/admin/kyc-review-queue-row.tsx",

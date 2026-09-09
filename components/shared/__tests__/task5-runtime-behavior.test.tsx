@@ -145,6 +145,16 @@ describe("Task 5 shared runtime behavior", () => {
     expect(protoStatus).toContain("bg-muted");
   });
 
+  it("keeps semantic sponsored status styling when the caller supplies a localized label", () => {
+    const pending = renderToStaticMarkup(<StatusBadge status="pending_approval" label="Awaiting sponsor approval" />);
+    const paused = renderToStaticMarkup(<StatusBadge status="paused" label="Sponsor paused" />);
+
+    expect(pending).toContain("Awaiting sponsor approval");
+    expect(pending).toContain("bg-accent/25");
+    expect(paused).toContain("Sponsor paused");
+    expect(paused).toContain("bg-orange-100");
+  });
+
   it("preserves valid API error details and localizes only the network/fallback error", async () => {
     mocks.fetch.mockResolvedValueOnce(response({ data: null, error: { message: "Vendor API detail" } }, false));
     await render(<NotificationCenter />);
