@@ -10,4 +10,12 @@ describe("email sign-in feedback", () => {
     expect(page).toContain('tAuth("signIn.error")');
     expect(auth.signIn?.error).toContain("If you originally used Google, select Continue with Google or reset your password.");
   });
+
+  it("clears any stale local session before reporting a failed password sign-in", () => {
+    const page = readFileSync(resolve(process.cwd(), "app/login/page.tsx"), "utf8");
+
+    expect(page).toMatch(
+      /if \(signInError\) \{[\s\S]*?supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?setError\(tAuth\("signIn\.error"\)\)/,
+    );
+  });
 });

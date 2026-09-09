@@ -24,6 +24,9 @@ export async function GET(request: Request) {
   } else {
     const context = await resolveVendorForUser(user.id);
     if (!context) return apiFail('FORBIDDEN', 'No approved vendor is linked to this account', 403);
+    if (context.role !== 'vendor_owner') {
+      return apiFail('FORBIDDEN', 'Vendor owner permission required', 403);
+    }
     if (requestedVendorId && requestedVendorId !== context.vendorId) {
       return apiFail('FORBIDDEN', "Cannot view another vendor's share analytics", 403);
     }

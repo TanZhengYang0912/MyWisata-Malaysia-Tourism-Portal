@@ -9,20 +9,23 @@ const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
 
 describe("customer vendor search contract", () => {
-  it("provides the approved vendor directory with promotion data", () => {
+  it("provides approved vendors with a safe sponsored placement projection", () => {
     expect(pageSource).toContain("getVendors(db)");
     expect(pageSource).toContain("getRecommendedFeed");
     expect(pageSource).toContain("rankVendorsByPersonalizedFeed");
+    expect(pageSource).toContain('rpc("list_active_sponsored_discovery_placements")');
     expect(pageSource).toContain("initialResults={results}");
     expect(pageSource).toContain("initialVendors=");
     expect(pageSource).toContain("recommendedVendors=");
-    expect(clientSource).toContain('t("ui.search.recommendFeatured")');
+    expect(pageSource).toContain("sponsoredPlacements=");
+    expect(pageSource).not.toContain("review_note");
+    expect(pageSource).not.toContain("approved_by");
+    expect(clientSource).toContain("<SponsoredPartnerRail");
     expect(filterSource).toContain("CATEGORIES.map");
   });
 
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
-    expect(clientSource).toContain('t("ui.search.recommendFeatured")');
     expect(clientSource).toContain("recommendedVendors");
     expect(clientSource).toContain('t("ui.search.verifiedPartnerDescription")');
     expect(clientSource).not.toContain("<ActivityCard");

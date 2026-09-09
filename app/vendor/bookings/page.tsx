@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CalendarDays, Check, ChevronRight, CirclePlus, Clock3, Download, Eye, MapPin, Save, Search, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -9,7 +9,6 @@ import { StatusBadge } from '@/components/ui/badge';
 import SlotForm from '@/components/vendor/slot-form';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
-import { createClient } from '@/lib/supabase/client';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { selectBookingOutlet } from '@/lib/vendor/booking-scope';
@@ -53,13 +52,29 @@ function groupedBookings(bookings: Booking[]) {
   return [...groups.values()];
 }
 
+async function loadScopedItems<T>(endpoint: string, errorMessage: string): Promise<T[]> {
+  const items: T[] = [];
+  for (let page = 1; ; page += 1) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const response = await fetch(`${endpoint}${separator}page=${page}&pageSize=24`, { cache: 'no-store' });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error?.message || errorMessage);
+    const pageItems = (payload.data?.items || []) as T[];
+    items.push(...pageItems);
+    if (page >= Number(payload.data?.pagination?.totalPages || 1)) return items;
+  }
+}
+
+function loadScopedProducts(vendorId: string, errorMessage: string) {
+  return loadScopedItems<Product>(`/api/vendors/${vendorId}/products?view=booking_metadata&sort=name`, errorMessage);
+}
+
 export default function VendorBookingsPage() {
   const { t, i18n } = useTranslation('vendor');
   const locale = i18n.resolvedLanguage || i18n.language;
   const { user } = useAuth();
   const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
-  const supabase = useMemo(() => createClient(), []);
   const [tab, setTab] = useState<Tab>('reservations');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -91,21 +106,14 @@ export default function VendorBookingsPage() {
     if (!vendorId) return;
     setMetadataLoading(true);
     Promise.all([
-      fetch(`/api/vendors/${vendorId}/outlets?page=1&pageSize=24&sort=name`, { cache: 'no-store' }).then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error?.message || t('ui.bookings.loadOutletsFailed'));
-        return (payload.data?.items || []) as Outlet[];
-      }),
-      supabase.from('products').select('id,name,outlet_id,status,requires_booking,cover_url').eq('vendor_id', vendorId).order('name').then(({ data, error: productError }) => {
-        if (productError) throw productError;
-        return (data || []) as Product[];
-      }),
+      loadScopedItems<Outlet>(`/api/vendors/${vendorId}/outlets?view=booking_metadata&sort=name`, t('ui.bookings.loadOutletsFailed')),
+      loadScopedProducts(vendorId, t('ui.bookings.loadSetupFailed')),
     ]).then(([outletItems, productItems]) => {
       setOutlets(outletItems.map((outlet) => ({ ...outlet, name: `${outletShortName(outlet.name)} · ${outletIdLabel(outlet.id)}` })));
       setProducts(productItems);
       setScheduleOutletId((current) => current || outletItems[0]?.id || '');
     }).catch((requestError) => setError(requestError instanceof Error ? requestError.message : t('ui.bookings.loadSetupFailed'))).finally(() => setMetadataLoading(false));
-  }, [supabase, t, vendorId]);
+  }, [t, vendorId]);
 
   useEffect(() => {
     setScheduleDraft(scheduleFor(selectedScheduleOutlet));
@@ -230,7 +238,7 @@ export default function VendorBookingsPage() {
 
       {tab === 'reservations' ? <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-5 py-3"><label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600"><input type="checkbox" checked={bookings.length > 0 && bookings.every((booking) => selectedIds.includes(booking.id))} onChange={(event) => setSelectedIds(event.target.checked ? bookings.map((booking) => booking.id) : [])} /> {t('ui.bookings.selectCurrentPage')}</label><span className="text-xs text-gray-400">{t('ui.bookings.reservationCount', { count: pagination.total.toLocaleString() })}</span></div>{loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}</div> : <div className="space-y-5 p-4 md:p-5">{groupedBookings(bookings).map((group) => <div key={`${group.name}-${group.city}`} className="overflow-hidden rounded-2xl border border-gray-100"><div className="flex flex-col gap-1 border-b border-gray-100 bg-secondary/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2"><MapPin size={16} className="text-primary" /><div><p className="font-semibold text-gray-900">{group.name}</p><p className="text-xs text-gray-500">{group.city || t('ui.bookings.malaysia')} · {t('ui.bookings.onThisPage', { count: group.bookings.length })}</p></div></div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">{t('ui.bookings.outletAgenda')}</span></div><div className="divide-y divide-gray-100">{group.bookings.map((booking) => <article key={booking.id} className="grid gap-3 px-4 py-4 transition hover:bg-secondary/20 md:grid-cols-[32px_minmax(180px,1.2fr)_minmax(190px,1.5fr)_150px_110px_78px] md:items-center"><div><input type="checkbox" checked={selectedIds.includes(booking.id)} onChange={() => toggleSelected(booking.id)} aria-label={t('ui.bookings.selectBooking', { id: booking.display_id || booking.id.slice(0, 8) })} /></div><div className="min-w-0"><button type="button" onClick={() => setSelectedBooking(booking)} className="block max-w-full truncate text-left font-semibold text-gray-900 hover:text-primary">{booking.customer?.full_name || t('ui.bookings.guest')}</button><p className="mt-1 truncate text-xs text-gray-500">{booking.customer?.email || t('ui.bookings.noEmail')}</p></div><div className="min-w-0"><p className="truncate text-sm font-medium text-gray-800">{booking.orderItem?.product_name || booking.slot?.products?.name || t('ui.bookings.experience')}</p><p className="mt-1 text-xs text-gray-500">{t('ui.bookings.quantityDate', { quantity: booking.orderItem?.quantity || 1, date: dateLabel(booking.slot?.starts_at, locale, t('ui.bookings.noTime')) })}</p></div><div className="text-xs text-gray-600"><p className="font-medium text-gray-800">{t('ui.bookings.bookingId')}</p><p className="mt-1 font-mono text-gray-500">{booking.display_id || `#${booking.id.slice(0, 8)}`}</p></div><div><StatusBadge status={booking.status} /></div><div className="flex items-center gap-1 md:justify-end"><button type="button" title={t('ui.bookings.viewReservation')} onClick={() => setSelectedBooking(booking)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-primary"><Eye size={16} /></button>{booking.status === 'confirmed' && <button type="button" title={t('ui.bookings.checkIn')} onClick={() => checkIn(booking.id)} className="rounded-lg p-2 text-primary hover:bg-secondary"><Check size={16} /></button>}</div></article>)}</div></div>)}{!bookings.length && <div className="px-6 py-16 text-center text-sm text-gray-400">{t('ui.bookings.noMatches')}</div>}</div>}{!loading && <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadData(page); }} />}</section> : <OperatingHoursPanel metadataLoading={metadataLoading} outlets={outlets} products={selectedOutletProducts} selectedOutlet={selectedScheduleOutlet} scheduleDraft={scheduleDraft} setScheduleDraft={setScheduleDraft} exceptions={exceptions} setExceptions={setExceptions} saveSchedule={saveSchedule} savingSchedule={savingSchedule} saveMessage={saveMessage} setScheduleOutletId={(id) => { setScheduleOutletId(id); setFilters((current) => ({ ...current, outletId: id, productId: '' })); }} slots={slots} loading={loading} selectedIds={selectedIds} setSelectedIds={setSelectedIds} toggleSelected={toggleSelected} cancelSlot={cancelSlot} pagination={pagination} loadData={loadData} />}
 
-      {showSlotForm && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><SlotForm vendorId={vendorId} onSuccess={() => { setShowSlotForm(false); setTab('operating-hours'); loadData(1); }} onClose={() => setShowSlotForm(false)} /></div></div>}
+      {showSlotForm && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><SlotForm vendorId={vendorId} outlets={outlets} products={products} onSuccess={() => { setShowSlotForm(false); setTab('operating-hours'); loadData(1); }} onClose={() => setShowSlotForm(false)} /></div></div>}
       {selectedBooking && <div className="fixed inset-0 z-40 bg-gray-950/20" onClick={() => setSelectedBooking(null)}><aside onClick={(event) => event.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('ui.bookings.reservationDetails')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{selectedBooking.customer?.full_name || t('ui.bookings.guest')}</h2><p className="mt-1 font-mono text-xs text-gray-500">{selectedBooking.display_id || `#${selectedBooking.id}`}</p></div><button type="button" onClick={() => setSelectedBooking(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X size={18} /></button></div><div className="mt-6 space-y-3 text-sm"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.experience')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.product_name || selectedBooking.slot?.products?.name}</p><p className="mt-1 text-gray-500">{dateLabel(selectedBooking.slot?.starts_at, locale, t('ui.bookings.noDate'))} – {selectedBooking.slot?.ends_at ? new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(selectedBooking.slot.ends_at)) : ''}</p></div><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.guests')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.quantity || 1}</p></div><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.status')}</p><div className="mt-1"><StatusBadge status={selectedBooking.status} /></div></div></div><p className="text-gray-600">{selectedBooking.customer?.email || t('ui.bookings.noEmailProvided')}</p><p className="text-gray-600">{t('ui.bookings.outletValue', { outlet: selectBookingOutlet(selectedBooking.orderItem?.outlets, selectedBooking.slot?.outlets)?.name || t('ui.bookings.malaysiaOutlet') })}</p></div><div className="mt-7 flex gap-2">{selectedBooking.status === 'confirmed' && <button type="button" onClick={() => checkIn(selectedBooking.id)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"><Check size={15} /> {t('ui.bookings.checkIn')}</button>}<button type="button" onClick={() => setSelectedBooking(null)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600">{t('ui.bookings.close')}</button></div></aside></div>}
     </div>
   );

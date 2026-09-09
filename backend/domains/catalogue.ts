@@ -14,6 +14,8 @@ import {
 } from "@/lib/customer/discovery-categories";
 import { productImageUrl } from "@/lib/storage/product-image";
 
+export { STATES_MY } from "@/lib/customer/malaysia-states";
+
 export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
@@ -633,8 +635,3 @@ export async function getVoucherByCode(code: string): Promise<Voucher | undefine
 // Customer selectors use canonical slugs. Hidden Gem is intentionally included
 // here as a collection entry; searchActivities translates it to hiddenGemOnly.
 export const CATEGORIES = DISCOVERY_CATEGORIES.map(({ slug, label, labelKey, icon }) => ({ id: slug, label, labelKey, icon }));
-
-export const STATES_MY = [
-  "All Malaysia", "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis",
-  "Penang", "Sabah", "Sarawak", "Selangor", "Terengganu", "Kuala Lumpur", "Putrajaya", "Labuan",
-];

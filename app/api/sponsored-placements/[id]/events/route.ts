@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
-import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const eventSchema = z.object({
   eventType: z.enum(["impression", "click"]),
-  productId: z.string().uuid(),
+  productId: databaseUuidSchema,
 }).strict();
 
 export async function POST(request: Request, context: RouteContext) {
@@ -15,7 +15,7 @@ export async function POST(request: Request, context: RouteContext) {
   if (!parsed.ok) return parsed.response;
 
   const { id } = await context.params;
-  if (!z.string().uuid().safeParse(id).success) return apiFail("VALIDATION_FAILED", "Invalid placement ID", 422);
+  if (!databaseUuidSchema.safeParse(id).success) return apiFail("VALIDATION_FAILED", "Invalid placement ID", 422);
 
   const db = await createClient();
   const { data, error } = await db.rpc("record_sponsored_discovery_event", {

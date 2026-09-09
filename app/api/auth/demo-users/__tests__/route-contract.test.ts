@@ -12,4 +12,11 @@ describe("demo users route filters to real logins", () => {
     expect(route).toContain("loginableIds.has(row.id)");
     expect(route).toContain("new Set(authData.users.map((authUser) => authUser.id))");
   });
+
+  it("does not present a roleless auth account as a customer", () => {
+    const route = readFileSync(routePath, "utf8");
+
+    expect(route).toContain("pickDemoAssignment(row.user_roles || []) !== undefined");
+    expect(route).not.toContain(".filter((row) => loginableIds.has(row.id))");
+  });
 });

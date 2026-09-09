@@ -183,7 +183,7 @@ export type SponsoredPlacement = {
   startsAt: string;
   endsAt: string;
   priority: number;
-  status: "draft" | "pending_approval" | "approved" | "rejected" | "paused";
+  status: "draft" | "pending_approval" | "approved" | "rejected" | "paused" | "archived";
 };
 
 export type DiscoveryResult = ComputedActivity & {

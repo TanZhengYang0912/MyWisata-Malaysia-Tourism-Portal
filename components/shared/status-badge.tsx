@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 
 const STYLES: Record<string, string> = {
   DRAFT:           "bg-muted text-muted-foreground",
+  draft:           "bg-muted text-muted-foreground",
   PENDING_PAYMENT: "bg-accent/25 text-amber-800 dark:text-amber-400",
   PAID:            "bg-primary/15 text-primary",
   COMPLETED:       "bg-primary/15 text-primary",
   CANCELLED:       "bg-destructive/12 text-destructive",
   pending:         "bg-accent/25 text-amber-800 dark:text-amber-400",
   pending_review:  "bg-accent/25 text-amber-800 dark:text-amber-400",
+  pending_approval:"bg-accent/25 text-amber-800 dark:text-amber-400",
   change_requested:"bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   changes_requested:"bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   approved:        "bg-primary/15 text-primary",
@@ -20,6 +22,8 @@ const STYLES: Record<string, string> = {
   vendor_pending_review: "bg-accent/25 text-amber-800 dark:text-amber-400",
   converted:       "bg-teal/15 text-teal",
   rejected:        "bg-destructive/12 text-destructive",
+  paused:          "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  archived:        "bg-muted text-muted-foreground",
   processing:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   completed:       "bg-primary/15 text-primary",
   failed:          "bg-destructive/12 text-destructive",
@@ -29,12 +33,14 @@ const STYLES: Record<string, string> = {
 
 const LABELS: Record<string, string> = {
   DRAFT:           "Draft",
+  draft:           "Draft",
   PENDING_PAYMENT: "Pending Payment",
   PAID:            "Paid",
   COMPLETED:       "Completed",
   CANCELLED:       "Cancelled",
   pending:         "Pending",
   pending_review:  "Pending review",
+  pending_approval:"Pending approval",
   change_requested:"Changes requested",
   changes_requested:"Changes requested",
   approved:        "Approved",
@@ -44,6 +50,8 @@ const LABELS: Record<string, string> = {
   vendor_pending_review: "Pending vendor review",
   converted:       "Vendor joined",
   rejected:        "Rejected",
+  paused:          "Paused",
+  archived:        "Archived",
   processing:      "Processing",
   completed:       "Completed",
   failed:          "Failed",
@@ -80,13 +88,13 @@ function ownString(map: Readonly<Record<string, string>>, key: string): string |
   return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
 }
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status, label, className }: { status: string; label?: string; className?: string }) {
   const { t } = useTranslation("common");
   const labelKey = ownString(STATUS_LABEL_KEYS, status);
   const fallbackLabel = ownString(LABELS, status) ?? status;
   return (
     <span className={cn("text-[0.625rem] font-bold px-2.5 py-1 rounded-full whitespace-nowrap", ownString(STYLES, status) ?? "bg-muted text-muted-foreground", className)}>
-      {labelKey ? t(labelKey) : fallbackLabel}
+      {label ?? (labelKey ? t(labelKey) : fallbackLabel)}
     </span>
   );
 }

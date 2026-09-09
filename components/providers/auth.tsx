@@ -188,18 +188,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = selectedUser;
     if (!user || user.id !== id) throw new Error(tAuth('errors.demoLoad'));
 
-    const response = await fetch('/api/auth/demo-signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.email }),
-    });
-    await response.json().catch(() => null);
-    if (!response.ok) throw new Error(tAuth('signIn.error'));
+    try {
+      const response = await fetch('/api/auth/demo-signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email }),
+      });
+      await response.json().catch(() => null);
+      if (!response.ok) throw new Error(tAuth('signIn.error'));
 
-    const loadedUser = await loadSupabaseUser(id);
-    setLoading(false);
-    return loadedUser;
-  }, [loadSupabaseUser, tAuth]);
+      const loadedUser = await loadSupabaseUser(id);
+      setLoading(false);
+      return loadedUser;
+    } catch {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      throw new Error(tAuth('signIn.error'));
+    }
+  }, [loadSupabaseUser, supabase, tAuth]);
 
   const refreshUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();

@@ -33,36 +33,66 @@
     "eyebrow": "Kempen penemuan",
     "title": "Penempatan ditaja",
     "description": "Cipta, semak dan jeda penempatan penemuan ditaja yang dilabel dengan jelas.",
+    "accessibility": { "lifecycleFilters": "Penapis kitar hayat kempen" },
     "form": {
       "title": "Cipta draf kempen",
       "product": "Produk",
       "chooseProduct": "Pilih produk aktif yang diluluskan",
       "startsAt": "Bermula pada",
       "endsAt": "Berakhir pada",
+      "timezone": "Waktu Malaysia (UTC+08:00)",
+      "invalidRange": "Waktu tamat mesti selepas waktu mula.",
       "priority": "Keutamaan",
+      "position": "Kedudukan",
+      "positionOption": "Kedudukan {{position}}",
       "allStates": "Semua negeri",
       "state": "Negeri",
+      "chooseState": "Pilih negeri",
       "allCategories": "Semua kategori",
       "category": "Kategori",
       "chooseCategory": "Pilih kategori",
-      "create": "Cipta draf"
+      "create": "Cipta draf",
+      "review": "Semak kesan kempen"
     },
     "errors": {
       "load": "Tidak dapat memuatkan penempatan ditaja.",
       "create": "Tidak dapat mencipta draf kempen.",
       "transition": "Tidak dapat mengemas kini kempen.",
+      "preview": "Tidak dapat mengira kesan kempen.",
+      "stalePreview": "Susunan kempen telah berubah. Semak kesan terkini sebelum mengesahkan semula.",
       "forbidden": "Anda tiada kebenaran untuk mengurus penempatan ditaja."
     },
     "states": {
       "loading": "Memuatkan penempatan ditaja…",
-      "empty": "Belum ada kempen penempatan ditaja."
+      "empty": "Belum ada kempen penempatan ditaja.",
+      "emptyGroup": "Tiada kempen dalam paparan ini."
     },
     "prompts": { "rejectReason": "Masukkan sebab penolakan (sekurang-kurangnya 5 aksara)." },
     "actions": { "submit": "Hantar", "approve": "Luluskan", "reject": "Tolak", "pause": "Jeda" },
     "categories": { "food": "Makanan", "activity": "Aktiviti", "accommodation": "Penginapan", "retail": "Runcit" },
-    "list": { "title": "Kempen" },
+    "list": { "title": "Kempen", "position": "Kedudukan {{position}}" },
+    "lifecycle": {
+      "active": "Aktif / Dijadualkan",
+      "pending": "Menunggu",
+      "drafts": "Draf",
+      "paused": "Baru dijeda",
+      "archived": "Diarkibkan"
+    },
+    "preview": {
+      "createTitle": "Semak kesan draf",
+      "approveTitle": "Semak kesan kelulusan",
+      "position": "Kedudukan diminta",
+      "shifts": "Kempen yang akan diturunkan",
+      "paused": "Kempen yang akan dijeda",
+      "archived": "Sejarah jeda yang akan diarkibkan",
+      "noImpact": "Tiada kempen semasa akan dialihkan.",
+      "to": "ke",
+      "cancel": "Batal",
+      "confirmCreate": "Sahkan draf",
+      "confirmApprove": "Sahkan kelulusan"
+    },
     "scope": { "allStates": "Semua negeri", "allCategories": "Semua kategori" },
-    "status": { "draft": "Draf", "pending_approval": "Menunggu kelulusan", "approved": "Diluluskan", "rejected": "Ditolak", "paused": "Dijeda" }
+    "status": { "draft": "Draf", "pending_approval": "Menunggu kelulusan", "approved": "Diluluskan", "rejected": "Ditolak", "paused": "Dijeda", "archived": "Diarkibkan" }
   },
   "accessControl": {
     "eyebrow": "Tadbir urus keselamatan",

@@ -33,17 +33,15 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
   const router = useRouter();
   const id = useId();
   const resolvedLocale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const [confirmedLocale, setConfirmedLocale] = useState<AppLocale>(resolvedLocale);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
   async function handleLocaleChange(value: string) {
-    if (saving || !isAppLocale(value) || value === confirmedLocale) return;
+    if (saving || !isAppLocale(value) || value === resolvedLocale) return;
 
     setSaving(true);
     try {
       await saveLocalePreference(value);
-      setConfirmedLocale(value);
       const message = t("language.saved");
       setStatus(message);
       showFeedback("success", message);
@@ -65,7 +63,7 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
         aria-label={t("language.label")}
         aria-busy={saving}
         disabled={saving}
-        value={confirmedLocale}
+        value={resolvedLocale}
         onChange={(event) => { void handleLocaleChange(event.currentTarget.value); }}
         className={cn(
           "rounded-xl border border-border bg-background text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-wait disabled:opacity-60",

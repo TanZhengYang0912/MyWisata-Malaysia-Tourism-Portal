@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 
 const PLACEMENT_ID = "22222222-2222-4222-8222-222222222222";
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
+const LEGACY_PLACEMENT_ID = "618dcdb6-a8c2-14aa-f642-78758be2fa67";
+const LEGACY_PRODUCT_ID = "a54fe0fb-042c-e2e4-9dde-c18a8444cb8e";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
@@ -42,6 +44,28 @@ describe("public sponsored placement event route", () => {
     });
   });
 
+  it("accepts PostgreSQL UUID identifiers that predate RFC version-bit validation", async () => {
+    const response = await POST(request({ eventType: "impression", productId: LEGACY_PRODUCT_ID }), {
+      params: Promise.resolve({ id: LEGACY_PLACEMENT_ID }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith("record_sponsored_discovery_event", {
+      p_placement_id: LEGACY_PLACEMENT_ID,
+      p_product_id: LEGACY_PRODUCT_ID,
+      p_event_type: "impression",
+    });
+  });
+
+  it("still rejects identifiers outside PostgreSQL UUID syntax", async () => {
+    const response = await POST(request({ eventType: "impression", productId: "not-a-uuid" }), {
+      params: Promise.resolve({ id: "also-not-a-uuid" }),
+    });
+
+    expect(response.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("rejects arbitrary metadata without touching the database", async () => {
     const response = await POST(request({
       eventType: "click",
@@ -73,9 +97,8 @@ describe("public sponsored placement event route", () => {
     const explore = readFileSync(resolve(root, "app/customer/explore/explore-client.tsx"), "utf8");
     const route = readFileSync(resolve(root, "app/api/sponsored-placements/[id]/events/route.ts"), "utf8");
     expect(explore).toContain("rankDiscoveryResults");
-    expect(explore).toContain('.eq("status", "approved")');
-    expect(explore).toContain('.lte("starts_at", requestedAt)');
-    expect(explore).toContain('.gt("ends_at", requestedAt)');
+    expect(explore).toContain('.rpc("list_active_sponsored_discovery_placements")');
+    expect(explore).not.toContain('.from("sponsored_discovery_placements")');
     expect(explore).toContain("impressedPlacementIds.current.has(placementId)");
     expect(explore).toContain('recordSponsoredEvent(activity, "impression")');
     expect(explore).toContain('recordSponsoredEvent(a, "click")');

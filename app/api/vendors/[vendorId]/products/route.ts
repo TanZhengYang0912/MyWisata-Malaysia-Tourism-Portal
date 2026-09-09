@@ -7,7 +7,7 @@ import { productCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
-import { filterProductsByOutlet, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { filterProductsByOutlet, resolveProductOutlet, type ProductOutletCandidate } from '@/lib/vendor/product-scope';
 import { getOutletProductIds } from '@/backend/domains/catalogue';
 
 interface Props { params: Promise<{ vendorId: string }> }
@@ -20,6 +20,7 @@ export async function GET(request: Request, { params }: Props) {
   const url = new URL(request.url);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(24, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
+  const metadataOnly = url.searchParams.get('view') === 'booking_metadata';
   const outletId = url.searchParams.get('outlet_id');
   const categoryId = url.searchParams.get('category_id');
   const status = url.searchParams.get('status');
@@ -27,9 +28,12 @@ export async function GET(request: Request, { params }: Props) {
   const q = url.searchParams.get('q')?.trim() || '';
   const sort = url.searchParams.get('sort') || 'newest';
 
+  const selection = metadataOnly
+    ? 'id,name,requires_booking,status,outlet_id,outlets(id,name),outlet_offers(outlet_id,status,outlets(id,name))'
+    : 'id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state)),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved,low_stock_threshold))';
   let query = supabase
     .from('products')
-    .select('id,display_id,name,slug,description,product_type,requires_booking,base_price,cover_url,status,review_status,review_note,category_id,outlet_id,created_at,tags,default_capacity,digital_asset_url,digital_asset_name,digital_asset_type,digital_asset_size,media_assets(id,url,alt_text,sort_order),outlets(id,display_id,name,city,state),outlet_offers(outlet_id,status,price,outlets(id,display_id,name,city,state)),product_variants(id,name,price_offset,is_default,is_active,inventory(quantity,reserved,low_stock_threshold))', { count: 'exact' })
+    .select(selection, { count: 'exact' })
     .eq('vendor_id', vendorId)
     .range((page - 1) * pageSize, page * pageSize - 1);
 
@@ -68,16 +72,32 @@ export async function GET(request: Request, { params }: Props) {
 
   const { data, error, count } = await query;
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  const productRows = (data ?? []) as unknown as ProductOutletCandidate[];
   const scopedProducts = outletId
-    ? filterProductsByOutlet(data ?? [], outletId)
-    : data ?? [];
+    ? filterProductsByOutlet(productRows, outletId)
+    : productRows;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = scopedProducts.flatMap((product: any) => {
-    const resolvedOutlet = resolveProductOutlet(product, outletId ? [outletId] : access.access.outletIds);
+    const allowedOutletIds = new Set(outletId ? [outletId] : access.access.outletIds);
+    const scopedOffers = (product.outlet_offers ?? []).filter(
+      (offer: { outlet_id: string }) => allowedOutletIds.has(offer.outlet_id),
+    );
+    const scopedProduct = { ...product, outlet_offers: scopedOffers };
+    const resolvedOutlet = resolveProductOutlet(scopedProduct, [...allowedOutletIds]);
     if (!resolvedOutlet) return [];
+    if (metadataOnly) {
+      return [{
+        id: product.id,
+        name: product.name,
+        outlet_id: resolvedOutlet.id,
+        status: product.status,
+        requires_booking: product.requires_booking,
+      }];
+    }
     const outlet = outletId ? resolvedOutlet : product.outlets || resolvedOutlet;
     return [{
       ...product,
+      outlet_offers: scopedOffers,
       outlet_id: product.outlet_id || resolvedOutlet.id,
       outlet: { ...outlet, full_name: outlet.name, name: outletShortName(outlet.name) },
       variants: product.product_variants ?? [],

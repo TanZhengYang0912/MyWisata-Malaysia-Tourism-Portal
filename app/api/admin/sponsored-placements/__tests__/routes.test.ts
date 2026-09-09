@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 const PLACEMENT_ID = "22222222-2222-4222-8222-222222222222";
+const LEGACY_PRODUCT_ID = "a54fe0fb-042c-e2e4-9dde-c18a8444cb8e";
+const LEGACY_PLACEMENT_ID = "c6687de8-6f0d-d239-5981-3f7562cc7b36";
 
 const mocks = vi.hoisted(() => ({
   requireStaffPermission: vi.fn(),
@@ -47,7 +49,13 @@ describe("admin sponsored placement routes", () => {
   });
 
   it("guards the list and returns only explicit safe placement and eligible product fields", async () => {
-    const placementOrder = vi.fn().mockResolvedValue({ data: [{ id: PLACEMENT_ID }], error: null });
+    const placementOrder = vi.fn().mockResolvedValue({
+      data: [
+        { id: PLACEMENT_ID, status: "approved" },
+        { id: "44444444-4444-4444-8444-444444444444", status: "archived" },
+      ],
+      error: null,
+    });
     const placementSelect = vi.fn().mockReturnValue({ order: placementOrder });
     const productOrder = vi.fn().mockResolvedValue({ data: [{ id: PRODUCT_ID, name: "Rainforest Walk" }], error: null });
     const productQuery = { eq: vi.fn(), order: productOrder };
@@ -65,6 +73,10 @@ describe("admin sponsored placement routes", () => {
     expect(productQuery.eq).toHaveBeenCalledWith("status", "active");
     expect(productQuery.eq).toHaveBeenCalledWith("review_status", "approved");
     expect(payload.data.products).toEqual([{ id: PRODUCT_ID, name: "Rainforest Walk" }]);
+    expect(payload.data.placements).toEqual([{ id: PLACEMENT_ID, status: "approved" }]);
+    expect(payload.data.archivedPlacements).toEqual([
+      { id: "44444444-4444-4444-8444-444444444444", status: "archived" },
+    ]);
   });
 
   it("creates a scoped draft through the governed RPC", async () => {
@@ -77,7 +89,8 @@ describe("admin sponsored placement routes", () => {
       productId: PRODUCT_ID,
       startsAt: "2026-10-01T00:00:00.000Z",
       endsAt: "2026-10-31T00:00:00.000Z",
-      priority: 25,
+      position: 2,
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
       allStates: false,
       state: "Sabah",
       allCategories: false,
@@ -91,8 +104,32 @@ describe("admin sponsored placement routes", () => {
       p_category_slug: "activity",
       p_starts_at: "2026-10-01T00:00:00.000Z",
       p_ends_at: "2026-10-31T00:00:00.000Z",
-      p_priority: 25,
+      p_priority: 2,
+      p_preview_version: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
     });
+  });
+
+  it("creates a draft for an existing PostgreSQL UUID product without RFC version bits", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { id: PLACEMENT_ID, product_id: LEGACY_PRODUCT_ID, status: "draft" },
+      error: null,
+    });
+
+    const response = await collectionRoute.POST(request("POST", {
+      productId: LEGACY_PRODUCT_ID,
+      startsAt: "2026-10-01T00:00:00.000Z",
+      endsAt: "2026-10-31T00:00:00.000Z",
+      position: 2,
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
+      allStates: true,
+      allCategories: true,
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "create_sponsored_discovery_placement",
+      expect.objectContaining({ p_product_id: LEGACY_PRODUCT_ID }),
+    );
   });
 
   it("rejects invalid dates and unknown fields without calling the database", async () => {
@@ -100,7 +137,8 @@ describe("admin sponsored placement routes", () => {
       productId: PRODUCT_ID,
       startsAt: "2026-10-31T00:00:00.000Z",
       endsAt: "2026-10-01T00:00:00.000Z",
-      priority: 25,
+      position: 2,
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
       allStates: true,
       allCategories: true,
       metadata: { tracking: "not allowed" },
@@ -117,7 +155,8 @@ describe("admin sponsored placement routes", () => {
       productId: PRODUCT_ID,
       startsAt: "2026-10-01T00:00:00.000Z",
       endsAt: "2026-10-31T00:00:00.000Z",
-      priority: 25,
+      position: 2,
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
       allStates: true,
       allCategories: true,
     }));
@@ -128,7 +167,10 @@ describe("admin sponsored placement routes", () => {
   it.each(["submit", "approve", "pause"] as const)("performs the %s transition through the workflow RPC", async (action) => {
     mocks.rpc.mockResolvedValue({ data: { id: PLACEMENT_ID, status: action === "submit" ? "pending_approval" : action === "approve" ? "approved" : "paused" }, error: null });
 
-    const response = await itemRoute.PATCH(request("PATCH", { action }), {
+    const response = await itemRoute.PATCH(request("PATCH", {
+      action,
+      ...(action === "approve" ? { previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707" } : {}),
+    }), {
       params: Promise.resolve({ id: PLACEMENT_ID }),
     });
 
@@ -137,7 +179,22 @@ describe("admin sponsored placement routes", () => {
       p_placement_id: PLACEMENT_ID,
       p_action: action,
       p_note: null,
+      p_preview_version: action === "approve" ? "8d54a9a8c4dd8d27fbb2f6eecdf7d707" : null,
     });
+  });
+
+  it("transitions a legacy PostgreSQL UUID placement", async () => {
+    mocks.rpc.mockResolvedValue({ data: { id: LEGACY_PLACEMENT_ID, status: "paused" }, error: null });
+
+    const response = await itemRoute.PATCH(request("PATCH", { action: "pause" }), {
+      params: Promise.resolve({ id: LEGACY_PLACEMENT_ID }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "transition_sponsored_discovery_placement",
+      expect.objectContaining({ p_placement_id: LEGACY_PLACEMENT_ID }),
+    );
   });
 
   it("requires a bounded reason for rejection", async () => {
@@ -152,7 +209,10 @@ describe("admin sponsored placement routes", () => {
   it("maps creator self-approval denial without leaking database details", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "sponsored_creator_self_approval_denied internal row" } });
 
-    const response = await itemRoute.PATCH(request("PATCH", { action: "approve" }), {
+    const response = await itemRoute.PATCH(request("PATCH", {
+      action: "approve",
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
+    }), {
       params: Promise.resolve({ id: PLACEMENT_ID }),
     });
     const payload = await response.json();
@@ -160,5 +220,30 @@ describe("admin sponsored placement routes", () => {
     expect(response.status).toBe(403);
     expect(payload.error.message).toBe("Campaign creators cannot approve their own placement");
     expect(JSON.stringify(payload)).not.toContain("internal row");
+  });
+
+  it("requires a preview token for approval", async () => {
+    const response = await itemRoute.PATCH(request("PATCH", { action: "approve" }), {
+      params: Promise.resolve({ id: PLACEMENT_ID }),
+    });
+
+    expect(response.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("maps a stale approval preview to a review-again conflict", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: "sponsored_preview_stale internal" } });
+
+    const response = await itemRoute.PATCH(request("PATCH", {
+      action: "approve",
+      previewVersion: "8d54a9a8c4dd8d27fbb2f6eecdf7d707",
+    }), {
+      params: Promise.resolve({ id: PLACEMENT_ID }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe("SPONSORED_PREVIEW_STALE");
+    expect(JSON.stringify(payload)).not.toContain("internal");
   });
 });

@@ -3,11 +3,11 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Building2, ChevronLeft, ChevronRight, MapPin, ShieldCheck } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { STATES_MY, searchActivities } from "@/backend/domains/catalogue";
-import type { ComputedActivity, VendorSummary } from "@/backend/core/types";
+import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
@@ -18,6 +18,13 @@ import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { formatMYR } from "@/lib/i18n/format";
+import {
+  rankPartnerDirectory,
+  selectPartnerAdvertisements,
+  type PartnerSort,
+  type PartnerView,
+} from "@/lib/customer/partner-directory";
+import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-rail";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -64,7 +71,7 @@ function VendorDirectoryCard({ vendor, categories, index }: { vendor: VendorSumm
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>
             <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{t("ui.search.localPartner")}</span>
           </div>}
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground"><ShieldCheck size={12} className="text-primary" /> {t("ui.labels.verifiedVendor")}</span>
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground"><ShieldCheck size={12} className="text-primary" /> {t("ui.search.verifiedLocalPartner")}</span>
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</span>
         </div>
       </Link>
@@ -128,13 +135,15 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, recommendationPersonalized }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; recommendationPersonalized: boolean }) {
+export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[] }) {
   const { t } = useTranslation("customer");
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState<string | null>(null);
   const [state, setState] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [partnerView, setPartnerView] = useState<PartnerView>("all");
+  const [partnerSort, setPartnerSort] = useState<PartnerSort>("featured");
+  const [advertisementRankingTimestamp] = useState(() => new Date().toISOString());
 
   const categoriesByVendor = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -149,7 +158,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     return map;
   }, [initialResults]);
 
-  const filteredVendors = useMemo(() => initialVendors.filter((vendor) => {
+  const matchingVendors = useMemo(() => initialVendors.filter((vendor) => {
     const normalizedQuery = query.trim().toLowerCase();
     const matchesQuery = !normalizedQuery || `${vendor.name} ${vendor.outlets.map((outlet) => `${outlet.city} ${outlet.state}`).join(" ")}`.toLowerCase().includes(normalizedQuery);
     const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
@@ -158,12 +167,26 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     return matchesQuery && matchesState && matchesCategory;
   }), [categoriesByVendor, category, initialVendors, query, state]);
 
-  const filteredRecommendedVendors = useMemo(() => recommendedVendors.filter((vendor) => {
-    const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
-    const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
-    const matchesCategory = !category || labels.has(category);
-    return matchesState && matchesCategory;
-  }), [categoriesByVendor, category, recommendedVendors, state]);
+  const featuredVendorIds = useMemo(
+    () => new Set(recommendedVendors.map((vendor) => vendor.id)),
+    [recommendedVendors],
+  );
+
+  const filteredVendors = useMemo(() => rankPartnerDirectory({
+    vendors: matchingVendors,
+    featuredVendorIds,
+    view: partnerView,
+    sort: partnerSort,
+  }), [featuredVendorIds, matchingVendors, partnerSort, partnerView]);
+
+  const advertisements = useMemo(() => selectPartnerAdvertisements({
+    activities: initialResults,
+    placements: sponsoredPlacements,
+    query,
+    state,
+    category,
+    now: advertisementRankingTimestamp,
+  }), [advertisementRankingTimestamp, category, initialResults, query, sponsoredPlacements, state]);
 
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / RESULTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -215,25 +238,43 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       </section>
 
 
-      {/* Featured Vendors */}
-      {!query && filteredRecommendedVendors.length > 0 && (
-        <section className="border-b border-border">
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">{t("ui.search.recommendFeatured")}</h2>
-            <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {filteredRecommendedVendors.slice(0, 4).map((vendor, index) => (
-                <VendorDirectoryCard key={vendor.id} vendor={vendor} categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]} index={index} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      <SponsoredPartnerRail advertisements={advertisements} />
 
       {/* All Vendors */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold mb-8">
-          {query || category || state ? t("ui.search.searchResults") : t("ui.search.allPartners")}
-        </h2>
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">
+              {query || category || state || partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("ui.search.directoryDescription")}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
+            <label className="text-xs font-bold text-foreground">
+              <span>{t("ui.search.partnerView")}</span>
+              <select
+                value={partnerView}
+                onChange={(event) => { setPartnerView(event.target.value as PartnerView); setCurrentPage(1); }}
+                className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+              >
+                <option value="all">{t("ui.search.allPartnersOption")}</option>
+                <option value="featured">{t("ui.search.featuredOnly")}</option>
+              </select>
+            </label>
+            <label className="text-xs font-bold text-foreground">
+              <span>{t("ui.search.sortPartners")}</span>
+              <select
+                value={partnerSort}
+                onChange={(event) => { setPartnerSort(event.target.value as PartnerSort); setCurrentPage(1); }}
+                className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+              >
+                <option value="featured">{t("ui.search.featuredFirst")}</option>
+                <option value="name">{t("ui.search.nameAscending")}</option>
+                <option value="outlets">{t("ui.search.mostOutlets")}</option>
+              </select>
+            </label>
+          </div>
+        </div>
         
         {visibleVendors.length ? (
           <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-4">

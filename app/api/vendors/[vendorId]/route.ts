@@ -7,7 +7,7 @@ interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, ['vendor_owner']);
   if (!access.ok) return access.response;
   const { data, error } = await access.access.serviceDb.from('vendors').select('*').eq('id', vendorId).single();
   if (error || !data) return apiFail('NOT_FOUND', 'Vendor not found', 404);

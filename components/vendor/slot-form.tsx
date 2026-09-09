@@ -1,30 +1,28 @@
 'use client';
 // P2 — Member 2: Booking slot creation/edit form (B3)
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { slotCreateSchema, type SlotCreate } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
   vendorId: string;
+  outlets: { id: string; name: string }[];
+  products: { id: string; name: string; outlet_id: string; requires_booking: boolean; status: string }[];
   onSuccess?: () => void;
   onClose?: () => void;
 }
 
-export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
+export default function SlotForm({ vendorId, outlets, products, onSuccess, onClose }: Props) {
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
-  const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
-  const supabase = createClient();
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<SlotCreate>({
     resolver: zodResolver(slotCreateSchema),
@@ -34,23 +32,9 @@ export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
   // eslint-disable-next-line react-hooks/incompatible-library
   const selectedOutletId = watch('outletId');
 
-  useEffect(() => {
-    supabase.from('outlets').select('id, name').eq('vendor_id', vendorId)
-      .then(({ data }) => setOutlets(data ?? []));
-  }, [vendorId, supabase]);
-
-  useEffect(() => {
-    if (!selectedOutletId) {
-      setProducts([]);
-      return;
-    }
-    supabase.from('products')
-      .select('id, name')
-      .eq('outlet_id', selectedOutletId)
-      .eq('requires_booking', true)
-      .eq('status', 'active')
-      .then(({ data }) => setProducts(data ?? []));
-  }, [selectedOutletId, supabase]);
+  const selectableProducts = products.filter((product) =>
+    product.outlet_id === selectedOutletId && product.requires_booking && product.status === 'active',
+  );
 
   async function onSubmit(data: SlotCreate) {
     setServerError(null);
@@ -102,7 +86,7 @@ export default function SlotForm({ vendorId, onSuccess, onClose }: Props) {
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('slotForm.productRequired')}</label>
           <select {...register('productId')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" disabled={!selectedOutletId}>
             <option value="">{t('slotForm.selectProduct')}</option>
-            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {selectableProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {errors.productId && <p className="text-red-500 text-xs mt-1">{errors.productId.message}</p>}
         </div>

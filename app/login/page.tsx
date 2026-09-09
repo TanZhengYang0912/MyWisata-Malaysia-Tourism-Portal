@@ -87,8 +87,13 @@ function LoginContent() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); resetFeedback(); setBusy(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (signInError) {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      setBusy(false);
+      setError(tAuth("signIn.error"));
+      return;
+    }
     setBusy(false);
-    if (signInError) { setError(tAuth("signIn.error")); return; }
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session?.user.email_confirmed_at) {
       setMode("verify");

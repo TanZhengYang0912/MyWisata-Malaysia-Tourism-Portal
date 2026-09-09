@@ -4,6 +4,7 @@ import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
 import { buildVendorCustomerDemoPlan } from "./lib/vendor-customer-demo.mjs";
+import { buildVendorAccountDemoPlan } from "./lib/vendor-account-demo.mjs";
 import { seedAliceWalletDemo } from "./lib/alice-wallet-demo.mjs";
 
 const CUSTOMER_IDS = [5, 6, 7, 8].map(
@@ -62,8 +63,42 @@ async function upsertRows(table, rows, onConflict = "id") {
   }
 }
 
+async function listAllAuthUserIds() {
+  const ids = [];
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`Auth user read failed: ${error.message}`);
+    const users = data?.users ?? [];
+    ids.push(...users.map((user) => user.id));
+    if (users.length < 1000) return ids;
+  }
+}
+
+function assignedRoleName(assignment) {
+  const role = Array.isArray(assignment.roles) ? assignment.roles[0] : assignment.roles;
+  return role?.name ?? null;
+}
+
+async function seedVendorEarnings(actions) {
+  const results = [];
+  for (let start = 0; start < actions.length; start += 10) {
+    const batch = actions.slice(start, start + 10);
+    const settled = await Promise.all(batch.map(async (action) => {
+      const { data, error } = await supabase.rpc("seed_demo_vendor_order_earning", {
+        p_vendor_id: action.vendorId,
+        p_order_id: action.orderId,
+        p_note: action.note,
+      });
+      if (error) throw new Error(`Vendor earning failed for ${action.vendorId}: ${error.message}`);
+      return data;
+    }));
+    results.push(...settled);
+  }
+  return results;
+}
+
 async function main() {
-  const [vendors, outlets, products, outletOffers, users, existingChatThreads, existingWishlists] = await Promise.all([
+  const [vendors, outlets, products, outletOffers, users, existingChatThreads, existingWishlists, outletManagers, userRoles, wallets, authUserIds] = await Promise.all([
     readAll("vendors", "id,owner_id,name,slug,status"),
     readAll("outlets", "id,vendor_id,name,slug,status,review_status"),
     readAll("products", "id,vendor_id,outlet_id,name,requires_booking,base_price,status,review_status"),
@@ -71,6 +106,10 @@ async function main() {
     readAll("users", "id,email,full_name,email_verified_at,phone_verified_at,status"),
     readAll("chat_threads", "id,customer_id,outlet_id,vendor_id"),
     readAll("customer_wishlists", "id,user_id,product_id"),
+    readAll("outlet_managers", "user_id,outlet_id"),
+    readAll("user_roles", "user_id,roles(name)"),
+    readAll("wallets", "id,user_id"),
+    listAllAuthUserIds(),
   ]);
 
   const customers = CUSTOMER_IDS.map((id) => users.find((user) => user.id === id)).filter(Boolean);
@@ -137,12 +176,60 @@ async function main() {
   await upsertRows("customer_wishlists", rows.wishlists, "user_id,product_id");
   await upsertRows("chat_threads", rows.chatThreads);
   await upsertRows("chat_messages", rows.chatMessages);
+
+  const [orders, orderItems, walletTransactions, notifications] = await Promise.all([
+    readAll("orders", "id,user_id,status,created_at"),
+    readAll("order_items", "id,order_id,vendor_id,outlet_id,product_id,product_name,line_total"),
+    readAll("wallet_transactions", "user_id,order_id,idempotency_key"),
+    readAll("notifications", "event_key"),
+  ]);
+  const roleKeys = new Set(
+    userRoles.map((assignment) => `${assignment.user_id}:${assignedRoleName(assignment)}`),
+  );
+  const activeOutletIds = new Set(
+    outlets
+      .filter((outlet) => outlet.status === "active" && (!outlet.review_status || outlet.review_status === "approved"))
+      .map((outlet) => outlet.id),
+  );
+  const roleIssues = [
+    ...vendors
+      .filter((vendor) => vendor.status === "approved" && !roleKeys.has(`${vendor.owner_id}:vendor_owner`))
+      .map((vendor) => ({ code: "vendor_owner_role_missing", vendorId: vendor.id, ownerId: vendor.owner_id })),
+    ...outletManagers
+      .filter((assignment) => activeOutletIds.has(assignment.outlet_id) && !roleKeys.has(`${assignment.user_id}:outlet_manager`))
+      .map((assignment) => ({ code: "outlet_manager_role_missing", outletId: assignment.outlet_id, managerId: assignment.user_id })),
+  ];
+  const accountPlan = buildVendorAccountDemoPlan({
+    vendors,
+    outlets,
+    products,
+    outletOffers,
+    outletManagers,
+    orders,
+    orderItems,
+    wallets,
+    walletTransactions,
+    notifications,
+    authUserIds,
+    customerIds: commerceCustomers.map((customer) => customer.id),
+    now: new Date(),
+  });
+  const accountIssues = [...roleIssues, ...accountPlan.issues];
+  if (accountIssues.length > 0) {
+    throw new Error(`Vendor account demo preflight failed: ${JSON.stringify(accountIssues)}`);
+  }
+  const vendorEarnings = await seedVendorEarnings(accountPlan.earningActions);
+  await upsertRows("notifications", accountPlan.notificationRows, "event_key");
   const aliceWallet = await seedAliceWalletDemo({ service: supabase, url, anonKey, kycHmacKey });
 
   console.log(JSON.stringify({
     message: "Vendor/customer demo seed completed",
     catalogue: plan.stats,
     rows: Object.fromEntries(Object.entries(rows).map(([name, values]) => [name, values.length])),
+    vendorAccounts: {
+      ...accountPlan.stats,
+      earningRpcResults: vendorEarnings.length,
+    },
     aliceWallet,
   }, null, 2));
 }
