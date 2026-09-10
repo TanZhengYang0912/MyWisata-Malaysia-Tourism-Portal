@@ -317,7 +317,8 @@
       "tunePreferences": "Tune my preferences",
       "sending": "Sending…",
       "submitting": "Submitting…",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "close": "Close"
     },
     "labels": {
       "hiddenGem": "Hidden Gem",
@@ -1637,6 +1638,10 @@
       "mixedOrder": "Mixed order",
       "bookingOrder": "Booking",
       "productOrder": "Product",
+      "orderItems": "Purchased Items",
+      "copyOrderId": "Copy Order ID",
+      "brandName": "MyWisata",
+      "portalName": "Malaysia Tourism Portal",
       "paymentMethods": {
         "stripeCard": "Stripe demo card",
         "eWallet": "E-wallet",
@@ -1658,9 +1663,13 @@
       "title": "Your orders",
       "description": "Track purchases, bookings, payment status and receipts.",
       "backToOrders": "Back to orders",
+      "orderId": "Order ID: #{{id}}",
+      "slot": "Slot: {{time}}",
+      "bookingId": "Booking ID: {{id}}",
       "refundReasonPrompt": "Why are you requesting a refund?",
       "refundSubmitted": "Refund request submitted.",
       "refundError": "Could not submit the refund request.",
+      "refundableItems": "Items to refund",
       "requestRefundModalTitle": "Request a Refund",
       "refundReasonSelect": "Reason for refund",
       "refundReasonSchedule": "Change of schedule / plans",

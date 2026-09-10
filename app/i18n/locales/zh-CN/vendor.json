@@ -308,7 +308,8 @@
       "no": "否",
       "tryAgain": "重试",
       "batchFailed": "批量操作失败",
-      "clearFilters": "清除筛选"
+      "clearFilters": "清除筛选",
+      "exportCsv": "导出 CSV"
     },
     "status": {
       "pending": "待处理",
@@ -541,7 +542,9 @@
       "cancelSelectedSlots": "取消所选时段",
       "restoreSelectedSlots": "恢复所选时段",
       "selectCurrentPage": "选择当前页",
+      "freeToExplore": "免费探索",
       "reservationCount": "{{count}} 个预约 · 按门店分组",
+      "pageSummary": "{{count}} 个预约 · 每页 {{perPage}} 个",
       "malaysia": "马来西亚",
       "onThisPage": "本页 {{count}} 个",
       "outletAgenda": "门店日程",
@@ -603,6 +606,8 @@
       "batchSummary_other": "已更新 {{count}} 个{{entity}}。",
       "reservationCount_one": "{{count}} 个预约 · 按门店分组",
       "reservationCount_other": "{{count}} 个预约 · 按门店分组",
+      "pageSummary_one": "{{count}} 个预约 · 每页 {{perPage}} 个",
+      "pageSummary_other": "{{count}} 个预约 · 每页 {{perPage}} 个",
       "onThisPage_one": "本页 {{count}} 个",
       "onThisPage_other": "本页 {{count}} 个"
     },
@@ -803,6 +808,8 @@
       "title": "产品与活动",
       "description": "让每个马来西亚商品清晰易读并可随时预订。",
       "assignedOutlet": "获分配门店",
+      "attentionNeeded": "低库存 / 预订",
+      "outletsManaged": "门店",
       "addListing": "添加商品",
       "allTypes": "所有类型",
       "allStatuses": "所有状态",

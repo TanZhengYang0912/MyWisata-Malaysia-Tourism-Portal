@@ -79,7 +79,7 @@ export function DiscoveryCategoryFilter({
                key={categoryOption.id}
                type="button"
                onClick={() => onCategoryChange(selected ? null : categoryOption.id === "all" ? null : categoryOption.id)}
-               aria-label={t(categoryOption.labelKey ?? "ui.explore.allCategories")}
+               aria-label={t(categoryOption.labelKey ?? "ui.map.allCategories")}
                aria-pressed={selected}
               className={compact
                 ? `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white shadow-xs" : "border-border bg-background text-muted-foreground hover:bg-muted/40"}`
@@ -89,7 +89,7 @@ export function DiscoveryCategoryFilter({
                 <CategoryIcon category={categoryOption.id} size={compact ? 14 : 22} strokeWidth={compact ? 2 : 1.8} />
               </span>
               <span className={compact ? "whitespace-nowrap" : `text-[10px] font-bold leading-tight ${selected ? "text-white" : "text-foreground"}`}>
-                {t(categoryOption.labelKey ?? "ui.explore.allCategories")}
+                {t(categoryOption.labelKey ?? "ui.map.allCategories")}
               </span>
             </button>
           );

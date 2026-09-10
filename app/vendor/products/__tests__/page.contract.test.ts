@@ -13,4 +13,8 @@ describe('vendor products save contract', () => {
     expect(successCallback).toContain('setSelectedProduct(null)');
     expect(successCallback).toContain('loadProducts(pagination.page)');
   });
+
+  it('uses locale keys instead of inline translation defaults', () => {
+    expect(pageSource).not.toContain('defaultValue');
+  });
 });

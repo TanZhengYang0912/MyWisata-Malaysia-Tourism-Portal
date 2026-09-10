@@ -232,7 +232,7 @@ export default function VendorProductsPage() {
             onClick={handleExportProducts}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
-            <Download size={16} /> {t('ui.common.exportCsv', { defaultValue: 'Export CSV' })}
+            <Download size={16} /> {t('ui.common.exportCsv')}
           </button>
           {canManageOutlet && (
             <button
@@ -256,7 +256,7 @@ export default function VendorProductsPage() {
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-            {t('ui.products.attentionNeeded', { defaultValue: 'Low stock / Booking' })}
+            {t('ui.products.attentionNeeded')}
           </p>
           <p className="mt-1 text-2xl font-bold text-amber-600">{stats.lowStockOrBooking}</p>
         </div>
@@ -268,7 +268,7 @@ export default function VendorProductsPage() {
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-            {t('ui.products.outletsManaged', { defaultValue: 'Outlets' })}
+            {t('ui.products.outletsManaged')}
           </p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.outletCount}</p>
         </div>

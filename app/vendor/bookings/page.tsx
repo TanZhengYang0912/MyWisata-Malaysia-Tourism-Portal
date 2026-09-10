@@ -342,7 +342,7 @@ export default function VendorBookingsPage() {
               {t('ui.bookings.selectCurrentPage')}
             </label>
             <span>
-              {t('ui.bookings.reservationCount', { count: pagination.total.toLocaleString() })} · {t('ui.products.perPage', { count: 10 })}
+              {t('ui.bookings.pageSummary', { count: pagination.total.toLocaleString(), perPage: 10 })}
             </span>
           </div>
 
@@ -425,7 +425,7 @@ export default function VendorBookingsPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">
-                            {lineTotal > 0 ? formatMYR(lineTotal) : t('ui.labels.freeToExplore')}
+                            {lineTotal > 0 ? formatMYR(lineTotal) : t('ui.bookings.freeToExplore')}
                           </p>
                           <p className="mt-0.5 text-xs text-gray-400">
                             {booking.orderItem?.quantity || 1} {t('ui.bookings.guests').toLowerCase()}

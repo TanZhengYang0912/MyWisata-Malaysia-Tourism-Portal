@@ -317,7 +317,8 @@
       "tunePreferences": "调整我的偏好",
       "sending": "正在发送…",
       "submitting": "正在提交…",
-      "cancel": "取消"
+      "cancel": "取消",
+      "close": "关闭"
     },
     "labels": {
       "hiddenGem": "隐藏宝藏",
@@ -1637,6 +1638,10 @@
       "mixedOrder": "混合订单",
       "bookingOrder": "预订",
       "productOrder": "商品",
+      "orderItems": "已购买项目",
+      "copyOrderId": "复制订单编号",
+      "brandName": "MyWisata",
+      "portalName": "马来西亚旅游门户",
       "paymentMethods": {
         "stripeCard": "Stripe 演示卡",
         "eWallet": "电子钱包",
@@ -1658,9 +1663,13 @@
       "title": "你的订单",
       "description": "查看购买、预订、付款状态和收据。",
       "backToOrders": "返回订单",
+      "orderId": "订单编号：#{{id}}",
+      "slot": "时段：{{time}}",
+      "bookingId": "预订编号：{{id}}",
       "refundReasonPrompt": "请说明申请退款的原因。",
       "refundSubmitted": "退款申请已提交。",
       "refundError": "无法提交退款申请。",
+      "refundableItems": "待退款项目",
       "requestRefundModalTitle": "申请退款",
       "refundReasonSelect": "退款原因",
       "refundReasonSchedule": "行程变更 / 计划有变",

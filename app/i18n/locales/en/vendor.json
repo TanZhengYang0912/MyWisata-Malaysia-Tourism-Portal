@@ -308,7 +308,8 @@
       "no": "No",
       "tryAgain": "Try again",
       "batchFailed": "Batch action failed",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "exportCsv": "Export CSV"
     },
     "status": {
       "pending": "Pending",
@@ -541,7 +542,9 @@
       "cancelSelectedSlots": "Cancel selected slots",
       "restoreSelectedSlots": "Restore selected slots",
       "selectCurrentPage": "Select current page",
+      "freeToExplore": "Free to explore",
       "reservationCount": "{{count}} reservations · grouped by outlet",
+      "pageSummary": "{{count}} reservations · {{perPage}} per page",
       "malaysia": "Malaysia",
       "onThisPage": "本页 {{count}} 个",
       "outletAgenda": "Outlet agenda",
@@ -603,6 +606,8 @@
       "batchSummary_other": "{{count}} {{entity}} updated.",
       "reservationCount_one": "{{count}} reservations · grouped by outlet",
       "reservationCount_other": "{{count}} reservations · grouped by outlet",
+      "pageSummary_one": "{{count}} reservation · {{perPage}} per page",
+      "pageSummary_other": "{{count}} reservations · {{perPage}} per page",
       "onThisPage_one": "本页 {{count}} 个",
       "onThisPage_other": "本页 {{count}} 个"
     },
@@ -803,6 +808,8 @@
       "title": "Products & activities",
       "description": "Keep each Malaysian listing easy to scan and ready to book.",
       "assignedOutlet": "Assigned outlet",
+      "attentionNeeded": "Low stock / Booking",
+      "outletsManaged": "Outlets",
       "addListing": "Add listing",
       "allTypes": "All types",
       "allStatuses": "All statuses",
