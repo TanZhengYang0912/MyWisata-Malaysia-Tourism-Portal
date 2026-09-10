@@ -6,6 +6,10 @@ const layoutSource = readFileSync(
   resolve(process.cwd(), 'app/admin/layout.tsx'),
   'utf8',
 );
+const sharedSidebarSource = readFileSync(
+  resolve(process.cwd(), 'components/layout/portal-sidebar.tsx'),
+  'utf8',
+);
 
 describe('admin navigation shell', () => {
   it('routes approvers away from unrelated pages and does not poll support unread counts', () => {
@@ -16,8 +20,9 @@ describe('admin navigation shell', () => {
 
   it('keeps the sidebar fixed while the navigation list can scroll independently', () => {
     expect(layoutSource).toContain('className="flex h-screen overflow-hidden"');
-    expect(layoutSource).toContain('className="flex h-screen w-60 shrink-0 flex-col bg-gray-900"');
-    expect(layoutSource).toContain('min-h-0 flex-1 overflow-y-auto');
+    expect(layoutSource).toContain('<PortalSidebar');
+    expect(sharedSidebarSource).toContain('w-60');
+    expect(sharedSidebarSource).toContain('min-h-0 flex-1 overflow-y-auto');
     expect(layoutSource).toContain('className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"');
   });
 
@@ -63,8 +68,9 @@ describe('admin navigation shell', () => {
   });
 
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
-    expect(layoutSource).toContain('className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5"');
-    expect(layoutSource).toContain('className="px-4 py-3 border-b border-gray-700"');
+    expect(sharedSidebarSource).toContain('border-b border-white/10 px-4 py-4');
+    expect(sharedSidebarSource).toContain('data-portal-sidebar="true"');
+    expect(sharedSidebarSource).toContain('bg-slate-950');
     expect(layoutSource).toContain('className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6"');
     expect(layoutSource).not.toContain('border-b-2 border-gray-200');
   });

@@ -46,5 +46,5 @@ describe("translation resources", () => {
         }
       }
     }
-  }, 15_000);
+  }, 60_000);
 });

@@ -166,7 +166,7 @@ export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet;
       <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mywisataOutlet")}</p>
-          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt")}</h2>
+          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt", { outlet: outlet.name })}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.description")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">

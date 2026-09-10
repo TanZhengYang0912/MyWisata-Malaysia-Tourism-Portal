@@ -188,7 +188,7 @@ export default function OutletBuilderInspector({
               value={hero.body}
               onChange={(event) => onUpdateHero({ body: event.target.value })}
               rows={3}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm"
             />,
           )}
           <div>
@@ -319,7 +319,7 @@ export default function OutletBuilderInspector({
             value={block.body || ""}
             onChange={(event) => update("body", event.target.value)}
             rows={4}
-            className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+            className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm"
           />,
         )}
         {isPhoto && (

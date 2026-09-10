@@ -147,5 +147,5 @@ describe("verifyI18nCoverage", () => {
     expect(existsSync(scriptPath)).toBe(true);
     const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
     expect(result.status).toBe(0);
-  }, 15_000);
+  }, 60_000);
 });

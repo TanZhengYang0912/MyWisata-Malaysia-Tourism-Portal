@@ -13,12 +13,13 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 describe("customer discovery filter contract", () => {
   it("shares the searchable category-card controls", () => {
     expect(filterSource).toContain("placeholder");
-    expect(filterSource).toContain('t("ui.explore.filterByCategory")');
+    expect(filterSource).toContain('headingKey = "ui.explore.filterByCategory"');
     expect(filterSource).toContain("CATEGORIES.map");
     expect(filterSource).toContain("aria-pressed");
     expect(filterSource).toContain("grid-cols-2");
     expect(filterSource).toContain("sm:grid-cols-3");
     expect(filterSource).toContain("lg:grid-cols-5");
+    expect(filterSource).toContain('selected ? "border-primary bg-primary text-white shadow-sm" : "border-transparent bg-card text-foreground shadow-sm"');
   });
 
   it("connects Explore search and filters to the shared discovery query", () => {
@@ -28,6 +29,11 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("onClear");
     expect(exploreSource).toContain("visibleLimit");
     expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
+  });
+
+  it("keeps the canonical category selector out of the advanced filter panel", () => {
+    expect(filterSource).not.toContain('<p className="text-sm font-bold text-foreground">{t("ui.explore.filterByCategory")}</p>');
+    expect(filterSource).not.toContain('CATEGORIES.filter((category) => category.id !== "hidden_gem")');
   });
 
   it("keeps Partners state filtering with direct search controls", () => {

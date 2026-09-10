@@ -259,8 +259,8 @@
   },
   "command": {
     "title": "Palet Arahan",
-    "searchAdminPlaceholder": "Taip arahan atau cari barisan gilir… (⌘K)",
-    "searchVendorPlaceholder": "Taip arahan atau lompat ke ruang kerja… (⌘K)",
+    "searchAdminPlaceholder": "Taip arahan atau cari barisan gilir…",
+    "searchVendorPlaceholder": "Taip arahan atau lompat ke ruang kerja…",
     "noResults": "Tiada arahan atau halaman ditemui.",
     "navigation": "Navigasi",
     "queue": "Barisan Gilir Semakan",

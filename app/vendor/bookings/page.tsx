@@ -9,11 +9,14 @@ import { StatusBadge } from '@/components/ui/badge';
 import SlotForm from '@/components/vendor/slot-form';
 import PaginationControls from '@/components/vendor/pagination-controls';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
+import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { selectBookingOutlet } from '@/lib/vendor/booking-scope';
 import { useDebounce } from '@/hooks/use-debounce';
 import { exportToCsv, type CsvColumn } from '@/lib/export-csv';
+import { productImageUrl } from '@/lib/storage/product-image';
+import { formatMYR } from '@/lib/i18n/format';
 
 type Tab = 'reservations' | 'operating-hours';
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -22,7 +25,7 @@ type OperatingHours = Record<string, DaySchedule>;
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 interface Outlet { id: string; name: string; city?: string | null; state?: string | null; status: string; operating_hours?: OperatingHours | null }
 interface Product { id: string; name: string; outlet_id: string; status: string; requires_booking: boolean; cover_url?: string | null }
-interface Booking { id: string; display_id?: string; status: string; created_at: string; check_in_at?: string | null; customer?: { full_name?: string; email?: string }; orderItem?: { product_name?: string; quantity?: number; line_total?: number; outlets?: { id?: string; name?: string; city?: string; state?: string } }; slot?: { starts_at?: string; ends_at?: string; capacity?: number; booked?: number; outlets?: { id?: string; name?: string; city?: string; state?: string }; products?: { name?: string; cover_url?: string | null } } }
+interface Booking { id: string; display_id?: string; status: string; created_at: string; check_in_at?: string | null; customer?: { full_name?: string; email?: string }; orderItem?: { product_name?: string; quantity?: number; line_total?: number; outlets?: { id?: string; name?: string; city?: string; state?: string } }; slot?: { starts_at?: string; ends_at?: string; capacity?: number; booked?: number; outlets?: { id?: string; name?: string; city?: string; state?: string }; products?: { name?: string; cover_url?: string | null; base_price?: number } } }
 interface Slot { id: string; product_id: string; outlet_id: string; starts_at: string; ends_at: string; capacity: number; booked: number; price_override: number | null; status: string; products?: { name?: string; base_price?: number; cover_url?: string | null }; outlets?: { id?: string; name?: string; city?: string; state?: string } }
 
 const emptyPagination = { page: 1, pageSize: 10, total: 0, totalPages: 1 };
@@ -38,18 +41,6 @@ function scheduleFor(outlet?: Outlet | null): Record<DayKey, DaySchedule> {
 }
 function exceptionEntries(outlet?: Outlet | null) {
   return Object.entries(outlet?.operating_hours || {}).filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key)).map(([date, value]) => ({ date, ...value }));
-}
-function groupedBookings(bookings: Booking[]) {
-  const groups = new Map<string, { name: string; city: string; bookings: Booking[] }>();
-  [...bookings].sort((a, b) => new Date(a.slot?.starts_at || 0).getTime() - new Date(b.slot?.starts_at || 0).getTime()).forEach((booking) => {
-    const outlet = selectBookingOutlet(booking.orderItem?.outlets, booking.slot?.outlets);
-    const name = outletShortName(outlet?.name);
-    const city = outletLocation(outlet?.city, outlet?.state);
-    const key = `${name}|${city}`;
-    if (!groups.has(key)) groups.set(key, { name, city, bookings: [] });
-    groups.get(key)?.bookings.push(booking);
-  });
-  return [...groups.values()];
 }
 
 async function loadScopedItems<T>(endpoint: string, errorMessage: string): Promise<T[]> {
@@ -230,16 +221,297 @@ export default function VendorBookingsPage() {
 
       <div className="grid gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.confirmed')}</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.confirmed || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.checked_in')}</p><p className="mt-1 text-2xl font-bold text-primary">{stats.checked_in || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"><p className="text-xs text-gray-500">{t('ui.status.cancelled')}</p><p className="mt-1 text-2xl font-bold text-gray-950">{stats.cancelled || 0}</p><p className="mt-1 text-xs text-gray-400">{t('ui.bookings.currentFilter')}</p></div><div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm"><p className="text-xs text-primary">{t('ui.bookings.outletsManaged')}</p><p className="mt-1 text-2xl font-bold text-primary">{outlets.length}</p><p className="mt-1 text-xs text-primary">{t('ui.bookings.allVendorOutlets')}</p></div></div>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm"><div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"><div className="flex rounded-xl bg-gray-100 p-1"><button type="button" onClick={() => switchTab('reservations')} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === 'reservations' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}><Users size={15} /> {t('ui.bookings.reservations')}</button><button type="button" onClick={() => switchTab('operating-hours')} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === 'operating-hours' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}><Clock3 size={15} /> {t('ui.bookings.operatingHours')}</button></div><div className="grid flex-1 gap-2 sm:grid-cols-2 xl:ml-4 xl:flex"><label className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} /><input value={filters.q} onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))} placeholder={tab === 'reservations' ? t('ui.bookings.searchPlaceholder') : t('ui.bookings.searchOperatingPlaceholder')} className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-primary" /></label><select value={filters.outletId} onChange={(event) => setOutletFilter(event.target.value)} className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary xl:w-52"><option value="">{t('ui.bookings.allOutlets')}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outletShortName(outlet.name)} · {outletLocation(outlet.city, outlet.state)}</option>)}</select><select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary xl:w-36"><option value="">{t('ui.bookings.allStatuses')}</option>{(tab === 'reservations' ? ['confirmed', 'checked_in', 'no_show', 'cancelled'] : ['available', 'full', 'cancelled', 'expired']).map((status) => <option key={status} value={status}>{t(`ui.status.${status}`)}</option>)}</select></div></div><div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3"><SlidersHorizontal size={15} className="text-gray-400" /><select value={filters.productId} onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))} className="h-9 rounded-lg border border-gray-200 px-3 text-xs text-gray-600 outline-none focus:border-primary"><option value="">{t('ui.bookings.allExperiences')}</option>{filteredProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select><input type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="h-9 rounded-lg border border-gray-200 px-3 text-xs text-gray-600" /><span className="text-xs text-gray-400">{t('ui.bookings.to')}</span><input type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="h-9 rounded-lg border border-gray-200 px-3 text-xs text-gray-600" />{(filters.q || filters.status || filters.from || filters.to || filters.outletId || filters.productId) && <button type="button" onClick={clearFilters} className="text-xs font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button>}</div></div>
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => switchTab('reservations')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === 'reservations' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+            >
+              <Users size={15} /> {t('ui.bookings.reservations')}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchTab('operating-hours')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === 'operating-hours' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+            >
+              <Clock3 size={15} /> {t('ui.bookings.operatingHours')}
+            </button>
+          </div>
+
+          {tab === 'reservations' && (
+            <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1">
+              {[
+                { value: '', label: t('ui.orders.allOrders') || 'All' },
+                { value: 'confirmed', label: t('ui.status.confirmed') },
+                { value: 'checked_in', label: t('ui.status.checked_in') },
+                { value: 'cancelled', label: t('ui.status.cancelled') },
+              ].map((f) => (
+                <button
+                  key={f.value || 'all'}
+                  type="button"
+                  onClick={() => setFilters((current) => ({ ...current, status: f.value }))}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input
+              value={filters.q}
+              onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+              placeholder={tab === 'reservations' ? t('ui.bookings.searchPlaceholder') : t('ui.bookings.searchOperatingPlaceholder')}
+              className="h-10 w-full rounded-xl border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <select
+            value={filters.outletId}
+            onChange={(event) => setOutletFilter(event.target.value)}
+            className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary sm:w-52"
+          >
+            <option value="">{t('ui.bookings.allOutlets')}</option>
+            {outlets.map((outlet) => (
+              <option key={outlet.id} value={outlet.id}>
+                {outletShortName(outlet.name)} · {outletLocation(outlet.city, outlet.state)}
+              </option>
+            ))}
+          </select>
+          {tab === 'reservations' && (
+            <select
+              value={filters.productId}
+              onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))}
+              className="h-10 rounded-xl border border-gray-200 px-3 text-sm text-gray-600 outline-none focus:border-primary sm:w-48"
+            >
+              <option value="">{t('ui.bookings.allExperiences')}</option>
+              {filteredProducts.map((product) => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {tab === 'reservations' && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+            <SlidersHorizontal size={14} className="text-gray-400" />
+            <input
+              type="date"
+              value={filters.from}
+              onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+              className="h-9 rounded-lg border border-gray-200 px-2.5 text-xs text-gray-600"
+            />
+            <span className="text-xs text-gray-400">{t('ui.bookings.to')}</span>
+            <input
+              type="date"
+              value={filters.to}
+              onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+              className="h-9 rounded-lg border border-gray-200 px-2.5 text-xs text-gray-600"
+            />
+            {(filters.q || filters.status || filters.from || filters.to || filters.outletId || filters.productId) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto text-xs font-semibold text-primary hover:underline"
+              >
+                {t('ui.common.clearFilters')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {tab === 'reservations' && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(bookings.map((booking) => booking.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'check_in', label: t('ui.bookings.checkInSelected') }, { value: 'cancel', label: t('ui.bookings.cancelSelected') }]} busy={batchBusy} message={batchMessage} />}
       {tab === 'operating-hours' && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(slots.map((slot) => slot.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'cancel', label: t('ui.bookings.cancelSelectedSlots') }, { value: 'restore', label: t('ui.bookings.restoreSelectedSlots') }]} busy={batchBusy} message={batchMessage} />}
       {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      {tab === 'reservations' ? <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-5 py-3"><label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600"><input type="checkbox" checked={bookings.length > 0 && bookings.every((booking) => selectedIds.includes(booking.id))} onChange={(event) => setSelectedIds(event.target.checked ? bookings.map((booking) => booking.id) : [])} /> {t('ui.bookings.selectCurrentPage')}</label><span className="text-xs text-gray-400">{t('ui.bookings.reservationCount', { count: pagination.total.toLocaleString() })}</span></div>{loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100" />)}</div> : <div className="space-y-5 p-4 md:p-5">{groupedBookings(bookings).map((group) => <div key={`${group.name}-${group.city}`} className="overflow-hidden rounded-2xl border border-gray-100"><div className="flex flex-col gap-1 border-b border-gray-100 bg-secondary/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2"><MapPin size={16} className="text-primary" /><div><p className="font-semibold text-gray-900">{group.name}</p><p className="text-xs text-gray-500">{group.city || t('ui.bookings.malaysia')} · {t('ui.bookings.onThisPage', { count: group.bookings.length })}</p></div></div><span className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">{t('ui.bookings.outletAgenda')}</span></div><div className="divide-y divide-gray-100">{group.bookings.map((booking) => <article key={booking.id} className="grid gap-3 px-4 py-4 transition hover:bg-secondary/20 md:grid-cols-[32px_minmax(180px,1.2fr)_minmax(190px,1.5fr)_150px_110px_78px] md:items-center"><div><input type="checkbox" checked={selectedIds.includes(booking.id)} onChange={() => toggleSelected(booking.id)} aria-label={t('ui.bookings.selectBooking', { id: booking.display_id || booking.id.slice(0, 8) })} /></div><div className="min-w-0"><button type="button" onClick={() => setSelectedBooking(booking)} className="block max-w-full truncate text-left font-semibold text-gray-900 hover:text-primary">{booking.customer?.full_name || t('ui.bookings.guest')}</button><p className="mt-1 truncate text-xs text-gray-500">{booking.customer?.email || t('ui.bookings.noEmail')}</p></div><div className="min-w-0"><p className="truncate text-sm font-medium text-gray-800">{booking.orderItem?.product_name || booking.slot?.products?.name || t('ui.bookings.experience')}</p><p className="mt-1 text-xs text-gray-500">{t('ui.bookings.quantityDate', { quantity: booking.orderItem?.quantity || 1, date: dateLabel(booking.slot?.starts_at, locale, t('ui.bookings.noTime')) })}</p></div><div className="text-xs text-gray-600"><p className="font-medium text-gray-800">{t('ui.bookings.bookingId')}</p><p className="mt-1 font-mono text-gray-500">{booking.display_id || `#${booking.id.slice(0, 8)}`}</p></div><div><StatusBadge status={booking.status} /></div><div className="flex items-center gap-1 md:justify-end"><button type="button" title={t('ui.bookings.viewReservation')} onClick={() => setSelectedBooking(booking)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-primary"><Eye size={16} /></button>{booking.status === 'confirmed' && <button type="button" title={t('ui.bookings.checkIn')} onClick={() => checkIn(booking.id)} className="rounded-lg p-2 text-primary hover:bg-secondary"><Check size={16} /></button>}</div></article>)}</div></div>)}{!bookings.length && <div className="px-6 py-16 text-center text-sm text-gray-400">{t('ui.bookings.noMatches')}</div>}</div>}{!loading && <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadData(page); }} />}</section> : <OperatingHoursPanel metadataLoading={metadataLoading} outlets={outlets} products={selectedOutletProducts} selectedOutlet={selectedScheduleOutlet} scheduleDraft={scheduleDraft} setScheduleDraft={setScheduleDraft} exceptions={exceptions} setExceptions={setExceptions} saveSchedule={saveSchedule} savingSchedule={savingSchedule} saveMessage={saveMessage} setScheduleOutletId={(id) => { setScheduleOutletId(id); setFilters((current) => ({ ...current, outletId: id, productId: '' })); }} slots={slots} loading={loading} selectedIds={selectedIds} setSelectedIds={setSelectedIds} toggleSelected={toggleSelected} cancelSlot={cancelSlot} pagination={pagination} loadData={loadData} />}
+      {tab === 'reservations' ? (
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 text-xs text-gray-500">
+            <label className="inline-flex items-center gap-2 font-semibold">
+              <input
+                type="checkbox"
+                checked={bookings.length > 0 && bookings.every((booking) => selectedIds.includes(booking.id))}
+                onChange={(event) => setSelectedIds(event.target.checked ? bookings.map((booking) => booking.id) : [])}
+              />{' '}
+              {t('ui.bookings.selectCurrentPage')}
+            </label>
+            <span>
+              {t('ui.bookings.reservationCount', { count: pagination.total.toLocaleString() })} · {t('ui.products.perPage', { count: 10 })}
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3 p-5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="h-16 animate-pulse rounded-xl bg-gray-100" />
+              ))}
+            </div>
+          ) : bookings.length === 0 ? (
+            <div className="px-6 py-16 text-center text-sm text-gray-400">
+              <p>{t('ui.bookings.noMatches')}</p>
+              <button type="button" onClick={clearFilters} className="mt-2 text-xs font-semibold text-primary hover:underline">
+                {t('ui.common.clearFilters')}
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="xl:min-w-[960px]">
+                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid">
+                  <span></span>
+                  <span>{t('ui.orders.customerColumn')}</span>
+                  <span>{t('ui.orders.itemsColumn')}</span>
+                  <span>{t('ui.orders.outletColumn')}</span>
+                  <span>{t('ui.orders.totalColumn')}</span>
+                  <span>{t('ui.orders.statusColumn')}</span>
+                  <span className="text-center">{t('ui.orders.actionColumn')}</span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {bookings.map((booking) => {
+                    const bookingOutlet = selectBookingOutlet(booking.orderItem?.outlets, booking.slot?.outlets);
+                    const lineTotal = Number(booking.orderItem?.line_total || booking.slot?.products?.base_price || 0);
+                    return (
+                      <article
+                        key={booking.id}
+                        className="grid gap-3 px-4 py-4 transition hover:bg-secondary/30 xl:grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] xl:items-center xl:gap-4 xl:px-5"
+                      >
+                        <div>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(booking.id)}
+                            onChange={() => toggleSelected(booking.id)}
+                            aria-label={t('ui.bookings.selectBooking', { id: booking.display_id || booking.id.slice(0, 8) })}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(booking)}
+                            className="block max-w-full truncate text-left font-medium text-gray-900 hover:text-primary"
+                          >
+                            {booking.customer?.full_name || t('ui.bookings.guest')}
+                          </button>
+                          <p className="mt-1 truncate font-mono text-xs text-gray-500">
+                            {booking.display_id || `#${booking.id.slice(0, 8)}`}
+                          </p>
+                        </div>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <CompactThumbnail
+                            src={productImageUrl(booking.slot?.products?.cover_url)}
+                            alt={booking.slot?.products?.name || booking.orderItem?.product_name || t('ui.bookings.experience')}
+                            kind="experience"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-gray-900">
+                              {booking.orderItem?.product_name || booking.slot?.products?.name || t('ui.bookings.experience')}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-gray-500">
+                              {t('ui.bookings.quantityDate', {
+                                quantity: booking.orderItem?.quantity || 1,
+                                date: dateLabel(booking.slot?.starts_at, locale, t('ui.bookings.noTime')),
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          <p className="truncate font-medium text-gray-800">{outletShortName(bookingOutlet?.name)}</p>
+                          <p className="mt-0.5 truncate text-gray-500">{outletLocation(bookingOutlet?.city, bookingOutlet?.state)}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-gray-400">{outletIdLabel(bookingOutlet?.id)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {lineTotal > 0 ? formatMYR(lineTotal) : t('ui.labels.freeToExplore')}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-400">
+                            {booking.orderItem?.quantity || 1} {t('ui.bookings.guests').toLowerCase()}
+                          </p>
+                        </div>
+                        <div>
+                          <StatusBadge status={booking.status} />
+                          {booking.check_in_at && (
+                            <span className="mt-1 block text-[11px] text-gray-400">
+                              {new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(booking.check_in_at))}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBooking(booking)}
+                            title={t('ui.bookings.viewReservation')}
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-600 hover:border-primary/30 hover:bg-gray-50 hover:text-primary"
+                          >
+                            <Eye size={15} aria-hidden="true" />
+                            <span>{t('ui.orders.viewDetails')}</span>
+                          </button>
+                          {booking.status === 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => checkIn(booking.id)}
+                              title={t('ui.bookings.checkIn')}
+                              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+                            >
+                              <Check size={15} aria-hidden="true" />
+                              <span>{t('ui.bookings.checkIn')}</span>
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!loading && (
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={pagination.pageSize}
+              onPageChange={(page) => {
+                setPagination((current) => ({ ...current, page }));
+                loadData(page);
+              }}
+            />
+          )}
+        </section>
+      ) : (
+        <OperatingHoursPanel
+          metadataLoading={metadataLoading}
+          outlets={outlets}
+          products={selectedOutletProducts}
+          selectedOutlet={selectedScheduleOutlet}
+          scheduleDraft={scheduleDraft}
+          setScheduleDraft={setScheduleDraft}
+          exceptions={exceptions}
+          setExceptions={setExceptions}
+          saveSchedule={saveSchedule}
+          savingSchedule={savingSchedule}
+          saveMessage={saveMessage}
+          setScheduleOutletId={(id) => {
+            setScheduleOutletId(id);
+            setFilters((current) => ({ ...current, outletId: id, productId: '' }));
+          }}
+          slots={slots}
+          loading={loading}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          toggleSelected={toggleSelected}
+          cancelSlot={cancelSlot}
+          pagination={pagination}
+          loadData={loadData}
+        />
+      )}
 
       {showSlotForm && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><SlotForm vendorId={vendorId} outlets={outlets} products={products} onSuccess={() => { setShowSlotForm(false); setTab('operating-hours'); loadData(1); }} onClose={() => setShowSlotForm(false)} /></div></div>}
-      {selectedBooking && <div className="fixed inset-0 z-40 bg-gray-950/20" onClick={() => setSelectedBooking(null)}><aside onClick={(event) => event.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('ui.bookings.reservationDetails')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{selectedBooking.customer?.full_name || t('ui.bookings.guest')}</h2><p className="mt-1 font-mono text-xs text-gray-500">{selectedBooking.display_id || `#${selectedBooking.id}`}</p></div><button type="button" onClick={() => setSelectedBooking(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X size={18} /></button></div><div className="mt-6 space-y-3 text-sm"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.experience')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.product_name || selectedBooking.slot?.products?.name}</p><p className="mt-1 text-gray-500">{dateLabel(selectedBooking.slot?.starts_at, locale, t('ui.bookings.noDate'))} – {selectedBooking.slot?.ends_at ? new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(selectedBooking.slot.ends_at)) : ''}</p></div><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.guests')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.quantity || 1}</p></div><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.status')}</p><div className="mt-1"><StatusBadge status={selectedBooking.status} /></div></div></div><p className="text-gray-600">{selectedBooking.customer?.email || t('ui.bookings.noEmailProvided')}</p><p className="text-gray-600">{t('ui.bookings.outletValue', { outlet: selectBookingOutlet(selectedBooking.orderItem?.outlets, selectedBooking.slot?.outlets)?.name || t('ui.bookings.malaysiaOutlet') })}</p></div><div className="mt-7 flex gap-2">{selectedBooking.status === 'confirmed' && <button type="button" onClick={() => checkIn(selectedBooking.id)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"><Check size={15} /> {t('ui.bookings.checkIn')}</button>}<button type="button" onClick={() => setSelectedBooking(null)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600">{t('ui.bookings.close')}</button></div></aside></div>}
+      {selectedBooking && <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-950/20 p-4" onClick={() => setSelectedBooking(null)}><aside onClick={(event) => event.stopPropagation()} className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('ui.bookings.reservationDetails')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{selectedBooking.customer?.full_name || t('ui.bookings.guest')}</h2><p className="mt-1 font-mono text-xs text-gray-500">{selectedBooking.display_id || `#${selectedBooking.id}`}</p></div><button type="button" onClick={() => setSelectedBooking(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><X size={18} /></button></div><div className="mt-6 flex items-center gap-4 rounded-2xl bg-secondary/40 p-3"><CompactThumbnail src={productImageUrl(selectedBooking.slot?.products?.cover_url)} alt={selectedBooking.slot?.products?.name || selectedBooking.orderItem?.product_name || t('ui.bookings.experience')} size="md" /></div><div className="mt-6 space-y-3 text-sm"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.experience')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.product_name || selectedBooking.slot?.products?.name}</p><p className="mt-1 text-gray-500">{dateLabel(selectedBooking.slot?.starts_at, locale, t('ui.bookings.noDate'))} – {selectedBooking.slot?.ends_at ? new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(selectedBooking.slot.ends_at)) : ''}</p></div><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.guests')}</p><p className="mt-1 font-semibold text-gray-900">{selectedBooking.orderItem?.quantity || 1}</p></div><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs text-gray-500">{t('ui.bookings.status')}</p><div className="mt-1"><StatusBadge status={selectedBooking.status} /></div></div></div><p className="text-gray-600">{selectedBooking.customer?.email || t('ui.bookings.noEmailProvided')}</p><p className="text-gray-600">{t('ui.bookings.outletValue', { outlet: selectBookingOutlet(selectedBooking.orderItem?.outlets, selectedBooking.slot?.outlets)?.name || t('ui.bookings.malaysiaOutlet') })}</p></div><div className="mt-7 flex gap-2">{selectedBooking.status === 'confirmed' && <button type="button" onClick={() => checkIn(selectedBooking.id)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"><Check size={15} /> {t('ui.bookings.checkIn')}</button>}<button type="button" onClick={() => setSelectedBooking(null)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600">{t('ui.bookings.close')}</button></div></aside></div>}
     </div>
   );
 }

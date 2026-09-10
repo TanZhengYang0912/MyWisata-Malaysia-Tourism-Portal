@@ -16,8 +16,8 @@ interface DiscoverySearchFieldProps {
 export function DiscoverySearchField({ value, onChange, placeholder }: DiscoverySearchFieldProps) {
   const { t } = useTranslation("customer");
   return (
-    <label className="flex min-h-14 flex-1 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
-      <SearchIcon size={17} className="shrink-0 text-primary" aria-hidden="true" />
+    <label className="flex min-h-11 flex-1 items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-2.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
+      <SearchIcon size={16} className="shrink-0 text-primary" aria-hidden="true" />
       <span className="sr-only">{t("ui.discovery.searchLabel")}</span>
       <input
         value={value}
@@ -35,6 +35,10 @@ interface DiscoveryCategoryFilterProps {
   hasActiveFilters: boolean;
   onCategoryChange: (category: string | null) => void;
   onClear: () => void;
+  variant?: "cards" | "compact";
+  showClear?: boolean;
+  headingKey?: string;
+  includeAll?: boolean;
 }
 
 export function DiscoveryCategoryFilter({
@@ -42,13 +46,21 @@ export function DiscoveryCategoryFilter({
   hasActiveFilters,
   onCategoryChange,
   onClear,
+  variant = "cards",
+  showClear = true,
+  headingKey = "ui.explore.filterByCategory",
+  includeAll = false,
 }: DiscoveryCategoryFilterProps) {
   const { t } = useTranslation("customer");
+  const compact = variant === "compact";
+  const categoryOptions = includeAll
+    ? [{ id: "all", labelKey: "ui.map.allCategories" }, ...CATEGORIES]
+    : CATEGORIES;
   return (
     <section aria-labelledby="discovery-category-filter-heading">
       <div className="mb-3 flex items-center justify-between gap-4">
-        <h2 id="discovery-category-filter-heading" className="text-lg font-bold text-foreground">{t("ui.explore.filterByCategory")}</h2>
-        {hasActiveFilters && (
+        <h2 id="discovery-category-filter-heading" className={`font-bold text-foreground ${compact ? "text-xs uppercase tracking-wider text-muted-foreground" : "text-lg"}`}>{t(headingKey)}</h2>
+        {showClear && hasActiveFilters && (
           <button
             type="button"
             onClick={onClear}
@@ -58,24 +70,26 @@ export function DiscoveryCategoryFilter({
           </button>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {CATEGORIES.map((categoryOption) => {
-          const selected = category === categoryOption.id;
+      <div className={compact ? "flex gap-2 overflow-x-auto pb-1 lg:flex-wrap" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"}>
+        {/* CATEGORIES.map */}
+        {categoryOptions.map((categoryOption) => {
+          const selected = categoryOption.id === "all" ? category === null : category === categoryOption.id;
           return (
-            <button
-              key={categoryOption.id}
-              type="button"
-              onClick={() => onCategoryChange(selected ? null : categoryOption.id)}
-              aria-pressed={selected}
-              className={`flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${
-                selected ? "border-primary bg-primary/10" : "border-transparent bg-card shadow-sm"
-              }`}
+             <button
+               key={categoryOption.id}
+               type="button"
+               onClick={() => onCategoryChange(selected ? null : categoryOption.id === "all" ? null : categoryOption.id)}
+               aria-label={t(categoryOption.labelKey ?? "ui.explore.allCategories")}
+               aria-pressed={selected}
+              className={compact
+                ? `inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white shadow-xs" : "border-border bg-background text-muted-foreground hover:bg-muted/40"}`
+                : `flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 text-center transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 ${selected ? "border-primary bg-primary text-white shadow-sm" : "border-transparent bg-card text-foreground shadow-sm"}`}
             >
-              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${selected ? "bg-primary text-white" : "bg-secondary text-primary"}`}>
-                <CategoryIcon category={categoryOption.id} size={22} strokeWidth={1.8} />
+              <span className={`flex shrink-0 items-center justify-center ${compact ? "h-5 w-5 rounded-full" : "h-11 w-11 rounded-2xl"} ${selected ? "bg-white/20 text-white" : "bg-secondary text-primary"}`}>
+                <CategoryIcon category={categoryOption.id} size={compact ? 14 : 22} strokeWidth={compact ? 2 : 1.8} />
               </span>
-              <span className="text-[10px] font-bold leading-tight" style={{ color: selected ? "var(--primary)" : "var(--foreground)" }}>
-                {t(categoryOption.labelKey ?? `categories.${categoryOption.id}`)}
+              <span className={compact ? "whitespace-nowrap" : `text-[10px] font-bold leading-tight ${selected ? "text-white" : "text-foreground"}`}>
+                {t(categoryOption.labelKey ?? "ui.explore.allCategories")}
               </span>
             </button>
           );
@@ -92,13 +106,6 @@ type DiscoveryAdvancedFiltersProps = {
 
 export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedFiltersProps) {
   const { t } = useTranslation("customer");
-  const toggleCategory = (category: string) => {
-    const selected = value.categories.includes(category);
-    onChange({
-      categories: selected ? value.categories.filter((item) => item !== category) : [...value.categories, category],
-      types: selected ? value.types.filter((token) => !token.startsWith(`${category}:`)) : value.types,
-    });
-  };
   const toggleType = (category: string, type: string, allTypes: string[]) => {
     const token = `${category}:${type}`;
     const currentTypes = value.types.filter((item) => item.startsWith(`${category}:`));
@@ -127,14 +134,6 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
         <span>{t("ui.discovery.maximumPrice")}</span>
         <input aria-label={t("ui.discovery.maximumPrice")} type="number" min="0" value={value.priceMax ?? ""} onChange={(event) => onChange({ priceMax: event.target.value === "" ? null : Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
       </label>
-      <div className="sm:col-span-2">
-        <p className="text-sm font-bold text-foreground">{t("ui.explore.filterByCategory")}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {CATEGORIES.filter((category) => category.id !== "hidden_gem").map((category) => (
-            <button key={category.id} type="button" aria-label={t(category.labelKey ?? `categories.${category.id}`)} aria-pressed={value.categories.includes(category.id)} onClick={() => toggleCategory(category.id)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value.categories.includes(category.id) ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(category.labelKey ?? `categories.${category.id}`)}</button>
-          ))}
-        </div>
-      </div>
       <div className="sm:col-span-2 space-y-3">
         {Object.entries(CATEGORY_DETAILS).map(([category, detail]) => (
           <div key={category}>

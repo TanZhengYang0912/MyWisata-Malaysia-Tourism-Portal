@@ -170,7 +170,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsFocusPaused(false);
       }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
         <div className="mb-6">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.labels.sponsored")}</p>

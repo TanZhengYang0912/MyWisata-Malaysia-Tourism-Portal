@@ -30,6 +30,7 @@ const approvedForwardMigrations = [
   "20260908180000_harden_demo_vendor_order_earnings.sql",
   "20260909054100_restore_demo_customer_roles.sql",
   "20260909082900_sponsored_position_governance.sql",
+  "20260909182946_add_bookings_updated_at.sql",
   "20260910005600_sponsored_placement_staff_role_template.sql",
 ];
 

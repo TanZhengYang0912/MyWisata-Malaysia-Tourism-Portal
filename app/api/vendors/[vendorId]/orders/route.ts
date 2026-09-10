@@ -46,7 +46,11 @@ export async function GET(request: Request, { params }: Props) {
     .in('order_items.outlet_id', outletIds)
     .order('created_at', { ascending: false });
 
-  if (fulfilStatus) query = query.eq('order_items.fulfil_status', fulfilStatus);
+  if (fulfilStatus === 'attention') {
+    query = query.in('order_items.fulfil_status', ['pending', 'ready']);
+  } else if (fulfilStatus) {
+    query = query.eq('order_items.fulfil_status', fulfilStatus);
+  }
   if (orderStatus && orderStatus !== 'all') query = query.eq('status', orderStatus);
   if (q) {
     const [{ data: vendorItems }, { data: matchingUsers }, { data: matchingOrders }] = await Promise.all([

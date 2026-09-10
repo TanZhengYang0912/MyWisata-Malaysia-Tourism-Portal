@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { useCommandShortcutLabel } from '@/components/shared/command-shortcut';
 
 export interface CommandItem {
   id: string;
@@ -57,11 +58,13 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const router = useRouter();
   const { t: tCommon } = useTranslation('common');
   const { t: tAdmin } = useTranslation('admin');
   const { t: tVendor } = useTranslation('vendor');
   const { theme, setTheme } = useTheme();
+  const commandShortcutLabel = useCommandShortcutLabel();
 
   const isOpen = triggerOpen !== undefined ? triggerOpen : internalOpen;
   const setOpen = useCallback(
@@ -327,6 +330,12 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
 
   const activeIndex = selectedIndex >= filtered.length ? 0 : selectedIndex;
 
+  useEffect(() => {
+    if (isOpen && filtered.length > 0) {
+      resultRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex, filtered.length, isOpen]);
+
   const executeItem = useCallback(
     (item: CommandItem) => {
       setOpen(false);
@@ -362,7 +371,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         </DialogTitle>
 
         {/* Input Header */}
-        <div className="relative flex items-center border-b border-border px-4 py-3">
+        <div className="relative flex items-center border-b border-border px-4 py-3 pr-20">
           <Search size={18} className="text-muted-foreground mr-3 shrink-0" />
           <input
             autoFocus
@@ -374,13 +383,13 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
             }}
             onKeyDown={handleKeyDown}
             placeholder={
-              scope === 'admin'
+              `${scope === 'admin'
                 ? tCommon('command.searchAdminPlaceholder')
-                : tCommon('command.searchVendorPlaceholder')
+                : tCommon('command.searchVendorPlaceholder')} (${commandShortcutLabel})`
             }
-            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <kbd className="hidden shrink-0 sm:inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {tCommon('keyboard.esc')}
           </kbd>
         </div>
@@ -400,6 +409,9 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
                   <button
                     key={item.id}
                     type="button"
+                    ref={(element) => {
+                      resultRefs.current[index] = element;
+                    }}
                     onClick={() => executeItem(item)}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${

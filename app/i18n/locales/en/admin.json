@@ -1,12 +1,22 @@
 {
   "shell": {
     "panel": "Admin Panel",
-    "signedInAs": "Signed in as"
+    "signedInAs": "Signed in as",
+    "portal": "Vendor Portal",
+    "brand": "Malaysia Tourism",
+    "navigation": "Portal navigation",
+    "context": {
+      "superAdmin": "Governance workspace",
+      "approver": "Wallet approvals",
+      "admin": "Admin workspace",
+      "staff": "Assigned work"
+    }
   },
   "roles": {
     "admin": "Admin",
     "approver": "Approver",
-    "super_admin": "Super Admin"
+    "super_admin": "Super Admin",
+    "staff": "Staff"
   },
   "navigation": {
     "Overview": "Overview",
@@ -28,6 +38,13 @@
     "Staff Conduct": "Staff Conduct",
     "Access Control": "Access Control",
     "Sponsored Placements": "Sponsored Placements"
+  },
+  "navigationSections": {
+    "workspace": "Workspace",
+    "governance": "Governance",
+    "finance": "Finance",
+    "support": "Support",
+    "administration": "Administration"
   },
   "sponsoredPlacements": {
     "eyebrow": "Discovery campaigns",

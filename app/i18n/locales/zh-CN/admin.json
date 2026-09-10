@@ -1,12 +1,22 @@
 {
   "shell": {
     "panel": "管理面板",
-    "signedInAs": "登录身份"
+    "signedInAs": "登录身份",
+    "portal": "商家门户",
+    "brand": "马来西亚旅游",
+    "navigation": "门户导航",
+    "context": {
+      "superAdmin": "治理工作区",
+      "approver": "钱包审批",
+      "admin": "管理工作区",
+      "staff": "已分配工作"
+    }
   },
   "roles": {
     "admin": "管理员",
     "approver": "审批员",
-    "super_admin": "超级管理员"
+    "super_admin": "超级管理员",
+    "staff": "工作人员"
   },
   "navigation": {
     "Overview": "概览",
@@ -28,6 +38,13 @@
     "Staff Conduct": "员工行为",
     "Access Control": "访问控制",
     "Sponsored Placements": "赞助展示位"
+  },
+  "navigationSections": {
+    "workspace": "工作区",
+    "governance": "治理",
+    "finance": "财务",
+    "support": "支持",
+    "administration": "管理"
   },
   "sponsoredPlacements": {
     "eyebrow": "探索推广活动",

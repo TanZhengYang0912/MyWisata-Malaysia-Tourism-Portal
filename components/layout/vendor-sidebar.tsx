@@ -1,47 +1,81 @@
 'use client';
 // P1 — Member 1: shared layout used by vendor portal
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, ShieldCheck, Building2, Bell, Store, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, Bell, Store, Building2, type LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
+import { PortalSidebar, type PortalSidebarSection } from '@/components/layout/portal-sidebar';
 
 type VendorNavItem = { href: string; activeHref?: string; label: string; icon: LucideIcon };
+type VendorNavSection = { labelKey: string; items: VendorNavItem[] };
 
-const NAV: VendorNavItem[] = [
-  { href: '/vendor/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/vendor/outlets',    label: 'Outlets',     icon: MapPinned },
-  { href: '/vendor/profile',    label: 'Business profile', icon: Building2 },
-  { href: '/vendor/products',   label: 'Products',   icon: UtensilsCrossed },
-  { href: '/vendor/bookings',   label: 'Bookings',   icon: CalendarDays },
-  { href: '/vendor/vouchers',   label: 'Vouchers',   icon: TicketPercent },
-  { href: '/vendor/orders',     label: 'Orders',     icon: ShoppingBag },
-  { href: '/vendor/wallet',     label: 'Wallet',     icon: Wallet },
-  { href: '/vendor/inbox',      label: 'Inbox',      icon: MessageCircle },
-  { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
-  { href: '/vendor/analytics',  label: 'Analytics',  icon: ChartNoAxesCombined },
+const NAV_SECTIONS: VendorNavSection[] = [
+  {
+    labelKey: 'workspace',
+    items: [
+      { href: '/vendor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/vendor/outlets', label: 'Outlets', icon: MapPinned },
+      { href: '/vendor/profile', label: 'Business profile', icon: Building2 },
+    ],
+  },
+  {
+    labelKey: 'operations',
+    items: [
+      { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
+      { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
+      { href: '/vendor/vouchers', label: 'Vouchers', icon: TicketPercent },
+      { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
+    ],
+  },
+  {
+    labelKey: 'finance',
+    items: [{ href: '/vendor/wallet', label: 'Wallet', icon: Wallet }],
+  },
+  {
+    labelKey: 'communication',
+    items: [
+      { href: '/vendor/inbox', label: 'Inbox', icon: MessageCircle },
+      { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
+    ],
+  },
+  {
+    labelKey: 'insights',
+    items: [{ href: '/vendor/analytics', label: 'Analytics', icon: ChartNoAxesCombined }],
+  },
 ];
 
-const OUTLET_MANAGER_NAV: VendorNavItem[] = [
-  { href: '/vendor/dashboard', label: 'Operations', icon: LayoutDashboard },
-  { href: OUTLET_MANAGER_SHOP_PAGE_HREF, activeHref: '/vendor/outlets', label: 'Shop page', icon: Store },
-  { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
-  { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
-  { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
-  { href: '/vendor/inbox', label: 'Inbox', icon: MessageCircle },
-  { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
+const OUTLET_MANAGER_SECTIONS: VendorNavSection[] = [
+  {
+    labelKey: 'workspace',
+    items: [
+      { href: '/vendor/dashboard', label: 'Operations', icon: LayoutDashboard },
+      { href: OUTLET_MANAGER_SHOP_PAGE_HREF, activeHref: '/vendor/outlets', label: 'Shop page', icon: Store },
+    ],
+  },
+  {
+    labelKey: 'operations',
+    items: [
+      { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
+      { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
+      { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
+    ],
+  },
+  {
+    labelKey: 'communication',
+    items: [
+      { href: '/vendor/inbox', label: 'Inbox', icon: MessageCircle },
+      { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
+    ],
+  },
 ];
 
 export default function VendorSidebar() {
   const { t: tVendor } = useTranslation('vendor');
-  const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
-  const { user, loading, isOutletManager } = useAuth();
-  const nav = isOutletManager ? OUTLET_MANAGER_NAV : NAV;
+  const { user, isOutletManager, isVendorOwner } = useAuth();
   const [unreadChats, setUnreadChats] = useState(0);
 
   useEffect(() => {
@@ -68,33 +102,36 @@ export default function VendorSidebar() {
     };
   }, [supabase, user?.id]);
 
+  const navSections = (isOutletManager ? OUTLET_MANAGER_SECTIONS : NAV_SECTIONS)
+    .map<PortalSidebarSection>((section) => ({
+      label: tVendor(`navigationSections.${section.labelKey}`),
+      items: section.items.map((item) => ({
+        ...item,
+        label: tVendor(`navigation.${item.label}`),
+        count: item.href === '/vendor/inbox' ? unreadChats : undefined,
+        countLabel: item.href === '/vendor/inbox' ? String(unreadChats) : undefined,
+      })),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const contextLabel = isOutletManager
+    ? tVendor('shell.roles.outletManager')
+    : isVendorOwner
+      ? tVendor('shell.roles.vendorOwner')
+      : tVendor('shell.roles.teamMember');
+  const contextDetail = isOutletManager
+    ? user?.activeOutletName || tVendor('shell.outletOperations')
+    : tVendor('shell.workspace');
+
   return (
-      <aside className="fixed bottom-0 left-0 top-0 z-40 flex w-60 flex-col bg-gray-900 text-gray-200">
-        <div className="flex h-16 items-center border-b border-gray-700 px-5">
-        <p className="text-xs text-gray-400 uppercase tracking-wider">{tVendor('shell.portal')}</p>
-        <p className="font-semibold text-white mt-0.5">{tVendor('shell.brand')}</p>
-        {!loading && isOutletManager && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-800 px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-gray-300"><ShieldCheck size={11} /> {tVendor('shell.outletOperations')}</p>}
-        {!loading && isOutletManager && user?.activeOutletName && <p className="mt-2 truncate text-xs text-gray-400" title={user.activeOutletName}>{user.activeOutletName}</p>}
-      </div>
-      <nav className="flex-1 py-4 overflow-y-auto">
-        {nav.map(({ href, activeHref, label, icon: Icon }) => (
-          <Link
-            key={href} href={href}
-            className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors
-              ${pathname.startsWith(activeHref || href)
-                ? 'bg-gray-800 text-white'
-                : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <Icon size={17} />
-            {tVendor(`navigation.${label}`)}
-            {href === '/vendor/inbox' && unreadChats > 0 && (
-              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-white">
-                {unreadChats}
-              </span>
-            )}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+    <PortalSidebar
+      portalName={tVendor('shell.portal')}
+      brandName={tVendor('shell.brand')}
+      navigationLabel={tVendor('shell.navigation')}
+      contextLabel={contextLabel}
+      contextDetail={contextDetail}
+      sections={navSections}
+      fixed
+    />
   );
 }

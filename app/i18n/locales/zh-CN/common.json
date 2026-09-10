@@ -259,8 +259,8 @@
   },
   "command": {
     "title": "全局命令面板",
-    "searchAdminPlaceholder": "输入命令或搜索待办队列… (⌘K)",
-    "searchVendorPlaceholder": "输入命令或快速跳转工作区… (⌘K)",
+    "searchAdminPlaceholder": "输入命令或搜索待办队列…",
+    "searchVendorPlaceholder": "输入命令或快速跳转工作区…",
     "noResults": "未找到相关命令或页面。",
     "navigation": "导航直达",
     "queue": "待审队列",

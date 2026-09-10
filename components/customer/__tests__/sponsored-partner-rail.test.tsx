@@ -25,7 +25,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => ({
       "ui.search.sponsoredRecommendations": "Sponsored recommendations",
-      "ui.search.sponsoredDescription": "Paid placements matched to your current search.",
+      "ui.search.sponsoredDescription": "Promoted experiences from verified local partners.",
       "ui.search.sponsoredCarousel": "Sponsored recommendations carousel",
       "ui.search.previousAdvertisement": "Previous advertisement",
       "ui.search.nextAdvertisement": "Next advertisement",
