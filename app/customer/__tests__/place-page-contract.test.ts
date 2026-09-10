@@ -13,9 +13,12 @@ describe("place page layout and copy", () => {
     expect(pageSource).not.toContain("max-w-6xl");
   });
 
-  it("uses the shared activity section for place experiences", () => {
+  it("keeps admission separate from the shared activity section", () => {
     expect(pageSource).toContain("PlaceActivitySection");
-    expect(pageSource).toContain("products.length > 0 ?");
+    expect(pageSource).toContain("PlaceAdmissionSection");
+    expect(pageSource).toContain('relation === "admission"');
+    expect(pageSource).toContain("activities.length > 0");
+    expect(pageSource).not.toContain("products.length > 0 ?");
   });
 
   it("singularises the activity and vendor counts", () => {

@@ -223,6 +223,8 @@ export interface Place {
   entryFee: number | null; // null = n/a, 0 = free, >0 = RM
   managedByVendorId: string | null;
   detail: { difficulty?: string; duration?: string; bestTime?: string; gettingThere?: string } | null;
+  /** Freshness signal for entry_fee, which is a copied notice, not our data. */
+  updatedAt: string;
 }
 
 /** One vendor's product available at a place, with how it relates to the place. */

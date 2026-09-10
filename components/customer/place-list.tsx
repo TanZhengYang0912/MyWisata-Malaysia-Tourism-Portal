@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { PlaceCard } from "@/components/customer/place-card";
 import type { Place } from "@/backend/core/types";
-import { filterPlaceListings, getPlaceListingCounts, parsePlaceAreaIds, serializePlaceAreaIds, type PlaceAvailabilityFilter } from "@/lib/customer/place-list";
+import { filterPlaceListings, getPlaceListingCounts, parsePlaceAreaIds, serializePlaceAreaIds, type PlaceAvailabilityFilter, type ResolvedEntryPrice } from "@/lib/customer/place-list";
 
 type Area = { id: string; name: string };
 
@@ -56,11 +56,13 @@ function AreaPicker({ areas, selected, onChange }: { areas: Area[]; selected: Re
 export function PlaceList({
   pois,
   productCounts,
+  resolvedEntries,
   regions,
   regionByPoi,
 }: {
   pois: Place[];
   productCounts: Record<string, number>;
+  resolvedEntries: Record<string, ResolvedEntryPrice>;
   regions: { id: string; name: string }[];
   regionByPoi: Record<string, string>;
 }) {
@@ -155,7 +157,7 @@ export function PlaceList({
       ) : (
         <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((poi) => (
-            <PlaceCard key={poi.id} place={poi} productCount={productCounts[poi.id] ?? 0} />
+            <PlaceCard key={poi.id} place={poi} productCount={productCounts[poi.id] ?? 0} resolvedEntry={resolvedEntries[poi.id]} />
           ))}
         </div>
       )}

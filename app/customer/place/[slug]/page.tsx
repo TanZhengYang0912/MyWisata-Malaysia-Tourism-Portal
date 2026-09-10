@@ -17,6 +17,7 @@ import { getVendors } from "@/backend/domains/catalogue";
 import { PlaceBreadcrumb } from "@/components/customer/place-breadcrumb";
 import { PlaceCard } from "@/components/customer/place-card";
 import { PlaceList } from "@/components/customer/place-list";
+import { PlaceAdmissionSection } from "@/components/customer/place-admission-section";
 import { PlaceActivitySection } from "@/components/customer/place-activity-section";
 import { PlaceCommunitySection } from "@/components/customer/place-community-section";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
@@ -26,6 +27,7 @@ import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { formatMYRNumber } from "@/lib/i18n/format";
 import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { getEntryPrice, type ResolvedEntryPrice } from "@/lib/customer/place-list";
 
 export const dynamic = "force-dynamic";
 
@@ -78,17 +80,37 @@ export default async function PlacePage({ params }: Props) {
   ]);
 
   const operator = place.managedByVendorId ? vendors.find((v) => v.id === place.managedByVendorId) : undefined;
-  const entry = place.entryFee === null
+  const tickets = products.filter(({ relation }) => relation === "admission");
+  const activities = products.filter(({ relation }) => relation !== "admission");
+  const resolvedEntry = getEntryPrice(place.entryFee, tickets);
+  const entry = resolvedEntry.price === null
     ? { text: t("ui.place.noGate"), tone: "bg-muted text-muted-foreground" }
-    : place.entryFee === 0
+    : resolvedEntry.price === 0
       ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 text-emerald-800" }
-      : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 text-amber-900" };
+      : {
+          text: resolvedEntry.fromTicket
+            ? t("ui.place.entryFeeFrom", { price: formatMYRNumber(resolvedEntry.price) })
+            : t("ui.place.entryFee", { price: formatMYRNumber(resolvedEntry.price) }),
+          tone: "bg-amber-100 text-amber-900",
+        };
 
   // Product-option counts for every card this page is about to render — one
   // batch of parallel lookups instead of each PlaceCard fetching its own.
   const poisShown = place.level === "state" ? regionGroups.flatMap((group) => group.pois) : place.level === "region" ? children : [];
+  const poiProducts = new Map(
+    await Promise.all(poisShown.map(async (poi) => [poi.id, await getPlaceProducts(poi.id)] as const)),
+  );
   const productCounts = new Map(
-    await Promise.all(poisShown.map(async (poi) => [poi.id, (await getPlaceProducts(poi.id)).length] as const)),
+    [...poiProducts].map(([id, list]) => [id, list.length] as const),
+  );
+  const resolvedEntries: Record<string, ResolvedEntryPrice> = Object.fromEntries(
+    poisShown.map((poi) => [
+      poi.id,
+      getEntryPrice(
+        poi.entryFee,
+        (poiProducts.get(poi.id) ?? []).filter(({ relation }) => relation === "admission"),
+      ),
+    ]),
   );
 
   // Flattened for PlaceList — region is a filter now, not a grouping axis.
@@ -173,6 +195,7 @@ export default async function PlacePage({ params }: Props) {
         <PlaceList
           pois={poisShown}
           productCounts={Object.fromEntries(productCounts)}
+          resolvedEntries={resolvedEntries}
           regions={regionGroups.map(({ region }) => ({ id: region.id, name: region.name }))}
           regionByPoi={regionByPoi}
         />
@@ -184,7 +207,7 @@ export default async function PlacePage({ params }: Props) {
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.placesToVisit", { count: children.length })}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {children.map((child) => (
-              <PlaceCard key={child.id} place={child} productCount={productCounts.get(child.id) ?? 0} />
+              <PlaceCard key={child.id} place={child} productCount={productCounts.get(child.id) ?? 0} resolvedEntry={resolvedEntries[child.id]} />
             ))}
           </div>
         </section>
@@ -235,16 +258,26 @@ export default async function PlacePage({ params }: Props) {
         </section>
       )}
 
-      {/* POI: vendor options, grouped by relation type through the filterable section. */}
-      {place.level === "poi" && (
-        products.length > 0 ? (
-          <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />
-        ) : (
-          <section className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("ui.place.activitiesHere")}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{t("ui.place.freeUnmanaged")}</p>
-          </section>
-        )
+      {place.level === "poi" && tickets.length > 0 && (
+        <PlaceAdmissionSection tickets={tickets} returnTo={`/customer/place/${slug}`} />
+      )}
+
+      {place.level === "poi" && activities.length > 0 && (
+        <PlaceActivitySection products={activities} returnTo={`/customer/place/${slug}`} />
+      )}
+
+      {place.level === "poi" && tickets.length === 0 && activities.length === 0 && (
+        <section className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
+          <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("ui.place.activitiesHere")}</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            {place.entryFee !== null && place.entryFee > 0
+              ? t("ui.place.payAtEntrance", {
+                  price: formatMYRNumber(place.entryFee),
+                  date: new Date(place.updatedAt).toLocaleDateString(),
+                })
+              : t("ui.place.freeUnmanaged")}
+          </p>
+        </section>
       )}
 
       <PlaceCommunitySection placeId={place.id} placeName={place.name} />

@@ -4,7 +4,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { MapClient } from "./trip-planner-client";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
@@ -18,12 +18,12 @@ export default async function TripPlannerPage({ params }: { params: Promise<{ tr
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
 
+  if (!user) {
+    return null;
+  }
+
   const resolvedParams = await params;
   const tripId = resolvedParams.tripId;
-
-  if (!user) {
-    redirect(`/auth/sign-in?redirect_to=/customer/trip/${tripId}`);
-  }
 
   const trip = await getTripById(tripId, db);
   if (!trip) {

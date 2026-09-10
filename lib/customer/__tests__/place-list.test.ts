@@ -4,6 +4,7 @@ import {
   filterPlaceActivities,
   getPlaceActivityFilterCounts,
   getPlaceActivityLabel,
+  getEntryPrice,
   getPlaceListingCounts,
   filterPlaceListings,
   parsePlaceAreaIds,
@@ -27,6 +28,7 @@ function place(id: string, entryFee: number | null): Place {
     intro: null,
     managedByVendorId: null,
     detail: null,
+    updatedAt: "2026-08-14T00:00:00Z",
   };
 }
 
@@ -60,7 +62,6 @@ describe("place listing filters", () => {
 });
 
 const products = [
-  { relation: "admission", product: { id: "ticket" } },
   { relation: "guide_service", product: { id: "guide" } },
   { relation: "addon", product: { id: "addon" } },
 ] as unknown as PlaceProduct[];
@@ -72,9 +73,57 @@ describe("place activity presentation helpers", () => {
     expect(getPlaceActivityLabel("addon")).toBe("Add-on");
   });
 
-  it("counts and filters all activity categories", () => {
-    expect(getPlaceActivityFilterCounts(products)).toEqual({ all: 3, admission: 1, guide_service: 1, addon: 1 });
-    expect(filterPlaceActivities(products, "all")).toHaveLength(3);
-    expect(filterPlaceActivities(products, "guide_service")).toEqual([products[1]]);
+  it("counts and filters only the non-admission categories", () => {
+    expect(getPlaceActivityFilterCounts(products)).toEqual({ all: 2, guide_service: 1, addon: 1 });
+    expect(filterPlaceActivities(products, "all")).toHaveLength(2);
+    expect(filterPlaceActivities(products, "guide_service")).toEqual([products[0]]);
+  });
+
+  it("ignores an admission product that reaches the grid by mistake", () => {
+    const withTicket = [
+      ...products,
+      { relation: "admission", product: { id: "ticket" } },
+    ] as unknown as PlaceProduct[];
+
+    expect(getPlaceActivityFilterCounts(withTicket).all).toBe(2);
+    expect(filterPlaceActivities(withTicket, "all")).toHaveLength(2);
+  });
+});
+
+function ticketAt(price: number, deltas: number[] = []): PlaceProduct {
+  return {
+    relation: "admission",
+    product: {
+      id: `t-${price}`,
+      price,
+      variants: deltas.map((priceDelta, i) => ({ id: `v${i}`, label: `v${i}`, priceDelta })),
+    },
+  } as unknown as PlaceProduct;
+}
+
+describe("getEntryPrice", () => {
+  it("prefers the ticket price so a vendor's edit shows immediately", () => {
+    expect(getEntryPrice(16, [ticketAt(18)])).toEqual({ price: 18, fromTicket: true });
+  });
+
+  it("uses the cheapest tier, so the badge cannot contradict the ticket list", () => {
+    expect(getEntryPrice(80, [ticketAt(80, [0, -47, 18, -35])])).toEqual({ price: 33, fromTicket: true });
+  });
+
+  it("takes the cheapest when a place sells more than one ticket", () => {
+    expect(getEntryPrice(60, [ticketAt(60), ticketAt(55)])).toEqual({ price: 55, fromTicket: true });
+  });
+
+  it("falls back to the posted fee when nothing is sold here", () => {
+    expect(getEntryPrice(49, [])).toEqual({ price: 49, fromTicket: false });
+  });
+
+  it("keeps free and no-gate distinguishable", () => {
+    expect(getEntryPrice(0, [])).toEqual({ price: 0, fromTicket: false });
+    expect(getEntryPrice(null, [])).toEqual({ price: null, fromTicket: false });
+  });
+
+  it("survives a ticket with no variants", () => {
+    expect(getEntryPrice(16, [ticketAt(16, [])])).toEqual({ price: 16, fromTicket: true });
   });
 });

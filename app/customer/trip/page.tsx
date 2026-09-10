@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getTrips } from "@/backend/domains/trips";
 import { TripHubClient } from "./trip-hub-client";
-import { redirect } from "next/navigation";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
@@ -18,7 +17,7 @@ export default async function TripPage() {
   const { data: { user } } = await db.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/customer/trip");
+    return null;
   }
 
   const trips = await getTrips(db);

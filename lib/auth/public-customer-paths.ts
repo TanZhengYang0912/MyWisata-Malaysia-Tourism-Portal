@@ -1,28 +1,34 @@
-const PUBLIC_CUSTOMER_ROOTS = [
-  "/customer",
-  "/customer/recommendations",
-  "/customer/wallet",
-  "/customer/affiliate",
-  "/customer/for-you",
-] as const;
+const PRIVATE_CUSTOMER_PATHS = new Set([
+  "/customer/calendar",
+  "/customer/kyc",
+  "/customer/notifications",
+  "/customer/phone",
+  "/customer/preferences",
+  "/customer/profile",
+  "/customer/profile/register-vendor",
+  "/customer/saved",
+  "/customer/support",
+  "/customer/trip",
+  "/customer/verification",
+  "/customer/wishlist",
+]);
 
-const PUBLIC_CUSTOMER_PREFIXES = [
-  "/customer/explore",
-  "/customer/partners",
-  "/customer/search",
-  "/customer/activity/",
-  "/customer/vendor/",
-  "/customer/destination/",
-  "/customer/place/",
-  "/customer/experience/",
-  "/customer/outlet/",
-] as const;
+const PRIVATE_CUSTOMER_PREFIXES = [
+  "/customer/bookings/",
+  "/customer/chat",
+  "/customer/checkout",
+  "/customer/orders",
+  "/customer/recommendations/",
+  "/customer/support/",
+  "/customer/trip/",
+  "/customer/wallet/",
+];
 
-/** Customer surfaces that are safe to render before sign-in. */
+/** Customer surfaces that are safe to render before sign-in by default. */
 export function isPublicCustomerPath(pathname: string): boolean {
-  if (PUBLIC_CUSTOMER_ROOTS.includes(pathname as (typeof PUBLIC_CUSTOMER_ROOTS)[number])) return true;
-  return PUBLIC_CUSTOMER_PREFIXES.some((prefix) => {
-    if (prefix.endsWith("/")) return pathname.startsWith(prefix);
-    return pathname === prefix || pathname.startsWith(`${prefix}/`);
-  });
+  if (pathname !== "/customer" && !pathname.startsWith("/customer/")) return false;
+  if (PRIVATE_CUSTOMER_PATHS.has(pathname)) return false;
+  return !PRIVATE_CUSTOMER_PREFIXES.some((prefix) => (
+    prefix.endsWith("/") ? pathname.startsWith(prefix) : pathname === prefix || pathname.startsWith(`${prefix}/`)
+  ));
 }

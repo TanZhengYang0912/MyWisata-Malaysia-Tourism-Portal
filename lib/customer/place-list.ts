@@ -8,7 +8,11 @@ export interface PlaceListingCounts {
   freeEntry: number;
 }
 
-export type PlaceActivityFilter = "all" | PlaceRelation;
+/**
+ * Admission is deliberately absent: a ticket is a precondition, not one of
+ * several things to choose between, so it gets its own section.
+ */
+export type PlaceActivityFilter = "all" | "guide_service" | "addon";
 
 const PLACE_ACTIVITY_LABELS: Record<PlaceRelation, string> = {
   admission: "Entry ticket",
@@ -22,17 +26,20 @@ export function getPlaceActivityLabel(relation: PlaceRelation): string {
 
 export interface PlaceActivityFilterCounts {
   all: number;
-  admission: number;
   guide_service: number;
   addon: number;
 }
 
+export function isPlaceActivity({ relation }: PlaceProduct): boolean {
+  return relation !== "admission";
+}
+
 export function getPlaceActivityFilterCounts(products: readonly PlaceProduct[]): PlaceActivityFilterCounts {
+  const activities = products.filter(isPlaceActivity);
   return {
-    all: products.length,
-    admission: products.filter(({ relation }) => relation === "admission").length,
-    guide_service: products.filter(({ relation }) => relation === "guide_service").length,
-    addon: products.filter(({ relation }) => relation === "addon").length,
+    all: activities.length,
+    guide_service: activities.filter(({ relation }) => relation === "guide_service").length,
+    addon: activities.filter(({ relation }) => relation === "addon").length,
   };
 }
 
@@ -40,7 +47,8 @@ export function filterPlaceActivities(
   products: readonly PlaceProduct[],
   filter: PlaceActivityFilter,
 ): PlaceProduct[] {
-  return filter === "all" ? [...products] : products.filter(({ relation }) => relation === filter);
+  const activities = products.filter(isPlaceActivity);
+  return filter === "all" ? activities : activities.filter(({ relation }) => relation === filter);
 }
 
 export function getPlaceListingCounts(
@@ -79,4 +87,36 @@ export function parsePlaceAreaIds(values: readonly string[], supportedAreaIds: R
 
 export function serializePlaceAreaIds(areaIds: ReadonlySet<string>): string[] {
   return [...areaIds].sort();
+}
+
+export interface ResolvedEntryPrice {
+  price: number | null;
+  /** True when a ticket sold here set the price — the badge then reads “From RMx”. */
+  fromTicket: boolean;
+}
+
+/**
+ * The price a visitor actually pays to get in.
+ *
+ * Money flows through the product, so the vendor's own price is the truth and a
+ * vendor edit shows up here immediately. places.entry_fee is a copied public
+ * notice — the fallback only, for places nobody sells entry to on this platform.
+ *
+ * Returns the lowest price among the ticket tiers. A hero reading “RM80” above
+ * a child tier at RM33 would otherwise look like a mistake.
+ */
+export function getEntryPrice(
+  entryFee: number | null,
+  tickets: readonly PlaceProduct[],
+): ResolvedEntryPrice {
+  if (tickets.length === 0) return { price: entryFee, fromTicket: false };
+
+  const lowest = Math.min(
+    ...tickets.map(({ product }) => {
+      const deltas = (product.variants ?? []).map(({ priceDelta }) => priceDelta);
+      return product.price + (deltas.length > 0 ? Math.min(...deltas) : 0);
+    }),
+  );
+
+  return { price: lowest, fromTicket: true };
 }

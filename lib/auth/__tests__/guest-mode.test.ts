@@ -13,14 +13,13 @@ describe("Guest Mode navigation", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
     const base = "https://mywisata.test/customer/explore";
     expect(guestProtectedCustomerPath("/customer/profile?tab=account#preferences", base)).toBe("/customer/profile?tab=account#preferences");
-    expect(guestProtectedCustomerPath("/customer/cart", base)).toBe("/customer/cart");
     expect(guestProtectedCustomerPath("https://mywisata.test/customer/chat", base)).toBe("/customer/chat");
     expect(guestProtectedCustomerPath("/customer/wallet/withdrawals/123", base)).toBe("/customer/wallet/withdrawals/123");
   });
 
   it("leaves public browsing, explicit authentication and external navigation alone", () => {
     expect(typeof guestProtectedCustomerPath).toBe("function");
-    for (const href of ["/customer", "/customer/explore", "/customer/activity/123", "/customer/wallet", "/customer/for-you", "/login?next=%2Fcustomer%2Fcart&mode=signup", "https://other.test/customer/cart", "//other.test/customer/cart", "mailto:help@example.com", "#listings", "http://[", "/customer-service"]) {
+    for (const href of ["/customer", "/customer/explore", "/customer/activity/123", "/customer/wallet", "/customer/for-you", "/customer/cart", "/customer/vouchers", "/customer/profile/customer-1", "/customer/map", "/login?next=%2Fcustomer%2Fcart&mode=signup", "https://other.test/customer/cart", "//other.test/customer/cart", "mailto:help@example.com", "#listings", "http://[", "/customer-service"]) {
       expect(guestProtectedCustomerPath(href, "https://mywisata.test/customer/explore")).toBeNull();
     }
   });

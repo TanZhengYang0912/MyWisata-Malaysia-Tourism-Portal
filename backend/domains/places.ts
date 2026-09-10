@@ -28,10 +28,11 @@ type PlaceRow = {
   entry_fee: number | string | null;
   managed_by_vendor_id: string | null;
   detail: Place["detail"];
+  updated_at: string;
 };
 
 const PLACES_SELECT =
-  "id,parent_id,level,name,slug,tagline,intro,image_url,state,district,lat,lng,entry_fee,managed_by_vendor_id,detail";
+  "id,parent_id,level,name,slug,tagline,intro,image_url,state,district,lat,lng,entry_fee,managed_by_vendor_id,detail,updated_at";
 
 // PostgREST serialises NUMERIC as a string — coerce every numeric column,
 // same convention as mapActivity()'s place_lat/place_lng handling.
@@ -52,6 +53,7 @@ function mapPlace(row: PlaceRow): Place {
     entryFee: row.entry_fee === null ? null : Number(row.entry_fee),
     managedByVendorId: row.managed_by_vendor_id,
     detail: row.detail,
+    updatedAt: row.updated_at,
   };
 }
 

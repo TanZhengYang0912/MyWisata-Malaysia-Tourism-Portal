@@ -16,7 +16,7 @@ describe("guest action entrypoint wiring", () => {
     expect(layout).toContain('gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")');
   });
 
-  it("gates private links before navigation without changing their destination or the route guard", () => {
+  it("uses the same capability gate for private links and direct guest arrivals", () => {
     expect(layout).not.toContain("guestSafeHref");
     expect(layout).toContain("onClickCapture={confirmGuestNavigation}");
     expect(layout).toContain("onAuxClickCapture={confirmGuestNavigation}");
@@ -24,7 +24,11 @@ describe("guest action entrypoint wiring", () => {
     expect(layout).toContain("event.stopPropagation()");
     expect(layout).toContain("guestProtectedCustomerPath");
     expect(layout).toContain("gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, nextPath)");
-    expect(layout).toContain("allowUnauthenticated: isPublicCustomerPath");
+    expect(layout).toContain("allowUnauthenticated: true");
+    expect(layout).toContain("const guestBlocked = !currentUser && !isPublicCustomerPath(pathname);");
+    expect(layout).toContain("gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, `${pathname}${window.location.search}${window.location.hash}`)");
+    expect(layout).toContain("GuestAccountEmptyState");
+    expect(layout).toContain("guestBlocked ? (");
   });
 
   it("blocks guest outlet chat before POST instead of directly navigating to login", () => {

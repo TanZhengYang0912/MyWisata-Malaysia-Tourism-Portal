@@ -15,7 +15,6 @@ import {
 
 const FILTERS: { value: PlaceActivityFilter; key: string }[] = [
   { value: "all", key: "ui.placeActivity.filters.all" },
-  { value: "admission", key: "ui.placeActivity.filters.admission" },
   { value: "guide_service", key: "ui.placeActivity.filters.guideService" },
   { value: "addon", key: "ui.placeActivity.filters.addon" },
 ];

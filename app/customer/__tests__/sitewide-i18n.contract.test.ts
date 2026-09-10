@@ -92,6 +92,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/malaysia-destination-rail.tsx",
   "components/customer/nearby-outlets.tsx",
   "components/customer/outlet-chat-button.tsx",
+  "components/customer/place-admission-section.tsx",
   "components/customer/place-activity-section.tsx",
   "components/customer/place-breadcrumb.tsx",
   "components/customer/place-card.tsx",

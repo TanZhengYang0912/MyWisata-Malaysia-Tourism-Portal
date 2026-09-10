@@ -4,18 +4,30 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import type { Place } from "@/backend/core/types";
+import type { ResolvedEntryPrice } from "@/lib/customer/place-list";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 
-export function entryLabel(place: Place, t?: (key: string, options?: Record<string, unknown>) => string): { text: string; tone: string } {
-  if (place.entryFee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
-  if (place.entryFee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
-  return { text: t?.("ui.place.entryFee", { price: formatMYRNumber(place.entryFee), ns: "customer" }) ?? `${formatMYR(place.entryFee)} entry`, tone: "bg-amber-100 text-amber-900" };
+/**
+ * A resolved price overrides place.entryFee when a caller has already found
+ * the real ticket price. A resolved null explicitly means no gate; zero is a
+ * real price and must not fall back through a falsy check.
+ */
+export function entryLabel(
+  place: Place,
+  t?: (key: string, options?: Record<string, unknown>) => string,
+  resolved?: ResolvedEntryPrice,
+): { text: string; tone: string } {
+  const fee = resolved === undefined ? place.entryFee : resolved.price;
+  if (fee === null) return { text: t?.("ui.place.noGate", { ns: "customer" }) ?? "Public access", tone: "bg-muted text-muted-foreground" };
+  if (fee === 0) return { text: t?.("ui.place.freeEntry", { ns: "customer" }) ?? "Free entry", tone: "bg-emerald-100 text-emerald-800" };
+  const key = resolved?.fromTicket ? "ui.place.entryFeeFrom" : "ui.place.entryFee";
+  return { text: t?.(key, { price: formatMYRNumber(fee), ns: "customer" }) ?? `${formatMYR(fee)} entry`, tone: "bg-amber-100 text-amber-900" };
 }
 
 /** A region or POI card in a state/region listing — productCount is precomputed by the page, not fetched here. */
-export function PlaceCard({ place, productCount }: { place: Place; productCount: number }) {
+export function PlaceCard({ place, productCount, resolvedEntry }: { place: Place; productCount: number; resolvedEntry?: ResolvedEntryPrice }) {
   const { t } = useTranslation("customer");
-  const entry = entryLabel(place, t);
+  const entry = entryLabel(place, t, resolvedEntry);
   const location = [place.district, place.state].filter(Boolean).join(", ");
   return (
     <Link

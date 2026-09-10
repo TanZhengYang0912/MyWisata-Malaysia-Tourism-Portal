@@ -1800,6 +1800,8 @@
       "noGate": "Tiada pintu masuk",
       "freeEntry": "Masuk percuma",
       "entryFee": "RM{{price}} masuk",
+      "entryFeeFrom": "Dari RM{{price}}",
+      "payAtEntrance": "RM{{price}} di pintu masuk · harga rujukan, tidak dijual di sini. Rekod dikemas kini {{date}}.",
       "bookable": "Boleh ditempah",
       "vendorOptions": "{{count}} pilihan vendor",
       "vendorOptions_other": "{{count}} pilihan vendor",
@@ -1984,10 +1986,17 @@
       "price": "RM{{value}}",
       "filters": {
         "all": "Semua pengalaman",
-        "admission": "Tiket masuk",
         "guideService": "Pengalaman berpandu",
         "addon": "Tambahan"
       }
+    },
+    "placeAdmission": {
+      "title": "Tiket masuk",
+      "summary": "Beli tiket masuk dahulu sebelum merancang yang lain.",
+      "soldBy": "Dijual oleh {{name}}",
+      "tiers": "Jenis tiket",
+      "free": "Percuma",
+      "price": "RM{{value}}"
     },
     "forYou": {
       "generate": "Jana cadangan",

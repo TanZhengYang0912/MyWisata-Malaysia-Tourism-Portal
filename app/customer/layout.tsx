@@ -29,6 +29,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
+import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -49,7 +50,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 }
 
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
+  const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: true });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();
   const { savedIds } = useWishlist();
@@ -57,6 +58,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const savedCount = savedIds.size + savedStates.size;
   const [tripCount, setTripCount] = useState(0);
   const pathname = usePathname();
+  const guestBlocked = !currentUser && !isPublicCustomerPath(pathname);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
@@ -159,6 +161,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
 
+  useEffect(() => {
+    if (loading || !guestBlocked) return;
+    gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, `${pathname}${window.location.search}${window.location.hash}`);
+  }, [gate, guestBlocked, loading, pathname]);
+
   async function switchAccount() {
     setAccountMenuOpen(false);
     if (currentUser) {
@@ -170,8 +177,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const guestPublic = !currentUser && isPublicCustomerPath(pathname);
-  if (loading || (!currentUser && !guestPublic)) {
+  if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -360,7 +366,17 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="flex-1 min-h-0">{children}</main>
+      <main className="flex-1 min-h-0">
+        {guestBlocked ? (
+          <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+            <GuestAccountEmptyState
+              title={tCustomer("ui.states.couldNotLoad")}
+              description={tCustomer("ui.guest.accountHint")}
+              nextPath={`${pathname}${window.location.search}${window.location.hash}`}
+            />
+          </div>
+        ) : children}
+      </main>
       {!pathname.startsWith("/customer/chat") && <ChatbotWidget />}
     </div>
   );

@@ -1800,6 +1800,8 @@
       "noGate": "No gate",
       "freeEntry": "Free entry",
       "entryFee": "RM{{price}} entry",
+      "entryFeeFrom": "From RM{{price}}",
+      "payAtEntrance": "RM{{price}} at the entrance · reference price, not sold here. Record last updated {{date}}.",
       "bookable": "Bookable",
       "vendorOptions": "{{count}} vendor option",
       "vendorOptions_other": "{{count}} vendor options",
@@ -1984,10 +1986,17 @@
       "price": "RM{{value}}",
       "filters": {
         "all": "All experiences",
-        "admission": "Entry tickets",
         "guideService": "Guided experiences",
         "addon": "Add-ons"
       }
+    },
+    "placeAdmission": {
+      "title": "Entry tickets",
+      "summary": "Buy your way in before you plan the rest.",
+      "soldBy": "Sold by {{name}}",
+      "tiers": "Ticket types",
+      "free": "Free",
+      "price": "RM{{value}}"
     },
     "forYou": {
       "generate": "Generate recommendations",

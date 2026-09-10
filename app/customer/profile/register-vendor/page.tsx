@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 import { getServerTranslation } from '@/lib/i18n/server';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Store } from 'lucide-react';
 import RegisterVendorForm from '@/components/vendor/register-vendor-form';
@@ -13,7 +12,7 @@ export default async function RegisterVendorPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login');
+    return null;
   }
 
   // Check if they already have a vendor account

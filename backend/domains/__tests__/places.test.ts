@@ -41,17 +41,17 @@ function makeDb(tables: Record<string, Record<string, unknown>[]>) {
 const STATE_ROW = {
   id: "state-1", parent_id: null, level: "state", name: "Penang", slug: "penang",
   tagline: null, intro: null, image_url: null, state: "Penang", district: null,
-  lat: 5.4141, lng: 100.3288, entry_fee: null, managed_by_vendor_id: null, detail: null, status: "active",
+  lat: 5.4141, lng: 100.3288, entry_fee: null, managed_by_vendor_id: null, detail: null, updated_at: "2026-08-14T00:00:00Z", status: "active",
 };
 const REGION_ROW = {
   id: "region-1", parent_id: "state-1", level: "region", name: "George Town", slug: "george-town",
   tagline: null, intro: null, image_url: null, state: "Penang", district: "George Town",
-  lat: 5.4141, lng: 100.3288, entry_fee: null, managed_by_vendor_id: null, detail: null, status: "active",
+  lat: 5.4141, lng: 100.3288, entry_fee: null, managed_by_vendor_id: null, detail: null, updated_at: "2026-08-14T00:00:00Z", status: "active",
 };
 const POI_ROW = {
   id: "poi-1", parent_id: "region-1", level: "poi", name: "Armenian Street Murals", slug: "armenian-street-murals",
   tagline: null, intro: null, image_url: "penang/chew-jetty.webp", state: "Penang", district: "George Town",
-  lat: "5.4173", lng: "100.3390", entry_fee: "0.00", managed_by_vendor_id: null, detail: null, status: "active",
+  lat: "5.4173", lng: "100.3390", entry_fee: "0.00", managed_by_vendor_id: null, detail: null, updated_at: "2026-08-14T00:00:00Z", status: "active",
 };
 
 describe("getPlaceAncestors", () => {
@@ -87,6 +87,14 @@ describe("getPlaceBySlug", () => {
     expect(place?.entryFee).toBe(0);
     expect(typeof place?.lat).toBe("number");
     expect(typeof place?.entryFee).toBe("number");
+  });
+
+  it("carries updated_at through as the entry-fee freshness signal", async () => {
+    const db = makeDb({ places: [POI_ROW] });
+
+    const place = await getPlaceBySlug("armenian-street-murals", db);
+
+    expect(place?.updatedAt).toBe("2026-08-14T00:00:00Z");
   });
 
   it("resolves a bucket-relative image_url to a Storage public URL", async () => {

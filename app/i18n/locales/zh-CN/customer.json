@@ -1800,6 +1800,8 @@
       "noGate": "无门票",
       "freeEntry": "免费入场",
       "entryFee": "RM{{price}} 入场",
+      "entryFeeFrom": "RM{{price}} 起",
+      "payAtEntrance": "入口处收费 RM{{price}} · 参考价，本平台不售票。资料最后更新 {{date}}。",
       "bookable": "可预订",
       "vendorOptions": "{{count}} 个商家选项",
       "vendorOptions_other": "{{count}} 个商家选项",
@@ -1984,10 +1986,17 @@
       "price": "RM{{value}}",
       "filters": {
         "all": "全部体验",
-        "admission": "入场门票",
         "guideService": "导览体验",
         "addon": "附加项目"
       }
+    },
+    "placeAdmission": {
+      "title": "入场票",
+      "summary": "先买好门票，再安排其他行程。",
+      "soldBy": "由 {{name}} 售卖",
+      "tiers": "票种",
+      "free": "免费",
+      "price": "RM{{value}}"
     },
     "forYou": {
       "generate": "生成推荐",
