@@ -604,6 +604,16 @@
         "unread": "Belum dibaca",
         "needs_reply": "Perlu balasan anda"
       },
+      "attachOrder": {
+        "button": "Lampirkan pesanan",
+        "title": "Lampirkan pesanan",
+        "loading": "Memuatkan pesanan…",
+        "empty": "Pelanggan ini belum ada pesanan dengan outlet anda.",
+        "close": "Tutup",
+        "itemCount": "{{count}} item",
+        "itemCount_one": "{{count}} item",
+        "itemCount_other": "{{count}} item"
+      },
       "sendFailed": "Balasan tidak dapat dihantar.",
       "travellerConversations": "Perbualan pelancong",
       "title": "Peti masuk",
@@ -1011,6 +1021,24 @@
       "batchDeactivated_other": "{{count}} baucar dinyahaktifkan.",
       "usesCount_one": "{{count}} penggunaan",
       "usesCount_other": "{{count}} penggunaan"
+    },
+    "settlement": {
+      "title": "Pendapatan pesanan",
+      "description": "Bahagian anda bagi setiap pesanan yang dibayar, selepas komisen platform. Ditahan beberapa hari, kemudian dipindahkan ke baki boleh dikeluarkan.",
+      "pending": "Ditahan",
+      "cleared": "Dikreditkan ke dompet",
+      "lifetimeFees": "Komisen platform dibayar",
+      "orderColumn": "Pesanan",
+      "grossColumn": "Bahagian pesanan",
+      "feeColumn": "Komisen",
+      "netColumn": "Bersih anda",
+      "statusColumn": "Status",
+      "statusCleared": "Dikreditkan ke dompet anda",
+      "statusReversed": "Dibatalkan — pesanan dikembalikan",
+      "clearsToday": "Ditahan · matang hari ini",
+      "clearsInDays": "Ditahan · matang dalam {{count}} hari",
+      "clearsInDays_one": "Ditahan · matang dalam {{count}} hari",
+      "clearsInDays_other": "Ditahan · matang dalam {{count}} hari"
     },
     "wallet": {
       "vendorFinance": "Kewangan vendor",

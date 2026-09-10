@@ -825,12 +825,21 @@
       "reportConversation": "Laporkan perbualan ini",
       "startConversation": "Mulakan perbualan",
       "startConversationHint": "Tanya tentang ketersediaan, kebolehcapaian atau apa-apa yang anda perlukan untuk perjalanan anda.",
+      "inquiryBanner": {
+        "title": "Anda sedang bertanya tentang item ini",
+        "dismiss": "Buang item"
+      },
+      "contextCard": {
+        "view": "Lihat butiran"
+      },
       "translate": {
         "action": "Terjemah",
         "showOriginal": "Tunjukkan asal",
         "working": "Menterjemah…",
         "failed": "Tidak dapat menterjemah"
-      }
+      },
+      "attachOrder": "Lampirkan pesanan",
+      "underReview": "Dilaporkan — pasukan kami sedang menyemak perbualan ini."
     },
     "calendar": {
       "today": "Hari ini",
@@ -1243,6 +1252,22 @@
       "photosSelected_one": "{{count}} foto dipilih",
       "pendingReview_one": "Menunggu semakan ({{count}})",
       "pendingReview_other": "Menunggu semakan ({{count}})"
+    },
+    "recommendationEarnings": {
+      "title": "Pendapatan cadangan",
+      "pending": "Belum matang",
+      "lifetime": "Dikreditkan ke dompet",
+      "convertedVendors": "Vendor menyertai",
+      "empty": "Belum ada pendapatan cadangan. Anda memperoleh pendapatan apabila vendor yang anda cadangkan menyertai dan membuat jualan.",
+      "bonusLabel": "Bonus jualan pertama",
+      "ongoingLabel": "Komisen berterusan",
+      "statusCleared": "Dikreditkan ke dompet anda",
+      "statusReversed": "Dibatalkan — pesanan dibatalkan atau dikembalikan",
+      "clearsToday": "Belum matang · matang hari ini",
+      "clearsInDays": "Belum matang · matang dalam {{count}} hari",
+      "clearsInDays_one": "Belum matang · matang dalam {{count}} hari",
+      "clearsInDays_other": "Belum matang · matang dalam {{count}} hari",
+      "viewRecommendation": "Lihat cadangan"
     },
     "profileWizard": {
       "completion": "Kelengkapan profil",
@@ -2296,6 +2321,7 @@
       "clearsIn": "Dijelaskan dalam {{count}} hari",
       "clearsIn_other": "Dijelaskan dalam {{count}} hari",
       "earnToWithdraw": "Peroleh komisen melalui perkongsian untuk membuat pengeluaran",
+      "withdrawableSpans": "Termasuk pendapatan ahli gabungan dan cadangan",
       "confirmedReferrals": "{{count}} rujukan disahkan",
       "confirmedReferrals_other": "{{count}} rujukan disahkan",
       "noLink": "Anda belum mempunyai pautan afiliasi.",

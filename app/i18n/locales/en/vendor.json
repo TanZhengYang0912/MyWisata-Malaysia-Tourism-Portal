@@ -604,6 +604,16 @@
         "unread": "Unread",
         "needs_reply": "Needs your reply"
       },
+      "attachOrder": {
+        "button": "Attach an order",
+        "title": "Attach an order",
+        "loading": "Loading orders…",
+        "empty": "This customer has no orders with your outlets yet.",
+        "close": "Close",
+        "itemCount": "{{count}} item",
+        "itemCount_one": "{{count}} item",
+        "itemCount_other": "{{count}} items"
+      },
       "sendFailed": "Could not send reply.",
       "travellerConversations": "Traveller conversations",
       "title": "Inbox",
@@ -1011,6 +1021,24 @@
       "batchDeactivated_other": "{{count}} vouchers deactivated.",
       "usesCount_one": "{{count}} uses",
       "usesCount_other": "{{count}} uses"
+    },
+    "settlement": {
+      "title": "Order earnings",
+      "description": "Your share of each paid order, after the platform commission. Held for a few days, then moved to your withdrawable balance.",
+      "pending": "Held",
+      "cleared": "Cleared to wallet",
+      "lifetimeFees": "Platform commission paid",
+      "orderColumn": "Order",
+      "grossColumn": "Order share",
+      "feeColumn": "Commission",
+      "netColumn": "Your net",
+      "statusColumn": "Status",
+      "statusCleared": "Cleared to your wallet",
+      "statusReversed": "Reversed — order refunded",
+      "clearsToday": "Held · clears today",
+      "clearsInDays": "Held · clears in {{count}} day",
+      "clearsInDays_one": "Held · clears in {{count}} day",
+      "clearsInDays_other": "Held · clears in {{count}} days"
     },
     "wallet": {
       "vendorFinance": "Vendor finance",

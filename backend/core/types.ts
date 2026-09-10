@@ -481,6 +481,17 @@ export interface ChatMessage {
   replyToId?: string;
   /** Product/activity this message references — set on the "Re: <activity>" context chip. */
   contextProductId?: string;
+  /** Server-built display snapshot for a context card (product being inquired about, or an order a vendor attached). */
+  context?: ChatMessageContext;
+}
+
+export interface ChatMessageContext {
+  type: "product" | "order";
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string | null;
+  href?: string;
 }
 
 export interface Notification {

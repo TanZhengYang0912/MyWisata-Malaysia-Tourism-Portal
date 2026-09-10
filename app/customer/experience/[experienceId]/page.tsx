@@ -5,6 +5,8 @@ import { ArrowLeft, Clock, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getComputedActivity, getBookingSlots, getProductReviews } from "@/backend/domains/catalogue";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
+import { ProductChatButton } from "@/components/customer/product-chat-button";
+import { formatMYR } from "@/lib/i18n/format";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -160,6 +162,12 @@ export default async function ExperiencePage({ params }: Props) {
                     )}
                   </div>
                 </Link>
+                <div className="mt-3">
+                  <ProductChatButton
+                    outletId={experience.outletId}
+                    product={{ id: experience.id, name: experience.name, priceLabel: formatMYR(experience.price), imageUrl: experience.image ?? null }}
+                  />
+                </div>
               </section>
             )}
 

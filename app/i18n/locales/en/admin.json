@@ -19,6 +19,7 @@
     "Wallet Settings": "Wallet Settings",
     "Wallet Approvers": "Wallet Approvers",
     "Payout Reports": "Payout Reports",
+    "Reconciliation": "Reconciliation",
     "Recommendations": "Recommendations",
     "Support Tickets": "Support Tickets",
     "Chat Reports": "Chat Reports",
@@ -1316,6 +1317,38 @@
       "title": "Verified users",
       "count_one": "{{count}} accounts",
       "count_other": "{{count}} accounts"
+    }
+  },
+  "reconciliation": {
+    "eyebrow": "Money reconciliation",
+    "title": "Order reconciliation",
+    "description": "Per-order breakdown: what the customer paid, the vendor's net, the platform commission, and how much of it funded affiliate and recommendation payouts.",
+    "month": "Month",
+    "reload": "Reload",
+    "loading": "Loading…",
+    "exportCsv": "Export CSV",
+    "noOrders": "No settled orders in this month.",
+    "negativeWarning": "{{count}} order paid out more in referral commission than the platform earned on it — expected for first-sale bonuses, shown here for visibility.",
+    "negativeWarning_one": "{{count}} order paid out more in referral commission than the platform earned on it — expected for first-sale bonuses, shown here for visibility.",
+    "negativeWarning_other": "{{count}} orders paid out more in referral commission than the platform earned on them — expected for first-sale bonuses, shown here for visibility.",
+    "errors": { "load": "Unable to load the reconciliation report." },
+    "metrics": {
+      "gross": "Customer paid",
+      "platformFee": "Platform commission",
+      "vendorNet": "Vendor net",
+      "affiliate": "Affiliate payouts",
+      "recommendation": "Recommendation payouts",
+      "platformNet": "Platform net"
+    },
+    "columns": {
+      "order": "Order",
+      "status": "Status",
+      "gross": "Gross",
+      "fee": "Commission",
+      "vendorNet": "Vendor net",
+      "affiliate": "Affiliate",
+      "recommendation": "Recommendation",
+      "platformNet": "Platform net"
     }
   },
   "payouts": {

@@ -18,7 +18,7 @@ export async function GET() {
   const service = createServiceClient();
   const { data, error } = await service
     .from('chat_threads')
-    .select('id,customer_id,outlet_id,vendor_id,last_message_at,created_at,outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id)')
+    .select('id,customer_id,outlet_id,vendor_id,last_message_at,created_at,outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id,context_snapshot)')
     .eq('customer_id', user.id)
     .order('last_message_at', { ascending: false });
   if (error) return apiFail('DB_ERROR', error.message, 500);

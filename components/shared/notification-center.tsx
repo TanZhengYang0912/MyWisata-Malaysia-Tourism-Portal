@@ -28,6 +28,7 @@ const CATEGORY_LABEL_KEYS: Record<string, string> = {
   recommendations_affiliate: "notifications.categories.recommendations_affiliate",
   support: "notifications.categories.support",
   account_security: "notifications.categories.account_security",
+  messages: "notifications.categories.messages",
   vendor_orders: "notifications.categories.vendor_orders",
   vendor_bookings: "notifications.categories.vendor_bookings",
   vendor_products: "notifications.categories.vendor_products",

@@ -36,6 +36,7 @@ type RawChatMessage = {
   attachment_url?: string | null;
   reply_to_message_id?: string | null;
   context_product_id?: string | null;
+  context_snapshot?: ChatMessage["context"] | null;
 };
 type ApiThread = {
   id: string;
@@ -59,6 +60,7 @@ function toChatMessage(row: RawChatMessage, thread: ApiThread): ChatMessage {
     attachmentUrl: row.attachment_url ?? undefined,
     replyToId: row.reply_to_message_id ?? undefined,
     contextProductId: row.context_product_id ?? undefined,
+    context: row.context_snapshot ?? undefined,
   };
 }
 

@@ -604,6 +604,16 @@
         "unread": "未读",
         "needs_reply": "需要您回复"
       },
+      "attachOrder": {
+        "button": "附加订单",
+        "title": "附加订单",
+        "loading": "正在加载订单…",
+        "empty": "该顾客尚无与你门店相关的订单。",
+        "close": "关闭",
+        "itemCount": "{{count}} 件商品",
+        "itemCount_one": "{{count}} 件商品",
+        "itemCount_other": "{{count}} 件商品"
+      },
       "sendFailed": "无法发送回复。",
       "travellerConversations": "旅客对话",
       "title": "收件箱",
@@ -1011,6 +1021,24 @@
       "batchDeactivated_other": "已停用 {{count}} 张优惠券。",
       "usesCount_one": "使用 {{count}} 次",
       "usesCount_other": "使用 {{count}} 次"
+    },
+    "settlement": {
+      "title": "订单收益",
+      "description": "扣除平台佣金后，你在每笔已付款订单中的分成。冻结数日后转入可提现余额。",
+      "pending": "冻结中",
+      "cleared": "已转入钱包",
+      "lifetimeFees": "已付平台佣金",
+      "orderColumn": "订单",
+      "grossColumn": "订单分成",
+      "feeColumn": "佣金",
+      "netColumn": "你的净额",
+      "statusColumn": "状态",
+      "statusCleared": "已转入你的钱包",
+      "statusReversed": "已冲销——订单已退款",
+      "clearsToday": "冻结中 · 今日解冻",
+      "clearsInDays": "冻结中 · {{count}} 天后解冻",
+      "clearsInDays_one": "冻结中 · {{count}} 天后解冻",
+      "clearsInDays_other": "冻结中 · {{count}} 天后解冻"
     },
     "wallet": {
       "vendorFinance": "商家财务",

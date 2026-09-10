@@ -18,6 +18,7 @@ import { allowRecommendationImageSelection, appendSelectedRecommendationImages }
 import { useTranslation } from "react-i18next";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 
 type RecommendationResponse = {
   id: string;
@@ -221,6 +222,8 @@ export default function RecommendationsPage() {
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
+
+      {currentUser && <RecommendationEarningsPanel showEmpty />}
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 space-y-5 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">

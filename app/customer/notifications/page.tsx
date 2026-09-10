@@ -9,6 +9,7 @@ const filters = [
   { value: "wallet", label: "Wallet" },
   { value: "bookings_purchases", label: "Bookings & Purchases" },
   { value: "recommendations_affiliate", label: "Recommendations & Affiliate" },
+  { value: "messages", label: "Messages" },
   { value: "support", label: "Support" },
   { value: "account_security", label: "Account & Security" },
 ];

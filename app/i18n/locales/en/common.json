@@ -125,6 +125,7 @@
       "recommendations_affiliate": "Recommendations & Affiliate",
       "support": "Support",
       "account_security": "Account & Security",
+      "messages": "Messages",
       "vendor_orders": "Orders",
       "vendor_bookings": "Bookings",
       "vendor_products": "Products",
@@ -132,6 +133,11 @@
       "vendor_account": "Account"
     },
     "events": {
+      "chatMessage": {
+        "title": "New message from {{name}}",
+        "body": "{{preview}}",
+        "attachmentBody": "Sent an attachment"
+      },
       "withdrawalApproved": {
         "title": "Withdrawal approved — payout in progress",
         "body": "Your withdrawal has been approved and will be transferred to your selected payout destination shortly."

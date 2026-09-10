@@ -14,6 +14,7 @@ import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-cha
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
+import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -289,9 +290,10 @@ export default function AffiliateDashboardPage() {
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.booking.available")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)] mb-1.5">
+          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
             {formatMYR(stats.totals.availableToWithdraw)}
           </p>
+          <p className="mb-1.5 text-[0.625rem] text-muted-foreground">{tCustomer("strictMigration.affiliate.withdrawableSpans")}</p>
           {stats.totals.availableToWithdraw > 0 ? (
             <Button size="sm" asChild className="h-6 text-[0.6875rem] px-2">
               <Link href="/customer/wallet">
@@ -330,6 +332,8 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <AffiliateRankCard />
+
+      <RecommendationEarningsPanel />
 
       <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">

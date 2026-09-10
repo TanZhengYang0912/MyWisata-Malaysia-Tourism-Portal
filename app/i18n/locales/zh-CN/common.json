@@ -125,6 +125,7 @@
       "recommendations_affiliate": "推荐与联盟",
       "support": "客服支持",
       "account_security": "账户与安全",
+      "messages": "消息",
       "vendor_orders": "订单",
       "vendor_bookings": "预订",
       "vendor_products": "产品",
@@ -132,6 +133,11 @@
       "vendor_account": "账户"
     },
     "events": {
+      "chatMessage": {
+        "title": "来自 {{name}} 的新消息",
+        "body": "{{preview}}",
+        "attachmentBody": "发送了一个附件"
+      },
       "withdrawalApproved": {
         "title": "提现已批准——付款处理中",
         "body": "您的提现已获批准，很快会转入您选择的收款账户。"

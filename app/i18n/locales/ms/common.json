@@ -125,6 +125,7 @@
       "recommendations_affiliate": "Cadangan & Afiliasi",
       "support": "Sokongan",
       "account_security": "Akaun & Keselamatan",
+      "messages": "Mesej",
       "vendor_orders": "Pesanan",
       "vendor_bookings": "Tempahan",
       "vendor_products": "Produk",
@@ -132,6 +133,11 @@
       "vendor_account": "Akaun"
     },
     "events": {
+      "chatMessage": {
+        "title": "Mesej baharu daripada {{name}}",
+        "body": "{{preview}}",
+        "attachmentBody": "Menghantar lampiran"
+      },
       "withdrawalApproved": {
         "title": "Pengeluaran diluluskan — pembayaran sedang diproses",
         "body": "Pengeluaran anda telah diluluskan dan akan dipindahkan ke destinasi bayaran yang dipilih tidak lama lagi."

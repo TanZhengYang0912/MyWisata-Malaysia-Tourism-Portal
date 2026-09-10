@@ -19,6 +19,7 @@
     "Wallet Settings": "Tetapan dompet",
     "Wallet Approvers": "Pelulus Dompet",
     "Payout Reports": "Laporan pembayaran",
+    "Reconciliation": "Penyata Kewangan",
     "Recommendations": "Cadangan",
     "Support Tickets": "Tiket sokongan",
     "Chat Reports": "Laporan sembang",
@@ -1316,6 +1317,38 @@
       "title": "Pengguna disahkan",
       "count_one": "{{count}} akaun",
       "count_other": "{{count}} akaun"
+    }
+  },
+  "reconciliation": {
+    "eyebrow": "Penyata kewangan",
+    "title": "Penyata pesanan",
+    "description": "Pecahan setiap pesanan: bayaran pelanggan, bersih vendor, komisen platform, dan berapa banyak daripadanya membiayai pembayaran ahli gabungan dan cadangan.",
+    "month": "Bulan",
+    "reload": "Muat semula",
+    "loading": "Memuatkan…",
+    "exportCsv": "Eksport CSV",
+    "noOrders": "Tiada pesanan diselesaikan bulan ini.",
+    "negativeWarning": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "negativeWarning_one": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "negativeWarning_other": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "errors": { "load": "Tidak dapat memuatkan laporan penyata." },
+    "metrics": {
+      "gross": "Bayaran pelanggan",
+      "platformFee": "Komisen platform",
+      "vendorNet": "Bersih vendor",
+      "affiliate": "Pembayaran ahli gabungan",
+      "recommendation": "Pembayaran cadangan",
+      "platformNet": "Bersih platform"
+    },
+    "columns": {
+      "order": "Pesanan",
+      "status": "Keadaan",
+      "gross": "Kasar",
+      "fee": "Komisen",
+      "vendorNet": "Bersih vendor",
+      "affiliate": "Ahli gabungan",
+      "recommendation": "Cadangan",
+      "platformNet": "Bersih platform"
     }
   },
   "payouts": {

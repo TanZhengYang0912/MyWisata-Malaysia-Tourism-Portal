@@ -19,6 +19,7 @@
     "Wallet Settings": "钱包设置",
     "Wallet Approvers": "钱包审批人",
     "Payout Reports": "提现报告",
+    "Reconciliation": "对账",
     "Recommendations": "推荐",
     "Support Tickets": "支持工单",
     "Chat Reports": "聊天举报",
@@ -1316,6 +1317,38 @@
       "title": "已验证用户",
       "count_one": "{{count}} 个账户",
       "count_other": "{{count}} 个账户"
+    }
+  },
+  "reconciliation": {
+    "eyebrow": "资金对账",
+    "title": "订单对账",
+    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广联盟和推荐佣金。",
+    "month": "月份",
+    "reload": "重新加载",
+    "loading": "加载中…",
+    "exportCsv": "导出 CSV",
+    "noOrders": "本月没有已结算的订单。",
+    "negativeWarning": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "negativeWarning_one": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "negativeWarning_other": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "errors": { "load": "无法加载对账报告。" },
+    "metrics": {
+      "gross": "客户付款",
+      "platformFee": "平台佣金",
+      "vendorNet": "商家净额",
+      "affiliate": "联盟佣金支出",
+      "recommendation": "推荐佣金支出",
+      "platformNet": "平台净额"
+    },
+    "columns": {
+      "order": "订单",
+      "status": "状态",
+      "gross": "总额",
+      "fee": "佣金",
+      "vendorNet": "商家净额",
+      "affiliate": "联盟",
+      "recommendation": "推荐",
+      "platformNet": "平台净额"
     }
   },
   "payouts": {

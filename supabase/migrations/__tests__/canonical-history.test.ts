@@ -30,6 +30,8 @@ const approvedForwardMigrations = [
   "20260908180000_harden_demo_vendor_order_earnings.sql",
   "20260909054100_restore_demo_customer_roles.sql",
   "20260909082900_sponsored_position_governance.sql",
+  "20260911000000_vendor_order_settlement.sql",
+  "20260911100000_chat_message_context.sql",
 ];
 
 function migrationFiles() {

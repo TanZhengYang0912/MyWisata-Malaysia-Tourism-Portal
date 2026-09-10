@@ -55,13 +55,13 @@ describe("admin navigation role rendering", () => {
     expect(renderLayout()).toContain("Protected page content");
   });
 
-  it("preserves all 19 Super Admin navigation entries", () => {
+  it("preserves all 20 Super Admin navigation entries", () => {
     mocks.role = "super_admin";
     mocks.pathname = "/admin/dashboard";
     expect(navigationHrefs(renderLayout())).toEqual([
       "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/users", "/admin/access-control",
       "/admin/kyc", "/admin/withdrawals", "/admin/refunds", "/admin/wallet/settings", "/admin/wallet/approvers",
-      "/admin/reports/payouts", "/admin/recommendations", "/admin/support", "/admin/chat-reports",
+      "/admin/reports/payouts", "/admin/reports/reconciliation", "/admin/recommendations", "/admin/support", "/admin/chat-reports",
       "/admin/affiliate", "/admin/chatbot", "/admin/ai-assistant", "/admin/staff-conduct",
     ]);
   });

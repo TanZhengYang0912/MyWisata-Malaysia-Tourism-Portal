@@ -506,6 +506,7 @@ export default function AdminChatReportsPage() {
                     messages={threadMessages}
                     currentUserId={currentUser.id}
                     counterpart={{ name: viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet") }}
+                    underReview={viewReport.status === "open"}
                     readOnly
                   />
                 )}

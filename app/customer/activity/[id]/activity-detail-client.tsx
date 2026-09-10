@@ -25,7 +25,7 @@ import { getDetailBody } from "./bodies";
 import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import { useSupportChat } from "@/components/providers/support-chat";
+import { ProductChatButton } from "@/components/customer/product-chat-button";
 
 export function ActivityDetailClient({
   initialActivity,
@@ -43,7 +43,6 @@ export function ActivityDetailClient({
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
-  const { selectChat } = useSupportChat();
   const { addItem } = useCart();
   const vendorDiscovery = searchParams.get("source") === "vendor";
   const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
@@ -163,23 +162,6 @@ export function ActivityDetailClient({
     }
   }
 
-  async function handleChat() {
-    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
-    const response = await fetch("/api/customer/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ outletId: selectedOutlet!.outletId }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.data?.id) return;
-    const messageResponse = await fetch(`/api/customer/chat/${payload.data.id}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: `Re: ${activity!.name}`, contextProductId: activity!.id }),
-    });
-    if (!messageResponse.ok) return;
-    selectChat({ kind: "vendor", threadId: payload.data.id });
-  }
 
   return (
     // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
@@ -421,17 +403,13 @@ export function ActivityDetailClient({
                 title={activity.name}
                 leading={
                   vendorBacked ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-12 w-12 rounded-full border-2"
-                      onClick={handleChat}
-                      title={t("ui.activityDetail.chatVendor")}
-                      aria-label={t("ui.activityDetail.chatVendor")}
+                    <ProductChatButton
+                      outletId={selectedOutlet!.outletId}
+                      product={{ id: activity.id, name: activity.name, priceLabel: formatMYR(activity.price), imageUrl: activity.image ?? null }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-foreground transition hover:bg-secondary"
                     >
                       <MessageCircle size={18} />
-                    </Button>
+                    </ProductChatButton>
                   ) : undefined
                 }
               />

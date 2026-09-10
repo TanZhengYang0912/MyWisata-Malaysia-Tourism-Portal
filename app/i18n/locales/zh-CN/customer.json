@@ -825,12 +825,21 @@
       "reportConversation": "举报此对话",
       "startConversation": "开始对话",
       "startConversationHint": "询问可用性、无障碍信息或旅途中需要了解的任何内容。",
+      "inquiryBanner": {
+        "title": "你正在咨询此商品",
+        "dismiss": "移除商品"
+      },
+      "contextCard": {
+        "view": "查看详情"
+      },
       "translate": {
         "action": "翻译",
         "showOriginal": "显示原文",
         "working": "翻译中…",
         "failed": "无法翻译"
-      }
+      },
+      "attachOrder": "附加订单",
+      "underReview": "已举报——我们的团队正在审核此对话。"
     },
     "calendar": {
       "today": "今天",
@@ -1243,6 +1252,22 @@
       "photosSelected_one": "已选择 {{count}} 张照片",
       "pendingReview_one": "待审核（{{count}}）",
       "pendingReview_other": "待审核（{{count}}）"
+    },
+    "recommendationEarnings": {
+      "title": "推荐收益",
+      "pending": "待结算",
+      "lifetime": "已转入钱包",
+      "convertedVendors": "已加入商家",
+      "empty": "暂无推荐收益。当您推荐的商家加入并产生销售后，您即可获得收益。",
+      "bonusLabel": "首单奖励",
+      "ongoingLabel": "持续佣金",
+      "statusCleared": "已转入您的钱包",
+      "statusReversed": "已冲销——订单已取消或退款",
+      "clearsToday": "待结算 · 今日结算",
+      "clearsInDays": "待结算 · {{count}} 天后结算",
+      "clearsInDays_one": "待结算 · {{count}} 天后结算",
+      "clearsInDays_other": "待结算 · {{count}} 天后结算",
+      "viewRecommendation": "查看推荐"
     },
     "profileWizard": {
       "completion": "个人资料完成度",
@@ -2296,6 +2321,7 @@
       "clearsIn": "{{count}} 天后结算",
       "clearsIn_other": "{{count}} 天后结算",
       "earnToWithdraw": "通过分享赚取佣金后即可提款",
+      "withdrawableSpans": "包含推广联盟和推荐收益",
       "confirmedReferrals": "{{count}} 个已确认推荐",
       "confirmedReferrals_other": "{{count}} 个已确认推荐",
       "noLink": "您还没有推广链接。",

@@ -825,12 +825,21 @@
       "reportConversation": "Report this conversation",
       "startConversation": "Start the conversation",
       "startConversationHint": "Ask about availability, accessibility, or anything you need for your trip.",
+      "inquiryBanner": {
+        "title": "You're inquiring about this item",
+        "dismiss": "Remove item"
+      },
+      "contextCard": {
+        "view": "View details"
+      },
       "translate": {
         "action": "Translate",
         "showOriginal": "Show original",
         "working": "Translating…",
         "failed": "Couldn't translate"
-      }
+      },
+      "attachOrder": "Attach an order",
+      "underReview": "Reported — our team is reviewing this conversation."
     },
     "calendar": {
       "today": "Today",
@@ -1243,6 +1252,22 @@
       "photosSelected_one": "{{count}} photo selected",
       "pendingReview_one": "Pending review ({{count}})",
       "pendingReview_other": "Pending review ({{count}})"
+    },
+    "recommendationEarnings": {
+      "title": "Recommendation earnings",
+      "pending": "Pending",
+      "lifetime": "Cleared to wallet",
+      "convertedVendors": "Vendors joined",
+      "empty": "No recommendation earnings yet. You earn once a vendor you recommended joins and makes a sale.",
+      "bonusLabel": "First-sale bonus",
+      "ongoingLabel": "Ongoing commission",
+      "statusCleared": "Cleared to your wallet",
+      "statusReversed": "Reversed — the order was cancelled or refunded",
+      "clearsToday": "Pending · clears today",
+      "clearsInDays": "Pending · clears in {{count}} day",
+      "clearsInDays_one": "Pending · clears in {{count}} day",
+      "clearsInDays_other": "Pending · clears in {{count}} days",
+      "viewRecommendation": "View recommendation"
     },
     "profileWizard": {
       "completion": "Profile completion",
@@ -2296,6 +2321,7 @@
       "clearsIn": "Clears in {{count}} day",
       "clearsIn_other": "Clears in {{count}} days",
       "earnToWithdraw": "Earn commission by sharing to withdraw",
+      "withdrawableSpans": "Includes affiliate and recommendation earnings",
       "confirmedReferrals": "{{count}} confirmed referral",
       "confirmedReferrals_other": "{{count}} confirmed referrals",
       "noLink": "You don't have an affiliate link yet.",
