@@ -3,6 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("auth state error handling", () => {
+  it("does not reload the profile for Supabase's initial session event", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
+
+    expect(source).toMatch(/onAuthStateChange\(\(_event, session\) => \{[\s\S]*?if \(_event === "INITIAL_SESSION"\) return;/);
+  });
+
   it("handles a failed profile load without an unhandled promise rejection", () => {
     const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
 

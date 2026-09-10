@@ -10,6 +10,14 @@ export interface GridRect {
   h: number;
 }
 
+export type ResizeHandle = 'east' | 'south' | 'south-east';
+
+interface GridBounds {
+  left: number;
+  top: number;
+  width: number;
+}
+
 /** Columns are fixed for every outlet — never a per-outlet setting. */
 export const GRID_COLS = 8;
 /** Row height in pixels on the desktop canvas and the public grid. */
@@ -21,7 +29,7 @@ export const GRID_TRAILING_ROWS = 3;
 
 /** Sizes offered in the resize menu, widest-use-first. */
 export const GRID_SIZE_PRESETS: [number, number][] = [
-  [1, 1], [2, 1], [2, 2], [3, 2], [4, 2], [4, 3], [6, 2], [8, 2],
+  [1, 1], [2, 1], [2, 2], [2, 3], [3, 2], [3, 3], [4, 2], [4, 3], [6, 2], [8, 2],
 ];
 
 export function rectsOverlap(a: GridRect, b: GridRect): boolean {
@@ -78,6 +86,33 @@ export function cellFromPointer(
   return {
     x: Math.max(0, Math.min(cols - w, rawX)),
     y: Math.max(0, Math.min(rows - h, rawY)),
+  };
+}
+
+/** Pointer position → a snapped size for a right, bottom, or corner handle. */
+export function rectFromResizePointer(
+  bounds: GridBounds,
+  clientX: number,
+  clientY: number,
+  original: GridRect,
+  rowPx: number,
+  cols: number,
+  handle: ResizeHandle,
+  minW = 1,
+  minH = 1,
+): GridRect {
+  const colPx = bounds.width / cols;
+  const maxW = Math.max(minW, cols - original.x);
+  const rawW = Math.round((clientX - bounds.left) / colPx) - original.x;
+  const rawH = Math.round((clientY - bounds.top) / rowPx) - original.y;
+  const w = handle === 'south' ? original.w : Math.max(minW, Math.min(maxW, rawW));
+  const h = handle === 'east' ? original.h : Math.max(minH, rawH);
+
+  return {
+    x: original.x,
+    y: original.y,
+    w,
+    h: Math.max(minH, h),
   };
 }
 

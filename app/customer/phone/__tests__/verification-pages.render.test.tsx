@@ -84,6 +84,13 @@ describe("independent verification page presentation", () => {
     expect(markup).not.toContain("ui.phoneVerification.completeTitle");
   });
 
+  it("focuses the phone number field when verification opens", () => {
+    const markup = renderPage(PhoneVerificationPage);
+    expect(markup).toMatch(
+      /<input\b(?=[^>]*\bid="verification-phone")(?=[^>]*\bautofocus="")[^>]*>/,
+    );
+  });
+
   it("does not present unverified KYC as approved despite the legacy tier", () => {
     const markup = renderPage(KycPage);
     expect(markup).toContain("ui.kyc.ready");

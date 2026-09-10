@@ -8,6 +8,7 @@ import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildAccessControlQuery, errorMessage } from "@/components/admin/access-control/types";
 import type { ApiEnvelope, AuditFocus, CapabilityRecord, MutationReceipt, PageResult } from "@/components/admin/access-control/types";
 
@@ -27,6 +28,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<EditState | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
@@ -72,10 +74,11 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
       });
       const body = await response.json() as ApiEnvelope<MutationReceipt>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.saveCapability")));
-      setReceipt(body.data); setEdit(null); setConfirmOpen(false); await load();
+      setReceipt(body.data); setEdit(null); setEditorOpen(false); setConfirmOpen(false); await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("accessControl.errors.saveCapability"));
       setConfirmOpen(false);
+      setEditorOpen(true);
     } finally { setSaving(false); }
   }
 
@@ -89,23 +92,36 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
       </AdminFilterBar>
 
       {receipt && <SuccessReceipt text={t("accessControl.feedback.capabilityUpdated")} onClick={() => onViewAudit({ eventId: receipt.auditEventId, entityId: receipt.capabilityId })} />}
-      {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+      {error && !editorOpen && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">{t("accessControl.capabilities.key")}</th><th>{t("accessControl.capabilities.category")}</th><th>{t("accessControl.capabilities.risk")}</th><th>{t("accessControl.capabilities.visibility")}</th><th>{t("accessControl.capabilities.assignment")}</th><th>{t("accessControl.capabilities.status")}</th><th className="px-5 text-right">{t("accessControl.capabilities.actions")}</th></tr></thead>
             <tbody className="divide-y divide-border">
-              {result.items.map((item) => <tr key={item.key} className={focusId === item.key ? "bg-primary/10" : "hover:bg-muted/30"}><td className="px-5 py-4 font-mono text-xs font-semibold text-foreground">{item.key}</td><td>{t(`accessControl.categories.${item.category}`)}</td><td><ToneBadge value={item.riskLevel} label={t(`accessControl.risk.${item.riskLevel}`)} /></td><td>{item.customerVisible ? t("accessControl.common.yes") : t("accessControl.common.no")}</td><td>{item.manuallyAssignable ? t("accessControl.common.allowed") : t("accessControl.common.locked")}</td><td><ToneBadge value={item.enabled ? "enabled" : "disabled"} label={t(`accessControl.status.${item.enabled ? "enabled" : "disabled"}`)} /></td><td className="px-5 text-right"><Button size="sm" variant="outline" onClick={() => { setReceipt(null); setEdit({ ...item, reason: "" }); }}><Edit3 /> {t("accessControl.actions.manage")}</Button></td></tr>)}
+              {result.items.map((item) => <tr key={item.key} className={focusId === item.key ? "bg-primary/10" : "hover:bg-muted/30"}><td className="px-5 py-4 font-mono text-xs font-semibold text-foreground">{item.key}</td><td>{t(`accessControl.categories.${item.category}`)}</td><td><ToneBadge value={item.riskLevel} label={t(`accessControl.risk.${item.riskLevel}`)} /></td><td>{item.customerVisible ? t("accessControl.common.yes") : t("accessControl.common.no")}</td><td>{item.manuallyAssignable ? t("accessControl.common.allowed") : t("accessControl.common.locked")}</td><td><ToneBadge value={item.enabled ? "enabled" : "disabled"} label={t(`accessControl.status.${item.enabled ? "enabled" : "disabled"}`)} /></td><td className="px-5 text-right"><Button size="sm" variant="outline" onClick={() => { setReceipt(null); setEdit({ ...item, reason: "" }); setEditorOpen(true); }}><Edit3 /> {t("accessControl.actions.manage")}</Button></td></tr>)}
             </tbody>
           </table>
         </div>
         {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination page={result.page} totalPages={result.totalPages} loading={loading} setPage={setPage} />}
       </section>
 
-      {edit && <section className="rounded-2xl border border-primary/25 bg-card p-5"><div className="flex items-start justify-between gap-4"><div><h2 className="font-semibold text-foreground">{t("accessControl.capabilities.editTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("accessControl.capabilities.immutableKey")}</p></div><Button variant="ghost" onClick={() => setEdit(null)}>{t("accessControl.actions.close")}</Button></div><div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3"><Field label={t("accessControl.capabilities.key")}><input disabled value={edit.key} className={`${adminFilterControlClassName} w-full disabled:cursor-not-allowed disabled:opacity-60`} /></Field><Field label={t("accessControl.capabilities.category")}><select value={edit.category} onChange={(event) => setEdit({ ...edit, category: event.target.value })} className={`${adminFilterControlClassName} w-full`}>{CATEGORIES.filter(Boolean).map((value) => <option key={value} value={value}>{t(`accessControl.categories.${value}`)}</option>)}</select></Field><Field label={t("accessControl.capabilities.risk")}><select value={edit.riskLevel} onChange={(event) => setEdit({ ...edit, riskLevel: event.target.value })} className={`${adminFilterControlClassName} w-full`}>{RISK_LEVELS.map((value) => <option key={value} value={value}>{t(`accessControl.risk.${value}`)}</option>)}</select></Field><Toggle label={t("accessControl.capabilities.customerVisible")} checked={edit.customerVisible} onChange={(checked) => setEdit({ ...edit, customerVisible: checked })} /><Toggle label={t("accessControl.capabilities.manuallyAssignable")} checked={edit.manuallyAssignable} onChange={(checked) => setEdit({ ...edit, manuallyAssignable: checked })} /><Toggle label={t("accessControl.capabilities.enabled")} checked={edit.enabled} onChange={(checked) => setEdit({ ...edit, enabled: checked })} /></div><Field label={t("accessControl.forms.reason")}><textarea value={edit.reason} onChange={(event) => setEdit({ ...edit, reason: event.target.value })} maxLength={2000} className="mt-1 min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.forms.reasonPlaceholder")} /></Field><div className="mt-4 flex justify-end"><Button onClick={() => setConfirmOpen(true)} disabled={edit.reason.trim().length < 10}><ShieldCheck /> {t("accessControl.actions.reviewChange")}</Button></div></section>}
+      <Dialog open={editorOpen && Boolean(edit)} onOpenChange={(open) => { setEditorOpen(open); if (!open && !confirmOpen) setEdit(null); }}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-4xl">
+          {edit && <>
+            <DialogHeader>
+              <DialogTitle>{t("accessControl.capabilities.editTitle")}</DialogTitle>
+              <DialogDescription>{t("accessControl.capabilities.immutableKey")}</DialogDescription>
+            </DialogHeader>
+            {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"><Field label={t("accessControl.capabilities.key")}><input disabled value={edit.key} className={`${adminFilterControlClassName} w-full disabled:cursor-not-allowed disabled:opacity-60`} /></Field><Field label={t("accessControl.capabilities.category")}><select value={edit.category} onChange={(event) => setEdit({ ...edit, category: event.target.value })} className={`${adminFilterControlClassName} w-full`}>{CATEGORIES.filter(Boolean).map((value) => <option key={value} value={value}>{t(`accessControl.categories.${value}`)}</option>)}</select></Field><Field label={t("accessControl.capabilities.risk")}><select value={edit.riskLevel} onChange={(event) => setEdit({ ...edit, riskLevel: event.target.value })} className={`${adminFilterControlClassName} w-full`}>{RISK_LEVELS.map((value) => <option key={value} value={value}>{t(`accessControl.risk.${value}`)}</option>)}</select></Field><Toggle label={t("accessControl.capabilities.customerVisible")} checked={edit.customerVisible} onChange={(checked) => setEdit({ ...edit, customerVisible: checked })} /><Toggle label={t("accessControl.capabilities.manuallyAssignable")} checked={edit.manuallyAssignable} onChange={(checked) => setEdit({ ...edit, manuallyAssignable: checked })} /><Toggle label={t("accessControl.capabilities.enabled")} checked={edit.enabled} onChange={(checked) => setEdit({ ...edit, enabled: checked })} /></div>
+            <Field label={t("accessControl.forms.reason")}><textarea value={edit.reason} onChange={(event) => setEdit({ ...edit, reason: event.target.value })} maxLength={2000} className="min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.forms.reasonPlaceholder")} /></Field>
+            <div className="flex justify-end"><Button onClick={() => { setEditorOpen(false); setConfirmOpen(true); }} disabled={edit.reason.trim().length < 10}><ShieldCheck /> {t("accessControl.actions.reviewChange")}</Button></div>
+          </>}
+        </DialogContent>
+      </Dialog>
 
-      <AdminConfirmDialog open={confirmOpen} title={t("accessControl.confirm.capabilityTitle")} description={t("accessControl.confirm.capabilityDescription")} confirmLabel="accessControl.confirm.save" busy={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void save()} />
+      <AdminConfirmDialog open={confirmOpen} title={t("accessControl.confirm.capabilityTitle")} description={t("accessControl.confirm.capabilityDescription")} confirmLabel="accessControl.confirm.save" busy={saving} onCancel={() => { setConfirmOpen(false); if (edit) setEditorOpen(true); }} onConfirm={() => void save()} />
     </div>
   );
 }

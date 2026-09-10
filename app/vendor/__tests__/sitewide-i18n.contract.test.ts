@@ -64,6 +64,7 @@ export const VENDOR_I18N_FILES = [
 const priorTaskFiles = new Set([
   "app/vendor/layout.tsx",
   "app/vendor/loading.tsx",
+  "components/layout/portal-sidebar.tsx",
   "components/layout/vendor-sidebar.tsx",
   "components/vendor/compact-filter-bar.tsx",
   "components/vendor/pagination-controls.tsx",
@@ -82,6 +83,7 @@ const priorTaskFiles = new Set([
   "components/shared/chat-widget/chat-widget-inbox.tsx",
   "components/shared/chat-widget/chat-widget-vendor-thread.tsx",
   "components/shared/chatbot-widget.tsx",
+  "components/shared/command-shortcut.ts",
   "components/shared/empty-state.tsx",
   "components/shared/global-command-palette.tsx",
   "components/shared/header-icon-button.ts",

@@ -17,7 +17,7 @@ export function SavedDestinationCard({ destination, savedAt }: { destination: Ma
     <article className="group overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
       <Link href={destinationPath} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
         <div className="relative aspect-[1.65] overflow-hidden bg-secondary">
-          <Image src={destination.image} alt={`${destination.attraction}, ${destination.state}`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition duration-500 group-hover:scale-105" />
+          <Image src={destination.image} alt={`${destination.attraction}, ${destination.state}`} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover object-top transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute inset-x-4 bottom-4 text-white">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]">{destination.zone}</p>

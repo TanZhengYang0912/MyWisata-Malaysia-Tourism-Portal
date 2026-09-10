@@ -29,6 +29,12 @@ describe('public outlet menu', () => {
     expect(source).toContain('t("ui.outletMenu.availableAt"');
   });
 
+  it('passes the current outlet name to the interpolated menu heading', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
+    const menu = source.slice(source.indexOf('export function OutletMenu'));
+    expect(menu).toContain('t("ui.outletMenu.availableAt", { outlet: outlet.name })');
+  });
+
   it('uses one detail link when a product is not ready for direct purchase', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     expect(source).toContain('t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime"');

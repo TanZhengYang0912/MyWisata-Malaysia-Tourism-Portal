@@ -245,7 +245,7 @@ export function ExploreClient({
                                 alt={dest.state}
                                 fill
                                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                                className="object-cover transition duration-500 group-hover:scale-105"
+                                className="object-cover object-top transition duration-500 group-hover:scale-105"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                               <div className="absolute inset-x-3 bottom-3">

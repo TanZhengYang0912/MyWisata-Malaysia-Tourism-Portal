@@ -11,7 +11,10 @@ import {
   WITHDRAWAL_AMOUNT_SEN,
   createDemoKycHashes,
 } from "./lib/alice-wallet-demo.mjs";
-import { stableUuid } from "./lib/vendor-customer-demo.mjs";
+import {
+  OUTLET_TIMELINE_SCENARIOS,
+  stableUuid,
+} from "./lib/vendor-customer-demo.mjs";
 
 const CUSTOMER_IDS = new Set([5, 6, 7, 8].map(
   (number) => `aaaaaaaa-0000-0000-0000-${String(number).padStart(12, "0")}`,
@@ -79,22 +82,26 @@ function assignedRoleName(assignment) {
   return role?.name ?? null;
 }
 
+function malaysiaDayIndex(value) {
+  return Math.floor((new Date(value).getTime() + 8 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000));
+}
+
 async function main() {
   const [vendors, outlets, products, outletOffers, users, orders, orderItems, reviews, chatThreads, chatMessages, bookings, bookingSlots, vouchers, payments, refunds, wallets, walletTransactions, withdrawalRequests, walletAdjustments, payoutDestinations, kycSubmissions, kycOcrResults, outletManagers, userRoles, notifications, authUserIds] = await Promise.all([
     readAll("vendors", "id,owner_id,name,slug,status"),
     readAll("outlets", "id,vendor_id,name,slug,status,review_status"),
     readAll("products", "id,vendor_id,outlet_id,name,requires_booking,status,review_status"),
     readAll("outlet_offers", "id,product_id,outlet_id,status"),
-    readAll("users", "id,status,kyc_status"),
-    readAll("orders", "id,user_id,status,total_amount,payment_method"),
-    readAll("order_items", "id,order_id,vendor_id,outlet_id,product_id,slot_id,line_total"),
+    readAll("users", "id,status,kyc_status,email_verified_at,phone_verified_at"),
+    readAll("orders", "id,user_id,status,total_amount,payment_method,paid_at,completed_at,cancelled_at,created_at"),
+    readAll("order_items", "id,order_id,vendor_id,outlet_id,product_id,slot_id,line_total,fulfil_status"),
     readAll("reviews", "id,user_id,order_item_id,vendor_id,outlet_id,product_id,is_visible"),
     readAll("chat_threads", "id,customer_id,outlet_id,vendor_id"),
     readAll("chat_messages", "id,thread_id,sender_id"),
     readAll("bookings", "id,order_item_id,slot_id,customer_id,status"),
     readAll("booking_slots", "id,product_id,outlet_id,status"),
     readAll("vouchers", "id,vendor_id,is_active,review_status"),
-    readAll("payments", "id,order_id,method,amount,status"),
+    readAll("payments", "id,order_id,method,amount,status,processed_at"),
     readAll("refunds", "id,payment_id,order_id,amount,status,processed_at"),
     readAll("wallets", "id,user_id,topup_sen,earnings_sen,pending_earnings_sen,reserved_earnings_sen,withdrawn_earnings_sen"),
     readAll("wallet_transactions", "id,user_id,wallet_id,order_id,withdrawal_id,idempotency_key,type,amount_sen,bucket,direction,note"),
@@ -118,12 +125,170 @@ async function main() {
   const productById = new Map(products.map((product) => [product.id, product]));
   const orderById = new Map(orders.map((order) => [order.id, order]));
   const itemById = new Map(orderItems.map((item) => [item.id, item]));
+  const paymentByOrderId = new Map(payments.map((payment) => [payment.order_id, payment]));
+  const itemsByOrderId = new Map();
+  for (const item of orderItems) {
+    const current = itemsByOrderId.get(item.order_id) ?? [];
+    current.push(item);
+    itemsByOrderId.set(item.order_id, current);
+  }
   const slotById = new Map(bookingSlots.map((slot) => [slot.id, slot]));
   const customerIds = new Set(
     users
       .filter((user) => CUSTOMER_IDS.has(user.id) && user.status === "active")
       .map((user) => user.id),
   );
+  const commerceCustomerIds = new Set(
+    users
+      .filter((user) =>
+        CUSTOMER_IDS.has(user.id)
+        && user.status === "active"
+        && user.email_verified_at
+        && user.phone_verified_at,
+      )
+      .map((user) => user.id),
+  );
+  const verificationNow = new Date();
+  const currentMalaysiaDay = malaysiaDayIndex(verificationNow);
+  const outletTimelineCoverageFailures = [];
+  const outletTimelinePeriodMismatches = [];
+  const outletTimelineCustomerDiversityMismatches = [];
+  const outletTimelineLifecycleMismatches = [];
+  const outletsWithCompleteTimeline = new Set();
+
+  for (const outlet of activeOutlets) {
+    const entries = OUTLET_TIMELINE_SCENARIOS.map((scenario) => {
+      const orderId = stableUuid(`vendor-customer-demo:${outlet.id}:${scenario.key}:order`);
+      const order = orderById.get(orderId);
+      const item = (itemsByOrderId.get(orderId) ?? []).find(
+        (candidate) => candidate.outlet_id === outlet.id && candidate.vendor_id === outlet.vendor_id,
+      );
+      return { scenario, orderId, order, item };
+    });
+    const missing = entries
+      .filter((entry) => !entry.order || !entry.item)
+      .map((entry) => ({ key: entry.scenario.key, orderId: entry.orderId }));
+    if (missing.length > 0) {
+      outletTimelineCoverageFailures.push({
+        outletId: outlet.id,
+        outletName: outlet.name,
+        expected: OUTLET_TIMELINE_SCENARIOS.length,
+        complete: entries.length - missing.length,
+        missing,
+      });
+      continue;
+    }
+
+    const distinctCustomers = new Set(entries.map((entry) => entry.order.user_id));
+    if (
+      distinctCustomers.size !== commerceCustomerIds.size
+      || [...distinctCustomers].some((id) => !commerceCustomerIds.has(id))
+    ) {
+      outletTimelineCustomerDiversityMismatches.push({
+        outletId: outlet.id,
+        outletName: outlet.name,
+        expectedCustomers: commerceCustomerIds.size,
+        customerIds: [...distinctCustomers],
+      });
+    }
+
+    for (const entry of entries) {
+      const { scenario, order, item, orderId } = entry;
+      const payment = paymentByOrderId.get(orderId);
+      const product = productById.get(item.product_id);
+      const offeredBookableWithoutSlot = Boolean(
+        product?.requires_booking
+        && product.outlet_id !== outlet.id
+        && !item.slot_id,
+      );
+      const expectedStatus = offeredBookableWithoutSlot && scenario.status === "paid"
+        ? "cancelled"
+        : scenario.status;
+      const timestampIsNonFuture = (value) => Boolean(
+        value && new Date(value).getTime() <= verificationNow.getTime(),
+      );
+      const reasons = [];
+
+      if (order.status !== expectedStatus) reasons.push(`expected order status ${expectedStatus}`);
+      if (!payment) {
+        reasons.push("missing payment");
+      } else {
+        const expectedPaymentStatus = order.status === "cancelled" ? "cancelled" : "succeeded";
+        if (payment.status !== expectedPaymentStatus) {
+          reasons.push(`expected payment status ${expectedPaymentStatus}`);
+        }
+        if (Number(payment.amount) !== Number(order.total_amount)) {
+          reasons.push("payment amount does not match order total");
+        }
+        if (!timestampIsNonFuture(payment.processed_at)) {
+          reasons.push("payment processed_at is missing or in the future");
+        }
+      }
+
+      if (order.status === "cancelled") {
+        if (!timestampIsNonFuture(order.cancelled_at)) {
+          reasons.push("cancelled_at is missing or in the future");
+        }
+        if (order.paid_at || order.completed_at) {
+          reasons.push("cancelled order has paid_at or completed_at");
+        }
+        if (item.fulfil_status !== "cancelled") {
+          reasons.push("cancelled order item is not cancelled");
+        }
+      } else if (order.status === "paid") {
+        if (!timestampIsNonFuture(order.paid_at)) reasons.push("paid_at is missing or in the future");
+        if (order.completed_at || order.cancelled_at) reasons.push("paid order has a terminal timestamp");
+      } else if (order.status === "completed") {
+        if (!timestampIsNonFuture(order.paid_at)) reasons.push("paid_at is missing or in the future");
+        if (!timestampIsNonFuture(order.completed_at)) {
+          reasons.push("completed_at is missing or in the future");
+        } else if (new Date(order.paid_at).getTime() > new Date(order.completed_at).getTime()) {
+          reasons.push("paid_at occurs after completed_at");
+        }
+        if (order.cancelled_at) reasons.push("completed order has cancelled_at");
+        if (item.fulfil_status !== "fulfilled") reasons.push("completed order item is not fulfilled");
+      }
+
+      if (reasons.length > 0) {
+        outletTimelineLifecycleMismatches.push({
+          outletId: outlet.id,
+          outletName: outlet.name,
+          scenario: scenario.key,
+          orderId,
+          reasons,
+        });
+      }
+    }
+
+    const ages = entries.map((entry) => currentMalaysiaDay - malaysiaDayIndex(entry.order.created_at));
+    const periods = {
+      today: ages.filter((age) => age === 0).length,
+      last7Days: ages.filter((age) => age >= 0 && age <= 7).length,
+      last30Days: ages.filter((age) => age >= 0 && age <= 30).length,
+      previous30Days: ages.filter((age) => age > 30 && age <= 60).length,
+      olderWithin12Months: ages.filter((age) => age > 60 && age <= 365).length,
+    };
+    const expectedPeriods = {
+      today: 1,
+      last7Days: 3,
+      last30Days: 6,
+      previous30Days: 2,
+      olderWithin12Months: 4,
+    };
+    if (Object.entries(expectedPeriods).some(([key, value]) => periods[key] !== value)) {
+      outletTimelinePeriodMismatches.push({
+        outletId: outlet.id,
+        outletName: outlet.name,
+        expected: expectedPeriods,
+        actual: periods,
+      });
+      continue;
+    }
+
+    if (!outletTimelineCustomerDiversityMismatches.some((failure) => failure.outletId === outlet.id)) {
+      outletsWithCompleteTimeline.add(outlet.id);
+    }
+  }
   const messageCountByThread = new Map();
   for (const message of chatMessages) {
     messageCountByThread.set(message.thread_id, (messageCountByThread.get(message.thread_id) ?? 0) + 1);
@@ -205,7 +370,7 @@ async function main() {
       order &&
       outlet &&
       product &&
-      customerIds.has(order.user_id) &&
+      commerceCustomerIds.has(order.user_id) &&
       ["paid", "completed"].includes(order.status) &&
       activeApproved(outlet) &&
       activeApproved(product) &&
@@ -218,7 +383,7 @@ async function main() {
   const reviewMismatchIds = new Set(reviewOwnershipMismatches.map((mismatch) => mismatch.id));
   const qualifyingReviews = reviews.filter((review) =>
     review.is_visible &&
-    customerIds.has(review.user_id) &&
+    commerceCustomerIds.has(review.user_id) &&
     qualifyingItemIds.has(review.order_item_id) &&
     !reviewMismatchIds.has(review.id),
   );
@@ -233,7 +398,7 @@ async function main() {
   const validBookingIds = new Set(
     bookings
       .filter((booking) =>
-        customerIds.has(booking.customer_id) &&
+        commerceCustomerIds.has(booking.customer_id) &&
         ["confirmed", "checked_in"].includes(booking.status) &&
         !bookingMismatchIds.has(booking.id),
       )
@@ -622,6 +787,10 @@ async function main() {
     managerNotificationMissing,
     managerNotificationScopeMismatches,
     managerOwnerOnlyNotificationMismatches,
+    outletTimelineCoverageFailures,
+    outletTimelinePeriodMismatches,
+    outletTimelineCustomerDiversityMismatches,
+    outletTimelineLifecycleMismatches,
     aliceWalletHistoryFailures,
     walletReconciliationMismatches,
   };
@@ -643,6 +812,7 @@ async function main() {
       vendorNotifications: notifications.filter((notification) => notification.vendor_id).length,
       vendorOwners: approvedVendors.length,
       outletManagers: activeManagerAssignments.length,
+      deterministicTimelineOrders: activeOutlets.length * OUTLET_TIMELINE_SCENARIOS.length,
     },
     coverage: {
       vendorsWithOrders: approvedVendors.filter((vendor) => vendorsWithOrders.has(vendor.id)).length,
@@ -658,6 +828,7 @@ async function main() {
       ownersWithOrderNotifications: approvedVendors.length - ownerOrderNotificationMissing.length,
       ownersWithWalletNotifications: approvedVendors.length - ownerWalletNotificationMissing.length,
       managersWithOperationalNotifications: activeManagerAssignments.length - managerNotificationMissing.length,
+      outletsWithCompleteTimeline: outletsWithCompleteTimeline.size,
     },
     aliceWalletHistory: {
       kycApproved: alice?.kyc_status === "approved",

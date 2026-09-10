@@ -177,9 +177,11 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   }
 
   function copyRoleTemplate(role: StaffRoleRecord) {
-    const proposedName = role.name === "Legacy Wallet Approver"
-      ? "Wallet Approver"
-      : role.name === "Legacy Admin" ? "Admin Reviewer" : `${role.name} Copy`.slice(0, 20);
+    const proposedName = role.name === "Sponsored Placement Manager"
+      ? "Sponsor Manager"
+      : role.name === "Legacy Wallet Approver"
+        ? "Wallet Approver"
+        : role.name === "Legacy Admin" ? "Admin Reviewer" : `${role.name} Copy`.slice(0, 20);
     setForm({ ...EMPTY_FORM, name: proposedName, description: role.description ?? "", permissionKeys: [...role.permissionKeys] });
     setFeedbackMessage("");
     setReceipt(null);

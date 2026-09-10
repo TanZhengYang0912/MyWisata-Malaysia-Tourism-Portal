@@ -23,4 +23,20 @@ describe("independent phone verification page contract", () => {
     expect(pageSource).toContain("router.push(continuation)");
     expect(pageSource).not.toContain("window.location");
   });
+
+  it("sends the OTP when Enter is pressed in the phone number field", () => {
+    expect(cardSource).toContain("function handlePhoneKeyDown");
+    expect(cardSource).toContain('if (event.key !== "Enter") return;');
+    expect(cardSource).toContain("event.preventDefault()");
+    expect(cardSource).toContain("void sendOtp()");
+    expect(cardSource).toContain("onKeyDown={handlePhoneKeyDown}");
+  });
+
+  it("focuses the OTP field and verifies it when Enter is pressed", () => {
+    expect(cardSource).toContain("function handleOtpKeyDown");
+    expect(cardSource).toContain("void verifyOtp()");
+    expect(cardSource).toMatch(
+      /id="verification-otp"[\s\S]*?disabled=\{busy\}[\s\S]*?autoFocus[\s\S]*?onKeyDown=\{handleOtpKeyDown\}/,
+    );
+  });
 });

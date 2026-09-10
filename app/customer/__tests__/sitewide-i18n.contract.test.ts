@@ -98,9 +98,11 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/product-chat-button.tsx",
   "components/customer/promotion-spotlight.tsx",
   "components/customer/recommendation-earnings-panel.tsx",
+  "components/customer/save-toggle-button.tsx",
   "components/customer/saved-destination-card.tsx",
   "components/customer/sponsored-partner-rail.tsx",
   "components/customer/use-customer-capability-gate.ts",
+  "components/customer/vendor-card.tsx",
   "components/customer/wallet/customer-transaction-history.tsx",
   "components/customer/wallet/payout-readiness.tsx",
   "components/customer/wallet/wallet-balance-summary.tsx",
@@ -200,6 +202,7 @@ const delegatingFiles = new Set([
   "components/customer/ai-tag.tsx",
   "components/customer/category-icon.tsx",
   "components/customer/customer-page-shell.tsx",
+  "components/customer/save-toggle-button.tsx",
   "components/customer/use-customer-capability-gate.ts",
 ]);
 

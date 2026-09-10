@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bookmark, Building2, ChevronLeft, ChevronRight, Compass, MapPin, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
-import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
 import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import dynamic from "next/dynamic";
@@ -61,63 +61,7 @@ function useTypewriterPlaceholder(texts: string[], typingSpeed = 70, deletingSpe
   return text || " ";
 }
 
-export type DemoVendor = {
-  id: string;
-  name: string;
-  description: string | null;
-  logoUrl: string | null;
-  coverUrl: string | null;
-  businessType: string | null;
-  outlets: Array<{ id: string; name: string; city: string | null; state: string | null }>;
-};
-
-function VendorCard({ vendor }: { vendor: DemoVendor }) {
-  const { t } = useTranslation("customer");
-  const visual = getVendorVisual(vendor);
-  const primaryOutlet = vendor.outlets[0];
-  const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
-
-  return (
-    <article className="group overflow-hidden rounded-[22px] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-      <Link href={`/customer/vendor/${vendor.id}`} className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-        <div className="relative aspect-[1.5] overflow-hidden bg-secondary">
-          {visual.coverUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={visual.coverUrl} alt={t("ui.home.vendorCover", { vendor: vendor.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            </>
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[linear-gradient(135deg,#010066,#172b72)] text-white">
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/25 bg-white/10 text-xl font-black">{visual.initials}</span>
-            </div>
-          )}
-          <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground"><ShieldCheck size={12} className="text-primary" /> {t("ui.labels.verified")}</div>
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs font-semibold text-white"><MapPin size={12} /> {location}</div>
-        </div>
-      </Link>
-      <div className="p-4 space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <Link href={`/customer/vendor/${vendor.id}`} className="min-w-0">
-            <h3 className="line-clamp-2 text-sm font-bold text-foreground">{vendor.name}</h3>
-          </Link>
-          {visual.logoUrl ? (
-             <span className="h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-border bg-card p-0.5">
-               {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img src={visual.logoUrl} alt="" className="h-full w-full object-cover" />
-             </span>
-          ) : (
-             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-sm font-bold text-primary">{visual.initials}</span>
-          )}
-        </div>
-        <p className="line-clamp-2 min-h-10 text-[11px] leading-5 text-muted-foreground">{vendor.description || t("ui.home.vendorDescription", { location })}</p>
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><Building2 size={12} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span>
-        </div>
-      </div>
-    </article>
-  );
-}
+export type DemoVendor = CustomerVendorCardVendor & { businessType: string | null };
 
 export function CustomerHomeClient({
   recommended,
@@ -161,6 +105,15 @@ export function CustomerHomeClient({
   const recommendationItems = recommended.length > 0 ? recommended.slice(0, 4) : popular.slice(0, 4);
   const hasPersonalizedRecommendations = recommended.length > 0;
 
+  const popularExperiences = useMemo(() => {
+    const activities = popular.filter((item) => item.categorySlug === "activity" || item.requiresBooking);
+    return activities.length > 0 ? activities : popular;
+  }, [popular]);
+
+  const localDelicacies = useMemo(() => {
+    return popular.filter((item) => item.categorySlug === "food" || item.categorySlug === "retail");
+  }, [popular]);
+
   return (
     <div className="bg-background min-h-screen text-foreground pb-20">
       {/* 1. Hero Section */}
@@ -203,7 +156,7 @@ export function CustomerHomeClient({
               </div>
               <div key={activeDestination.state} className="atlas-active-card absolute bottom-0 right-0 z-20 w-full overflow-hidden rounded-[30px] border border-white/20 bg-black/20 shadow-[0_28px_70px_rgba(0,0,0,0.35)] lg:w-[88%]">
                 <div className="relative aspect-[0.78] lg:h-[500px] lg:aspect-auto">
-                  <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover" />
+                  <Image src={activeDestination.image} alt={`${activeDestination.attraction}, ${activeDestination.state}`} fill sizes="(max-width: 768px) 46vw, 560px" priority className="atlas-active-image object-cover object-top" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
                   <div className="atlas-mobile-note absolute left-5 top-5 z-30 w-[calc(100%-10rem)] max-w-[12rem] rounded-2xl border border-[#ffcc00]/40 bg-card/95 px-3 py-2.5 text-foreground shadow-lg backdrop-blur lg:hidden">
                     <div className="flex items-center justify-between gap-2"><span className="text-[9px] font-bold uppercase tracking-[0.14em] text-primary">{t("ui.home.postcard", { current: String(activeIndex + 1).padStart(2, "0"), total: MALAYSIA_DESTINATIONS.length })}</span><MapPin size={13} className="shrink-0 text-highlight-yellow" /></div>
@@ -243,7 +196,7 @@ export function CustomerHomeClient({
                     onClick={() => setActiveState(dest.state)}
                     className={`group relative h-48 w-36 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40 sm:h-56 sm:w-44 lg:h-44 transition border ${isSelected ? "border-[#ffcc00] ring-2 ring-[#ffcc00]/35" : "border-white/15 hover:border-white/40"}`}
                   >
-                    <Image src={dest.image} alt={dest.state} fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(min-width: 640px) 176px, 144px" />
+                    <Image src={dest.image} alt={dest.state} fill className="object-cover object-top transition duration-700 group-hover:scale-105" sizes="(min-width: 640px) 176px, 144px" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute bottom-3 left-3 text-left">
                       <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#ffcc00]">{dest.zone}</p>
@@ -283,15 +236,36 @@ export function CustomerHomeClient({
         {/* 4. Popular Experiences */}
         <section className="mt-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.popularExperiences")}</h2>
-            <Link href="/customer/explore" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
+            <div>
+              <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.popularExperiences")}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.popularExperiencesSubtitle")}</p>
+            </div>
+            <Link href="/customer/explore?category=activity" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {popular.slice(0, 8).map((activity) => (
+            {popularExperiences.slice(0, 8).map((activity) => (
               <ActivityCard key={activity.id} activity={activity} />
             ))}
           </div>
         </section>
+
+        {/* 5. Local Delicacies & Souvenirs */}
+        {localDelicacies.length > 0 && (
+          <section className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.localDelicacies")}</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.localDelicaciesSubtitle")}</p>
+              </div>
+              <Link href="/customer/explore?category=food" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {localDelicacies.slice(0, 8).map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 5. Featured Partners */}
         <section className="mt-12">
@@ -300,9 +274,11 @@ export function CustomerHomeClient({
             <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {vendors.slice(0, 8).map((vendor) => (
-              <VendorCard key={vendor.id} vendor={vendor} />
-            ))}
+            {vendors.slice(0, 8).map((vendor, index) => {
+              const primaryOutlet = vendor.outlets[0];
+              const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
+              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured showExploreAction={false} />;
+            })}
           </div>
         </section>
       </div>

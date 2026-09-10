@@ -822,7 +822,7 @@ export default function OutletPageBuilder({
                       }))
                     }
                     rows={3}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-2 py-1.5 text-xs"
+                    className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-2 py-1.5 text-xs"
                   />
                 </label>
               </div>

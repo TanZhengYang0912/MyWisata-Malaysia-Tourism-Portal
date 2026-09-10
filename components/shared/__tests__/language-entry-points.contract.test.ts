@@ -82,7 +82,8 @@ describe("shared language entry points", () => {
     expect(guest).toContain('tCommon("account.signIn")');
 
     const admin = source("app/admin/layout.tsx");
-    expect(admin).toContain('aria-label={tAdmin("accessibility.pendingItems", { count })}');
+    expect(admin).toContain('countLabel: count > 0 ? tAdmin("accessibility.pendingItems", { count }) : undefined');
+    expect(source("components/layout/portal-sidebar.tsx")).toContain('aria-label={item.countLabel ?? String(item.count)}');
     expect(admin).not.toContain("pending items`}");
   });
 

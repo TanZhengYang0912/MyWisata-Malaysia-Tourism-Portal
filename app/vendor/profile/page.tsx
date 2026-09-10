@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import ProductMediaUploader from '@/components/vendor/product-media-uploader';
 import AiWritingAssistant from '@/components/vendor/ai-writing-assistant';
 import { BUSINESS_TYPE_OPTIONS, businessTypeLabel } from '@/lib/vendor/profile-ui';
+import { vendorImageUrl } from '@/lib/storage/vendor-image';
 
 type VendorProfile = {
   name: string;
@@ -51,10 +52,11 @@ function ImageFallback({ label, className }: { label: string; className: string 
 
 function ProfileImage({ src, alt, fallback, className }: { src: string; alt: string; fallback: string; className: string }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <ImageFallback label={fallback} className={className} />;
+  const resolvedSrc = vendorImageUrl(src);
+  if (!resolvedSrc || failed) return <ImageFallback label={fallback} className={className} />;
   // Profile images can be external URLs or Supabase public URLs, so next/image cannot optimize them without changing config.
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return <img src={resolvedSrc} alt={alt} className={className} onError={() => setFailed(true)} />;
 }
 
 export default function VendorProfilePage() {
@@ -172,8 +174,8 @@ export default function VendorProfilePage() {
         <section className="space-y-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-start gap-3 border-b border-gray-100 pb-5"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Eye size={19} /></div><div><h2 className="text-base font-bold text-gray-950">{t('ui.profile.brandAssets')}</h2><p className="mt-1 text-sm leading-5 text-gray-500">{t('ui.profile.brandAssetsDescription')}</p></div></div>
           <div className="grid gap-6 lg:grid-cols-2">
-            <div><label className="text-sm font-semibold text-gray-700">{t('ui.profile.logo')}</label><div className="mt-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3"><ProductMediaUploader vendorId={vendorId || ''} value={form.logoUrl} successMessage={t('ui.profile.logoUploaded')} onUploaded={(media) => updateField('logoUrl', media.url)} onError={(uploadError) => setError(uploadError || null)} /></div><label className="mt-3 block text-xs font-semibold text-gray-500">{t('ui.profile.pasteImageUrl')}<input value={form.logoUrl} onChange={(event) => updateField('logoUrl', event.target.value)} placeholder="https://…" className={FIELD_CLASS} /></label><button type="button" onClick={() => updateField('logoUrl', '')} disabled={!form.logoUrl} className="mt-2 text-xs font-semibold text-gray-500 underline underline-offset-4 hover:text-red-600 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50">{t('ui.profile.removeLogo')}</button></div>
-            <div><label className="text-sm font-semibold text-gray-700">{t('ui.profile.coverImage')}</label><div className="mt-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3"><ProductMediaUploader vendorId={vendorId || ''} value={form.coverUrl} successMessage={t('ui.profile.coverUploaded')} onUploaded={(media) => updateField('coverUrl', media.url)} onError={(uploadError) => setError(uploadError || null)} /></div><label className="mt-3 block text-xs font-semibold text-gray-500">{t('ui.profile.pasteImageUrl')}<input value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} placeholder="https://…" className={FIELD_CLASS} /></label><button type="button" onClick={() => updateField('coverUrl', '')} disabled={!form.coverUrl} className="mt-2 text-xs font-semibold text-gray-500 underline underline-offset-4 hover:text-red-600 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50">{t('ui.profile.removeCover')}</button></div>
+            <div><label className="text-sm font-semibold text-gray-700">{t('ui.profile.logo')}</label><div className="mt-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3"><ProductMediaUploader vendorId={vendorId || ''} value={vendorImageUrl(form.logoUrl)} successMessage={t('ui.profile.logoUploaded')} onUploaded={(media) => updateField('logoUrl', media.url)} onError={(uploadError) => setError(uploadError || null)} /></div><label className="mt-3 block text-xs font-semibold text-gray-500">{t('ui.profile.pasteImageUrl')}<input value={form.logoUrl} onChange={(event) => updateField('logoUrl', event.target.value)} placeholder="https://…" className={FIELD_CLASS} /></label><button type="button" onClick={() => updateField('logoUrl', '')} disabled={!form.logoUrl} className="mt-2 text-xs font-semibold text-gray-500 underline underline-offset-4 hover:text-red-600 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50">{t('ui.profile.removeLogo')}</button></div>
+            <div><label className="text-sm font-semibold text-gray-700">{t('ui.profile.coverImage')}</label><div className="mt-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3"><ProductMediaUploader vendorId={vendorId || ''} value={vendorImageUrl(form.coverUrl)} successMessage={t('ui.profile.coverUploaded')} onUploaded={(media) => updateField('coverUrl', media.url)} onError={(uploadError) => setError(uploadError || null)} /></div><label className="mt-3 block text-xs font-semibold text-gray-500">{t('ui.profile.pasteImageUrl')}<input value={form.coverUrl} onChange={(event) => updateField('coverUrl', event.target.value)} placeholder="https://…" className={FIELD_CLASS} /></label><button type="button" onClick={() => updateField('coverUrl', '')} disabled={!form.coverUrl} className="mt-2 text-xs font-semibold text-gray-500 underline underline-offset-4 hover:text-red-600 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50">{t('ui.profile.removeCover')}</button></div>
           </div>
         </section>
 

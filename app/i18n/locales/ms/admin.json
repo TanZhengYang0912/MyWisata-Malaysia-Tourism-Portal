@@ -1,12 +1,22 @@
 {
   "shell": {
     "panel": "Panel pentadbir",
-    "signedInAs": "Log masuk sebagai"
+    "signedInAs": "Log masuk sebagai",
+    "portal": "Portal Vendor",
+    "brand": "Pelancongan Malaysia",
+    "navigation": "Navigasi portal",
+    "context": {
+      "superAdmin": "Ruang kerja tadbir urus",
+      "approver": "Kelulusan dompet",
+      "admin": "Ruang kerja pentadbir",
+      "staff": "Tugasan yang diberikan"
+    }
   },
   "roles": {
     "admin": "Pentadbir",
     "approver": "Pelulus",
-    "super_admin": "Pentadbir super"
+    "super_admin": "Pentadbir super",
+    "staff": "Kakitangan"
   },
   "navigation": {
     "Overview": "Gambaran keseluruhan",
@@ -29,6 +39,13 @@
     "Staff Conduct": "Kelakuan kakitangan",
     "Access Control": "Kawalan akses",
     "Sponsored Placements": "Penempatan ditaja"
+  },
+  "navigationSections": {
+    "workspace": "Ruang kerja",
+    "governance": "Tadbir urus",
+    "finance": "Kewangan",
+    "support": "Sokongan",
+    "administration": "Pentadbiran"
   },
   "sponsoredPlacements": {
     "eyebrow": "Kempen penemuan",
@@ -416,6 +433,11 @@
       "subjectId": "Pengecam subjek",
       "subjectPlaceholder": "UUID, peranan, pelan atau pengecam rakan kongsi",
       "capability": "Keupayaan",
+      "selectCapability": "Pilih keupayaan yang tersedia",
+      "systemManagedOption": "Diurus sistem; kebenaran manual tidak tersedia",
+      "disabledOption": "Keupayaan dimatikan",
+      "allowCapabilityHelp": "Benarkan hanya boleh memilih keupayaan aktif yang membenarkan tugasan manual.",
+      "denyCapabilityHelp": "Tolak boleh memilih mana-mana keupayaan aktif, termasuk keupayaan yang diurus sistem.",
       "effect": "Kesan",
       "startsAt": "Bermula pada",
       "expiresAt": "Tamat pada (pilihan)",

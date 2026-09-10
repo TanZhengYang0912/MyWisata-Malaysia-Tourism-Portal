@@ -66,7 +66,8 @@ function button(container: TestElement, name: string) {
 }
 
 function labelled(container: TestElement, label: string) {
-  return findOne(container, (element) => element.getAttribute("aria-label") === label);
+  const matches = findElements(container, (element) => element.getAttribute("aria-label") === label);
+  return matches[matches.length - 1] ?? findOne(container, (element) => element.getAttribute("aria-label") === label);
 }
 
 async function click(element: TestElement) {

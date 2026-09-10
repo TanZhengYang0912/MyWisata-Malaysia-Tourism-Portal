@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEventHandler } from "react";
 import { useTranslation } from "react-i18next";
 import {
   defaultCountries,
@@ -16,6 +16,8 @@ interface InternationalPhoneInputProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   error?: boolean;
+  autoFocus?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 }
 
 export function InternationalPhoneInput({
@@ -24,6 +26,8 @@ export function InternationalPhoneInput({
   onChange,
   disabled,
   error,
+  autoFocus,
+  onKeyDown,
 }: InternationalPhoneInputProps) {
   const { t } = useTranslation("customer");
   const [countrySearch, setCountrySearch] = useState("");
@@ -72,6 +76,8 @@ export function InternationalPhoneInput({
         onChange={handlePhoneValueChange}
         disabled={disabled}
         autoComplete="tel"
+        autoFocus={autoFocus}
+        onKeyDown={onKeyDown}
         aria-invalid={error || undefined}
         className="min-w-0 flex-1 rounded-r-xl bg-transparent px-3 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"
       />

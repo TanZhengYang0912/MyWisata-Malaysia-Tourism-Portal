@@ -8,11 +8,14 @@ const railSource = readFileSync(resolve(process.cwd(), "components/customer/spon
 
 describe("partners first-viewport spacing contract", () => {
   it("keeps the full-width advertising banner compact enough to enter the initial viewport", () => {
-    expect(searchSource).toContain("px-4 py-8 sm:px-6 sm:py-10");
-    expect(searchSource).toContain("mt-8 space-y-6");
+    expect(searchSource).toContain("px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10");
+    expect(searchSource).toContain('data-testid="partner-filter-bar"');
+    expect(searchSource).toContain('variant="compact"');
+    expect(searchSource).toContain('headingKey="ui.search.category"');
     expect(filterSource).toContain("<div className=\"mb-3 flex items-center justify-between gap-4\">");
-    expect(filterSource).toContain("flex min-h-20 w-full");
-    expect(railSource).toContain("mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8");
+    expect(filterSource).toContain("overflow-x-auto");
+    expect(filterSource).toContain("min-h-10");
+    expect(railSource).toContain("mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 lg:px-8");
     expect(railSource).toContain('className="group w-full overflow-hidden bg-card"');
   });
 });

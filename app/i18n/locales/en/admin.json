@@ -1,12 +1,22 @@
 {
   "shell": {
     "panel": "Admin Panel",
-    "signedInAs": "Signed in as"
+    "signedInAs": "Signed in as",
+    "portal": "Vendor Portal",
+    "brand": "Malaysia Tourism",
+    "navigation": "Portal navigation",
+    "context": {
+      "superAdmin": "Governance workspace",
+      "approver": "Wallet approvals",
+      "admin": "Admin workspace",
+      "staff": "Assigned work"
+    }
   },
   "roles": {
     "admin": "Admin",
     "approver": "Approver",
-    "super_admin": "Super Admin"
+    "super_admin": "Super Admin",
+    "staff": "Staff"
   },
   "navigation": {
     "Overview": "Overview",
@@ -29,6 +39,13 @@
     "Staff Conduct": "Staff Conduct",
     "Access Control": "Access Control",
     "Sponsored Placements": "Sponsored Placements"
+  },
+  "navigationSections": {
+    "workspace": "Workspace",
+    "governance": "Governance",
+    "finance": "Finance",
+    "support": "Support",
+    "administration": "Administration"
   },
   "sponsoredPlacements": {
     "eyebrow": "Discovery campaigns",
@@ -416,6 +433,11 @@
       "subjectId": "Subject identifier",
       "subjectPlaceholder": "UUID, role, plan, or partner identifier",
       "capability": "Capability",
+      "selectCapability": "Select an available capability",
+      "systemManagedOption": "System managed; manual allow unavailable",
+      "disabledOption": "Capability disabled",
+      "allowCapabilityHelp": "Allow can select only enabled capabilities that permit manual assignment.",
+      "denyCapabilityHelp": "Deny can select any enabled capability, including system-managed capabilities.",
       "effect": "Effect",
       "startsAt": "Starts at",
       "expiresAt": "Expires at (optional)",

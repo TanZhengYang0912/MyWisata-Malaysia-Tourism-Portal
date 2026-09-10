@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
-import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowRight, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
+import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
@@ -307,7 +308,7 @@ export function StoryMap({
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
                 </div>
-                <button type="button" aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} aria-pressed={saved} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
+                <SaveToggleButton saved={saved} iconSize={17} aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`} />
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">

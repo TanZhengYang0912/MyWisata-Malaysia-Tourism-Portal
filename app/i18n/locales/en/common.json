@@ -265,8 +265,8 @@
   },
   "command": {
     "title": "Command Palette",
-    "searchAdminPlaceholder": "Type a command or search queues… (⌘K)",
-    "searchVendorPlaceholder": "Type a command or jump to workspace… (⌘K)",
+    "searchAdminPlaceholder": "Type a command or search queues…",
+    "searchVendorPlaceholder": "Type a command or jump to workspace…",
     "noResults": "No commands or pages found.",
     "navigation": "Navigation",
     "queue": "Review Queues",
