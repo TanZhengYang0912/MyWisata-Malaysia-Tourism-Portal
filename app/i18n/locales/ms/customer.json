@@ -317,7 +317,8 @@
       "tunePreferences": "Laraskan pilihan saya",
       "sending": "Menghantar…",
       "submitting": "Mengemukakan…",
-      "cancel": "Batal"
+      "cancel": "Batal",
+      "close": "Tutup"
     },
     "labels": {
       "hiddenGem": "Permata Tersembunyi",
@@ -1637,6 +1638,10 @@
       "mixedOrder": "Pesanan campuran",
       "bookingOrder": "Tempahan",
       "productOrder": "Produk",
+      "orderItems": "Item yang dibeli",
+      "copyOrderId": "Salin ID Pesanan",
+      "brandName": "MyWisata",
+      "portalName": "Portal Pelancongan Malaysia",
       "paymentMethods": {
         "stripeCard": "Kad demo Stripe",
         "eWallet": "E-dompet",
@@ -1658,9 +1663,13 @@
       "title": "Pesanan anda",
       "description": "Jejaki pembelian, tempahan, status bayaran dan resit.",
       "backToOrders": "Kembali ke pesanan",
+      "orderId": "ID Pesanan: #{{id}}",
+      "slot": "Slot: {{time}}",
+      "bookingId": "ID Tempahan: {{id}}",
       "refundReasonPrompt": "Mengapakah anda memohon bayaran balik?",
       "refundSubmitted": "Permohonan bayaran balik telah dihantar.",
       "refundError": "Permohonan bayaran balik tidak dapat dihantar.",
+      "refundableItems": "Item untuk bayaran balik",
       "requestRefundModalTitle": "Mohon Bayaran Balik",
       "refundReasonSelect": "Sebab bayaran balik",
       "refundReasonSchedule": "Pertukaran jadual / perancangan",

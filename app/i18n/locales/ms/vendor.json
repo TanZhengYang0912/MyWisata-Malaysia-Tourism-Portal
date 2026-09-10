@@ -308,7 +308,8 @@
       "no": "Tidak",
       "tryAgain": "Cuba lagi",
       "batchFailed": "Tindakan kelompok gagal",
-      "clearFilters": "Kosongkan penapis"
+      "clearFilters": "Kosongkan penapis",
+      "exportCsv": "Eksport CSV"
     },
     "status": {
       "pending": "Menunggu",
@@ -541,7 +542,9 @@
       "cancelSelectedSlots": "Batalkan slot dipilih",
       "restoreSelectedSlots": "Pulihkan slot dipilih",
       "selectCurrentPage": "Pilih halaman semasa",
+      "freeToExplore": "Percuma untuk diteroka",
       "reservationCount": "{{count}} tempahan · dikumpulkan mengikut cawangan",
+      "pageSummary": "{{count}} tempahan · {{perPage}} setiap halaman",
       "malaysia": "Malaysia",
       "onThisPage": "{{count}} pada halaman ini",
       "outletAgenda": "Agenda cawangan",
@@ -603,6 +606,8 @@
       "batchSummary_other": "{{count}} {{entity}} dikemas kini.",
       "reservationCount_one": "{{count}} tempahan · dikumpulkan mengikut cawangan",
       "reservationCount_other": "{{count}} tempahan · dikumpulkan mengikut cawangan",
+      "pageSummary_one": "{{count}} tempahan · {{perPage}} setiap halaman",
+      "pageSummary_other": "{{count}} tempahan · {{perPage}} setiap halaman",
       "onThisPage_one": "{{count}} pada halaman ini",
       "onThisPage_other": "{{count}} pada halaman ini"
     },
@@ -803,6 +808,8 @@
       "title": "Produk & aktiviti",
       "description": "Pastikan setiap penyenaraian Malaysia mudah dilihat dan sedia ditempah.",
       "assignedOutlet": "Cawangan ditugaskan",
+      "attentionNeeded": "Stok rendah / Tempahan",
+      "outletsManaged": "Outlet",
       "addListing": "Tambah penyenaraian",
       "allTypes": "Semua jenis",
       "allStatuses": "Semua status",

@@ -240,7 +240,7 @@ export default function OrderDetailPage() {
                 <button
                   type="button"
                   onClick={copyOrderId}
-                  title="Copy Order ID"
+                  title={tCustomer("ui.orders.copyOrderId")}
                   className="group inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-2.5 py-1 font-[family-name:var(--font-mono)] text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-secondary"
                 >
                   <span>{shortOrderId(order.id)}</span>
@@ -268,7 +268,7 @@ export default function OrderDetailPage() {
               <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                 <div className="border-b border-border bg-secondary/40 px-5 py-4 sm:px-6">
                   <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
-                    {tCustomer("ui.orders.orderItems", { defaultValue: "Purchased Items" })}
+                    {tCustomer("ui.orders.orderItems")}
                   </h2>
                 </div>
                 <div className="divide-y divide-gray-100 dark:divide-border/60">
@@ -393,7 +393,7 @@ export default function OrderDetailPage() {
             <div className="space-y-6">
               <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
                 <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-primary border-b border-border pb-3">
-                  {tCustomer("ui.checkout.orderSummary", { defaultValue: "Order Summary" })}
+                  {tCustomer("ui.checkout.orderSummary")}
                 </h2>
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex justify-between text-muted-foreground">
@@ -433,7 +433,7 @@ export default function OrderDetailPage() {
                 <div className="mt-5 rounded-xl bg-secondary/50 p-3.5 text-xs text-muted-foreground space-y-1.5 border border-border/50">
                   {order.paymentMethod && (
                     <div className="flex justify-between">
-                      <span>{tCustomer("ui.checkout.paymentMethod", { defaultValue: "Payment Method" })}</span>
+                      <span>{tCustomer("ui.checkout.paymentMethod")}</span>
                       <span className="font-semibold text-foreground capitalize">{order.paymentMethod}</span>
                     </div>
                   )}
@@ -498,7 +498,7 @@ export default function OrderDetailPage() {
               type="button"
               onClick={() => setRefundModalOpen(false)}
               className="absolute right-5 top-5 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-              aria-label="Close"
+              aria-label={tCustomer("ui.actions.close")}
             >
               <X size={18} />
             </button>
@@ -510,7 +510,7 @@ export default function OrderDetailPage() {
               </div>
               <div className="pr-6">
                 <h3 id="refund-modal-title" className="text-xl font-bold tracking-tight text-foreground">
-                  {tCustomer("ui.orders.requestRefundModalTitle", { defaultValue: "Request a Refund" })}
+                  {tCustomer("ui.orders.requestRefundModalTitle")}
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {shortOrderId(order.id)} · {formatMYR(order.total)}
@@ -521,7 +521,7 @@ export default function OrderDetailPage() {
             {/* Order Items Snapshot */}
             <div className="mt-5 rounded-xl border border-border bg-secondary/30 p-3.5">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {tCustomer("ui.orders.refundableItems", { defaultValue: "Items to refund" })}
+                {tCustomer("ui.orders.refundableItems")}
               </p>
               <div className="mt-2 space-y-1">
                 {order.items.map((item, idx) => (
@@ -536,7 +536,7 @@ export default function OrderDetailPage() {
             <form onSubmit={handleRefundSubmit} className="mt-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {tCustomer("ui.orders.refundReasonSelect", { defaultValue: "Reason for refund" })}
+                  {tCustomer("ui.orders.refundReasonSelect")}
                 </label>
                 <div className="mt-2 space-y-2">
                   {REFUND_REASON_OPTIONS.map((opt) => (
@@ -565,15 +565,13 @@ export default function OrderDetailPage() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {tCustomer("ui.orders.refundDetailsLabel", { defaultValue: "Additional explanation" })}
+                  {tCustomer("ui.orders.refundDetailsLabel")}
                 </label>
                 <textarea
                   rows={3}
                   value={refundCustomReason}
                   onChange={(e) => setRefundCustomReason(e.target.value)}
-                  placeholder={tCustomer("ui.orders.refundDetailsPlaceholder", {
-                    defaultValue: "Please provide more details regarding your refund request (minimum 5 characters)...",
-                  })}
+                  placeholder={tCustomer("ui.orders.refundDetailsPlaceholder")}
                   className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -592,7 +590,7 @@ export default function OrderDetailPage() {
                   className="rounded-xl px-4"
                   onClick={() => setRefundModalOpen(false)}
                 >
-                  {tCustomer("ui.orders.cancel", { defaultValue: "Cancel" })}
+                  {tCustomer("ui.actions.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -601,7 +599,7 @@ export default function OrderDetailPage() {
                 >
                   {requestingRefund
                     ? tCustomer("ui.states.submitting")
-                    : tCustomer("ui.orders.submitRefund", { defaultValue: "Submit Refund Request" })}
+                    : tCustomer("ui.orders.submitRefund")}
                 </Button>
               </div>
             </form>
@@ -617,25 +615,25 @@ export default function OrderDetailPage() {
         <div className="flex items-start justify-between border-b-2 border-gray-900 pb-6">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black tracking-tight text-primary">MyWisata</span>
-              <span className="text-xs uppercase tracking-widest text-gray-500">Malaysia Tourism Portal</span>
+              <span className="text-2xl font-black tracking-tight text-primary">{tCustomer("ui.orders.brandName")}</span>
+              <span className="text-xs uppercase tracking-widest text-gray-500">{tCustomer("ui.orders.portalName")}</span>
             </div>
             <h1 className="mt-3 text-xl font-bold uppercase tracking-wider text-gray-900">
-              {tCustomer("ui.orders.taxInvoice", { defaultValue: "Tax Invoice & Official Receipt" })}
+              {tCustomer("ui.orders.taxInvoice")}
             </h1>
             <p className="mt-1 text-xs text-gray-500 font-mono">
-              {tCustomer("ui.orders.receiptNo", { defaultValue: "Receipt No." })}: {receiptNumber}
+              {tCustomer("ui.orders.receiptNo")}: {receiptNumber}
             </p>
           </div>
           <div className="text-right">
             <div className="inline-block border-2 border-emerald-600 px-3 py-1 text-emerald-700 font-black text-sm uppercase tracking-widest rounded">
-              {tCustomer("ui.orders.paidStamp", { defaultValue: "PAID" })}
+              {tCustomer("ui.orders.paidStamp")}
             </div>
             <p className="mt-2 text-xs text-gray-600">
-              {tCustomer("ui.orders.orderDate", { defaultValue: "Date" })}: {dateLabel(order.createdAt, locale)}
+              {tCustomer("ui.orders.orderDate")}: {dateLabel(order.createdAt, locale)}
             </p>
             <p className="text-xs font-mono text-gray-500">
-              Order ID: #{order.id}
+              {tCustomer("ui.orders.orderId", { id: order.id })}
             </p>
           </div>
         </div>
@@ -644,7 +642,7 @@ export default function OrderDetailPage() {
         <div className="grid grid-cols-2 gap-8 py-6 border-b border-gray-200 text-xs">
           <div>
             <p className="font-bold uppercase tracking-wider text-gray-400">
-              {tCustomer("ui.orders.merchant", { defaultValue: "Merchant / Outlet" })}
+              {tCustomer("ui.orders.merchant")}
             </p>
             <p className="mt-1 font-bold text-sm text-gray-900">
               {primaryOutlet?.name || "MyWisata Marketplace Merchant"}
@@ -657,7 +655,7 @@ export default function OrderDetailPage() {
           </div>
           <div>
             <p className="font-bold uppercase tracking-wider text-gray-400">
-              {tCustomer("ui.orders.issuedTo", { defaultValue: "Billed to" })}
+              {tCustomer("ui.orders.issuedTo")}
             </p>
             <p className="mt-1 font-bold text-sm text-gray-900">
               {currentUser?.name || "Customer"}
@@ -672,10 +670,10 @@ export default function OrderDetailPage() {
             <thead>
               <tr className="border-b border-gray-900 font-bold uppercase tracking-wider text-gray-700">
                 <th className="py-2.5 w-10">#</th>
-                <th className="py-2.5">{tCustomer("ui.orders.itemColumn", { defaultValue: "Item & Description" })}</th>
-                <th className="py-2.5 w-20 text-center">{tCustomer("ui.orders.qtyColumn", { defaultValue: "Qty" })}</th>
-                <th className="py-2.5 w-28 text-right">{tCustomer("ui.orders.unitPriceColumn", { defaultValue: "Unit Price" })}</th>
-                <th className="py-2.5 w-28 text-right">{tCustomer("ui.orders.amountColumn", { defaultValue: "Amount" })}</th>
+                <th className="py-2.5">{tCustomer("ui.orders.itemColumn")}</th>
+                <th className="py-2.5 w-20 text-center">{tCustomer("ui.orders.qtyColumn")}</th>
+                <th className="py-2.5 w-28 text-right">{tCustomer("ui.orders.unitPriceColumn")}</th>
+                <th className="py-2.5 w-28 text-right">{tCustomer("ui.orders.amountColumn")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -687,7 +685,7 @@ export default function OrderDetailPage() {
                     <p className="text-gray-500 text-[11px]">{item.variantLabel}</p>
                     {item.slotStartsAt && (
                       <p className="text-gray-500 text-[11px] font-medium">
-                        Slot: {dateTimeLabel(item.slotStartsAt, locale)}
+                        {tCustomer("ui.orders.slot", { time: dateTimeLabel(item.slotStartsAt, locale) })}
                       </p>
                     )}
                   </td>
@@ -731,7 +729,7 @@ export default function OrderDetailPage() {
                 {tCustomer("ui.booking.scanAtOutlet")}
               </p>
               <p className="text-[11px] font-mono text-gray-400 mt-2">
-                Booking ID: {bookings[0].id}
+                {tCustomer("ui.orders.bookingId", { id: bookings[0].id })}
               </p>
             </div>
             <div className="p-1 border border-gray-200 rounded-lg">

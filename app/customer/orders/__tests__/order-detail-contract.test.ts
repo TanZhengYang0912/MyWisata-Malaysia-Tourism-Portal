@@ -12,4 +12,8 @@ describe("customer order detail actions", () => {
     expect(pageSource).not.toContain("Demo QR");
     expect(pageSource).not.toContain("b.qrCode");
   });
+
+  it("uses locale keys instead of inline translation defaults", () => {
+    expect(pageSource).not.toContain("defaultValue");
+  });
 });
