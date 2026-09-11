@@ -239,7 +239,10 @@
     "list": {
       "supportLabel": "MyWisata Support",
       "signInPrompt": "Sign in to chat with vendors."
-    }
+    },
+    "expandChat": "Expand to full screen",
+    "collapseChat": "Exit full screen",
+    "resizeSidebar": "Resize the conversation list"
   },
   "account": {
     "menu": "Account menu",

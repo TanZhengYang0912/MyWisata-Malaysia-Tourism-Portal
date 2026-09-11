@@ -82,6 +82,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Approving is what activates the vendor account — until then nothing they set up is visible to travellers.',
+      'The reason typed for a reject, suspend, or request-more-information action is not cosmetic — it becomes the body of the actual email and in-app notification the vendor receives. A "Draft with AI" button on that reason box will draft it (rejection notice / suspension warning / follow-up request) for the admin to edit before confirming.',
     ],
     keywords: ['vendor application', 'approve a vendor', 'vendor approval', 'reject a vendor', 'suspend a vendor', 'approval email'],
     source:
@@ -107,6 +108,23 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     source: 'app/api/admin/catalogue/reviews/route.ts, lib/validation/vendor-schemas.ts',
   },
   {
+    name: 'sponsored_placements',
+    description:
+      'Reviewing and approving vendor-submitted sponsored product placements — paid promotional slots targeted by state/category over a time window.',
+    path: '/admin/sponsored-placements',
+    role: 'admin_or_approver',
+    actions: [
+      'See placements grouped by lifecycle: active, pending approval, drafts, paused, archived/rejected',
+      'Create a placement for a product — a specific state or all states, a specific category or all categories, a start/end window, and a priority',
+      'Preview the impact of creating or approving a placement before committing — what it would displace',
+      'Approve a pending placement, or reject it with a reason',
+      'Pause an active placement',
+    ],
+    notes: ['Every create or approve is preceded by an impact preview the admin must confirm before it takes effect.'],
+    keywords: ['sponsored placement', 'sponsored product', 'promotional slot', 'placement approval'],
+    source: 'app/admin/sponsored-placements/page.tsx, components/admin/sponsored-placements/impact-dialog.tsx, lib/sponsored-placements/impact.ts',
+  },
+  {
     name: 'user_management',
     description:
       'Managing platform user accounts: suspending, unsuspending, deleting, restoring an account, or clearing a bio restriction.',
@@ -126,6 +144,28 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     keywords: ['user management', 'suspend a user', 'suspend an account', 'delete a user', 'delete an account', 'restore an account', 'unsuspend', 'bio restriction', 'manage users'],
     source:
       'app/api/admin/users/route.ts, users/[userId]/route.ts, lib/validation/user-management-schemas.ts, supabase/migrations/054_account_moderation_rpc.sql',
+  },
+  {
+    name: 'access_control',
+    description:
+      'Staff role/permission management (the live authorization system), plus a newer policy-based entitlements engine still running in shadow mode for parity-testing before cutover.',
+    path: '/admin/access-control',
+    role: 'super_admin',
+    actions: [
+      'Staff Roles tab: the real, currently-enforced system — see and manage which staff/admin users hold which role/permission, invite new staff, review role candidates',
+      'Capabilities tab: browse the newer entitlements engine\'s capability key definitions',
+      'Policies tab: author and version policies (draft, pending_approval, scheduled, active, retired) for the new engine',
+      'Assignments tab: assign a policy/capability to a subject (user, role, plan, or partner) in the new engine',
+      'Audit Log tab: see every change made across these tabs',
+      'Shadow Report: compares what the new policy engine WOULD decide against what the real staff-permission system actually decided, without changing real access',
+    ],
+    notes: [
+      'Super Admin only.',
+      'The Capabilities / Policies / Assignments / Audit Log tabs belong to a SHADOW entitlements engine — it is not yet the live authorization path and grants or denies nothing on its own.',
+      'Real staff access is still governed by the Staff Roles tab (the staff_permissions table / has_staff_permission RPC) — the same system every gated admin route checks.',
+    ],
+    keywords: ['access control', 'staff role', 'staff permission', 'entitlements', 'shadow report', 'policy engine'],
+    source: 'app/admin/access-control/page.tsx, components/admin/access-control/*, app/api/admin/access-control/*, lib/entitlements/*, lib/staff-permissions/server.ts',
   },
   {
     name: 'kyc_review',
@@ -199,9 +239,29 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     source: 'app/api/admin/reports/payouts/route.ts, app/admin/reports/payouts/page.tsx, lib/admin/csv.ts',
   },
   {
+    name: 'reconciliation',
+    description:
+      'The order money-reconciliation report — per-order and monthly totals of gross revenue, platform commission, vendor net, and what was paid out to affiliates and recommenders.',
+    path: '/admin/reports/reconciliation',
+    role: 'super_admin',
+    actions: [
+      'Pick a calendar month and see every order settled that month, broken down into gross amount, platform fee (commission), vendor net, affiliate payout, recommendation payout, and platform net',
+      'See monthly totals for each of those figures',
+      'Export the month\'s breakdown as CSV',
+    ],
+    notes: [
+      'Super Admin only.',
+      'Affiliate and recommendation payouts come out of the platform\'s commission cut, not on top of it — vendor net is unaffected by them.',
+      'A row where the platform net is negative (the commission on it was smaller than what got paid out to affiliates/recommenders) is flagged with a warning banner.',
+      'The platform commission rate is a database setting (platform_settings key "commission.platform_rate", default 15%, can be overridden per vendor) — there is no admin UI to change it yet.',
+    ],
+    keywords: ['reconciliation', 'platform commission', 'platform fee', 'vendor net', 'platform net'],
+    source: 'app/admin/reports/reconciliation/page.tsx, app/api/admin/reconciliation/route.ts, lib/admin/reconciliation.ts, lib/vendor/settlement.ts',
+  },
+  {
     name: 'recommendations',
     description:
-      'Reviewing customer-submitted vendor recommendations — approving, rejecting, or requesting changes — and clearing recommendation rewards.',
+      'Reviewing customer-submitted vendor recommendations — approving, rejecting, or requesting changes.',
     path: '/admin/recommendations',
     role: 'admin_or_approver',
     actions: [
@@ -209,15 +269,27 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Approve a recommendation',
       'Reject it, or request changes so the submitter can edit and resubmit',
       'Invite the recommended business to join, from the recommendation detail page',
-      'Run recommendation reward clearing',
     ],
     notes: [
       'Rejecting or requesting changes requires a reason of at least 10 characters.',
-      'Approving does not pay the recommender — the reward only activates once the vendor actually joins and the recommendation converts.',
+      'Approving does not pay the recommender — the reward only activates once the vendor actually joins and the recommendation converts. Clearing that reward is a separate section — see recommendation_rewards.',
     ],
     keywords: ['recommendation', 'recommended business', 'request changes'],
     source:
-      'app/api/admin/recommendations/review/route.ts, recommendations/[id], recommendations/run-clearing, components/admin/recommendation-detail-view.tsx',
+      'app/api/admin/recommendations/review/route.ts, recommendations/[id], components/admin/recommendation-detail-view.tsx',
+  },
+  {
+    name: 'recommendation_rewards',
+    description: 'Clearing pending recommendation rewards that are past their hold period — the recommendation equivalent of rewards_clearing.',
+    path: '/admin/recommendations/rewards',
+    role: 'admin_or_approver',
+    actions: [
+      'Run recommendation reward clearing, which confirms rewards past their hold and reverses any that no longer qualify',
+      'See how many were cleared, reversed, or skipped after a run',
+    ],
+    notes: ['This page is not in the admin sidebar — reach it directly at /admin/recommendations/rewards. Not the same page as /admin/rewards, which clears AFFILIATE earnings.'],
+    keywords: ['recommendation reward', 'recommendation rewards', 'recommendation clearing'],
+    source: 'app/admin/recommendations/rewards/page.tsx, app/api/admin/recommendations/run-clearing/route.ts',
   },
   {
     name: 'support_tickets',
@@ -245,11 +317,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Resolve or dismiss a report with a resolution reason: action taken, no violation, insufficient evidence, or spam/abuse',
       'Add an optional resolution note',
       'Ban a repeat false reporter from filing further reports, or lift that ban',
-      'Adjust chat settings',
+      'Change the auto-archive threshold (Super Admin only) — how many days of inactivity (1–3650) before an open chat thread is automatically archived; archiving only changes status, message history is kept',
     ],
     notes: [
-      'These are reports about chats between users and vendors — not the same thing as the chatbot oversight page.',
+      'These are reports about chats between users and vendors — not the same thing as the chatbot oversight page, and not the same thing as staff_conduct (which covers support-ticket/staff conduct reports).',
       'The ban applies to the person who filed the report, not the person reported.',
+      'While a report is open, both the reporting customer and the admin see a persistent "reported — under review" line on that conversation. The reported party never sees it, so an investigation isn\'t tipped off.',
+      'The auto-archive threshold control only shows for Super Admins — everyone else with access to this page can still review/resolve/dismiss reports.',
     ],
     keywords: ['chat report', 'reported chat', 'report ban', 'reported conversation', 'dismiss a report', 'resolve a report'],
     source: 'app/api/admin/chat-reports/route.ts, chat-reports/[reportId], report-bans/[userId], chat-settings',
@@ -298,22 +372,40 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'ai_assistant',
-    description:
-      'This assistant itself — what it can answer — and the staff conduct review panel that sits on the same page.',
+    description: 'This assistant itself — what it can answer, and how.',
     path: '/admin/ai-assistant',
     role: 'super_admin',
     actions: [
       'Ask questions about platform data: vendors, products, KYC, orders, withdrawals, recommendations, tickets, and affiliates',
       'Ask how to perform an admin task, or what a section of the admin panel is for',
-      'Review staff conduct flags — admin messages caught containing profanity or slurs — uncensored, with who sent it and to whom',
-      'Open the message log behind a conduct flag, and mark a flag reviewed',
     ],
     notes: [
-      'Super Admin only, both this page and the conduct panel.',
+      'Super Admin only.',
       'Data answers only ever come from pre-registered aggregate queries — the assistant never returns a customer’s personal data.',
+      'Staff conduct review used to live on this page but moved to its own section — see staff_conduct.',
     ],
-    keywords: ['ai assistant', 'staff conduct', 'conduct flag', 'this assistant'],
-    source: 'app/api/admin-ai/ask/route.ts, lib/admin-ai/queries.ts, app/api/admin/conduct-flags/route.ts, components/admin/staff-conduct-panel.tsx',
+    keywords: ['ai assistant', 'this assistant'],
+    source: 'app/api/admin-ai/ask/route.ts, lib/admin-ai/queries.ts',
+  },
+  {
+    name: 'staff_conduct',
+    description:
+      'Reviewing staff/admin conduct in chats — messages the system automatically flagged for profanity or slurs, and chats a user reported.',
+    path: '/admin/staff-conduct',
+    role: 'super_admin',
+    actions: [
+      'Flagged Conduct tab: admin/staff messages the system detected as containing profanity or slurs, shown uncensored with who sent it and to whom',
+      "Reported Chat tab: chats a user reported via the Report button — currently populated from customer<->admin SUPPORT TICKET conversations only",
+      'Open the full message transcript behind a flag or report',
+      'Mark a flagged item reviewed',
+    ],
+    notes: [
+      'Super Admin only.',
+      'Not the same thing as /admin/chat-reports, which handles reports about CUSTOMER<->VENDOR chat conversations (scam/abuse/spam) — this page is about support-ticket conduct and staff behaviour, not vendor chat.',
+      'Moved out of /admin/ai-assistant into its own nav entry — it is a moderation tool, not an AI capability.',
+    ],
+    keywords: ['staff conduct', 'flagged conduct', 'profanity', 'admin misconduct'],
+    source: 'app/admin/staff-conduct/page.tsx, components/admin/staff-conduct-panel.tsx, app/api/admin/conduct-flags/route.ts, app/api/admin/chat-conduct-reports/route.ts, lib/moderation/chat-conduct-reports.ts',
   },
   {
     name: 'rewards_clearing',

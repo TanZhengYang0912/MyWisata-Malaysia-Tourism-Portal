@@ -51,7 +51,9 @@
     "eyebrow": "探索推广活动",
     "title": "赞助展示位",
     "description": "创建、审核和暂停带有清晰赞助标识的探索展示位。",
-    "accessibility": { "lifecycleFilters": "活动生命周期筛选" },
+    "accessibility": {
+      "lifecycleFilters": "活动生命周期筛选"
+    },
     "form": {
       "title": "创建活动草稿",
       "product": "产品",
@@ -85,10 +87,25 @@
       "empty": "暂无赞助展示活动。",
       "emptyGroup": "此分类目前没有活动。"
     },
-    "prompts": { "rejectReason": "请输入拒绝原因（至少 5 个字符）。" },
-    "actions": { "submit": "提交", "approve": "批准", "reject": "拒绝", "pause": "暂停" },
-    "categories": { "food": "美食", "activity": "活动", "accommodation": "住宿", "retail": "零售" },
-    "list": { "title": "活动", "position": "第 {{position}} 位" },
+    "prompts": {
+      "rejectReason": "请输入拒绝原因（至少 5 个字符）。"
+    },
+    "actions": {
+      "submit": "提交",
+      "approve": "批准",
+      "reject": "拒绝",
+      "pause": "暂停"
+    },
+    "categories": {
+      "food": "美食",
+      "activity": "活动",
+      "accommodation": "住宿",
+      "retail": "零售"
+    },
+    "list": {
+      "title": "活动",
+      "position": "第 {{position}} 位"
+    },
     "lifecycle": {
       "active": "生效中 / 已排期",
       "pending": "待批准",
@@ -109,8 +126,18 @@
       "confirmCreate": "确认创建草稿",
       "confirmApprove": "确认批准"
     },
-    "scope": { "allStates": "所有州属", "allCategories": "所有类别" },
-    "status": { "draft": "草稿", "pending_approval": "待批准", "approved": "已批准", "rejected": "已拒绝", "paused": "已暂停", "archived": "已归档" }
+    "scope": {
+      "allStates": "所有州属",
+      "allCategories": "所有类别"
+    },
+    "status": {
+      "draft": "草稿",
+      "pending_approval": "待批准",
+      "approved": "已批准",
+      "rejected": "已拒绝",
+      "paused": "已暂停",
+      "archived": "已归档"
+    }
   },
   "accessControl": {
     "eyebrow": "安全治理",
@@ -338,7 +365,33 @@
       "confirmTitle": "确认员工角色变更",
       "confirmDescription": "权限变更将记录到审计日志。",
       "confirmSave": "保存员工角色",
-      "inviteTitle": "邀请新员工", "inviteHelp": "选择一个自定义员工角色，把有效期七天的邀请发送到员工专用邮箱。员工会先查看准确权限，再自行接受。", "inviteRole": "自定义员工角色", "selectCustomRole": "选择自定义角色", "inviteEmail": "员工邮箱", "inviteEmailPlaceholder": "yuangong@example.com", "inviteReason": "治理原因", "inviteReasonPlaceholder": "说明为什么这位新员工需要这些权限。", "reviewInvitation": "复核邀请", "confirmInvitationTitle": "确认员工邀请", "sendInvitation": "发送邀请邮件", "pendingInvitations": "待接受邀请", "noPendingInvitations": "目前没有待接受邀请。", "resendInvitation": "重新发送", "revokeInvitation": "撤销", "revokeReasonPrompt": "请输入撤销原因（至少 10 个字符）。", "invitationSent": "邀请邮件已发送。", "invitationResent": "邀请已用新链接重新发送。", "invitationRevoked": "邀请已撤销。", "invitationError": "无法处理员工邀请。", "joinedEmployees": "已加入员工", "delivery": { "pending": "等待中", "sending": "发送中", "sent": "邮件已发送", "failed": "发送失败" }
+      "inviteTitle": "邀请新员工",
+      "inviteHelp": "选择一个自定义员工角色，把有效期七天的邀请发送到员工专用邮箱。员工会先查看准确权限，再自行接受。",
+      "inviteRole": "自定义员工角色",
+      "selectCustomRole": "选择自定义角色",
+      "inviteEmail": "员工邮箱",
+      "inviteEmailPlaceholder": "yuangong@example.com",
+      "inviteReason": "治理原因",
+      "inviteReasonPlaceholder": "说明为什么这位新员工需要这些权限。",
+      "reviewInvitation": "复核邀请",
+      "confirmInvitationTitle": "确认员工邀请",
+      "sendInvitation": "发送邀请邮件",
+      "pendingInvitations": "待接受邀请",
+      "noPendingInvitations": "目前没有待接受邀请。",
+      "resendInvitation": "重新发送",
+      "revokeInvitation": "撤销",
+      "revokeReasonPrompt": "请输入撤销原因（至少 10 个字符）。",
+      "invitationSent": "邀请邮件已发送。",
+      "invitationResent": "邀请已用新链接重新发送。",
+      "invitationRevoked": "邀请已撤销。",
+      "invitationError": "无法处理员工邀请。",
+      "joinedEmployees": "已加入员工",
+      "delivery": {
+        "pending": "等待中",
+        "sending": "发送中",
+        "sent": "邮件已发送",
+        "failed": "发送失败"
+      }
     },
     "confirm": {
       "capabilityTitle": "确认能力变更",
@@ -1353,7 +1406,9 @@
     "negativeWarning": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "negativeWarning_one": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "negativeWarning_other": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
-    "errors": { "load": "无法加载对账报告。" },
+    "errors": {
+      "load": "无法加载对账报告。"
+    },
     "metrics": {
       "gross": "客户付款",
       "platformFee": "平台佣金",
@@ -1882,7 +1937,16 @@
       "outlets_one": "{{count}} 家门店",
       "outlets_other": "{{count}} 家门店",
       "listings_one": "{{count}} 个商品",
-      "listings_other": "{{count}} 个商品"
+      "listings_other": "{{count}} 个商品",
+      "reasonModal": {
+        "draft": "AI 起草",
+        "drafting": "起草中…",
+        "placeholder": "输入原因，或使用 AI 起草…",
+        "advisory": "AI 起草原因——确认前请检查并编辑。",
+        "cancel": "取消",
+        "error": "暂时无法起草原因——请手动输入。",
+        "close": "关闭"
+      }
     },
     "walletApprovers": {
       "active": "账户正常",

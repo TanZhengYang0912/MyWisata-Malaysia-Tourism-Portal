@@ -30,7 +30,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Send, X } from "lucide-react";
+import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Minimize2, Maximize2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { FaqCategory } from "@/app/api/chatbot/faq/route";
@@ -145,7 +145,43 @@ export function ChatbotWidget() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
+  // Full-screen toggle for the merged widget — resets to the normal
+  // bottom-right panel whenever the widget is closed (its only setOpen(false)
+  // call site clears this too), so reopening never surprises the user with a
+  // full-screen panel they didn't ask for that time.
+  const [expanded, setExpanded] = useState(false);
+  // Drag-to-resize the left conversation list against the right chat pane —
+  // only meaningful in the full-screen layout (the normal 640px popup has no
+  // room to spare). Plain pointer events, no drag library: grab the divider,
+  // track pointermove on the window (not the divider itself, so the drag
+  // keeps tracking even once the pointer leaves the thin handle), release on
+  // pointerup. ponytail: fixed px bounds rather than viewport-relative ones —
+  // expanded mode is a desktop-sized surface in practice; revisit if that stops being true.
+  const SIDEBAR_MIN_PX = 220;
+  const SIDEBAR_MAX_PX = 480;
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const resizingRef = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  function startSidebarResize(event: React.PointerEvent) {
+    event.preventDefault();
+    resizingRef.current = true;
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+
+    function onMove(moveEvent: PointerEvent) {
+      if (!resizingRef.current) return;
+      const next = Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, startWidth + (moveEvent.clientX - startX)));
+      setSidebarWidth(next);
+    }
+    function onUp() {
+      resizingRef.current = false;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   // FAQ shortcuts: category chips -> question list -> tap to ask. Loaded
   // lazily the first time the panel is opened (undefined = never fetched,
@@ -294,11 +330,15 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 print:hidden">
+    <div className={expanded ? "fixed inset-0 z-50 print:hidden" : "fixed bottom-4 right-4 z-50 print:hidden"}>
       {open ? (
         <div
-          className="flex w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
-          style={{ height: 460, maxHeight: "calc(100vh - 6rem)" }}
+          className={
+            expanded
+              ? "flex h-full w-full flex-col overflow-hidden border-0 bg-background shadow-xl"
+              : "flex w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
+          }
+          style={expanded ? undefined : { height: 460, maxHeight: "calc(100vh - 6rem)" }}
         >
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
             <span className="text-sm font-semibold">{t("chatbot.title")}</span>
@@ -306,7 +346,10 @@ export function ChatbotWidget() {
               <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
                 {t("chatbot.myTickets")}
               </Link>
-              <button onClick={() => setOpen(false)} aria-label={t("chatbot.closeChat")}>
+              <button onClick={() => setExpanded((current) => !current)} aria-label={expanded ? t("chatbot.collapseChat") : t("chatbot.expandChat")}>
+                {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              </button>
+              <button onClick={() => { setOpen(false); setExpanded(false); }} aria-label={t("chatbot.closeChat")}>
                 <X size={16} />
               </button>
             </div>
@@ -314,8 +357,20 @@ export function ChatbotWidget() {
 
           <div className="flex min-h-0 flex-1">
             <div className={`min-h-0 ${selected ? "hidden sm:flex sm:flex-none" : "flex flex-1 sm:flex-none"}`}>
-              <ChatWidgetInbox currentUserId={currentUser?.id ?? null} selected={selected} onSelect={selectChat} />
+              <ChatWidgetInbox currentUserId={currentUser?.id ?? null} selected={selected} onSelect={selectChat} widthPx={expanded ? sidebarWidth : undefined} />
             </div>
+
+            {expanded && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={t("chatbot.resizeSidebar")}
+                onPointerDown={startSidebarResize}
+                className="hidden w-1.5 shrink-0 cursor-col-resize items-center justify-center bg-border/60 transition-colors hover:bg-primary/40 sm:flex"
+              >
+                <div className="h-8 w-0.5 rounded-full bg-muted-foreground/40" />
+              </div>
+            )}
 
             {selected?.kind === "vendor" && currentUser ? (
               <ChatWidgetVendorThread threadId={selected.threadId} currentUserId={currentUser.id} onBack={() => selectChat(null)} />

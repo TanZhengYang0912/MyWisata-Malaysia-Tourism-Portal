@@ -97,6 +97,7 @@ export const ADMIN_I18N_FILES = [
   "components/admin/recommendation-detail-view.tsx",
   "components/admin/staff-conduct-panel.tsx",
   "components/admin/user-management-drawer.tsx",
+  "components/admin/vendor-reason-modal.tsx",
   "components/shared/affiliate-qr-code.tsx",
   "components/shared/share-button.tsx",
 ] as const;

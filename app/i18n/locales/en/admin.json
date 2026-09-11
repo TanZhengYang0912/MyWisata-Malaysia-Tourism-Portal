@@ -51,7 +51,9 @@
     "eyebrow": "Discovery campaigns",
     "title": "Sponsored placements",
     "description": "Create, review and pause clearly labelled sponsored discovery placements.",
-    "accessibility": { "lifecycleFilters": "Campaign lifecycle filters" },
+    "accessibility": {
+      "lifecycleFilters": "Campaign lifecycle filters"
+    },
     "form": {
       "title": "Create campaign draft",
       "product": "Product",
@@ -85,10 +87,25 @@
       "empty": "No sponsored placement campaigns yet.",
       "emptyGroup": "No campaigns in this view."
     },
-    "prompts": { "rejectReason": "Enter a rejection reason (at least 5 characters)." },
-    "actions": { "submit": "Submit", "approve": "Approve", "reject": "Reject", "pause": "Pause" },
-    "categories": { "food": "Food", "activity": "Activity", "accommodation": "Accommodation", "retail": "Retail" },
-    "list": { "title": "Campaigns", "position": "Position {{position}}" },
+    "prompts": {
+      "rejectReason": "Enter a rejection reason (at least 5 characters)."
+    },
+    "actions": {
+      "submit": "Submit",
+      "approve": "Approve",
+      "reject": "Reject",
+      "pause": "Pause"
+    },
+    "categories": {
+      "food": "Food",
+      "activity": "Activity",
+      "accommodation": "Accommodation",
+      "retail": "Retail"
+    },
+    "list": {
+      "title": "Campaigns",
+      "position": "Position {{position}}"
+    },
     "lifecycle": {
       "active": "Active / Scheduled",
       "pending": "Pending",
@@ -109,8 +126,18 @@
       "confirmCreate": "Confirm draft",
       "confirmApprove": "Confirm approval"
     },
-    "scope": { "allStates": "All states", "allCategories": "All categories" },
-    "status": { "draft": "Draft", "pending_approval": "Pending approval", "approved": "Approved", "rejected": "Rejected", "paused": "Paused", "archived": "Archived" }
+    "scope": {
+      "allStates": "All states",
+      "allCategories": "All categories"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending_approval": "Pending approval",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "paused": "Paused",
+      "archived": "Archived"
+    }
   },
   "accessControl": {
     "eyebrow": "Security governance",
@@ -338,7 +365,33 @@
       "confirmTitle": "Confirm staff role change",
       "confirmDescription": "The permission change will be recorded in the Audit Log.",
       "confirmSave": "Save staff role",
-      "inviteTitle": "Invite a new employee", "inviteHelp": "Choose a custom Staff Role and send a seven-day invitation to a dedicated employee email. The employee reviews and accepts the exact permissions.", "inviteRole": "Custom Staff Role", "selectCustomRole": "Select a custom role", "inviteEmail": "Employee email", "inviteEmailPlaceholder": "employee@example.com", "inviteReason": "Governance reason", "inviteReasonPlaceholder": "Explain why this new employee needs these permissions.", "reviewInvitation": "Review invitation", "confirmInvitationTitle": "Confirm employee invitation", "sendInvitation": "Send invitation email", "pendingInvitations": "Pending invitations", "noPendingInvitations": "No pending invitations.", "resendInvitation": "Resend", "revokeInvitation": "Revoke", "revokeReasonPrompt": "Enter the revocation reason (at least 10 characters).", "invitationSent": "Invitation email sent.", "invitationResent": "Invitation email resent with a new link.", "invitationRevoked": "Invitation revoked.", "invitationError": "Unable to process the staff invitation.", "joinedEmployees": "Joined employees", "delivery": { "pending": "Waiting", "sending": "Sending", "sent": "Email sent", "failed": "Delivery failed" }
+      "inviteTitle": "Invite a new employee",
+      "inviteHelp": "Choose a custom Staff Role and send a seven-day invitation to a dedicated employee email. The employee reviews and accepts the exact permissions.",
+      "inviteRole": "Custom Staff Role",
+      "selectCustomRole": "Select a custom role",
+      "inviteEmail": "Employee email",
+      "inviteEmailPlaceholder": "employee@example.com",
+      "inviteReason": "Governance reason",
+      "inviteReasonPlaceholder": "Explain why this new employee needs these permissions.",
+      "reviewInvitation": "Review invitation",
+      "confirmInvitationTitle": "Confirm employee invitation",
+      "sendInvitation": "Send invitation email",
+      "pendingInvitations": "Pending invitations",
+      "noPendingInvitations": "No pending invitations.",
+      "resendInvitation": "Resend",
+      "revokeInvitation": "Revoke",
+      "revokeReasonPrompt": "Enter the revocation reason (at least 10 characters).",
+      "invitationSent": "Invitation email sent.",
+      "invitationResent": "Invitation email resent with a new link.",
+      "invitationRevoked": "Invitation revoked.",
+      "invitationError": "Unable to process the staff invitation.",
+      "joinedEmployees": "Joined employees",
+      "delivery": {
+        "pending": "Waiting",
+        "sending": "Sending",
+        "sent": "Email sent",
+        "failed": "Delivery failed"
+      }
     },
     "confirm": {
       "capabilityTitle": "Confirm capability change",
@@ -1353,7 +1406,9 @@
     "negativeWarning": "{{count}} order paid out more in referral commission than the platform earned on it — expected for first-sale bonuses, shown here for visibility.",
     "negativeWarning_one": "{{count}} order paid out more in referral commission than the platform earned on it — expected for first-sale bonuses, shown here for visibility.",
     "negativeWarning_other": "{{count}} orders paid out more in referral commission than the platform earned on them — expected for first-sale bonuses, shown here for visibility.",
-    "errors": { "load": "Unable to load the reconciliation report." },
+    "errors": {
+      "load": "Unable to load the reconciliation report."
+    },
     "metrics": {
       "gross": "Customer paid",
       "platformFee": "Platform commission",
@@ -1882,7 +1937,16 @@
       "outlets_one": "{{count}} outlets",
       "outlets_other": "{{count}} outlets",
       "listings_one": "{{count}} listings",
-      "listings_other": "{{count}} listings"
+      "listings_other": "{{count}} listings",
+      "reasonModal": {
+        "draft": "Draft with AI",
+        "drafting": "Drafting…",
+        "placeholder": "Type a reason, or draft one with AI…",
+        "advisory": "AI drafts a reason — review and edit before confirming.",
+        "cancel": "Cancel",
+        "error": "Could not draft a reason right now — write one manually.",
+        "close": "Close"
+      }
     },
     "walletApprovers": {
       "active": "Active account",

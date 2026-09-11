@@ -239,7 +239,10 @@
     "list": {
       "supportLabel": "MyWisata 客服",
       "signInPrompt": "登录后即可与商家聊天。"
-    }
+    },
+    "expandChat": "展开为全屏",
+    "collapseChat": "退出全屏",
+    "resizeSidebar": "调整对话列表大小"
   },
   "account": {
     "menu": "账户菜单",

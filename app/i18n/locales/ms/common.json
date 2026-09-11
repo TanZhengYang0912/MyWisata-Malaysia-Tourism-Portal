@@ -239,7 +239,10 @@
     "list": {
       "supportLabel": "Sokongan MyWisata",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
-    }
+    },
+    "expandChat": "Kembangkan ke skrin penuh",
+    "collapseChat": "Keluar skrin penuh",
+    "resizeSidebar": "Ubah saiz senarai perbualan"
   },
   "account": {
     "menu": "Menu akaun",

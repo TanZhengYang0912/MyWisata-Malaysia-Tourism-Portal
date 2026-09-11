@@ -86,9 +86,11 @@ interface ChatWidgetInboxProps {
   currentUserId: string | null;
   selected: SelectedChat | null;
   onSelect: (chat: SelectedChat) => void;
+  /** Overrides the default sm:w-64 — the expanded/full-screen layout's drag-to-resize divider drives this. */
+  widthPx?: number;
 }
 
-export function ChatWidgetInbox({ currentUserId, selected, onSelect }: ChatWidgetInboxProps) {
+export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: ChatWidgetInboxProps) {
   const { t: tCustomer } = useTranslation("customer");
   const { t: tCommon } = useTranslation("common");
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
@@ -167,7 +169,10 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect }: ChatWidge
   const isVendorSelected = (threadId: string) => selected?.kind === "vendor" && selected.threadId === threadId;
 
   return (
-    <div className="flex min-h-0 w-full flex-col sm:w-64 sm:shrink-0 sm:border-r sm:border-border">
+    <div
+      className={`flex min-h-0 w-full flex-col sm:shrink-0 sm:border-r sm:border-border ${widthPx ? "" : "sm:w-64"}`}
+      style={widthPx ? { width: widthPx } : undefined}
+    >
       <button
         type="button"
         onClick={() => onSelect({ kind: "support" })}
