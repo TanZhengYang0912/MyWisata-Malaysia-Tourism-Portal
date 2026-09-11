@@ -23,6 +23,8 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
 import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
+import { teamForCategory } from "@/lib/support/team-routing";
 
 // CLAUDE-VOICE-INPUT.md, mounted on the admin ticket reply composer too.
 const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
@@ -41,6 +43,7 @@ interface AdminTicket {
   body: string;
   category: string;
   classificationMethod: "ai" | "keyword" | "manual" | null;
+  team: string;
   status: "open" | "in_progress" | "resolved" | "closed";
   assignedTo: string | null;
   createdAt: string;
@@ -81,7 +84,7 @@ interface TicketDetail {
   replies: ReplyMessage[];
 }
 
-const CATEGORIES = ["booking", "payment", "vendor", "withdrawal", "affiliate", "general"] as const;
+const CATEGORIES = TICKET_CATEGORIES;
 const STATUSES = ["open", "in_progress", "resolved"] as const;
 const TICKETS_PER_PAGE = 10;
 
@@ -245,7 +248,7 @@ function AdminSupportContent() {
         body: JSON.stringify({ category }),
       });
       if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.updateCategory")); return; }
-      setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, category, classificationMethod: "manual" } : t)) ?? null);
+      setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, category, classificationMethod: "manual", team: teamForCategory(category) } : t)) ?? null);
       showFeedback("success", t("ui.support.categoryUpdated"));
     } catch {
       showFeedback("error", t("ui.support.errors.updateCategoryTryAgain"));
@@ -422,6 +425,9 @@ function AdminSupportContent() {
                   <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <MessageSquare size={13} className="text-muted-foreground shrink-0" /> {ticket.subject}
                     {ticket.unread && <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />}
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-medium text-muted-foreground" title={t("ui.support.routedToTeam")}>
+                      {ticket.team}
+                    </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {ticket.category}

@@ -1002,7 +1002,12 @@
     "reindexErrors_one": "，{{count}} 个错误",
     "reindexErrors_other": "，{{count}} 个错误",
     "questionMeta_one": "×{{count}} · 最近提问于 {{date}}",
-    "questionMeta_other": "×{{count}} · 最近提问于 {{date}}"
+    "questionMeta_other": "×{{count}} · 最近提问于 {{date}}",
+    "topEscalated": {
+      "title": "最常升级为工单的问题",
+      "description": "无论机器人怎么回答，客户仍不断升级这些问题——请优先改善这些主题的帮助中心内容。",
+      "empty": "目前还没有升级为工单的问题。"
+    }
   },
   "chatReports": {
     "eyebrow": "信任与安全",
@@ -1698,7 +1703,8 @@
       "minutes_one": "{{count}} 分钟",
       "minutes_other": "{{count}} 分钟",
       "hours_one": "{{count}} 小时",
-      "hours_other": "{{count}} 小时"
+      "hours_other": "{{count}} 小时",
+      "routedToTeam": "根据工单类别路由至此团队"
     },
     "table": {
       "action": "操作",
@@ -2237,7 +2243,8 @@
         "contactMethod": "联系方式",
         "photos": "照片",
         "imageRights": "图片权利",
-        "exactNameMatches": "名称完全匹配"
+        "exactNameMatches": "名称完全匹配",
+        "links": "链接"
       },
       "findingKinds": {
         "lowQuality": "质量较低",

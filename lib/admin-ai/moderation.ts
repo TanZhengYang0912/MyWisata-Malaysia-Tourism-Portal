@@ -40,7 +40,8 @@ export type RecommendationEvidenceField =
   | 'contact'
   | 'photos'
   | 'image_attestation'
-  | 'duplicate';
+  | 'duplicate'
+  | 'links';
 
 export type EvidenceCheckStatus =
   | 'passed'
@@ -177,6 +178,65 @@ function resolvedCategory(row: RecommendationEvidenceRow): RecommendationCategor
   return Array.isArray(row.categories) ? row.categories[0] ?? null : row.categories;
 }
 
+// Suspicious-link detection is deterministic, NOT an AI judgement — Gemini
+// never sees a raw URL (buildSafeSubmissionText/safeSummaryValue strip every
+// http(s) link to "[URL]" before anything is sent), so it has no basis to
+// assess one. This runs entirely locally against the real submitted text,
+// same "computed separately, treated as authoritative" discipline as the
+// exact-normalized-name duplicate signal.
+const URL_PATTERN = /\bhttps?:\/\/[^\s<>"')]+/gi;
+
+// Known link shorteners hide the real destination behind a redirect — not
+// proof of a scam, but reason enough for a human to open it before approving.
+const SUSPICIOUS_URL_SHORTENERS = new Set([
+  'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'is.gd', 'ow.ly', 'cutt.ly',
+  'rebrand.ly', 'shorturl.at', 'tiny.cc', 'rb.gy', 'buff.ly', 'soo.gd', 'v.gd', 'lnkd.in',
+]);
+
+function extractUrls(...texts: (string | null | undefined)[]): string[] {
+  const found = new Set<string>();
+  for (const text of texts) {
+    if (!text) continue;
+    for (const match of text.matchAll(URL_PATTERN)) found.add(match[0].replace(/[.,;:!?]+$/, ''));
+  }
+  return [...found];
+}
+
+/** Returns a short reason the URL looks suspicious, or null if nothing stood out. */
+function assessUrl(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return 'is not a well-formed link';
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return `uses the "${url.protocol}" scheme`;
+  const host = url.hostname.toLowerCase();
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return 'points to a raw IP address instead of a domain';
+  if (host.startsWith('xn--') || host.includes('.xn--')) return 'uses a punycode domain (possible lookalike)';
+  if (SUSPICIOUS_URL_SHORTENERS.has(host)) return `uses the ${host} link shortener, which hides the real destination`;
+  return null;
+}
+
+function checkSuspiciousLinks(row: RecommendationEvidenceRow): EvidenceCheck {
+  const urls = extractUrls(row.contact_website, row.description, row.why_recommend);
+  const base = { field: 'links' as const, label: 'Links' };
+  if (urls.length === 0) {
+    return { ...base, status: 'passed', message: 'No links found to check.' };
+  }
+  const flagged = urls
+    .map((url) => ({ url, reason: assessUrl(url) }))
+    .filter((entry): entry is { url: string; reason: string } => entry.reason !== null);
+  if (flagged.length === 0) {
+    return { ...base, status: 'passed', message: `${urls.length} link${urls.length === 1 ? '' : 's'} checked, nothing suspicious found.` };
+  }
+  return {
+    ...base,
+    status: 'needs_manual_review',
+    message: `Suspicious link: ${flagged[0].url} — ${flagged[0].reason}${flagged.length > 1 ? ` (+${flagged.length - 1} more)` : ''}.`,
+  };
+}
+
 function resolvedCategoryName(row: RecommendationEvidenceRow): string {
   return resolvedCategory(row)?.name?.trim() ?? '';
 }
@@ -246,6 +306,7 @@ export function buildEvidenceChecks(
       status: duplicateCount > 0 ? 'needs_manual_review' : 'passed',
       message: `${duplicateCount} exact normalized-name match${duplicateCount === 1 ? '' : 'es'}.`,
     },
+    checkSuspiciousLinks(row),
   ];
 }
 
@@ -271,6 +332,7 @@ const FINDING_FIELD_LABELS: Record<RecommendationEvidenceField, string> = {
   photos: 'photo evidence',
   image_attestation: 'image rights',
   duplicate: 'duplicate evidence',
+  links: 'suspicious link',
 };
 
 function buildStructuredBasisLabels(
@@ -367,6 +429,10 @@ export function applyDecisionGuardrails(
     finding.field === 'photos' && finding.kind === 'conflict');
   const highFinding = nonDuplicateFindings.some((finding) => finding.severity === 'high');
   const deterministicDuplicateBasis = duplicateCount >= 2;
+  // Same "authoritative, not an AI opinion" treatment as duplicateCount — the
+  // AI never even saw the raw URL, so a flagged link always overrides an
+  // "approve" suggestion regardless of what the model itself concluded.
+  const suspiciousLinkBasis = checks.some((check) => check.field === 'links' && check.status === 'needs_manual_review');
   const rejectBasis = deterministicDuplicateBasis || nonDuplicateFindings.some((finding) =>
     finding.severity === 'high'
     && REJECT_KINDS.has(finding.kind));
@@ -386,7 +452,7 @@ export function applyDecisionGuardrails(
   if (suggestedAction === 'reject' && !rejectBasis) {
     suggestedAction = 'request_changes';
   }
-  if (suggestedAction === 'approve' && (photoConflict || photoFindingConflict || highFinding || duplicateCount > 0)) {
+  if (suggestedAction === 'approve' && (photoConflict || photoFindingConflict || highFinding || duplicateCount > 0 || suspiciousLinkBasis)) {
     suggestedAction = 'request_changes';
   }
   if (photoNeedsManualReview || unsafeModelProse || manualPhotoFindingPresent) {

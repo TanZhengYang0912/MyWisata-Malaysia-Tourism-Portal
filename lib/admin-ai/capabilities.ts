@@ -303,8 +303,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Change a ticket status, or re-categorise it',
       'Review customer-safety moderation flags from the panel on this page',
     ],
-    keywords: ['support ticket', 'ticket queue', 'reply to a customer', 'reply to a ticket', 'moderation flag'],
-    source: 'app/api/admin/tickets/route.ts, tickets/[id], app/api/support/tickets/[id]/replies, components/admin/moderation-flags-panel.tsx',
+    notes: [
+      'Every new ticket is auto-classified (Gemini AI, keyword matcher as a fallback if the AI call fails) into one of: booking, payment, vendor, withdrawal, kyc, technical, affiliate, general — shown as a badge next to each ticket subject with which method classified it (ai/keyword/manual).',
+      'Each category is routed to a named team (e.g. withdrawal -> Wallet Team, kyc -> KYC Team) shown as a badge on the ticket — a label for which team\'s queue it belongs in via the category filter, not an automatic assignment to a specific staff member (assigned_to still requires an admin to pick it up).',
+      'An admin can always override the AI\'s category from the dropdown next to each ticket — that also re-routes its team label immediately.',
+    ],
+    keywords: ['support ticket', 'ticket queue', 'reply to a customer', 'reply to a ticket', 'moderation flag', 'ticket category', 'ticket routing', 'admin team'],
+    source: 'app/api/admin/tickets/route.ts, tickets/[id], app/api/support/tickets/[id]/replies, components/admin/moderation-flags-panel.tsx, lib/chatbot/classify.ts, lib/chatbot/classify-ai.ts, lib/support/team-routing.ts',
   },
   {
     name: 'chat_reports',
@@ -358,7 +363,8 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     role: 'admin_or_approver',
     actions: [
       'See chatbot stats: questions asked, answer rate, escalation rate',
-      'See the top unanswered questions, and answers customers marked unhelpful',
+      'See the top unanswered questions, and answers customers marked unhelpful (a KB doc exists but needs improving, not creating)',
+      'See the top questions that most often end in a support ticket regardless of what the bot answered — the escalation rate tells you HOW OFTEN that happens, this list tells you WHICH topics, so Help Centre effort goes where it is actually needed',
       'Add a knowledge base entry, or start one from an AI draft based on a failed question',
       'Edit an existing entry, and activate or deactivate entries (individually or in batch)',
       'Reindex the knowledge base so new or edited entries become searchable',
@@ -366,8 +372,9 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     notes: [
       'This manages the CUSTOMER-facing chatbot knowledge base, not this admin assistant.',
       'A newly saved entry is embedded automatically; Reindex is the bulk catch-up for anything that was missed.',
+      'All three gap lists (unanswered / not-helpful / most-escalated) can start an AI-drafted KB entry with one click.',
     ],
-    keywords: ['chatbot', 'knowledge base', 'kb entry', 'faq entry', 'reindex', 'unanswered question'],
+    keywords: ['chatbot', 'knowledge base', 'kb entry', 'faq entry', 'reindex', 'unanswered question', 'help centre gap', 'escalated question'],
     source: 'app/api/admin/chatbot/{kb,kb/[id],kb/draft,reindex,stats}/route.ts, app/admin/chatbot/page.tsx',
   },
   {

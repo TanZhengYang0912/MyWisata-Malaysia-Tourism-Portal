@@ -1002,7 +1002,12 @@
     "reindexErrors_one": ", {{count}} error(s)",
     "reindexErrors_other": ", {{count}} error(s)",
     "questionMeta_one": "×{{count}} · last asked {{date}}",
-    "questionMeta_other": "×{{count}} · last asked {{date}}"
+    "questionMeta_other": "×{{count}} · last asked {{date}}",
+    "topEscalated": {
+      "title": "Top questions that end in a ticket",
+      "description": "Whatever the bot says, customers keep escalating these — improve the Help Centre for these topics first.",
+      "empty": "Nothing has been escalated to a ticket yet."
+    }
   },
   "chatReports": {
     "eyebrow": "Trust & safety",
@@ -1698,7 +1703,8 @@
       "minutes_one": "{{count}} min",
       "minutes_other": "{{count}} min",
       "hours_one": "{{count}} hr",
-      "hours_other": "{{count}} hr"
+      "hours_other": "{{count}} hr",
+      "routedToTeam": "Routed to this team based on the ticket's category"
     },
     "table": {
       "action": "Action",
@@ -2237,7 +2243,8 @@
         "contactMethod": "Contact method",
         "photos": "Photos",
         "imageRights": "Image rights",
-        "exactNameMatches": "Exact name matches"
+        "exactNameMatches": "Exact name matches",
+        "links": "Links"
       },
       "findingKinds": {
         "lowQuality": "Low quality",

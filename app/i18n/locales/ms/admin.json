@@ -1002,7 +1002,12 @@
     "reindexErrors_one": ", {{count}} ralat",
     "reindexErrors_other": ", {{count}} ralat",
     "questionMeta_one": "×{{count}} · kali terakhir ditanya {{date}}",
-    "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}"
+    "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}",
+    "topEscalated": {
+      "title": "Soalan paling kerap dieskalasi ke tiket",
+      "description": "Walau apa pun jawapan bot, pelanggan tetap meningkatkan soalan ini — perbaiki Pusat Bantuan untuk topik ini dahulu.",
+      "empty": "Belum ada yang dieskalasikan kepada tiket lagi."
+    }
   },
   "chatReports": {
     "eyebrow": "Kepercayaan & keselamatan",
@@ -1698,7 +1703,8 @@
       "minutes_one": "{{count}} minit",
       "minutes_other": "{{count}} minit",
       "hours_one": "{{count}} jam",
-      "hours_other": "{{count}} jam"
+      "hours_other": "{{count}} jam",
+      "routedToTeam": "Dihalakan kepada pasukan ini berdasarkan kategori tiket"
     },
     "table": {
       "action": "Tindakan",
@@ -2237,7 +2243,8 @@
         "contactMethod": "Kaedah hubungan",
         "photos": "Foto",
         "imageRights": "Hak imej",
-        "exactNameMatches": "Padanan nama tepat"
+        "exactNameMatches": "Padanan nama tepat",
+        "links": "Pautan"
       },
       "findingKinds": {
         "lowQuality": "Kualiti rendah",
