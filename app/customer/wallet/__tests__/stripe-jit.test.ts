@@ -8,10 +8,10 @@ describe('customer wallet Stripe JIT contract', () => {
   it('uses the JIT visibility policy instead of loading Connect with wallet data', () => {
     expect(page).toContain('shouldExposeStripePayoutSetup');
     expect(page).toContain('withdrawSetupRequested');
-    const refreshWalletState = page.match(/const refreshWalletState = useCallback\(async \(destinationId: string\) => \{([\s\S]*?)\}, \[currentUser, refreshWalletSummary\]\);/)?.[1] ?? '';
-    expect(refreshWalletState).toContain('getMyWithdrawals(currentUser.id)');
+    const refreshWalletState = page.match(/const refreshWalletState = useCallback\(async \(destinationId: string\) => \{([\s\S]*?)\}, \[currentUser, refreshWalletSummary, tCustomer\]\);/)?.[1] ?? '';
+    expect(refreshWalletState).toContain('getMyWithdrawals(currentUser.id, withdrawalsController.signal)');
     expect(refreshWalletState).not.toContain('refreshConnectStatus');
-    expect(page).toContain('void refreshWalletState(nextDestinationId);');
+    expect(page).toContain('void refreshWalletState(selectedDestinationId);');
   });
 
   it('shows payout readiness in one inline surface without a duplicate modal', () => {
@@ -37,7 +37,7 @@ describe('customer wallet Stripe JIT contract', () => {
   it('blocks withdrawal submission while the TNG destination editor is unfinished', () => {
     expect(page).toContain('if (showAddTngDestination) return;');
     expect(page).toContain(
-      'disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw}',
+      'disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw}',
     );
   });
 
@@ -59,12 +59,36 @@ describe('customer wallet Stripe JIT contract', () => {
     const handleWithdraw = page.match(/async function handleWithdraw[\s\S]*?async function handleTopUp/)?.[0] ?? '';
     expect(page).toContain('const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);');
     expect(openWithdraw).toContain('setWithdrawalSubmitted(false);');
-    expect(handleWithdraw).toContain('setWithdrawalSubmitted(true);');
-    expect(handleWithdraw).toContain('nextUrl.searchParams.delete("topup");');
-    expect(handleWithdraw).toContain('window.history.replaceState(');
+    expect(page).toContain('function completeWithdrawalSubmission()');
+    expect(page).toContain('setWithdrawalSubmitted(true);');
+    expect(page).toContain('nextUrl.searchParams.delete("topup");');
+    expect(page).toContain('window.history.replaceState(');
+    expect(handleWithdraw).toContain('completeWithdrawalSubmission();');
     expect(page).toContain('tCustomer("ui.wallet.withdrawalSubmitted")');
     expect(page).toContain('withdrawalSubmitted ? (');
     expect(page).toContain(': topupSuccess && (');
+  });
+
+  it('uses one idempotency key and a bounded action timeout per withdrawal attempt', () => {
+    const handleWithdraw = page.match(/async function handleWithdraw[\s\S]*?async function handleTopUp/)?.[0] ?? '';
+    expect(page).toContain('const WITHDRAWAL_ACTION_TIMEOUT_MS = 15_000;');
+    expect(handleWithdraw).toContain('const requestId = crypto.randomUUID();');
+    expect(handleWithdraw).toContain('signal: controller.signal');
+    expect(handleWithdraw).toContain('requestId');
+    expect(handleWithdraw).toContain('controller.abort()');
+  });
+
+  it('reconciles an aborted submission by exact request UUID before allowing another attempt', () => {
+    const reconciliation = page.match(/async function reconcileWithdrawalRequest[\s\S]*?function completeWithdrawalSubmission/)?.[0] ?? '';
+    const handleWithdraw = page.match(/async function handleWithdraw[\s\S]*?async function handleTopUp/)?.[0] ?? '';
+    expect(page).toContain('const [confirmingWithdrawal, setConfirmingWithdrawal] = useState(false);');
+    expect(page).toContain('const WITHDRAWAL_RECONCILIATION_DELAYS_MS = [0, 1_500, 3_000] as const;');
+    expect(reconciliation).toContain('withdrawal.id === requestId');
+    expect(reconciliation).toContain('getMyWithdrawals(currentUser.id, controller.signal)');
+    expect(handleWithdraw).toContain('error.name === "AbortError"');
+    expect(handleWithdraw).toContain('await reconcileWithdrawalRequest(requestId)');
+    expect(page).toContain('tCustomer("ui.wallet.confirmingWithdrawal")');
+    expect(page).toContain('tCustomer("ui.wallet.withdrawalOutcomeUnknown")');
   });
 
   it('provides withdrawal-submitted feedback in every customer locale', () => {

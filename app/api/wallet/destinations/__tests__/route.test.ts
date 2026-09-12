@@ -68,7 +68,7 @@ describe('GET /api/wallet/destinations', () => {
     const response = await POST(new Request('http://localhost/api/wallet/destinations', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'e_wallet', label: 'TNG eWallet' }),
+      body: JSON.stringify({ type: 'e_wallet' }),
     }));
 
     expect(response.status).toBe(201);
@@ -84,13 +84,13 @@ describe('GET /api/wallet/destinations', () => {
     expect(mocks.serviceFrom).not.toHaveBeenCalledWith('payout_destinations');
   });
 
-  it('rejects browser-supplied TNG identity fields before resolving the verified phone', async () => {
+  it('rejects browser-supplied TNG identity and label fields before resolving the verified phone', async () => {
     mocks.capabilities.mockReturnValue({ bank_account: { enabled: true, provider: 'stripe_connect' }, e_wallet: { enabled: true, provider: 'tng_direct_credit' } });
 
     const response = await POST(new Request('http://localhost/api/wallet/destinations', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'e_wallet', phoneOrDuitNow: '0123456789', label: 'TNG eWallet' }),
+      body: JSON.stringify({ type: 'e_wallet', label: '+60123456789' }),
     }));
     const body = await response.json();
 

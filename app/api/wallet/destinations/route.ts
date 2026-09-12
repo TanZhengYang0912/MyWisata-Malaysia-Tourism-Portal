@@ -40,7 +40,7 @@ function mapDestination(row: {
 }
 
 const destinationSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('e_wallet'), label: z.string().trim().min(1).max(100).optional() }).strict(),
+  z.object({ type: z.literal('e_wallet') }).strict(),
   z.object({ type: z.literal('bank_account'), label: z.string().trim().min(1).max(100).optional() }).strict(),
 ]);
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, destinationSchema);
   if (!parsed.ok) return parsed.response;
-  const { type, label } = parsed.data;
+  const { type } = parsed.data;
 
   if (type === 'e_wallet') {
     const capabilities = getPayoutDestinationCapabilities();
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       p_dest_type: 'ewallet',
       p_provider: 'tng_direct_credit',
       p_provider_reference: identity.identity.providerReference,
-      p_label: label ?? 'TNG eWallet',
+      p_label: 'TNG eWallet',
       p_masked_ref: identity.identity.maskedReference,
       p_is_default: false,
     });
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     p_dest_type: 'bank',
     p_provider: 'stripe_connect',
     p_provider_reference: profile.stripe_connect_account_id,
-    p_label: label ?? 'Stripe Connect bank account',
+    p_label: parsed.data.label ?? 'Stripe Connect bank account',
     p_masked_ref: 'Bank account on file',
     p_is_default: true,
   });

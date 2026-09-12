@@ -36,6 +36,8 @@ type PayoutCapabilities = {
 };
 
 const WALLET_READ_TIMEOUT_MS = 8_000;
+const WITHDRAWAL_ACTION_TIMEOUT_MS = 15_000;
+const WITHDRAWAL_RECONCILIATION_DELAYS_MS = [0, 1_500, 3_000] as const;
 
 function walletSummaryEndpoint(destinationId: string) {
   return destinationId
@@ -65,6 +67,7 @@ function WalletContent() {
   const [withdrawSetupRequested, setWithdrawSetupRequested] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawing, setWithdrawing]     = useState(false);
+  const [confirmingWithdrawal, setConfirmingWithdrawal] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
   const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);
   const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
@@ -366,6 +369,47 @@ function WalletContent() {
     }
   }
 
+  async function reconcileWithdrawalRequest(requestId: string) {
+    if (!currentUser) return false;
+
+    for (const delayMs of WITHDRAWAL_RECONCILIATION_DELAYS_MS) {
+      if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      if (!isActiveRef.current) return false;
+
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), WALLET_READ_TIMEOUT_MS);
+      try {
+        const latestWithdrawals = await getMyWithdrawals(currentUser.id, controller.signal);
+        if (!isActiveRef.current) return false;
+        setWithdrawals(latestWithdrawals);
+        if (latestWithdrawals.some((withdrawal) => withdrawal.id === requestId)) {
+          setHistoryRefreshKey((key) => key + 1);
+          return true;
+        }
+      } catch {
+        // A later bounded read may still confirm whether the server accepted the request.
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    return false;
+  }
+
+  function completeWithdrawalSubmission() {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete("topup");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
+    );
+    setWithdrawalSubmitted(true);
+    setShowWithdraw(false);
+    setWithdrawAmount("");
+    setWithdrawError("");
+  }
+
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
@@ -380,33 +424,44 @@ function WalletContent() {
     if (!amount || amount <= 0) { setWithdrawError(tCustomer("ui.wallet.validAmount")); return; }
     if (amount > available)     { setWithdrawError(tCustomer("ui.wallet.amountExceedsEarnings")); return; }
     if (amount < CUSTOMER_WITHDRAWAL_MINIMUM_RM) { setWithdrawError(tCustomer("ui.wallet.minimumWithdrawal", { amount: formatMYRNumber(CUSTOMER_WITHDRAWAL_MINIMUM_RM) })); return; }
+    const requestId = crypto.randomUUID();
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), WITHDRAWAL_ACTION_TIMEOUT_MS);
+    setConfirmingWithdrawal(false);
     setWithdrawing(true);
     try {
       const response = await fetch('/api/wallet/withdrawals', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
+        signal: controller.signal,
+        body: JSON.stringify({ requestId, amountRm: withdrawAmount, ...(selectedDestinationId ? { destinationId: selectedDestinationId } : {}) }),
       });
       if (await gate.handleResponse(response, "/customer/wallet")) return;
       const body = await response.json() as { error?: { message?: string } | string };
       if (!response.ok) {
         throw new Error(typeof body.error === 'string' ? body.error : body.error?.message ?? tCustomer("ui.wallet.submitWithdrawalError"));
       }
-      await refreshWalletState(selectedDestinationId);
-      const nextUrl = new URL(window.location.href);
-      nextUrl.searchParams.delete("topup");
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
-      );
-      setWithdrawalSubmitted(true);
-      setShowWithdraw(false);
-      setWithdrawAmount("");
-    } catch (err) {
-      setWithdrawError(err instanceof Error ? err.message : tCustomer("ui.wallet.submitError"));
+      completeWithdrawalSubmission();
+      void refreshWalletState(selectedDestinationId);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setConfirmingWithdrawal(true);
+        const reconciled = await reconcileWithdrawalRequest(requestId);
+        if (reconciled) {
+          completeWithdrawalSubmission();
+          void refreshWalletSummary(selectedDestinationId).catch(() => {
+            if (isActiveRef.current) setWalletLoadError(tCustomer("ui.wallet.walletLoadError"));
+          });
+        } else if (isActiveRef.current) {
+          setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
+        }
+        return;
+      }
+      setWithdrawError(error instanceof Error ? error.message : tCustomer("ui.wallet.submitError"));
     } finally {
+      window.clearTimeout(timeout);
       setWithdrawing(false);
+      setConfirmingWithdrawal(false);
     }
   }
 
@@ -646,10 +701,11 @@ function WalletContent() {
               {tCustomer("ui.wallet.dualApprovalWarning")}
             </p>
           )}
+          {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
           {withdrawError && <p role="alert" className="text-xs text-red-500">{withdrawError}</p>}
           <div className="flex gap-2">
-            <Button type="submit" disabled={withdrawing || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw} className="flex-1">
-              {withdrawing ? tCustomer("ui.states.submitting") : tCustomer("ui.wallet.submitRequest")}
+            <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || !walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw} className="flex-1">
+              {confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : withdrawing ? tCustomer("ui.states.submitting") : tCustomer("ui.wallet.submitRequest")}
             </Button>
             <Button type="button" variant="outline" onClick={() => setShowWithdraw(false)}>{tCustomer("ui.wallet.cancel")}</Button>
           </div>
