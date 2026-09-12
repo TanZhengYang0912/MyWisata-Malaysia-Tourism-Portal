@@ -1,7 +1,7 @@
 # Withdrawal Identity, Assistant, and Resilience Design
 
 **Date:** 2026-09-12
-**Status:** Approved design; awaiting written-spec review
+**Status:** Approved design; implementation plan ready for review
 
 ## Context
 
@@ -52,7 +52,8 @@ are mature and must be preserved.
 | Candidate | Path | Decision | Reason |
 | --- | --- | --- | --- |
 | Authenticated destination API | `app/api/wallet/destinations/route.ts` | Extend | It already owns authentication, provider capability checks, masking, and the service-only save RPC. |
-| TNG normalization and provider | `lib/payouts/destinations.ts`, `lib/payouts/providers/tng-direct-credit.ts` | Reuse and extend | Existing normalization, deterministic opaque references, and masked references are the correct provider boundary. |
+| Verified-phone parser | `lib/phone/international.ts` | Reuse | Existing phone verification already stores canonical E.164 values; the payout resolver must still validate that server-managed value before use. |
+| TNG provider | `lib/payouts/providers/tng-direct-credit.ts` | Reuse | Its deterministic opaque references and masked references are the correct provider boundary. |
 | Verified phone fact | `users.phone`, `users.phone_verified_at` | Reuse | OTP promotion already makes these server-managed, globally unique identity facts. |
 | Customer Wallet | `app/customer/wallet/page.tsx` | Extend | It already owns destination selection, withdrawal submission, readiness, and refresh orchestration. |
 | Signed transaction helper | `lib/wallet/transaction-display.ts` | Repair and reuse | The helper was originally created for signed amounts; restoring its direction-based sign avoids parallel formatting logic. |
@@ -78,8 +79,9 @@ The browser must never choose the TNG identity used for payout.
   request schema rejects `phoneOrDuitNow` and other unexpected identity fields.
 - The server reads `users.phone` and `users.phone_verified_at` for the current
   authenticated user. A missing phone or verification timestamp fails closed.
-- The server normalizes that phone through the existing TNG identifier helper,
-  passes it to the configured mock provider, and saves only the provider's
+- The server validates that phone through the existing international-phone
+  parser, requires a Malaysian mobile number (`+601…`), passes it to the
+  configured mock provider, and saves only the provider's
   opaque reference and masked reference through
   `save_verified_payout_destination`.
 - The destination list marks historical TNG destinations that do not match the
@@ -110,7 +112,8 @@ or the bundler itself.
   the UI enters an explicit “confirming outcome” state instead of declaring
   failure.
 - Outcome reconciliation reloads the authenticated customer's withdrawals and
-  checks for the submitted amount and request time window. The submit control
+  checks for the submitted amount inside a bounded lower-and-upper request-time
+  window. The submit control
   stays disabled until the system either finds the new request or completes a
   bounded reconciliation attempt with no match.
 - The existing database active-withdrawal guard remains the final protection
@@ -150,8 +153,8 @@ Withdrawal rejection uses a two-step, server-authoritative review:
 6. A clear or consciously overridden advisory result produces a short-lived,
    HMAC-signed credential. Its claims bind actor ID, withdrawal ID, action,
    reason category, SHA-256 reason hash, verdict, issued time, and expiry.
-7. The credential uses a dedicated server-only signing secret and has no
-   insecure fallback. It is never logged.
+7. The credential uses a dedicated server-only signing secret of at least 32
+   bytes and has no insecure fallback. It is never logged.
 8. Final rejection verifies authorization, expiry, signature, actor,
    withdrawal, category, and reason hash before invoking the existing rejection
    RPC. Any edit invalidates the credential and returns the UI to preview.
