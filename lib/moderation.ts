@@ -21,7 +21,13 @@ export type AccountModerationContext =
   | 'wallet_approver_role_reason';
 
 export type WalletModerationResult =
-  | { flagged: boolean; relevant: boolean; categories: string[] }
+  | {
+    flagged: boolean;
+    relevant: boolean;
+    professional: boolean;
+    categories: string[];
+    advisoryMessage: string | null;
+  }
   | { error: 'api_unavailable' };
 
 function contextDescription(context: AccountModerationContext): string {
@@ -121,8 +127,10 @@ export async function moderateWalletReason(
     'You moderate a Malaysia tourism platform.',
     'Set flagged=true for hate speech, discrimination, explicit sexual content, spam, advertising, scams, harassment, insults, threats, violence, or instructions for illegal activity.',
     'Set relevant=true only when the explanation is specific and materially related to the selected Wallet action and category.',
+    'Set professional=true only when the explanation is respectful, neutral, clear, and suitable for communication to a customer.',
+    'When the text is safe but irrelevant or unprofessional, provide one concise improvement in advisoryMessage; otherwise use null.',
     'Do not decide whether the administrator is factually correct and do not judge the account status; only judge prohibited content and reason relevance.',
-    'Respond with valid JSON only, no markdown: {"flagged": boolean, "relevant": boolean, "categories": string[]}.',
+    'Respond with valid JSON only, no markdown: {"flagged": boolean, "relevant": boolean, "professional": boolean, "categories": string[], "advisoryMessage": string | null}.',
     `Text: ${JSON.stringify(text)}`,
   ].join(' ');
 
@@ -158,20 +166,27 @@ export async function moderateWalletReason(
     const parsed = JSON.parse(raw) as {
       flagged?: unknown;
       relevant?: unknown;
+      professional?: unknown;
       categories?: unknown;
+      advisoryMessage?: unknown;
     };
     if (
       typeof parsed.flagged !== 'boolean' ||
       typeof parsed.relevant !== 'boolean' ||
+      typeof parsed.professional !== 'boolean' ||
       !Array.isArray(parsed.categories) ||
-      parsed.categories.some((category) => typeof category !== 'string')
+      parsed.categories.some((category) => typeof category !== 'string') ||
+      (parsed.advisoryMessage !== null && typeof parsed.advisoryMessage !== 'string') ||
+      (typeof parsed.advisoryMessage === 'string' && parsed.advisoryMessage.length > 300)
     ) {
       return { error: 'api_unavailable' };
     }
     return {
       flagged: parsed.flagged,
       relevant: parsed.relevant,
+      professional: parsed.professional,
       categories: parsed.categories,
+      advisoryMessage: parsed.advisoryMessage,
     };
   } catch {
     return { error: 'api_unavailable' };

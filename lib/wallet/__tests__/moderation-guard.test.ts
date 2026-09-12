@@ -41,7 +41,9 @@ describe('moderateWalletAction', () => {
     mocks.moderateWalletReason.mockResolvedValue({
       flagged: false,
       relevant: false,
+      professional: true,
       categories: [],
+      advisoryMessage: 'Explain which review evidence supports this decision.',
     });
 
     await expect(moderateWalletAction({
@@ -50,7 +52,11 @@ describe('moderateWalletAction', () => {
       action: 'approve',
       reasonCategory: 'review_completed',
       reason: 'KYC verified and the withdrawal review is completed.',
-    })).resolves.toEqual({ ok: true, categories: [] });
+    })).resolves.toEqual({
+      ok: true,
+      categories: [],
+      advisory: { reasons: ['relevance'], message: 'Explain which review evidence supports this decision.' },
+    });
 
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
       action: 'approve',
@@ -63,7 +69,9 @@ describe('moderateWalletAction', () => {
     mocks.moderateWalletReason.mockResolvedValue({
       flagged: true,
       relevant: true,
+      professional: false,
       categories: ['harassment'],
+      advisoryMessage: null,
     });
 
     await expect(moderateWalletAction({
@@ -72,6 +80,29 @@ describe('moderateWalletAction', () => {
       reasonCategory: 'review_completed',
       reason: 'A prohibited approval note.',
     })).resolves.toMatchObject({ ok: false, code: 'CONTENT_REJECTED' });
+  });
+
+  it('allows an unprofessional but safe reason with an advisory', async () => {
+    mocks.moderateWalletReason.mockResolvedValue({
+      flagged: false,
+      relevant: true,
+      professional: false,
+      categories: ['tone'],
+      advisoryMessage: 'Use neutral, factual language.',
+    });
+
+    await expect(moderateWalletAction({
+      actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      action: 'reject',
+      reasonCategory: 'other',
+      reason: 'This request is careless and should not proceed.',
+    })).resolves.toEqual({
+      ok: true,
+      categories: ['tone'],
+      advisory: { reasons: ['tone'], message: 'Use neutral, factual language.' },
+    });
+
+    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({ result: 'accepted' }));
   });
 
   it('continues to fail closed when moderation is unavailable', async () => {
