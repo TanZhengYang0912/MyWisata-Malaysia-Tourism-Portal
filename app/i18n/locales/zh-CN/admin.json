@@ -2416,6 +2416,14 @@
       "topUp": "充值",
       "withdrawn": "已提现"
     },
+    "assistant": {
+      "title": "Gemini Assistant 建议",
+      "reviewing": "正在审核理由…",
+      "clear": "该理由可以进入确认步骤。",
+      "returnToEdit": "返回修改",
+      "continueAnyway": "仍然继续",
+      "advisoryNotice": "此内容仅为辅助建议；授权管理员审阅后仍可继续。"
+    },
     "enumValues": {
       "accountDisabled": "账户已停用",
       "adjustment": "调整",

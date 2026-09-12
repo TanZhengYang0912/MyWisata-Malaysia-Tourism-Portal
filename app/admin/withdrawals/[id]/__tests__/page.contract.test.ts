@@ -22,4 +22,16 @@ describe('withdrawal stable detail route', () => {
     expect(componentSource).toContain('/${nextAction}');
     expect(componentSource).not.toContain('AdminBatchActionBar');
   });
+
+  it('reviews rejection reasons through Gemini while other decisions retain direct confirmation', () => {
+    expect(componentSource).toContain('type AssistantReview');
+    expect(componentSource).toContain('const [reviewingReason, setReviewingReason] = useState(false)');
+    expect(componentSource).toContain('/review-reason');
+    expect(componentSource).toContain('moderationCredential');
+    expect(componentSource).toContain('advisoryAccepted');
+    expect(componentSource).toContain('setAssistantReview(null)');
+    expect(componentSource).toContain('withdrawals.assistant.continueAnyway');
+    expect(componentSource).toContain('withdrawals.assistant.returnToEdit');
+    expect(componentSource).toContain('if (selectedDecision !== "reject")');
+  });
 });

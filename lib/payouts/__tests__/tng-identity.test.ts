@@ -81,7 +81,7 @@ describe('verified TNG identity', () => {
     await expect(resolveVerifiedTngIdentity(
       dbWith({ phone: '+60177143951', phone_verified_at: '2026-09-12T00:00:00Z' }).db,
       userId,
-      providerWith({ verifyDestination: vi.fn(async () => ({ status: 'rejected', providerReference: null, maskedReference: '+60••••3951', reason: 'rejected' })) }),
+      providerWith({ verifyDestination: vi.fn(async () => ({ status: 'rejected' as const, providerReference: null, maskedReference: '+60••••3951', reason: 'rejected' })) }),
     )).resolves.toMatchObject({ ok: false, code: 'PAYOUT_DESTINATION_UNAVAILABLE', status: 503 });
     await expect(resolveVerifiedTngIdentity(
       dbWith({ phone: '+60177143951', phone_verified_at: '2026-09-12T00:00:00Z' }).db,
@@ -91,7 +91,7 @@ describe('verified TNG identity', () => {
   });
 
   it('matches destinations only by the server-side opaque provider reference', () => {
-    const identity = { providerReference: 'tng_dest_verified_phone', maskedReference: '+60••••3951' };
+    const identity = { providerReference: 'tng_dest_verified_phone', maskedReference: '+60••••3951', verifiedPhone: '+60177143951' };
     expect(tngDestinationMatchesIdentity('tng_dest_verified_phone', identity)).toBe(true);
     expect(tngDestinationMatchesIdentity('tng_dest_other_phone', identity)).toBe(false);
     expect(tngDestinationMatchesIdentity(null, identity)).toBe(false);

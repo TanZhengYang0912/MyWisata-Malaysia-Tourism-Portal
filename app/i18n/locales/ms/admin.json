@@ -2416,6 +2416,14 @@
       "topUp": "Tambah nilai",
       "withdrawn": "Dikeluarkan"
     },
+    "assistant": {
+      "title": "Cadangan Pembantu Gemini",
+      "reviewing": "Menyemak sebab…",
+      "clear": "Sebab sedia untuk pengesahan.",
+      "returnToEdit": "Kembali untuk sunting",
+      "continueAnyway": "Teruskan juga",
+      "advisoryNotice": "Ini ialah cadangan sahaja. Pentadbir yang diberi kuasa boleh meneruskan selepas menyemaknya."
+    },
     "batch": {
       "noCommonAction": "Tiada tindakan tunggal yang sah untuk setiap pengeluaran yang dipilih."
     },
