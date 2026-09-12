@@ -56,6 +56,17 @@ export function selectDefaultPayoutDestination(destinations: PayoutDestination[]
     ?? null;
 }
 
+export function payoutDestinationDisplayLabel(input: {
+  destType: 'bank' | 'ewallet';
+  label: string | null;
+  maskedRef: string | null;
+}) {
+  if (input.destType === 'ewallet') {
+    return `TNG eWallet${input.maskedRef ? ` ${input.maskedRef}` : ''}`;
+  }
+  return input.label ?? input.maskedRef ?? 'Bank account';
+}
+
 export function calculateWalletSplit(
   totalAmountSen: number,
   walletAvailableSen: number,

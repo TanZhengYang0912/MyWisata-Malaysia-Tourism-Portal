@@ -61,10 +61,13 @@ describe('verified TNG identity', () => {
 
     expect(result).toEqual({
       ok: true,
-      identity: { providerReference: 'tng_dest_verified_phone', maskedReference: '+60••••3951' },
+      identity: {
+        providerReference: 'tng_dest_verified_phone',
+        maskedReference: '+60••••3951',
+        verifiedPhone: '+60177143951',
+      },
     });
     expect(provider.verifyDestination).toHaveBeenCalledWith({ phoneOrDuitNow: '+60177143951' });
-    expect(JSON.stringify(result)).not.toContain('+60177143951');
   });
 
   it('maps database, provider configuration, and verification failures safely', async () => {

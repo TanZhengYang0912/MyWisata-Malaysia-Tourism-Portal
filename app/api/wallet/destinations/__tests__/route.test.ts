@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   from: vi.fn(),
+  serviceFrom: vi.fn(),
   select: vi.fn(),
   eq: vi.fn(),
   order: vi.fn(),
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   tngMatches: vi.fn(),
 }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })) }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc })) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc, from: mocks.serviceFrom })) }));
 vi.mock('@/lib/payouts/providers/tng-direct-credit', () => ({
   createTngDirectCreditProvider: vi.fn(() => ({ verifyDestination: mocks.verifyDestination })),
 }));
@@ -33,6 +34,7 @@ describe('GET /api/wallet/destinations', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
     mocks.from.mockReturnValue({ select: mocks.select });
+    mocks.serviceFrom.mockReturnValue({ select: mocks.select });
     mocks.select.mockReturnValue({ eq: mocks.eq });
     mocks.eq.mockReturnValue({ order: mocks.order });
     mocks.order.mockImplementationOnce(() => ({ order: mocks.order }));
@@ -79,7 +81,7 @@ describe('GET /api/wallet/destinations', () => {
       p_masked_ref: '+60••••6789',
       p_is_default: false,
     });
-    expect(mocks.from).not.toHaveBeenCalledWith('payout_destinations');
+    expect(mocks.serviceFrom).not.toHaveBeenCalledWith('payout_destinations');
   });
 
   it('rejects browser-supplied TNG identity fields before resolving the verified phone', async () => {
@@ -109,8 +111,8 @@ describe('GET /api/wallet/destinations', () => {
     mocks.order.mockImplementationOnce(() => ({ order: mocks.order }));
     mocks.order.mockResolvedValue({
       data: [
-        { id: 'current', dest_type: 'ewallet', provider: 'tng_direct_credit', label: 'Current TNG', masked_ref: '+60••••3951', provider_reference: 'tng_dest_current', verification_status: 'verified', is_default: true },
-        { id: 'old', dest_type: 'ewallet', provider: 'tng_direct_credit', label: 'Old TNG', masked_ref: '+60••••0000', provider_reference: 'tng_dest_old', verification_status: 'verified', is_default: false },
+        { id: 'current', dest_type: 'ewallet', provider: 'tng_direct_credit', label: '+60177143951', masked_ref: '+60••••3951', provider_reference: 'tng_dest_current', verification_status: 'verified', is_default: true },
+        { id: 'old', dest_type: 'ewallet', provider: 'tng_direct_credit', label: '+60120000000', masked_ref: '+60••••0000', provider_reference: 'tng_dest_old', verification_status: 'verified', is_default: false },
       ],
       error: null,
     });
@@ -120,11 +122,16 @@ describe('GET /api/wallet/destinations', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toMatchObject({
-      destinations: [{ id: 'current', status: 'verified' }, { id: 'old', status: 'disabled' }],
+      destinations: [
+        { id: 'current', status: 'verified', displayLabel: 'TNG eWallet +60••••3951' },
+        { id: 'old', status: 'disabled', displayLabel: 'TNG eWallet +60••••0000' },
+      ],
       tngIdentity: { maskedPhone: '+60••••3951' },
     });
     expect(JSON.stringify(body)).not.toContain('tng_dest_current');
     expect(JSON.stringify(body)).not.toContain('tng_dest_old');
     expect(JSON.stringify(body)).not.toContain('+60177143951');
+    expect(JSON.stringify(body)).not.toContain('+60120000000');
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('payout_destinations');
   });
 });

@@ -31,6 +31,7 @@ const approvedForwardMigrations = [
   "20260909054100_restore_demo_customer_roles.sql",
   "20260909082900_sponsored_position_governance.sql",
   "20260910005600_sponsored_placement_staff_role_template.sql",
+  "20260912173000_withdrawal_trust_boundary.sql",
 ];
 
 function migrationFiles() {

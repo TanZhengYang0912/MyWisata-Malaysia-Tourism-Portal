@@ -12,6 +12,7 @@ import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/custo
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
 
 const submitSchema = z.object({
+  requestId: z.string().uuid(),
   amountRm: z.string().trim().min(1).max(20),
   destinationId: z.string().uuid().optional(),
 }).strict();
@@ -31,6 +32,12 @@ function withdrawalError(message: string) {
   }
   if (message.includes('payout_destination_cooldown')) {
     return apiFail('PAYOUT_DESTINATION_COOLDOWN', 'This payout destination is temporarily locked after a recent change', 409);
+  }
+  if (message.includes('payout_destination_identity_mismatch')) {
+    return apiFail('PAYOUT_DESTINATION_IDENTITY_MISMATCH', 'This TNG destination is not bound to your verified account phone', 403);
+  }
+  if (message.includes('withdrawal_request_id_conflict')) {
+    return apiFail('WITHDRAWAL_REQUEST_ID_CONFLICT', 'This withdrawal request identity is already in use', 409);
   }
   if (message.includes('below_min_withdrawal')) {
     return apiFail('MINIMUM_NOT_MET', 'The withdrawal amount is below the current minimum', 422);
@@ -70,6 +77,7 @@ export async function POST(request: Request) {
   if (amountSen === null) {
     return apiFail('INVALID_AMOUNT', 'Enter a positive MYR amount with no more than two decimal places', 422);
   }
+  const service = createServiceClient();
 
   const { data: userRow, error: userLookupError } = await db
     .from('users')
@@ -84,8 +92,10 @@ export async function POST(request: Request) {
 
   const accountId = userRow?.stripe_connect_account_id as string | null | undefined;
   let destinationId = parsed.data.destinationId ?? null;
+  let expectedTngPhone: string | null = null;
+  let expectedProviderReference: string | null = null;
   if (destinationId) {
-    const { data: destination, error: destinationError } = await db
+    const { data: destination, error: destinationError } = await service
       .from('payout_destinations')
       .select('id,dest_type,provider,provider_reference,verification_status,cooldown_until')
       .eq('id', destinationId)
@@ -109,6 +119,8 @@ export async function POST(request: Request) {
           403,
         );
       }
+      expectedTngPhone = identity.identity.verifiedPhone;
+      expectedProviderReference = identity.identity.providerReference;
     }
 
     if (destination.dest_type === 'bank') {
@@ -138,7 +150,7 @@ export async function POST(request: Request) {
     const { error: syncError } = await db.rpc('update_connect_status', { p_connect_account_id: connectStatus.accountId, p_payouts_enabled: connectStatus.payoutsEnabled });
     if (syncError) return apiFail('STRIPE_STATUS_UNAVAILABLE', 'We could not verify your payout account. Please try again.', 503);
     if (!connectStatus.payoutsEnabled) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);
-    const { data: destination, error: destinationError } = await createServiceClient().rpc(
+    const { data: destination, error: destinationError } = await service.rpc(
       'save_verified_payout_destination',
       {
         p_user_id: user.id,
@@ -154,9 +166,17 @@ export async function POST(request: Request) {
     destinationId = destination.id;
   }
 
-  const { data, error } = await db.rpc('submit_wallet_withdrawal', { p_amount_sen: amountSen, p_destination_id: destinationId });
+  const { data, error } = await service.rpc('submit_wallet_withdrawal_server', {
+    p_user_id: user.id,
+    p_request_id: parsed.data.requestId,
+    p_amount_sen: amountSen,
+    p_destination_id: destinationId,
+    p_expected_tng_phone: expectedTngPhone,
+    p_expected_provider_reference: expectedProviderReference,
+  });
   if (error) return withdrawalError(error.message ?? 'withdrawal_failed');
-  const result = data as { request_id: string };
+  const result = data as { request_id: string; replayed?: boolean };
+  if (result.replayed) return apiOk(result, { status: 201 });
   try {
     await enqueueWithdrawalEmail({
       withdrawalId: result.request_id,

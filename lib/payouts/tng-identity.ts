@@ -8,6 +8,7 @@ import { createTngDirectCreditProvider } from '@/lib/payouts/providers/tng-direc
 export type VerifiedTngIdentity = {
   providerReference: string;
   maskedReference: string;
+  verifiedPhone: string;
 };
 
 export type VerifiedTngIdentityResult =
@@ -80,6 +81,7 @@ export async function resolveVerifiedTngIdentity(
       identity: {
         providerReference: verification.providerReference,
         maskedReference: verification.maskedReference,
+        verifiedPhone: parsedPhone.e164,
       },
     };
   } catch {

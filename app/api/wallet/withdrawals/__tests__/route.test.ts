@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   retrieveConnectAccountStatus: vi.fn(),
   notifyWithdrawalApprovers: vi.fn(),
   serviceRpc: vi.fn(),
+  serviceFrom: vi.fn(),
   resolveEffectiveCapability: vi.fn(),
   capabilities: vi.fn(),
   resolveTngIdentity: vi.fn(),
@@ -35,7 +36,7 @@ vi.mock('@/lib/stripe/connect-status', () => ({
   retrieveConnectAccountStatus: mocks.retrieveConnectAccountStatus,
 }));
 vi.mock('@/lib/wallet/approver-notifications', () => ({ notifyWithdrawalApprovers: mocks.notifyWithdrawalApprovers }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc })) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc, from: mocks.serviceFrom })) }));
 vi.mock('@/lib/payouts/destinations', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/lib/payouts/destinations')>();
   return { ...original, getPayoutDestinationCapabilities: mocks.capabilities };
@@ -47,9 +48,11 @@ vi.mock('@/lib/payouts/tng-identity', () => ({
 
 import { POST } from '../route';
 
+const requestId = '44444444-4444-4444-8444-444444444444';
+
 function request(body: Record<string, unknown>) {
   return new Request('http://localhost/api/wallet/withdrawals', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requestId, ...body }),
   });
 }
 
@@ -58,6 +61,7 @@ describe('POST /api/wallet/withdrawals', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.select.mockReturnValue({ eq: mocks.selectEq });
+    mocks.serviceFrom.mockReturnValue({ select: mocks.select });
     mocks.selectEq.mockReturnValue({ eq: mocks.selectEq, maybeSingle: mocks.maybeSingle });
     mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_test', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved', tier: 'kyc_verified' }, error: null });
     mocks.upsert.mockReturnValue({ select: mocks.upsertSelect });
@@ -65,6 +69,7 @@ describe('POST /api/wallet/withdrawals', () => {
     mocks.upsertSingle.mockResolvedValue({ data: { id: 'destination-1' }, error: null });
     mocks.update.mockReturnValue({ eq: mocks.updateEq });
     mocks.updateEq.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ data: null, error: null });
     mocks.retrieveConnectAccountStatus.mockResolvedValue({
       accountId: 'acct_test',
       accountType: 'standard',
@@ -74,7 +79,9 @@ describe('POST /api/wallet/withdrawals', () => {
       chargesEnabled: true,
       requiresDashboardAction: false,
     });
-    mocks.serviceRpc.mockResolvedValue({ data: { id: 'destination-1' }, error: null });
+    mocks.serviceRpc.mockImplementation(async (name: string) => name === 'save_verified_payout_destination'
+      ? { data: { id: 'destination-1' }, error: null }
+      : { data: { request_id: requestId, replayed: false }, error: null });
     mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
       capability, allowed: true, blockerCode: null, qualificationPaths: [],
       entitlementGeneration: 7, source: 'policy',
@@ -82,18 +89,24 @@ describe('POST /api/wallet/withdrawals', () => {
     mocks.capabilities.mockReturnValue({ bank_account: { enabled: true, provider: 'stripe_connect' }, e_wallet: { enabled: true, provider: 'tng_direct_credit' } });
     mocks.resolveTngIdentity.mockResolvedValue({
       ok: true,
-      identity: { providerReference: 'tng_dest_current', maskedReference: '+60••••3951' },
+      identity: { providerReference: 'tng_dest_current', maskedReference: '+60••••3951', verifiedPhone: '+60177143951' },
     });
     mocks.tngMatches.mockReturnValue(false);
   });
 
   it('submits only an integer-sen amount to the authenticated withdrawal RPC', async () => {
-    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222', requires_dual_approval: false }, error: null });
-
     const response = await POST(request({ amountRm: '50.25' }));
 
     expect(response.status).toBe(201);
-    expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', { p_amount_sen: 5025, p_destination_id: 'destination-1' });
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('submit_wallet_withdrawal_server', {
+      p_user_id: '11111111-1111-4111-8111-111111111111',
+      p_request_id: requestId,
+      p_amount_sen: 5025,
+      p_destination_id: 'destination-1',
+      p_expected_tng_phone: null,
+      p_expected_provider_reference: null,
+    });
+    expect(mocks.rpc).not.toHaveBeenCalledWith('submit_wallet_withdrawal', expect.anything());
     expect(mocks.serviceRpc).toHaveBeenCalledWith('save_verified_payout_destination', expect.objectContaining({
       p_user_id: '11111111-1111-4111-8111-111111111111',
       p_provider: 'stripe_connect',
@@ -111,8 +124,6 @@ describe('POST /api/wallet/withdrawals', () => {
       },
       error: null,
     });
-    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
-
     const response = await POST(request({ amountRm: '50.00' }));
 
     expect(response.status).toBe(201);
@@ -149,8 +160,6 @@ describe('POST /api/wallet/withdrawals', () => {
       chargesEnabled: true,
       requiresDashboardAction: false,
     });
-    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
-
     const response = await POST(request({ amountRm: '50.25' }));
 
     expect(response.status).toBe(201);
@@ -158,7 +167,11 @@ describe('POST /api/wallet/withdrawals', () => {
       p_connect_account_id: 'acct_enabled',
       p_payouts_enabled: true,
     });
-    expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', { p_amount_sen: 5025, p_destination_id: 'destination-1' });
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('submit_wallet_withdrawal_server', expect.objectContaining({
+      p_request_id: requestId,
+      p_amount_sen: 5025,
+      p_destination_id: 'destination-1',
+    }));
   });
 
   it('fails closed and skips the withdrawal RPC when Stripe status cannot be read', async () => {
@@ -213,17 +226,38 @@ describe('POST /api/wallet/withdrawals', () => {
         error: null,
       });
     mocks.tngMatches.mockReturnValue(true);
-    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
-
     const response = await POST(request({
       amountRm: '50.00',
       destinationId: '33333333-3333-4333-8333-333333333333',
     }));
 
     expect(response.status).toBe(201);
-    expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', {
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('submit_wallet_withdrawal_server', {
+      p_user_id: '11111111-1111-4111-8111-111111111111',
+      p_request_id: requestId,
       p_amount_sen: 5000,
       p_destination_id: '33333333-3333-4333-8333-333333333333',
+      p_expected_tng_phone: '+60177143951',
+      p_expected_provider_reference: 'tng_dest_current',
     });
+  });
+
+  it('rejects a missing or malformed request identity before any money RPC', async () => {
+    const response = await POST(request({ amountRm: '50.00', requestId: 'not-a-uuid' }));
+
+    expect(response.status).toBe(422);
+    expect(mocks.serviceRpc).not.toHaveBeenCalledWith('submit_wallet_withdrawal_server', expect.anything());
+  });
+
+  it('does not duplicate email or approver side effects for an idempotent replay', async () => {
+    mocks.serviceRpc.mockImplementation(async (name: string) => name === 'save_verified_payout_destination'
+      ? { data: { id: 'destination-1' }, error: null }
+      : { data: { request_id: requestId, replayed: true }, error: null });
+
+    const response = await POST(request({ amountRm: '50.00' }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.enqueueWithdrawalEmail).not.toHaveBeenCalled();
+    expect(mocks.notifyWithdrawalApprovers).not.toHaveBeenCalled();
   });
 });

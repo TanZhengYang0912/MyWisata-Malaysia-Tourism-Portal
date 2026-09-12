@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { getPayoutDestinationCapabilities, type PayoutDestinationStatus, type PayoutDestinationType } from '@/lib/payouts/destinations';
+import { getPayoutDestinationCapabilities, payoutDestinationDisplayLabel, type PayoutDestinationStatus, type PayoutDestinationType } from '@/lib/payouts/destinations';
 import { resolveVerifiedTngIdentity, tngDestinationMatchesIdentity, type VerifiedTngIdentity } from '@/lib/payouts/tng-identity';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { z } from 'zod';
@@ -28,7 +28,11 @@ function mapDestination(row: {
     id: row.id,
     type,
     provider: row.provider ?? 'legacy',
-    displayLabel: row.label ?? row.masked_ref ?? (type === 'bank_account' ? 'Bank account' : 'E-wallet'),
+    displayLabel: payoutDestinationDisplayLabel({
+      destType: row.dest_type,
+      label: row.label,
+      maskedRef: row.masked_ref,
+    }),
     status,
     isDefault: Boolean(row.is_default),
     cooldownUntil: row.cooldown_until,
@@ -45,7 +49,7 @@ export async function GET() {
   const { data: { user }, error: authError } = await db.auth.getUser();
   if (authError || !user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data, error } = await db
+  const { data, error } = await createServiceClient()
     .from('payout_destinations')
     .select('id,dest_type,provider,label,masked_ref,provider_reference,verification_status,is_default,cooldown_until')
     .eq('user_id', user.id)
