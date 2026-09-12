@@ -136,6 +136,58 @@ test.describe('Wallet governance browser flows', () => {
     await expect(page.locator('body')).not.toContainText('po_full_secret');
   });
 
+  test('withdrawal rejection assistant shows advisory before an acknowledged final rejection', async ({ page }) => {
+    const reviews: Record<string, unknown>[] = [];
+    const rejections: Record<string, unknown>[] = [];
+    const reason = 'The payout details do not match this customer.';
+    const detail = {
+      id: 'withdrawal-reject-1', userId: 'customer-id', customerDisplayName: 'Customer Bob', amountSen: 5000,
+      status: 'pending', requiresDualApproval: false, approvalCount: 0, riskLevel: 'low', riskOverridden: false,
+      createdAt: '2026-09-12T01:00:00.000Z',
+      customer: { displayName: 'Customer Bob', email: CUSTOMER_EMAIL, kycStatus: 'approved', kycApprovedAt: null },
+      wallet: { topupSen: 0, earningsSen: 5000, pendingEarningsSen: 0, reservedSen: 5000, withdrawnSen: 0 },
+      destinationLabel: 'Stripe Connect · •••• 1234', customerReason: null, approvals: [], availableActions: ['reject'],
+    };
+    await page.route('**/api/admin/withdrawals/withdrawal-reject-1/review-reason', async (route) => {
+      reviews.push(JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>);
+      return route.fulfill({ json: { data: {
+        verdict: 'advisory',
+        advisory: { reasons: ['tone'], message: 'Use neutral language and state the payout mismatch factually.' },
+        moderationCredential: 'signed-review-token',
+      }, error: null } });
+    });
+    await page.route('**/api/admin/withdrawals/withdrawal-reject-1/reject', async (route) => {
+      rejections.push(JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>);
+      return route.fulfill({ json: { data: { status: 'rejected' }, error: null } });
+    });
+    await page.route('**/api/admin/withdrawals/withdrawal-reject-1', (route) => route.fulfill({ json: { data: detail, error: null } }));
+
+    await signIn(page, ADMIN_EMAIL);
+    await page.goto('/admin/withdrawals/withdrawal-reject-1');
+    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await page.getByRole('combobox').selectOption('bank_details_mismatch');
+    await page.locator('textarea').fill(reason);
+    await page.getByRole('button', { name: 'Continue to confirmation' }).click();
+
+    await expect(page.getByText('Use neutral language and state the payout mismatch factually.')).toBeVisible();
+    expect(rejections).toHaveLength(0);
+
+    await page.locator('textarea').fill(`${reason} Updated.`);
+    await expect(page.getByText('Use neutral language and state the payout mismatch factually.')).toHaveCount(0);
+    await page.locator('textarea').fill(reason);
+    await page.getByRole('button', { name: 'Continue to confirmation' }).click();
+    await page.getByRole('button', { name: 'Continue anyway' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm decision' }).click();
+
+    expect(reviews).toHaveLength(2);
+    expect(rejections).toEqual([{
+      reasonCategory: 'bank_details_mismatch',
+      reason,
+      moderationCredential: 'signed-review-token',
+      advisoryAccepted: true,
+    }]);
+  });
+
   test('Wallet Approver can complete Hold → Resume with a fresh approval cycle', async ({ page }) => {
     const actions: Array<{ action: string; body: Record<string, unknown> }> = [];
     let status = 'pending';

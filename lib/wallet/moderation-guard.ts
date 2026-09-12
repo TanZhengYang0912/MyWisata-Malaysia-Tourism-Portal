@@ -10,8 +10,13 @@ type GuardInput = {
   reason: string;
 };
 
+export type WalletModerationAdvisory = {
+  reasons: Array<'relevance' | 'tone'>;
+  message: string;
+};
+
 export type WalletModerationGuardResult =
-  | { ok: true; categories: string[] }
+  | { ok: true; categories: string[]; advisory: WalletModerationAdvisory | null }
   | { ok: false; code: 'RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'CONTENT_REJECTED' | 'IRRELEVANT'; message: string };
 
 async function recordAttempt(input: GuardInput, result: 'accepted' | 'flagged' | 'irrelevant' | 'unavailable' | 'invalid', categories: string[]) {
@@ -57,10 +62,20 @@ export async function moderateWalletAction(input: GuardInput): Promise<WalletMod
     await recordAttempt(input, 'flagged', result.categories);
     return { ok: false, code: 'CONTENT_REJECTED', message: `Reason rejected by Wallet policy${result.categories.length ? `: ${result.categories.join(', ')}` : '.'}` };
   }
+  const advisoryReasons = [
+    ...(!result.relevant ? ['relevance' as const] : []),
+    ...(!result.professional ? ['tone' as const] : []),
+  ];
   if (!result.relevant) {
     await recordAttempt(input, 'irrelevant', result.categories);
-    return { ok: true, categories: result.categories };
+  } else {
+    await recordAttempt(input, 'accepted', result.categories);
   }
-  await recordAttempt(input, 'accepted', result.categories);
-  return { ok: true, categories: result.categories };
+  return {
+    ok: true,
+    categories: result.categories,
+    advisory: advisoryReasons.length > 0
+      ? { reasons: advisoryReasons, message: result.advisoryMessage ?? 'Review the reason for relevance and professional tone.' }
+      : null,
+  };
 }

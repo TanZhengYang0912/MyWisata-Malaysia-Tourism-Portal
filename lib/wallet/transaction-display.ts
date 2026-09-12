@@ -44,7 +44,8 @@ export function transactionTone(direction: string) {
 }
 
 export function signedTransactionAmount(transaction: AmountTransactionLike) {
-  return formatMYR(Math.abs(transaction.amount));
+  const sign = transaction.direction === "credit" ? "+" : "-";
+  return `${sign}${formatMYR(Math.abs(transaction.amount))}`;
 }
 
 export function customerVisibleTransactions<T extends TransactionLike>(items: T[]) {

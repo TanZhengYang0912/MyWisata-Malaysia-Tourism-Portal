@@ -14,7 +14,19 @@ import type { WithdrawalAvailableAction } from "@/lib/wallet/withdrawal-capabili
 import type { WithdrawalReviewDetail as WithdrawalReviewDetailData, WithdrawalReviewLedgerRow } from "@/lib/wallet/withdrawal-review";
 import { isWalletReasonCategory, WALLET_REASON_CATEGORIES, type WalletReasonAction } from "@/lib/validation/wallet-reason-schemas";
 
-type PendingConfirmation = { action: WithdrawalAvailableAction; reasonCategory: string; reason: string };
+type AssistantReview = {
+  verdict: "clear" | "advisory";
+  advisory: null | { reasons: Array<"relevance" | "tone">; message: string };
+  moderationCredential: string;
+};
+
+type PendingConfirmation = {
+  action: WithdrawalAvailableAction;
+  reasonCategory: string;
+  reason: string;
+  moderationCredential?: string;
+  advisoryAccepted?: boolean;
+};
 
 const DECISION_COPY: Record<WithdrawalAvailableAction, { labelKey: string; descriptionKey: string; consequenceKey: string; placeholderKey: string }> = {
   approve: { labelKey: "withdrawals.decisions.approve.label", descriptionKey: "withdrawals.decisions.approve.description", consequenceKey: "withdrawals.decisions.approve.consequence", placeholderKey: "withdrawals.decisions.approve.placeholder" },
@@ -62,6 +74,8 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const [reason, setReason] = useState("");
   const [reasonCategory, setReasonCategory] = useState("");
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [assistantReview, setAssistantReview] = useState<AssistantReview | null>(null);
+  const [reviewingReason, setReviewingReason] = useState(false);
 
   const loadDetail = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -95,10 +109,10 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const decisionReason = (action: WalletReasonAction, category: string) => t(DECISION_REASON_COPY[action][category] ?? "withdrawals.reasons.other");
 
   function chooseDecision(action: WithdrawalAvailableAction) {
-    setSelectedDecision(action); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setError("");
+    setSelectedDecision(action); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setAssistantReview(null); setError("");
   }
 
-  function continueToConfirmation() {
+  async function continueToConfirmation() {
     if (!selectedDecision || !reasonCategory || reason.trim().length < 10) {
       setError(t("withdrawals.errors.minimumNote"));
       return;
@@ -108,7 +122,49 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       setError(t("withdrawals.errors.matchDecisionReason"));
       return;
     }
-    setPendingConfirmation({ action: selectedDecision, reasonCategory, reason: reason.trim() });
+    const trimmedReason = reason.trim();
+    if (selectedDecision !== "reject") {
+      setPendingConfirmation({ action: selectedDecision, reasonCategory, reason: trimmedReason });
+      return;
+    }
+
+    setReviewingReason(true);
+    setAssistantReview(null);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/review-reason`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reasonCategory, reason: trimmedReason }),
+      });
+      const body = await response.json() as { data?: AssistantReview; error?: { message?: string } };
+      if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("withdrawals.errors.actionFailed"));
+      setAssistantReview(body.data);
+      if (body.data.verdict === "clear") {
+        setPendingConfirmation({
+          action: "reject",
+          reasonCategory,
+          reason: trimmedReason,
+          moderationCredential: body.data.moderationCredential,
+          advisoryAccepted: false,
+        });
+      }
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : t("withdrawals.errors.actionFailed"));
+    } finally {
+      setReviewingReason(false);
+    }
+  }
+
+  function continueAfterAdvisory() {
+    if (!assistantReview || assistantReview.verdict !== "advisory" || selectedDecision !== "reject") return;
+    setPendingConfirmation({
+      action: "reject",
+      reasonCategory,
+      reason: reason.trim(),
+      moderationCredential: assistantReview.moderationCredential,
+      advisoryAccepted: true,
+    });
   }
 
   async function confirmAction() {
@@ -116,11 +172,11 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
     const { action: nextAction, reason: pendingReason, reasonCategory: pendingCategory } = pendingConfirmation;
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : { reason: pendingReason, reasonCategory: pendingCategory }) });
-      const body = await response.json() as { error?: { message?: string } };
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : nextAction === "reject" ? { reason: pendingReason, reasonCategory: pendingCategory, moderationCredential: pendingConfirmation.moderationCredential, advisoryAccepted: pendingConfirmation.advisoryAccepted ?? false } : { reason: pendingReason, reasonCategory: pendingCategory }) });
+      const body = await response.json() as { error?: { code?: string; message?: string } };
       if (!response.ok) throw new Error(body.error?.message ?? t("withdrawals.errors.actionFailed"));
       showFeedback("success", nextAction === "fraud-override" ? t("withdrawals.feedback.riskOverrideRecorded") : t("withdrawals.feedback.actionCompleted"));
-      setSelectedDecision(null); setReason(""); setReasonCategory(""); setPendingConfirmation(null);
+      setSelectedDecision(null); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setAssistantReview(null);
       await loadDetail(true);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : t("withdrawals.errors.actionFailed"));
@@ -157,7 +213,64 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       <section className="rounded-xl border border-border bg-card p-4 text-sm"><h2 className="font-semibold">{detail.customer.displayName}</h2><p className="mt-1 text-muted-foreground">{detail.customer.email}</p>{detail.customerReason && <div className="mt-3 rounded-lg bg-amber-50 p-3"><p className="font-semibold">{t("withdrawals.customerReason.title")}</p><p>{detail.customerReason}</p></div>}</section>
       {(detail.payoutFailure.code || detail.payoutFailure.message || detail.payoutFailure.category) && <section role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm"><h2 className="font-semibold">{t("withdrawals.payoutFailure.title")}</h2><p>{t("withdrawals.payoutFailure.provider")}: {detail.payoutFailure.provider ?? t("withdrawals.detail.unknown")}</p><p>{t("withdrawals.payoutFailure.code")}: {detail.payoutFailure.code ?? t("withdrawals.detail.notSupplied")}</p><p>{t("withdrawals.payoutFailure.reason")}: {detail.payoutFailure.message ?? t("withdrawals.payoutFailure.noProviderMessage")}</p></section>}
       <section className="rounded-xl border border-border bg-card p-4"><h2 className="font-semibold">{t("withdrawals.timeline.title")}</h2>{detail.approvals.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{t("withdrawals.timeline.noDecisions")}</p> : detail.approvals.map((approval) => <div key={`${approval.actorId}-${approval.action}-${approval.createdAt}`} className="border-b py-2 text-sm last:border-0"><p>{approval.actorLabel} · {displayStatus(approval.action)}</p><p className="text-xs text-muted-foreground">{new Date(approval.createdAt).toLocaleString(locale)}{approval.note ? ` · ${approval.note}` : ""}</p></div>)}</section>
-      {detail.availableActions.length > 0 && <section className="rounded-xl border border-border bg-card p-4"><h2 className="font-semibold">{t("withdrawals.decision.title")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.decision.description")}</p><div className="mt-3 grid gap-2">{detail.availableActions.map((decision) => <Button key={decision} variant={decision === "approve" ? "default" : decision === "reject" ? "destructive" : "outline"} onClick={() => chooseDecision(decision)} aria-pressed={selectedDecision === decision}>{decisionLabel(decision)}</Button>)}</div>{selectedDecision && activeReasonAction && <div className="mt-4 border-t border-border pt-4"><label className="block text-sm"><span className="font-medium">{t("withdrawals.decision.reasonLabel")}</span><select value={reasonCategory} onChange={(event) => { setReasonCategory(event.target.value); setPendingConfirmation(null); setError(""); }} className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-sm"><option value="">{t("withdrawals.decision.selectReason")}</option>{WALLET_REASON_CATEGORIES[activeReasonAction].map((category) => <option key={category} value={category}>{decisionReason(activeReasonAction, category)}</option>)}</select></label><label className="mt-3 block text-sm"><span className="font-medium">{t("withdrawals.decision.adminNote")}</span><textarea value={reason} onChange={(event) => { setReason(event.target.value); setPendingConfirmation(null); setError(""); }} maxLength={500} placeholder={t(DECISION_COPY[selectedDecision].placeholderKey)} className="mt-1 min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" /></label><Button className="mt-3" onClick={continueToConfirmation} disabled={loading || !reasonCategory || reason.trim().length < 10}>{t("withdrawals.decision.continueToConfirmation")}</Button></div>}</section>}
+      {detail.availableActions.length > 0 && (
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h2 className="font-semibold">{t("withdrawals.decision.title")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.decision.description")}</p>
+          <div className="mt-3 grid gap-2">
+            {detail.availableActions.map((decision) => (
+              <Button key={decision} variant={decision === "approve" ? "default" : decision === "reject" ? "destructive" : "outline"} onClick={() => chooseDecision(decision)} aria-pressed={selectedDecision === decision}>
+                {decisionLabel(decision)}
+              </Button>
+            ))}
+          </div>
+          {selectedDecision && activeReasonAction && (
+            <div className="mt-4 border-t border-border pt-4">
+              <label className="block text-sm">
+                <span className="font-medium">{t("withdrawals.decision.reasonLabel")}</span>
+                <select
+                  value={reasonCategory}
+                  onChange={(event) => { setReasonCategory(event.target.value); setPendingConfirmation(null); setAssistantReview(null); setError(""); }}
+                  className="mt-1 w-full rounded-xl border border-border bg-background p-3 text-sm"
+                >
+                  <option value="">{t("withdrawals.decision.selectReason")}</option>
+                  {WALLET_REASON_CATEGORIES[activeReasonAction].map((category) => (
+                    <option key={category} value={category}>{decisionReason(activeReasonAction, category)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-3 block text-sm">
+                <span className="font-medium">{t("withdrawals.decision.adminNote")}</span>
+                <textarea
+                  value={reason}
+                  onChange={(event) => { setReason(event.target.value); setPendingConfirmation(null); setAssistantReview(null); setError(""); }}
+                  maxLength={500}
+                  placeholder={t(DECISION_COPY[selectedDecision].placeholderKey)}
+                  className="mt-1 min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm"
+                />
+              </label>
+              <Button className="mt-3" onClick={() => void continueToConfirmation()} disabled={loading || reviewingReason || !reasonCategory || reason.trim().length < 10}>
+                {reviewingReason ? t("withdrawals.assistant.reviewing") : t("withdrawals.decision.continueToConfirmation")}
+              </Button>
+              {assistantReview?.verdict === "advisory" && (
+                <div role="status" className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-semibold">{t("withdrawals.assistant.title")}</p>
+                  <p className="mt-1">{assistantReview.advisory?.message}</p>
+                  <p className="mt-2 text-xs">{t("withdrawals.assistant.advisoryNotice")}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" onClick={() => setAssistantReview(null)}>
+                      {t("withdrawals.assistant.returnToEdit")}
+                    </Button>
+                    <Button type="button" onClick={continueAfterAdvisory}>
+                      {t("withdrawals.assistant.continueAnyway")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <p className="text-xs text-muted-foreground">{t("withdrawals.timeline.auditNote")}</p>
     </aside>

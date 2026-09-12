@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { CUSTOMER_WITHDRAWAL_MINIMUM_RM } from '@/lib/stripe/jit-visibility';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
+import { payoutDestinationDisplayLabel } from '@/lib/payouts/destinations';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +21,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid payout destination' }, { status: 422 });
   }
   const destinationId = parsedDestinationId.data;
+  const service = createServiceClient();
   const destinationPromise = destinationId === null
     ? Promise.resolve({ data: null, error: null })
-    : db
+    : service
       .from('payout_destinations')
       .select('id,dest_type,provider,label,masked_ref,verification_status,cooldown_until,updated_at')
       .eq('user_id', user.id)
@@ -60,7 +63,11 @@ export async function GET(request: Request) {
       id: destination.id,
       type: destination.dest_type === 'ewallet' ? 'e_wallet' : 'bank_account',
       provider: destination.provider ?? 'legacy',
-      displayLabel: destination.label ?? destination.masked_ref ?? 'Payout destination',
+      displayLabel: payoutDestinationDisplayLabel({
+        destType: destination.dest_type,
+        label: destination.label,
+        maskedRef: destination.masked_ref,
+      }),
       status: destination.verification_status === 'verified'
         || destination.verification_status === 'disabled'
         || destination.verification_status === 'failed'

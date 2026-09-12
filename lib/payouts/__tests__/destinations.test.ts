@@ -3,6 +3,7 @@ import {
   calculateWalletSplit,
   getPayoutDestinationCapabilities,
   normalizeTngDestinationIdentifier,
+  payoutDestinationDisplayLabel,
   selectDefaultPayoutDestination,
   type PayoutDestination,
 } from '../destinations';
@@ -49,6 +50,19 @@ describe('payout destination capabilities', () => {
       { id: 'verified', type: 'bank_account', provider: 'stripe_connect', displayLabel: 'Bank ****2222', status: 'verified', isDefault: true },
     ];
     expect(selectDefaultPayoutDestination(destinations)?.id).toBe('verified');
+  });
+
+  it('never exposes a stored E-wallet label and uses only the masked reference', () => {
+    expect(payoutDestinationDisplayLabel({
+      destType: 'ewallet',
+      label: '+60177143951',
+      maskedRef: '+60••••3951',
+    })).toBe('TNG eWallet +60••••3951');
+    expect(payoutDestinationDisplayLabel({
+      destType: 'bank',
+      label: 'Maybank ****1234',
+      maskedRef: '****1234',
+    })).toBe('Maybank ****1234');
   });
 });
 

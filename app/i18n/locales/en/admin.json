@@ -2416,6 +2416,14 @@
       "topUp": "Top-up",
       "withdrawn": "Withdrawn"
     },
+    "assistant": {
+      "title": "Gemini Assistant suggestion",
+      "reviewing": "Reviewing the reason…",
+      "clear": "The reason is ready for confirmation.",
+      "returnToEdit": "Return to edit",
+      "continueAnyway": "Continue anyway",
+      "advisoryNotice": "This is an advisory suggestion. An authorized administrator may continue after reviewing it."
+    },
     "batch": {
       "noCommonAction": "No single action is valid for every selected withdrawal."
     },

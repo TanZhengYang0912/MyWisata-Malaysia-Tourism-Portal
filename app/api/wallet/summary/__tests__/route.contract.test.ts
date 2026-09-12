@@ -24,4 +24,10 @@ describe('wallet summary readiness contract', () => {
     expect(source).toContain('stripeFallback: destinationId === null');
     expect(source).not.toContain(".order('is_default'");
   });
+
+  it('reads destinations through the trusted server and masks E-wallet labels', () => {
+    expect(source).toContain('createServiceClient');
+    expect(source).toContain('payoutDestinationDisplayLabel');
+    expect(source).not.toContain('displayLabel: destination.label');
+  });
 });

@@ -81,14 +81,14 @@ describe("moderateWalletReason", () => {
   it("requires relevant strict JSON for the selected Wallet category", async () => {
     process.env.GOOGLE_AI_KEY = "test-key";
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":true,"categories":[]}' }] } }] }),
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":true,"professional":true,"categories":[],"advisoryMessage":null}' }] } }] }),
     );
 
     await expect(moderateWalletReason(
       "The payout bank information does not match the verified account.",
       "reject",
       "bank_details_mismatch",
-    )).resolves.toEqual({ flagged: false, relevant: true, categories: [] });
+    )).resolves.toEqual({ flagged: false, relevant: true, professional: true, categories: [], advisoryMessage: null });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.contents[0].parts[0].text).toContain("bank_details_mismatch");
   });
@@ -96,17 +96,33 @@ describe("moderateWalletReason", () => {
   it("returns irrelevant and flagged results instead of treating them as clean", async () => {
     process.env.GOOGLE_AI_KEY = "test-key";
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":false,"categories":["unrelated"]}' }] } }] }),
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":false,"professional":true,"categories":["unrelated"],"advisoryMessage":"State how the payout details failed verification."}' }] } }] }),
     );
     await expect(moderateWalletReason("I do not like this decision.", "hold", "risk_review_required"))
-      .resolves.toEqual({ flagged: false, relevant: false, categories: ["unrelated"] });
+      .resolves.toEqual({ flagged: false, relevant: false, professional: true, categories: ["unrelated"], advisoryMessage: "State how the payout details failed verification." });
 
     vi.restoreAllMocks();
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":true,"relevant":true,"categories":["harassment"]}' }] } }] }),
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":true,"relevant":true,"professional":false,"categories":["harassment"],"advisoryMessage":null}' }] } }] }),
     );
     await expect(moderateWalletReason("You are an idiot and I will hurt you.", "reject", "other"))
-      .resolves.toEqual({ flagged: true, relevant: true, categories: ["harassment"] });
+      .resolves.toEqual({ flagged: true, relevant: true, professional: false, categories: ["harassment"], advisoryMessage: null });
+  });
+
+  it('fails closed when professionalism or advisory output is malformed', async () => {
+    process.env.GOOGLE_AI_KEY = "test-key";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      geminiResponse({ candidates: [{ content: { parts: [{ text: '{"flagged":false,"relevant":true,"professional":"yes","categories":[],"advisoryMessage":null}' }] } }] }),
+    );
+    await expect(moderateWalletReason("A valid reason for review.", "reject", "other"))
+      .resolves.toEqual({ error: "api_unavailable" });
+
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      geminiResponse({ candidates: [{ content: { parts: [{ text: `${JSON.stringify({ flagged: false, relevant: false, professional: true, categories: [], advisoryMessage: "x".repeat(301) })}` }] } }] }),
+    );
+    await expect(moderateWalletReason("A valid reason for review.", "reject", "other"))
+      .resolves.toEqual({ error: "api_unavailable" });
   });
 
   it.each([

@@ -20,6 +20,7 @@ const ACTIVE_WITHDRAWAL_STATUSES = new Set([
   "overdue",
 ]);
 export const DEMO_DESTINATION_REFERENCE = "vendor-customer-demo-alice-tng-v1";
+const DEMO_TNG_PHONE = "+60177143951";
 const DEMO_DOCUMENT_TOKEN = "11111111-1111-4111-8111-111111111111";
 const DEMO_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
@@ -240,12 +241,27 @@ async function readWalletState(service, destinationId) {
   };
 }
 
+async function ensureAliceVerifiedPhone(service) {
+  const user = required(
+    await service.from("users").select("phone,phone_verified_at").eq("id", ALICE_ID).single(),
+    "Alice verified phone lookup failed",
+  );
+  if (user.phone && user.phone_verified_at) return user.phone;
+
+  required(
+    await service.from("users").update({ phone: DEMO_TNG_PHONE, phone_verified_at: new Date().toISOString() }).eq("id", ALICE_ID),
+    "Alice verified phone setup failed",
+  );
+  return DEMO_TNG_PHONE;
+}
+
 export async function seedAliceWalletDemo({ service, url, anonKey, kycHmacKey }) {
   const [aliceClient, adminClient] = await Promise.all([
     signIn(url, anonKey, ALICE_EMAIL, ALICE_ID),
     signIn(url, anonKey, ADMIN_EMAIL, ADMIN_ID),
   ]);
   const kyc = await ensureAliceKyc(service, aliceClient, adminClient, kycHmacKey);
+  const verifiedPhone = await ensureAliceVerifiedPhone(service);
   const destination = required(await service.rpc("save_verified_payout_destination", {
     p_user_id: ALICE_ID,
     p_dest_type: "ewallet",
@@ -287,9 +303,13 @@ export async function seedAliceWalletDemo({ service, url, anonKey, kycHmacKey })
     if (Number(state.wallet.earnings_sen) < WITHDRAWAL_AMOUNT_SEN) {
       throw new Error("alice_wallet_demo_funding_no_longer_available");
     }
-    required(await aliceClient.rpc("submit_wallet_withdrawal", {
+    required(await service.rpc("submit_wallet_withdrawal_server", {
+      p_user_id: ALICE_ID,
+      p_request_id: crypto.randomUUID(),
       p_amount_sen: WITHDRAWAL_AMOUNT_SEN,
       p_destination_id: destinationId,
+      p_expected_tng_phone: verifiedPhone,
+      p_expected_provider_reference: DEMO_DESTINATION_REFERENCE,
     }), "Alice withdrawal submission failed");
   }
 
@@ -302,11 +322,12 @@ export async function seedAliceWalletDemo({ service, url, anonKey, kycHmacKey })
     unrelatedActiveWithdrawal: state.unrelatedActiveWithdrawal,
   });
   if (actions.rejectWithdrawal) {
-    required(await adminClient.rpc("reject_wallet_withdrawal", {
+    required(await service.rpc("reject_wallet_withdrawal_server", {
+      p_actor_id: ADMIN_ID,
       p_id: state.withdrawal.id,
       p_reason: WITHDRAWAL_REJECTION_NOTE,
       p_ip: null,
-      p_reason_category: "customer_request",
+      p_reason_category: "bank_details_mismatch",
     }), "Alice withdrawal rejection failed");
   }
 
