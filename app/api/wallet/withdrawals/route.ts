@@ -6,6 +6,7 @@ import { retrieveConnectAccountStatus } from '@/lib/stripe/connect-status';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { notifyWithdrawalApprovers } from '@/lib/wallet/approver-notifications';
 import { getPayoutDestinationCapabilities } from '@/lib/payouts/destinations';
+import { resolveVerifiedTngIdentity, tngDestinationMatchesIdentity } from '@/lib/payouts/tng-identity';
 import { createServiceClient } from '@/lib/supabase/service';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
   if (destinationId) {
     const { data: destination, error: destinationError } = await db
       .from('payout_destinations')
-      .select('id,dest_type,provider,verification_status,cooldown_until')
+      .select('id,dest_type,provider,provider_reference,verification_status,cooldown_until')
       .eq('id', destinationId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -97,6 +98,18 @@ export async function POST(request: Request) {
       return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'TNG eWallet payouts are not configured yet', 422);
     }
     if (destination.dest_type === 'bank' && destination.provider !== 'stripe_connect') return apiFail('PAYOUT_PROVIDER_UNSUPPORTED', 'This payout provider is not enabled yet', 422);
+
+    if (destination.dest_type === 'ewallet') {
+      const identity = await resolveVerifiedTngIdentity(db, user.id);
+      if (!identity.ok) return apiFail(identity.code, identity.message, identity.status);
+      if (!tngDestinationMatchesIdentity(destination.provider_reference, identity.identity)) {
+        return apiFail(
+          'PAYOUT_DESTINATION_IDENTITY_MISMATCH',
+          'This TNG destination is not bound to your verified account phone',
+          403,
+        );
+      }
+    }
 
     if (destination.dest_type === 'bank') {
       if (!accountId) return apiFail('PAYOUT_ACCOUNT_REQUIRED', 'Complete Stripe payout account setup before requesting a withdrawal', 403);

@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   notifyWithdrawalApprovers: vi.fn(),
   serviceRpc: vi.fn(),
   resolveEffectiveCapability: vi.fn(),
+  capabilities: vi.fn(),
+  resolveTngIdentity: vi.fn(),
+  tngMatches: vi.fn(),
 }));
 
 vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
@@ -33,6 +36,14 @@ vi.mock('@/lib/stripe/connect-status', () => ({
 }));
 vi.mock('@/lib/wallet/approver-notifications', () => ({ notifyWithdrawalApprovers: mocks.notifyWithdrawalApprovers }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ rpc: mocks.serviceRpc })) }));
+vi.mock('@/lib/payouts/destinations', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/payouts/destinations')>();
+  return { ...original, getPayoutDestinationCapabilities: mocks.capabilities };
+});
+vi.mock('@/lib/payouts/tng-identity', () => ({
+  resolveVerifiedTngIdentity: mocks.resolveTngIdentity,
+  tngDestinationMatchesIdentity: mocks.tngMatches,
+}));
 
 import { POST } from '../route';
 
@@ -47,7 +58,7 @@ describe('POST /api/wallet/withdrawals', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
     mocks.select.mockReturnValue({ eq: mocks.selectEq });
-    mocks.selectEq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+    mocks.selectEq.mockReturnValue({ eq: mocks.selectEq, maybeSingle: mocks.maybeSingle });
     mocks.maybeSingle.mockResolvedValue({ data: { stripe_connect_account_id: 'acct_test', phone_verified_at: '2026-07-22T00:00:00.000Z', kyc_status: 'approved', tier: 'kyc_verified' }, error: null });
     mocks.upsert.mockReturnValue({ select: mocks.upsertSelect });
     mocks.upsertSelect.mockReturnValue({ single: mocks.upsertSingle });
@@ -68,6 +79,12 @@ describe('POST /api/wallet/withdrawals', () => {
       capability, allowed: true, blockerCode: null, qualificationPaths: [],
       entitlementGeneration: 7, source: 'policy',
     }));
+    mocks.capabilities.mockReturnValue({ bank_account: { enabled: true, provider: 'stripe_connect' }, e_wallet: { enabled: true, provider: 'tng_direct_credit' } });
+    mocks.resolveTngIdentity.mockResolvedValue({
+      ok: true,
+      identity: { providerReference: 'tng_dest_current', maskedReference: '+60••••3951' },
+    });
+    mocks.tngMatches.mockReturnValue(false);
   });
 
   it('submits only an integer-sen amount to the authenticated withdrawal RPC', async () => {
@@ -153,5 +170,60 @@ describe('POST /api/wallet/withdrawals', () => {
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'STRIPE_STATUS_UNAVAILABLE' } });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('rejects a historical TNG destination that does not match the verified account phone', async () => {
+    mocks.maybeSingle
+      .mockResolvedValueOnce({ data: { stripe_connect_account_id: null }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          id: '33333333-3333-4333-8333-333333333333',
+          dest_type: 'ewallet',
+          provider: 'tng_direct_credit',
+          provider_reference: 'tng_dest_old',
+          verification_status: 'verified',
+          cooldown_until: null,
+        },
+        error: null,
+      });
+
+    const response = await POST(request({
+      amountRm: '50.00',
+      destinationId: '33333333-3333-4333-8333-333333333333',
+    }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'PAYOUT_DESTINATION_IDENTITY_MISMATCH' } });
+    expect(mocks.resolveTngIdentity).toHaveBeenCalledWith(expect.anything(), '11111111-1111-4111-8111-111111111111');
+    expect(mocks.rpc).not.toHaveBeenCalledWith('submit_wallet_withdrawal', expect.anything());
+  });
+
+  it('submits through a TNG destination only when its opaque reference matches', async () => {
+    mocks.maybeSingle
+      .mockResolvedValueOnce({ data: { stripe_connect_account_id: null }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          id: '33333333-3333-4333-8333-333333333333',
+          dest_type: 'ewallet',
+          provider: 'tng_direct_credit',
+          provider_reference: 'tng_dest_current',
+          verification_status: 'verified',
+          cooldown_until: null,
+        },
+        error: null,
+      });
+    mocks.tngMatches.mockReturnValue(true);
+    mocks.rpc.mockResolvedValue({ data: { request_id: '22222222-2222-4222-8222-222222222222' }, error: null });
+
+    const response = await POST(request({
+      amountRm: '50.00',
+      destinationId: '33333333-3333-4333-8333-333333333333',
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith('submit_wallet_withdrawal', {
+      p_amount_sen: 5000,
+      p_destination_id: '33333333-3333-4333-8333-333333333333',
+    });
   });
 });
