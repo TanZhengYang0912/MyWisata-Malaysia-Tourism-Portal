@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, placeCommentCreateSchema);
   if (!parsed.ok) return parsed.response;
-  const cleaned = await cleanUserContent(parsed.data.body, createServiceClient());
+  const cleaned = cleanUserContent(parsed.data.body);
   if (cleaned.hadSlur) return apiFail("CONTENT_REJECTED", "This note cannot be published", 422);
   const safeBody = cleaned.display.trim();
   if (safeBody.length < 8 || safeBody.length > 600) {

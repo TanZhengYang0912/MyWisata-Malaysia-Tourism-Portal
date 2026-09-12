@@ -42,9 +42,6 @@ function mockClient() {
           }),
         };
       }
-      if (table === 'moderation_custom_words') {
-        return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
-      }
       return {
         insert: (payload: { role: string }) => {
           if (payload.role === 'bot') return Promise.resolve({ error: null });

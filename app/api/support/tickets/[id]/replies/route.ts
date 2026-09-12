@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: Props) {
   // CLAUDE-MODERATION.md: masked, never blocked — applies identically to
   // both sides. A masked staff slur is still logged as a moderation flag
   // (worth an HR/conduct look), not just a customer one.
-  const cleaned = await cleanUserContent(body, service);
+  const cleaned = cleanUserContent(body);
 
   const { data: reply, error: replyErr } = await service
     .from('support_ticket_replies')

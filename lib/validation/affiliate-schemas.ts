@@ -31,21 +31,9 @@ export const updateTierSchema = z.object({
   // Percentage, 0..100 — e.g. 5 for 5%. Converted to a 0..1 fraction before storage.
   ratePercent: z.number().min(0).max(100).optional(),
   minReferrals: z.number().int().min(0).optional(),
-  // RM, converted to sen before storage.
-  minSalesAmountRM: z.number().min(0).optional(),
-  // Recency requirement in days, or null to clear it (no requirement).
-  activePeriodDays: z.number().int().min(0).nullable().optional(),
-  // Max % of clicks that may be fraud-flagged, or null to clear the cap.
-  maxFraudRatePercent: z.number().min(0).max(100).nullable().optional(),
-}).strict().refine(
-  (data) =>
-    data.ratePercent !== undefined ||
-    data.minReferrals !== undefined ||
-    data.minSalesAmountRM !== undefined ||
-    data.activePeriodDays !== undefined ||
-    data.maxFraudRatePercent !== undefined,
-  { message: 'Provide at least one field to update' },
-);
+}).strict().refine((data) => data.ratePercent !== undefined || data.minReferrals !== undefined, {
+  message: 'Provide at least one of ratePercent or minReferrals',
+});
 
 export type UpdateTierInput = z.infer<typeof updateTierSchema>;
 

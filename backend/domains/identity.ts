@@ -201,7 +201,7 @@ export async function getOtherDeliveredMessageIds(myUserId: string, messageIds: 
 }
 
 export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string, contextProductId?: string): Promise<ChatMessage> {
-  const { clean } = await maskChatBody(text, supabase);
+  const { clean } = maskChatBody(text);
   const { data, error } = await supabase
     .from("chat_messages")
     .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null, context_product_id: contextProductId ?? null })

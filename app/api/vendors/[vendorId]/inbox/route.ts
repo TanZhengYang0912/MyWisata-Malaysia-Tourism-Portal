@@ -45,7 +45,7 @@ export async function POST(request: Request, { params }: Props) {
     : null;
   if (body.contextOrderId && !context) return apiFail('NOT_FOUND', "That order isn't this customer's", 404);
 
-  const { clean } = await maskChatBody((body.body ?? '').trim(), access.service);
+  const { clean } = maskChatBody((body.body ?? '').trim());
   const { data: message, error } = await access.service.from('chat_messages').insert({
     thread_id: thread.id,
     sender_id: access.user.id,

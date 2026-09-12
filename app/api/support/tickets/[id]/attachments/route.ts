@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const rawCaption = (formData.get('caption') as string | null)?.trim() ?? '';
-  const cleaned = await cleanUserContent(rawCaption, service);
+  const cleaned = cleanUserContent(rawCaption);
 
   const path = buildTicketAttachmentPath(id, crypto.randomUUID(), file.type);
   const upload = await service.storage.from('ticket-attachments').upload(path, validated.buffer, { contentType: file.type, upsert: false });

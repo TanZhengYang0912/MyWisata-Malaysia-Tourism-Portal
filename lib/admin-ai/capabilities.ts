@@ -415,27 +415,6 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     source: 'app/admin/staff-conduct/page.tsx, components/admin/staff-conduct-panel.tsx, app/api/admin/conduct-flags/route.ts, app/api/admin/chat-conduct-reports/route.ts, lib/moderation/chat-conduct-reports.ts',
   },
   {
-    name: 'moderation_words',
-    description:
-      'Adding words to the auto-censor list — words that get masked wherever profanity/slurs are already masked (tickets, comments, chatbot, chat).',
-    path: '/admin/moderation-words',
-    role: 'super_admin',
-    actions: [
-      'Add a word (any language) to be auto-censored, tagged as either "profanity" or "slur"',
-      'Optionally tag a word with a language label, for the admin\'s own reference — this label is not enforced',
-      'Toggle a word active/inactive without deleting it',
-      'Delete a word from the list',
-    ],
-    notes: [
-      'Super Admin only.',
-      'Supplements — does not replace — the built-in, hardcoded English profanity/slur lists (lib/moderation/wordlists.ts). Words added here are for cases the built-in list misses, especially other languages.',
-      'Takes effect immediately on the next message — no redeploy needed.',
-      'Applies everywhere existing profanity masking already runs: support tickets, place comments, the customer chatbot, the admin AI assistant, and customer<->vendor chat.',
-    ],
-    keywords: ['banned word', 'custom word', 'word list', 'censor list', 'moderation word', 'add a word'],
-    source: 'app/admin/moderation-words/page.tsx, app/api/admin/moderation-words/route.ts, app/api/admin/moderation-words/[id]/route.ts, lib/moderation/custom-words.ts',
-  },
-  {
     name: 'rewards_clearing',
     description: 'Clearing pending affiliate earnings that are past their hold period.',
     path: '/admin/rewards',

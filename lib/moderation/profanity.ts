@@ -94,21 +94,11 @@ function maskMatch(match: string): string {
   return match[0] + '*'.repeat(match.length - 1);
 }
 
-/** Admin-added words (lib/moderation/custom-words.ts) — merged in per call, since they can change at any time. */
-export interface ExtraWords {
-  profanity: string[];
-  slur: string[];
-}
-
-export function maskProfanity(text: string, extra?: ExtraWords): MaskProfanityResult {
+export function maskProfanity(text: string): MaskProfanityResult {
   let masked = text;
   const hits = new Set<HitCategory>();
 
-  const lists = [...COMPILED_LISTS];
-  if (extra?.slur.length) lists.push(compileList(extra.slur, 'slur'));
-  if (extra?.profanity.length) lists.push(compileList(extra.profanity, 'profanity'));
-
-  for (const { category, regex } of lists) {
+  for (const { category, regex } of COMPILED_LISTS) {
     regex.lastIndex = 0; // reset shared regex state between calls
     if (regex.test(masked)) hits.add(category);
     regex.lastIndex = 0;

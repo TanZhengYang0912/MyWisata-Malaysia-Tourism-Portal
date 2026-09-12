@@ -42,12 +42,12 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail(validated.code, 'File must be a JPEG, PNG, WEBP, or PDF under 10 MB', 422);
   }
 
-  const service = createServiceClient();
   const rawCaption = (formData.get('caption') as string | null)?.trim() ?? '';
-  const caption = (await maskChatBody(rawCaption, service)).clean;
+  const caption = maskChatBody(rawCaption).clean;
   const replyToId = (formData.get('replyToId') as string | null) || null;
 
   const path = buildChatAttachmentPath(threadId, crypto.randomUUID(), file.type);
+  const service = createServiceClient();
   const upload = await service.storage.from('chat-attachments').upload(path, validated.buffer, { contentType: file.type, upsert: false });
   if (upload.error) return apiFail('UPLOAD_FAILED', 'Unable to upload attachment', 502);
 

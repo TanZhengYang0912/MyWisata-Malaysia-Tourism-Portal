@@ -829,11 +829,7 @@
     "referralCount_one": "{{count}} 推荐",
     "referralCount_other": "{{count}} 推荐",
     "accept": "通过",
-    "reject": "拒绝",
-    "minSalesAmount": "最低销售额 (RM)",
-    "activePeriodDays": "活跃期限（天）",
-    "maxFraudRate": "最高欺诈率",
-    "noLimit": "—"
+    "reject": "拒绝"
   },
   "aiAssistant": {
     "ask": {
@@ -2965,45 +2961,5 @@
     "recommendationFindingMeta": "{{kindLabel}}：{{kind}} · {{severityLabel}}：{{severity}}",
     "recommendationEvidence": "{{label}}：{{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
-  },
-  "moderationWords": {
-    "eyebrow": "内容审核",
-    "title": "审核词库",
-    "description": "添加需要在工单、评论、聊天机器人和聊天中自动屏蔽的词语——用于补充内置词库，尤其是其他语言的词汇。",
-    "loading": "加载中…",
-    "empty": "尚未添加自定义词语。",
-    "confirmDelete": "确定要从自动屏蔽列表中移除“{{term}}”吗？",
-    "form": {
-      "term": "词语",
-      "termPlaceholder": "输入要屏蔽的词语",
-      "category": "类别",
-      "language": "语言（可选）",
-      "languagePlaceholder": "例如：ms、zh",
-      "add": "添加词语"
-    },
-    "category": {
-      "profanity": "粗俗用语",
-      "slur": "侮辱性用语"
-    },
-    "status": {
-      "active": "已启用",
-      "inactive": "已停用"
-    },
-    "table": {
-      "term": "词语",
-      "category": "类别",
-      "language": "语言",
-      "status": "状态",
-      "remove": "移除"
-    },
-    "success": {
-      "added": "词语已添加",
-      "removed": "词语已移除"
-    },
-    "errors": {
-      "add": "无法添加词语",
-      "update": "无法更新词语",
-      "remove": "无法移除词语"
-    }
   }
 }

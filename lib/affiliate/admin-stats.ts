@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { add } from '@/lib/money';
-import { getActiveTiers, resolveTier, type CommissionTier, type TierSignals } from './tier';
+import { getActiveTiers, resolveTier, type CommissionTier } from './tier';
 import { computeFunnel, type Funnel } from './funnel';
 import { rankByCommission } from './leaderboard';
 import { resolveProductNames } from './product-names';
@@ -51,12 +51,11 @@ function userDisplayName(row: { full_name: string | null; email: string } | unde
 }
 
 export async function getAffiliateAdminStats(service: SupabaseClient): Promise<AffiliateAdminStats> {
-  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, { data: sharesData }, { data: fraudFlagsData }, tiers] = await Promise.all([
+  const [{ data: linksData }, { data: clicksData }, { data: attributionsData }, { data: sharesData }, tiers] = await Promise.all([
     service.from('affiliate_links').select('id, user_id, affiliate_code, is_active'),
     service.from('affiliate_clicks').select('id, link_id, target_type, target_id, ip_hash, source, created_at'),
     service.from('affiliate_attributions').select('id, click_id, order_id, commission_amount, status, created_at'),
     service.from('share_events').select('platform'),
-    service.from('affiliate_fraud_flags').select('link_id, status').neq('status', 'dismissed'),
     getActiveTiers(service),
   ]);
 
@@ -86,55 +85,13 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
   // pending ones too (for the "Referrals" totals card).
   const referralCountByLink = new Map<string, number>();
   const confirmedCountByLink = new Map<string, number>();
-  const confirmedOrderIdsByLink = new Map<string, string[]>();
-  const lastConfirmedAtByLink = new Map<string, string>();
   for (const attribution of activeAttributions) {
     const click = clickById.get(attribution.click_id);
     if (!click) continue;
     referralCountByLink.set(click.link_id, (referralCountByLink.get(click.link_id) ?? 0) + 1);
     if (attribution.status === 'confirmed') {
       confirmedCountByLink.set(click.link_id, (confirmedCountByLink.get(click.link_id) ?? 0) + 1);
-      const orderIds = confirmedOrderIdsByLink.get(click.link_id) ?? [];
-      orderIds.push(attribution.order_id);
-      confirmedOrderIdsByLink.set(click.link_id, orderIds);
-      const previousLatest = lastConfirmedAtByLink.get(click.link_id);
-      if (!previousLatest || attribution.created_at > previousLatest) lastConfirmedAtByLink.set(click.link_id, attribution.created_at);
     }
-  }
-
-  // ── Tier signals (lib/affiliate/tier.ts): sales amount (order gross, not
-  // commission) and fraud rate, per link — mirrors getTierForUser()'s
-  // per-user queries but resolved once here for every affiliate at once. ──
-  const clicksByLink = new Map<string, number>();
-  for (const click of clicks) clicksByLink.set(click.link_id, (clicksByLink.get(click.link_id) ?? 0) + 1);
-
-  const fraudFlagCountByLink = new Map<string, number>();
-  for (const flag of fraudFlagsData ?? []) {
-    if (!flag.link_id) continue;
-    fraudFlagCountByLink.set(flag.link_id, (fraudFlagCountByLink.get(flag.link_id) ?? 0) + 1);
-  }
-
-  const allConfirmedOrderIds = [...new Set([...confirmedOrderIdsByLink.values()].flat())];
-  const { data: ordersData } = allConfirmedOrderIds.length
-    ? await service.from('orders').select('id, total_amount').in('id', allConfirmedOrderIds)
-    : { data: [] as { id: string; total_amount: number }[] };
-  const orderTotalById = new Map((ordersData ?? []).map((o) => [o.id, Number(o.total_amount)]));
-
-  const salesAmountSenByLink = new Map<string, number>();
-  for (const [linkId, orderIds] of confirmedOrderIdsByLink) {
-    const sen = orderIds.reduce((sum, id) => sum + Math.round((orderTotalById.get(id) ?? 0) * 100), 0);
-    salesAmountSenByLink.set(linkId, sen);
-  }
-
-  function signalsForLink(linkId: string): TierSignals {
-    const lastConfirmedAt = lastConfirmedAtByLink.get(linkId);
-    const clickCount = clicksByLink.get(linkId) ?? 0;
-    return {
-      referralCount: confirmedCountByLink.get(linkId) ?? 0,
-      salesAmountSen: salesAmountSenByLink.get(linkId) ?? 0,
-      daysSinceLastConfirmed: lastConfirmedAt ? Math.floor((Date.now() - new Date(lastConfirmedAt).getTime()) / 86_400_000) : null,
-      fraudRatePercent: clickCount > 0 ? (fraudFlagCountByLink.get(linkId) ?? 0) / clickCount * 100 : 0,
-    };
   }
 
   // ── Top earners — lib/affiliate/leaderboard.ts's rankByCommission(), the
@@ -146,7 +103,7 @@ export async function getAffiliateAdminStats(service: SupabaseClient): Promise<A
     .filter((e) => e.commission > 0)
     .slice(0, TOP_EARNERS_LIMIT)
     .map((entry) => {
-      const tier = resolveTier(tiers, signalsForLink(entry.linkId));
+      const tier = resolveTier(tiers, confirmedCountByLink.get(entry.linkId) ?? 0);
       return {
         userId: entry.userId,
         userName: userDisplayName(usersById.get(entry.userId)),

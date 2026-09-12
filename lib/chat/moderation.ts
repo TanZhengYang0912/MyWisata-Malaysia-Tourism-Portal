@@ -1,10 +1,6 @@
-// Shopee-style local masking for chat messages — regex/wordlist, not an LLM
-// call. Also merges in admin-added words (lib/moderation/custom-words.ts),
-// so it now needs a service client and is async; every current caller is
-// server-side (API routes / backend/domains/identity.ts) already.
-
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { getActiveTermsByCategory } from '@/lib/moderation/custom-words';
+// Shopee-style local masking for chat messages — synchronous regex/wordlist,
+// not an LLM call, so it can run on both the client (customer send path) and
+// server (vendor/attachment routes) with no latency cost.
 
 export type ModerationFlag = 'email' | 'link' | 'phone' | 'profanity';
 
@@ -42,24 +38,7 @@ function digitCount(text: string): number {
   return (text.match(/\d/g) ?? []).length;
 }
 
-function escapeRegExp(term: string): string {
-  return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Admin-added terms (lib/moderation/custom-words.ts), merged in per call
- * since they can change at any time. No `\b` word-boundary here (unlike the
- * base pattern above) — \b relies on \w, which only covers Latin letters, so
- * it never matches around CJK/Thai/etc. terms with no ASCII neighbour. Plain
- * substring matching trades a little Scunthorpe-safety for actually being
- * able to catch non-Latin-script words at all.
- */
-function buildExtraPattern(terms: string[]): RegExp | null {
-  if (terms.length === 0) return null;
-  return new RegExp(terms.map(escapeRegExp).join('|'), 'gi');
-}
-
-export async function maskChatBody(text: string, service: SupabaseClient): Promise<MaskResult> {
+export function maskChatBody(text: string): MaskResult {
   const flags = new Set<ModerationFlag>();
   let clean = text;
 
@@ -82,13 +61,6 @@ export async function maskChatBody(text: string, service: SupabaseClient): Promi
 
   if (clean.match(PROFANITY_PATTERN)) flags.add('profanity');
   clean = clean.replace(PROFANITY_PATTERN, PROFANITY_MASK);
-
-  const extra = await getActiveTermsByCategory(service);
-  const extraPattern = buildExtraPattern([...extra.profanity, ...extra.slur]);
-  if (extraPattern) {
-    if (clean.match(extraPattern)) flags.add('profanity');
-    clean = clean.replace(extraPattern, PROFANITY_MASK);
-  }
 
   return { clean, flags: Array.from(flags) };
 }

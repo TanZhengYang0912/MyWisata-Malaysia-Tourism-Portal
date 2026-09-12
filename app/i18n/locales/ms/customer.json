@@ -2394,8 +2394,7 @@
       "myLink": "Pautan ahli gabungan saya",
       "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
-      "generateLink": "Jana pautan saya",
-      "totalEarnings": "Jumlah Pendapatan"
+      "generateLink": "Jana pautan saya"
     },
     "tripPlanner": {
       "scheduledFor": "Dijadualkan pada {{date}}",

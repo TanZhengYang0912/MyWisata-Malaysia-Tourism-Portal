@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, ShieldBan, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone, Scale, type LucideIcon } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone, Scale, type LucideIcon } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
@@ -94,7 +94,6 @@ const NAV_SECTIONS: AdminNavSection[] = [
       // capability, and was only ever co-located there because that page was
       // already super-admin-gated.
       { href: "/admin/staff-conduct", label: "Staff Conduct", icon: UserX, superAdminOnly: true },
-      { href: "/admin/moderation-words", label: "Moderation Words", icon: ShieldBan, superAdminOnly: true },
     ],
   },
 ];
