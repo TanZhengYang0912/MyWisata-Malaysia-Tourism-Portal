@@ -4,7 +4,7 @@
 
 **Goal:** Bind TNG withdrawals to the authenticated customer's OTP-verified phone, restore explicit signed transaction amounts, make Wallet requests recover safely from latency, and add a tamper-resistant Gemini rejection-assistant step.
 
-**Architecture:** Preserve the existing Wallet, payout destination, withdrawal approval, ledger, and settlement boundaries. Add one server-only TNG identity resolver shared by destination and withdrawal APIs, and one server-only moderation credential helper shared by review and rejection APIs. Extend the current customer Wallet and Admin withdrawal detail in place; do not add a second flow, database migration, global request framework, or production TNG claim.
+**Architecture:** Preserve the existing Wallet, payout destination, withdrawal approval, ledger, and settlement boundaries. Add one server-only TNG identity resolver shared by destination and withdrawal APIs, one forward-only security migration that moves submission and rejection behind service-role RPCs, and one server-only moderation credential helper shared by review and rejection APIs. Extend the current customer Wallet and Admin withdrawal detail in place; do not add a second flow, global request framework, or production TNG claim.
 
 **Tech Stack:** Next.js 16.2.10 App Router, React 19.2.4, TypeScript, Supabase, TailwindCSS, Gemini REST API, Node `crypto`, Vitest, Playwright.
 
@@ -18,7 +18,7 @@
 - Preserve Stripe behavior, withdrawal statuses, KYC, dual approval, balances, ledger writes, provider processing, signed callbacks, and settlement.
 - Gemini prohibited content, unavailability, timeout, and rate limiting remain blocking; relevance and tone are advisory.
 - Credit renders as `+RM50.00`; debit renders as `-RM50.00`; colour is supplementary.
-- Add no package dependency or database migration.
+- Add no package dependency. Add exactly one forward-only Wallet security migration; never rewrite historical migrations.
 - Preserve the user's unrelated checkout and multi-outlet migration changes.
 
 ## Reuse Decisions
@@ -30,6 +30,7 @@
 | TNG provider | `lib/payouts/providers/tng-direct-credit.ts` | Reuse | Already produces masks and opaque provider references from the validated phone. |
 | Verified identity | `users.phone`, `users.phone_verified_at` | Reuse | Existing OTP flow makes these server-managed facts. |
 | Withdrawal API | `app/api/wallet/withdrawals/route.ts` | Extend | Final authority before `submit_wallet_withdrawal`. |
+| Existing submission/rejection RPC logic | `supabase/migrations/20260830013000_independent_capability_hard_guards.sql`, `supabase/legacy-migrations/079_wallet_hold_resume_notifications.sql` | Extend in a new migration | Preserve money and audit behavior while removing authenticated direct-execution bypasses. |
 | Customer Wallet | `app/customer/wallet/page.tsx` | Extend | Existing destination, readiness, submission, and refresh owner. |
 | Transaction helper | `lib/wallet/transaction-display.ts` | Repair | Direction-based sign behavior existed and regressed. |
 | Timeout pattern | `app/admin/wallet/settings/page.tsx` | Reuse pattern | Existing eight-second abort, cleanup, error, and Retry behavior. |
@@ -40,6 +41,8 @@
 | Production TNG adapter | N/A | Reject | No reviewed production identity contract exists. |
 
 **Reuse audit complete.**
+
+**Approved scope expansion (2026-09-12):** A read-only security review proved that authenticated users could call the existing submission/rejection RPCs directly and read provider references through PostgREST. The user approved one forward migration, service-role RPC boundaries, column-level privilege reduction, masked e-wallet projections, and UUID idempotency. These requirements supersede earlier “no database migration” and amount/time reconciliation text below where they conflict.
 
 ---
 
@@ -269,6 +272,51 @@ git add lib/payouts/tng-identity.ts lib/payouts/__tests__/tng-identity.test.ts a
 git commit -m "fix: bind TNG withdrawals to verified phone"
 ```
 
+### Task 2B: Close direct RPC and provider-reference bypasses
+
+**Files:**
+- Create: `supabase/migrations/20260912173000_withdrawal_trust_boundary.sql`
+- Create: `supabase/migrations/__tests__/20260912173000_withdrawal_trust_boundary.test.ts`
+- Modify: `supabase/migrations/__tests__/canonical-history.test.ts`
+- Modify: `lib/payouts/tng-identity.ts`
+- Modify: `lib/payouts/__tests__/tng-identity.test.ts`
+- Modify: `app/api/wallet/destinations/route.ts`
+- Modify: `app/api/wallet/destinations/__tests__/route.test.ts`
+- Modify: `app/api/wallet/summary/route.ts`
+- Modify: `app/api/wallet/summary/__tests__/route.test.ts`
+- Modify: `app/api/wallet/withdrawals/route.ts`
+- Modify: `app/api/wallet/withdrawals/__tests__/route.test.ts`
+- Modify later with Task 5: `app/api/admin/withdrawals/[id]/reject/route.ts` and its test
+
+**Security contract:**
+- Revoke authenticated execution of `submit_wallet_withdrawal(BIGINT, UUID)` and `reject_wallet_withdrawal(UUID, TEXT, INET, TEXT)`.
+- Add service-role-only `submit_wallet_withdrawal_server(UUID, UUID, BIGINT, UUID, TEXT, TEXT)` taking user ID, request UUID, amount, destination, expected verified phone, and expected opaque reference.
+- Add service-role-only `reject_wallet_withdrawal_server(UUID, UUID, TEXT, INET, TEXT)` taking actor ID explicitly and retaining `is_approver`, self-dealing, state, accounting, audit, notification, and reason checks.
+- The submission RPC locks the current user and destination, validates exact TNG phone/reference binding in the same transaction, and treats the request UUID as an idempotency key.
+- Revoke authenticated table `SELECT` on `payout_destinations`; reduce authenticated `withdrawal_requests` reads to `id,user_id,amount,status,requires_dual_approval,destination_label,created_at`.
+- Authenticated API routes use service-role reads only after cookie authentication and always include `user_id = authenticated user` predicates.
+- E-wallet output ignores historical `label` and derives display text only from `masked_ref`.
+
+- [ ] **Step 1: Add the missing-migration and canonical-history RED tests**
+
+Assert the migration contains the two revokes, two service-only grants, service-role guards, exact TNG comparisons, request-ID idempotency checks, column privilege reduction, and no grant of either new function to `authenticated`.
+
+- [ ] **Step 2: Add route RED tests**
+
+Require the submission route to generate/accept a request UUID, call only `submit_wallet_withdrawal_server` through `createServiceClient`, and pass the verified phone/reference for TNG. Require destination and summary responses to ignore an e-wallet `label` containing a full phone and expose only `masked_ref`.
+
+- [ ] **Step 3: Implement the forward migration and server-only route boundary**
+
+Copy the current authoritative accounting and rejection behavior into the new service RPCs. Do not change balances, ledger types, audit actions, notifications, approval cycles, or allowed states. Return `{ request_id, replayed }`; on an existing request UUID, verify the same user, amount, and destination before returning it without repeating side effects.
+
+- [ ] **Step 4: Verify and commit**
+
+```bash
+npx vitest run supabase/migrations/__tests__/20260912173000_withdrawal_trust_boundary.test.ts supabase/migrations/__tests__/canonical-history.test.ts lib/payouts/__tests__/tng-identity.test.ts app/api/wallet/destinations/__tests__/route.test.ts app/api/wallet/summary/__tests__/route.test.ts app/api/wallet/withdrawals/__tests__/route.test.ts
+git add supabase/migrations/20260912173000_withdrawal_trust_boundary.sql supabase/migrations/__tests__/20260912173000_withdrawal_trust_boundary.test.ts supabase/migrations/__tests__/canonical-history.test.ts lib/payouts/tng-identity.ts lib/payouts/__tests__/tng-identity.test.ts app/api/wallet/destinations/route.ts app/api/wallet/destinations/__tests__/route.test.ts app/api/wallet/summary/route.ts app/api/wallet/summary/__tests__/route.test.ts app/api/wallet/withdrawals/route.ts app/api/wallet/withdrawals/__tests__/route.test.ts
+git commit -m "fix: enforce withdrawal trust boundary"
+```
+
 ### Task 3: Replace arbitrary TNG input and bound Wallet reads
 
 **Files:**
@@ -436,67 +484,16 @@ git commit -m "feat: harden customer withdrawal experience"
 ### Task 4: Reconcile ambiguous submission timeouts
 
 **Files:**
-- Create: `lib/wallet/withdrawal-reconciliation.ts`
-- Create: `lib/wallet/__tests__/withdrawal-reconciliation.test.ts`
 - Modify: `app/customer/wallet/page.tsx`
 - Modify: `app/customer/wallet/__tests__/stripe-jit.test.ts`
 
-**Interfaces:**
-
-```ts
-export function findSubmittedWithdrawal(
-  withdrawals: WithdrawalRequest[],
-  input: { amountSen: number; submittedAtMs: number; clockSkewMs?: number; outcomeWindowMs?: number },
-): WithdrawalRequest | null;
-```
-
-- [ ] **Step 1: Write failing reconciliation tests**
-
-Use old RM50, recent RM70, and recent RM50 requests:
-
-```ts
-expect(findSubmittedWithdrawal(withdrawals, { amountSen: 5000, submittedAtMs })).toMatchObject({ id: 'recent-50' });
-expect(findSubmittedWithdrawal(withdrawals, { amountSen: 5100, submittedAtMs })).toBeNull();
-```
-
-Require invalid dates, unsafe/non-positive sen amounts, requests older than the clock-skew allowance, and requests beyond the bounded future outcome window to return `null`.
-
-- [ ] **Step 2: Run the test and verify RED**
-
-```bash
-npx vitest run lib/wallet/__tests__/withdrawal-reconciliation.test.ts
-```
-
-Expected: module missing.
-
-- [ ] **Step 3: Implement deterministic matching**
-
-```ts
-export function findSubmittedWithdrawal(
-  withdrawals: WithdrawalRequest[],
-  input: { amountSen: number; submittedAtMs: number; clockSkewMs?: number; outcomeWindowMs?: number },
-) {
-  if (!Number.isSafeInteger(input.amountSen) || input.amountSen <= 0 || !Number.isFinite(input.submittedAtMs)) return null;
-  const earliest = input.submittedAtMs - (input.clockSkewMs ?? 5_000);
-  const latest = input.submittedAtMs + (input.outcomeWindowMs ?? 60_000);
-  return withdrawals.find((withdrawal) => {
-    const createdAtMs = Date.parse(withdrawal.createdAt);
-    return Math.round(withdrawal.amount * 100) === input.amountSen
-      && Number.isFinite(createdAtMs)
-      && createdAtMs >= earliest
-      && createdAtMs <= latest;
-  }) ?? null;
-}
-```
-
-Do not infer success from status or destination label.
-
-- [ ] **Step 4: Add failing Wallet submission contracts**
+- [ ] **Step 1: Add failing Wallet submission contracts**
 
 ```ts
 expect(page).toContain('const [confirmingWithdrawal, setConfirmingWithdrawal] = useState(false)');
 expect(page).toContain('const WITHDRAWAL_ACTION_TIMEOUT_MS = 15_000');
-expect(page).toContain('findSubmittedWithdrawal');
+expect(page).toContain('const requestId = crypto.randomUUID()');
+expect(page).toContain('withdrawals.some((withdrawal) => withdrawal.id === requestId)');
 expect(page).toContain('tCustomer("ui.wallet.confirmingWithdrawal")');
 expect(page).toContain('tCustomer("ui.wallet.withdrawalOutcomeUnknown")');
 expect(page).toContain('withdrawing || confirmingWithdrawal');
@@ -504,7 +501,7 @@ expect(handleWithdraw.indexOf('setWithdrawalSubmitted(true)'))
   .toBeLessThan(handleWithdraw.indexOf('void refreshWalletState(selectedDestinationId)'));
 ```
 
-- [ ] **Step 5: Run the contract and verify RED**
+- [ ] **Step 2: Run the contract and verify RED**
 
 ```bash
 npx vitest run app/customer/wallet/__tests__/stripe-jit.test.ts
@@ -512,7 +509,7 @@ npx vitest run app/customer/wallet/__tests__/stripe-jit.test.ts
 
 Expected: current success waits for refresh and every exception is treated as definite failure.
 
-- [ ] **Step 6: Implement immediate success and bounded reconciliation**
+- [ ] **Step 3: Implement immediate success and exact-ID reconciliation**
 
 Add alongside the Wallet read timeout:
 
@@ -520,11 +517,10 @@ Add alongside the Wallet read timeout:
 const WITHDRAWAL_ACTION_TIMEOUT_MS = 15_000;
 ```
 
-Capture:
+Create one request identity immediately before submission and include it in the strict API body:
 
 ```ts
-const amountSen = Math.round(amount * 100);
-const submittedAtMs = Date.now();
+const requestId = crypto.randomUUID();
 ```
 
 Wrap submission with a 15-second controller. On `201` immediately call:
@@ -536,20 +532,20 @@ setWithdrawAmount("");
 void refreshWalletState(selectedDestinationId);
 ```
 
-On `AbortError`, show `confirmingWithdrawal`, keep submit disabled, and perform at most three `getMyWithdrawals` reads after delays `0`, `1_500`, and `3_000` milliseconds. Give every read its own eight-second controller. If the helper finds a match, use the normal success state. Otherwise show `withdrawalOutcomeUnknown` and re-enable submission. Keep the database `active_withdrawal_exists` guard unchanged.
+On `AbortError`, show `confirmingWithdrawal`, keep submit disabled, and perform at most three `getMyWithdrawals` reads after delays `0`, `1_500`, and `3_000` milliseconds. Give every read its own eight-second controller. If `withdrawals.some((withdrawal) => withdrawal.id === requestId)`, use the normal success state. Otherwise show `withdrawalOutcomeUnknown` and re-enable submission. The service RPC makes retries with the same request ID idempotent, and the existing active-withdrawal guard remains secondary protection.
 
-- [ ] **Step 7: Run focused tests and verify GREEN**
+- [ ] **Step 4: Run focused tests and verify GREEN**
 
 ```bash
-npx vitest run lib/wallet/__tests__/withdrawal-reconciliation.test.ts app/customer/wallet/__tests__/stripe-jit.test.ts app/api/wallet/withdrawals/__tests__/route.test.ts
+npx vitest run app/customer/wallet/__tests__/stripe-jit.test.ts app/api/wallet/withdrawals/__tests__/route.test.ts
 ```
 
 Expected: known success is immediate and ambiguous timeouts cannot immediately trigger a duplicate attempt.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add lib/wallet/withdrawal-reconciliation.ts lib/wallet/__tests__/withdrawal-reconciliation.test.ts app/customer/wallet/page.tsx app/customer/wallet/__tests__/stripe-jit.test.ts
+git add app/customer/wallet/page.tsx app/customer/wallet/__tests__/stripe-jit.test.ts
 git commit -m "fix: reconcile timed out withdrawal submissions"
 ```
 
@@ -963,7 +959,6 @@ npx vitest run \
   app/customer/wallet/__tests__/payout-destinations.test.ts \
   app/customer/wallet/__tests__/transaction-history.contract.test.ts \
   app/customer/wallet/__tests__/stripe-jit.test.ts \
-  lib/wallet/__tests__/withdrawal-reconciliation.test.ts \
   lib/moderation.test.ts \
   lib/wallet/__tests__/moderation-guard.test.ts \
   lib/wallet/__tests__/moderation-credential.test.ts \
@@ -1038,14 +1033,17 @@ Report focused tests, TypeScript, lint, Playwright, diff check, and review class
 - `app/api/wallet/destinations/__tests__/route.test.ts`
 - `app/api/wallet/withdrawals/route.ts`
 - `app/api/wallet/withdrawals/__tests__/route.test.ts`
+- `app/api/wallet/summary/route.ts`
+- `app/api/wallet/summary/__tests__/route.test.ts`
 - `app/customer/wallet/page.tsx`
 - `app/customer/wallet/__tests__/payout-destinations.test.ts`
 - `app/customer/wallet/__tests__/transaction-history.contract.test.ts`
 - `app/customer/wallet/__tests__/stripe-jit.test.ts`
 - `backend/domains/commerce.ts`
 - `backend/domains/__tests__/customer-wallet-history.test.ts`
-- `lib/wallet/withdrawal-reconciliation.ts`
-- `lib/wallet/__tests__/withdrawal-reconciliation.test.ts`
+- `supabase/migrations/20260912173000_withdrawal_trust_boundary.sql`
+- `supabase/migrations/__tests__/20260912173000_withdrawal_trust_boundary.test.ts`
+- `supabase/migrations/__tests__/canonical-history.test.ts`
 - `lib/moderation.ts`
 - `lib/moderation.test.ts`
 - `lib/wallet/moderation-guard.ts`
@@ -1077,7 +1075,7 @@ Report focused tests, TypeScript, lint, Playwright, diff check, and review class
 - `app/api/tng/payout/webhook/**`
 - `lib/payouts/tng-webhook.ts`
 - `lib/payouts/execute-approved-withdrawal.ts`
-- `supabase/migrations/**`
+- Existing files under `supabase/migrations/**` except the new migration and the two migration contract tests listed above.
 - `supabase/legacy-migrations/**`
 - `supabase/seed.sql`
 - Vendor Wallet, recommendation moderation, KYC review, checkout, orders, refunds, and unrelated Admin pages.
@@ -1088,7 +1086,7 @@ None. HMAC, SHA-256, and constant-time comparison use Node's existing `crypto` m
 
 ## Database Changes
 
-None. Reuse existing `users`, `payout_destinations`, `withdrawal_requests`, `wallet_transactions`, `wallet_moderation_attempts`, and RPC contracts.
+One forward-only migration. It adds service-role-only submission and rejection RPCs, revokes the former authenticated execution paths, reduces authenticated column privileges, and uses the existing withdrawal UUID primary key as the idempotency key. It adds no table or column and preserves existing money, ledger, approval, and audit data.
 
 ## Risks
 

@@ -1,7 +1,7 @@
 # Withdrawal Identity, Assistant, and Resilience Design
 
 **Date:** 2026-09-12
-**Status:** Approved design; implementation plan ready for review
+**Status:** Approved for implementation, including the 2026-09-12 database security addendum
 
 ## Context
 
@@ -45,7 +45,7 @@ are mature and must be preserved.
 - Delete historical payout destinations automatically.
 - Add a global request framework or a new shared UI abstraction with only one
   consumer.
-- Add a database migration or a new package dependency.
+- Add a new package dependency or alter unrelated database domains.
 
 ## Reuse Decisions
 
@@ -88,8 +88,10 @@ The browser must never choose the TNG identity used for payout.
   current verified-phone-derived provider reference as unavailable. It does not
   reveal either provider reference to the browser.
 - Withdrawal submission independently repeats the identity match before calling
-  `submit_wallet_withdrawal`. This server-side recheck prevents a crafted client
-  or an old arbitrary destination from bypassing the UI.
+  a service-role-only submission RPC. The RPC locks the current user and payout
+  destination in one transaction and compares the expected verified phone and
+  opaque provider reference before reserving money. The former authenticated
+  submission RPC is revoked, preventing direct PostgREST bypass.
 - Existing mismatched destinations remain stored for auditability but cannot be
   selected or used. Deletion and data migration are outside this change.
 - Stripe bank destinations keep their existing behavior.
@@ -111,9 +113,9 @@ or the bundler itself.
 - A withdrawal request uses a longer action timeout. If the browser times out,
   the UI enters an explicit “confirming outcome” state instead of declaring
   failure.
-- Outcome reconciliation reloads the authenticated customer's withdrawals and
-  checks for the submitted amount inside a bounded lower-and-upper request-time
-  window. The submit control
+- The browser generates one UUID per submission attempt. The same UUID becomes
+  the withdrawal request ID and idempotency key. Outcome reconciliation reloads
+  the authenticated customer's withdrawals and checks for that exact ID. The submit control
   stays disabled until the system either finds the new request or completes a
   bounded reconciliation attempt with no match.
 - The existing database active-withdrawal guard remains the final protection
@@ -162,6 +164,26 @@ Withdrawal rejection uses a two-step, server-authoritative review:
    instead of invoking Gemini again, avoiding duplicated latency and rate-limit
    consumption.
 
+The final rejection route invokes a new service-role-only rejection RPC with the
+authenticated approver ID after credential verification. Direct execution of the
+former authenticated rejection RPC is revoked, so prohibited content cannot
+bypass the application boundary.
+
+### 5. Database privilege and projection boundary
+
+- Authenticated clients lose direct execution of withdrawal submission and
+  rejection RPCs.
+- Authenticated clients lose direct `SELECT` on `payout_destinations`; authenticated
+  APIs authenticate first and then query it with explicit service-role ownership
+  predicates.
+- `withdrawal_requests` authenticated reads are reduced to the seven columns used
+  by existing customer/vendor/admin list clients. Provider references remain
+  service-only.
+- E-wallet display labels come from the server-controlled masked reference, not
+  historical user-entered labels, in both destination and Wallet-summary APIs.
+- One forward-only migration and its canonical-history contract implement these
+  changes; no existing migration is rewritten.
+
 The existing `wallet_moderation_attempts` record remains metadata-only. The
 complete administrator reason continues to live only in the existing withdrawal
 decision audit record.
@@ -176,8 +198,8 @@ decision audit record.
   display data and is rejected again at withdrawal submission.
 - Provider failure never saves a destination.
 - Read timeouts preserve already loaded Wallet sections and expose Retry.
-- Ambiguous withdrawal submission timeouts reconcile before permitting another
-  attempt.
+- Ambiguous withdrawal submission timeouts reconcile the exact request UUID before
+  permitting another attempt.
 - Invalid, expired, mismatched, or forged moderation credentials cannot execute
   rejection.
 - React renders Gemini advisory text as ordinary escaped text. Model output is
