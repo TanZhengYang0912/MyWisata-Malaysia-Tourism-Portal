@@ -54,4 +54,11 @@ describe('withdrawal trust boundary migration', () => {
     expect(sql).toMatch(/GRANT SELECT \(\s*id, user_id, amount, status, requires_dual_approval, destination_label, created_at\s*\)[\s\S]+ON TABLE public\.withdrawal_requests TO authenticated/i);
     expect(sql).not.toMatch(/GRANT SELECT \([^)]*destination_provider_reference/i);
   });
+
+  it('sanitizes historical e-wallet labels before retaining destination_label access', () => {
+    const sql = migrationSql();
+
+    expect(sql).toMatch(/UPDATE public\.payout_destinations[\s\S]+SET label = 'TNG eWallet'[\s\S]+WHERE dest_type = 'ewallet'/i);
+    expect(sql).toMatch(/UPDATE public\.withdrawal_requests AS wr[\s\S]+SET destination_label = CONCAT\(\s*'TNG eWallet '[\s\S]+FROM public\.payout_destinations AS pd[\s\S]+pd\.dest_type = 'ewallet'/i);
+  });
 });

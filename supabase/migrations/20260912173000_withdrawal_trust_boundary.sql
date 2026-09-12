@@ -8,7 +8,20 @@ REVOKE ALL ON FUNCTION public.reject_wallet_withdrawal(UUID, TEXT, INET, TEXT)
   FROM PUBLIC, anon, authenticated, service_role;
 
 -- E-wallet labels are server-controlled masked display data. This also keeps
--- future withdrawal snapshots from copying a historical full phone label.
+-- historical data and future snapshots from exposing a browser-supplied label.
+UPDATE public.payout_destinations
+   SET label = 'TNG eWallet'
+ WHERE dest_type = 'ewallet';
+
+UPDATE public.withdrawal_requests AS wr
+   SET destination_label = CONCAT(
+     'TNG eWallet ',
+     COALESCE(wr.destination_masked_ref, pd.masked_ref, '')
+   )
+  FROM public.payout_destinations AS pd
+ WHERE wr.destination_id = pd.id
+   AND pd.dest_type = 'ewallet';
+
 CREATE OR REPLACE FUNCTION public.enforce_withdrawal_eligibility()
 RETURNS TRIGGER
 LANGUAGE plpgsql
