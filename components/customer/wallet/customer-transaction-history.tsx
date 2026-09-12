@@ -15,6 +15,8 @@ import {
   signedTransactionAmount,
 } from "@/lib/wallet/transaction-display";
 
+const WALLET_READ_TIMEOUT_MS = 8_000;
+
 export function CustomerTransactionHistory({ userId, refreshKey }: { userId: string; refreshKey: number }) {
   const { t, i18n } = useTranslation("customer");
   const locale = i18n.language === "en" ? "en-MY" : i18n.language;
@@ -35,12 +37,18 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
   useEffect(() => {
     if (!buildCustomerHistoryQuery(filters).ok) return;
     let active = true;
-    getCustomerWalletTransactionPage(userId, filters).then((page) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), WALLET_READ_TIMEOUT_MS);
+    getCustomerWalletTransactionPage(userId, filters, controller.signal).then((page) => {
       if (active) setResult({ key: requestKey, ...page, failed: false });
     }).catch(() => {
       if (active) setResult({ key: requestKey, transactions: [], total: 0, failed: true });
-    });
-    return () => { active = false; };
+    }).finally(() => window.clearTimeout(timeout));
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
   }, [userId, filters, requestKey]);
 
   function changeFilters(patch: Partial<Omit<CustomerHistoryFilters, "page">>) {

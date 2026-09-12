@@ -25,4 +25,11 @@ describe("customer wallet transaction history display contract", () => {
     expect(source).not.toContain("defaultValue");
     expect(source).toContain('toLocaleDateString(locale, { timeZone: "Asia/Kuala_Lumpur" })');
   });
+
+  it("aborts slow history reads and retains its existing retry state", () => {
+    expect(source).toContain("const WALLET_READ_TIMEOUT_MS = 8_000");
+    expect(source).toContain("getCustomerWalletTransactionPage(userId, filters, controller.signal)");
+    expect(source).toContain("window.setTimeout(() => controller.abort(), WALLET_READ_TIMEOUT_MS)");
+    expect(source).toContain("setAttempt((value) => value + 1)");
+  });
 });
