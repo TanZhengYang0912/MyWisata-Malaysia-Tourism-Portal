@@ -65,4 +65,16 @@ describe('maskProfanity', () => {
     const r = maskProfanity('this is fucking broken');
     expect(r.hadHits).toBe(true);
   });
+
+  it('merges in admin-added extra words, tagged by their own category', () => {
+    const r = maskProfanity('you bengkok idiot', { profanity: [], slur: ['bengkok'] });
+    expect(r.masked).not.toContain('bengkok');
+    expect(r.hits).toContain('slur');
+  });
+
+  it('is unaffected by an empty extra list — same behavior as calling with no second argument', () => {
+    const withEmpty = maskProfanity('this is fucking broken', { profanity: [], slur: [] });
+    const withNone = maskProfanity('this is fucking broken');
+    expect(withEmpty).toEqual(withNone);
+  });
 });

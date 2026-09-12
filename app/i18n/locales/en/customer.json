@@ -2394,7 +2394,8 @@
       "myLink": "My affiliate link",
       "linkHint": "Share this link — you earn commission when someone clicks it and books.",
       "generating": "Generating…",
-      "generateLink": "Generate my link"
+      "generateLink": "Generate my link",
+      "totalEarnings": "Total Earnings"
     },
     "tripPlanner": {
       "scheduledFor": "Scheduled for {{date}}",

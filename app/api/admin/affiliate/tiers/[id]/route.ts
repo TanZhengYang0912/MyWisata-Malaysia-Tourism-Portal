@@ -23,11 +23,20 @@ export async function PATCH(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, updateTierSchema);
   if (!parsed.ok) return parsed.response;
-  const { ratePercent, minReferrals } = parsed.data;
+  const { ratePercent, minReferrals, minSalesAmountRM, activePeriodDays, maxFraudRatePercent } = parsed.data;
 
-  const updates: { ongoing_rate?: number; min_conversions?: number } = {};
+  const updates: {
+    ongoing_rate?: number;
+    min_conversions?: number;
+    min_sales_amount_sen?: number;
+    active_period_days?: number | null;
+    max_fraud_rate_percent?: number | null;
+  } = {};
   if (ratePercent !== undefined) updates.ongoing_rate = ratePercent / 100;
   if (minReferrals !== undefined) updates.min_conversions = minReferrals;
+  if (minSalesAmountRM !== undefined) updates.min_sales_amount_sen = Math.round(minSalesAmountRM * 100);
+  if (activePeriodDays !== undefined) updates.active_period_days = activePeriodDays;
+  if (maxFraudRatePercent !== undefined) updates.max_fraud_rate_percent = maxFraudRatePercent;
 
   // Note: this updates commission_rules directly, not through
   // lib/affiliate/tier.ts — that file only reads. Historical attributions
@@ -40,7 +49,7 @@ export async function PATCH(request: Request, { params }: Props) {
     .update(updates)
     .eq('id', id)
     .eq('rule_type', 'affiliate')
-    .select('id, tier_name, ongoing_rate, min_conversions')
+    .select('id, tier_name, ongoing_rate, min_conversions, min_sales_amount_sen, active_period_days, max_fraud_rate_percent')
     .maybeSingle();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
@@ -51,5 +60,8 @@ export async function PATCH(request: Request, { params }: Props) {
     tierName: data.tier_name,
     rate: Number(data.ongoing_rate),
     minReferrals: data.min_conversions,
+    minSalesAmountSen: Number(data.min_sales_amount_sen ?? 0),
+    activePeriodDays: data.active_period_days,
+    maxFraudRatePercent: data.max_fraud_rate_percent === null ? null : Number(data.max_fraud_rate_percent),
   });
 }

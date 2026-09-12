@@ -829,7 +829,11 @@
     "referralCount_one": "{{count}} referrals",
     "referralCount_other": "{{count}} referrals",
     "accept": "Accept",
-    "reject": "Reject"
+    "reject": "Reject",
+    "minSalesAmount": "Min sales (RM)",
+    "activePeriodDays": "Active within (days)",
+    "maxFraudRate": "Max fraud rate",
+    "noLimit": "—"
   },
   "aiAssistant": {
     "ask": {
@@ -2961,5 +2965,45 @@
     "recommendationFindingMeta": "{{kindLabel}}: {{kind}} · {{severityLabel}}: {{severity}}",
     "recommendationEvidence": "{{label}}: {{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
+  },
+  "moderationWords": {
+    "eyebrow": "Moderation",
+    "title": "Moderation Words",
+    "description": "Add words to auto-censor across tickets, comments, the chatbot, and chat — supplements the built-in list, especially for other languages.",
+    "loading": "Loading…",
+    "empty": "No custom words added yet.",
+    "confirmDelete": "Remove \"{{term}}\" from the auto-censor list?",
+    "form": {
+      "term": "Word",
+      "termPlaceholder": "Enter a word to censor",
+      "category": "Category",
+      "language": "Language (optional)",
+      "languagePlaceholder": "e.g. ms, zh",
+      "add": "Add word"
+    },
+    "category": {
+      "profanity": "Profanity",
+      "slur": "Slur"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "term": "Word",
+      "category": "Category",
+      "language": "Language",
+      "status": "Status",
+      "remove": "Remove"
+    },
+    "success": {
+      "added": "Word added",
+      "removed": "Word removed"
+    },
+    "errors": {
+      "add": "Could not add word",
+      "update": "Could not update word",
+      "remove": "Could not remove word"
+    }
   }
 }

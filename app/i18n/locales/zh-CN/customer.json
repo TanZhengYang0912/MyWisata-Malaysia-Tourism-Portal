@@ -2394,7 +2394,8 @@
       "myLink": "我的联盟推广链接",
       "linkHint": "分享此链接——当有人点击并完成预订时，您将获得佣金。",
       "generating": "正在生成…",
-      "generateLink": "生成我的链接"
+      "generateLink": "生成我的链接",
+      "totalEarnings": "总收益"
     },
     "tripPlanner": {
       "scheduledFor": "安排于 {{date}}",

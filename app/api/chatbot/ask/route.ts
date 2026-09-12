@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   // stay out of storage too (Part 1's table: "Keep sensitive data OUT of
   // storage + off external APIs"). The user's own message now displays
   // masked, same as everyone else's view of it.
-  const cleaned = cleanUserContent(question);
+  const cleaned = await cleanUserContent(question, service);
   const result = await answerQuestion(cleaned.display);
 
   const { data: userMsg, error: userMsgErr } = await service

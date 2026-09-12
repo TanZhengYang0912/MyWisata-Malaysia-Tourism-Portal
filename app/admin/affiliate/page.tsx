@@ -25,6 +25,9 @@ interface AdminTier {
   tierName: string;
   rate: number; // 0..1 fraction
   minReferrals: number;
+  minSalesAmountSen: number;
+  activePeriodDays: number | null;
+  maxFraudRatePercent: number | null;
 }
 
 interface AdminAffiliateStats {
@@ -104,6 +107,24 @@ function formatRatePercent(rate: number): string {
   return Number((rate * 100).toFixed(2)).toString();
 }
 
+interface TierDraft {
+  ratePercent: string;
+  minReferrals: string;
+  minSalesAmountRM: string;
+  activePeriodDays: string; // empty = no requirement (null)
+  maxFraudRatePercent: string; // empty = no cap (null)
+}
+
+function draftFromTier(tier: AdminTier): TierDraft {
+  return {
+    ratePercent: formatRatePercent(tier.rate),
+    minReferrals: String(tier.minReferrals),
+    minSalesAmountRM: String(tier.minSalesAmountSen / 100),
+    activePeriodDays: tier.activePeriodDays === null ? "" : String(tier.activePeriodDays),
+    maxFraudRatePercent: tier.maxFraudRatePercent === null ? "" : String(tier.maxFraudRatePercent),
+  };
+}
+
 export default function AdminAffiliatePage() {
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -116,7 +137,7 @@ export default function AdminAffiliatePage() {
   const [clearing, setClearing] = useState(false);
   const [clearingResult, setClearingResult] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [tierDrafts, setTierDrafts] = useState<Record<string, { ratePercent: string; minReferrals: string }>>({});
+  const [tierDrafts, setTierDrafts] = useState<Record<string, TierDraft>>({});
   const [savingTierId, setSavingTierId] = useState<string | null>(null);
   const [tierError, setTierError] = useState<string | null>(null);
 
@@ -150,7 +171,7 @@ export default function AdminAffiliatePage() {
       if (data) {
         setTierDrafts(
           Object.fromEntries(
-            data.tiers.map((t) => [t.id, { ratePercent: formatRatePercent(t.rate), minReferrals: String(t.minReferrals) }]),
+            data.tiers.map((t) => [t.id, draftFromTier(t)]),
           ),
         );
       }
@@ -172,6 +193,9 @@ export default function AdminAffiliatePage() {
         body: JSON.stringify({
           ratePercent: Number(draft.ratePercent),
           minReferrals: Number(draft.minReferrals),
+          minSalesAmountRM: Number(draft.minSalesAmountRM || 0),
+          activePeriodDays: draft.activePeriodDays.trim() === "" ? null : Number(draft.activePeriodDays),
+          maxFraudRatePercent: draft.maxFraudRatePercent.trim() === "" ? null : Number(draft.maxFraudRatePercent),
         }),
       });
       const body = (await res.json()) as { error: { message: string } | null };
@@ -479,7 +503,7 @@ export default function AdminAffiliatePage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">{t("affiliate.commissionTiers")}</p>
         <div className="space-y-2">
           {stats.tiers.map((tier) => {
-            const draft = tierDrafts[tier.id] ?? { ratePercent: formatRatePercent(tier.rate), minReferrals: String(tier.minReferrals) };
+            const draft = tierDrafts[tier.id] ?? draftFromTier(tier);
             return (
               <div key={tier.id || tier.tierName} className="flex items-center gap-3 flex-wrap text-sm">
                 <span className="w-16 capitalize text-foreground font-medium">{tier.tierName}</span>
@@ -512,6 +536,52 @@ export default function AdminAffiliatePage() {
                     }
                     className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
                   />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {t("affiliate.minSalesAmount")}
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={draft.minSalesAmountRM}
+                    disabled={!tier.id}
+                    onChange={(e) =>
+                      setTierDrafts((d) => ({ ...d, [tier.id]: { ...draft, minSalesAmountRM: e.target.value } }))
+                    }
+                    className="h-7 w-20 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {t("affiliate.activePeriodDays")}
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder={t("affiliate.noLimit")}
+                    value={draft.activePeriodDays}
+                    disabled={!tier.id}
+                    onChange={(e) =>
+                      setTierDrafts((d) => ({ ...d, [tier.id]: { ...draft, activePeriodDays: e.target.value } }))
+                    }
+                    className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {t("affiliate.maxFraudRate")}
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    placeholder={t("affiliate.noLimit")}
+                    value={draft.maxFraudRatePercent}
+                    disabled={!tier.id}
+                    onChange={(e) =>
+                      setTierDrafts((d) => ({ ...d, [tier.id]: { ...draft, maxFraudRatePercent: e.target.value } }))
+                    }
+                    className="h-7 w-16 rounded-lg border border-border px-2 text-xs bg-background text-foreground"
+                  />
+                  %
                 </label>
                 <Button size="sm" variant="outline" disabled={!tier.id || savingTierId === tier.id} onClick={() => saveTier(tier)}>
                   {savingTierId === tier.id ? t("affiliate.saving") : t("common.actions.save")}
