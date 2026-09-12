@@ -119,7 +119,7 @@ export async function POST(request: Request) {
           403,
         );
       }
-      expectedTngPhone = identity.identity.verifiedPhone;
+      expectedTngPhone = identity.identity.profilePhone;
       expectedProviderReference = identity.identity.providerReference;
     }
 

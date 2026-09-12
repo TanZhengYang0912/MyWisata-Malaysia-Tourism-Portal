@@ -89,7 +89,7 @@ describe('POST /api/wallet/withdrawals', () => {
     mocks.capabilities.mockReturnValue({ bank_account: { enabled: true, provider: 'stripe_connect' }, e_wallet: { enabled: true, provider: 'tng_direct_credit' } });
     mocks.resolveTngIdentity.mockResolvedValue({
       ok: true,
-      identity: { providerReference: 'tng_dest_current', maskedReference: '+60••••3951', verifiedPhone: '+60177143951' },
+      identity: { providerReference: 'tng_dest_current', maskedReference: '+60••••3951', verifiedPhone: '+60177143951', profilePhone: '+60 17-714 3951' },
     });
     mocks.tngMatches.mockReturnValue(false);
   });
@@ -237,7 +237,7 @@ describe('POST /api/wallet/withdrawals', () => {
       p_request_id: requestId,
       p_amount_sen: 5000,
       p_destination_id: '33333333-3333-4333-8333-333333333333',
-      p_expected_tng_phone: '+60177143951',
+      p_expected_tng_phone: '+60 17-714 3951',
       p_expected_provider_reference: 'tng_dest_current',
     });
   });

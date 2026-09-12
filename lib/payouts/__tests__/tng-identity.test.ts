@@ -65,6 +65,7 @@ describe('verified TNG identity', () => {
         providerReference: 'tng_dest_verified_phone',
         maskedReference: '+60••••3951',
         verifiedPhone: '+60177143951',
+        profilePhone: '+60 17-714 3951',
       },
     });
     expect(provider.verifyDestination).toHaveBeenCalledWith({ phoneOrDuitNow: '+60177143951' });
@@ -91,7 +92,7 @@ describe('verified TNG identity', () => {
   });
 
   it('matches destinations only by the server-side opaque provider reference', () => {
-    const identity = { providerReference: 'tng_dest_verified_phone', maskedReference: '+60••••3951', verifiedPhone: '+60177143951' };
+    const identity = { providerReference: 'tng_dest_verified_phone', maskedReference: '+60••••3951', verifiedPhone: '+60177143951', profilePhone: '+60177143951' };
     expect(tngDestinationMatchesIdentity('tng_dest_verified_phone', identity)).toBe(true);
     expect(tngDestinationMatchesIdentity('tng_dest_other_phone', identity)).toBe(false);
     expect(tngDestinationMatchesIdentity(null, identity)).toBe(false);

@@ -9,6 +9,7 @@ export type VerifiedTngIdentity = {
   providerReference: string;
   maskedReference: string;
   verifiedPhone: string;
+  profilePhone: string;
 };
 
 export type VerifiedTngIdentityResult =
@@ -82,6 +83,7 @@ export async function resolveVerifiedTngIdentity(
         providerReference: verification.providerReference,
         maskedReference: verification.maskedReference,
         verifiedPhone: parsedPhone.e164,
+        profilePhone: data.phone,
       },
     };
   } catch {
