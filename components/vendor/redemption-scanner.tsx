@@ -702,11 +702,11 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-gray-100 bg-gray-50/70 font-semibold uppercase tracking-[0.1em] text-gray-500">
                     <tr>
-                      <th className="px-4 py-3">Time</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Item / Pass</th>
-                      <th className="px-4 py-3">Customer</th>
-                      <th className="px-4 py-3 text-right">Status</th>
+                      <th className="px-4 py-3">{t("ui.redemptions.table.time")}</th>
+                      <th className="px-4 py-3">{t("ui.redemptions.table.type")}</th>
+                      <th className="px-4 py-3">{t("ui.redemptions.table.item")}</th>
+                      <th className="px-4 py-3">{t("ui.redemptions.table.customer")}</th>
+                      <th className="px-4 py-3 text-right">{t("ui.vouchers.status")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -744,7 +744,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         <td className="px-4 py-3 text-right">
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                             <Sparkles size={10} />
-                            <span>Verified</span>
+                            <span>{t("ui.redemptions.table.verifiedBy")}</span>
                           </span>
                         </td>
                       </tr>

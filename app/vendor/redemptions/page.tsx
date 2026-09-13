@@ -338,7 +338,7 @@ export default function VendorRedemptionsPage() {
                           <button
                             type="button"
                             onClick={() => copyToClipboard(r.item.code!, r.id)}
-                            title="Copy code"
+                            title={t('ui.vouchers.copyCode')}
                             className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                           >
                             {copiedId === r.id ? (

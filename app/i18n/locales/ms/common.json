@@ -294,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Rakan pengalaman tempatan"
+    },
     "place": {
       "localNotes": {
         "justNow": "Sebentar tadi",

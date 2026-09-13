@@ -684,7 +684,7 @@ function LoginContent() {
 
       {/* Clean Minimal Footer */}
       <footer className="w-full text-center py-4 text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} MyLawatan. All rights reserved.</p>
+        <p>{tCommon("brand.copyright", { year: new Date().getFullYear() })}</p>
       </footer>
     </div>
   );

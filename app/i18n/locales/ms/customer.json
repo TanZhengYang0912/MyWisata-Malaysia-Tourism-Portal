@@ -365,6 +365,7 @@
       "date": "Tarikh",
       "time": "Masa",
       "location": "Lokasi",
+      "locations": "Lokasi",
       "guests": "Tetamu",
       "status": "Status",
       "history": "Sejarah",
@@ -532,6 +533,10 @@
     "map": {
       "previous": "Destinasi sebelumnya",
       "next": "Destinasi seterusnya",
+      "exploreMap": "Teroka peta",
+      "buildings3D": "Bangunan 3D",
+      "view3D": "Paparan peta 3D",
+      "attribution": "© OpenFreeMap · © OpenStreetMap",
       "destinationCards": "Kad destinasi Malaysia",
       "viewDestination": "Lihat destinasi",
       "featured": "Destinasi pilihan",
@@ -978,6 +983,8 @@
       "summary": "Maklum balas terkini daripada pelawat disahkan",
       "count": "{{count}} ulasan",
       "showAll": "Lihat semua {{count}} ulasan",
+      "showAll_one": "Lihat semua {{count}} ulasan",
+      "showAll_other": "Lihat semua {{count}} ulasan",
       "showLess": "Kurangkan ulasan",
       "allRatings": "Semua penilaian",
       "stars": "{{count}} bintang",
@@ -2068,6 +2075,11 @@
       "sortTripDate": "Tarikh perjalanan",
       "activeFilters": "{{count}} aktif",
       "results": "{{count}} perjalanan",
+      "activeFilters_one": "{{count}} aktif",
+      "activeFilters_other": "{{count}} aktif",
+      "results_one": "{{count}} perjalanan",
+      "results_other": "{{count}} perjalanan",
+      "all": "Semua perjalanan",
       "noMatches": "Tiada perjalanan sepadan dengan penapis ini.",
       "noMatchesDescription": "Cuba ubah carian atau kosongkan penapis."
     },
@@ -2342,6 +2354,10 @@
         "title": "Tebus di cawangan",
         "description": "Tunjukkan kod QR atau kod bar ini kepada juruwang atau kakitangan cawangan untuk menebus baucar anda.",
         "orUseCode": "Atau berikan kod ini kepada juruwang:",
+        "qrCode": "Kod QR",
+        "barcode": "Kod bar",
+        "redemptionQrCode": "Kod QR penebusan",
+        "storeBarcode": "Kod bar kedai",
         "close": "Tutup"
       },
       "redemption": {
@@ -2420,7 +2436,8 @@
       "loading": "Memuatkan peta…",
       "regionPlaceCount": "16 rantau · 64 tempat",
       "selectState": "Pilih negeri untuk diterokai.",
-      "scaleNotice": "Malaysia Barat dan Timur diskalakan secara berasingan untuk memenuhi peta; ini bukan skala relatif sebenar."
+      "scaleNotice": "Malaysia Barat dan Timur diskalakan secara berasingan untuk memenuhi peta; ini bukan skala relatif sebenar.",
+      "attribution": "© OpenFreeMap · © OpenStreetMap"
     },
     "chat": {
       "mutedTitle": "Pemberitahuan dibisukan untuk anda",

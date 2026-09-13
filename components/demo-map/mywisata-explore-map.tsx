@@ -168,7 +168,7 @@ export function MyWisataExploreMap({ selectedStateId, onSelectState }: ExploreMa
       <div className="pointer-events-none absolute right-5 top-5 z-10 hidden items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-bold text-primary shadow-lg backdrop-blur sm:flex">
         <Move3d size={14} /> {buildingsEnabled ? t("ui.map.buildings3D", "3D buildings") : t("ui.map.view3D", "3D map view")}
       </div>
-      <div className="absolute bottom-3 right-3 z-10 rounded-full bg-primary/85 px-2.5 py-1 font-mono text-[8px] font-bold uppercase tracking-[0.08em] text-primary-foreground/75 shadow-lg">© OpenFreeMap · © OpenStreetMap</div>
+      <div className="absolute bottom-3 right-3 z-10 rounded-full bg-primary/85 px-2.5 py-1 font-mono text-[8px] font-bold uppercase tracking-[0.08em] text-primary-foreground/75 shadow-lg">{t("ui.map.attribution")}</div>
     </div>
   );
 }

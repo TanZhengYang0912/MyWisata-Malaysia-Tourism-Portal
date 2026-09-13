@@ -40,7 +40,7 @@ function VoucherCard({
   const isOutletVoucher = Boolean(voucher.outletId && !voucher.productId);
   const branchName = voucher.outletName ? outletShortName(voucher.outletName, voucher.vendorName) : null;
   const branchBadge = isOutletVoucher && branchName
-    ? tCustomer("ui.voucherHub.branchBadge", { branch: branchName, defaultValue: `${branchName} branch` })
+    ? tCustomer("ui.voucherHub.branchBadge", { branch: branchName })
     : null;
   const visibleProductNames = voucher.eligibleProductNames.slice(0, 3);
   const remainingProductCount = Math.max(0, voucher.eligibleProductCount - visibleProductNames.length);
@@ -65,6 +65,7 @@ function VoucherCard({
         outletBadge: branchBadge,
         code: voucher.claim?.status === "claimed" ? voucher.code : null,
         codeLabel: tCustomer("ui.voucherHub.voucherCode"),
+        codeCopyLabels: { copy: tCustomer("ui.voucherHub.copyCode"), copied: tCustomer("ui.voucherHub.copied") },
         barcodeValue: voucher.claim?.status === "claimed" && ["in_store", "both"].includes(voucher.redemptionMode) ? voucher.claim.storeToken : null,
         barcodeLabel: tCustomer("ui.voucherHub.barcode"),
         onBarcodeClick: canShowInStore ? () => onShowInStore(voucher) : undefined,

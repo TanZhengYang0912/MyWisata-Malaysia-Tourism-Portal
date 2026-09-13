@@ -365,6 +365,7 @@
       "date": "Date",
       "time": "Time",
       "location": "Location",
+      "locations": "Locations",
       "guests": "Guests",
       "status": "Status",
       "history": "History",
@@ -532,6 +533,10 @@
     "map": {
       "previous": "Previous destinations",
       "next": "Next destinations",
+      "exploreMap": "Explore the map",
+      "buildings3D": "3D buildings",
+      "view3D": "3D map view",
+      "attribution": "© OpenFreeMap · © OpenStreetMap",
       "destinationCards": "Malaysia destination cards",
       "viewDestination": "View destination",
       "featured": "Featured destination",
@@ -978,6 +983,8 @@
       "summary": "Recent feedback from verified visitors",
       "count": "{{count}} reviews",
       "showAll": "Show all {{count}} reviews",
+      "showAll_one": "Show all {{count}} reviews",
+      "showAll_other": "Show all {{count}} reviews",
       "showLess": "Show fewer reviews",
       "allRatings": "All ratings",
       "stars": "{{count}} stars",
@@ -2068,6 +2075,11 @@
       "sortTripDate": "Trip date",
       "activeFilters": "{{count}} active",
       "results": "{{count}} trips",
+      "activeFilters_one": "{{count}} active",
+      "activeFilters_other": "{{count}} active",
+      "results_one": "{{count}} trip",
+      "results_other": "{{count}} trips",
+      "all": "All trips",
       "noMatches": "No trips match these filters.",
       "noMatchesDescription": "Try changing your search or clearing a filter."
     },
@@ -2342,6 +2354,10 @@
         "title": "Redeem at outlet",
         "description": "Present this QR code or barcode to the cashier or staff at the outlet to redeem your voucher.",
         "orUseCode": "Or give this code to the cashier:",
+        "qrCode": "QR Code",
+        "barcode": "Barcode",
+        "redemptionQrCode": "Redemption QR Code",
+        "storeBarcode": "Store Barcode",
         "close": "Close"
       },
       "redemption": {
@@ -2420,7 +2436,8 @@
       "loading": "Loading map…",
       "regionPlaceCount": "16 regions · 64 places",
       "selectState": "Select a state to explore.",
-      "scaleNotice": "West and East Malaysia are scaled independently to fill the map; this is not their true relative scale."
+      "scaleNotice": "West and East Malaysia are scaled independently to fill the map; this is not their true relative scale.",
+      "attribution": "© OpenFreeMap · © OpenStreetMap"
     },
     "chat": {
       "mutedTitle": "Notifications are muted for you",

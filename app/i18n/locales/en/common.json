@@ -294,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. All rights reserved."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Local experience partner"
+    },
     "place": {
       "localNotes": {
         "justNow": "Just now",

@@ -25,14 +25,14 @@ export function MediaGallery({ items, label, previousLabel, nextLabel, slideLabe
   }
 
   return (
-    <section aria-roledescription="carousel" aria-label={label} className="relative overflow-hidden rounded-3xl border border-border bg-card p-3 shadow-sm sm:p-4">
+    <section aria-roledescription={label} aria-label={label} className="relative overflow-hidden rounded-3xl border border-border bg-card p-3 shadow-sm sm:p-4">
       <div ref={railRef} className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={(event) => {
         const target = event.currentTarget;
         const first = target.firstElementChild as HTMLElement | null;
         if (first) setActiveIndex(Math.round(target.scrollLeft / Math.max(first.offsetWidth, 1)));
       }}>
         {items.map((item, index) => (
-          <figure key={item.url} role="group" aria-roledescription="slide" aria-label={`${slideLabel} ${index + 1} / ${items.length}`} className="relative min-w-full snap-start overflow-hidden rounded-2xl">
+          <figure key={item.url} role="group" aria-roledescription={slideLabel} aria-label={`${slideLabel} ${index + 1} / ${items.length}`} className="relative min-w-full snap-start overflow-hidden rounded-2xl">
             {/* Runtime-configured Storage URLs are intentionally rendered as img. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.url} alt={item.alt || label} loading={index === 0 ? "eager" : "lazy"} decoding="async" className="h-[240px] w-full object-cover sm:h-[320px] lg:h-[400px]" />

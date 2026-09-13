@@ -109,7 +109,7 @@ export function VoucherRedeemDialog({
                 codeType === "qr" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              QR Code
+              {tCustomer("ui.voucherHub.barcodeModal.qrCode")}
             </button>
             <button
               type="button"
@@ -118,7 +118,7 @@ export function VoucherRedeemDialog({
                 codeType === "barcode" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Barcode
+              {tCustomer("ui.voucherHub.barcodeModal.barcode")}
             </button>
           </div>
         </div>
@@ -127,14 +127,14 @@ export function VoucherRedeemDialog({
         <div className="flex flex-col items-center justify-center py-2">
           {codeType === "qr" ? (
             <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
-              <canvas ref={canvasRef} className="h-auto max-w-full" aria-label="Redemption QR Code" />
+              <canvas ref={canvasRef} className="h-auto max-w-full" aria-label={tCustomer("ui.voucherHub.barcodeModal.redemptionQrCode")} />
             </div>
           ) : (
             <div className="w-full max-w-xs rounded-2xl border border-border bg-white p-3 shadow-sm">
               <VoucherBarcode
                 value={storeToken || voucher.code}
                 text={voucher.code}
-                label="Store Barcode"
+                label={tCustomer("ui.voucherHub.barcodeModal.storeBarcode")}
               />
             </div>
           )}
@@ -161,12 +161,12 @@ export function VoucherRedeemDialog({
             {copied ? (
               <>
                 <Check size={14} className="text-emerald-600" />
-                <span className="text-emerald-600">{tCustomer("ui.voucherHub.copied", "Copied!")}</span>
+                <span className="text-emerald-600">{tCustomer("ui.voucherHub.copied")}</span>
               </>
             ) : (
               <>
                 <Copy size={14} />
-                <span>{tCustomer("ui.voucherHub.copyCode", "Copy")}</span>
+                <span>{tCustomer("ui.voucherHub.copyCode")}</span>
               </>
             )}
           </button>

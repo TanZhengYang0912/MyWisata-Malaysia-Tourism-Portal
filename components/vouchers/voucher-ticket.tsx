@@ -13,6 +13,7 @@ export type VoucherTicketOffer = {
   outletBadge?: string | null;
   code?: string | null;
   codeLabel?: string;
+  codeCopyLabels: { copy: string; copied: string };
   barcodeValue?: string | null;
   barcodeLabel?: string;
   onBarcodeClick?: () => void;
@@ -35,7 +36,7 @@ export interface VoucherTicketProps {
   className?: string;
 }
 
-function VoucherCodeDisplay({ code, label }: { code: string; label?: string }) {
+function VoucherCodeDisplay({ code, label, copyLabels }: { code: string; label?: string; copyLabels: { copy: string; copied: string } }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -56,18 +57,18 @@ function VoucherCodeDisplay({ code, label }: { code: string; label?: string }) {
           type="button"
           onClick={handleCopy}
           className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          title={copied ? "Copied!" : "Copy voucher code"}
-          aria-label={copied ? "Copied code" : `Copy code ${code}`}
+          title={copied ? copyLabels.copied : copyLabels.copy}
+          aria-label={copied ? copyLabels.copied : copyLabels.copy}
         >
           {copied ? (
             <>
               <Check size={11} className="text-emerald-600" aria-hidden="true" />
-              <span className="text-emerald-600">Copied</span>
+              <span className="text-emerald-600">{copyLabels.copied}</span>
             </>
           ) : (
             <>
               <Copy size={11} aria-hidden="true" />
-              <span>Copy</span>
+              <span>{copyLabels.copy}</span>
             </>
           )}
         </button>
@@ -139,7 +140,7 @@ export function VoucherTicket({ offer, children, className }: VoucherTicketProps
         <span aria-hidden="true" className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full bg-background sm:block" />
         <span aria-hidden="true" className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full bg-background sm:block" />
         <div>
-          {offer.code && <VoucherCodeDisplay code={offer.code} label={offer.codeLabel} />}
+          {offer.code && <VoucherCodeDisplay code={offer.code} label={offer.codeLabel} copyLabels={offer.codeCopyLabels} />}
           {offer.barcodeValue && (
             <div className="mb-4">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{offer.barcodeLabel}</p>
