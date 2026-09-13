@@ -49,6 +49,9 @@ function mockClient(ticket: { status?: string; assigned_to?: string | null } = {
           update: () => ({ eq: () => Promise.resolve({ error: null }) }),
         };
       }
+      if (table === 'moderation_custom_words') {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
+      }
       return {
         insert: () => ({
           select: () => ({

@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: Props) {
     ? await buildProductContextSnapshot(service, body.contextProductId, thread.outlet_id)
     : null;
 
-  const { clean } = maskChatBody(cleanBody);
+  const { clean } = await maskChatBody(cleanBody, service);
   const { data: message, error: messageError } = await service
     .from('chat_messages')
     .insert({

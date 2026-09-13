@@ -18,8 +18,10 @@
 // anywhere, in either field, no exceptions. Only profanity masking differs
 // between the two.
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { redactPII } from '@/lib/chatbot/pii';
 import { maskProfanity } from './profanity';
+import { getActiveTermsByCategory } from './custom-words';
 
 export type ModerationSeverity = 'none' | 'low' | 'high';
 
@@ -35,9 +37,10 @@ export interface CleanedContent {
   severity: ModerationSeverity;
 }
 
-export function cleanUserContent(text: string): CleanedContent {
+export async function cleanUserContent(text: string, service: SupabaseClient): Promise<CleanedContent> {
   const { clean: piiRedacted, found: hadPII } = redactPII(text);
-  const { masked: display, hits } = maskProfanity(piiRedacted);
+  const extra = await getActiveTermsByCategory(service);
+  const { masked: display, hits } = maskProfanity(piiRedacted, extra);
   const hadProfanity = hits.includes('profanity');
   const hadSlur = hits.includes('slur');
 

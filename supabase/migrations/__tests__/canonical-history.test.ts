@@ -34,6 +34,8 @@ const approvedForwardMigrations = [
   "20260910005600_sponsored_placement_staff_role_template.sql",
   "20260911000000_vendor_order_settlement.sql",
   "20260911100000_chat_message_context.sql",
+  "20260912000000_moderation_custom_words.sql",
+  "20260912010000_affiliate_tier_signals.sql",
   "20260912140000_voucher_owner_approval.sql",
   "20260912180000_voucher_store_redemption.sql",
   "20260912190000_vendor_featured_products.sql",
