@@ -113,7 +113,7 @@ describe("public sponsored placement event route", () => {
     expect(card).toContain("activity.sponsorship &&");
     expect(card).toContain('t("ui.labels.sponsored")');
     expect(card).not.toContain('activity.sponsorship?.label ?? t("ui.labels.sponsored")');
-    expect(map.match(/\.sponsorship &&/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(map.match(/sponsorship &&/g)?.length).toBeGreaterThanOrEqual(3);
     expect(map.match(/t\("ui\.labels\.sponsored"\)/g)?.length).toBeGreaterThanOrEqual(3);
 
     for (const [locale, expected] of [["en", "Sponsored"], ["ms", "Ditaja"], ["zh-CN", "赞助"]] as const) {

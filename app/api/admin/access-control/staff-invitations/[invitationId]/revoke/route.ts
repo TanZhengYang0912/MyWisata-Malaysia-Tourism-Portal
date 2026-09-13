@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { invitationFailure } from "@/app/api/admin/access-control/staff-invitations/route";
+import { invitationFailure } from "@/lib/staff-invitations/route-helpers";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 

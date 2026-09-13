@@ -44,7 +44,7 @@ function PublicOutletTemplate({ document, outlet, products = [] }: Pick<OutletPa
     </div>
     <div className="outlet-public-content mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
       <VisitSummary outlet={outlet} mode="public" />
-      {document.gallery.length > 0 && <div className="mb-8"><MediaGallery items={document.gallery} label={t('ui.outlet.galleryLabel', { outlet: outlet.name })} previousLabel={t('ui.outlet.previousGallery')} nextLabel={t('ui.outlet.nextGallery')} slideLabel={t('ui.outlet.gallerySlide')} /></div>}
+      {document.gallery.length > 0 && <div className="mb-8"><MediaGallery items={document.gallery} label={t('ui.outlet.galleryLabel', { outlet: outlet.name })} previousLabel={t('ui.outlet.previousGallery')} nextLabel={t('ui.outlet.nextGallery')} slideLabel={t('ui.outlet.gallerySlide')} roleDescription={t('ui.accessibility.carousel')} /></div>}
       {publicBlocks.length > 0 && <div className="space-y-6">
         {publicBlocks.map((block) => <OutletBlockRenderer key={block.id} block={block} outlet={outlet} products={products} gallery={document.gallery} featuredIds={document.featuredIds} w={block.w} h={block.h} mode="public" />)}
       </div>}

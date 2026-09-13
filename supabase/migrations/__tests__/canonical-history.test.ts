@@ -45,6 +45,12 @@ const approvedForwardMigrations = [
   "20260913090000_product_ticket_admission_policy.sql",
   "20260913103000_place_activity_media_paths.sql",
   "20260913120000_repair_demo_vendor_order_earnings.sql",
+  "20260913125000_correct_bank_kerapu_entry_fee.sql",
+  "20260913130000_correct_kinabalu_park_entry_fee.sql",
+  "20260913133000_verified_product_source_evidence.sql",
+  "20260913140000_allow_shared_product_booking_slots.sql",
+  "20260913142000_repair_demo_vendor_earning_lineage.sql",
+  "20260913180000_unique_product_cover_images.sql",
 ];
 
 function migrationFiles() {

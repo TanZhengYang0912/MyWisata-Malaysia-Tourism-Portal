@@ -1,12 +1,14 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const manifestPath = resolve(process.cwd(), "scripts/data/verified-place-accesses.json");
 const mediaPath = resolve(process.cwd(), "scripts/data/verified-place-activity-media.json");
+const mediaManifest = JSON.parse(readFileSync(mediaPath, "utf8"));
+const hasLocalAssets = mediaManifest.activities.every((item: { asset_path: string }) => existsSync(resolve(process.cwd(), "public/assets/customer", item.asset_path)));
 const { buildVerifiedPlaceAccessPlan } = await import("../lib/verified-place-accesses.mjs");
 
-describe("verified place access planner", () => {
+describe.skipIf(!hasLocalAssets)("verified place access planner", () => {
   it("maps each source-backed manifest entry to one active POI without a vendor product", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     const media = JSON.parse(readFileSync(mediaPath, "utf8"));

@@ -168,6 +168,9 @@
     }
   },
   "ui": {
+    "accessibility": {
+      "carousel": "carousel"
+    },
     "capabilityGate": {
       "notNow": "Not now",
       "continueBrowsing": "Continue browsing",

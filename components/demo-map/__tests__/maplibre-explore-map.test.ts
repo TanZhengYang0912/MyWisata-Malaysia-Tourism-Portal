@@ -31,7 +31,7 @@ describe("production Explore MapLibre map", () => {
   it("keeps only the map label, 3D status, and required attribution visible", () => {
     expect(mapSource).toContain("Explore the map");
     expect(mapSource).toContain("3D buildings");
-    expect(mapSource).toContain("© OpenFreeMap · © OpenStreetMap");
+    expect(mapSource).toContain('t("ui.map.attribution")');
     expect(mapSource).not.toContain("Malaysia 3D Atlas");
     expect(mapSource).not.toContain("All states and federal territories");
     expect(mapSource).not.toContain("selected</div>");

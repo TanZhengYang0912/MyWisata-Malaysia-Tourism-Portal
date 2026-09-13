@@ -116,7 +116,7 @@ function StateDetailPanel({
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
-                      <span className="min-w-0"><span className="block truncate text-sm font-bold text-foreground">{activity.name}</span>{activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}</span>
+                      <span className="min-w-0"><span className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">{activity.name}{activity.sponsorship && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}</span>{activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}</span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
                     </button>
                   ))}
@@ -326,6 +326,7 @@ export function StoryMap({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
+                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
                   </div>
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
@@ -410,6 +411,7 @@ export function StoryMap({
                         )}
                          <div className="min-w-0 flex-1">
                            <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
+                           {activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
                            <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}{activity.outlet.hours ? ` · ${activity.outlet.hours}` : ""}</p>
                          </div>
                         <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{formatMYR(Number(activity.price))}</span>

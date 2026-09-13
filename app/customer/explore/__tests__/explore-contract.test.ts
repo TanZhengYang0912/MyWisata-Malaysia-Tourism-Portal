@@ -41,10 +41,10 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("openNow");
   });
 
-  it("keeps sponsored analytics metadata without labeling places in the customer UI", () => {
+  it("keeps sponsored analytics metadata and labels sponsored places in the customer UI", () => {
     expect(exploreSource).toContain("sponsorship");
     expect(exploreSource).toContain("onSponsoredClick");
-    expect(storyMapSource).not.toContain('t("ui.labels.sponsored")');
+    expect(storyMapSource).toContain('t("ui.labels.sponsored")');
   });
 
   it("keeps the canonical category selector out of the advanced filter panel", () => {

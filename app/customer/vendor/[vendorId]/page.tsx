@@ -419,7 +419,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
         </div>
       </section>
       {visibleVendorGallery.length > 0 && <div className="mb-8">
-        <MediaGallery items={visibleVendorGallery} label={t('ui.vendor.galleryLabel', { vendor: vendor.name })} previousLabel={t('ui.vendor.previousGallery')} nextLabel={t('ui.vendor.nextGallery')} slideLabel={t('ui.vendor.gallerySlide')} />
+        <MediaGallery items={visibleVendorGallery} label={t('ui.vendor.galleryLabel', { vendor: vendor.name })} previousLabel={t('ui.vendor.previousGallery')} nextLabel={t('ui.vendor.nextGallery')} slideLabel={t('ui.vendor.gallerySlide')} roleDescription={t('ui.accessibility.carousel')} />
       </div>}
 
       {/* Content Sections */}

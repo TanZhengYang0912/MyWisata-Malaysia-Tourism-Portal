@@ -9,7 +9,7 @@ describe("customer media gallery contract", () => {
     expect(source).toContain("overflow-x-auto");
     expect(source).toContain("snap-x");
     expect(source).toContain("scrollTo");
-    expect(source).toContain("aria-roledescription=\"carousel\"");
+    expect(source).toContain("aria-roledescription={roleDescription}");
     expect(source).toContain("aria-live=\"polite\"");
     expect(source).toContain("ArrowLeft");
     expect(source).toContain("ArrowRight");

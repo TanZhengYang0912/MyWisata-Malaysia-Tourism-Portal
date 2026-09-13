@@ -168,6 +168,9 @@
     }
   },
   "ui": {
+    "accessibility": {
+      "carousel": "轮播图"
+    },
     "capabilityGate": {
       "notNow": "暂时不要",
       "continueBrowsing": "继续浏览",

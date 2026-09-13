@@ -65,7 +65,7 @@ describe('GET /api/vendors/[vendorId]/outlets/[outletId]/calendar.ics', () => {
     const text = await response.text();
     expect(text).toContain('BEGIN:VCALENDAR');
     expect(text).toContain('Old Town Heritage Tour (12/20 Booked)');
-    expect(text).toContain('UID:slot-100@mywisata.com');
+    expect(text).toContain('UID:slot-100@mylawatan.my');
   });
 
   it('returns 404 when outlet is not found', async () => {

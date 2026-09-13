@@ -29,8 +29,8 @@ describe("customer activity image handling", () => {
     expect(cardSource).not.toContain('activity.sponsorship ? "top-10"');
   });
 
-  it("keeps sponsorship behavior internal and shows the outlet's operating hours", () => {
-    expect(cardSource).not.toContain('t("ui.labels.sponsored")');
+  it("labels sponsored activities and shows the outlet's operating hours", () => {
+    expect(cardSource).toContain('t("ui.labels.sponsored")');
     expect(cardSource).toContain("onSponsoredClick");
     expect(cardSource).toContain('t("ui.labels.operatingHours")');
     expect(cardSource).toContain("activity.outlet.hours");

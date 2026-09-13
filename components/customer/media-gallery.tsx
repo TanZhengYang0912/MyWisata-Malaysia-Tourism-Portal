@@ -10,9 +10,10 @@ type MediaGalleryProps = {
   previousLabel: string;
   nextLabel: string;
   slideLabel: string;
+  roleDescription: string;
 };
 
-export function MediaGallery({ items, label, previousLabel, nextLabel, slideLabel }: MediaGalleryProps) {
+export function MediaGallery({ items, label, previousLabel, nextLabel, slideLabel, roleDescription }: MediaGalleryProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -25,7 +26,7 @@ export function MediaGallery({ items, label, previousLabel, nextLabel, slideLabe
   }
 
   return (
-    <section aria-roledescription={label} aria-label={label} className="relative overflow-hidden rounded-3xl border border-border bg-card p-3 shadow-sm sm:p-4">
+    <section aria-roledescription={roleDescription} aria-label={label} className="relative overflow-hidden rounded-3xl border border-border bg-card p-3 shadow-sm sm:p-4">
       <div ref={railRef} className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onScroll={(event) => {
         const target = event.currentTarget;
         const first = target.firstElementChild as HTMLElement | null;
