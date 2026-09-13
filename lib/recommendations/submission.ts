@@ -34,10 +34,10 @@ export function mergeRecommendationImages(current: File[], selected: File[]): Fi
 export function allowRecommendationImageSelection(
   currentCount: number,
   selectedCount: number,
-  confirmReplacement: () => boolean,
-): boolean {
-  if (currentCount < 5 && currentCount + selectedCount <= 5) return true;
-  return confirmReplacement();
+  confirmReplacement: () => boolean | Promise<boolean>,
+): Promise<boolean> {
+  if (currentCount < 5 && currentCount + selectedCount <= 5) return Promise.resolve(true);
+  return Promise.resolve(confirmReplacement());
 }
 
 export function appendSelectedRecommendationImages(

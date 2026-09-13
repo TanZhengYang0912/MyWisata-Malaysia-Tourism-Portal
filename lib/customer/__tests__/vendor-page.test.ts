@@ -34,6 +34,18 @@ describe('vendor storefront presentation', () => {
     expect(getVendorProductTypeLabel('unknown')).toBe('Local favourite');
   });
 
+  it('prioritises vendor-owner selected products when provided', () => {
+    const products = [
+      { id: 'p1', name: 'Product 1', coverUrl: '1.jpg', soldAt: [{ id: 'o1' }] },
+      { id: 'p2', name: 'Product 2', coverUrl: '2.jpg', soldAt: [{ id: 'o1' }] },
+      { id: 'p3', name: 'Product 3', coverUrl: '3.jpg', soldAt: [{ id: 'o1' }] },
+      { id: 'p4', name: 'Product 4', coverUrl: '4.jpg', soldAt: [{ id: 'o1' }] },
+      { id: 'p5', name: 'Product 5', coverUrl: '5.jpg', soldAt: [{ id: 'o1' }] },
+    ];
+
+    expect(selectFeaturedVendorProducts(products, 4, ['p3', 'p5', 'p1']).map((p) => p.id)).toEqual(['p3', 'p5', 'p1']);
+  });
+
   it('keeps the vendor page as a fixed storefront information architecture', () => {
     expect(pageSource).toContain("t('ui.vendor.featuredExperiences')");
     expect(pageSource).toContain("t('ui.vendor.findAcrossMalaysia')");
@@ -41,6 +53,8 @@ describe('vendor storefront presentation', () => {
     expect(pageSource).toContain("t('ui.vendor.policiesSupport')");
     expect(pageSource).toContain('id="experiences"');
     expect(pageSource).toContain('id="locations"');
+    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds)');
+    expect(pageSource).not.toContain('id="all-products-heading"');
   });
 
   it('routes vendor shares back to the vendor storefront', () => {

@@ -237,7 +237,7 @@
       "stop": "Stop listening"
     },
     "list": {
-      "supportLabel": "MyWisata Support",
+      "supportLabel": "MyLawatan Support",
       "signInPrompt": "Sign in to chat with vendors."
     },
     "expandChat": "Expand to full screen",
@@ -294,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. All rights reserved."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Local experience partner"
+    },
     "place": {
       "localNotes": {
         "justNow": "Just now",

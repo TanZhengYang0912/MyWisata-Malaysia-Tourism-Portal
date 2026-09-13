@@ -131,7 +131,7 @@ export function generateAffiliateReportPdf(data: AffiliateReportData): Promise<B
     doc.on('error', reject);
 
     // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('MyWisata Malaysia', { align: 'center' });
+    doc.fontSize(20).font('Helvetica-Bold').text('MyLawatan Malaysia', { align: 'center' });
     doc.fontSize(11).font('Helvetica').text('Affiliate Program Report', { align: 'center' });
     doc
       .fontSize(9)
@@ -281,7 +281,7 @@ export function generateAffiliateReportPdf(data: AffiliateReportData): Promise<B
     }
 
     doc.moveDown(1);
-    doc.fontSize(8).font('Helvetica').fillColor('#888888').text('MyWisata Malaysia — internal admin report.', { align: 'center' });
+    doc.fontSize(8).font('Helvetica').fillColor('#888888').text('MyLawatan Malaysia — internal admin report.', { align: 'center' });
 
     doc.end();
   });

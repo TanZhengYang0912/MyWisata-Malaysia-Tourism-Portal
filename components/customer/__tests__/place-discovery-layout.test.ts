@@ -27,7 +27,7 @@ describe("place discovery section layout", () => {
 
     expect(source).toContain('t("ui.nearbyOutlets.eyebrow"');
     expect(source).toContain('aria-live="polite"');
-    expect(source).toContain("min-h-[96px]");
+    expect(source).toContain("min-h-[160px]");
     expect(source).toContain('t("ui.actions.clearFilters")');
     expect(source).toContain("focus-visible:ring-2");
   });

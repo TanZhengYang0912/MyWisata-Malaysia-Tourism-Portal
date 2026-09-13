@@ -18,7 +18,25 @@ export function summarizeVendorReviews(metrics: VendorReviewMetric[]) {
   return { rating: Math.round(weightedRating * 10) / 10, reviews };
 }
 
-export function selectFeaturedVendorProducts<T extends FeaturedVendorProduct>(products: T[], limit = 6) {
+export function selectFeaturedVendorProducts<T extends FeaturedVendorProduct>(
+  products: T[],
+  limit = 4,
+  featuredProductIds?: string[] | null,
+) {
+  if (featuredProductIds && featuredProductIds.length > 0) {
+    const productMap = new Map(products.map((product) => [product.id, product]));
+    const explicitSelection: T[] = [];
+    for (const id of featuredProductIds) {
+      const match = productMap.get(id);
+      if (match) {
+        explicitSelection.push(match);
+      }
+    }
+    if (explicitSelection.length > 0) {
+      return explicitSelection.slice(0, Math.max(0, limit));
+    }
+  }
+
   return [...products]
     .sort((left, right) => {
       const imageScore = Number(Boolean(right.coverUrl)) - Number(Boolean(left.coverUrl));

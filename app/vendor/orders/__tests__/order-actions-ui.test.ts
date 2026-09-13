@@ -20,7 +20,7 @@ describe("vendor order actions UI contract", () => {
     expect(source).toContain('t("ui.orders.markReady")');
     expect(source).toContain('t("ui.orders.fulfil")');
     expect(source).toContain("ActionConfirmationDialog");
-    expect(source).toContain('aria-label={t("ui.orders.close")}');
+    expect(source).toContain('closeLabel={t("ui.orders.close")}');
   });
 
   it("does not leave order-level fulfilment actions ambiguous for mixed items", () => {
@@ -35,10 +35,13 @@ describe("vendor order actions UI contract", () => {
 
   it("keeps action controls centered and protects the desktop table from clipping", () => {
     expect(source).toContain('className="text-center"');
-    expect(source).toContain("justify-center gap-2 border-t");
+    expect(source).toContain("flex-col items-stretch");
     expect(source).toContain("overflow-x-auto");
-    expect(source).toContain("xl:min-w-[960px]");
+    expect(source).toContain("xl:min-w-[1000px]");
     expect(source).toContain("xl:grid-cols-[32px_minmax(120px,1.2fr)");
+    expect(source).toContain("_230px]");
+    expect(source).toContain("w-full max-w-[14rem]");
+    expect(source).toContain("whitespace-nowrap");
   });
 
   it("labels the generic batch controls for keyboard and screen-reader users", () => {

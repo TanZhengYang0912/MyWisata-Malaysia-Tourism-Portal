@@ -8,6 +8,7 @@ import type { DiscoveryResult } from "@/backend/core/types";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { formatMYR } from "@/lib/i18n/format";
+import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 
 function placementIdFor(advertisement: DiscoveryResult): string | null {
   return advertisement.sponsorship?.placementId ?? null;
@@ -162,7 +163,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
   return (
     <section
       className="border-b border-border bg-secondary/25"
-      aria-labelledby="sponsored-partner-heading"
+      aria-labelledby="featured-partner-heading"
       onMouseEnter={() => setIsPointerPaused(true)}
       onMouseLeave={() => setIsPointerPaused(false)}
       onFocusCapture={() => setIsFocusPaused(true)}
@@ -173,18 +174,18 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
       <div className="mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
         <div className="mb-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.labels.sponsored")}</p>
-            <h2 id="sponsored-partner-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-              {t("ui.search.sponsoredRecommendations")}
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.labels.featured")}</p>
+            <h2 id="featured-partner-heading" className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+              {t("ui.search.featuredRecommendations")}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("ui.search.sponsoredDescription")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("ui.search.featuredDescription")}</p>
           </div>
         </div>
 
         <div
           data-testid="sponsored-partner-rail"
           className="group/carousel relative w-full overflow-hidden rounded-[28px] border border-border bg-card shadow-sm"
-          aria-roledescription={t("ui.search.sponsoredCarousel")}
+          aria-roledescription={t("ui.search.featuredCarousel")}
         >
           <article
             key={placementId}
@@ -203,7 +204,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
                 <img src={image} alt={activeAdvertisement.name} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-950 shadow-sm">
-                  {t("ui.labels.sponsored")}
+                  {t("ui.labels.featured")}
                 </span>
                 <span className="absolute bottom-5 left-5 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
                   <MapPin size={15} aria-hidden="true" /> {location}
@@ -224,6 +225,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
                   </span>
                   <span className="shrink-0 text-base font-bold text-foreground">{formatMYR(Number(activeAdvertisement.price))}</span>
                 </div>
+                {activeAdvertisement.outlet.operatingHours ? <div className="mt-3"><OperatingHoursSummary hours={activeAdvertisement.outlet.operatingHours} currentlyOpen={activeAdvertisement.outlet.currentlyOpen ?? activeAdvertisement.outlet.open} /></div> : activeAdvertisement.outlet.hours && <p className="mt-3 text-sm text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {activeAdvertisement.outlet.hours}</p>}
                 <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-bold text-primary">
                   {t("ui.actions.viewDetails")} <ArrowRight size={16} aria-hidden="true" />
                 </span>

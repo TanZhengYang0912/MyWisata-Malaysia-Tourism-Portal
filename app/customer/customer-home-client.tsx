@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bookmark, CalendarDays, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -18,8 +18,10 @@ const DestinationPreviewModal = dynamic(
 );
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATLAS_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { useAuth } from "@/components/providers/auth";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { EventCalendarDialog } from "@/components/customer/event-calendar-dialog";
 
 const PLACEHOLDER_TEXTS = [
   "Where should we wander?",
@@ -73,12 +75,15 @@ export function CustomerHomeClient({
   vendors: DemoVendor[];
 }) {
   const { t } = useTranslation("customer");
+  const { currentUser } = useAuth();
+  const isGuest = !currentUser;
   const router = useRouter();
   const gate = useCustomerCapabilityGate();
   const [activeState, setActiveState] = useState(() => MALAYSIA_DESTINATIONS[0].state);
   const [query, setQuery] = useState("");
   const { savedStates, toggleSaved } = useSavedDestinations();
   const [previewDestination, setPreviewDestination] = useState<typeof MALAYSIA_DESTINATIONS[number] | null>(null);
+  const [eventCalendarOpen, setEventCalendarOpen] = useState(false);
   const destinationRailRef = useRef<HTMLDivElement>(null);
   const placeholderText = useTypewriterPlaceholder(PLACEHOLDER_TEXTS);
 
@@ -103,7 +108,7 @@ export function CustomerHomeClient({
   }
 
   const recommendationItems = recommended.length > 0 ? recommended.slice(0, 4) : popular.slice(0, 4);
-  const hasPersonalizedRecommendations = recommended.length > 0;
+  const hasPersonalizedRecommendations = !isGuest && recommended.length > 0;
 
   const popularExperiences = useMemo(() => {
     const activities = popular.filter((item) => item.categorySlug === "activity" || item.requiresBooking);
@@ -207,6 +212,11 @@ export function CustomerHomeClient({
               })}
             </div>
           </nav>
+
+          <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-[#ffcc00]/25 bg-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#ffcc00]"><CalendarDays size={14} /> {t("ui.home.eventCalendarKicker")}</p><p className="mt-2 text-lg font-bold text-white">{t("ui.home.eventCalendarPrompt")}</p><p className="mt-1 max-w-xl text-sm leading-6 text-white/60">{t("ui.home.eventCalendarPromptDescription")}</p></div>
+            <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#ffcc00] px-5 py-3 text-sm font-bold text-[#010066] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
+          </div>
         </div>
       </section>
 
@@ -219,11 +229,29 @@ export function CustomerHomeClient({
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold font-[family-name:var(--font-display)] flex items-center gap-2">
-                  <Sparkles size={20} className="text-primary" /> {hasPersonalizedRecommendations ? t("ui.home.forYou") : t("ui.home.popularExperiences")}
+                  <Sparkles size={20} className="text-primary" /> {isGuest ? t("ui.home.featuredHighlights") : (hasPersonalizedRecommendations ? t("ui.home.forYou") : t("ui.home.popularExperiences"))}
                 </h2>
-                {!hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">{t("ui.home.explorationPrompt")}</p>}
+                {isGuest ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{t("ui.home.featuredHighlightsSubtitle")}</p>
+                ) : (
+                  !hasPersonalizedRecommendations && <p className="mt-1 text-sm text-muted-foreground">{t("ui.home.explorationPrompt")}</p>
+                )}
               </div>
-              <Link href="/customer/for-you" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.actions.viewAll")} <ArrowRight size={14} /></Link>
+              {isGuest ? (
+                <Link
+                  href="/customer/explore?sort=recommended"
+                  className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                >
+                  {t("ui.actions.viewAll")} <ArrowRight size={14} />
+                </Link>
+              ) : (
+                <Link
+                  href="/customer/for-you"
+                  className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
+                >
+                  {t("ui.actions.viewAll")} <ArrowRight size={14} />
+                </Link>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {recommendationItems.map((activity) => (
@@ -293,6 +321,7 @@ export function CustomerHomeClient({
           onClose={() => setPreviewDestination(null)}
         />
       )}
+      <EventCalendarDialog open={eventCalendarOpen} onOpenChange={setEventCalendarOpen} />
 
       {/* Hero motion. The markup above was copied from the design-demo prototype
           without this block, so every atlas-* class below had no rule and the hero

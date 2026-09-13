@@ -28,6 +28,7 @@ import { VendorReasonModal } from '@/components/admin/vendor-reason-modal';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -114,6 +115,7 @@ function initials(name: string) {
 
 export default function AdminVendorsPage() {
   const { t } = useTranslation('admin');
+  const { confirm, prompt } = useAppDialog();
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, welcomed: 0, rejected: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
@@ -228,8 +230,8 @@ export default function AdminVendorsPage() {
   }
 
   async function handleAction(vendor: VendorData, action: ActionType) {
-    if (action === 'approve' && !window.confirm(t('ui.vendors.confirm.approve', { name: vendor.name }))) return;
-    if (action === 'unsuspend' && !window.confirm(t('ui.vendors.confirm.reactivate', { name: vendor.name }))) return;
+    if (action === 'approve' && !(await confirm(t('ui.vendors.confirm.approve', { name: vendor.name })))) return;
+    if (action === 'unsuspend' && !(await confirm(t('ui.vendors.confirm.reactivate', { name: vendor.name })))) return;
     if (action === 'reject' || action === 'suspend' || action === 'request_information') {
       setReasonModal({ vendor, action });
       return;
@@ -248,8 +250,8 @@ export default function AdminVendorsPage() {
       setNotice(t('ui.vendors.batch.noneEligible', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`) }));
       return;
     }
-    if (!window.confirm(t('ui.vendors.batch.confirm', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`), count: eligible.length }))) return;
-    const reason = action === 'reject' || action === 'suspend' || action === 'request_information' ? window.prompt(t('ui.vendors.batch.reasonPrompt')) : undefined;
+    if (!(await confirm(t('ui.vendors.batch.confirm', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`), count: eligible.length })))) return;
+    const reason = action === 'reject' || action === 'suspend' || action === 'request_information' ? await prompt(t('ui.vendors.batch.reasonPrompt')) : undefined;
     if ((action === 'reject' || action === 'suspend' || action === 'request_information') && reason === null) return;
 
     setBusyAction(`batch:${action}`);

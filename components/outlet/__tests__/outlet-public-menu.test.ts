@@ -29,6 +29,12 @@ describe('public outlet menu', () => {
     expect(source).toContain('t("ui.outletMenu.availableAt"');
   });
 
+  it('keeps short menus from leaving a wide empty panel', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
+    expect(source).toContain('products.length <= 2');
+    expect(source).toContain('max-w-3xl');
+  });
+
   it('passes the current outlet name to the interpolated menu heading', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     const menu = source.slice(source.indexOf('export function OutletMenu'));

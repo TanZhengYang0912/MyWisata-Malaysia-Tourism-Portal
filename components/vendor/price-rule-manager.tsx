@@ -10,7 +10,7 @@ import { getProductDetailsLayoutClasses } from '@/lib/vendor/product-details-lay
 type PriceRule = { id: string; rule_type: string; label: string; multiplier: number | null; fixed_amount: number | null; min_quantity: number | null; priority: number; is_active: boolean; bundle_product_ids?: string[] | null };
 type ProductOption = { id: string; name: string; base_price: number };
 
-export default function PriceRuleManager({ vendorId, productId, productOptions = [] }: { vendorId: string; productId: string; productOptions?: ProductOption[] }) {
+export default function PriceRuleManager({ vendorId, productId, productOptions = [], readOnly = false }: { vendorId: string; productId: string; productOptions?: ProductOption[]; readOnly?: boolean }) {
   const { t } = useTranslation('vendor');
   const { showFeedback } = useActionFeedback();
   const layout = getProductDetailsLayoutClasses();
@@ -60,7 +60,7 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
         <p className="mt-1 text-xs text-gray-600">{t('pricing.description')}</p>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {!readOnly && <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label htmlFor="pricing-rule-type" className="grid gap-1 text-xs font-medium text-gray-700">
           {t('pricing.title')}
           <select id="pricing-rule-type" value={ruleType} onChange={(event) => setRuleType(event.target.value)} className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm font-normal text-gray-900 outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10">
@@ -108,12 +108,12 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+      {!readOnly && <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <Button type="button" onClick={addRule} disabled={busy || (ruleType === 'bundle' && bundleProductIds.length === 0)}>{busy ? t('pricing.adding') : t('pricing.add')}</Button>
         {message && <p className="text-xs text-gray-600" role="status">{message}</p>}
-      </div>
+      </div>}
 
       {rules.length > 0 && (
         <div className="mt-4 space-y-2">
@@ -123,7 +123,7 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
                 <span className="font-semibold text-gray-800">{rule.label}</span>
                 <span className="ml-2 text-gray-500">{rule.rule_type} · {t('pricing.priorityValue', { value: rule.priority ?? 0 })} · {rule.multiplier ? `×${rule.multiplier}` : rule.fixed_amount ? formatMYR(rule.fixed_amount) : t('pricing.configured')}{rule.rule_type === 'bundle' && rule.bundle_product_ids?.length ? ` · ${t('pricing.bundleItems', { count: rule.bundle_product_ids.length })}` : ''}</span>
               </div>
-              <button type="button" onClick={() => disableRule(rule.id)} className="w-fit font-semibold text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20">{t('pricing.disable')}</button>
+              {!readOnly && <button type="button" onClick={() => disableRule(rule.id)} className="w-fit font-semibold text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20">{t('pricing.disable')}</button>}
             </div>
           ))}
         </div>

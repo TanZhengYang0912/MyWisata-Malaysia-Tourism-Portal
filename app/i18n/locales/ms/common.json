@@ -237,7 +237,7 @@
       "stop": "Berhenti mendengar"
     },
     "list": {
-      "supportLabel": "Sokongan MyWisata",
+      "supportLabel": "Sokongan MyLawatan",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
     },
     "expandChat": "Kembangkan ke skrin penuh",
@@ -294,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Rakan pengalaman tempatan"
+    },
     "place": {
       "localNotes": {
         "justNow": "Sebentar tadi",

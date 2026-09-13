@@ -13,8 +13,8 @@ const COPY: Record<StaffInvitationLocale, {
   ignore: string;
 }> = {
   en: {
-    subject: "Your MyWisata staff invitation",
-    heading: "You are invited to join MyWisata staff",
+    subject: "Your MyLawatan staff invitation",
+    heading: "You are invited to join MyLawatan staff",
     introduction: "Review the role and permissions below before accepting.",
     role: "Role",
     permissions: "Permissions",
@@ -23,8 +23,8 @@ const COPY: Record<StaffInvitationLocale, {
     ignore: "If you were not expecting this invitation, you can ignore this email.",
   },
   ms: {
-    subject: "Jemputan kakitangan MyWisata anda",
-    heading: "Anda dijemput menyertai kakitangan MyWisata",
+    subject: "Jemputan kakitangan MyLawatan anda",
+    heading: "Anda dijemput menyertai kakitangan MyLawatan",
     introduction: "Semak peranan dan kebenaran di bawah sebelum menerima.",
     role: "Peranan",
     permissions: "Kebenaran",
@@ -33,8 +33,8 @@ const COPY: Record<StaffInvitationLocale, {
     ignore: "Jika anda tidak menjangkakan jemputan ini, anda boleh mengabaikan e-mel ini.",
   },
   "zh-CN": {
-    subject: "您的 MyWisata 员工邀请",
-    heading: "您受邀加入 MyWisata 员工团队",
+    subject: "您的 MyLawatan 员工邀请",
+    heading: "您受邀加入 MyLawatan 员工团队",
     introduction: "接受前，请先检查以下角色和权限。",
     role: "角色",
     permissions: "权限",

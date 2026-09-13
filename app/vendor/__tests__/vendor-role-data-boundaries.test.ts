@@ -1,59 +1,122 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
-const source = (path: string) => readFileSync(resolve(root, path), "utf8");
+const source = (path: string) => readFileSync(resolve(root, path), 'utf8');
 
-describe("Vendor role data boundaries", () => {
-  it("loads bookings metadata through scoped APIs and shares it with SlotForm", () => {
-    const bookings = source("app/vendor/bookings/page.tsx");
-    const slotForm = source("components/vendor/slot-form.tsx");
+describe('Vendor role data boundaries', () => {
+  it('loads bookings metadata through scoped APIs and shares it with SlotForm', () => {
+    const bookings = source('app/vendor/bookings/page.tsx');
+    const slotForm = source('components/vendor/slot-form.tsx');
 
-    expect(bookings).toContain("loadScopedProducts");
-    expect(bookings).toContain("/products?view=booking_metadata&sort=name");
-    expect(bookings).toContain("/outlets?view=booking_metadata&sort=name");
-    expect(bookings).toContain("view=booking_metadata");
-    expect(bookings).toContain("page=${page}&pageSize=24");
+    expect(bookings).toContain('loadScopedProducts');
+    expect(bookings).toContain('/products?view=booking_metadata&sort=name');
+    expect(bookings).toContain('/outlets?view=booking_metadata&sort=name');
+    expect(bookings).toContain('view=booking_metadata');
+    expect(bookings).toContain('page=${page}&pageSize=24');
     expect(bookings).not.toContain("supabase.from('products')");
-    expect(bookings).toContain("<SlotForm vendorId={vendorId} outlets={outlets} products={products}");
-    expect(slotForm).toContain("outlets: { id: string; name: string }[]");
-    expect(slotForm).toContain("products: { id: string; name: string; outlet_id: string");
-    expect(slotForm).not.toContain("createClient");
+    expect(bookings).toMatch(
+      /<SlotForm[\s\S]*vendorId=\{vendorId\}[\s\S]*outlets=\{outlets\}[\s\S]*products=\{products\}/,
+    );
+    expect(slotForm).toContain('outlets: { id: string; name: string }[]');
+    expect(slotForm).toContain(
+      'products: { id: string; name: string; outlet_id: string',
+    );
+    expect(slotForm).not.toContain('createClient');
     expect(slotForm).not.toContain("supabase.from('outlets')");
     expect(slotForm).not.toContain("supabase.from('products')");
   });
 
-  it("keeps Vendor profile and Voucher analytics owner-only", () => {
-    const profile = source("app/api/vendors/[vendorId]/route.ts");
-    const voucherAnalytics = source("app/api/vendors/[vendorId]/vouchers/analytics/route.ts");
+  it('keeps Vendor profile and Voucher analytics owner-only', () => {
+    const profile = source('app/api/vendors/[vendorId]/route.ts');
+    const voucherAnalytics = source(
+      'app/api/vendors/[vendorId]/vouchers/analytics/route.ts',
+    );
 
-    expect(profile).toMatch(/export async function GET[\s\S]+authorizeVendor\(vendorId, \['vendor_owner'\]\)/);
-    expect(voucherAnalytics).toContain("authorizeVendor(vendorId, ['vendor_owner'])");
+    expect(profile).toMatch(
+      /export async function GET[\s\S]+authorizeVendor\(vendorId, \['vendor_owner'\]\)/,
+    );
+    expect(voucherAnalytics).toContain(
+      "authorizeVendor(vendorId, ['vendor_owner'])",
+    );
   });
 
-  it("removes other Outlet offers from scoped Product responses", () => {
-    const products = source("app/api/vendors/[vendorId]/products/route.ts");
-    const outlets = source("app/api/vendors/[vendorId]/outlets/route.ts");
+  it('keeps operating-hour writes Outlet Manager-only while preserving Vendor read access', () => {
+    const bookings = source('app/vendor/bookings/page.tsx');
+    const outletRoute = source(
+      'app/api/vendors/[vendorId]/outlets/[outletId]/route.ts',
+    );
 
-    expect(products).toContain("scopedOffers");
-    expect(products).toContain("allowedOutletIds.has(offer.outlet_id)");
-    expect(products).toMatch(/\.\.\.product,[\s\S]+outlet_offers: scopedOffers/);
-    expect(products).toContain("metadataOnly");
-    expect(products).toContain("booking_metadata");
-    expect(outlets).toContain("metadataOnly");
-    expect(outlets).toContain("booking_metadata");
-    expect(outlets).toContain("access.access.isOutletManager ||");
-    expect(outlets).toContain("id,name,city,state,status,operating_hours");
+    expect(bookings).toContain('canEdit={isOutletManager}');
+    expect(bookings).toContain(
+      'if (!isOutletManager || !vendorId || !selectedScheduleOutlet) return;',
+    );
+    expect(bookings).toContain('disabled={!canEdit');
+    expect(outletRoute).toContain(
+      'if (body.operatingHours !== undefined && !access.access.isOutletManager)',
+    );
+    expect(outletRoute).toContain(
+      'Only Outlet Managers can update operating hours',
+    );
   });
 
-  it("rejects Outlet Managers before querying Vendor-wide share analytics", () => {
-    const analytics = source("app/api/vendor/share-analytics/route.ts");
+  it('removes other Outlet offers from scoped Product responses', () => {
+    const products = source('app/api/vendors/[vendorId]/products/route.ts');
+    const outlets = source('app/api/vendors/[vendorId]/outlets/route.ts');
+
+    expect(products).toContain('scopedOffers');
+    expect(products).toContain('allowedOutletIds.has(offer.outlet_id)');
+    expect(products).toMatch(
+      /\.\.\.product,[\s\S]+outlet_offers: scopedOffers/,
+    );
+    expect(products).toContain('metadataOnly');
+    expect(products).toContain('booking_metadata');
+    expect(outlets).toContain('metadataOnly');
+    expect(outlets).toContain('booking_metadata');
+    expect(outlets).toContain('access.access.isOutletManager ||');
+    expect(outlets).toContain('id,name,city,state,status,operating_hours');
+  });
+
+  it('rejects Outlet Managers before querying Vendor-wide share analytics', () => {
+    const analytics = source('app/api/vendor/share-analytics/route.ts');
     const rejection = analytics.indexOf("context.role !== 'vendor_owner'");
-    const serviceQuery = analytics.indexOf("const stats = await getVendorShareStats");
+    const serviceQuery = analytics.indexOf(
+      'const stats = await getVendorShareStats',
+    );
 
     expect(rejection).toBeGreaterThan(-1);
     expect(serviceQuery).toBeGreaterThan(rejection);
-    expect(analytics).toContain("Vendor owner permission required");
+    expect(analytics).toContain('Vendor owner permission required');
+  });
+
+  it('passes the manager outlet scope into the voucher form', () => {
+    const page = source('app/vendor/vouchers/page.tsx');
+    const form = source('components/vendor/voucher-form.tsx');
+
+    expect(page).toContain('isOutletManager');
+    expect(page).toContain(
+      'isOutletManager ? user?.activeOutletIds?.[0] : requestedOutletId',
+    );
+    expect(page).toContain('isOutletManager={isOutletManager}');
+    expect(form).toContain('isOutletManager?: boolean');
+    expect(form).toContain('type="hidden"');
+    expect(form).toContain('isOutletManager ?');
+    expect(form).toContain('voucher.form.assignedOutlet');
+  });
+
+  it('reuses the existing CSV workflow for Outlet Managers with a fixed outlet', () => {
+    const page = source('app/vendor/vouchers/page.tsx');
+    const builder = source('components/vendor/voucher-csv-builder.tsx');
+
+    expect(page).toContain('isVendorOwner || isOutletManager');
+    expect(page).toContain('isOutletManager={isOutletManager}');
+    expect(page).toContain(
+      'assignedOutletId={isOutletManager ? user?.activeOutletIds?.[0] : undefined}',
+    );
+    expect(builder).toContain('isOutletManager?: boolean');
+    expect(builder).toContain('assignedOutletId?: string');
+    expect(builder).toContain('isOutletManager ?');
+    expect(builder).toContain('assignedOutletId');
   });
 });

@@ -1,4 +1,10 @@
 import crypto from "node:crypto";
+import {
+  buildDemoBookingReference,
+  buildDemoOrderNote,
+  buildDemoReviewCopy,
+  buildDemoVoucherCopy,
+} from "./demo-content.mjs";
 
 const DEMO_PREFIX = "vendor-customer-demo";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -112,7 +118,7 @@ function addAliceRefund(rows, commerceCustomers, now, issues) {
     currency: "MYR",
     payment_method: "mock_card",
     voucher_code: null,
-    notes: "Demo purchase refunded after an itinerary change",
+    notes: "Refund issued after an itinerary change",
     paid_at: iso(new Date(createdAt.getTime() + 30 * 60 * 1000)),
     completed_at: null,
     cancelled_at: null,
@@ -154,7 +160,7 @@ function addAliceRefund(rows, commerceCustomers, now, issues) {
     payment_id: paymentId,
     order_id: orderId,
     amount,
-    reason: "Demo customer refund after an itinerary change",
+    reason: "Customer changed the itinerary before the visit",
     status: "processed",
     processed_by: ADMIN_ID,
     processed_at: iso(processedAt),
@@ -199,7 +205,7 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
     currency: "MYR",
     payment_method: "mock_card",
     voucher_code: discount > 0 ? voucher.code : null,
-    notes: `Demo purchase at ${outlet.name}`,
+    notes: buildDemoOrderNote({ product, outlet, scenarioKey: scenario.key }),
     paid_at: cancelled ? null : iso(paidAt),
     completed_at: completedAt ? iso(completedAt) : null,
     cancelled_at: cancelledAt ? iso(cancelledAt) : null,
@@ -259,7 +265,7 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
       slot_id: slotId,
       customer_id: customer.id,
       status: completed ? "checked_in" : "confirmed",
-      demo_qr_code: `DEMO-${itemId.slice(0, 13).toUpperCase()}`,
+      demo_qr_code: buildDemoBookingReference(itemId),
       check_in_at: completedAt ? iso(slotStart) : null,
       cancelled_at: null,
       created_at: iso(createdAt),
@@ -279,6 +285,12 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
   if (!completed) return;
 
   if (scenario.review) {
+    const reviewCopy = buildDemoReviewCopy({
+      product,
+      outlet,
+      reviewIndex: scenarioIndex,
+      scenarioKey: scenario.key,
+    });
     rows.reviews.push({
       id: stableUuid(`${key}:review`),
       user_id: customer.id,
@@ -286,9 +298,9 @@ function addPurchase(rows, { vendor, outlet, product, unitPrice, directProduct, 
       vendor_id: vendor.id,
       outlet_id: outlet.id,
       product_id: product.id,
-      rating: 4 + ((outletIndex + scenarioIndex) % 2),
-      title: (outletIndex + scenarioIndex) % 2 === 0 ? "A memorable local experience" : "Worth adding to the itinerary",
-      body: `We enjoyed ${product.name} at ${outlet.name}. The experience felt well organised and welcoming.`,
+      rating: reviewCopy.rating,
+      title: reviewCopy.title,
+      body: reviewCopy.body,
       is_visible: true,
       created_at: iso(new Date(completedAt.getTime() + DAY_MS)),
     });
@@ -347,13 +359,13 @@ export function buildVendorCustomerDemoPlan({
       issues.push({ code: "vendor_without_owner", vendorId: vendor.id, vendorName: vendor.name });
       continue;
     }
-    const hash = stableUuid(`${DEMO_PREFIX}:${vendor.id}:voucher`).replaceAll("-", "").slice(0, 10).toUpperCase();
+    const voucherCopy = buildDemoVoucherCopy(vendor.id);
     const voucher = {
       id: stableUuid(`${DEMO_PREFIX}:${vendor.id}:voucher`),
       vendor_id: vendor.id,
       outlet_id: null,
-      code: `DEMO${hash}`,
-      name: "Demo Traveller 10% Off",
+      code: voucherCopy.code,
+      name: voucherCopy.name,
       voucher_type: "percent",
       discount_value: 10,
       min_spend: 0,
@@ -490,7 +502,11 @@ export function buildVendorCustomerDemoPlan({
       timelineOrders: activeOutlets.length * OUTLET_TIMELINE_SCENARIOS.length,
       commerceCustomers: new Set(
         rows.orders
-          .filter((order) => order.notes.startsWith("Demo purchase at "))
+          .filter((order) => activeOutlets.some((outlet) =>
+            OUTLET_TIMELINE_SCENARIOS.some((scenario) =>
+              order.id === stableUuid(`${DEMO_PREFIX}:${outlet.id}:${scenario.key}:order`),
+            ),
+          ))
           .map((order) => order.user_id),
       ).size,
     },

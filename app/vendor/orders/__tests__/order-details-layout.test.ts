@@ -13,4 +13,11 @@ describe("vendor order details layout", () => {
       'className="mt-7 flex flex-wrap justify-center gap-2"',
     );
   });
+
+  it("uses the shared centered detail modal instead of a right drawer", () => {
+    expect(source).toContain(
+      'import CenteredDetailModal from "@/components/ui/centered-detail-modal";',
+    );
+    expect(source).not.toContain("absolute right-0 top-0");
+  });
 });

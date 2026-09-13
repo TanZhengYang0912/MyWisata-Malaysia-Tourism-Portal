@@ -18,7 +18,7 @@ import { redactPII } from './pii';
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
 
-const SYSTEM_PROMPT = `You are drafting a knowledge-base entry for MyWisata, a Malaysian tourism
+const SYSTEM_PROMPT = `You are drafting a knowledge-base entry for MyLawatan, a Malaysian tourism
 booking platform's customer support bot.
 
 A customer asked a question the bot could not answer well — either it had

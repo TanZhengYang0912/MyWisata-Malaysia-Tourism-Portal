@@ -40,4 +40,10 @@ describe("calendar-first My Activity flow", () => {
     expect(calendarSource).toContain("selectCalendarMonth");
     expect(calendarSource).toContain("monthOptions.map");
   });
+
+  it("derives the calendar scope from the URL instead of passing props to a route page", () => {
+    expect(calendarSource).toContain("useSearchParams");
+    expect(calendarSource).toContain('isActivityHistory(searchParams.get("history"))');
+    expect(activitySource).not.toContain("initialScope=");
+  });
 });

@@ -4,7 +4,7 @@ import {
   deliverPreparedInvitation,
   invitationFailure,
   preparedInvitation,
-} from "@/app/api/admin/access-control/staff-invitations/route";
+} from "@/lib/staff-invitations/route-helpers";
 import {
   createStaffInvitationToken,
   hashStaffInvitationToken,

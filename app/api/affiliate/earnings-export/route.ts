@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   // mojibake — plain-ASCII readers/spreadsheets ignore it harmlessly.
   const csv = '﻿' + lines.join('\r\n') + '\r\n';
 
-  const fileName = `mywisata-affiliate-earnings-${range}-${new Date().toISOString().slice(0, 10)}.csv`;
+  const fileName = `mylawatan-affiliate-earnings-${range}-${new Date().toISOString().slice(0, 10)}.csv`;
   return new Response(csv, {
     status: 200,
     headers: {

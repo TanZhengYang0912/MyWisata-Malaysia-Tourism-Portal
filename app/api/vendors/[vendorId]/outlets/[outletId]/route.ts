@@ -32,6 +32,9 @@ export async function PATCH(request: Request, { params }: Props) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
   const managerEditableFields = ['operatingHours', 'welcomeMessage', 'welcomeEnabled'];
+  if (body.operatingHours !== undefined && !access.access.isOutletManager) {
+    return apiFail('FORBIDDEN', 'Only Outlet Managers can update operating hours', 403);
+  }
   if (access.access.isOutletManager && Object.keys(body).some((key) => !managerEditableFields.includes(key))) {
     return apiFail('FORBIDDEN', 'Outlet managers can update operating hours and welcome message only', 403);
   }

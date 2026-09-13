@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 // default export is never actually used here.
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-const { getPlaceBySlug, getPlaceAncestors, getPlaceProducts, getNearbyOutlets } = await import(
+const { getPlaceAccesses, getPlaceBySlug, getPlaceAncestors, getPlaceInformationalActivities, getPlaceProducts, getNearbyOutlets } = await import(
   "@/backend/domains/places"
 );
 
@@ -137,9 +137,63 @@ describe("getPlaceProducts", () => {
   });
 });
 
+describe("getPlaceAccesses", () => {
+  it("returns only active source-backed public access without a vendor or checkout relation", async () => {
+    const db = makeDb({
+      place_accesses: [
+        {
+          id: "access-1", place_id: "poi-1", slug: "dataran-merdeka-public-access",
+          title: "Explore Dataran Merdeka", description: "Explore the historic square at your own pace.",
+          access_type: "free_public_access", source_title: "Tourism Malaysia",
+          source_url: "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+          image_source_url: null, image_path: "activity-media/dataran-merdeka-public-access.webp", status: "active",
+        },
+        { id: "access-2", place_id: "poi-1", slug: "hidden", title: "Hidden", description: "", access_type: "free_activity", source_title: "Source", source_url: "https://example.com", image_source_url: null, image_path: null, status: "hidden" },
+      ],
+    });
+
+    await expect(getPlaceAccesses("poi-1", db)).resolves.toEqual([
+      expect.objectContaining({
+        id: "access-1",
+        placeId: "poi-1",
+        accessType: "free_public_access",
+        sourceUrl: "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+        imageUrl: expect.stringContaining("/place-images/activity-media/dataran-merdeka-public-access.webp"),
+      }),
+    ]);
+  });
+});
+
+describe("getPlaceInformationalActivities", () => {
+  it("returns active official attraction information without a vendor checkout relation", async () => {
+    const db = makeDb({
+      place_informational_activities: [
+        {
+          id: "info-1", place_id: "poi-1", slug: "petronas-skybridge",
+          title: "Visit the PETRONAS Skybridge", description: "See the city.",
+          activity_type: "informational_paid_activity", price_label: "Ticket required",
+          source_title: "Tourism Malaysia", source_url: "https://www.malaysia.travel/explore/petronas-twin-tower",
+          image_source_url: null, image_path: "activity-media/petronas-skybridge.webp", status: "active",
+        },
+        { id: "info-2", place_id: "poi-1", slug: "hidden", title: "Hidden", description: "", activity_type: "informational_paid_activity", price_label: "Ticket required", source_title: "Source", source_url: "https://example.com", image_source_url: null, image_path: null, status: "hidden" },
+      ],
+    });
+
+    await expect(getPlaceInformationalActivities("poi-1", db)).resolves.toEqual([
+      expect.objectContaining({
+        id: "info-1",
+        placeId: "poi-1",
+        activityType: "informational_paid_activity",
+        priceLabel: "Ticket required",
+        imageUrl: expect.stringContaining("/place-images/activity-media/petronas-skybridge.webp"),
+      }),
+    ]);
+  });
+});
+
 const OUTLET_ROW_BASE = {
   vendor_id: "v1", address: null, city: "George Town", state: "Penang", operating_hours: null, phone: null,
-  status: "active", wheelchair_accessible: null, pet_friendly: null, vendors: { name: "Test vendor", status: "approved" }, products: null,
+  status: "active", review_status: "approved", wheelchair_accessible: null, pet_friendly: null, vendors: { name: "Test vendor", status: "approved" }, products: null,
 };
 
 describe("getNearbyOutlets", () => {

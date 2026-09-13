@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  AlertCircle,
   ArrowLeft,
   CalendarDays,
   Check,
@@ -28,6 +27,7 @@ import type { Booking, Order, Outlet } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
+import { RefundRequestDialog } from "@/components/customer/refund-request-dialog";
 import { useAuth } from "@/components/providers/auth";
 
 function shortOrderId(id: string) {
@@ -75,14 +75,6 @@ function OrderStatusBadge({ status, refundedLabel }: { status: string; refundedL
   );
 }
 
-const REFUND_REASON_OPTIONS = [
-  { value: "schedule_change", key: "ui.orders.refundReasonSchedule" },
-  { value: "mistake", key: "ui.orders.refundReasonMistake" },
-  { value: "unavailable", key: "ui.orders.refundReasonUnavailable" },
-  { value: "dissatisfied", key: "ui.orders.refundReasonDissatisfied" },
-  { value: "other", key: "ui.orders.refundReasonOther" },
-];
-
 export default function OrderDetailPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const params = useParams<{ id: string }>();
@@ -95,8 +87,6 @@ export default function OrderDetailPage() {
 
   // Refund Modal State (Figure 3 upgrade)
   const [refundModalOpen, setRefundModalOpen] = useState(false);
-  const [refundReasonType, setRefundReasonType] = useState("schedule_change");
-  const [refundCustomReason, setRefundCustomReason] = useState("");
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const [requestingRefund, setRequestingRefund] = useState(false);
 
@@ -132,17 +122,9 @@ export default function OrderDetailPage() {
     setTimeout(() => setCopiedId(false), 2000);
   }
 
-  async function handleRefundSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleRefundSubmit(reason: string) {
     if (!order || requestingRefund) return;
-
-    const selectedReasonLabel = tCustomer(
-      REFUND_REASON_OPTIONS.find((r) => r.value === refundReasonType)?.key || "ui.orders.refundReasonOther"
-    );
-    const fullReason = refundCustomReason.trim()
-      ? `${selectedReasonLabel}: ${refundCustomReason.trim()}`
-      : selectedReasonLabel;
-
+    const fullReason = reason.trim();
     if (fullReason.length < 5) return;
 
     setRequestingRefund(true);
@@ -158,7 +140,6 @@ export default function OrderDetailPage() {
       if (response.ok) {
         setRefundMessage(tCustomer("ui.orders.refundSubmitted"));
         setRefundModalOpen(false);
-        setRefundCustomReason("");
       } else {
         setRefundMessage(payload.error?.message ?? tCustomer("ui.orders.refundError"));
       }
@@ -482,130 +463,14 @@ export default function OrderDetailPage() {
       {/* ========================================================================= */}
       {/* 2. MODERN REFUND REQUEST MODAL (Figure 3 Upgrade)                         */}
       {/* ========================================================================= */}
-      {refundModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="refund-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/50 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-card p-6 sm:p-7 shadow-2xl animate-in zoom-in-95 duration-200"
-          >
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={() => setRefundModalOpen(false)}
-              className="absolute right-5 top-5 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-              aria-label={tCustomer("ui.actions.close")}
-            >
-              <X size={18} />
-            </button>
-
-            {/* Modal Header */}
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-                <RotateCcw size={22} />
-              </div>
-              <div className="pr-6">
-                <h3 id="refund-modal-title" className="text-xl font-bold tracking-tight text-foreground">
-                  {tCustomer("ui.orders.requestRefundModalTitle")}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {shortOrderId(order.id)} · {formatMYR(order.total)}
-                </p>
-              </div>
-            </div>
-
-            {/* Order Items Snapshot */}
-            <div className="mt-5 rounded-xl border border-border bg-secondary/30 p-3.5">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {tCustomer("ui.orders.refundableItems")}
-              </p>
-              <div className="mt-2 space-y-1">
-                {order.items.map((item, idx) => (
-                  <p key={idx} className="text-xs text-foreground font-medium truncate">
-                    {item.qty}× {item.activityName} ({item.variantLabel})
-                  </p>
-                ))}
-              </div>
-            </div>
-
-            {/* Refund Form */}
-            <form onSubmit={handleRefundSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {tCustomer("ui.orders.refundReasonSelect")}
-                </label>
-                <div className="mt-2 space-y-2">
-                  {REFUND_REASON_OPTIONS.map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs font-semibold transition ${
-                        refundReasonType === opt.value
-                          ? "border-primary bg-primary/5 text-primary ring-1 ring-primary"
-                          : "border-border bg-card text-foreground hover:bg-secondary/40"
-                      }`}
-                    >
-                      <span>{tCustomer(opt.key)}</span>
-                      <input
-                        type="radio"
-                        name="refundReason"
-                        value={opt.value}
-                        checked={refundReasonType === opt.value}
-                        onChange={() => setRefundReasonType(opt.value)}
-                        className="sr-only"
-                      />
-                      {refundReasonType === opt.value && <Check size={14} className="text-primary" />}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {tCustomer("ui.orders.refundDetailsLabel")}
-                </label>
-                <textarea
-                  rows={3}
-                  value={refundCustomReason}
-                  onChange={(e) => setRefundCustomReason(e.target.value)}
-                  placeholder={tCustomer("ui.orders.refundDetailsPlaceholder")}
-                  className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              {/* Policy Notice Box */}
-              <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <p>{tCustomer("ui.orders.refundPolicyNotice")}</p>
-              </div>
-
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl px-4"
-                  onClick={() => setRefundModalOpen(false)}
-                >
-                  {tCustomer("ui.actions.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={requestingRefund}
-                  className="rounded-xl bg-primary px-5 font-semibold text-white hover:bg-primary/90"
-                >
-                  {requestingRefund
-                    ? tCustomer("ui.states.submitting")
-                    : tCustomer("ui.orders.submitRefund")}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <RefundRequestDialog
+        open={refundModalOpen}
+        summary={`${shortOrderId(order.id)} · ${formatMYR(order.total)}`}
+        items={order.items.map((item) => ({ qty: item.qty, label: `${item.activityName} (${item.variantLabel})` }))}
+        submitting={requestingRefund}
+        onCancel={() => setRefundModalOpen(false)}
+        onConfirm={(reason) => void handleRefundSubmit(reason)}
+      />
 
       {/* ========================================================================= */}
       {/* 3. DEDICATED OFFICIAL PRINTABLE RECEIPT (Figure 4 Optimization)            */}
@@ -645,7 +510,7 @@ export default function OrderDetailPage() {
               {tCustomer("ui.orders.merchant")}
             </p>
             <p className="mt-1 font-bold text-sm text-gray-900">
-              {primaryOutlet?.name || "MyWisata Marketplace Merchant"}
+              {primaryOutlet?.name || "MyLawatan Marketplace Merchant"}
             </p>
             {primaryOutlet?.city && (
               <p className="text-gray-600 mt-0.5">

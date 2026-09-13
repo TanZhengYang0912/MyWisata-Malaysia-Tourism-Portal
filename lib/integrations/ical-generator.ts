@@ -24,10 +24,10 @@ export function generateOutletIcalFeed(outletName: string, slots: IcalSlotEvent[
   const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//MyWisata//Tourism Portal Booking Calendar//EN',
+    'PRODID:-//MyLawatan//Tourism Portal Booking Calendar//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:MyWisata - ${outletName.replace(/[\r\n]/g, '')}`,
+    `X-WR-CALNAME:MyLawatan - ${outletName.replace(/[\r\n]/g, '')}`,
     'X-WR-TIMEZONE:Asia/Kuala_Lumpur',
   ];
 
@@ -41,7 +41,7 @@ export function generateOutletIcalFeed(outletName: string, slots: IcalSlotEvent[
     const slotUid = slot.id.startsWith('slot-') ? slot.id : `slot-${slot.id}`;
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${slotUid}@mywisata.com`,
+      `UID:${slotUid}@mylawatan.my`,
       `DTSTAMP:${nowStr}`,
       `DTSTART:${startStr}`,
       `DTEND:${endStr}`,

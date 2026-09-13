@@ -19,9 +19,22 @@ describe("nearby outlets section", () => {
     expect(nearbySource.match(/t\("ui\.nearbyOutlets\.viewShop", \{ name: outlet\.name \}\)/g)).toHaveLength(2);
   });
 
+  it("uses outlet shop photos with a neutral fallback and the shared mature action", () => {
+    expect(nearbySource).toContain("outlet.coverUrl");
+    expect(nearbySource).toContain("<ArrowUpRight");
+    expect(nearbySource).toContain("<Store");
+    expect(nearbySource).not.toContain("outlet.logoUrl");
+    expect(nearbySource).not.toContain("<ArrowRight");
+  });
+
   it("uses the existing category translation key for a nearby outlet badge", () => {
     expect(nearbySource).toContain("getOptionalDiscoveryCategoryLabelKey");
     expect(nearbySource).toContain("t(categoryKey)");
+  });
+
+  it("shows each nearby outlet's operating hours", () => {
+    expect(nearbySource).toContain('t("ui.labels.operatingHours")');
+    expect(nearbySource).toContain("outlet.hours");
   });
 
   it("groups type and distance filters and defaults to a local radius", () => {

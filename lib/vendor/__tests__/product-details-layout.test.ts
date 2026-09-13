@@ -5,8 +5,11 @@ describe('product details layout', () => {
   it('uses a centered page layout with actions at the top', () => {
     const layout = getProductDetailsLayoutClasses();
 
-    expect(layout.page).toContain('max-w-6xl');
-    expect(layout.page).toContain('mx-auto');
+    // The vendor layout wrapper (app/vendor/layout.tsx) already provides
+    // width constraints and centring — the detail page class must not add its
+    // own max-width so the detail view stays consistent with the listing page.
+    expect(layout.page).not.toContain('max-w-6xl');
+    expect(layout.page).toContain('space-y-5');
     expect(layout.content).toContain('space-y-5');
     expect(layout.actions).toContain('sticky');
     expect(layout.actions).toContain('top-4');

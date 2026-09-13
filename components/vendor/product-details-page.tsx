@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeft, Check, Copy, Eye, Pencil } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Check, Copy, Eye, MapPin, Pencil, Store } from 'lucide-react';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import VariantManager from '@/components/vendor/variant-manager';
 import PriceRuleManager from '@/components/vendor/price-rule-manager';
@@ -19,7 +20,17 @@ interface ProductVariantData {
   price_offset: number;
   is_default: boolean;
   sku: string | null;
-  inventory: { quantity: number; reserved: number }[];
+  inventory: { outlet_id?: string; quantity: number; reserved: number }[];
+}
+
+export interface ProductDetailsOutlet {
+  id: string;
+  name: string;
+  short_name?: string;
+  display_id?: string;
+  city?: string | null;
+  state?: string | null;
+  price?: number;
 }
 
 export interface ProductDetailsData {
@@ -37,15 +48,20 @@ export interface ProductDetailsData {
   availableStock?: number;
   lowStockThreshold?: number;
   outlet?: { id?: string; name?: string; city?: string; state?: string };
+  /** All outlets this product is sold at (multi-outlet shared products). */
+  outlets?: ProductDetailsOutlet[];
 }
 
 interface Props {
   product: ProductDetailsData;
   vendorId: string;
   canManageOutlet: boolean;
+  canViewDetails: boolean;
   productTypeLabel: string;
   productImageKind: 'food' | 'experience' | 'product';
   outletFallback?: { id?: string; name?: string; city?: string | null; state?: string | null };
+  /** Multi-outlet list — overrides product.outlets if provided from the parent. */
+  outlets?: ProductDetailsOutlet[];
   productOptions: { id: string; name: string; base_price: number }[];
   copiedProductId: string | null;
   onCopyProductId: (productId: string) => void;
@@ -68,19 +84,44 @@ function ProductImage({ product, kind }: { product: ProductDetailsData; kind: Pr
   );
 }
 
-export default function ProductDetailsPage({ product, vendorId, canManageOutlet, productTypeLabel, productImageKind, outletFallback, productOptions, copiedProductId, onCopyProductId, onBack, onEdit, onUpdate }: Props) {
+export default function ProductDetailsPage({ product, vendorId, canManageOutlet, canViewDetails, productTypeLabel, productImageKind, outletFallback, outlets: outletsProp, productOptions, copiedProductId, onCopyProductId, onBack, onEdit, onUpdate }: Props) {
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : 'en';
   const layout = getProductDetailsLayoutClasses();
-  const outlet = product.outlet || outletFallback;
+
+  // Build a normalised outlet list: prefer outlets[] (multi-outlet API shape),
+  // fall back to the singular outlet / outletFallback for legacy single-outlet products.
+  const allOutlets: ProductDetailsOutlet[] = (outletsProp ?? product.outlets) && ((outletsProp ?? product.outlets)!.length > 0)
+    ? (outletsProp ?? product.outlets)!
+    : product.outlet
+      ? [{ id: product.outlet.id || product.outlet_id, name: product.outlet.name || '', city: product.outlet.city, state: product.outlet.state }]
+      : outletFallback
+        ? [{ id: outletFallback.id || product.outlet_id, name: outletFallback.name || '', city: outletFallback.city, state: outletFallback.state }]
+        : [];
+
+  const [selectedOutletId, setSelectedOutletId] = useState<string>(
+    allOutlets[0]?.id || product.outlet_id
+  );
+
+  const selectedOutlet = allOutlets.find((o) => o.id === selectedOutletId) ?? allOutlets[0];
+  const isMultiOutlet = allOutlets.length > 1;
+
+  const selectedOutletStock = product.variants?.reduce((total, variant) => {
+    const inventory = selectedOutlet?.id
+      ? variant.inventory?.find((item) => item.outlet_id === selectedOutlet.id) ?? variant.inventory?.find((item) => !item.outlet_id)
+      : variant.inventory?.[0];
+    return total + Math.max(0, Number(inventory?.quantity ?? 0) - Number(inventory?.reserved ?? 0));
+  }, 0) ?? product.availableStock;
+
   const productId = product.display_id || product.id;
-  const location = outletLocation(outlet?.city, outlet?.state);
-  const outletId = outletIdLabel(outlet?.id || product.outlet_id || outletFallback?.id);
+  const location = outletLocation(selectedOutlet?.city, selectedOutlet?.state);
+  const outletId = outletIdLabel(selectedOutlet?.id || product.outlet_id);
+
   const stockSummary = product.requires_booking
     ? t('productDetails.timeSlots')
-    : product.availableStock === undefined
+      : selectedOutletStock === undefined
       ? t('productDetails.inventoryNotLoaded')
-      : t('productDetails.unitsAvailable', { count: formatNumber(product.availableStock, locale) });
+      : t('productDetails.unitsAvailable', { count: formatNumber(selectedOutletStock, locale) });
 
   return (
     <div className={layout.page}>
@@ -94,10 +135,12 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
         </div>
         <div className="flex items-center gap-2">
           <ShareButton compact shareType="product" contentId={product.id} title={product.name} plainOnly />
-          <button type="button" onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-            <Pencil size={15} />
-            {t('productDetails.editListing')}
-          </button>
+          {canManageOutlet && (
+            <button type="button" onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+              <Pencil size={15} />
+              {t('productDetails.editListing')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -120,6 +163,36 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
           </div>
         </div>
 
+        {/* Outlet selector — only shown when this product is offered at more than one outlet */}
+        {isMultiOutlet && (
+          <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-3.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 mr-1 shrink-0">
+                <Store size={12} className="text-emerald-600" />
+                {t('productDetails.viewingOutlet')}
+              </div>
+              {allOutlets.map((outlet) => {
+                const isActive = outlet.id === selectedOutletId;
+                return (
+                  <button
+                    key={outlet.id}
+                    type="button"
+                    onClick={() => setSelectedOutletId(outlet.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'border-primary bg-primary text-white shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-primary/40 hover:bg-primary/5 hover:text-primary'
+                    }`}
+                  >
+                    <MapPin size={11} className={isActive ? 'text-white/80' : 'text-gray-400'} />
+                    {outletShortName(outlet.short_name || outlet.name)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-px border-t border-gray-100 bg-gray-100 sm:grid-cols-2 lg:grid-cols-4">
           <div className="bg-white p-5">
             <p className="text-xs text-gray-500">{t('productDetails.productId')}</p>
@@ -133,11 +206,18 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
           </div>
           <div className="bg-white p-5">
             <p className="text-xs text-gray-500">{t('productDetails.basePrice')}</p>
-            <p className="mt-2 text-lg font-bold text-gray-950">{formatMYR(Number(product.base_price), locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="mt-2 text-lg font-bold text-gray-950">
+              {selectedOutlet?.price !== undefined
+                ? formatMYR(Number(selectedOutlet.price), locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : formatMYR(Number(product.base_price), locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            {isMultiOutlet && selectedOutlet?.price !== undefined && (
+              <p className="mt-0.5 text-[11px] text-gray-400">{t('productDetails.outletPrice')}</p>
+            )}
           </div>
           <div className="bg-white p-5">
             <p className="text-xs text-gray-500">{t('productDetails.outlet')}</p>
-            <p className="mt-2 truncate text-sm font-semibold text-gray-900">{outletShortName(outlet?.name)}</p>
+            <p className="mt-2 truncate text-sm font-semibold text-gray-900">{outletShortName(selectedOutlet?.name)}</p>
             <p className="mt-1 text-xs text-gray-500">{location}</p>
           </div>
           <div className="bg-white p-5">
@@ -174,7 +254,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
             <h2 className="mt-1 text-xl font-bold text-gray-950">{t('productDetails.variantsInventory')}</h2>
             <p className="mt-1 text-sm text-gray-500">{t('productDetails.variantsHint')}</p>
           </div>
-          {canManageOutlet ? <VariantManager vendorId={vendorId} productId={product.id} variants={product.variants || []} requiresBooking={product.requires_booking} onUpdate={onUpdate} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">{t('productDetails.viewOnlyVariants')}</div>}
+          {canViewDetails ? <VariantManager vendorId={vendorId} productId={product.id} variants={product.variants || []} selectedOutletId={selectedOutlet?.id} requiresBooking={product.requires_booking} readOnly={!canManageOutlet} onUpdate={onUpdate} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">{t('productDetails.viewOnlyVariants')}</div>}
         </section>
 
         <section id="pricing" className={layout.section}>
@@ -183,7 +263,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
             <h2 className="mt-1 text-xl font-bold text-gray-950">{t('productDetails.pricingRules')}</h2>
             <p className="mt-1 text-sm text-gray-500">{t('productDetails.pricingHint')}</p>
           </div>
-          {canManageOutlet ? <PriceRuleManager vendorId={vendorId} productId={product.id} productOptions={productOptions} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">{t('productDetails.viewOnlyPricing')}</div>}
+          {canViewDetails ? <PriceRuleManager vendorId={vendorId} productId={product.id} productOptions={productOptions} readOnly={!canManageOutlet} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-500">{t('productDetails.viewOnlyPricing')}</div>}
         </section>
       </div>
     </div>

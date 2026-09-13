@@ -1,0 +1,109 @@
+{
+  "vendor": {
+    "id": "f235e866-c455-a090-58b0-c8174e381b57",
+    "name": "Melaka River Cruise",
+    "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+    "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf"
+  },
+  "outlets": [
+    {
+      "id": "bd4ed5b4-f509-0a0b-79a4-2817792e8c23",
+      "name": "Melaka River Cruise — Spice Garden Jetty"
+    },
+    {
+      "id": "814905d8-511e-e99d-ec8e-c2d6fed5eee7",
+      "name": "Melaka River Cruise — Jalan Tun Ali Jetty"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "op-river-cruise-day-ticket",
+    "op-river-cruise-night"
+  ],
+  "products": [
+    {
+      "slug": "melaka-river-cruise-adult-mykad",
+      "name": "Melaka River Cruise Adult — MyKad",
+      "description": "45-minute Melaka River Cruise ticket for an adult visitor presenting a MyKad, listed in the operator's published ticket flyer.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Jonker_Street_Night_Market_in_Melaka%2C_Malaysia.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/melaka-river-cruise-adult-mykad-real.webp",
+      "sha256": "221304dfa604e16a29925e4bccb3d634755b61e091034cbf7498a168830e029b",
+      "artist": "Melaka River Cruise official ticket flyer / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "melaka-river-cruise-adult-non-mykad",
+      "name": "Melaka River Cruise Adult — Non-MyKad",
+      "description": "45-minute Melaka River Cruise ticket for a non-MyKad adult visitor, listed in the operator's published ticket flyer.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 30,
+      "source_type": "official",
+      "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Melaka_Malaysia_Stadthuys-01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/melaka-river-cruise-adult-non-mykad-real.webp",
+      "sha256": "8d942ab5d312fa056a40d8397ca26d7643f0c46f3e9e2e029901a4716fc02a53",
+      "artist": "Melaka River Cruise official ticket flyer / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "melaka-river-cruise-child-mykad",
+      "name": "Melaka River Cruise Child — MyKad",
+      "description": "45-minute Melaka River Cruise ticket for a MyKad child visitor, listed in the operator's published ticket flyer.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 15,
+      "source_type": "official",
+      "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/34/Melaka_C_-_Christ_Church_Melaka_with_trishaws.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/melaka-river-cruise-child-mykad-real.webp",
+      "sha256": "9e5261cdbe6c710d6fbede93dee5d504329cc86d37e669d931783275eb452df4",
+      "artist": "Melaka River Cruise official ticket flyer / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "melaka-river-cruise-child-non-mykad",
+      "name": "Melaka River Cruise Child — Non-MyKad",
+      "description": "45-minute Melaka River Cruise ticket for a non-MyKad child visitor, listed in the operator's published ticket flyer.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/8/80/Melaka_Malaysia_A-Famosa-01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/melaka-river-cruise-child-non-mykad-real.webp",
+      "sha256": "c21a23c1eea5346c1c180eb7773557db0bf35570747b430906e2a4aa0d557402",
+      "artist": "Melaka River Cruise official ticket flyer / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "melaka-river-cruise-chartered-boat",
+      "name": "Melaka River Cruise Chartered Boat",
+      "description": "Private chartered boat service for group events, available by reservation and listed in the operator's published ticket flyer.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 1000,
+      "source_type": "official",
+      "source_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/9/96/St_Paul%27s_Church%2C_Melaka_-_Malaysia_%284829614701%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://melakarivercruise.my/flyersmrc.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/melaka-river-cruise-chartered-boat-real.webp",
+      "sha256": "cd7d46db76d18c8caa34bfad5ecc1a1217ccfeaa2fc02e9bfd3dc4a2905aa4d0",
+      "artist": "Melaka River Cruise official ticket flyer / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

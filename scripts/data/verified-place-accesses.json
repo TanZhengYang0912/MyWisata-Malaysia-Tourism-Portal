@@ -1,0 +1,554 @@
+{
+  "accesses": [
+    {
+      "place_slug": "dataran-merdeka",
+      "slug": "dataran-merdeka-public-access",
+      "title": "Explore Dataran Merdeka",
+      "description": "Explore Kuala Lumpur's historic square and its public surroundings at your own pace. Entry is free.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "dataran-merdeka",
+      "slug": "dataran-merdeka-sultan-abdul-samad-galleries",
+      "title": "Visit the Sultan Abdul Samad Building Galleries",
+      "description": "Visit the reopened Sultan Abdul Samad Building to see gallery exhibitions that trace its history from colonial administration to independence.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "dataran-merdeka",
+      "slug": "dataran-merdeka-heritage-walk",
+      "title": "Join a Free Heritage Walk",
+      "description": "Use Dataran Merdeka as a starting point for the free heritage guided walks identified in Tourism Malaysia's Kuala Lumpur guide.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Kuala Lumpur Map & Guide",
+      "source_url": "https://storage.ebrochures.malaysia.travel/storage/KL%20Map%20%26%20Guide_23.pdf",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "petronas-twin-towers",
+      "slug": "petronas-twin-towers-klcc-park-walk",
+      "title": "Walk or Jog in KLCC Park",
+      "description": "Use KLCC Park's walking paths and 1.2-kilometre jogging track beside the PETRONAS Twin Towers.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — KL's Best Parks for a Relaxing Day Out",
+      "source_url": "https://www.malaysia.travel/explore/kl-s-best-parks-for-a-relaxing-day-out",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "petronas-twin-towers",
+      "slug": "petronas-twin-towers-lake-symphony",
+      "title": "Watch the Lake Symphony Fountain",
+      "description": "Watch the Lake Symphony light-and-sound water fountain show in KLCC Park at its scheduled evening times.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — KL's Best Parks for a Relaxing Day Out",
+      "source_url": "https://www.malaysia.travel/explore/kl-s-best-parks-for-a-relaxing-day-out",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "petronas-twin-towers",
+      "slug": "petronas-twin-towers-photography",
+      "title": "Photograph the PETRONAS Twin Towers",
+      "description": "Capture the towers from KLCC Park, where Tourism Malaysia highlights the park's clear views and photography opportunities.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — KL's Best Parks for a Relaxing Day Out",
+      "source_url": "https://www.malaysia.travel/explore/kl-s-best-parks-for-a-relaxing-day-out",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "jalan-alor",
+      "slug": "jalan-alor-evening-street-exploration",
+      "title": "Explore Jalan Alor After Dark",
+      "description": "Visit Jalan Alor when its lanterns, street tables and hawker stalls bring the road to life in the evening. Entry is free.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "thean-hou-temple",
+      "slug": "thean-hou-temple-public-access",
+      "title": "Explore Thean Hou Temple",
+      "description": "Explore Thean Hou Temple's public grounds at your own pace. Tourism Malaysia lists admission as free.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "thean-hou-temple",
+      "slug": "thean-hou-temple-six-tier-architecture",
+      "title": "Admire Thean Hou's Six-Tier Architecture",
+      "description": "Take time to appreciate the temple's six-tiered structure and its blend of traditional Chinese architectural details.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "thean-hou-temple",
+      "slug": "thean-hou-temple-hilltop-views",
+      "title": "Take in the Hilltop Views",
+      "description": "Enjoy the city views from Thean Hou Temple's hilltop setting during your visit.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "jonker-street",
+      "slug": "jonker-street-public-access",
+      "title": "Stroll Along Jonker Street",
+      "description": "Walk through Jonker Street's heritage shophouses, cafés and boutiques at your own pace. There is no entry charge.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Best Things to Do in Melaka for Couples",
+      "source_url": "https://www.malaysia.travel/explore/best-things-to-do-in-melaka-for-couples-a-romantic-getaway-guide",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "jonker-street",
+      "slug": "jonker-street-night-market-stroll",
+      "title": "Explore the Jonker Street Night Market",
+      "description": "Visit on Friday or Saturday evening to walk through the night market; entry is free and no booking is required.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Best Things to Do in Melaka for Couples",
+      "source_url": "https://www.malaysia.travel/explore/best-things-to-do-in-melaka-for-couples-a-romantic-getaway-guide",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "jonker-street",
+      "slug": "jonker-street-antiques-and-galleries",
+      "title": "Browse Jonker Street's Antiques and Galleries",
+      "description": "Browse the antique shops, art galleries and collectible stores along Jonker Street before choosing whether to make a purchase.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — The Historical City of Melaka",
+      "source_url": "https://www.malaysia.travel/explore/the-historical-city-of-melaka",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "putra-mosque",
+      "slug": "putra-mosque-public-entry",
+      "title": "Visit Putra Mosque",
+      "description": "Enter Putra Mosque during visitor opening hours. Tourism Malaysia confirms that entry is free and requires no advance booking.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Putra Mosque",
+      "source_url": "https://www.malaysia.travel/explore/putra-mosque",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "putra-mosque",
+      "slug": "putra-mosque-courtyard-and-lake-views",
+      "title": "Explore the Courtyard and Lake Views",
+      "description": "Pause in Putra Mosque's open courtyard for views across Putrajaya Lake and the surrounding landmarks.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Putra Mosque",
+      "source_url": "https://www.malaysia.travel/explore/putra-mosque",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "putra-mosque",
+      "slug": "putra-mosque-architecture-and-minaret",
+      "title": "Discover the Mosque's Domes and Minaret",
+      "description": "Admire the rose-coloured granite dome, Islamic design details and the five-tiered minaret of Putra Mosque.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Putra Mosque",
+      "source_url": "https://www.malaysia.travel/explore/putra-mosque",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "national-mosque-kuala-lumpur",
+      "slug": "national-mosque-public-entry",
+      "title": "Visit the National Mosque",
+      "description": "Visit Masjid Negara during its published visitor hours. Tourism Malaysia lists admission as free.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "national-mosque-kuala-lumpur",
+      "slug": "national-mosque-courtyards-and-pathways",
+      "title": "Explore the Courtyards and Shaded Pathways",
+      "description": "Walk through Masjid Negara's sweeping courtyards and shaded pathways outside prayer times.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "national-mosque-kuala-lumpur",
+      "slug": "national-mosque-reflecting-pools",
+      "title": "Pause by the Reflecting Pools",
+      "description": "Take a quiet moment by Masjid Negara's reflecting pools and landscaped grounds while respecting the worship space.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Top Places to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "bukit-melawati",
+      "slug": "bukit-melawati-public-entry",
+      "title": "Explore Bukit Melawati",
+      "description": "Explore Bukit Melawati at your own pace. Tourism Malaysia confirms that entry is free for all visitors.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — 4 Top Cultural Destinations in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "bukit-melawati",
+      "slug": "bukit-melawati-fort-and-lighthouse",
+      "title": "See the Fort Remains and Lighthouse",
+      "description": "Explore Bukit Melawati's historic fort remains, ancient cannons and the Altingsburg Lighthouse.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — 4 Top Cultural Destinations in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "bukit-melawati",
+      "slug": "bukit-melawati-wildlife-spotting",
+      "title": "Look for Silvered Leaf Monkeys",
+      "description": "Watch for silvered leaf monkeys and long-tailed macaques that roam around Bukit Melawati's historic hill.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — 4 Top Cultural Destinations in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "blue-mosque",
+      "slug": "blue-mosque-public-entry",
+      "title": "Visit the Blue Mosque",
+      "description": "Visit Masjid Sultan Salahuddin Abdul Aziz Shah during its published visitor hours. Tourism Malaysia confirms entry is free for all visitors.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Cultural Experiences in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "blue-mosque",
+      "slug": "blue-mosque-guided-tour",
+      "title": "Join a Blue Mosque Guided Tour",
+      "description": "Join an available guided tour to learn about the Blue Mosque's Islamic practices and architectural design elements.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Cultural Experiences in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "blue-mosque",
+      "slug": "blue-mosque-courtyard-and-dome",
+      "title": "Explore the Courtyard and Blue Dome",
+      "description": "Explore the mosque courtyard and admire its blue-and-silver dome, minarets, calligraphy and stained-glass details.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Cultural Experiences in Selangor",
+      "source_url": "https://www.malaysia.travel/explore/4-top-cultural-destinations-in-selangor",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "perdana-botanical-gardens",
+      "slug": "perdana-botanical-gardens-public-entry",
+      "title": "Explore Perdana Botanical Gardens",
+      "description": "Enter Kuala Lumpur's public botanical garden for a self-guided visit through its lakes, tropical plants and open green space. Entry is free.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Top Place to Visit in Kuala Lumpur",
+      "source_url": "https://www.malaysia.travel/explore/top-places-to-visit-in-kuala-lumpur",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "perdana-botanical-gardens",
+      "slug": "perdana-botanical-gardens-lake-and-foliage-walk",
+      "title": "Walk Among Lakes and Tropical Foliage",
+      "description": "Follow the garden paths around its lakes, exotic blooms and luxuriant foliage at your own pace.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Kuala Lumpur Travel Guide",
+      "source_url": "https://ebrochures.malaysia.travel/en/malaysia-travel-guide/kuala-lumpur/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "perdana-botanical-gardens",
+      "slug": "perdana-botanical-gardens-jogging-trails",
+      "title": "Use the Garden's Jogging and Walking Trails",
+      "description": "Use the garden's jogging and walking trails for a green-space exercise or leisure break in the city.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Kuala Lumpur Travel Guide",
+      "source_url": "https://ebrochures.malaysia.travel/en/malaysia-travel-guide/kuala-lumpur/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "labuan-war-cemetery",
+      "slug": "labuan-war-cemetery-public-entry",
+      "title": "Visit the Labuan War Cemetery Grounds",
+      "description": "Visit the World War II Memorial grounds at Labuan War Cemetery. Tourism Malaysia lists free entry for visitors.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — The Labuan War Cemetery",
+      "source_url": "https://www.malaysia.travel/explore/the-labuan-war-cemetery-a-journey-through-north-borneo-s-history",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "labuan-war-cemetery",
+      "slug": "labuan-war-cemetery-wwii-history",
+      "title": "Learn About Labuan's World War II History",
+      "description": "Use the memorial grounds to learn about Labuan's World War II history and the service personnel commemorated there.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — The Labuan War Cemetery",
+      "source_url": "https://www.malaysia.travel/explore/the-labuan-war-cemetery-a-journey-through-north-borneo-s-history",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "labuan-war-cemetery",
+      "slug": "labuan-war-cemetery-reflection",
+      "title": "Pause for Quiet Reflection",
+      "description": "Spend time in the cemetery's calm landscaped setting and reflect on the memorial's historic significance.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — The Labuan War Cemetery",
+      "source_url": "https://www.malaysia.travel/explore/the-labuan-war-cemetery-a-journey-through-north-borneo-s-history",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "fort-margherita",
+      "slug": "fort-margherita-free-gallery-entry",
+      "title": "Visit Fort Margherita and the Brooke Gallery",
+      "description": "Visit Fort Margherita, now home to the Brooke Gallery, with free admission as published by the Sarawak Tourism Board.",
+      "access_type": "free_public_access",
+      "source_title": "Sarawak Tourism Board — Fort Margherita",
+      "source_url": "https://chinese.sarawaktourism.com/story/%E4%BA%91%E6%B8%B8%E7%A0%82%E6%8B%89%E8%B6%8A%E5%8D%9A%E7%89%A9%E9%A6%86%EF%BC%9A%E5%B8%A6%E4%BD%A0%E8%B5%B0%E8%BF%9B%E5%A5%87%E5%A6%99%E4%B8%96%E7%95%8C/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "fort-margherita",
+      "slug": "fort-margherita-brooke-era-exhibits",
+      "title": "Explore the Brooke-Era Exhibits",
+      "description": "Explore the fort's three levels of exhibits, from Brunei-era artefacts to the history of the Sarawak kingdom.",
+      "access_type": "free_activity",
+      "source_title": "Sarawak Tourism Board — Fort Margherita",
+      "source_url": "https://chinese.sarawaktourism.com/story/%E4%BA%91%E6%B8%B8%E7%A0%82%E6%8B%89%E8%B6%8A%E5%8D%9A%E7%89%A9%E9%A6%86%EF%BC%9A%E5%B8%A6%E4%BD%A0%E8%B5%B0%E8%BF%9B%E5%A5%87%E5%A6%99%E4%B8%96%E7%95%8C/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "fort-margherita",
+      "slug": "fort-margherita-riverfront-evening-stroll",
+      "title": "Take in the Sarawak River Views",
+      "description": "Take an evening stroll around Fort Margherita for views of the waterfront, Sarawak River and surrounding areas.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Sarawak Map & Guide",
+      "source_url": "https://storage.ebrochures.malaysia.travel/storage/Sarawak%20Map%20%26%20Guide.pdf",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "pd-army-museum",
+      "slug": "army-museum-port-dickson-free-entry",
+      "title": "Visit the Army Museum Port Dickson",
+      "description": "Visit the Army Museum Port Dickson, which Tourism Malaysia lists as free to enter.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Port Dickson",
+      "source_url": "https://www.malaysia.travel/explore/port-dickson",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "pd-army-museum",
+      "slug": "army-museum-port-dickson-nine-galleries",
+      "title": "Explore the Nine Museum Galleries",
+      "description": "Explore the museum's nine galleries, which trace Malaysia's military history from the Malacca Sultanate to modern peacekeeping missions.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Port Dickson",
+      "source_url": "https://www.malaysia.travel/explore/port-dickson",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "pd-army-museum",
+      "slug": "army-museum-port-dickson-outdoor-displays",
+      "title": "See the Outdoor Military Displays",
+      "description": "See the outdoor collection of aircraft, helicopters, armoured vehicles and artillery pieces at the museum grounds.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Port Dickson",
+      "source_url": "https://www.malaysia.travel/explore/port-dickson",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "tanjung-aru-beach",
+      "slug": "tanjung-aru-beach-sunset-viewing",
+      "title": "Watch the Tanjung Aru Sunset",
+      "description": "Watch the sun set over the horizon from Tanjung Aru Beach, known for its crimson evening sky.",
+      "access_type": "free_public_access",
+      "source_title": "Sabah Tourism Board — Tanjung Aru Beach",
+      "source_url": "https://sabahtourism.com/destination/tanjung-aru-beach/?locale=en",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "tanjung-aru-beach",
+      "slug": "tanjung-aru-beach-kite-flying",
+      "title": "Fly a Kite on the Beach",
+      "description": "Fly a kite along Tanjung Aru's fine sands and casuarina-fringed shoreline.",
+      "access_type": "free_activity",
+      "source_title": "Sabah Tourism Board — Tanjung Aru Beach",
+      "source_url": "https://sabahtourism.com/destination/tanjung-aru-beach/?locale=en",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "tanjung-aru-beach",
+      "slug": "tanjung-aru-beach-casuarina-birdwatching",
+      "title": "Watch Birds in the Casuarina Groves",
+      "description": "Look for coastal birds among the beach, park edges and casuarina groves during the quieter parts of the day.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Birdwatching Paradise: Sabah",
+      "source_url": "https://ebrochures.malaysia.travel/en/birdwatching-paradise/sabah/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "signal-hill-observatory",
+      "slug": "signal-hill-observatory-platform",
+      "title": "Visit the Signal Hill Observatory Platform",
+      "description": "Visit Kota Kinabalu's Signal Hill Observatory Platform, which the Sabah Tourism Board lists as free to enter.",
+      "access_type": "free_public_access",
+      "source_title": "Sabah Tourism Board — Signal Hill Observatory Platform",
+      "source_url": "https://korea.sabahtourism.com/destination/%EC%8B%9C%EA%B7%B8%EB%84%90-%ED%9E%90-%EC%A0%84%EB%A7%9D%EB%8C%80-signal-hill-observatory-platform/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "signal-hill-observatory",
+      "slug": "signal-hill-observatory-city-and-sea-views",
+      "title": "Take in Kota Kinabalu and Sea Views",
+      "description": "View Kota Kinabalu, the sea and the Tunku Abdul Rahman marine park islands from the city's highest vantage point.",
+      "access_type": "free_activity",
+      "source_title": "Sabah Tourism Board — Signal Hill Observatory Platform",
+      "source_url": "https://korea.sabahtourism.com/destination/%EC%8B%9C%EA%B7%B8%EB%84%90-%ED%9E%90-%EC%A0%84%EB%A7%9D%EB%8C%80-signal-hill-observatory-platform/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "signal-hill-observatory",
+      "slug": "signal-hill-observatory-sunset-and-trail",
+      "title": "Watch the Sunset from Signal Hill",
+      "description": "Take the forest trail or visit near sunset to see the city and sea in changing evening light.",
+      "access_type": "free_activity",
+      "source_title": "Sabah Tourism Board — Signal Hill Observatory",
+      "source_url": "https://japan.sabahtourism.com/2021/08/06/%E3%82%B3%E3%82%BF%E3%82%AD%E3%83%8A%E3%83%90%E3%83%AB%E3%81%AE%E8%A1%97%E3%82%92%E4%B8%80%E6%9C%9B%E3%81%A7%E3%81%8D%E3%82%8B%E3%80%80%E3%82%B7%E3%82%B0%E3%83%8A%E3%83%AB%E3%83%92%E3%83%AB%E5%B1%95/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "armenian-street-murals",
+      "slug": "armenian-street-murals-public-art-walk",
+      "title": "Walk the Armenian Street Art Corridor",
+      "description": "Explore the public-art corridor around Lebuh Armenian, part of Penang's outdoor street-art scene.",
+      "access_type": "free_public_access",
+      "source_title": "MyPenang — Street Art",
+      "source_url": "https://mypenang.gov.my/page.php?id=NG5nNkd1SnhmdVVJdUgyS1M3cjhnUT09&subid=NFFsNkVjR0crZ0ZkaVRORzJKYXIzZz09&subtext=street-art-1&cTab=e96608",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "armenian-street-murals",
+      "slug": "armenian-street-murals-little-children-bicycle",
+      "title": "Find Little Children on a Bicycle",
+      "description": "See the interactive Little Children on a Bicycle mural along Lebuh Armenian, identified by MyPenang as an iconic George Town work.",
+      "access_type": "free_activity",
+      "source_title": "MyPenang — Street Art",
+      "source_url": "https://mypenang.gov.my/page.php?id=NG5nNkd1SnhmdVVJdUgyS1M3cjhnUT09&subid=NFFsNkVjR0crZ0ZkaVRORzJKYXIzZz09&subtext=street-art-1&cTab=e96608",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "armenian-street-murals",
+      "slug": "armenian-street-murals-public-art-details",
+      "title": "Discover Armenian Street Public Art",
+      "description": "Look for public artworks and heritage-street details around Lebuh Armenian in George Town's UNESCO core.",
+      "access_type": "free_activity",
+      "source_title": "MyPenang — Street Art",
+      "source_url": "https://mypenang.gov.my/page.php?id=NG5nNkd1SnhmdVVJdUgyS1M3cjhnUT09&subid=NFFsNkVjR0crZ0ZkaVRORzJKYXIzZz09&subtext=street-art-1&cTab=e96608",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "penang-botanic-gardens",
+      "slug": "penang-botanic-gardens-public-entry",
+      "title": "Explore Penang Botanic Gardens",
+      "description": "Visit Penang Botanic Gardens during its daily opening hours; admission is free.",
+      "access_type": "free_public_access",
+      "source_title": "Penang Botanic Gardens Department — Places to Visit",
+      "source_url": "https://botanicalgardens.penang.gov.my/index.php/en/visitors-info/place-to-visit",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "penang-botanic-gardens",
+      "slug": "penang-botanic-gardens-forest-trails",
+      "title": "Walk the Forest Trails",
+      "description": "Follow the garden's forest trails and landscaped paths as part of a free visit.",
+      "access_type": "free_activity",
+      "source_title": "Penang Botanic Gardens Department — Places to Visit",
+      "source_url": "https://botanicalgardens.penang.gov.my/index.php/en/visitors-info/place-to-visit",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "penang-botanic-gardens",
+      "slug": "penang-botanic-gardens-running-tracks",
+      "title": "Use the Running and Jogging Tracks",
+      "description": "Use the running and jogging tracks listed among the garden's visitor facilities.",
+      "access_type": "free_activity",
+      "source_title": "Penang Botanic Gardens Department — Places to Visit",
+      "source_url": "https://botanicalgardens.penang.gov.my/index.php/en/visitors-info/place-to-visit",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "eagle-square",
+      "slug": "eagle-square-landmark-visit",
+      "title": "See the Eagle Square Landmark",
+      "description": "Visit Dataran Lang near Kuah Jetty to see Langkawi's prominent reddish-brown eagle statue.",
+      "access_type": "free_public_access",
+      "source_title": "Tourism Malaysia — Langkawi Destination Guide",
+      "source_url": "https://ebrochures.malaysia.travel/en/langkawi/5-your-first-stop-kuah/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "eagle-square",
+      "slug": "eagle-square-ponds-and-bridges",
+      "title": "Walk the Ponds and Bridges",
+      "description": "Walk around Eagle Square's landscaped grounds, scenic ponds, bridges and covered terraces.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Langkawi Destination Guide",
+      "source_url": "https://ebrochures.malaysia.travel/en/langkawi/5-your-first-stop-kuah/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "eagle-square",
+      "slug": "eagle-square-night-illumination",
+      "title": "See Eagle Square After Dark",
+      "description": "Visit after dark to see Eagle Square's illuminated landscape and waterfront setting.",
+      "access_type": "free_activity",
+      "source_title": "Tourism Malaysia — Langkawi Destination Guide",
+      "source_url": "https://ebrochures.malaysia.travel/en/langkawi/5-your-first-stop-kuah/",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "waterfront-lightshow",
+      "slug": "waterfront-lightshow-darul-hana-musical-fountain",
+      "title": "Watch the Darul Hana Musical Fountain",
+      "description": "Watch the Darul Hana Musical Fountain's water, music and light show along Kuching Waterfront.",
+      "access_type": "free_activity",
+      "source_title": "Sarawak Tourism Board — Kuching Destination Catalogue",
+      "source_url": "https://www.sarawaktourism.com/web/attachment/show/?docid=cjl6M0hNajhoNXBFNlZ1ODdDdWJwUT09OjoZqx9kC5YAShGdtvCz_nln",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "waterfront-lightshow",
+      "slug": "waterfront-lightshow-evening-riverfront-stroll",
+      "title": "Take an Evening Waterfront Stroll",
+      "description": "Walk the landscaped Kuching Waterfront promenade in the evening, when the fountain lights up the riverfront.",
+      "access_type": "free_activity",
+      "source_title": "Sarawak Tourism Board — Kuching Waterfront",
+      "source_url": "https://www.sarawaktourism.com/web/places-to-visit/town-view/kuching/major-attractions/kuching-waterfront",
+      "image_source_url": null
+    },
+    {
+      "place_slug": "waterfront-lightshow",
+      "slug": "waterfront-lightshow-river-and-landmark-views",
+      "title": "See River and Landmark Views at Night",
+      "description": "Take in night views across the Sarawak River towards Darul Hana Bridge and Kuching's waterfront landmarks.",
+      "access_type": "free_activity",
+      "source_title": "Sarawak Tourism Board — Kuching Waterfront",
+      "source_url": "https://www.sarawaktourism.com/web/places-to-visit/town-view/kuching/major-attractions/kuching-waterfront",
+      "image_source_url": null
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import { ProductChatButton } from "@/components/customer/product-chat-button";
 import { formatMYR } from "@/lib/i18n/format";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!experience) return { title: t("ui.experience.notFound") };
   const vendorName = experience.outlet?.vendorName;
   return {
-    title: `${experience.name}${vendorName ? ` by ${vendorName}` : ""} — MyWisata`,
+    title: `${experience.name}${vendorName ? ` by ${vendorName}` : ""} — ${BRAND_NAME}`,
     description:
       experience.description ||
       t("ui.experience.metaDescription", { name: experience.name }),

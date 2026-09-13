@@ -55,7 +55,7 @@ export async function GET(_request: Request, { params }: Props) {
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
-  const access = await authorizeOutlet(vendorId, outletId);
+  const access = await authorizeOutlet(vendorId, outletId, ['outlet_manager']);
   if (!access.ok) return access.response;
   const parsed = await parseBody(request, saveSchema);
   if (!parsed.ok) return parsed.response;
@@ -125,7 +125,7 @@ export async function PATCH(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
-  const access = await authorizeOutlet(vendorId, outletId);
+  const access = await authorizeOutlet(vendorId, outletId, ['outlet_manager']);
   if (!access.ok) return access.response;
 
   const { data: existing, error: existingError } = await access.access.serviceDb

@@ -1,4 +1,4 @@
-# MyWisata — Malaysia Tourism Portal (FYP)
+# MyLawatan — Malaysia Tourism Portal (FYP)
 
 A local-mock, multi-role demo of a Malaysia-wide tourism discovery & commerce
 platform: Customer, Vendor, and Admin areas sharing one canonical seed dataset.

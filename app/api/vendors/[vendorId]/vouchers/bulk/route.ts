@@ -15,8 +15,10 @@ function csvDate(value: string | undefined) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+  const managerOutletId = access.access.isOutletManager && access.access.outletIds.length === 1 ? access.access.outletIds[0] : null;
+  if (access.access.isOutletManager && !managerOutletId) return apiFail('FORBIDDEN', 'Outlet managers must have exactly one assigned outlet to import vouchers.', 403);
   const body = await request.json().catch(() => ({})) as { csv?: unknown; codePrefix?: unknown };
   if (typeof body.csv !== 'string' || body.csv.trim().length < 10) return apiFail('INVALID_CSV', 'Upload a CSV with a header row and at least one voucher.', 400);
   const codePrefix = typeof body.codePrefix === 'string' ? body.codePrefix.trim().toUpperCase() : '';
@@ -61,7 +63,7 @@ export async function POST(request: Request, { params }: Props) {
       rowNumber: rowIndex + 2,
       errors,
       generated: !code && Boolean(codePrefix),
-      record: { vendor_id: vendorId, code, name, voucher_type: voucherType, discount_value: discountValue, min_spend: minSpend, max_uses: maxUses, per_customer_limit: perCustomerLimit ? Number(perCustomerLimit) : null, valid_from: validFrom, valid_until: validUntil, redemption_mode: redemptionMode, is_claimable: true, outlet_id: outletId, product_id: productId, buy_quantity: buyQuantity, free_quantity: freeQuantity, is_active: false, review_status: 'pending_review' },
+      record: { vendor_id: vendorId, created_by: access.access.userId, code, name, voucher_type: voucherType, discount_value: discountValue, min_spend: minSpend, max_uses: maxUses, per_customer_limit: perCustomerLimit ? Number(perCustomerLimit) : null, valid_from: validFrom, valid_until: validUntil, redemption_mode: redemptionMode, is_claimable: true, outlet_id: outletId, product_id: productId, buy_quantity: buyQuantity, free_quantity: freeQuantity, is_active: false, review_status: 'pending_review', vendor_review_status: access.access.isOutletManager ? 'pending' : 'approved' },
     };
   });
 
@@ -82,6 +84,12 @@ export async function POST(request: Request, { params }: Props) {
   };
   assignGeneratedCodes();
 
+  parsedRows.forEach((item) => {
+    if (access.access.isOutletManager) {
+      if (item.record.outlet_id && item.record.outlet_id !== managerOutletId) item.errors.push('outlet is outside your assigned scope');
+      item.record.outlet_id = managerOutletId;
+    }
+  });
   const outletIds = [...new Set(parsedRows.map((item) => item.record.outlet_id).filter(Boolean))];
   const productIds = [...new Set(parsedRows.map((item) => item.record.product_id).filter(Boolean))];
   const [{ data: outlets }, { data: products }] = await Promise.all([
@@ -89,10 +97,13 @@ export async function POST(request: Request, { params }: Props) {
     productIds.length ? access.access.serviceDb.from('products').select('id,outlet_id,outlet_offers(outlet_id,status)').eq('vendor_id', vendorId).in('id', productIds) : Promise.resolve({ data: [] as { id: string; outlet_id: string | null; outlet_offers: { outlet_id: string; status: string | null }[] }[] }),
   ]);
   const validOutletIds = new Set((outlets ?? []).map((item) => item.id));
+  const allowedOutletIds = access.access.isOutletManager ? new Set(access.access.outletIds) : validOutletIds;
   const validProductIds = new Set((products ?? []).map((item) => item.id));
   const productById = new Map((products ?? []).map((item) => [item.id, item]));
   parsedRows.forEach((item) => {
     if (item.record.outlet_id && !validOutletIds.has(item.record.outlet_id)) item.errors.push('outlet is not owned by this vendor');
+    if (item.record.outlet_id && !allowedOutletIds.has(item.record.outlet_id)) item.errors.push('outlet is outside your assigned scope');
+    if (access.access.isOutletManager && !item.record.outlet_id) item.errors.push('outlet is required for outlet managers');
     if (item.record.product_id && !validProductIds.has(item.record.product_id)) item.errors.push('product is not owned by this vendor');
     const product = item.record.product_id ? productById.get(item.record.product_id) : null;
     if (product && item.record.outlet_id && !isProductEligibleForVoucherOutlet({ productOutletId: product.outlet_id, offers: product.outlet_offers.map((offer) => ({ outletId: offer.outlet_id, status: offer.status })), selectedOutletId: item.record.outlet_id })) item.errors.push('product is not sold at the selected outlet');

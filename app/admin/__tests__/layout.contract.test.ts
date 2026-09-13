@@ -30,7 +30,7 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('label: "Staff Conduct"');
     expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/en/admin.json'), 'utf8')).toContain('"Staff Conduct": "Staff Conduct"');
     expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/zh-CN/admin.json'), 'utf8')).toContain('"Staff Conduct": "员工行为"');
-    expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/ms/admin.json'), 'utf8')).toContain('"Staff Conduct": "Kelakuan kakitangan"');
+    expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/ms/admin.json'), 'utf8')).toContain('"Staff Conduct": "Tatakelakuan"');
   });
 
   it('uses a real sign-out action in the sticky toolbar', () => {

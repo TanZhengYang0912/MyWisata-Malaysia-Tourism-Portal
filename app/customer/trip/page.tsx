@@ -4,11 +4,12 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { getTrips } from "@/backend/domains/trips";
 import { TripHubClient } from "./trip-hub-client";
 import { redirect } from "next/navigation";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
   return {
-    title: `${t("ui.trip.title")} — MyWisata`,
+    title: `${t("ui.trip.title")} — ${BRAND_NAME}`,
     description: t("ui.trip.description"),
   };
 }

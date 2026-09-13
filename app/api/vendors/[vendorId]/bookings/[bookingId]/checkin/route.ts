@@ -91,6 +91,10 @@ export async function POST(request: Request, { params }: Props) {
     entriesToAdmit = Math.max(1, remaining);
   }
 
+  if (pass.policy !== 'group_entry' && entriesToAdmit !== 1) {
+    return apiFail('INVALID_ADMISSION_COUNT', 'Single-entry and multi-entry tickets admit one visit per scan', 400);
+  }
+
   // Atomic admission check and audit recording via RPC
   const { data: admissionResult, error: admissionError } = await supabase.rpc('admit_ticket_pass', {
     p_pass_id: pass.id,

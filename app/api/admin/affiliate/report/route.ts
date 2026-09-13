@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     fraudAnalytics,
   });
 
-  const fileName = `mywisata-affiliate-report-${range}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const fileName = `mylawatan-affiliate-report-${range}-${new Date().toISOString().slice(0, 10)}.pdf`;
   return new Response(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {

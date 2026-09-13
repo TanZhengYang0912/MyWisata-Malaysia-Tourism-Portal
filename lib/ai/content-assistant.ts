@@ -47,7 +47,7 @@ export async function generateContentDraft(surface: ContentSurface, context: Rec
   const prompt = buildContentPrompt(surface, context);
   const safePrompt = redactPII(prompt).clean;
   const result = await generateAiText(
-    'You are a careful writing assistant for MyWisata, a Malaysian tourism platform. Ground every output in the supplied facts and never fabricate operational details.',
+    'You are a careful writing assistant for MyLawatan, a Malaysian tourism platform. Ground every output in the supplied facts and never fabricate operational details.',
     safePrompt,
     { temperature: 0.35, maxTokens: surface === 'outlet_page' ? 350 : 450 },
   );

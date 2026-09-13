@@ -112,4 +112,56 @@ describe('PATCH vendor product shared outlet scope', () => {
     expect(response.status).toBe(200);
     expect(updatePayload).toMatchObject({ review_status: 'draft', status: 'inactive' });
   });
+
+  it('persists a multi-entry admission policy with its visit limit and validity', async () => {
+    let updatePayload: Record<string, unknown> | undefined;
+    const updateQuery = {
+      update: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+        updatePayload = payload;
+        return updateQuery;
+      }),
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: { id: productId }, error: null }),
+    };
+    const productQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          id: productId,
+          outlet_id: null,
+          requires_booking: true,
+          ticket_entry_policy: 'single_entry',
+          ticket_entry_limit: 1,
+          ticket_validity_days: null,
+          outlet_offers: [{ outlet_id: assignedOutletId, status: 'active' }],
+        },
+        error: null,
+      }),
+    };
+    mocks.from.mockImplementationOnce(() => productQuery).mockImplementationOnce(() => updateQuery);
+
+    const response = await PATCH(
+      new Request('http://localhost', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          requiresBooking: true,
+          ticketEntryPolicy: 'multi_entry',
+          ticketEntryLimit: 5,
+          ticketValidityDays: 30,
+        }),
+      }),
+      { params: Promise.resolve({ vendorId, productId }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(updatePayload).toMatchObject({
+      ticket_entry_policy: 'multi_entry',
+      ticket_entry_limit: 5,
+      ticket_validity_days: 30,
+    });
+  });
 });

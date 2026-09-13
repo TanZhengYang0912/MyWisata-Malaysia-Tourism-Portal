@@ -222,7 +222,7 @@ export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
 <html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
   <h2>${safeSubject}</h2>
   <p>Hi ${safeName},</p>
-  <p>Your MyWisata account status has been updated.</p>
+  <p>Your MyLawatan account status has been updated.</p>
   <p><strong>Reason:</strong> ${safeReason}</p>
   <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
   <p>For questions, please contact support. Never reply with passwords or identity documents.</p>
@@ -250,7 +250,7 @@ export function renderRecommendationEmail(input: RecommendationEmailInput): Rend
     'Great find! We will reach out to the vendor soon.',
     `Time: ${occurredAt}`,
     '',
-    'You can view your recommendations in MyWisata.',
+    'You can view your recommendations in MyLawatan.',
   ].join('\n');
   const html = `<!doctype html>
 <html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5">
@@ -259,7 +259,7 @@ export function renderRecommendationEmail(input: RecommendationEmailInput): Rend
   <p>Your recommendation for <strong>${safeVendorName}</strong> has been approved.</p>
   <p>Great find! We will reach out to the vendor soon.</p>
   <p><strong>Time:</strong> ${safeOccurredAt} (Malaysia time)</p>
-  <p>You can view your recommendations in MyWisata.</p>
+  <p>You can view your recommendations in MyLawatan.</p>
 </body></html>`;
   return { subject, html, text };
 }

@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "6d136dce-e4b2-0f08-64f9-79d263c53464",
+    "name": "Highlands Skyway Operations",
+    "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+    "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html"
+  },
+  "outlets": [
+    {
+      "id": "b59d2831-0c62-a8a0-444a-7500fab0d1fd",
+      "name": "Highlands Skyway — Station"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "highlands-skyway-standard-one-way",
+      "name": "Genting SkyWay Standard Gondola — One Way",
+      "description": "One-way shared standard gondola ride from Gohtong Sentral Station to Resorts World Station, listed on Resorts World Genting's official ticket pricing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 11,
+      "source_type": "official",
+      "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Genting_Skyway.jpg/1280px-Genting_Skyway.jpg",
+      "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/highlands-skyway-standard-one-way-real.jpg",
+      "sha256": "4efbaacd3eb5bb6c9b6fdf70380dbed24d2b4483004b2d08652b87244500627b",
+      "artist": "Resorts World Genting official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "highlands-skyway-standard-return",
+      "name": "Genting SkyWay Standard Gondola — Return",
+      "description": "Return shared standard gondola ride on Genting SkyWay, listed on Resorts World Genting's official ticket pricing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 19,
+      "source_type": "official",
+      "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Genting_Skyway_3.jpg/1280px-Genting_Skyway_3.jpg",
+      "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/highlands-skyway-standard-return-real.jpg",
+      "sha256": "1d2f13de465a8e0bf9c234eaa0feb979f5015c0db3c0e38f5109e0c7782246d9",
+      "artist": "Resorts World Genting official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "highlands-skyway-express-one-way",
+      "name": "Genting SkyWay Standard Gondola with Express Boarding — One Way",
+      "description": "One-way standard gondola ride with express boarding, listed on Resorts World Genting's official ticket pricing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 17,
+      "source_type": "official",
+      "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Genting_Skyway_4.jpg/1280px-Genting_Skyway_4.jpg",
+      "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/highlands-skyway-express-one-way-real.jpg",
+      "sha256": "48251d00160cfcf7067f552dfcf0708828ff9fd8246114eee9ea3f5ada12d214",
+      "artist": "Resorts World Genting official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "highlands-skyway-express-return",
+      "name": "Genting SkyWay Standard Gondola with Express Boarding — Return",
+      "description": "Return standard gondola ride with express boarding, listed on Resorts World Genting's official ticket pricing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 32,
+      "source_type": "official",
+      "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Genting_Skyway_in_Genting_Highlands%2C_Malaysia%2C_2007.jpg/1280px-Genting_Skyway_in_Genting_Highlands%2C_Malaysia%2C_2007.jpg",
+      "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/highlands-skyway-express-return-real.jpg",
+      "sha256": "d0df0a02e5192a313fde5dce9621706569afad25cfbc6962a9ceeb95edebf320",
+      "artist": "Resorts World Genting official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "highlands-skyway-chartered-one-way",
+      "name": "Genting SkyWay Chartered Gondola — One Way",
+      "description": "Private one-way standard gondola ride for up to eight passengers with express boarding, listed on Resorts World Genting's official ticket pricing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 324,
+      "source_type": "official",
+      "source_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Genting_Highlands_-_Genting_Skyway_0012.jpg/1280px-Genting_Highlands_-_Genting_Skyway_0012.jpg",
+      "price_reference_page": "https://www.rwgenting.com/en/getting-here/cable-car/genting-gohtong-jaya-cable-car.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/highlands-skyway-chartered-one-way-real.jpg",
+      "sha256": "ea7a87544af4cbc73ff07fafc0d0001879f5289bbe24eb64092ebc9a11f65033",
+      "artist": "Resorts World Genting official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

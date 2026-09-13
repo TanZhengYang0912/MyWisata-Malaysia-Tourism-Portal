@@ -229,7 +229,7 @@ export function buildAdminRecommendationDetail(input: {
     })),
     author: {
       id: row.recommender_id,
-      name: input.recommender?.full_name ?? 'MyWisata member',
+      name: input.recommender?.full_name ?? 'MyLawatan member',
       email: input.recommender?.email ?? null,
       isKycVerified: input.recommender?.kyc_status === 'approved',
     },

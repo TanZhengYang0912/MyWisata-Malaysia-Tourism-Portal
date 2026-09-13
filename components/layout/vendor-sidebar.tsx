@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, Bell, Store, Building2, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, MapPinned, UtensilsCrossed, CalendarDays, ClipboardCheck, TicketPercent, ShoppingBag, MessageCircle, ChartNoAxesCombined, Wallet, Bell, Store, Building2, ScanLine, type LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { OUTLET_MANAGER_SHOP_PAGE_HREF } from '@/lib/vendor/outlet-manager-navigation';
@@ -26,6 +26,7 @@ const NAV_SECTIONS: VendorNavSection[] = [
     items: [
       { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
       { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
+      { href: '/vendor/redemptions', label: 'Redemptions', icon: ClipboardCheck },
       { href: '/vendor/vouchers', label: 'Vouchers', icon: TicketPercent },
       { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
     ],
@@ -60,6 +61,8 @@ const OUTLET_MANAGER_SECTIONS: VendorNavSection[] = [
     items: [
       { href: '/vendor/products', label: 'Products', icon: UtensilsCrossed },
       { href: '/vendor/bookings', label: 'Bookings', icon: CalendarDays },
+      { href: '/vendor/scanner', label: 'Scanner', icon: ScanLine },
+      { href: '/vendor/vouchers', label: 'Vouchers', icon: TicketPercent },
       { href: '/vendor/orders', label: 'Orders', icon: ShoppingBag },
     ],
   },
@@ -69,6 +72,10 @@ const OUTLET_MANAGER_SECTIONS: VendorNavSection[] = [
       { href: '/vendor/inbox', label: 'Inbox', icon: MessageCircle },
       { href: '/vendor/notifications', label: 'Notifications', icon: Bell },
     ],
+  },
+  {
+    labelKey: 'insights',
+    items: [{ href: '/vendor/analytics', label: 'Analytics', icon: ChartNoAxesCombined }],
   },
 ];
 

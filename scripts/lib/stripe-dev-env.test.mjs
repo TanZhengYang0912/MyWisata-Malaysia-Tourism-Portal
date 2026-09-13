@@ -36,7 +36,7 @@ test('updates only STRIPE_WEBHOOK_SECRET and preserves the rest of the env file'
   const original = [
     'NEXT_PUBLIC_APP_URL=http://localhost:3000',
     `STRIPE_WEBHOOK_SECRET=${secretPrefix}old`,
-    'EMAIL_FROM=MyWisata App <hello@example.com>',
+    'EMAIL_FROM=MyLawatan App <hello@example.com>',
     '',
   ].join('\n');
 
@@ -45,7 +45,7 @@ test('updates only STRIPE_WEBHOOK_SECRET and preserves the rest of the env file'
     [
       'NEXT_PUBLIC_APP_URL=http://localhost:3000',
       `STRIPE_WEBHOOK_SECRET=${secret}`,
-      'EMAIL_FROM=MyWisata App <hello@example.com>',
+      'EMAIL_FROM=MyLawatan App <hello@example.com>',
       '',
     ].join('\n'),
   );

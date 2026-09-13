@@ -25,6 +25,13 @@ vi.mock("lucide-react", () => ({
 vi.mock("@/components/ui/button", () => ({
   Button: (props: React.ComponentProps<"button">) => <button {...props} />,
 }));
+vi.mock("@/components/providers/app-dialog", () => ({
+  useAppDialog: () => ({
+    prompt: vi.fn().mockResolvedValue(null),
+    confirm: vi.fn().mockResolvedValue(true),
+    alert: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
 vi.mock("@/components/admin/confirm-dialog", () => ({
   AdminConfirmDialog: ({ open, title, description, confirmLabel, onConfirm }: {
     open: boolean;

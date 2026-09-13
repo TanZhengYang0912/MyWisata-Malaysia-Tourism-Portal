@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 import { formatMYR } from '@/lib/i18n/format';
 
@@ -14,7 +15,7 @@ interface VariantData {
   price_offset: number;
   is_default: boolean;
   sku: string | null;
-  inventory: { quantity: number; reserved: number }[];
+  inventory: { outlet_id?: string; quantity: number; reserved: number }[];
 }
 
 interface Props {
@@ -23,15 +24,25 @@ interface Props {
   variants: VariantData[];
   onUpdate: () => void;
   requiresBooking: boolean;
+  selectedOutletId?: string;
+  readOnly?: boolean;
 }
 
-export default function VariantManager({ vendorId, productId, variants, onUpdate, requiresBooking }: Props) {
+export default function VariantManager({ vendorId, productId, variants, onUpdate, requiresBooking, selectedOutletId, readOnly = false }: Props) {
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
+  const { alert, confirm, prompt } = useAppDialog();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPriceOffset, setNewPriceOffset] = useState('');
+  function inventoryFor(variant: VariantData) {
+    if (selectedOutletId) {
+      return variant.inventory?.find((inventory) => inventory.outlet_id === selectedOutletId)
+        ?? variant.inventory?.find((inventory) => !inventory.outlet_id);
+    }
+    return variant.inventory?.[0];
+  }
 
   async function handleAdd() {
     if (!newName) return;
@@ -54,7 +65,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
   }
 
   async function handleDelete(variantId: string) {
-    if (!confirm(t('variants.archiveConfirm'))) return;
+    if (!(await confirm(t('variants.archiveConfirm')))) return;
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'DELETE' });
       if (!response.ok) { const payload = await response.json().catch(() => ({})); showFeedback('error', payload.error?.message || t('variants.archiveFailed')); return; }
@@ -63,10 +74,10 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
   }
 
   async function handleInventoryUpdate(variantId: string, currentQty: number) {
-    const newQty = prompt(t('variants.quantityPrompt'), String(currentQty));
+    const newQty = await prompt(t('variants.quantityPrompt'), String(currentQty));
     if (newQty === null) return;
     const qty = parseInt(newQty, 10);
-    if (isNaN(qty) || qty < 0) return alert(t('variants.invalidQuantity'));
+    if (isNaN(qty) || qty < 0) { await alert(t('variants.invalidQuantity')); return; }
 
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/${productId}/variants/${variantId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: qty }) });
@@ -79,10 +90,10 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
     <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-sm font-semibold text-gray-900">{t('variants.title')}</h3>
-        {!adding && <Button variant="outline" size="sm" onClick={() => setAdding(true)}><span aria-hidden="true">+</span>{t('variants.add')}</Button>}
+        {!readOnly && !adding && <Button variant="outline" size="sm" onClick={() => setAdding(true)}><span aria-hidden="true">+</span>{t('variants.add')}</Button>}
       </div>
 
-      {adding && (
+      {!readOnly && adding && (
         <div className="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
           <label htmlFor="variant-name" className="grid gap-1 text-xs font-medium text-gray-600">
             {t('variants.name')}
@@ -119,15 +130,13 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                 <td className="px-4 py-3 text-right text-gray-700">{formatMYR(Math.abs(v.price_offset))}</td>
                 {!requiresBooking && (
                   <td className="px-4 py-3 text-right">
-                    <button type="button" onClick={() => handleInventoryUpdate(v.id, v.inventory?.[0]?.quantity ?? 0)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">
-                      {v.inventory?.[0]?.quantity ?? 0}
-                    </button>
-                    <span className="ml-1 text-xs text-gray-400">({v.inventory?.[0]?.reserved ?? 0} {t('variants.reservedShort')})</span>
+                    {readOnly ? <span className="font-medium text-gray-900">{inventoryFor(v)?.quantity ?? 0}</span> : <button type="button" onClick={() => handleInventoryUpdate(v.id, inventoryFor(v)?.quantity ?? 0)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">{inventoryFor(v)?.quantity ?? 0}</button>}
+                    <span className="ml-1 text-xs text-gray-400">({inventoryFor(v)?.reserved ?? 0} {t('variants.reservedShort')})</span>
                   </td>
                 )}
                 <td className="space-x-2 px-4 py-3 text-right">
-                  {!v.is_default && <button type="button" onClick={() => handleSetDefault(v.id)} className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">{t('variants.setDefault')}</button>}
-                  {variants.length > 1 && <button type="button" onClick={() => handleDelete(v.id)} className="text-xs text-red-500 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20">{t('variants.archive')}</button>}
+                  {!readOnly && !v.is_default && <button type="button" onClick={() => handleSetDefault(v.id)} className="text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10">{t('variants.setDefault')}</button>}
+                  {!readOnly && variants.length > 1 && <button type="button" onClick={() => handleDelete(v.id)} className="text-xs text-red-500 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20">{t('variants.archive')}</button>}
                 </td>
               </tr>
             ))}

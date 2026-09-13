@@ -21,7 +21,7 @@ import { redactPII } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
-const SUPPORT_EMAIL = 'mywisatamalaysia@gmail.com';
+const SUPPORT_EMAIL = 'support@mylawatan.my';
 
 export type VendorReasonAction = 'reject' | 'suspend' | 'request_information';
 
@@ -37,7 +37,7 @@ proceed. Draft the REASON text the admin will send — it becomes the body of a 
 asking them to provide what's missing.`,
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MyWisata, a Malaysian
+const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MyLawatan, a Malaysian
 tourism booking platform, about a vendor account.
 
 Rules — these are strict:

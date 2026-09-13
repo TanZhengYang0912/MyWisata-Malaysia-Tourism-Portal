@@ -237,7 +237,7 @@
       "stop": "停止聆听"
     },
     "list": {
-      "supportLabel": "MyWisata 客服",
+      "supportLabel": "MyLawatan 客服",
       "signInPrompt": "登录后即可与商家聊天。"
     },
     "expandChat": "展开为全屏",
@@ -294,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan。版权所有。"
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "本地体验合作伙伴"
+    },
     "place": {
       "localNotes": {
         "justNow": "刚刚",
