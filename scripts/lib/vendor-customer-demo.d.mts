@@ -86,6 +86,16 @@ export interface VendorCustomerDemoPlan {
 
 export function stableUuid(value: string): string;
 
+export const OUTLET_TIMELINE_SCENARIOS: ReadonlyArray<{
+  key: string;
+  dayOffset: number;
+  status: string;
+  fulfilStatus: string;
+  quantity: number;
+  review: boolean;
+  useVoucher: boolean;
+}>;
+
 export function buildVendorCustomerDemoPlan(input: {
   vendors: DemoVendor[];
   outlets: DemoOutlet[];

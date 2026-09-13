@@ -1,7 +1,7 @@
 "use client";
 
 // P4 — Member 4: reason-entry modal for the vendor reject / suspend /
-// request_information actions. Replaces the bare window.prompt() those used
+// request_information actions. Replaces the old browser prompt previously used
 // to collect their `reason` with a proper textarea plus an optional
 // "Draft with AI" button (lib/vendors/action-draft.ts) — same "AI drafts,
 // admin edits, admin confirms" shape as AiDraftEmailModal, but for a single

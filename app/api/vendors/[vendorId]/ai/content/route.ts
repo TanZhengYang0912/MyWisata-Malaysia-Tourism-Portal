@@ -41,7 +41,7 @@ export async function POST(request: Request, { params }: Props) {
   const access = parsed.data.surface === 'business_profile'
     ? await authorizeVendor(vendorId, ['vendor_owner'])
     : parsed.data.surface === 'outlet_page'
-      ? await authorizeOutlet(vendorId, parsed.data.outletId)
+      ? await authorizeOutlet(vendorId, parsed.data.outletId, ['outlet_manager'])
       : await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 

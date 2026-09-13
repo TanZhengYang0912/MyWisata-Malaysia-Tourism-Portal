@@ -18,7 +18,7 @@ const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provi
 const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
 const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
 
-const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyWisata's admin team.
+const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyLawatan's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
 the final decision; you never execute or claim to execute approval, rejection, or changes.
 

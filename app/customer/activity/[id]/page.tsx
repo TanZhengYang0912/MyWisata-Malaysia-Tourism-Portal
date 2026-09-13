@@ -11,12 +11,13 @@
 
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getBookingSlots, getComputedActivity, getOutletChoices, getProductReviews } from "@/backend/domains/catalogue";
+import { getBookingSlots, getComputedActivity, getOutletChoices, getProductReviews, getOutletActivities, getVendorActivities } from "@/backend/domains/catalogue";
 import { buildActivityMetadata } from "@/lib/affiliate/activity-metadata";
 import { ActivityDetailClient } from "./activity-detail-client";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ outletId?: string; source?: string; returnTo?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildActivityMetadata(id, `/customer/activity/${id}`);
 }
 
-export default async function ActivityDetailPage({ params }: Props) {
+export default async function ActivityDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const db = await createClient();
   const activity = await getComputedActivity(id, undefined, db);
@@ -39,6 +40,21 @@ export default async function ActivityDetailPage({ params }: Props) {
         getOutletChoices(activity, db),
       ])
     : [[], [], []];
+  const sp = await searchParams;
+  const requestedOutletId = sp?.outletId;
+  const selectedOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
+    ? requestedOutletId
+    : activity?.outletId;
+  const returnToParam = sp?.returnTo ? decodeURIComponent(sp.returnTo) : "";
+  const isVendorSource = sp?.source === "vendor" || returnToParam.includes("/customer/vendor");
+  const vendorId = activity?.outlet.vendorId;
+  const relatedProducts =
+    isVendorSource && vendorId
+      ? await getVendorActivities(vendorId, activity!.id, db)
+      : selectedOutletId && activity
+        ? await getOutletActivities(selectedOutletId, activity.id, db)
+        : [];
+  const relatedScope: "vendor" | "outlet" = isVendorSource && vendorId ? "vendor" : "outlet";
 
   return (
     <ActivityDetailClient
@@ -46,6 +62,8 @@ export default async function ActivityDetailPage({ params }: Props) {
       initialSlots={slots}
       initialReviews={reviews}
       outletChoices={outletChoices}
+      relatedProducts={relatedProducts}
+      relatedScope={relatedScope}
     />
   );
 }

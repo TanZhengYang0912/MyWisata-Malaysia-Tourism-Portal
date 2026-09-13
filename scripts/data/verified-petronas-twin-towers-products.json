@@ -1,0 +1,104 @@
+{
+  "vendor": {
+    "id": "d129a175-7e14-8573-71d0-21ab4a3eaeaa",
+    "name": "Petronas Twin Towers",
+    "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+    "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/"
+  },
+  "outlets": [
+    {
+      "id": "25d70b61-12c2-dcc6-3b95-149d5d8b8dca",
+      "name": "Petronas Twin Towers — Ticket Counter"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "skybridge-observation-deck"
+  ],
+  "products": [
+    {
+      "slug": "petronas-malaysian-adult-general-admission",
+      "name": "PETRONAS Malaysian Adult General Admission",
+      "description": "Malaysian adult admission for the SkyBridge and Observation Deck visit, priced on the official ticketing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 42,
+      "source_type": "official",
+      "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/1/17/Kuala_Lumpur_Malaysia_Petronas-Twin-Towers-01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/petronas-malaysian-adult-general-admission-real.webp",
+      "sha256": "a2b00e8599bfaacca2804c7bb3600633cc33b65ab742d27c14d3bf299bc0eb9e",
+      "artist": "PETRONAS Twin Towers visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "petronas-malaysian-child-general-admission",
+      "name": "PETRONAS Malaysian Child General Admission",
+      "description": "Malaysian child admission for visitors aged above 2 to 12, priced on the official ticketing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 20,
+      "source_type": "official",
+      "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/6/64/Kuala_Lumpur_Malaysia_Petronas-Twin-Towers-02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/petronas-malaysian-child-general-admission-real.webp",
+      "sha256": "3b40812088e129cc34fbd6b82a3a8b79d3d300d1379fee7ede5af09ba04485e9",
+      "artist": "PETRONAS Twin Towers visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "petronas-malaysian-senior-general-admission",
+      "name": "PETRONAS Malaysian Senior General Admission",
+      "description": "Malaysian senior citizen admission for visitors aged 61 and above, priced on the official ticketing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 20,
+      "source_type": "official",
+      "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Klcc_suriya_park_views_%283%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/petronas-malaysian-senior-general-admission-real.webp",
+      "sha256": "b881454cff973b00493cf6504d02501ebf54f9384d4cadc1430ca80832c1269f",
+      "artist": "PETRONAS Twin Towers visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "petronas-international-adult-general-admission",
+      "name": "PETRONAS International Adult General Admission",
+      "description": "General admission for international adult visitors aged 13 to 60, priced on the official ticketing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 127,
+      "source_type": "official",
+      "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/8/85/Petronas_Panorama_II.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/petronas-international-adult-general-admission-real.webp",
+      "sha256": "85bde96dd999dfc0e6c8f4683bdd7ff68891266a2bb78ab0e0a659d120964424",
+      "artist": "PETRONAS Twin Towers visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "petronas-premium-sky-access-observation-deck",
+      "name": "PETRONAS Premium Sky Access — SkyBridge & Observation Deck 86",
+      "description": "Premium Sky Access covering the SkyBridge and Observation Deck 86, listed on the official ticketing page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 230,
+      "source_type": "official",
+      "source_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/3/33/Symphony_Lake_Fountain_Show_KLCC_Park_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.petronastwintowers.com.my/plan-your-visit/admission-ticketing/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/petronas-premium-sky-access-observation-deck-real.webp",
+      "sha256": "cd11322991afc0f7d2bb35d8ce68df2545ce1fdfc0a694bf0e10f116f50b0c84",
+      "artist": "PETRONAS Twin Towers visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

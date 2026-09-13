@@ -33,8 +33,10 @@ describe("recommendation evidence form contract", () => {
 
   it("warns before replacing the oldest selected photos", () => {
     expect(page).toContain("allowRecommendationImageSelection");
-    expect(page).toContain("replacementConfirmedRef");
+    expect(page).toContain("async function handlePhotoSelection");
+    expect(page).toContain("await allowRecommendationImageSelection");
     expect(page).toContain('tCustomer("ui.recommendations.photoReplacementConfirm")');
-    expect(page).toContain("event.preventDefault()");
+    expect(page).not.toContain("replacementConfirmedRef");
+    expect(page).not.toContain("event.preventDefault()");
   });
 });

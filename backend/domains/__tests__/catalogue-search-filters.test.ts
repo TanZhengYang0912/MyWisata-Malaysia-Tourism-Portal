@@ -124,17 +124,17 @@ const PRODUCTS = [
 ];
 
 const OUTLETS = [
-  { ...OUTLET_FIELDS, id: "outlet-penang", vendor_id: "vendor-1", name: "Penang outlet", city: "George Town", state: "Penang", lat: 5.41, lng: 100.33, status: "active" },
+  { ...OUTLET_FIELDS, operating_hours: { mon: { open: "09:00", close: "18:00" } }, id: "outlet-penang", vendor_id: "vendor-1", name: "Penang outlet", city: "George Town", state: "Penang", lat: 5.41, lng: 100.33, status: "active" },
   { ...OUTLET_FIELDS, id: "outlet-johor", vendor_id: "vendor-1", name: "Johor outlet", city: "Johor Bahru", state: "Johor", lat: 1.49, lng: 103.74, status: "active" },
   { ...OUTLET_FIELDS, id: "outlet-kuala-lumpur", vendor_id: "vendor-1", name: "Kuala Lumpur outlet", city: "Kuala Lumpur", state: "Kuala Lumpur", lat: 3.14, lng: 101.69, status: "active" },
   { ...OUTLET_FIELDS, id: "outlet-sabah", vendor_id: "vendor-1", name: "Sabah outlet", city: "Kota Kinabalu", state: "Sabah", lat: 5.98, lng: 116.07, status: "active" },
 ];
 
 /** Minimal PostgREST stub: replays canned rows per table, no filtering. */
-function makeDb() {
+function makeDb(outletRows: unknown[] = OUTLETS) {
   return {
     from(table: string) {
-      const rows = table === "products" ? PRODUCTS : table === "outlets" ? OUTLETS : [];
+      const rows = table === "products" ? PRODUCTS : table === "outlets" ? outletRows : [];
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
@@ -169,5 +169,19 @@ describe("searchActivities discovery filters", () => {
   it("combines the category branch with the StoryMap badge OR group", async () => {
     expect((await searchActivities({ categories: ["activity"], types: ["activity:nature", "activity:adventure"], familyFriendlyOnly: true, coupleFriendlyOnly: true }, makeDb())).map((item) => item.id))
       .toEqual(["free-bookable", "sabah-place"]);
+  });
+
+  it("filters by the complete requested time range using outlet operating hours", async () => {
+    expect((await searchActivities({ timeFrom: "14:00", timeTo: "16:00" }, makeDb())).map((item) => item.id)).toEqual(["free-bookable"]);
+  });
+
+  it("supports selected weekdays and open-at filters", async () => {
+    expect((await searchActivities({ hoursMode: "at", timeAt: "10:00", operatingDays: ["mon"] }, makeDb())).map((item) => item.id)).toEqual(["free-bookable"]);
+    expect((await searchActivities({ hoursMode: "at", timeAt: "10:00", operatingDays: ["sun"] }, makeDb())).map((item) => item.id)).toEqual([]);
+  });
+
+  it("supports detailed multi-period and overnight schedules", async () => {
+    const detailedDb = makeDb(OUTLETS.map((outlet) => outlet.id === "outlet-penang" ? { ...outlet, operating_hours: { mon: { periods: [{ open: "09:00", close: "13:00" }, { open: "14:00", close: "18:00" }] }, fri: { periods: [{ open: "18:00", close: "01:00" }] } } } : outlet));
+    expect((await searchActivities({ timeFrom: "23:00", timeTo: "01:00", operatingDays: ["fri"], overnight: true }, detailedDb)).map((item) => item.id)).toEqual(["free-bookable"]);
   });
 });

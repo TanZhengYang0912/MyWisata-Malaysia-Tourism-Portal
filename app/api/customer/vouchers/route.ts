@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 import type { CustomerVoucher, CustomerVoucherClaim, CustomerVoucherTab } from "@/lib/customer/voucher-claims";
 import { resolveOutletImage, type ManagedPlaceImage } from "@/lib/outlet-images";
+import { signVoucherStoreToken } from "@/lib/vouchers/store-token";
 
 type Relation<T> = T | T[] | null;
 type OutletSummary = { id: string; name: string; city: string | null; state: string | null; outlet_pages: Relation<{ hero_url: string | null }> };
@@ -47,9 +48,9 @@ function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProduc
     .filter((offer) => offer.status === "active")
     .map((offer) => relation(offer.outlets))
     .filter((candidate): candidate is OutletSummary => Boolean(candidate));
-  const productLocationLabels = [...new Map(activeProductOutlets.map((candidate) => [candidate.id, [candidate.name, candidate.city, candidate.state].filter(Boolean).join(", ")])).values()];
+  const productLocationLabels = [...new Map(activeProductOutlets.map((candidate) => [candidate.id, [candidate.city, candidate.state].filter(Boolean).join(", ") || candidate.name])).values()];
   const locationLabel = outlet
-    ? [outlet.name, outlet.city, outlet.state].filter(Boolean).join(", ")
+    ? [outlet.city, outlet.state].filter(Boolean).join(", ") || outlet.name
     : productLocationLabels.length <= 2
       ? productLocationLabels.join(" · ") || null
       : `${productLocationLabels.slice(0, 2).join(" · ")} + ${productLocationLabels.length - 2} more outlets`;
@@ -88,6 +89,9 @@ function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProduc
       claimedAt: claim.claimed_at,
       redeemedAt: claim.redeemed_at,
       expiresAt: claim.expires_at,
+      storeToken: claim.status === "claimed" && ["in_store", "both"].includes(row.redemption_mode)
+        ? signVoucherStoreToken({ claimId: claim.id, voucherId: row.id, outletId: row.outlet_id, exp: Math.floor(new Date(claim.expires_at ?? row.valid_until ?? Date.now() + 86_400_000).getTime() / 1000) })
+        : undefined,
     } : null,
   };
 }
@@ -104,9 +108,11 @@ export async function GET(request: Request) {
   const tab = rawTab as CustomerVoucherTab;
 
   const voucherQuery = db.from("vouchers")
-    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url),outlets(id,name,city,state,outlet_pages(hero_url)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url))))");
+    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url),outlets!inner(id,name,city,state,status,review_status,outlet_pages(hero_url)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url))))")
+    .eq("outlets.status", "active")
+    .eq("outlets.review_status", "approved");
   const filteredVoucherQuery = tab === "deals"
-    ? voucherQuery.eq("is_active", true).eq("review_status", "approved").eq("is_claimable", true).in("redemption_mode", ["online", "both"])
+    ? voucherQuery.eq("is_active", true).eq("review_status", "approved").eq("is_claimable", true).in("redemption_mode", ["online", "in_store", "both"])
     : voucherQuery.eq("review_status", "approved");
 
   const [{ data: rows, error: voucherError }, { data: claims, error: claimError }] = await Promise.all([

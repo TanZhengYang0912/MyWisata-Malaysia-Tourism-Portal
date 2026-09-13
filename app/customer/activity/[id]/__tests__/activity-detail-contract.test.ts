@@ -38,4 +38,15 @@ describe("vendor-to-outlet commerce boundary", () => {
     expect(source).toContain('const requestedOutletId = searchParams.get("outletId");');
     expect(source).toContain("outletChoices.some((choice) => choice.outletId === requestedOutletId)");
   });
+
+  it("keeps related products scoped to the selected outlet", () => {
+    expect(source).toContain('ui.activity.moreFromOutlet');
+    expect(source).toContain("selectedOutlet");
+    expect(source).toContain("ActivityCard");
+  });
+
+  it("shows operating hours for the selected outlet", () => {
+    expect(source).toContain("selectedOutlet!.hours");
+    expect(source).toContain('t("ui.labels.operatingHours")');
+  });
 });

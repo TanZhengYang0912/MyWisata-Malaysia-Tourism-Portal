@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
+import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, type GeoHit, type RouteResult } from "@/lib/routing";
@@ -14,6 +15,8 @@ import { groupTripItemsByDay, formatTripDay } from "@/lib/customer/trip-planner"
 import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
+import Link from "next/link";
+import { useAppDialog } from "@/components/providers/app-dialog";
 
 export interface TripStop {
   id: string; // e.g., experience_id or custom id
@@ -27,6 +30,8 @@ export interface TripStop {
 
 // local sync hook matching useTrip API
 function useSyncTrip(tripId: string, initialItems: TripItem[]) {
+  const { alert } = useAppDialog();
+  const { t } = useTranslation("customer");
   const [items, setItems] = useState<TripItem[]>(initialItems);
 
   const stops: TripStop[] = items.map(i => ({
@@ -151,7 +156,7 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
     },
     clear: async () => {
       // not implemented for db for safety, just stub
-      alert("Please delete the trip from the Trip Hub.");
+      await alert(t("ui.trip.deleteFromTripHub"));
     }
   };
 }
@@ -592,14 +597,29 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background">
-      <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
-        {(["itinerary", "map", "places"] as const).map((panel) => (
-          <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-lg px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
-            {panel === "itinerary" ? tCustomer("strictMigration.tripPlanner.itineraryTab") : panel === "map" ? tCustomer("strictMigration.tripPlanner.mapTab") : tCustomer("strictMigration.tripPlanner.placesTab")}
-          </button>
-        ))}
-      </div>
+    <>
+      <CustomerPageTitle
+        eyebrow={tCustomer("accountGroups.myTravel")}
+        title={tripData.name}
+        description={formatTripRange(tripData)}
+        icon={<Navigation size={14} />}
+        actions={
+          <Link href="/customer/trip" className="inline-flex h-10 items-center gap-2 rounded-full border border-primary/20 bg-card px-4 text-sm font-bold text-primary transition hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <Navigation size={15} /> {tCustomer("ui.trip.title")}
+          </Link>
+        }
+      />
+
+      <CustomerPageShell wide className="pt-0 sm:pt-0">
+        <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+          <div className="flex min-h-[640px] w-full flex-col overflow-hidden bg-card md:min-h-[680px]">
+            <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 md:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
+              {(["itinerary", "map", "places"] as const).map((panel) => (
+                <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-full px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
+                  {panel === "itinerary" ? tCustomer("strictMigration.tripPlanner.itineraryTab") : panel === "map" ? tCustomer("strictMigration.tripPlanner.mapTab") : tCustomer("strictMigration.tripPlanner.placesTab")}
+                </button>
+              ))}
+            </div>
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[360px_minmax(0,1fr)_360px]">
         <aside aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className={(activePanel === "itinerary" ? "flex" : "hidden") + " min-h-0 flex-col border-r border-border bg-card md:flex"}>
@@ -707,7 +727,10 @@ export function MapClient({ tripData, initialItems, initialActivities }: { tripD
             {filteredActivities.length > 24 && <p className="mt-3 text-center text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p>}
           </div>
         </aside>
-      </div>
-    </div>
+            </div>
+          </div>
+        </section>
+      </CustomerPageShell>
+    </>
   );
 }

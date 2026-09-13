@@ -14,7 +14,7 @@ export type PublicProfileRow = {
 export function mapPublicProfile(row: PublicProfileRow): PublicUser {
   return {
     id: row.id,
-    name: row.display_name?.trim() || row.full_name?.trim() || "MyWisata member",
+    name: row.display_name?.trim() || row.full_name?.trim() || "MyLawatan member",
     avatarUrl: row.avatar_url ?? undefined,
     city: row.city ?? undefined,
     country: row.country ?? undefined,

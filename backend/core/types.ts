@@ -63,6 +63,8 @@ export interface Outlet {
   vendorId: string;
   vendorName?: string;
   name: string;
+  /** Published outlet shop image; absent when the shop has not added one. */
+  coverUrl?: string | null;
   category: string;
   state: string;
   city: string;
@@ -70,6 +72,8 @@ export interface Outlet {
   lat: number;
   lng: number;
   hours: string;
+  operatingHours?: OperatingHours | null;
+  currentlyOpen?: boolean;
   phone?: string;
   verified: boolean;
   open: boolean;
@@ -78,6 +82,19 @@ export interface Outlet {
   wheelchairAccessible?: boolean | null; // null = vendor hasn't specified
   petFriendly?: boolean | null;
 }
+
+export const OPERATING_HOUR_WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+export type OperatingHourWeekday = (typeof OPERATING_HOUR_WEEKDAYS)[number];
+export interface OperatingHoursPeriod {
+  open?: string;
+  close?: string;
+}
+export interface OperatingHoursDay extends OperatingHoursPeriod {
+  closed?: boolean;
+  allDay?: boolean;
+  periods?: OperatingHoursPeriod[];
+}
+export type OperatingHours = Partial<Record<OperatingHourWeekday, OperatingHoursDay>>;
 
 export interface Variant {
   id: string;
@@ -104,6 +121,7 @@ export interface BookingSlot {
   id: string;
   activityId: string;
   startsAt: string; // ISO datetime
+  endsAt?: string; // ISO datetime
   capacity: number;
   booked: number;
   status?: "available" | "full" | "expired" | string;
@@ -206,6 +224,8 @@ export interface ProductReview {
 // joined by geography, not a parent/child hierarchy (plan §2 D1).
 export type PlaceLevel = "state" | "region" | "poi";
 export type PlaceRelation = "admission" | "guide_service" | "addon";
+export type PlaceAccessType = "free_public_access" | "free_activity";
+export type PlaceInformationalActivityType = "informational_activity" | "informational_paid_activity";
 
 export interface Place {
   id: string;
@@ -230,6 +250,37 @@ export interface PlaceProduct {
   product: Activity;
   vendor: VendorSummary;
   relation: PlaceRelation;
+}
+
+/** A source-backed free activity at a real place, with no vendor checkout path. */
+export interface PlaceAccess {
+  id: string;
+  placeId: string;
+  slug: string;
+  title: string;
+  description: string;
+  accessType: PlaceAccessType;
+  sourceTitle: string;
+  sourceUrl: string;
+  imageSourceUrl: string | null;
+  /** Unique bucket-hosted media for this activity; never inherited from the place hero. */
+  imageUrl: string | null;
+}
+
+/** A source-backed attraction activity with no MyWisata vendor checkout path. */
+export interface PlaceInformationalActivity {
+  id: string;
+  placeId: string;
+  slug: string;
+  title: string;
+  description: string;
+  activityType: PlaceInformationalActivityType;
+  priceLabel: string | null;
+  sourceTitle: string;
+  sourceUrl: string;
+  imageSourceUrl: string | null;
+  /** Unique bucket-hosted media for this activity; never inherited from the place hero. */
+  imageUrl: string | null;
 }
 
 /** Customer-safe local discussion attached to a state, region, or place. */

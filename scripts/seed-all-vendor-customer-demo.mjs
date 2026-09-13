@@ -4,12 +4,14 @@ import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
 import { buildVendorCustomerDemoPlan } from "./lib/vendor-customer-demo.mjs";
+import { buildDemoReviewRefreshRows } from "./lib/demo-content.mjs";
 import { buildVendorAccountDemoPlan } from "./lib/vendor-account-demo.mjs";
 import { seedAliceWalletDemo } from "./lib/alice-wallet-demo.mjs";
 
 const CUSTOMER_IDS = [5, 6, 7, 8].map(
   (number) => `aaaaaaaa-0000-0000-0000-${String(number).padStart(12, "0")}`,
 );
+const COMMERCE_SCOPE_PATH = path.resolve(process.cwd(), "scripts/data/enabled-commerce-outlet-scope.json");
 
 function loadEnv() {
   for (const filename of [".env.local", ".env"]) {
@@ -26,6 +28,9 @@ function loadEnv() {
 }
 
 loadEnv();
+
+const commerceScope = JSON.parse(fs.readFileSync(COMMERCE_SCOPE_PATH, "utf8"));
+const enabledOutletIds = new Set(commerceScope.outlets.map((outlet) => outlet.id));
 
 if (process.env.VENDOR_CUSTOMER_DEMO_SEED !== "1") {
   console.error("Refusing remote writes without VENDOR_CUSTOMER_DEMO_SEED=1.");
@@ -98,14 +103,15 @@ async function seedVendorEarnings(actions) {
 }
 
 async function main() {
-  const [vendors, outlets, products, outletOffers, users, existingChatThreads, existingWishlists, outletManagers, userRoles, wallets, authUserIds] = await Promise.all([
+  const [vendors, outlets, products, outletOffers, users, existingChatThreads, existingWishlists, existingReviews, outletManagers, userRoles, wallets, authUserIds] = await Promise.all([
     readAll("vendors", "id,owner_id,name,slug,status"),
     readAll("outlets", "id,vendor_id,name,slug,status,review_status"),
-    readAll("products", "id,vendor_id,outlet_id,name,requires_booking,base_price,status,review_status"),
+    readAll("products", "id,vendor_id,outlet_id,name,product_type,requires_booking,base_price,status,review_status"),
     readAll("outlet_offers", "id,product_id,outlet_id,price,status"),
     readAll("users", "id,email,full_name,email_verified_at,phone_verified_at,status"),
     readAll("chat_threads", "id,customer_id,outlet_id,vendor_id"),
     readAll("customer_wishlists", "id,user_id,product_id"),
+    readAll("reviews", "id,user_id,vendor_id,order_item_id,product_id,outlet_id,is_visible,created_at"),
     readAll("outlet_managers", "user_id,outlet_id"),
     readAll("user_roles", "user_id,roles(name)"),
     readAll("wallets", "id,user_id"),
@@ -128,17 +134,20 @@ async function main() {
     throw new Error("None of the established demo customers is independently email/phone verified for commerce.");
   }
 
+  const enabledOutlets = outlets.filter((outlet) => enabledOutletIds.has(outlet.id));
+  const enabledVendorIds = new Set(enabledOutlets.map((outlet) => outlet.vendor_id));
+  const enabledVendors = vendors.filter((vendor) => vendor.status === "approved" && enabledVendorIds.has(vendor.id));
   const userIds = new Set(users.map((user) => user.id));
-  const missingOwnerUsers = vendors
-    .filter((vendor) => vendor.status === "approved" && (!vendor.owner_id || !userIds.has(vendor.owner_id)))
+  const missingOwnerUsers = enabledVendors
+    .filter((vendor) => !vendor.owner_id || !userIds.has(vendor.owner_id))
     .map((vendor) => ({ id: vendor.id, name: vendor.name, ownerId: vendor.owner_id }));
   if (missingOwnerUsers.length > 0) {
     throw new Error(`Approved vendors without a valid public owner: ${JSON.stringify(missingOwnerUsers)}`);
   }
 
   const plan = buildVendorCustomerDemoPlan({
-    vendors,
-    outlets,
+    vendors: enabledVendors,
+    outlets: enabledOutlets,
     products,
     outletOffers,
     customers,
@@ -154,6 +163,14 @@ async function main() {
   }
 
   const { rows } = plan;
+  const legacyReviewUpdates = buildDemoReviewRefreshRows({
+    existingReviews,
+    products,
+    outlets,
+    canonicalOrderItemIds: rows.reviews.map((review) => review.order_item_id),
+    approvedVendorIds: enabledVendors.map((vendor) => vendor.id),
+    customerIds: CUSTOMER_IDS,
+  });
   const existingWishlistIds = new Set(existingWishlists.map((wishlist) => wishlist.id));
   const existingWishlistKeys = new Set(
     existingWishlists.map((wishlist) => `${wishlist.user_id}:${wishlist.product_id}`),
@@ -171,6 +188,7 @@ async function main() {
   await upsertRows("refunds", rows.refunds);
   await upsertRows("bookings", rows.bookings);
   await upsertRows("reviews", rows.reviews, "order_item_id");
+  await upsertRows("reviews", legacyReviewUpdates);
   await upsertRows("voucher_redemptions", rows.voucherRedemptions);
   await upsertRows("user_interactions", rows.interactions);
   await upsertRows("customer_wishlists", rows.wishlists, "user_id,product_id");
@@ -187,21 +205,21 @@ async function main() {
     userRoles.map((assignment) => `${assignment.user_id}:${assignedRoleName(assignment)}`),
   );
   const activeOutletIds = new Set(
-    outlets
+    enabledOutlets
       .filter((outlet) => outlet.status === "active" && (!outlet.review_status || outlet.review_status === "approved"))
       .map((outlet) => outlet.id),
   );
   const roleIssues = [
-    ...vendors
-      .filter((vendor) => vendor.status === "approved" && !roleKeys.has(`${vendor.owner_id}:vendor_owner`))
+    ...enabledVendors
+      .filter((vendor) => !roleKeys.has(`${vendor.owner_id}:vendor_owner`))
       .map((vendor) => ({ code: "vendor_owner_role_missing", vendorId: vendor.id, ownerId: vendor.owner_id })),
     ...outletManagers
       .filter((assignment) => activeOutletIds.has(assignment.outlet_id) && !roleKeys.has(`${assignment.user_id}:outlet_manager`))
       .map((assignment) => ({ code: "outlet_manager_role_missing", outletId: assignment.outlet_id, managerId: assignment.user_id })),
   ];
   const accountPlan = buildVendorAccountDemoPlan({
-    vendors,
-    outlets,
+    vendors: enabledVendors,
+    outlets: enabledOutlets,
     products,
     outletOffers,
     outletManagers,
@@ -226,6 +244,7 @@ async function main() {
     message: "Vendor/customer demo seed completed",
     catalogue: plan.stats,
     rows: Object.fromEntries(Object.entries(rows).map(([name, values]) => [name, values.length])),
+    legacyReviewUpdates: legacyReviewUpdates.length,
     vendorAccounts: {
       ...accountPlan.stats,
       earningRpcResults: vendorEarnings.length,

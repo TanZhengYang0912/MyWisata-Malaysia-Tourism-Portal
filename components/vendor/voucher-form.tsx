@@ -1,23 +1,25 @@
 'use client';
 // P2 — Member 2: Voucher creation form (B3)
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { voucherCreateSchema } from '@/lib/validation/vendor-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { localDateTimeToIso, optionalNumber, optionalSelect } from '@/lib/vendor/voucher-form-values';
 import ActionConfirmationDialog from '@/components/vendor/action-confirmation-dialog';
 import { useTranslation } from 'react-i18next';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import { getMalaysiaDateTimeRangeDefaults } from '@/lib/datetime/date-input';
 
 interface Props {
   vendorId: string;
+  initialOutletId?: string;
+  isOutletManager?: boolean;
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -30,7 +32,7 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-1 text-xs text-red-600" role="alert">{message}</p>;
 }
 
-export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
+export default function VoucherForm({ vendorId, initialOutletId, isOutletManager = false, onSuccess, onClose }: Props) {
   const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -40,11 +42,10 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const [generatingCode, setGeneratingCode] = useState(false);
   const [pendingData, setPendingData] = useState<VoucherFormData | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const supabase = useMemo(() => createClient(), []);
-
+  const validityDefaults = getMalaysiaDateTimeRangeDefaults();
   const { register, handleSubmit, watch, setValue, setError, formState: { errors, isSubmitting } } = useForm<VoucherFormInput, unknown, VoucherFormData>({
     resolver: zodResolver(voucherCreateSchema),
-    defaultValues: { voucherType: 'fixed', minSpend: 0, redemptionMode: 'online', isClaimable: true },
+    defaultValues: { voucherType: 'fixed', minSpend: 0, redemptionMode: 'online', isClaimable: true, validFrom: validityDefaults.from, validUntil: validityDefaults.to, ...(initialOutletId ? { outletId: initialOutletId } : {}) },
   });
 
   function fieldError(field: keyof VoucherFormInput) {
@@ -58,10 +59,20 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
 
   useEffect(() => {
     Promise.all([
-      supabase.from('outlets').select('id, name').eq('vendor_id', vendorId),
-      supabase.from('products').select('id, name').eq('vendor_id', vendorId).order('name'),
-    ]).then(([outletResult, productResult]) => { setOutlets(outletResult.data ?? []); setProducts(productResult.data ?? []); });
-  }, [vendorId, supabase]);
+      fetch(`/api/vendors/${vendorId}/outlets?page=1&pageSize=100&sort=name`, { cache: 'no-store' }),
+      fetch(`/api/vendors/${vendorId}/products?page=1&pageSize=24&sort=name`, { cache: 'no-store' }),
+    ]).then(async ([outletResponse, productResponse]) => {
+      const [outletPayload, productPayload] = await Promise.all([outletResponse.json(), productResponse.json()]);
+      if (!outletResponse.ok) throw new Error(outletPayload.error?.message || t('ui.vouchers.loadOutletsFailed'));
+      if (!productResponse.ok) throw new Error(productPayload.error?.message || t('ui.vouchers.loadProductsFailed'));
+      setOutlets(outletPayload.data?.items ?? []);
+      setProducts(productPayload.data?.items ?? []);
+    }).catch((error) => setServerError(error instanceof Error ? error.message : t('ui.vouchers.loadOptionsFailed')));
+  }, [t, vendorId]);
+
+  useEffect(() => {
+    if (isOutletManager && initialOutletId) setValue('outletId', initialOutletId, { shouldValidate: true });
+  }, [initialOutletId, isOutletManager, setValue]);
 
   async function generateCode() {
     setGeneratingCode(true);
@@ -135,6 +146,7 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
   const maxUses = watch('maxUses');
   const perCustomerLimit = watch('perCustomerLimit');
   const selectedOutlet = watch('outletId');
+  const selectedValidFrom = watch('validFrom');
   const redemptionMode = watch('redemptionMode');
   const discountSummary = voucherType === 'bogo'
     ? t('voucher.form.buyXGetY')
@@ -244,19 +256,26 @@ export default function VoucherForm({ vendorId, onSuccess, onClose }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('voucher.form.validUntil')}</label>
-            <Input {...register('validUntil', { setValueAs: localDateTimeToIso })} aria-invalid={Boolean(fieldError('validUntil'))} className={inputClass('validUntil')} type="datetime-local" />
+            <Input {...register('validUntil', { setValueAs: localDateTimeToIso })} aria-invalid={Boolean(fieldError('validUntil'))} className={inputClass('validUntil')} type="datetime-local" min={selectedValidFrom || undefined} />
             <FieldError message={fieldError('validUntil')} />
           </div>
         </div>
 
-        <div>
+        {isOutletManager ? <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('voucher.form.assignedOutlet')}</label>
+          <input type="hidden" {...register('outletId')} value={initialOutletId ?? ''} readOnly />
+          <div className="rounded-lg border border-primary/20 bg-secondary px-3 py-2 text-sm font-semibold text-primary">
+            {outlets.find((outlet) => outlet.id === initialOutletId)?.name ?? t('voucher.form.assignedOutlet')}
+          </div>
+          <FieldError message={fieldError('outletId')} />
+        </div> : <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('strictMigration.specificOutletOptional')}</label>
           <select {...register('outletId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('outletId'))} className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${fieldError('outletId') ? 'border-red-400' : ''}`}>
             <option value="">{t('voucher.form.allOutlets')}</option>
             {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
           <FieldError message={fieldError('outletId')} />
-        </div>
+        </div>}
       </div>
 
       <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-600">

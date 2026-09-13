@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "2be5da17-d1f5-6e61-29fe-5b778ad8521d",
+    "name": "The Habitat Penang Hill",
+    "source_page": "https://book.thehabitat.my/",
+    "price_reference_page": "https://book.thehabitat.my/"
+  },
+  "outlets": [
+    {
+      "id": "ef386b23-40da-9b1a-a9e7-6a82cdbfe75f",
+      "name": "The Habitat Penang Hill"
+    }
+  ],
+  "archive_legacy_slugs": ["habitat-curtis-crest-treetop-walk", "habitat-nature-trail-ticket"],
+  "products": [
+    {
+      "slug": "habitat-standard-entrance-pass-real",
+      "name": "Standard Entrance Pass",
+      "description": "One-time admission to The Habitat's 1.6 km nature trail, Curtis Crest Tree Top Walk and Langur Way Canopy Walk.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 54,
+      "source_type": "official",
+      "source_page": "https://book.thehabitat.my/tours/malaysia/penang/standard-entrance-pass",
+      "source_image_url": "https://cdn.bemyguest.com.sg/images/content/1280x720/bb7fc166-e9a2-4ef8-b042-365ed82e97c5.jpg",
+      "price_reference_page": "https://book.thehabitat.my/tours/malaysia/penang/standard-entrance-pass",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/habitat-standard-entrance-real.jpg",
+      "sha256": "6b992fffc87034f6bd72d7dadbbd01c7de8d4d9b935e9221bb5a39e09e380e65",
+      "artist": "The Habitat Penang Hill via official booking platform",
+      "license": "Official booking media; source attribution recorded"
+    },
+    {
+      "slug": "habitat-family-combo-real",
+      "name": "Family Combo",
+      "description": "Family-friendly admission package for exploring The Habitat nature trail, Curtis Crest and Langur Way.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 50,
+      "source_type": "official",
+      "source_page": "https://book.thehabitat.my/tours/malaysia/penang/family-combos",
+      "source_image_url": "https://cdn.bemyguest.com.sg/images/content/1280x720/6ba978b0-eff1-4a59-84fb-6da2b8619c68.png",
+      "price_reference_page": "https://book.thehabitat.my/tours/malaysia/penang/family-combos",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/habitat-family-combo-real.png",
+      "sha256": "e8fe02f1f78360437379dd0d140faf1b4b1ce8a87c4406a4733dabd3f5ec666d",
+      "artist": "The Habitat Penang Hill via official booking platform",
+      "license": "Official booking media; source attribution recorded"
+    },
+    {
+      "slug": "habitat-sunrise-yoga-breakfast-real",
+      "name": "Sunrise Yoga & Breakfast in Nature",
+      "description": "Guided sunrise yoga followed by breakfast in the rainforest, listed as a bookable Habitat experience.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 80,
+      "source_type": "official",
+      "source_page": "https://book.thehabitat.my/tours/malaysia/penang/sunrise-yoga-x-breakfast-in-nature",
+      "source_image_url": "https://cdn.bemyguest.com.sg/images/content/1280x720/cd8be290-44ef-4d2f-ae01-abc3afc19608.jpg",
+      "price_reference_page": "https://book.thehabitat.my/tours/malaysia/penang/sunrise-yoga-x-breakfast-in-nature",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/habitat-sunrise-yoga-real.jpg",
+      "sha256": "d3893038da3bd1427a8cf5beee435de3bc47bcc8015209c15202221dc3f061c7",
+      "artist": "The Habitat Penang Hill via official booking platform",
+      "license": "Official booking media; source attribution recorded"
+    },
+    {
+      "slug": "habitat-forest-bathing-real",
+      "name": "Forest Bathing",
+      "description": "Guided forest-bathing session through tranquil sections of The Habitat Penang Hill rainforest.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 150,
+      "source_type": "official",
+      "source_page": "https://book.thehabitat.my/tours/malaysia/penang/forest-bathing-at-the-habitat",
+      "source_image_url": "https://cdn.bemyguest.com.sg/images/content/1280x720/5a9e1b9e-76b6-4e4c-8745-03b01c0d531b.png",
+      "price_reference_page": "https://book.thehabitat.my/tours/malaysia/penang/forest-bathing-at-the-habitat",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/habitat-forest-bathing-real.png",
+      "sha256": "ef5c9a41f8c4cb9e189eabca0e79aa999e4bcd486372abd9e3dd1517a5004af8",
+      "artist": "The Habitat Penang Hill via official booking platform",
+      "license": "Official booking media; source attribution recorded"
+    },
+    {
+      "slug": "habitat-sound-healing-real",
+      "name": "Sound Healing",
+      "description": "Bookable sound-healing experience under the moonlit canopy at The Habitat Penang Hill.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 150,
+      "source_type": "official",
+      "source_page": "https://book.thehabitat.my/tours/malaysia/penang/sound-healing",
+      "source_image_url": "https://cdn.bemyguest.com.sg/images/content/1280x720/1fdb76ed-9358-4acf-ba6b-f8b276f13a37.jpg",
+      "price_reference_page": "https://book.thehabitat.my/tours/malaysia/penang/sound-healing",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/habitat-sound-healing-real.jpg",
+      "sha256": "d73f9496eee8471aab518c29b292c543a5726253ed9ea182467e7f6fcc3548c6",
+      "artist": "The Habitat Penang Hill via official booking platform",
+      "license": "Official booking media; source attribution recorded"
+    }
+  ]
+}

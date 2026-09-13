@@ -2,11 +2,8 @@
 
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { STATES_MY, searchActivities } from "@/backend/domains/catalogue";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -15,7 +12,7 @@ import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/custome
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
-import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
 import { VendorCard } from "@/components/customer/vendor-card";
 import { formatMYR } from "@/lib/i18n/format";
 import {
@@ -25,6 +22,8 @@ import {
   type PartnerView,
 } from "@/lib/customer/partner-directory";
 import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-rail";
+import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { isOperatingHoursAtAvailable, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 
 type PlaceSuggestion = { display_name: string; short: string };
 
@@ -93,9 +92,25 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
 
 export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[] }) {
   const { t } = useTranslation("customer");
-  const [query, setQuery] = useState(initialQuery);
-  const [category, setCategory] = useState<string | null>(null);
-  const [state, setState] = useState<string | null>(null);
+  const [filters, setFilters] = useState<DiscoveryQuery>(() => ({
+    q: initialQuery,
+    state: null,
+    categories: [],
+    types: [],
+    priceMax: null,
+    operatingDays: [],
+    hoursMode: "during",
+    timeAt: null,
+    timeFrom: null,
+    timeTo: null,
+    overnight: false,
+    openNow: false,
+    freeOnly: false,
+    bookableOnly: false,
+    hiddenGemOnly: false,
+    familyFriendlyOnly: false,
+    coupleFriendlyOnly: false,
+  }));
   const [currentPage, setCurrentPage] = useState(1);
   const [partnerView, setPartnerView] = useState<PartnerView>("all");
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("featured");
@@ -115,13 +130,39 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   }, [initialResults]);
 
   const matchingVendors = useMemo(() => initialVendors.filter((vendor) => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = filters.q.trim().toLowerCase();
     const matchesQuery = !normalizedQuery || `${vendor.name} ${vendor.outlets.map((outlet) => `${outlet.city} ${outlet.state}`).join(" ")}`.toLowerCase().includes(normalizedQuery);
-    const matchesState = !state || state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === state);
+    const matchesState = !filters.state || filters.state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === filters.state);
     const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
-    const matchesCategory = !category || labels.has(category);
-    return matchesQuery && matchesState && matchesCategory;
-  }), [categoriesByVendor, category, initialVendors, query, state]);
+    const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
+     const matchesCategory = !category || labels.has(category);
+     const vendorActivities = initialResults.filter((activity) => activity.outlet.vendorId === vendor.id);
+     const matchesActivities = vendorActivities.some((activity) => {
+       const activityCategory = canonicalCategorySlug(activity.categorySlug) ?? activity.categorySlug ?? activity.category;
+       const matchesTypes = filters.types.length === 0 || filters.types.some((token) => {
+         const [selectedCategory, selectedType] = token.split(":", 2);
+         return selectedCategory === activityCategory && Boolean(selectedType && activity.typeSlugs?.includes(selectedType));
+       });
+       const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) || (filters.hiddenGemOnly && activity.isHiddenGem);
+       const matchesBoolean = !(filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) ||
+         (filters.hiddenGemOnly && activity.isHiddenGem) ||
+         (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
+         (filters.coupleFriendlyOnly && activity.isCoupleFriendly);
+       const matchesPrice = filters.priceMax === null || activity.price <= filters.priceMax;
+       const matchesCommerce = (!filters.freeOnly || activity.price === 0) && (!filters.bookableOnly || activity.requiresBooking);
+       const hours = activity.outlet.operatingHours ?? null;
+       if (filters.openNow && !(activity.outlet.currentlyOpen ?? activity.outlet.open)) return false;
+       if (!matchesCategoryBranch || !matchesTypes || !matchesBoolean || !matchesPrice || !matchesCommerce) return false;
+       if (filters.hoursMode === "at" && filters.timeAt) {
+         return activity.outlet.open && hours ? isOperatingHoursAtAvailable(filters.timeAt, hours, filters.operatingDays) : false;
+      }
+      if (filters.hoursMode !== "at" && filters.timeFrom && filters.timeTo) {
+        return activity.outlet.open && hours ? isOperatingHoursWindowAvailable(filters.timeFrom, filters.timeTo, hours, filters.operatingDays, { overnight: filters.overnight }) : false;
+       }
+       return true;
+     });
+     return matchesQuery && matchesState && matchesCategory && matchesActivities;
+  }), [categoriesByVendor, filters, initialResults, initialVendors]);
 
   const featuredVendorIds = useMemo(
     () => new Set(recommendedVendors.map((vendor) => vendor.id)),
@@ -144,12 +185,19 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     now: advertisementRankingTimestamp,
   }), [advertisementRankingTimestamp, initialResults, sponsoredPlacements]);
 
+  const query = filters.q;
+  const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
+  const state = filters.state;
+  const timeFrom = filters.timeFrom;
+  const timeTo = filters.timeTo;
+  const openNow = filters.openNow;
+
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / RESULTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * RESULTS_PER_PAGE;
   const visibleVendors = filteredVendors.slice(pageStart, pageStart + RESULTS_PER_PAGE);
   const pageItems = getPageItems(safePage, totalPages);
-  const hasActiveFilters = Boolean(query.trim() || category || state);
+  const hasActiveFilters = Boolean(query.trim() || category || state || filters.types.length || filters.priceMax !== null || filters.operatingDays.length || filters.hoursMode !== "during" || filters.timeAt || timeFrom || timeTo || filters.overnight || openNow || filters.freeOnly || filters.bookableOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly);
   const categoryLabel = category
     ? (() => {
         const key = getOptionalDiscoveryCategoryLabelKey(category);
@@ -157,9 +205,11 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
       })()
     : null;
   const clearFilters = () => {
-    setQuery("");
-    setCategory(null);
-    setState(null);
+    setFilters((current) => ({ ...current, q: "", state: null, categories: [], types: [], priceMax: null, hiddenGemOnly: false, operatingDays: [], hoursMode: "during", timeAt: null, timeFrom: null, timeTo: null, overnight: false, openNow: false, freeOnly: false, bookableOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false }));
+    setCurrentPage(1);
+  };
+  const updateFilters = (patch: Partial<DiscoveryQuery>) => {
+    setFilters((current) => ({ ...current, ...patch }));
     setCurrentPage(1);
   };
 
@@ -176,70 +226,23 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
             {t("ui.search.description")}
           </p>
 
-          <div data-testid="partner-filter-bar" className="mt-6 rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <DiscoverySearchField
-                value={query} 
-                onChange={(v) => { setQuery(v); setCurrentPage(1); }} 
-                placeholder={t("ui.search.searchVendors")}
-              />
-              <label className="flex min-h-11 w-full shrink-0 items-center rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-semibold text-foreground outline-none focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 sm:w-[220px]">
-                <span className="sr-only">{t("ui.discovery.state")}</span>
-                <select
-                  aria-label={t("ui.discovery.state")}
-                  value={state ?? ""}
-                  onChange={(e) => { setState(e.target.value || null); setCurrentPage(1); }}
-                  className="w-full bg-transparent outline-none cursor-pointer"
-                >
-                  <option value="">{t("ui.search.allMalaysia")}</option>
-                  {STATES_MY.filter(s => s !== "All Malaysia").map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="mt-4 border-t border-border/60 pt-4">
-              <DiscoveryCategoryFilter variant="compact"
-                headingKey="ui.search.category"
-                includeAll
-                category={category}
-                hasActiveFilters={false}
-                onCategoryChange={(c) => { setCategory(c); setCurrentPage(1); }}
-                onClear={clearFilters}
-                showClear={false}
-              />
-            </div>
+           <div data-testid="partner-filter-bar" className="mt-6">
+            <CustomerDiscoveryFilterPanel
+              value={filters}
+              hasActiveFilters={hasActiveFilters}
+              onChange={updateFilters}
+              onClear={clearFilters}
+              placeholder={t("ui.search.searchVendors")}
+              category={category}
+              onCategoryChange={(nextCategory) => updateFilters({ categories: nextCategory ? [nextCategory] : [], types: [], hiddenGemOnly: false })}
+              categoryVariant="compact"
+            />
 
             <div className="mt-3.5 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-              {hasActiveFilters ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.search.activeFilters")}</span>
-                  <div data-testid="active-filter-summary" className="flex flex-wrap items-center gap-1.5">
-                    {query.trim() && (
-                      <button type="button" onClick={() => { setQuery(""); setCurrentPage(1); }} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10">
-                        <span>{t("ui.discovery.searchLabel")}: {query.trim()}</span>
-                        <span aria-hidden="true" className="font-bold">×</span>
-                      </button>
-                    )}
-                    {state && (
-                      <button type="button" onClick={() => { setState(null); setCurrentPage(1); }} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10">
-                        <span>{t("ui.discovery.state")}: {state}</span>
-                        <span aria-hidden="true" className="font-bold">×</span>
-                      </button>
-                    )}
-                    {categoryLabel && (
-                      <button type="button" onClick={() => { setCategory(null); setCurrentPage(1); }} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10">
-                        <span>{t("ui.search.category")}: {categoryLabel}</span>
-                        <span aria-hidden="true" className="font-bold">×</span>
-                      </button>
-                    )}
-                  </div>
-                  <button type="button" onClick={clearFilters} className="text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                    {t("ui.actions.clearFilters")}
-                  </button>
-                </div>
-              ) : <div />}
+              <div data-testid="active-filter-summary" className="flex flex-wrap items-center gap-2">
+                {hasActiveFilters && <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.search.activeFilters")}</span>}
+                {categoryLabel && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary">{t("ui.search.category")}: {categoryLabel}</span>}
+              </div>
 
               <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
                 <label data-testid="partner-view-control" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -278,7 +281,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
         <div className="mb-8">
           <div>
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">
-              {query || category || state || partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}
+              {query || category || state || timeFrom || timeTo || openNow || partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("ui.search.directoryDescription")}</p>
           </div>
@@ -297,11 +300,12 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               />
             ))}
           </div>
-        ) : (
-          <div className="rounded-[24px] border border-dashed border-border bg-secondary/50 p-12 text-center">
-            <p className="font-bold text-lg">{t("ui.search.noVendors")}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t("ui.search.tryFilters")}</p>
-          </div>
+         ) : (
+           <div className="rounded-[24px] border border-dashed border-border bg-secondary/50 p-12 text-center">
+             <p className="font-bold text-lg">{t("ui.search.noVendors")}</p>
+             <p className="mt-2 text-sm text-muted-foreground">{hasActiveFilters ? t("ui.discovery.adjustFilters") : t("ui.search.tryFilters")}</p>
+             {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-background">{t("ui.actions.clearFilters")}</button>}
+           </div>
         )}
 
         {filteredVendors.length > 0 && totalPages > 1 && (

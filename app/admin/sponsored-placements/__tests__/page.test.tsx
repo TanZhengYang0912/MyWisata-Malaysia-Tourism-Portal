@@ -36,6 +36,13 @@ vi.stubGlobal("fetch", mocks.fetch);
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: mocks.t, i18n: { resolvedLanguage: "en" } }),
 }));
+vi.mock("@/components/providers/app-dialog", () => ({
+  useAppDialog: () => ({
+    prompt: vi.fn().mockResolvedValue(null),
+    confirm: vi.fn().mockResolvedValue(true),
+    alert: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
 
 import SponsoredPlacementsPage from "../page";
 

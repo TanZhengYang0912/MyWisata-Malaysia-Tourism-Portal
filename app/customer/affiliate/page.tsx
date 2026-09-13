@@ -78,7 +78,7 @@ export default function AffiliateDashboardPage() {
       }
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") ?? "";
-      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mywisata-affiliate-earnings.csv";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mylawatan-affiliate-earnings.csv";
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;

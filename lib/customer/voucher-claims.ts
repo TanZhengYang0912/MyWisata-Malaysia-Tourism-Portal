@@ -7,6 +7,7 @@ export interface CustomerVoucherClaim {
   claimedAt: string;
   redeemedAt: string | null;
   expiresAt: string | null;
+  storeToken?: string;
 }
 
 export interface CustomerVoucher {

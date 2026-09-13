@@ -75,10 +75,10 @@ export function VendorCard({
             <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
             <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{cardDescription}</p>
           </div>
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]" title={vendor.name}>
             {visual.logoUrl ? <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={visual.logoUrl} alt="" className="h-full w-full object-cover" />
+              <img src={visual.logoUrl} alt={t("ui.vendor.logoAlt", { vendor: vendor.name })} className="h-full w-full object-contain p-1" />
             </> : visual.initials}
           </span>
         </div>

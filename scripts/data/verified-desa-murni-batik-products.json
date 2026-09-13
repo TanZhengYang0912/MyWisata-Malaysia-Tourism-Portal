@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "18e80c10-d1fa-c384-4886-d0fd02f8959b",
+    "name": "Desa Murni Batik",
+    "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+    "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1"
+  },
+  "outlets": [
+    {
+      "id": "c671d865-5893-19c1-de83-fcf1901d49bc",
+      "name": "Desa Murni Batik"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "desa-murni-batik-fadiah-wan-16",
+      "name": "Batik FADIAH WAN 16",
+      "description": "Batik garment listed in Desa Murni Batik's official wholesale shop with its current price and product image.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 88,
+      "source_type": "official",
+      "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "source_image_url": "https://img.Squarelet.com/ghimg.ashx?sq=d8c27a1c-fa93-45eb-a4da-0b96dde23413",
+      "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/desa-murni-batik-fadiah-wan-16-real.jpg",
+      "sha256": "31f6cab7d146ef46f0f21f28f8944456e4a61619d8dea0c4702b91be6fd9243e",
+      "artist": "Desa Murni Batik official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "desa-murni-batik-fadiah-wan-15",
+      "name": "Batik FADIAH WAN 15",
+      "description": "Batik garment listed in Desa Murni Batik's official wholesale shop with its current price and product image.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 88,
+      "source_type": "official",
+      "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "source_image_url": "https://img.Squarelet.com/ghimg.ashx?sq=a0c2ae2c-ebfa-4129-807f-e521d9532cb3",
+      "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/desa-murni-batik-fadiah-wan-15-real.jpg",
+      "sha256": "a745e5f3fe5d2368219ce1608648ad6aa25891cc948c38be82562819361a48bd",
+      "artist": "Desa Murni Batik official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "desa-murni-batik-fadiah-wan-14",
+      "name": "Batik FADIAH WAN 14",
+      "description": "Batik garment listed in Desa Murni Batik's official wholesale shop with its current price and product image.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 88,
+      "source_type": "official",
+      "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "source_image_url": "https://img.Squarelet.com/ghimg.ashx?sq=74960aa6-8e59-4a0b-a88a-4edd9917c161",
+      "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/desa-murni-batik-fadiah-wan-14-real.jpg",
+      "sha256": "bd889cf7e02af71ddb5e14e33151b1a45e5903e9c8d187da5f844829e27a2697",
+      "artist": "Desa Murni Batik official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "desa-murni-batik-fadiah-wan-13",
+      "name": "Batik FADIAH WAN 13",
+      "description": "Batik garment listed in Desa Murni Batik's official wholesale shop with its current price and product image.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 88,
+      "source_type": "official",
+      "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "source_image_url": "https://img.Squarelet.com/ghimg.ashx?sq=06473be7-fcab-4efd-88e6-7e4a0d29478f",
+      "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/desa-murni-batik-fadiah-wan-13-real.jpg",
+      "sha256": "02c744348d686974273df81d061f03551ef04b1d0c4419c7d911346293b948eb",
+      "artist": "Desa Murni Batik official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "desa-murni-batik-fadiah-wan-12",
+      "name": "Batik FADIAH WAN 12",
+      "description": "Batik garment listed in Desa Murni Batik's official wholesale shop with its current price and product image.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 88,
+      "source_type": "official",
+      "source_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "source_image_url": "https://img.Squarelet.com/ghimg.ashx?sq=5dea0d20-e644-484f-aa20-177ec90076d2",
+      "price_reference_page": "https://desamurnibatikwholesale.com/Default.aspx?nc=1",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/desa-murni-batik-fadiah-wan-12-real.jpg",
+      "sha256": "fb00e16ac371bc656860c601b091784881c6971017c71b5a75a6adb2c7dbc6fd",
+      "artist": "Desa Murni Batik official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

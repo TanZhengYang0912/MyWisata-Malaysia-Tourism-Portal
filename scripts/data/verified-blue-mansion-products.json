@@ -1,0 +1,106 @@
+{
+  "vendor": {
+    "id": "c7df19c1-38de-ba6c-caea-aca366cbf07d",
+    "name": "Cheong Fatt Tze — The Blue Mansion",
+    "source_page": "https://www.cheongfatttzemansion.com/",
+    "price_reference_page": "https://www.cheongfatttzemansion.com/"
+  },
+  "outlets": [
+    {
+      "id": "1b2c744b-e1d8-7fae-b8f8-adfbd172e9a0",
+      "name": "Cheong Fatt Tze — The Blue Mansion"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "blue-mansion-cheong-fatt-tze-suite",
+    "blue-mansion-courtyard-room",
+    "blue-mansion-guided-tour"
+  ],
+  "products": [
+    {
+      "slug": "blue-mansion-guided-tour-adult",
+      "name": "The Blue Mansion Daily Guided Tour — Adult",
+      "description": "45-minute daily guided tour covering the reception hall, courtyard and museum exhibition, with adult admission listed by the official mansion site.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "source_image_url": "https://www.cheongfatttzemansion.com/wp-content/uploads/2020/07/2-ESCOY.jpg?id=6639",
+      "price_reference_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/blue-mansion-guided-tour-adult-real.jpg",
+      "sha256": "b4970e8544dac094bbe60bdcaf0e57030ec626339d5dcc09157e1df75b5b90fb",
+      "artist": "Cheong Fatt Tze — The Blue Mansion official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "blue-mansion-guided-tour-child",
+      "name": "The Blue Mansion Daily Guided Tour — Child",
+      "description": "45-minute daily guided tour child admission for visitors under 12, listed by the official mansion site.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 12.5,
+      "source_type": "official",
+      "source_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "source_image_url": "https://www.cheongfatttzemansion.com/wp-content/uploads/2020/07/2-Liang-Collection-Chang-Yu-Room.jpg?id=6640",
+      "price_reference_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/blue-mansion-guided-tour-child-real.jpg",
+      "sha256": "449e0722db5e6356b37790b045baa9b967d0a07050e511e392d53bf53881fec2",
+      "artist": "Cheong Fatt Tze — The Blue Mansion official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "blue-mansion-private-tour-group",
+      "name": "The Blue Mansion Private Tour — Group up to 12",
+      "description": "Private Blue Mansion tour for a group of up to 12 people, available between noon and 2pm with three days advance notice, listed by the official mansion site.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 350,
+      "source_type": "official",
+      "source_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "source_image_url": "https://www.cheongfatttzemansion.com/wp-content/uploads/2020/07/3-Tang-Collection-50s-Room.jpg?id=6637",
+      "price_reference_page": "https://www.cheongfatttzemansion.com/thebluemansion/discover/daily-tours/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/blue-mansion-private-tour-group-real.jpg",
+      "sha256": "a12882734312517bb1ecce6902299b94f62c459abf21846692e89522b8ab0257",
+      "artist": "Cheong Fatt Tze — The Blue Mansion official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "blue-mansion-penang-nature-liang",
+      "name": "Penang Nature Discovery — Liang Room Package",
+      "description": "Three-day, two-night Penang Nature Discovery package in the Liang room category, with breakfast, house tour, bicycle rental and attraction discounts, listed by the official hotel site.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 1088,
+      "source_type": "official",
+      "source_page": "https://www.cheongfatttzemansion.com/mansion_promotion/penang-nature-discovery/",
+      "source_image_url": "https://www.cheongfatttzemansion.com/wp-content/uploads/2020/07/Han-Yantai-Room-scaled-1.jpg?id=6638",
+      "price_reference_page": "https://www.cheongfatttzemansion.com/mansion_promotion/penang-nature-discovery/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/blue-mansion-penang-nature-liang-real.jpg",
+      "sha256": "225c5330a04d1e83e7ef47adc15b75c052b705f43cb4faf48bbaf1927605652e",
+      "artist": "Cheong Fatt Tze — The Blue Mansion official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "blue-mansion-penang-nature-ming",
+      "name": "Penang Nature Discovery — Ming Room Package",
+      "description": "Three-day, two-night Penang Nature Discovery package in the Ming room category, with breakfast, house tour, bicycle rental and attraction discounts, listed by the official hotel site.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 1188,
+      "source_type": "official",
+      "source_page": "https://www.cheongfatttzemansion.com/mansion_promotion/penang-nature-discovery/",
+      "source_image_url": "https://www.cheongfatttzemansion.com/wp-content/uploads/2021/08/stays_mobile.jpg?id=8134",
+      "price_reference_page": "https://www.cheongfatttzemansion.com/mansion_promotion/penang-nature-discovery/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/blue-mansion-penang-nature-ming-real.jpg",
+      "sha256": "b52de9f19bf48fe3cfaa4eeb4fdfbf2f4d41276308e201cb20d2284b7915e045",
+      "artist": "Cheong Fatt Tze — The Blue Mansion official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

@@ -113,7 +113,7 @@ export function buildPublicOutletProfile(input: PublicOutletProfileInput): Publi
     state,
     country,
     phone: clean(input.phone) || '+60 3-5555 0199',
-    email: clean(input.email) || `hello+${slugify(input.outletName) || 'mywisata-outlet'}@demo.local`,
+    email: clean(input.email) || `hello+${slugify(input.outletName) || 'mylawatan-outlet'}@demo.local`,
     operatingHours: input.operatingHours && typeof input.operatingHours === 'object'
       ? input.operatingHours
       : DEFAULT_OPERATING_HOURS,

@@ -13,6 +13,7 @@ export default async function OutletRedirectPage({ params }: { params: Promise<{
     .select('vendor_id')
     .eq('id', outletId)
     .eq('status', 'active')
+    .eq('review_status', 'approved')
     .maybeSingle();
 
   if (!outlet || !outlet.vendor_id) {

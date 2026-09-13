@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Flag, Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ type SortKey = "newest" | "oldest" | "reason";
 export default function AdminChatReportsPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
+  const { prompt } = useAppDialog();
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const reasonLabel = (value: string, fallback: string) => t(`chatReports.reasons.${value}`);
@@ -210,12 +212,12 @@ export default function AdminChatReportsPage() {
     const selected = filtered.filter((report) => selectedIds.has(report.id) && report.status === "open");
     if (!selected.length) return;
     const reasonOptions = RESOLUTION_REASONS.map((reason) => `${reason.value}: ${resolutionLabel(reason.value, reason.label)}`).join(", ");
-    const enteredReason = window.prompt(t("chatReports.prompts.resolutionReason", { reasons: reasonOptions }), RESOLUTION_REASONS[0].value)?.trim();
+    const enteredReason = (await prompt(t("chatReports.prompts.resolutionReason", { reasons: reasonOptions }), RESOLUTION_REASONS[0].value))?.trim();
     if (!enteredReason || !RESOLUTION_REASONS.some((reason) => reason.value === enteredReason)) {
       showFeedback("error", t("chatReports.errors.invalidReason"));
       return;
     }
-    const note = window.prompt(t("chatReports.prompts.resolutionNote"), "")?.trim() ?? "";
+    const note = (await prompt(t("chatReports.prompts.resolutionNote"), ""))?.trim() ?? "";
     setBatchBusy(true);
     try {
       const responses = await Promise.all(selected.map((report) => fetch(`/api/admin/chat-reports/${report.id}`, {

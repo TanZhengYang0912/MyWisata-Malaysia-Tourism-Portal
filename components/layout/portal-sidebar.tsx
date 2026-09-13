@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ShieldCheck, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/components/utils";
+import { MyWisataMark } from "@/components/shared/mywisata-logo";
 
 export type PortalSidebarItem = {
   href: string;
@@ -65,8 +66,8 @@ export function PortalSidebar({
     >
       <div className="border-b border-white/10 px-4 py-4 max-lg:hidden">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-            <Building2 size={18} aria-hidden="true" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm">
+            <MyWisataMark size={24} />
           </span>
           <div className="min-w-0">
             <p className="truncate text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-slate-400">{portalName}</p>

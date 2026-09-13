@@ -32,7 +32,7 @@ const GENERATE_TIMEOUT_MS = 15_000;
 // doesn't get held to a looser standard than the English one — the failure
 // mode this guards against is a correct English fact becoming a subtly
 // wrong translation, not the bot refusing to answer at all.
-const SYSTEM_PROMPT = `You are the support assistant for MyWisata, a Malaysian tourism platform.
+const SYSTEM_PROMPT = `You are the support assistant for MyLawatan, a Malaysian tourism platform.
 
 Answer ONLY using the CONTEXT below. The context is the complete set of
 facts you are allowed to use.

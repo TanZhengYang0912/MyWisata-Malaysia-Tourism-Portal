@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "c5ab04dc-2c02-c07f-d741-b9039e0df199",
+    "name": "Tanoti Weavers Workshop",
+    "source_page": "https://tanoticrafts.com/",
+    "price_reference_page": "https://tanoticrafts.com/"
+  },
+  "outlets": [
+    {
+      "id": "82100a81-2917-205c-cd9c-d1b691c25f21",
+      "name": "Tanoti Weavers Workshop"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "tanoti-mini-workshops",
+      "name": "Tanoti Mini Workshops",
+      "description": "Two-hour basketry weaving, songket weaving or loom beading workshop at Tanoti House, listed on Tanoti's official product page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 200,
+      "source_type": "official",
+      "source_page": "https://tanoticrafts.com/products/tanoti-experiences",
+      "source_image_url": "https://tanoticrafts.com/cdn/shop/files/6.jpg?v=1729475961",
+      "price_reference_page": "https://tanoticrafts.com/products/tanoti-experiences",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tanoti-mini-workshops-real.jpg",
+      "sha256": "2449994da55dd8b012e043bdc7df7d6723aa9ac42285d8d4081fe4fcbcb37cde",
+      "artist": "Tanoti Crafts official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tanoti-rattan-cushion",
+      "name": "Tanoti Rattan Cushion",
+      "description": "Handwoven rattan cushion made by Tanoti, with product variants and price listed on the official Tanoti product page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 200,
+      "source_type": "official",
+      "source_page": "https://tanoticrafts.com/products/rattan-pillows",
+      "source_image_url": "https://tanoticrafts.com/cdn/shop/products/20200902_144832-01.jpg?v=1711201157",
+      "price_reference_page": "https://tanoticrafts.com/products/rattan-pillows",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tanoti-rattan-cushion-real.jpg",
+      "sha256": "dbbf70313f4dff5394207791d952e76a5944b019b364322c79e10bd2a7512382",
+      "artist": "Tanoti Crafts official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tanoti-rattan-basket-lampshade",
+      "name": "Tanoti Rattan Basket / Lampshade",
+      "description": "Rattan basket that can be used as a lampshade, with size variants and price listed on the official Tanoti product page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 130,
+      "source_type": "official",
+      "source_page": "https://tanoticrafts.com/products/rattan-basket-lampshade",
+      "source_image_url": "https://tanoticrafts.com/cdn/shop/products/20210301_110531-01.jpg?v=1711200840",
+      "price_reference_page": "https://tanoticrafts.com/products/rattan-basket-lampshade",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tanoti-rattan-basket-lampshade-real.jpg",
+      "sha256": "11f83914fc54c23caf1fd24991dfb87100681cb8763033c4ec2d6319202a0555",
+      "artist": "Tanoti Crafts official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tanoti-basket-tray",
+      "name": "Tanoti Basket Tray",
+      "description": "Handmade basket tray with pattern variants, dimensions and price listed on the official Tanoti product page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 160,
+      "source_type": "official",
+      "source_page": "https://tanoticrafts.com/products/rectangular-baskets",
+      "source_image_url": "https://tanoticrafts.com/cdn/shop/products/20201105_170631-01-01.jpg?v=1711196409",
+      "price_reference_page": "https://tanoticrafts.com/products/rectangular-baskets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tanoti-basket-tray-real.jpg",
+      "sha256": "666e6c06f77234bae77bbc54b5f8f84e3105859791dfc07ebcec964387ba845c",
+      "artist": "Tanoti Crafts official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tanoti-songket-rattan-table-runner",
+      "name": "Tanoti Songket Rattan Table Runner",
+      "description": "Handwoven songket rattan table runner with artisan description, variants and price listed on the official Tanoti product page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 650,
+      "source_type": "official",
+      "source_page": "https://tanoticrafts.com/products/tanoti-songket-rattan-table-runner",
+      "source_image_url": "https://tanoticrafts.com/cdn/shop/files/NC_001.jpg?v=1736844490",
+      "price_reference_page": "https://tanoticrafts.com/products/tanoti-songket-rattan-table-runner",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tanoti-songket-rattan-table-runner-real.jpg",
+      "sha256": "1894898fd9d301492b80764581d49c08926dc8b937c2a0348167baa50989d293",
+      "artist": "Tanoti Crafts official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

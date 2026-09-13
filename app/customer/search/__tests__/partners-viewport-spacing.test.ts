@@ -10,8 +10,8 @@ describe("partners first-viewport spacing contract", () => {
   it("keeps the full-width advertising banner compact enough to enter the initial viewport", () => {
     expect(searchSource).toContain("px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10");
     expect(searchSource).toContain('data-testid="partner-filter-bar"');
-    expect(searchSource).toContain('variant="compact"');
-    expect(searchSource).toContain('headingKey="ui.search.category"');
+    expect(searchSource).toContain('categoryVariant="compact"');
+    expect(filterSource).toContain('headingKey="ui.search.category"');
     expect(filterSource).toContain("<div className=\"mb-3 flex items-center justify-between gap-4\">");
     expect(filterSource).toContain("overflow-x-auto");
     expect(filterSource).toContain("min-h-10");

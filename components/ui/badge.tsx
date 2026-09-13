@@ -46,35 +46,61 @@ function Badge({
 export { Badge, badgeVariants };
 
 const COLOURS: Record<string, string> = {
-  active:          'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  approved:        'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  completed:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  confirmed:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  resolved:        'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  available:       'bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400',
-  paid:            'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400',
-  pending:         'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  pending_payment: 'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  pending_approval:'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  pending_review:  'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  processing:      'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  open:            'bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400',
-  in_progress:     'bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400',
-  draft:           'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
-  unverified:      'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
-  inactive:        'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
-  archived:        'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
-  closed:          'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400',
-  rejected:        'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
-  change_requested:'bg-orange-100 text-orange-700 border-transparent dark:bg-orange-900/30 dark:text-orange-400',
-  cancelled:       'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
-  failed:          'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
-  full:            'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
-  suspended:       'bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400',
+  active:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  approved:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  completed:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  confirmed:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  resolved:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  available:
+    "bg-green-100 text-green-700 border-transparent dark:bg-green-900/30 dark:text-green-400",
+  paid: "bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400",
+  pending:
+    "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  pending_payment:
+    "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  pending_approval:
+    "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  pending_review:
+    "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  processing:
+    "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  open: "bg-yellow-100 text-yellow-700 border-transparent dark:bg-yellow-900/30 dark:text-yellow-400",
+  in_progress:
+    "bg-blue-100 text-blue-700 border-transparent dark:bg-blue-900/30 dark:text-blue-400",
+  draft:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  unverified:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  inactive:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  archived:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  closed:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  expired:
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400",
+  rejected:
+    "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
+  change_requested:
+    "bg-orange-100 text-orange-700 border-transparent dark:bg-orange-900/30 dark:text-orange-400",
+  cancelled:
+    "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
+  failed:
+    "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
+  full: "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
+  suspended:
+    "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const label = status.replace(/_/g, ' ');
-  const colorClass = COLOURS[status] ?? 'bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400';
+  const label = status.replace(/_/g, " ");
+  const colorClass =
+    COLOURS[status] ??
+    "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400";
   return <Badge className={colorClass}>{label}</Badge>;
 }

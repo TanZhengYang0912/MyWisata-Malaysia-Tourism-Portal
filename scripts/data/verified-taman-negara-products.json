@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "b9622b08-b059-43f4-9288-6de703c8ebbb",
+    "name": "Taman Negara Park Authority",
+    "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+    "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/"
+  },
+  "outlets": [
+    {
+      "id": "4146d43b-7a61-dcd7-91cc-5022e231ce13",
+      "name": "Taman Negara Park Authority — Counter"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "taman-negara-entrance-permit",
+      "name": "Taman Negara Pahang Entrance Permit",
+      "description": "Mandatory entrance permit for one visitor entering Taman Negara Pahang at Kuala Tahan, listed by the official Department of Wildlife and National Parks page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 1,
+      "source_type": "official",
+      "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Taman_Negara%2C_Kuala_Tahan.png/1280px-Taman_Negara%2C_Kuala_Tahan.png",
+      "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/taman-negara-entrance-permit-real.png",
+      "sha256": "0ef052abb3e35f776943aea720bd529ed54780dff2c97e4b1f64553085bcfd5f",
+      "artist": "Department of Wildlife and National Parks official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "taman-negara-camera-license",
+      "name": "Taman Negara Camera License",
+      "description": "Camera license for one camera unit brought into Taman Negara, listed by the official Department of Wildlife and National Parks page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 5,
+      "source_type": "official",
+      "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Taman_Negara_Canopy_Walkway.JPG/1280px-Taman_Negara_Canopy_Walkway.JPG",
+      "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/taman-negara-camera-license-real.jpg",
+      "sha256": "8ba0db0905750414328bbe03c02bf9621a2df8a7097b1209addccd2f1084cb30",
+      "artist": "Department of Wildlife and National Parks official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "taman-negara-fishing-license",
+      "name": "Taman Negara Fishing License",
+      "description": "Fishing license for one fishing rod in Taman Negara, listed by the official Department of Wildlife and National Parks page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 10,
+      "source_type": "official",
+      "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Departing_from_Kuala_Tahan_%283107831161%29.jpg/1280px-Departing_from_Kuala_Tahan_%283107831161%29.jpg",
+      "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/taman-negara-fishing-license-real.jpg",
+      "sha256": "400f6325ea9e03e2a8385072beb1351c21d9fa176ba2131e8c1e955952cd179f",
+      "artist": "Department of Wildlife and National Parks official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "taman-negara-kuala-tembeling-boat-one-way",
+      "name": "Kuala Tembeling to Kuala Tahan Boat — One Way",
+      "description": "One-way boat fare from Kuala Tembeling Jetty to Kuala Tahan, listed on the official Taman Negara Pahang visitor information page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 55,
+      "source_type": "official",
+      "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Kuala_Tembeling_1.jpg/1280px-Kuala_Tembeling_1.jpg",
+      "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/taman-negara-kuala-tembeling-boat-one-way-real.jpg",
+      "sha256": "fbd99b4ce71373bb8dc1f2638e9d2c1a682c8d8a5583c2e073b76f3f23748da7",
+      "artist": "Department of Wildlife and National Parks official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "taman-negara-campsite-one-night",
+      "name": "Taman Negara Campsite — One Person, One Night",
+      "description": "Basic campsite fee for one person for one night inside Taman Negara, excluding campsites managed by Mutiara Resort, listed on the official visitor information page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 1,
+      "source_type": "official",
+      "source_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Taman_Negara_from_Bukit_Terisek.jpg/1280px-Taman_Negara_from_Bukit_Terisek.jpg",
+      "price_reference_page": "https://wildlife.gov.my/en/taman-negara-pahang-kuala-tahan/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/taman-negara-campsite-one-night-real.jpg",
+      "sha256": "db4860980774cbf6fc25a4cb84d082d9a9a66a923611df71c8deb7f4e14aec7d",
+      "artist": "Department of Wildlife and National Parks official page / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

@@ -1,4 +1,3 @@
-import type { ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +10,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 import AdminAiAssistantPage from "@/app/admin/ai-assistant/page";
+import { AdminAiMessage } from "@/components/admin/admin-ai-message";
 
 describe("Admin AI Assistant presentation", () => {
   it("fills the Admin content width while keeping readable chat columns", () => {
@@ -31,17 +31,9 @@ describe("Admin AI Assistant presentation", () => {
     expect(emptyMarkup).not.toContain("aiAssistant.ask.clear");
   });
 
-  it("places AI messages on the left and admin messages on the right", async () => {
-    const pageModule = await import("@/app/admin/ai-assistant/page");
-    const Message = (pageModule as unknown as {
-      AdminAiMessage?: ComponentType<{ role: "user" | "bot"; text: string }>;
-    }).AdminAiMessage;
-
-    expect(Message).toBeTypeOf("function");
-    if (!Message) return;
-
-    const botMarkup = renderToStaticMarkup(<Message role="bot" text="Platform answer" />);
-    const userMarkup = renderToStaticMarkup(<Message role="user" text="My question" />);
+  it("places AI messages on the left and admin messages on the right", () => {
+    const botMarkup = renderToStaticMarkup(<AdminAiMessage role="bot" text="Platform answer" />);
+    const userMarkup = renderToStaticMarkup(<AdminAiMessage role="user" text="My question" />);
 
     expect(botMarkup).toContain('data-message-role="bot"');
     expect(botMarkup).toContain("justify-start");
@@ -53,5 +45,11 @@ describe("Admin AI Assistant presentation", () => {
     expect(botMarkup).toContain("lg:max-w-3xl");
     expect(userMarkup).toContain("max-w-[85%]");
     expect(userMarkup).toContain("lg:max-w-3xl");
+  });
+
+  it("keeps the message renderer out of the App Router page exports", async () => {
+    const pageModule = await import("@/app/admin/ai-assistant/page");
+
+    expect(pageModule).not.toHaveProperty("AdminAiMessage");
   });
 });

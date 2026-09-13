@@ -14,6 +14,7 @@ import {
   customerVisibleTransactions,
   signedTransactionAmount,
 } from "@/lib/wallet/transaction-display";
+import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 
 export function CustomerTransactionHistory({ userId, refreshKey }: { userId: string; refreshKey: number }) {
   const { t, i18n } = useTranslation("customer");
@@ -47,6 +48,11 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
     setFilters((current) => ({ ...current, ...patch, page: 1 }));
   }
 
+  function primeDateRange() {
+    const defaults = getMalaysiaDateRangeDefaults();
+    setFilters((current) => ({ ...current, from: current.from || defaults.from, to: current.to || defaults.to, page: 1 }));
+  }
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="border-b border-border px-5 py-4">
@@ -66,11 +72,11 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
           </label>
           <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
             <span>{t("ui.wallet.historyFilters.from")}</span>
-            <input name="transaction-from" type="date" className={controlClass} value={filters.from} onChange={(event) => changeFilters({ from: event.target.value })} />
+            <input name="transaction-from" type="date" className={controlClass} value={filters.from} onFocus={primeDateRange} onChange={(event) => changeFilters({ from: event.target.value })} />
           </label>
           <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
             <span>{t("ui.wallet.historyFilters.to")}</span>
-            <input name="transaction-to" type="date" className={controlClass} value={filters.to} onChange={(event) => changeFilters({ to: event.target.value })} />
+            <input name="transaction-to" type="date" className={controlClass} value={filters.to} onFocus={primeDateRange} onChange={(event) => changeFilters({ to: event.target.value })} />
           </label>
           <Button type="button" variant="outline" onClick={() => setFilters({ ...DEFAULT_CUSTOMER_HISTORY_FILTERS })} disabled={!hasFilters && filters.page === 1}>
             {t("ui.wallet.historyFilters.clear")}

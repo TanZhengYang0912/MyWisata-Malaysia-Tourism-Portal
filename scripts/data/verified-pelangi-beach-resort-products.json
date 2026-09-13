@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "7aec736a-a9df-1dfe-e7f2-683dc3694b1a",
+    "name": "Pelangi Beach Resort & Spa",
+    "source_page": "https://www.pelangiresort.com/rooms",
+    "price_reference_page": "https://www.pelangiresort.com/rooms"
+  },
+  "outlets": [
+    {
+      "id": "5016d273-eb84-d20d-81ab-f9022bf401fa",
+      "name": "Pelangi Beach Resort & Spa"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "pelangi-garden-terrace-3d2n-twin",
+      "name": "Pelangi Garden Terrace — 3D2N Adult Twin Package",
+      "description": "Three-day, two-night Garden Terrace package for two adults sharing a twin room, with the room type and adult-twin package rate published by a Malaysian travel operator for the resort.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 1638,
+      "source_type": "official",
+      "source_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "source_image_url": "https://image-tc.galaxy.tf/wijpeg-9yq4zx60zdcle2v2tu6iljp0p/garden-terrace-listing_standard.jpg?crop=209%2C0%2C1549%2C1162",
+      "price_reference_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/pelangi-garden-terrace-3d2n-twin-real.jpg",
+      "sha256": "a18d6360a7d492d430ebd38c883119cec92a4e5bac98086f4568e791c49a0a2b",
+      "artist": "Pelangi Beach Resort official website; Asahi Vacations travel package PDF",
+      "license": "Official resort media and published travel-package media; source attribution recorded"
+    },
+    {
+      "slug": "pelangi-lakefront-3d2n-twin",
+      "name": "Pelangi Lakefront — 3D2N Adult Twin Package",
+      "description": "Three-day, two-night Lake Front package for two adults sharing a twin room, with the room type and adult-twin package rate published by a Malaysian travel operator for the resort.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 1698,
+      "source_type": "official",
+      "source_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "source_image_url": "https://image-tc.galaxy.tf/wijpeg-axw56duouwoi2sraqebyndgqn/lakefront-room_standard.jpg?crop=112%2C0%2C1777%2C1333",
+      "price_reference_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/pelangi-lakefront-3d2n-twin-real.jpg",
+      "sha256": "573ec924e6dc32d2c258ea4d400f8b34360a9bf8be660a6f82964a4edd4cd47f",
+      "artist": "Pelangi Beach Resort official website; Asahi Vacations travel package PDF",
+      "license": "Official resort media and published travel-package media; source attribution recorded"
+    },
+    {
+      "slug": "pelangi-island-view-3d2n-twin",
+      "name": "Pelangi Island View — 3D2N Adult Twin Package",
+      "description": "Three-day, two-night Island View package for two adults sharing a twin room, with the room type and adult-twin package rate published by a Malaysian travel operator for the resort.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 1868,
+      "source_type": "official",
+      "source_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "source_image_url": "https://image-tc.galaxy.tf/wijpeg-4zmrd2ewf5qezmh4wrvgalj6d/island-view-family-room-listing-1_standard.jpg?crop=108%2C0%2C987%2C740",
+      "price_reference_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/pelangi-island-view-3d2n-twin-real.jpg",
+      "sha256": "3670109b4faee3b97faae0df9074db85547910658221f231fe08804cb814fa52",
+      "artist": "Pelangi Beach Resort official website; Asahi Vacations travel package PDF",
+      "license": "Official resort media and published travel-package media; source attribution recorded"
+    },
+    {
+      "slug": "pelangi-seaview-3d2n-twin",
+      "name": "Pelangi Seaview — 3D2N Adult Twin Package",
+      "description": "Three-day, two-night Seaview package for two adults sharing a twin room, with the room type and adult-twin package rate published by a Malaysian travel operator for the resort.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 2068,
+      "source_type": "official",
+      "source_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "source_image_url": "https://image-tc.galaxy.tf/wijpeg-a7hw0otzinfai5b8p30ecwwio/seaview-listing_standard.jpg?crop=0%2C0%2C1140%2C855",
+      "price_reference_page": "https://asahivacations.com.my/wp-content/uploads/2025/01/2025-PElangi-e.pdf",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/pelangi-seaview-3d2n-twin-real.jpg",
+      "sha256": "0c091f44717dfa6bb5aa57ef6ba44314f1cb66290954570c1d2359f18cf85497",
+      "artist": "Pelangi Beach Resort official website; Asahi Vacations travel package PDF",
+      "license": "Official resort media and published travel-package media; source attribution recorded"
+    },
+    {
+      "slug": "pelangi-garden-family-room",
+      "name": "Pelangi Garden Family Room",
+      "description": "Garden Family Room for up to two adults and two children under 12, listed on Pelangi Beach Resort's official room page with its current starting rate.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 145,
+      "source_type": "official",
+      "source_page": "https://www.pelangiresort.com/garden-family-room",
+      "source_image_url": "https://image-tc.galaxy.tf/wijpeg-5t1ttbb2m916ns5dh65c6njby/family-room_standard.jpg?crop=89%2C0%2C903%2C677",
+      "price_reference_page": "https://www.pelangiresort.com/garden-family-room",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/pelangi-garden-family-room-real.jpg",
+      "sha256": "7fe230989b3a25922813dc159eb69dfa08481591e0c9bf6cf83b977e2620bf16",
+      "artist": "Pelangi Beach Resort official website; Asahi Vacations travel package PDF",
+      "license": "Official resort media and published travel-package media; source attribution recorded"
+    }
+  ]
+}

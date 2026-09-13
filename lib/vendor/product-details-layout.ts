@@ -1,6 +1,6 @@
 export function getProductDetailsLayoutClasses() {
   return {
-    page: 'mx-auto max-w-6xl space-y-5',
+    page: 'space-y-5',
     content: 'space-y-5',
     actions: 'sticky top-4 z-20',
     heroMedia: 'aspect-[4/3] min-h-0',

@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "fea02989-c9c6-5643-598f-e35176b48034",
+    "name": "Underwater World Langkawi",
+    "source_page": "https://www.underwaterworldlangkawi.com/visitor-information.php/1000",
+    "price_reference_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx"
+  },
+  "outlets": [
+    {
+      "id": "82851617-1c26-acf1-bf3e-985bcd3c4ecc",
+      "name": "Underwater World Langkawi"
+    }
+  ],
+  "archive_legacy_slugs": ["underwater-world-entry"],
+  "products": [
+    {
+      "slug": "underwater-world-online-malaysian-adult",
+      "name": "Online Malaysian Adult Admission",
+      "description": "Online admission for Malaysian visitors aged 12 and above, listed on the official ticketing page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 47,
+      "source_type": "official",
+      "source_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "source_image_url": "https://www.underwaterworldlangkawi.com/img/Operation_Time_UWL.jpg",
+      "price_reference_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/underwater-world-malaysian-adult-real.jpg",
+      "sha256": "d7bcfbf672ec8959a4ca75bb92de7b8c6d815b34805317926ddcef7d8e855467",
+      "artist": "Underwater World Langkawi",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "underwater-world-online-malaysian-child",
+      "name": "Online Malaysian Child Admission",
+      "description": "Online admission for Malaysian children aged 3 to 12, listed on the official ticketing page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 36,
+      "source_type": "official",
+      "source_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "source_image_url": "https://www.underwaterworldlangkawi.com/img/Swimmer.jpg",
+      "price_reference_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/underwater-world-malaysian-child-real.jpg",
+      "sha256": "9490ce44d8761e0bc267a83211ebd58ca646786a58911f3db840b91d8dafc9e6",
+      "artist": "Underwater World Langkawi",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "underwater-world-online-international-adult",
+      "name": "Online International Adult Admission",
+      "description": "Online admission for international visitors aged 12 and above, listed on the official ticketing page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 59,
+      "source_type": "official",
+      "source_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "source_image_url": "https://www.underwaterworldlangkawi.com/public/files/UWL_Visitor_Information_Brochure.jpg",
+      "price_reference_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/underwater-world-international-adult-real.jpg",
+      "sha256": "205d294b0d96436ed568b0df8ace03a6413f19e1d8e1b0b4964bbb9c29e4bab8",
+      "artist": "Underwater World Langkawi",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "underwater-world-online-international-child",
+      "name": "Online International Child Admission",
+      "description": "Online admission for international children aged 3 to 12, listed on the official ticketing page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 47,
+      "source_type": "official",
+      "source_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "source_image_url": "https://www.underwaterworldlangkawi.com/promotion/UWL-Promo-001-2020.jpg",
+      "price_reference_page": "https://ticket.underwaterworldlangkawi.com/TicketSelection.aspx",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/underwater-world-international-child-real.jpg",
+      "sha256": "d098fdfcb029626fa6a92a0435649f924f29f8367fd058470f45f166c0b8fdd1",
+      "artist": "Underwater World Langkawi",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "underwater-world-mykad-senior-admission",
+      "name": "MyKad Senior Citizen Admission",
+      "description": "Special admission rate for senior citizens aged 60 and above with MyKad, listed on the official visitor information page.",
+      "product_type": "activity",
+      "requires_booking": false,
+      "base_price": 39,
+      "source_type": "official",
+      "source_page": "https://www.underwaterworldlangkawi.com/visitor-information.php/1000",
+      "source_image_url": "https://www.underwaterworldlangkawi.com/promotion/UWL-Promo-005-2020.jpg",
+      "price_reference_page": "https://www.underwaterworldlangkawi.com/visitor-information.php/1000",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/underwater-world-senior-real.jpg",
+      "sha256": "20bc650accf16b86ba5f97f4aa96dceabadb62f115a9da2a2544cd635d375eb2",
+      "artist": "Underwater World Langkawi",
+      "license": "Official operator media; source attribution recorded"
+    }
+  ]
+}

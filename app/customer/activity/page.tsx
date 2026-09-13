@@ -12,7 +12,7 @@ export default function CustomerActivityPage() {
 
   return (
     <div className="min-h-full bg-background">
-      {tab === "orders" ? <OrdersPage /> : <CustomerCalendarPage key={history ? "history" : "upcoming"} initialScope={history ? "past" : "upcoming"} />}
+      {tab === "orders" ? <OrdersPage /> : <CustomerCalendarPage key={history ? "history" : "upcoming"} />}
     </div>
   );
 }

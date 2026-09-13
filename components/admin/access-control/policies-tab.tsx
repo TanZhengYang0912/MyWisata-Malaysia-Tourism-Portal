@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildAccessControlQuery, errorMessage } from "@/components/admin/access-control/types";
 import type { ApiEnvelope, AuditFocus, MutationReceipt, PageResult, PolicyRequirement, PolicySummary, PolicyVersionSummary } from "@/components/admin/access-control/types";
+import { getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
 
 const PAGE_SIZE = 25;
 const STATUSES = ["", "draft", "pending_approval", "scheduled", "active", "retired"];
@@ -21,7 +22,7 @@ type VersionForm = { effect: "allow" | "deny"; effectiveFrom: string; effectiveU
 type PendingAction = { type: "approve" | "activate" | "rollback"; version: PolicyVersionSummary; reason: string };
 
 function newRequirement(index: number): RequirementDraft { return { id: `${Date.now()}-${index}`, alternativeGroup: 1, factKey: "email_verified", operator: "eq", expectedValue: "true" }; }
-function initialForm(): VersionForm { return { effect: "allow", effectiveFrom: new Date().toISOString().slice(0, 16), effectiveUntil: "", reason: "", requirements: [newRequirement(0)] }; }
+function initialForm(): VersionForm { return { effect: "allow", effectiveFrom: getMalaysiaDateTimeLocalValue(), effectiveUntil: "", reason: "", requirements: [newRequirement(0)] }; }
 function toOffsetTimestamp(value: string) { return value ? new Date(value).toISOString() : null; }
 function requirementValue(requirement: RequirementDraft): boolean | string {
   if (["email_verified", "phone_verified", "profile_complete"].includes(requirement.factKey)) return requirement.expectedValue === "true";

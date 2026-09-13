@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { ArrowRight, MapPin, Store } from "lucide-react";
+import { ArrowUpRight, MapPin, Store } from "lucide-react";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { DISCOVERY_CATEGORIES, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import type { Outlet } from "@/backend/core/types";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
+import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 
 const PAGE_SIZE = 8;
 
@@ -24,25 +25,40 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
     <Link
       href={getOutletShopHref(outlet.id)}
       aria-label={t("ui.nearbyOutlets.viewShop", { name: outlet.name })}
-      className="group flex min-h-[96px] items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:gap-4"
+      className="group flex min-h-[160px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition group-hover:bg-primary group-hover:text-white">
-        <Store size={18} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="line-clamp-1 text-sm font-bold text-foreground">{outlet.name}</p>
-          {outlet.category && (
-            <span className="hidden shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-primary sm:inline-flex">
-              {categoryKey ? t(categoryKey) : outlet.category}
+      <div className="flex min-w-0 flex-1 items-start gap-4 p-4 sm:p-5">
+        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-secondary text-primary shadow-sm sm:h-20 sm:w-20">
+          {outlet.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={outlet.coverUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center">
+              <Store size={24} strokeWidth={1.8} aria-hidden="true" />
             </span>
           )}
         </div>
-        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{outlet.vendorName || outlet.address || t("ui.search.localPartner")}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="line-clamp-2 text-base font-bold leading-tight text-foreground">{outlet.name}</p>
+              {outlet.category && (
+                <span className="mt-2 inline-flex rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-primary">
+                  {categoryKey ? t(categoryKey) : outlet.category}
+                </span>
+              )}
+            </div>
+            <p className="shrink-0 text-sm font-bold text-foreground">{km.toFixed(1)} {DISTANCE_UNIT_KM}</p>
+          </div>
+          <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">{outlet.vendorName || outlet.address || t("ui.search.localPartner")}</p>
+          {outlet.operatingHours ? <div className="mt-1"><OperatingHoursSummary hours={outlet.operatingHours} currentlyOpen={outlet.currentlyOpen ?? outlet.open} compact /></div> : outlet.hours && <p className="mt-1 truncate text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {outlet.hours}</p>}
+        </div>
       </div>
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-bold text-foreground">{km.toFixed(1)} {DISTANCE_UNIT_KM}</p>
-        <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { name: outlet.name })} <ArrowRight size={13} aria-hidden="true" /></p>
+      <div className="flex items-center justify-between gap-3 border-t border-border bg-secondary/25 px-4 py-3 sm:px-5">
+        <span className="min-w-0 truncate text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { name: outlet.name })}</span>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
+          <ArrowUpRight size={15} strokeWidth={2.4} />
+        </span>
       </div>
     </Link>
   );

@@ -31,6 +31,8 @@ vi.mock("react-i18next", () => ({
       "categories.activity": "Activity",
       "categories.hiddenGem": "Hidden Gem",
       "ui.discovery.searchLabel": "Search",
+      "ui.map.moreFilters": "More filters",
+      "ui.map.activeFilters": "Active filters",
       "ui.map.types.nature": "Nature",
     } as Record<string, string>)[key] ?? key,
   }),
@@ -124,11 +126,15 @@ describe("ExploreClient URL-backed advanced filters", () => {
     await render(root, <ExploreClient initialActivities={activities} />);
     expect(mocks.searchActivities).toHaveBeenCalledWith({
       q: "", state: "Sabah", categories: ["activity"], types: ["activity:nature"], priceMax: 100,
+      operatingDays: [], hoursMode: "during", timeAt: null,
+      timeFrom: null, timeTo: null,
+      overnight: false, openNow: false,
       freeOnly: true, bookableOnly: true, hiddenGemOnly: true, familyFriendlyOnly: true, coupleFriendlyOnly: true,
     });
 
     expect(findOne(container, (element) => element.getAttribute("data-testid") === "story-map-ids").textContent).toBe(Array.from({ length: 10 }, (_, index) => `result-${index + 1}`).join(","));
     await click(button(container, "Experiences"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
     expect(labelled(container, "State").value).toBe("Sabah");
     expect(labelled(container, "Maximum price").value).toBe("100");
     for (const label of ["Activity", "Nature", "Free entry", "Booking required", "Hidden Gem", "Family Friendly", "Couple Friendly"]) {
@@ -151,6 +157,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     await render(root, <ExploreClient initialActivities={activities} />);
     expect(findOne(container, (element) => element.getAttribute("data-testid") === "story-map-ids").textContent).toBe(Array.from({ length: 10 }, (_, index) => `result-${index + 1}`).join(","));
     await click(button(container, "Experiences"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
     expect(labelled(container, "State").value).toBe("Sabah");
     expect(labelled(container, "Nature").getAttribute("aria-pressed")).toBe("true");
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
@@ -160,6 +167,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams();
     await render(root, <ExploreClient initialActivities={activities} />);
     await click(button(container, "Experiences"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
 
     const hiddenGemCategory = findElements(container, (element) => element.tagName === "BUTTON" && element.textContent === "Hidden Gem")[0];
     await click(hiddenGemCategory);

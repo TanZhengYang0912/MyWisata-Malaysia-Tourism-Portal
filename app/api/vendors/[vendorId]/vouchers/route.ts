@@ -10,7 +10,7 @@ interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
   const url = new URL(request.url);
@@ -28,7 +28,10 @@ export async function GET(request: Request, { params }: Props) {
   const now = Date.now();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withStatus = (data ?? []).map((voucher: any) => {
-    if (voucher.review_status && voucher.review_status !== 'approved') return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status: voucher.review_status };
+    if (voucher.review_status && voucher.review_status !== 'approved') {
+      const status = voucher.vendor_review_status === 'rejected' ? 'rejected' : voucher.review_status;
+      return { ...voucher, outlets: voucher.outlets ? { ...voucher.outlets, full_name: voucher.outlets.name, name: outletShortName(voucher.outlets.name) } : voucher.outlets, status };
+    }
     const validFrom = voucher.valid_from ? new Date(voucher.valid_from).getTime() : null;
     const validUntil = voucher.valid_until ? new Date(voucher.valid_until).getTime() : null;
     const status = !voucher.is_active ? 'inactive' : validFrom && validFrom > now ? 'scheduled' : validUntil && validUntil < now ? 'expired' : voucher.max_uses && voucher.uses_count >= voucher.max_uses ? 'expired' : 'active';
@@ -47,7 +50,7 @@ export async function GET(request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 
@@ -63,12 +66,21 @@ export async function POST(request: Request, { params }: Props) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
+  const managerOutletId = access.access.isOutletManager && access.access.outletIds.length === 1 ? access.access.outletIds[0] : null;
+  if (access.access.isOutletManager && !managerOutletId) {
+    return apiFail('FORBIDDEN', 'Outlet managers must have exactly one assigned outlet to create vouchers.', 403);
+  }
+  if (access.access.isOutletManager && body.outletId && body.outletId !== managerOutletId) {
+    return apiFail('FORBIDDEN', 'Outlet managers can only create vouchers for their assigned outlet.', 403);
+  }
+  const targetOutletId = managerOutletId ?? body.outletId ?? null;
+
   // If outlet specified, verify it belongs to vendor
-  if (body.outletId) {
+  if (targetOutletId) {
     const { data: outlet } = await supabase
       .from('outlets')
       .select('id')
-      .eq('id', body.outletId)
+      .eq('id', targetOutletId)
       .eq('vendor_id', vendorId)
       .single();
     if (!outlet) return apiFail('INVALID_OUTLET', 'Outlet not found or not owned by this vendor', 400);
@@ -77,16 +89,17 @@ export async function POST(request: Request, { params }: Props) {
   if (body.productId) {
     const { data: product } = await supabase.from('products').select('id,outlet_id,outlet_offers(outlet_id,status)').eq('id', body.productId).eq('vendor_id', vendorId).maybeSingle();
     if (!product) return apiFail('INVALID_PRODUCT', 'Product not found or not owned by this vendor', 400);
-    if (body.outletId && !isProductEligibleForVoucherOutlet({
-      productOutletId: product.outlet_id,
-      offers: (product.outlet_offers ?? []).map((offer: { outlet_id: string; status: string | null }) => ({ outletId: offer.outlet_id, status: offer.status })),
-      selectedOutletId: body.outletId,
-    })) return apiFail('INVALID_PRODUCT_SCOPE', 'Product is not sold at the selected outlet', 400);
+     if (targetOutletId && !isProductEligibleForVoucherOutlet({
+       productOutletId: product.outlet_id,
+       offers: (product.outlet_offers ?? []).map((offer: { outlet_id: string; status: string | null }) => ({ outletId: offer.outlet_id, status: offer.status })),
+       selectedOutletId: targetOutletId,
+     })) return apiFail('INVALID_PRODUCT_SCOPE', 'Product is not sold at the selected outlet', 400);
   }
 
   const { data, error } = await supabase.from('vouchers').insert({
     vendor_id: vendorId,
-    outlet_id: body.outletId ?? null,
+    created_by: access.access.userId,
+    outlet_id: targetOutletId,
     code: body.code,
     name: body.name,
     voucher_type: body.voucherType,
@@ -103,6 +116,7 @@ export async function POST(request: Request, { params }: Props) {
     free_quantity: body.freeQuantity ?? null,
     is_active: false,
     review_status: 'pending_review',
+    vendor_review_status: access.access.isOutletManager ? 'pending' : 'approved',
   }).select().single();
 
   if (error) {

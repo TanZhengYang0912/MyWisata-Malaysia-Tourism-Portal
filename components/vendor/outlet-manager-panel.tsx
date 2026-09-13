@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Copy, Mail, UserRound, UserRoundX } from 'lucide-react';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
+import ActionConfirmationDialog from '@/components/vendor/action-confirmation-dialog';
 
 interface PendingInvitation { email: string; expiresAt: string }
 interface Manager { id: string; fullName: string; email: string }
@@ -25,15 +26,16 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, pendin
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [currentPendingInvitation, setCurrentPendingInvitation] = useState<PendingInvitation | null>(pendingInvitation || null);
+  const [removeConfirmationOpen, setRemoveConfirmationOpen] = useState(false);
 
   async function remove() {
-    if (!manager || !confirm(t('outletManager.removeConfirm'))) return;
+    if (!manager) return;
     setBusy(true); setMessage('');
     const response = await fetch(`/api/vendors/${vendorId}/outlet-managers/${outletId}`, { method: 'DELETE' });
     const payload = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(payload.error?.message || t('outletManager.removeFailed')); return; }
-    setMessage(t('outletManager.removed')); showFeedback('success', t('outletManager.removed')); onChanged();
+    setMessage(t('outletManager.removed')); setRemoveConfirmationOpen(false); showFeedback('success', t('outletManager.removed')); onChanged();
   }
 
   async function invite() {
@@ -63,7 +65,7 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, pendin
           {manager ? <div className="mt-1"><p className="font-semibold text-gray-900">{manager.fullName}</p><p className="truncate text-xs text-gray-500">{manager.email}</p></div> : <p className="mt-1 text-sm text-gray-600">{t('outletManager.noneAssigned')}</p>}
         </div>
       </div>
-      {manager && <div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={remove} title={t('outletManager.remove')} className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-2 text-xs text-red-600 disabled:opacity-50"><UserRoundX size={14} /> {t('outletManager.remove')}</button></div>}
+      {manager && <div className="mt-3 flex justify-end"><button type="button" disabled={busy} onClick={() => setRemoveConfirmationOpen(true)} title={t('outletManager.remove')} className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-2 text-xs text-red-600 disabled:opacity-50"><UserRoundX size={14} /> {t('outletManager.remove')}</button></div>}
       {!manager && (
         <div className="mt-4 border-t border-primary/10 pt-4">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-primary"><Mail size={14} /> {t('outletManager.inviteByEmail')}</p>
@@ -77,6 +79,7 @@ export default function OutletManagerPanel({ vendorId, outletId, manager, pendin
         </div>
       )}
       {message && <p className="mt-2 text-xs text-gray-600">{message}</p>}
+      <ActionConfirmationDialog open={removeConfirmationOpen} title={t('outletManager.remove')} description={t('outletManager.removeConfirm')} confirmLabel={t('outletManager.remove')} tone="danger" busy={busy} onCancel={() => { if (!busy) setRemoveConfirmationOpen(false); }} onConfirm={() => void remove()} />
     </div>
   );
 }

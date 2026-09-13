@@ -1,6 +1,7 @@
 "use client";
 
-import { Search as SearchIcon } from "lucide-react";
+import { ChevronDown, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
 import { CategoryIcon } from "@/components/customer/category-icon";
@@ -100,12 +101,20 @@ export function DiscoveryCategoryFilter({
 }
 
 type DiscoveryAdvancedFiltersProps = {
-  value: Pick<DiscoveryQuery, "state" | "categories" | "types" | "priceMax" | "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly">;
+  value: Pick<DiscoveryQuery, "state" | "categories" | "types" | "priceMax" | "operatingDays" | "hoursMode" | "timeAt" | "timeFrom" | "timeTo" | "overnight" | "openNow" | "freeOnly" | "bookableOnly" | "hiddenGemOnly" | "familyFriendlyOnly" | "coupleFriendlyOnly">;
   onChange: (patch: Partial<DiscoveryQuery>) => void;
 };
 
 export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedFiltersProps) {
   const { t } = useTranslation("customer");
+  const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  const dayGroups: Array<{ key: string; label: string; days: DiscoveryQuery["operatingDays"] }> = [
+    { key: "any", label: t("ui.discovery.anyDay"), days: [] },
+    { key: "weekdays", label: t("ui.discovery.weekdays"), days: ["mon", "tue", "wed", "thu", "fri"] },
+    { key: "weekend", label: t("ui.discovery.weekend"), days: ["sat", "sun"] },
+  ];
+  const toggleDay = (day: (typeof weekdays)[number]) => onChange({ operatingDays: value.operatingDays.includes(day) ? value.operatingDays.filter((selected) => selected !== day) : [...value.operatingDays, day] });
+  const setDayGroup = (days: DiscoveryQuery["operatingDays"]) => onChange({ operatingDays: days });
   const toggleType = (category: string, type: string, allTypes: string[]) => {
     const token = `${category}:${type}`;
     const currentTypes = value.types.filter((item) => item.startsWith(`${category}:`));
@@ -134,6 +143,27 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
         <span>{t("ui.discovery.maximumPrice")}</span>
         <input aria-label={t("ui.discovery.maximumPrice")} type="number" min="0" value={value.priceMax ?? ""} onChange={(event) => onChange({ priceMax: event.target.value === "" ? null : Number(event.target.value) })} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
       </label>
+      <div className="sm:col-span-2 rounded-xl border border-border/70 bg-background/60 p-3">
+        <p className="text-sm font-bold text-foreground">{t("ui.discovery.operatingDays")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {dayGroups.map(({ key, label, days }) => {
+            const selected = value.operatingDays.length === 0 ? key === "any" : JSON.stringify(value.operatingDays) === JSON.stringify(days);
+            return <button key={key} type="button" aria-pressed={selected} onClick={() => setDayGroup(days)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${selected ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{label}</button>;
+          })}
+          {weekdays.map((day) => <button key={day} type="button" aria-label={t(`ui.labels.days.${day}`)} aria-pressed={value.operatingDays.includes(day)} onClick={() => toggleDay(day)} className={`rounded-full border px-2.5 py-1.5 text-xs font-semibold ${value.operatingDays.includes(day) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{t(`ui.labels.days.${day}`)}</button>)}
+        </div>
+      </div>
+      <div className="sm:col-span-2 rounded-xl border border-border/70 bg-background/60 p-3">
+        <p className="text-sm font-bold text-foreground">{t("ui.discovery.hoursMode")}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(["any", "at", "during"] as const).map((mode) => <button key={mode} type="button" aria-pressed={value.hoursMode === mode} onClick={() => onChange(mode === "any" ? { hoursMode: mode, timeAt: null, timeFrom: null, timeTo: null, overnight: false } : mode === "at" ? { hoursMode: mode, timeFrom: null, timeTo: null, overnight: false } : { hoursMode: mode, timeAt: null })} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${value.hoursMode === mode ? "border-primary bg-primary text-white" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{t(`ui.discovery.${mode === "any" ? "anyTime" : mode === "at" ? "openAt" : "openDuring"}`)}</button>)}
+        </div>
+        {value.hoursMode === "at" && <label className="mt-3 block text-xs font-semibold text-muted-foreground"><span>{t("ui.discovery.timeAt")}</span><input type="time" aria-label={t("ui.discovery.timeAt")} value={value.timeAt ?? ""} onChange={(event) => onChange({ timeAt: event.target.value || null })} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-base text-foreground" /></label>}
+        {value.hoursMode === "during" && <div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-muted-foreground"><span>{t("ui.discovery.timeFrom")}</span><input type="time" aria-label={t("ui.discovery.timeFrom")} value={value.timeFrom ?? ""} onChange={(event) => onChange({ timeFrom: event.target.value || null })} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-base text-foreground" /></label><label className="text-xs font-semibold text-muted-foreground"><span>{t("ui.discovery.timeTo")}</span><input type="time" aria-label={t("ui.discovery.timeTo")} value={value.timeTo ?? ""} min={value.overnight ? undefined : value.timeFrom ?? undefined} onChange={(event) => onChange({ timeTo: event.target.value || null })} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-base text-foreground" /></label></div>}
+        {value.hoursMode === "during" && <label className="mt-3 flex items-start gap-2 text-xs font-semibold text-muted-foreground"><input type="checkbox" checked={value.overnight} onChange={(event) => onChange({ overnight: event.target.checked })} className="mt-0.5 accent-primary" /> <span>{t("ui.discovery.overnight")}<span className="mt-0.5 block font-normal">{t("ui.discovery.overnightHelp")}</span></span></label>}
+        <label className="mt-3 flex items-start gap-2 text-xs font-semibold text-muted-foreground"><input type="checkbox" checked={value.openNow} onChange={(event) => onChange({ openNow: event.target.checked })} className="mt-0.5 accent-primary" /> <span>{t("ui.labels.openNow")}<span className="mt-0.5 block font-normal">{t("ui.discovery.openNowHelp")}</span></span></label>
+        <p className="mt-2 text-xs font-normal text-muted-foreground">{t("ui.discovery.timeRangeHelp")}</p>
+      </div>
       <div className="sm:col-span-2 space-y-3">
         {Object.entries(CATEGORY_DETAILS).map(([category, detail]) => (
           <div key={category}>
@@ -153,6 +183,75 @@ export function DiscoveryAdvancedFilters({ value, onChange }: DiscoveryAdvancedF
           ["freeOnly", "ui.discovery.freeOnly"], ["bookableOnly", "ui.discovery.bookableOnly"], ["hiddenGemOnly", "ui.discovery.hiddenGemOnly"], ["familyFriendlyOnly", "ui.discovery.familyFriendlyOnly"], ["coupleFriendlyOnly", "ui.discovery.coupleFriendlyOnly"],
         ] as const).map(([key, label]) => <button key={key} type="button" aria-label={t(label)} aria-pressed={value[key]} onClick={() => toggleBoolean(key)} className={`rounded-full border px-3 py-2 text-xs font-bold ${value[key] ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(label)}</button>)}
       </div>
+    </section>
+  );
+}
+
+export function CustomerDiscoveryFilterPanel({
+  value,
+  hasActiveFilters,
+  onChange,
+  onClear,
+  placeholder,
+  category,
+  onCategoryChange,
+  categoryVariant = "compact",
+  includeAllCategories = true,
+}: {
+  value: DiscoveryQuery;
+  hasActiveFilters: boolean;
+  onChange: (patch: Partial<DiscoveryQuery>) => void;
+  onClear: () => void;
+  placeholder: string;
+  category: string | null;
+  onCategoryChange: (category: string | null) => void;
+  categoryVariant?: "cards" | "compact";
+  includeAllCategories?: boolean;
+}) {
+  const { t } = useTranslation("customer");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = [
+    Boolean(value.q.trim()),
+    Boolean(value.state),
+    value.categories.length > 0 || value.types.length > 0,
+    value.priceMax !== null,
+    value.operatingDays.length > 0,
+    value.hoursMode !== "during" || Boolean(value.timeAt || value.timeFrom || value.timeTo || value.overnight || value.openNow),
+    value.freeOnly || value.bookableOnly || value.hiddenGemOnly || value.familyFriendlyOnly || value.coupleFriendlyOnly,
+  ].filter(Boolean).length;
+  const clearAllFilters = () => {
+    onClear();
+    setFiltersOpen(false);
+  };
+  return (
+    <section data-testid="customer-discovery-filter-panel" className="space-y-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
+      <DiscoverySearchField value={value.q} onChange={(q) => onChange({ q })} placeholder={placeholder} />
+      <DiscoveryCategoryFilter
+        variant={categoryVariant}
+        headingKey="ui.search.category"
+        includeAll={includeAllCategories}
+        category={category}
+        hasActiveFilters={false}
+        onCategoryChange={onCategoryChange}
+        onClear={onClear}
+        showClear={false}
+      />
+      <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-label={activeFilterCount > 0 ? `${t("ui.map.moreFilters")} (${t("ui.map.activeFilters", { count: activeFilterCount })})` : t("ui.map.moreFilters")}
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-primary/20 bg-secondary/50 px-4 py-2 text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20 sm:self-start"
+        >
+          <SlidersHorizontal size={14} aria-hidden="true" />
+          {t("ui.map.moreFilters")}
+          {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}
+          <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+        </button>
+        {hasActiveFilters && <button type="button" onClick={clearAllFilters} className="inline-flex items-center gap-1 self-start text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:self-auto">{t("ui.actions.clearFilters")}</button>}
+      </div>
+      {filtersOpen && <DiscoveryAdvancedFilters value={value} onChange={onChange} />}
     </section>
   );
 }

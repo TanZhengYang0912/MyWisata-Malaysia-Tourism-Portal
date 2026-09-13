@@ -23,6 +23,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { exportToCsv, type CsvColumn } from "@/lib/export-csv";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
+import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
+import CenteredDetailModal from "@/components/ui/centered-detail-modal";
 import {
   getBatchFulfilmentActions,
   getItemFulfilmentAction,
@@ -150,6 +152,11 @@ export default function VendorOrdersPage() {
   const [draftFilters, setDraftFilters] =
     useState<OrderFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  function primeDateRange() {
+    const defaults = getMalaysiaDateRangeDefaults();
+    setDraftFilters((current) => ({ ...current, from: current.from || defaults.from, to: current.to || defaults.to }));
+  }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -746,6 +753,7 @@ export default function VendorOrdersPage() {
                     <input
                       type="date"
                       value={draftFilters.from}
+                      onFocus={primeDateRange}
                       onChange={(event) =>
                         setDraftFilters((current) => ({
                           ...current,
@@ -763,6 +771,7 @@ export default function VendorOrdersPage() {
                     <input
                       type="date"
                       value={draftFilters.to}
+                      onFocus={primeDateRange}
                       onChange={(event) =>
                         setDraftFilters((current) => ({
                           ...current,
@@ -934,8 +943,8 @@ export default function VendorOrdersPage() {
               </span>
             </div>
             <div className="overflow-x-auto">
-              <div className="xl:min-w-[960px]">
-                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid">
+              <div className="xl:min-w-[1000px]">
+                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] gap-4 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 xl:grid">
                   <span></span>
                   <span>{t('ui.orders.customerColumn')}</span>
                   <span>{t("ui.orders.itemsColumn")}</span>
@@ -964,7 +973,7 @@ export default function VendorOrdersPage() {
                     return (
                       <article
                         key={order.id}
-                        className="grid gap-3 px-4 py-4 transition hover:bg-secondary/30 xl:grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] xl:items-center xl:gap-4 xl:px-5"
+                        className="grid gap-3 px-4 py-4 transition hover:bg-secondary/30 xl:grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] xl:items-center xl:gap-4 xl:px-5"
                       >
                         <div>
                           <input
@@ -1029,7 +1038,7 @@ export default function VendorOrdersPage() {
                             })}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
+                        <div className="flex w-full max-w-[14rem] flex-col items-stretch justify-self-center gap-2 border-t border-gray-100 pt-3 xl:border-0 xl:pt-0">
                           <button
                             type="button"
                             onClick={() => setSelectedItem(order)}
@@ -1038,7 +1047,7 @@ export default function VendorOrdersPage() {
                                 ? t("ui.orders.reviewItems")
                                 : t("ui.orders.viewDetails")
                             }
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-600 hover:border-primary/30 hover:bg-gray-50 hover:text-primary"
+                            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-semibold text-gray-600 hover:border-primary/30 hover:bg-gray-50 hover:text-primary"
                           >
                             <Eye size={15} aria-hidden="true" />
                             <span>{t("ui.orders.viewDetails")}</span>
@@ -1052,7 +1061,7 @@ export default function VendorOrdersPage() {
                                   : requestOrderAction(order, orderAction)
                               }
                               aria-label={actionLabel}
-                              className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+                              className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
                             >
                               {orderAction === "ready" ? (
                                 <Check size={15} aria-hidden="true" />
@@ -1084,38 +1093,13 @@ export default function VendorOrdersPage() {
       </section>
 
       {selectedItem && (
-        <div
-          className="fixed inset-0 z-40 bg-gray-950/20"
-          onClick={() => setSelectedItem(null)}
+        <CenteredDetailModal
+          eyebrow={t('ui.orders.orderDetails')}
+          title={selectedItem.display_id || `#${selectedItem.id.slice(0, 8)}`}
+          closeLabel={t("ui.orders.close")}
+          onClose={() => setSelectedItem(null)}
+          size="lg"
         >
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="vendor-order-details-title"
-            onClick={(event) => event.stopPropagation()}
-            className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto bg-white p-6 shadow-2xl"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                  {t('ui.orders.orderDetails')}
-                </p>
-                <h2
-                  id="vendor-order-details-title"
-                  className="mt-1 text-xl font-bold text-gray-950"
-                >
-                  {selectedItem.display_id || `#${selectedItem.id.slice(0, 8)}`}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedItem(null)}
-                aria-label={t("ui.orders.close")}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </div>
             <div className="mt-6 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-gray-50 p-4">
@@ -1190,7 +1174,7 @@ export default function VendorOrdersPage() {
                                 ? t("ui.orders.markReady")
                                 : t("ui.orders.fulfil")
                             }
-                            className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+                            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
                           >
                             {itemAction === "ready" ? (
                               <Check size={14} aria-hidden="true" />
@@ -1242,8 +1226,7 @@ export default function VendorOrdersPage() {
                 {t("ui.orders.close")}
               </button>
             </div>
-          </aside>
-        </div>
+        </CenteredDetailModal>
       )}
 
       <ActionConfirmationDialog

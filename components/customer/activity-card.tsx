@@ -17,12 +17,13 @@ import { DISTANCE_UNIT_KM, TRENDING_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
+import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 
 type ActivityCardItem = ComputedActivity & {
   sponsorship?: { placementId: string; label: "Sponsored" } | null;
 };
 
-export function ActivityCard({ activity, recommendationReason, returnTo, onSponsoredClick }: { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; onSponsoredClick?: () => void }) {
+export function ActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick }: { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void }) {
   const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -30,7 +31,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, onSpons
   const gate = useCustomerCapabilityGate();
   const saved = savedIds.has(activity.id);
   const imageSrc = activity.image?.trim();
-  const activityHref = buildActivityPath(activity.id, returnTo);
+  const activityHref = buildActivityPath(activity.id, returnTo, outletId, source);
   const categorySlug = canonicalCategorySlug(activity.categorySlug) ?? "activity";
   const categoryLabel = t(getDiscoveryCategoryLabelKey(categorySlug));
 
@@ -79,12 +80,11 @@ export function ActivityCard({ activity, recommendationReason, returnTo, onSpons
           <div className="absolute left-3 top-3 flex max-w-[calc(100%-5rem)] flex-wrap gap-1.5">
             <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>
             {activity.isHiddenGem && <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-900"><CategoryIcon category="hidden_gem" size={11} /> {t("categories.hiddenGem")}</span>}
-            {activity.sponsorship && <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-950">{t("ui.labels.sponsored")}</span>}
             {activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
           </div>
           {activity.outlet.verified && <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</div>}
           {activity.outlet.wheelchairAccessible === true && <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title={t("ui.labels.wheelchairAccessible")}><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</div>}
-          {!activity.outlet.open && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>{t("ui.labels.closed")}</div>}
+          {!(activity.outlet.currentlyOpen ?? activity.outlet.open) && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>{t("ui.labels.closed")}</div>}
         </Link>
         <SaveToggleButton
           onClick={handleSave}
@@ -106,6 +106,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, onSpons
         <Link href={getOutletShopHref(activity.outlet.id)} className="mw-card-meta flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-primary" title={t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}>
           <Store size={11} aria-hidden="true" /> <span className="truncate">{t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}</span>
         </Link>
+        {activity.outlet.operatingHours ? <OperatingHoursSummary hours={activity.outlet.operatingHours} currentlyOpen={activity.outlet.currentlyOpen ?? activity.outlet.open} compact /> : activity.outlet.hours && <div className="mw-card-meta text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {activity.outlet.hours}</div>}
         <div className="flex min-h-5 items-center gap-3">
           <div className="flex items-center gap-1 text-xs"><Star size={11} aria-hidden="true" fill="var(--highlight-yellow)" stroke="none" /><span className="font-semibold text-foreground">{activity.rating}</span><span className="text-muted-foreground">({activity.reviews})</span></div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock size={10} aria-hidden="true" /> {activity.duration}</div>

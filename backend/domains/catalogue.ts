@@ -2,7 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Activity, BookingSlot, ComputedActivity, Outlet, PlaceLocation, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, OperatingHours, Outlet, PlaceLocation, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
@@ -13,16 +13,29 @@ import {
   type RealCategorySlug,
 } from "@/lib/customer/discovery-categories";
 import { productImageUrl } from "@/lib/storage/product-image";
+import { getMalaysiaTodayKey, getOperatingHoursPeriods, isOperatingHoursAtAvailable, isOperatingHoursOpenNow, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 
 export { STATES_MY } from "@/lib/customer/malaysia-states";
 
 export { aggregateReviewMetrics } from "@/backend/domains/review-metrics";
 
+const REVIEW_METRICS_BATCH_SIZE = 100;
+
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state)");
+  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status)");
   if (error) throw error;
-  return (data ?? []).map((v) => ({ id: v.id, name: v.name, status: v.status, logoUrl: v.logo_url, coverUrl: v.cover_url, outlets: v.outlets ?? [] }));
+  return (data ?? []).map((v) => ({
+    id: v.id,
+    name: v.name,
+    status: v.status,
+    logoUrl: v.logo_url,
+    coverUrl: v.cover_url,
+    outlets: (v.outlets ?? []).filter((outlet) =>
+      (!outlet.status || outlet.status === "active") &&
+      (!outlet.review_status || outlet.review_status === "approved"),
+    ),
+  }));
 }
 
 export async function setVendorApproved(vendorId: string, approved: boolean): Promise<void> {
@@ -31,13 +44,11 @@ export async function setVendorApproved(vendorId: string, approved: boolean): Pr
 }
 
 // ─── Outlets ────────────────────────────────────────────────────────────────
-const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-type OperatingHours = Partial<Record<(typeof WEEKDAY_KEYS)[number], { open?: string; close?: string }>>;
-
 function formatTodayHours(hours: OperatingHours | null): string {
   if (!hours) return "";
-  const today = hours[WEEKDAY_KEYS[new Date().getDay()]] ?? Object.values(hours)[0];
-  return today?.open && today?.close ? `${today.open} – ${today.close}` : "";
+  const today = hours[getMalaysiaTodayKey()] ?? Object.values(hours)[0];
+  const periods = getOperatingHoursPeriods(today);
+  return periods.map((period) => `${period.open} – ${period.close}`).join(", ");
 }
 
 type OutletRow = {
@@ -54,6 +65,7 @@ type OutletRow = {
   status: string;
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
+  outlet_pages: { hero_url: string | null } | { hero_url: string | null }[] | null;
   vendors: {
     name: string | null;
     status: string;
@@ -61,7 +73,7 @@ type OutletRow = {
   } | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,vendors(name,status,products(categories(name,slug)))";
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,outlet_pages(hero_url),vendors(name,status,products(categories(name,slug)))";
 
 // An outlet's category belongs to its vendor, not to whichever product happens
 // to be pinned to that one outlet. Vendor-wide products carry outlet_id NULL, so
@@ -94,11 +106,13 @@ export function resolveVendorCategory(
 }
 
 function mapOutlet(row: OutletRow): Outlet {
+  const outletPage = Array.isArray(row.outlet_pages) ? row.outlet_pages[0] : row.outlet_pages;
   return {
     id: row.id,
     vendorId: row.vendor_id,
     vendorName: row.vendors?.name ?? undefined,
     name: row.name,
+    coverUrl: outletPage?.hero_url?.trim() || null,
     category: resolveVendorCategory(row.vendors?.products),
     state: row.state ?? "",
     city: row.city ?? "",
@@ -106,9 +120,11 @@ function mapOutlet(row: OutletRow): Outlet {
     lat: row.lat ?? 0,
     lng: row.lng ?? 0,
     hours: formatTodayHours(row.operating_hours),
+    operatingHours: row.operating_hours,
     phone: row.phone ?? undefined,
     verified: row.vendors?.status === "approved",
     open: row.status === "active",
+    currentlyOpen: row.status === "active" && row.operating_hours ? isOperatingHoursOpenNow(row.operating_hours) : false,
     rating: 0,
     reviews: 0,
     wheelchairAccessible: row.wheelchair_accessible,
@@ -117,7 +133,11 @@ function mapOutlet(row: OutletRow): Outlet {
 }
 
 export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[]> {
-  const { data, error } = await db.from("outlets").select(OUTLET_SELECT);
+  const { data, error } = await db
+    .from("outlets")
+    .select(OUTLET_SELECT)
+    .eq("status", "active")
+    .eq("review_status", "approved");
   if (error) throw error;
   return (data as unknown as OutletRow[]).map(mapOutlet);
 }
@@ -129,6 +149,9 @@ export interface OutletChoice {
   city: string;
   price: number;
   open: boolean;
+  currentlyOpen?: boolean;
+  hours: string;
+  operatingHours?: OperatingHours | null;
   state: string;
   verified: boolean;
   vendorId: string;
@@ -161,6 +184,9 @@ export async function getOutletChoices(activity: Activity, db: SupabaseClient = 
         city: outlet.city,
         price: offer.price,
         open: outlet.open,
+        currentlyOpen: outlet.currentlyOpen,
+        hours: outlet.hours,
+        operatingHours: outlet.operatingHours,
         state: outlet.state,
         verified: outlet.verified,
         vendorId: outlet.vendorId,
@@ -222,7 +248,13 @@ export async function getOutletProductIds(db: SupabaseClient, outletId: string, 
 }
 
 export async function getOutlet(id: string): Promise<Outlet | undefined> {
-  const { data, error } = await supabase.from("outlets").select(OUTLET_SELECT).eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("outlets")
+    .select(OUTLET_SELECT)
+    .eq("id", id)
+    .eq("status", "active")
+    .eq("review_status", "approved")
+    .maybeSingle();
   if (error) throw error;
   return data ? mapOutlet(data as unknown as OutletRow) : undefined;
 }
@@ -322,11 +354,20 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
   // averaging in memory — that hit PostgREST's silent 1000-row cap and produced
   // wrong ratings site-wide (M8). Number() is required: PostgREST serialises
   // NUMERIC and BIGINT as strings.
-  const { data: metricRows, error: reviewError } = await db
-    .from("product_review_metrics")
-    .select("product_id,rating,reviews")
-    .in("product_id", rows.map((row) => row.id));
-  if (reviewError) throw reviewError;
+  const productIds = rows.map((row) => row.id);
+  const metricRows = (await Promise.all(
+    Array.from({ length: Math.ceil(productIds.length / REVIEW_METRICS_BATCH_SIZE) }, (_, index) => {
+      const batch = productIds.slice(index * REVIEW_METRICS_BATCH_SIZE, (index + 1) * REVIEW_METRICS_BATCH_SIZE);
+      return db
+        .from("product_review_metrics")
+        .select("product_id,rating,reviews")
+        .in("product_id", batch)
+        .then(({ data: batchRows, error: reviewError }) => {
+          if (reviewError) throw reviewError;
+          return batchRows ?? [];
+        });
+    }),
+  )).flat();
 
   const reviewMetrics = new Map(
     ((metricRows ?? []) as { product_id: string; rating: number | string; reviews: number | string }[])
@@ -336,9 +377,9 @@ export async function getActivities(db: SupabaseClient = supabase): Promise<Acti
 }
 
 export async function getBookingSlots(activityId: string, db: SupabaseClient = supabase): Promise<BookingSlot[]> {
-  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,capacity,booked,status,price_override").eq("product_id", activityId).order("starts_at");
+  const { data, error } = await db.from("booking_slots").select("id,product_id,starts_at,ends_at,capacity,booked,status,price_override").eq("product_id", activityId).order("starts_at");
   if (error) throw error;
-  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
+  return (data ?? []).map((s) => ({ id: s.id, activityId: s.product_id, startsAt: s.starts_at, endsAt: s.ends_at, capacity: s.capacity, booked: s.booked, status: s.status, priceOverride: s.price_override === null ? undefined : Number(s.price_override) }));
 }
 
 export async function getProductReviews(productId: string, db: SupabaseClient = supabase, options: { outletId?: string } = {}): Promise<ProductReview[]> {
@@ -351,6 +392,53 @@ export interface ProductReviewPage {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+export type ProductReviewViewerState = "signed_out" | "eligible" | "not_purchased" | "already_reviewed";
+
+export interface ProductReviewEligibility {
+  state: ProductReviewViewerState;
+  canReview: boolean;
+  orderItemId: string | null;
+}
+
+type ReviewEligibilityRow = {
+  id: string;
+  outlet_id: string;
+  reviews: { id: string } | { id: string }[] | null;
+};
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+export async function getProductReviewEligibility(
+  productId: string,
+  viewerId: string,
+  options: { outletId?: string } = {},
+  db: SupabaseClient = supabase,
+): Promise<ProductReviewEligibility> {
+  let query = db
+    .from("order_items")
+    .select("id,outlet_id,reviews(id),orders!inner(user_id,status)")
+    .eq("product_id", productId)
+    .eq("orders.user_id", viewerId)
+    .in("orders.status", ["paid", "completed"])
+    .limit(20);
+  if (options.outletId) query = query.eq("outlet_id", options.outletId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as ReviewEligibilityRow[];
+  const eligible = rows.find((row) => !firstRelation(row.reviews));
+  if (eligible) {
+    return { state: "eligible", canReview: true, orderItemId: eligible.id };
+  }
+  if (rows.length > 0) {
+    return { state: "already_reviewed", canReview: false, orderItemId: null };
+  }
+  return { state: "not_purchased", canReview: false, orderItemId: null };
 }
 
 export async function getProductReviewsPage(
@@ -485,7 +573,9 @@ export async function getComputedActivity(id: string, from?: { lat: number; lng:
   const { data: outletRows, error: outletError } = await db
     .from("outlets")
     .select(OUTLET_SELECT)
-    .in("id", outletIds);
+    .in("id", outletIds)
+    .eq("status", "active")
+    .eq("review_status", "approved");
   if (outletError) throw outletError;
 
   const outletMap = new Map(
@@ -496,6 +586,60 @@ export async function getComputedActivity(id: string, from?: { lat: number; lng:
   );
 
   return toComputed(activity, outletMap, from);
+}
+
+/** Products sold by one outlet, with the outlet's own offer price applied. */
+export async function getOutletActivities(outletId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
+  const outlet = outlets.find((candidate) => candidate.id === outletId);
+  if (!outlet) return [];
+
+  return activities
+    .filter((activity) => activity.id !== excludeProductId)
+    .map((activity) => {
+      const offer = activity.offers?.find((candidate) => candidate.outletId === outletId);
+      if (!offer && activity.outletId !== outletId) return null;
+      return {
+        ...activity,
+        outletId,
+        price: offer?.price ?? activity.price,
+        outlet,
+      } satisfies ComputedActivity;
+    })
+    .filter((activity): activity is ComputedActivity => activity !== null);
+}
+
+/**
+ * Products from the same vendor as the given outlet, excluding one product.
+ * Used on the activity detail page when the visitor arrived from a vendor page
+ * (source=vendor) so the "More from …" rail shows the vendor catalogue, not a
+ * single branch.
+ */
+export async function getVendorActivities(vendorId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+  const [activities, outlets] = await Promise.all([getActivities(db), getOutlets(db)]);
+  const vendorOutlets = outlets.filter((o) => o.vendorId === vendorId);
+  if (vendorOutlets.length === 0) return [];
+  const outletMap = new Map(outlets.map((o) => [o.id, o]));
+  const vendorOutletIds = new Set(vendorOutlets.map((o) => o.id));
+
+  return activities
+    .filter((activity) => activity.id !== excludeProductId)
+    .map((activity): ComputedActivity | null => {
+      // Include activities that belong to any outlet of this vendor (via offers
+      // or via the direct outlet_id field).
+      const vendorOffer = (activity.offers ?? []).find((offer) => vendorOutletIds.has(offer.outletId));
+      const fallbackOutlet = vendorOutletIds.has(activity.outletId) ? outletMap.get(activity.outletId) : undefined;
+      const outlet = (vendorOffer ? outletMap.get(vendorOffer.outletId) : undefined) ?? fallbackOutlet;
+      if (!outlet) return null;
+      return {
+        ...activity,
+        outletId: outlet.id,
+        price: vendorOffer?.price ?? activity.price,
+        outlet,
+      } satisfies ComputedActivity;
+    })
+    .filter((activity): activity is ComputedActivity => activity !== null)
+    .slice(0, 3);
 }
 
 export interface SearchFilters {
@@ -515,6 +659,13 @@ export interface SearchFilters {
   freeOnly?: boolean;
   bookableOnly?: boolean;
   openOnly?: boolean;
+  openNow?: boolean;
+  operatingDays?: OperatingHourWeekday[];
+  hoursMode?: "any" | "at" | "during";
+  timeAt?: string | null;
+  timeFrom?: string | null;
+  timeTo?: string | null;
+  overnight?: boolean;
   near?: { lat: number; lng: number };
   sort?: "recommended" | "price_asc" | "rating_desc" | "distance_asc";
 }
@@ -578,6 +729,21 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
   if (filters.bookableOnly) results = results.filter((a) => a.requiresBooking);
   if (filters.openOnly) {
     results = results.filter((a) => a.outlet.open);
+  }
+  if (filters.openNow) {
+    results = results.filter((a) => a.outlet.currentlyOpen ?? a.outlet.open);
+  }
+  if (filters.hoursMode === "at" && filters.timeAt) {
+    results = results.filter((a) => isOperatingHoursAtAvailable(filters.timeAt!, a.outlet.operatingHours ?? null, filters.operatingDays ?? []));
+  }
+  if (filters.hoursMode !== "at" && filters.timeFrom && filters.timeTo) {
+    results = results.filter((a) => isOperatingHoursWindowAvailable(
+      filters.timeFrom!,
+      filters.timeTo!,
+      a.outlet.operatingHours ?? null,
+      filters.operatingDays ?? [],
+      { overnight: filters.overnight },
+    ));
   }
 
   switch (filters.sort) {

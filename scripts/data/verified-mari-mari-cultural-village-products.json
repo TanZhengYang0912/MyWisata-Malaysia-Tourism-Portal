@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "490124bc-bc18-97cc-b22a-38f47d8356ce",
+    "name": "Mari Mari Cultural Village",
+    "source_page": "https://marimariculturalvillage.com/index.php/price/",
+    "price_reference_page": "https://marimariculturalvillage.com/index.php/price/"
+  },
+  "outlets": [
+    {
+      "id": "19f5d2f9-93d3-44c5-2476-3fe8a763fe9f",
+      "name": "Mari Mari Cultural Village"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "mari-mari-malaysian-adult-without-transport",
+      "name": "Mari Mari Malaysian Adult — Without Transport",
+      "description": "Mari Mari Cultural Village package for a Malaysian adult without transport, including guide, cultural performance, house visits and lunch or high tea.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 110,
+      "source_type": "official",
+      "source_page": "https://marimariculturalvillage.com/index.php/price/",
+      "source_image_url": "https://marimariculturalvillage.com/wp-content/uploads/2015/10/DSC_0238.jpg",
+      "price_reference_page": "https://marimariculturalvillage.com/index.php/price/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/mari-mari-malaysian-adult-without-transport-real.jpg",
+      "sha256": "56de10a3b0cf6d16760abdb1ae5c5e3bbbaecabd69f1876b42fccaf713f40b44",
+      "artist": "Mari Mari Cultural Village official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "mari-mari-malaysian-child-without-transport",
+      "name": "Mari Mari Malaysian Child — Without Transport",
+      "description": "Mari Mari Cultural Village package for a Malaysian child aged 5 to 11 without transport, including guide, cultural performance, house visits and lunch or high tea.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 100,
+      "source_type": "official",
+      "source_page": "https://marimariculturalvillage.com/index.php/price/",
+      "source_image_url": "https://marimariculturalvillage.com/wp-content/uploads/2015/10/blwpipe-300x253.png",
+      "price_reference_page": "https://marimariculturalvillage.com/index.php/price/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/mari-mari-malaysian-child-without-transport-real.png",
+      "sha256": "42dbb39389e44a023c426271a46ffa8eb3d3e2182b0e6114922d81913bcb0ed4",
+      "artist": "Mari Mari Cultural Village official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "mari-mari-nonmalaysian-adult-without-transport",
+      "name": "Mari Mari Non-Malaysian Adult — Without Transport",
+      "description": "Mari Mari Cultural Village package for a non-Malaysian adult without transport, including guide, cultural performance, house visits and lunch or high tea.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 130,
+      "source_type": "official",
+      "source_page": "https://marimariculturalvillage.com/index.php/price/",
+      "source_image_url": "https://marimariculturalvillage.com/wp-content/uploads/2015/10/IMG_1791-1024x768.jpg",
+      "price_reference_page": "https://marimariculturalvillage.com/index.php/price/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/mari-mari-nonmalaysian-adult-without-transport-real.jpg",
+      "sha256": "b212dca9a82aa4bcc6639f27803dbb311691f461ad6071346b3559fc75ca39d1",
+      "artist": "Mari Mari Cultural Village official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "mari-mari-nonmalaysian-child-without-transport",
+      "name": "Mari Mari Non-Malaysian Child — Without Transport",
+      "description": "Mari Mari Cultural Village package for a non-Malaysian child aged 5 to 11 without transport, including guide, cultural performance, house visits and lunch or high tea.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 110,
+      "source_type": "official",
+      "source_page": "https://marimariculturalvillage.com/index.php/price/",
+      "source_image_url": "https://marimariculturalvillage.com/wp-content/uploads/2015/10/lokkawi_wildlife_061.jpg",
+      "price_reference_page": "https://marimariculturalvillage.com/index.php/price/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/mari-mari-nonmalaysian-child-without-transport-real.jpg",
+      "sha256": "8a40adc668de2c50a4dd4ede1872b6864ac28a73b76cb2eae28a2e4540c1da19",
+      "artist": "Mari Mari Cultural Village official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "mari-mari-malaysian-adult-with-transport",
+      "name": "Mari Mari Malaysian Adult — With Transport",
+      "description": "Mari Mari Cultural Village package for a Malaysian adult with hotel pickup and return transport from Kota Kinabalu area, including the village programme and meal.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 190,
+      "source_type": "official",
+      "source_page": "https://marimariculturalvillage.com/index.php/price/",
+      "source_image_url": "https://marimariculturalvillage.com/wp-content/uploads/2025/12/IMG_20251204_23564762-1024x576.jpeg",
+      "price_reference_page": "https://marimariculturalvillage.com/index.php/price/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/mari-mari-malaysian-adult-with-transport-real.jpg",
+      "sha256": "5433f5e5d5ef14f3fa57c2d0470b80f8e49828b9187f42414501bd2ecef4d16f",
+      "artist": "Mari Mari Cultural Village official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

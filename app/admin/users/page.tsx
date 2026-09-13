@@ -9,6 +9,7 @@ import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { getAdminUserInitial, getAdminUserLabel, hasAdminDisplayName } from "@/lib/admin/identity";
 import type { UserManagementFilters, UserManagementListItem, UserManagementListResponse } from "@/lib/user-management/types";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ function badgeClass(value: string) {
 
 export default function AdminUsersPage() {
   const { showFeedback } = useActionFeedback();
+  const { confirm, prompt } = useAppDialog();
   const { t, i18n } = useTranslation("admin");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [filters, setFilters] = useState(initialFilters);
@@ -77,12 +79,12 @@ export default function AdminUsersPage() {
 
   async function applyBatch(action: (typeof batchActions)[number]) {
     if (batchBusy || !selectedUsers.length || !batchActions.includes(action)) return;
-    const reason = window.prompt(t("ui.users.batch.reasonPrompt"))?.trim();
+    const reason = (await prompt(t("ui.users.batch.reasonPrompt")))?.trim();
     if (!reason || reason.length < 10) {
       setError(t("ui.users.batch.reasonError"));
       return;
     }
-    if (!window.confirm(t("ui.users.batch.confirm", { action: t(`ui.users.actions.${action}`), count: selectedUsers.length }))) return;
+    if (!(await confirm(t("ui.users.batch.confirm", { action: t(`ui.users.actions.${action}`), count: selectedUsers.length })))) return;
     setBatchBusy(true);
     try {
       const responses = await Promise.all(selectedUsers.map((user) => fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {

@@ -263,7 +263,7 @@ export default function AdminAffiliatePage() {
       }
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") ?? "";
-      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mywisata-affiliate-report.pdf";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "mylawatan-affiliate-report.pdf";
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;

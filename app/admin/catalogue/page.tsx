@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, ClipboardCheck, Eye, MessageSquare, X } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useActionFeedback } from '@/components/providers/action-feedback';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { AdminBatchActionBar } from '@/components/admin/batch-action-bar';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar } from '@/components/admin/filter-bar';
@@ -35,6 +36,7 @@ export default function CatalogueReviewPage() {
   const { t, i18n } = useTranslation('admin');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { showFeedback } = useActionFeedback();
+  const { prompt } = useAppDialog();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [filter, setFilter] = useState<'all' | ReviewItem['entityType']>('all');
   const [loading, setLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function CatalogueReviewPage() {
   }
 
   async function review(item: ReviewItem, action: 'approve' | 'change_requested' | 'reject') {
-    const note = action === 'approve' ? undefined : window.prompt(action === 'reject' ? t('catalogue.prompts.rejectReason') : t('catalogue.prompts.changeReason'));
+    const note = action === 'approve' ? undefined : await prompt(action === 'reject' ? t('catalogue.prompts.rejectReason') : t('catalogue.prompts.changeReason'));
     if (action !== 'approve' && note === null) return;
     await performReview(item, action, note ?? undefined);
   }
@@ -104,7 +106,7 @@ export default function CatalogueReviewPage() {
   async function applyBatch(action: 'approve' | 'change_requested' | 'reject') {
     const selected = visible.filter((item) => selectedIds.has(`${item.entityType}:${item.id}`));
     if (!selected.length) return;
-    const note = action === 'approve' ? undefined : window.prompt(action === 'reject' ? t('catalogue.prompts.batchRejectReason') : t('catalogue.prompts.batchChangeReason'));
+    const note = action === 'approve' ? undefined : await prompt(action === 'reject' ? t('catalogue.prompts.batchRejectReason') : t('catalogue.prompts.batchChangeReason'));
     if (action !== 'approve' && note === null) return;
     const trimmedNote = note?.trim();
     if (action !== 'approve' && (!trimmedNote || trimmedNote.length < 10)) {

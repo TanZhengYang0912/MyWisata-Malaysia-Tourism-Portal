@@ -9,6 +9,7 @@ const read = (file: string) => {
 const exploreSource = read("app/customer/explore/explore-client.tsx");
 const searchSource = read("app/customer/search/search-client.tsx");
 const filterSource = read("components/customer/discovery-filters.tsx");
+const storyMapSource = read("components/demo-map/story-map.tsx");
 
 describe("customer discovery filter contract", () => {
   it("shares the searchable category-card controls", () => {
@@ -25,10 +26,25 @@ describe("customer discovery filter contract", () => {
   it("connects Explore search and filters to the shared discovery query", () => {
     expect(exploreSource).toContain("parseDiscoveryQuery");
     expect(exploreSource).toContain("serializeDiscoveryQuery");
-    expect(exploreSource).toContain("DiscoveryAdvancedFilters");
+    expect(exploreSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(exploreSource).toContain("timeFrom");
+    expect(exploreSource).toContain("timeTo");
     expect(exploreSource).toContain("onClear");
     expect(exploreSource).toContain("visibleLimit");
     expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
+  });
+
+  it("shares the complete weekly-hours filter surface with Partners", () => {
+    expect(exploreSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(exploreSource).toContain("operatingDays");
+    expect(exploreSource).toContain("hoursMode");
+    expect(exploreSource).toContain("openNow");
+  });
+
+  it("keeps sponsored analytics metadata without labeling places in the customer UI", () => {
+    expect(exploreSource).toContain("sponsorship");
+    expect(exploreSource).toContain("onSponsoredClick");
+    expect(storyMapSource).not.toContain('t("ui.labels.sponsored")');
   });
 
   it("keeps the canonical category selector out of the advanced filter panel", () => {
@@ -36,11 +52,20 @@ describe("customer discovery filter contract", () => {
     expect(filterSource).not.toContain('CATEGORIES.filter((category) => category.id !== "hidden_gem")');
   });
 
-  it("keeps Partners state filtering with direct search controls", () => {
-    expect(searchSource).toContain("<select");
-    expect(searchSource).toContain("STATES_MY.filter(s => s !== \"All Malaysia\").map");
+  it("collapses the complete advanced filter surface behind one shared toggle", () => {
+    expect(filterSource).toContain("filtersOpen");
+    expect(filterSource).toContain('t("ui.map.moreFilters")');
+    expect(filterSource).toContain('t("ui.map.activeFilters"');
+    expect(filterSource).toContain("aria-expanded={filtersOpen}");
+    expect(filterSource).toContain("filtersOpen && <DiscoveryAdvancedFilters");
+  });
+
+  it("keeps Partners state and schedule filtering in the shared panel", () => {
+    expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(searchSource).toContain("operatingDays");
+    expect(searchSource).toContain("hoursMode");
     expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
-    expect(searchSource).toContain("setState(e.target.value || null)");
+    expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
   it("keeps the Explore mode switch on the right with the voucher navy active state", () => {

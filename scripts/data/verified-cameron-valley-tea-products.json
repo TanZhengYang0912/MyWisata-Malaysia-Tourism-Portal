@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "7a17248b-58e9-2e16-9ad5-3d42176a4263",
+    "name": "Cameron Valley Tea Shop",
+    "source_page": "https://bharattea.com.my/",
+    "price_reference_page": "https://bharattea.com.my/"
+  },
+  "outlets": [
+    {
+      "id": "a6ce4442-c6da-aaf5-3458-164fc5d1060b",
+      "name": "Cameron Valley Tea Shop"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "cameron-valley-cv-100-grams",
+      "name": "Cameron Valley Tea — 100 grams",
+      "description": "Cameron Valley black tea product sold by the official Cameron Valley Tea shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 3.5,
+      "source_type": "official",
+      "source_page": "https://bharattea.com.my/product/cv-100-grams/",
+      "source_image_url": "https://bharattea.com.my/wp-content/uploads/2024/04/aa844ccd-b196-4f11-b133-8b9fab84b276.jpeg",
+      "price_reference_page": "https://bharattea.com.my/product/cv-100-grams/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/cameron-valley-cv-100-grams-real.jpg",
+      "sha256": "f05de2ef6ddb959556fccedd8d3b0e685fb29b9711c8432749293b91eaf8d779",
+      "artist": "Cameron Valley Tea official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "cameron-valley-cv-200-grams",
+      "name": "Cameron Valley Tea — 200 grams",
+      "description": "Cameron Valley tea product sold by the official Cameron Valley Tea shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 6.3,
+      "source_type": "official",
+      "source_page": "https://bharattea.com.my/product/cv2400-grams/",
+      "source_image_url": "https://bharattea.com.my/wp-content/uploads/2024/04/76912f9a-bab0-4fe3-bbe0-c62da7ddc483.jpeg",
+      "price_reference_page": "https://bharattea.com.my/product/cv2400-grams/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/cameron-valley-cv-200-grams-real.jpg",
+      "sha256": "ce51ef9491b38a5ad12b0fa3a554199a8b8df2567e0348e03067349b433d7e36",
+      "artist": "Cameron Valley Tea official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "cameron-valley-cv-400-grams",
+      "name": "Cameron Valley Tea — 400 grams",
+      "description": "Cameron Valley tea product sold by the official Cameron Valley Tea shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 12,
+      "source_type": "official",
+      "source_page": "https://bharattea.com.my/product/cv-400-grams/",
+      "source_image_url": "https://bharattea.com.my/wp-content/uploads/2024/04/c54665ec-4bd4-4b28-a396-4efff0762445.jpeg",
+      "price_reference_page": "https://bharattea.com.my/product/cv-400-grams/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/cameron-valley-cv-400-grams-real.jpg",
+      "sha256": "69f12d9e590c64f69a2d06b77f3a39b498af43796db8791ebe3552e5d57567a4",
+      "artist": "Cameron Valley Tea official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "cameron-valley-blackcurrent-tea",
+      "name": "Cameron Valley Blackcurrent Tea",
+      "description": "Blackcurrent-flavoured tea product sold by the official Cameron Valley Tea shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 13.95,
+      "source_type": "official",
+      "source_page": "https://bharattea.com.my/product/blackcurrent-tea/",
+      "source_image_url": "https://bharattea.com.my/wp-content/uploads/2024/06/123bcb5d-5f20-4665-b109-aeb960cb8bfe.jpeg",
+      "price_reference_page": "https://bharattea.com.my/product/blackcurrent-tea/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/cameron-valley-blackcurrent-tea-real.jpg",
+      "sha256": "8a6d921f3716d061a070b9bdc0a845c4ee0790fdf007edcb1e38f51c5de67369",
+      "artist": "Cameron Valley Tea official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "cameron-valley-orange-tea",
+      "name": "Cameron Valley Orange Tea",
+      "description": "Orange-flavoured tea product sold by the official Cameron Valley Tea shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 13.95,
+      "source_type": "official",
+      "source_page": "https://bharattea.com.my/product/orange-tea/",
+      "source_image_url": "https://bharattea.com.my/wp-content/uploads/2024/06/f8a4982b-7a87-419d-b807-6a685e67226c.jpeg",
+      "price_reference_page": "https://bharattea.com.my/product/orange-tea/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/cameron-valley-orange-tea-real.jpg",
+      "sha256": "69b62cc4848262b055bc87decb66c072bd54867a9f0264da487cc9a8e8a8804d",
+      "artist": "Cameron Valley Tea official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

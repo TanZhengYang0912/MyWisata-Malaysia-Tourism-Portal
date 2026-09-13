@@ -6,11 +6,12 @@ import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors, rankVendorsByPersonalizedFeed } from "@/backend/domains/vendor-recommend";
 import type { SponsoredPlacement } from "@/backend/core/types";
 import { SearchClient } from "../search/search-client";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
   return {
-    title: `${t("ui.search.title")} — MyWisata`,
+    title: `${t("ui.search.title")} — ${BRAND_NAME}`,
     description: t("ui.search.description"),
   };
 }

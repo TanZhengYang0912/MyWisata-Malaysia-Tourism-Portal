@@ -36,7 +36,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
     fallback:
       "I'm an AI assistant and I can only help with things like bookings, vouchers, your wallet, withdrawals, and affiliate questions — I couldn't answer that one.",
     greeting:
-      "Hi! I'm the MyWisata assistant. I can help with bookings, vouchers, your wallet, withdrawals, or affiliate earnings. What do you need?",
+      "Hi! I'm the MyLawatan assistant. I can help with bookings, vouchers, your wallet, withdrawals, or affiliate earnings. What do you need?",
     chitchat: "Glad to help! Let me know if there's anything else you need.",
     unclear: "Could you tell me a bit more about what you need help with?",
     wasThisHelpful: "Was this helpful?",
@@ -56,7 +56,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
     fallback:
       "Saya pembantu AI dan hanya boleh bantu dengan perkara seperti tempahan, baucar, dompet, pengeluaran, dan soalan affiliate — soalan itu saya tidak dapat jawab.",
     greeting:
-      "Hai! Saya pembantu MyWisata. Saya boleh bantu dengan tempahan, baucar, dompet, pengeluaran, atau pendapatan affiliate. Apa yang awak perlukan?",
+      "Hai! Saya pembantu MyLawatan. Saya boleh bantu dengan tempahan, baucar, dompet, pengeluaran, atau pendapatan affiliate. Apa yang awak perlukan?",
     chitchat: "Sama-sama! Beritahu saya jika ada apa-apa lagi yang awak perlukan.",
     unclear: "Boleh awak terangkan sedikit lagi apa yang awak perlukan bantuan?",
     wasThisHelpful: "Adakah ini membantu?",
@@ -76,7 +76,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
     fallback:
       "我是AI助手，只能协助预订、优惠券、钱包、提现和联盟营销方面的问题——这个问题我无法回答。",
     greeting:
-      "你好！我是MyWisata的助手。我可以协助预订、优惠券、钱包、提现或联盟营销收入方面的问题。请问需要什么帮助？",
+      "你好！我是MyLawatan的助手。我可以协助预订、优惠券、钱包、提现或联盟营销收入方面的问题。请问需要什么帮助？",
     chitchat: "很高兴能帮到你！如果还有其他需要，请告诉我。",
     unclear: "可以再多告诉我一些你需要什么帮助吗？",
     wasThisHelpful: "这个回答有帮助吗？",

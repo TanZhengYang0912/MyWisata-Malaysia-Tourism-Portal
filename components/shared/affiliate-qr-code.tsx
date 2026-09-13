@@ -35,8 +35,8 @@ interface AffiliateQrCodeProps {
 }
 
 function fileNameFor(label: string): string {
-  const slug = label.replace(/[^a-z0-9]+/gi, "-").toLowerCase().replace(/^-+|-+$/g, "") || "mywisata";
-  return `mywisata-qr-${slug}.png`;
+  const slug = label.replace(/[^a-z0-9]+/gi, "-").toLowerCase().replace(/^-+|-+$/g, "") || "mylawatan";
+  return `mylawatan-qr-${slug}.png`;
 }
 
 export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: AffiliateQrCodeProps) {

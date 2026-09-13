@@ -10,7 +10,7 @@ function candidate() {
 
 export async function POST(_request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
 
   for (let attempt = 0; attempt < 8; attempt += 1) {

@@ -34,6 +34,17 @@ const approvedForwardMigrations = [
   "20260910005600_sponsored_placement_staff_role_template.sql",
   "20260911000000_vendor_order_settlement.sql",
   "20260911100000_chat_message_context.sql",
+  "20260912140000_voucher_owner_approval.sql",
+  "20260912180000_voucher_store_redemption.sql",
+  "20260912190000_vendor_featured_products.sql",
+  "20260912210000_place_community_mock_data_v2.sql",
+  "20260912233000_activity_media_consistency.sql",
+  "20260913003000_vendor_outlet_media.sql",
+  "20260913005000_place_accesses.sql",
+  "20260913013000_place_informational_activities.sql",
+  "20260913090000_product_ticket_admission_policy.sql",
+  "20260913103000_place_activity_media_paths.sql",
+  "20260913120000_repair_demo_vendor_order_earnings.sql",
 ];
 
 function migrationFiles() {

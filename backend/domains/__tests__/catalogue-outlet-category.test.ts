@@ -45,16 +45,28 @@ describe("getOutlets", () => {
       { id: "o1", vendor_id: "v1", name: "Flagship", address: null, city: null, state: null,
         lat: 1, lng: 2, operating_hours: null, phone: null, status: "active",
         wheelchair_accessible: null, pet_friendly: null,
+        outlet_pages: { hero_url: "https://cdn.example.com/flagship.jpg" },
         vendors: { name: "Chendul", status: "approved", products: [cat("food"), cat("food")] } },
       { id: "o2", vendor_id: "v1", name: "Mall branch", address: null, city: null, state: null,
         lat: 1, lng: 2, operating_hours: null, phone: null, status: "active",
         wheelchair_accessible: null, pet_friendly: null,
+        outlet_pages: null,
         vendors: { name: "Chendul", status: "approved", products: [cat("food"), cat("food")] } },
     ];
-    const db = { from: () => ({ select: async () => ({ data: rows, error: null }) }) };
+    const db = {
+      from: () => {
+        const query = {
+          select: () => query,
+          eq: () => query,
+          then: (resolve: (value: { data: typeof rows; error: null }) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
+        };
+        return query;
+      },
+    };
 
     return getOutlets(db as never).then((outlets) => {
       expect(outlets.map((o) => o.category)).toEqual(["Food", "Food"]);
+      expect(outlets.map((o) => o.coverUrl)).toEqual(["https://cdn.example.com/flagship.jpg", null]);
     });
   });
 });

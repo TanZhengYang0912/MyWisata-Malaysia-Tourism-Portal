@@ -93,10 +93,10 @@ describe('vendor invite wizard state', () => {
       'https://mywisata.example/auth/callback?next=%2Fvendor-invite%3Frecommendation%3Dtest-token-value',
     );
     expect(buildVendorInviteSupportMailto('Request a new vendor invitation')).toBe(
-      'mailto:mywisatamalaysia@gmail.com?subject=Request%20a%20new%20vendor%20invitation',
+      'mailto:support@mylawatan.my?subject=Request%20a%20new%20vendor%20invitation',
     );
     expect(buildVendorInviteSupportMailto('Vendor invitation support')).toBe(
-      'mailto:mywisatamalaysia@gmail.com?subject=Vendor%20invitation%20support',
+      'mailto:support@mylawatan.my?subject=Vendor%20invitation%20support',
     );
   });
 });

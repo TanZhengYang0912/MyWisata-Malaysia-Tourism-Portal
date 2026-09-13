@@ -30,6 +30,6 @@ const STATUS_COPY: Record<VendorOnboardingStatus, { label: string; description: 
 export function getVendorOnboardingStatus(status: string) {
   return STATUS_COPY[status as VendorOnboardingStatus] ?? {
     label: "Under review",
-    description: "Your application is being reviewed by the MyWisata team.",
+    description: "Your application is being reviewed by the MyLawatan team.",
   };
 }

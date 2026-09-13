@@ -30,7 +30,7 @@ export async function cityCentre(city: string | null | undefined): Promise<Coord
   try {
     const query = new URLSearchParams({ q: `${city}, Malaysia`, format: 'json', countrycodes: 'my', limit: '1' });
     const response = await fetch(`https://nominatim.openstreetmap.org/search?${query.toString()}`, {
-      headers: { 'User-Agent': 'MyWisata/1.0 (tourism-portal)' },
+      headers: { 'User-Agent': 'MyLawatan/1.0 (tourism-portal)' },
       signal: AbortSignal.timeout(3000),
     });
     if (!response.ok) return null;

@@ -1,8 +1,4 @@
 import type { NextConfig } from "next";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 function supabaseStorageRemotePattern() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,9 +20,6 @@ function supabaseStorageRemotePattern() {
 
 const nextConfig: NextConfig = {
   compress: true,
-  turbopack: {
-    root: projectRoot,
-  },
   serverExternalPackages: ['pdfkit'],
   experimental: {
     optimizePackageImports: [
@@ -50,6 +43,10 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: supabaseStorageRemotePattern(),
+    localPatterns: [
+      { pathname: '/branding/mywisata-logo-transparent.png', search: '?v=2' },
+      { pathname: '**', search: '' },
+    ],
     minimumCacheTTL: 2592000,
   },
 };
