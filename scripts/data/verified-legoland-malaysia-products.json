@@ -1,0 +1,105 @@
+{
+  "vendor": {
+    "id": "e6f97a27-9d0b-8b8c-ae41-d26140f083a2",
+    "name": "LEGOLAND Malaysia Resort",
+    "source_page": "https://www.legoland.com.my/tickets-passes/",
+    "price_reference_page": "https://www.legoland.com.my/tickets-passes/"
+  },
+  "outlets": [
+    {
+      "id": "60dc74ed-e191-c023-8963-58eb774be1d0",
+      "name": "LEGOLAND Malaysia Resort — Guest Services"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "legoland-theme-park-ticket",
+    "legoland-waterpark-ticket"
+  ],
+  "products": [
+    {
+      "slug": "legoland-1-day-theme-park-adult",
+      "name": "LEGOLAND 1-Day Theme Park Adult",
+      "description": "One-day adult access to the LEGOLAND Malaysia Theme Park at the published online starting price.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 205,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/tickets-passes/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Legoland_Malaysia_Resort_Lego_Building.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.legoland.com.my/tickets-passes/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-1-day-theme-park-adult-real.webp",
+      "sha256": "1e1265dc2f0e86bd74c7cb6569e5a98b64091909da46786ae6f7d1f07d3844e9",
+      "artist": "LEGOLAND Malaysia Resort visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-1-day-theme-park-child-senior",
+      "name": "LEGOLAND 1-Day Theme Park Child / Senior",
+      "description": "One-day child or senior access to the LEGOLAND Malaysia Theme Park at the published online starting price.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 175,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/tickets-passes/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Legoland_Malaysia_Resort_%2823198168290%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.legoland.com.my/tickets-passes/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-1-day-theme-park-child-senior-real.webp",
+      "sha256": "61d711f22f354617edc29ccafb5cbd25dfc974866ec6cb0ca5fb20d7b656b9b2",
+      "artist": "LEGOLAND Malaysia Resort visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-1-day-water-park-adult",
+      "name": "LEGOLAND 1-Day Water Park Adult",
+      "description": "One-day adult access to LEGOLAND Water Park at the published online starting price.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 149,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/tickets-passes/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Legoland_Water_Park_Malaysia_Entrance.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.legoland.com.my/tickets-passes/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-1-day-water-park-adult-real.webp",
+      "sha256": "e3be103db96c057d4cbfa71edcb6667eb3626e3f75a9cc2b857dd2e0145c5300",
+      "artist": "LEGOLAND Malaysia Resort visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-1-day-water-park-child-senior",
+      "name": "LEGOLAND 1-Day Water Park Child / Senior",
+      "description": "One-day child or senior access to LEGOLAND Water Park at the published online starting price.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 129,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/tickets-passes/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Legoland_Malaysia_Resort_Water_Park.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.legoland.com.my/tickets-passes/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-1-day-water-park-child-senior-real.webp",
+      "sha256": "cd7bdd5972f5b68293f25b93f14dfa905c5c10daa89f3d4e7bb5b20316a78fb3",
+      "artist": "LEGOLAND Malaysia Resort visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-1-day-triple-park-adult",
+      "name": "LEGOLAND 1-Day Triple-Park Adult",
+      "description": "One-day adult access to Theme Park, Water Park and SEA LIFE at the published online starting price.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 345,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/tickets-passes/",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/7/7e/Legoland_Malaysia_Resort_%2823410933721%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "price_reference_page": "https://www.legoland.com.my/tickets-passes/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-1-day-triple-park-adult-real.webp",
+      "sha256": "0197323a0a7120effc0da29be57b0866ed352c13be1fd4441021236b09d0b634",
+      "artist": "LEGOLAND Malaysia Resort visitor media / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

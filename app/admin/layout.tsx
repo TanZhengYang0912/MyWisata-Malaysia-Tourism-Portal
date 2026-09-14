@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone } from "lucide-react";
+import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone, Scale, type LucideIcon } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { GlobalCommandPalette } from "@/components/shared/global-command-palette";
-import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { isWalletApproverPath } from "@/lib/auth/post-login-destination";
 import { staffDestinations } from "@/lib/staff-permissions/navigation";
+import { useCommandShortcutLabel } from "@/components/shared/command-shortcut";
+import { PortalSidebar, type PortalSidebarSection } from "@/components/layout/portal-sidebar";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -42,43 +42,67 @@ const WITHDRAWAL_REVIEW_ROLES = ["approver", "super_admin"] as const;
 type AdminNavItem = {
   href: string;
   label: string;
-  icon: typeof Activity;
+  icon: LucideIcon;
   superAdminOnly?: boolean;
   allowedRoles?: readonly string[];
 };
 
-const NAV: AdminNavItem[] = [
-  { href: "/admin/dashboard", label: "Overview", icon: Activity },
-  { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
-  { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
-  { href: "/admin/sponsored-placements", label: "Sponsored Placements", icon: Megaphone, allowedRoles: CONTENT_REVIEW_ROLES },
-  { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
-  { href: "/admin/access-control", label: "Access Control", icon: ShieldCog, superAdminOnly: true },
-  { href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES },
-  { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES },
-  { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
-  { href: "/admin/wallet/settings", label: "Wallet Settings", icon: Settings2, superAdminOnly: true },
-  { href: "/admin/wallet/approvers", label: "Wallet Approvers", icon: UserRoundCheck, superAdminOnly: true },
-  { href: "/admin/reports/payouts", label: "Payout Reports", icon: FileBarChart2, superAdminOnly: true },
-  { href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES },
-  { href: "/admin/support", label: "Support Tickets", icon: Inbox },
-  { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
-  { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
-  { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
-  // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
-  // this NAV. Filtered in render below.
-  { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
-  // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: moved out of the AI Assistant
-  // page into its own nav entry — it's staff-conduct review, not an AI
-  // capability, and was only ever co-located there because that page was
-  // already super-admin-gated.
-  { href: "/admin/staff-conduct", label: "Staff Conduct", icon: UserX, superAdminOnly: true },
+type AdminNavSection = { labelKey: string; items: AdminNavItem[] };
+
+const NAV_SECTIONS: AdminNavSection[] = [
+  { labelKey: "workspace", items: [{ href: "/admin/dashboard", label: "Overview", icon: Activity }] },
+  {
+    labelKey: "governance",
+    items: [
+      { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
+      { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
+      { href: "/admin/sponsored-placements", label: "Sponsored Placements", icon: Megaphone, allowedRoles: CONTENT_REVIEW_ROLES },
+      { href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES },
+      { href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES },
+    ],
+  },
+  {
+    labelKey: "finance",
+    items: [
+      { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES },
+      { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
+      { href: "/admin/wallet/settings", label: "Wallet Settings", icon: Settings2, superAdminOnly: true },
+      { href: "/admin/wallet/approvers", label: "Wallet Approvers", icon: UserRoundCheck, superAdminOnly: true },
+      { href: "/admin/reports/payouts", label: "Payout Reports", icon: FileBarChart2, superAdminOnly: true },
+      { href: "/admin/reports/reconciliation", label: "Reconciliation", icon: Scale, superAdminOnly: true },
+    ],
+  },
+  {
+    labelKey: "support",
+    items: [
+      { href: "/admin/support", label: "Support Tickets", icon: Inbox },
+      { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
+      { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
+      { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
+    ],
+  },
+  {
+    labelKey: "administration",
+    items: [
+      { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
+      { href: "/admin/access-control", label: "Access Control", icon: ShieldCog, superAdminOnly: true },
+      // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
+      // this NAV. Filtered in render below.
+      { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
+      // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: moved out of the AI Assistant
+      // page into its own nav entry — it's staff-conduct review, not an AI
+      // capability, and was only ever co-located there because that page was
+      // already super-admin-gated.
+      { href: "/admin/staff-conduct", label: "Staff Conduct", icon: UserX, superAdminOnly: true },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { currentUser, staffPermissionKeys = [], loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
+  const commandShortcutLabel = useCommandShortcutLabel();
 
   const pathname = usePathname();
   const router = useRouter();
@@ -238,51 +262,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return 0;
   }
 
+  const sidebarSections = NAV_SECTIONS.map<PortalSidebarSection>((section) => ({
+    label: tAdmin(`navigationSections.${section.labelKey}`),
+    items: section.items
+      .filter((item) =>
+        (currentUser.role !== "staff" || staffNavigationHrefs.has(item.href))
+        && (!item.superAdminOnly || currentUser.role === "super_admin")
+        && (currentUser.role === "staff" || !item.allowedRoles || item.allowedRoles.includes(currentUser.role))
+        && (currentUser.role !== "approver" || isWalletApproverPath(item.href)),
+      )
+      .map((item) => {
+        // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
+        const count = currentUser.role === "staff" ? 0 : item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
+        return {
+          href: item.href,
+          label: tAdmin(`navigation.${item.label}`),
+          icon: item.icon,
+          count,
+          countLabel: count > 0 ? tAdmin("accessibility.pendingItems", { count }) : undefined,
+        };
+      }),
+  })).filter((section) => section.items.length > 0);
+
+  const contextDetail = currentUser.role === "super_admin"
+    ? tAdmin("shell.context.superAdmin")
+    : currentUser.role === "approver"
+      ? tAdmin("shell.context.approver")
+      : currentUser.role === "staff"
+        ? tAdmin("shell.context.staff")
+        : tAdmin("shell.context.admin");
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="flex h-screen w-60 shrink-0 flex-col bg-gray-900">
-        <div className="flex h-16 items-center gap-2.5 border-b border-gray-700 px-5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-800">
-            <Shield size={16} className="text-white" />
-          </div>
-          <div>
-            <span className="font-bold text-white text-sm font-[family-name:var(--font-display)]">{BRAND_NAME}</span>
-            <p className="text-[0.625rem] text-white/35">{tAdmin("shell.panel")}</p>
-          </div>
-        </div>
-        <div className="px-4 py-3 border-b border-gray-700">
-          <p className="text-[0.625rem] uppercase tracking-wider mb-1 text-white/35">{tAdmin("shell.signedInAs")}</p>
-          <p className="text-sm font-bold text-white">{currentUser.name}</p>
-          <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-bold bg-gray-800 text-gray-300">
-            <Shield size={9} /> {tAdmin(`roles.${currentUser.role}`)}
-          </div>
-        </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {NAV.filter((item) =>
-            (currentUser.role !== "staff" || staffNavigationHrefs.has(item.href))
-            && (!item.superAdminOnly || currentUser.role === "super_admin")
-            && (currentUser.role === "staff" || !item.allowedRoles || item.allowedRoles.includes(currentUser.role))
-            && (currentUser.role !== "approver" || isWalletApproverPath(item.href)),
-          ).map((item) => {
-            // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
-            const count = currentUser.role === "staff" ? 0 : item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
-              >
-                <item.icon size={15} /> {tAdmin(`navigation.${item.label}`)}
-                {count > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full text-[0.625rem] font-bold text-gray-900 flex items-center justify-center bg-gray-200" aria-label={tAdmin("accessibility.pendingItems", { count })}>
-                    {count}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
+      <PortalSidebar
+        portalName={tAdmin("shell.portal")}
+        brandName={tAdmin("shell.brand")}
+        navigationLabel={tAdmin("shell.navigation")}
+        contextLabel={tAdmin(`roles.${currentUser.role}`)}
+        contextDetail={contextDetail}
+        sections={sidebarSections}
+      />
       <div ref={mainContentRef} data-scroll-container="admin-main" className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 px-4 backdrop-blur-md sm:px-6">
           {currentUser.role !== "staff" && <button
@@ -294,7 +313,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Search size={14} className="text-muted-foreground" />
             <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder")}</span>
             <span className="sm:hidden">{tCommon("actions.search")}</span>
-            <kbd className="ml-1 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{tCommon("keyboard.cmdK")}</kbd>
+            <kbd className="ml-1 shrink-0 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{commandShortcutLabel}</kbd>
           </button>}
           <div className="flex items-center gap-2">
             <LanguageSwitcher compact className="w-28" />

@@ -49,4 +49,32 @@ describe("customer vendor commerce boundary", () => {
     expect(pageSource).toContain("hasMultipleLocations ? (");
     expect(pageSource).toContain("locations.map((location) => <LocationCard");
   });
+
+  it("keeps the vendor gallery distinct from the cover hero", () => {
+    expect(pageSource).toContain("const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);");
+    expect(pageSource).toContain("visibleVendorGallery.length > 0");
+  });
+});
+
+describe("customer vendor server module boundaries", () => {
+  it("imports formatHours from server-safe operating-hours module rather than client components", () => {
+    expect(pageSource).toContain("from '@/lib/customer/operating-hours'");
+    expect(pageSource).not.toContain("from '@/components/outlet/outlet-block-renderer'");
+  });
+});
+
+describe("customer vendor template consistency with outlet template", () => {
+  it("uses the unified top context bar with share button", () => {
+    expect(pageSource).toContain('<ShareButton shareType="vendor"');
+    expect(pageSource).toContain("t('ui.vendor.partnerProfile')");
+    expect(pageSource).toContain("border-b border-border pb-4");
+  });
+
+  it("uses the contained rounded hero card and unified summary card", () => {
+    expect(pageSource).toContain("rounded-[1.75rem] border border-border bg-primary shadow-lg");
+    expect(pageSource).toContain("relative z-10 -mt-8 mb-8 rounded-3xl border border-border bg-card p-5 shadow-lg sm:p-6");
+    expect(pageSource).toContain("rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90");
+    expect(pageSource).toContain("rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-secondary");
+    expect(pageSource).toContain("max-w-7xl");
+  });
 });

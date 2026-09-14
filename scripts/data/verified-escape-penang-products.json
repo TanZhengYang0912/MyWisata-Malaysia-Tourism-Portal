@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "f61c8a44-d6fc-1819-2b0e-47171a0ecf50",
+    "name": "ESCAPE Penang",
+    "source_page": "https://www.escape.my/pg",
+    "price_reference_page": "https://www.escape.my/pg"
+  },
+  "outlets": [
+    {
+      "id": "27011afb-239e-339d-8f72-00ddd6f0c040",
+      "name": "ESCAPE Penang"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "escape-penang-base-camp-adult",
+      "name": "ESCAPE Penang Base Camp — Adult 1-Day",
+      "description": "One-day adult Base Camp access covering the ESCAPE Penang rides and attractions listed on the official ticket page, before applicable tax.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 118,
+      "source_type": "official",
+      "source_page": "https://www.escape.my/pg",
+      "source_image_url": "https://cdn.prod.website-files.com/61d6f58347d69acf7aecd077/67dc3647c1c3c771323e11c3_6780f18913cc0ede76d40b76_6780e103123bc4ee3e4533c0_The%252520Longest.jpeg",
+      "price_reference_page": "https://www.escape.my/pg",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/escape-penang-base-camp-adult-real.jpg",
+      "sha256": "df8baf17f31ffc74714a75fda3fd8d16f35b37d5c2aa8e8cdcdef89f34fa1d7d",
+      "artist": "ESCAPE Penang official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "escape-penang-base-camp-child",
+      "name": "ESCAPE Penang Base Camp — Child 1-Day",
+      "description": "One-day child Base Camp access covering the ESCAPE Penang rides and attractions listed on the official ticket page, before applicable tax.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 98,
+      "source_type": "official",
+      "source_page": "https://www.escape.my/pg",
+      "source_image_url": "https://cdn.prod.website-files.com/61d6f58347d69acf7aecd077/67dc365d1182734345ade771_6780f18913cc0ede76d40b8b_6780e2964edbe2800381255d_Zip%252520Coaster.jpeg",
+      "price_reference_page": "https://www.escape.my/pg",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/escape-penang-base-camp-child-real.jpg",
+      "sha256": "6bb3a6019f10863eaae084a8bfd7cccaf6aeb224ff33090ec6ae892468277561",
+      "artist": "ESCAPE Penang official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "escape-penang-waterplay-1-day",
+      "name": "ESCAPE Penang Waterplay — 1-Day",
+      "description": "One-day Waterplay access at ESCAPE Penang, listed in the official ticket price table, before applicable tax.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 95,
+      "source_type": "official",
+      "source_page": "https://www.escape.my/pg",
+      "source_image_url": "https://cdn.prod.website-files.com/61d6f58347d69acf7aecd077/67dc3693c875a7c0acfeaaff_6780f18913cc0ede76d40b7a_6780e36f876eb633b2532be6_Tubby%252520Racer.jpeg",
+      "price_reference_page": "https://www.escape.my/pg",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/escape-penang-waterplay-1-day-real.jpg",
+      "sha256": "03289e93cd60ebbd62cec46e5f3012e7a27ddcfbdf72d2911ef059ef3577d9bb",
+      "artist": "ESCAPE Penang official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "escape-penang-combo-adult",
+      "name": "ESCAPE Penang Combo — Adult 1-Day",
+      "description": "One-day adult combo access to ESCAPE Base Camp and Waterplay, listed in the official ticket price table, before applicable tax.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 175,
+      "source_type": "official",
+      "source_page": "https://www.escape.my/pg",
+      "source_image_url": "https://cdn.prod.website-files.com/61d6f58347d69acf7aecd077/67dc36affc8cdc228538f79f_6780f18913cc0ede76d40b82_6780e3ec7f1946daa1042df4_Tipping%252520Bucket.jpeg",
+      "price_reference_page": "https://www.escape.my/pg",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/escape-penang-combo-adult-real.jpg",
+      "sha256": "df93efe090c094d87911f1fc0b6e862c86b6dc58b117f8a0cde1056d49f5f8c3",
+      "artist": "ESCAPE Penang official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "escape-penang-combo-child",
+      "name": "ESCAPE Penang Combo — Child 1-Day",
+      "description": "One-day child combo access to ESCAPE Base Camp and Waterplay, listed in the official ticket price table, before applicable tax.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 150,
+      "source_type": "official",
+      "source_page": "https://www.escape.my/pg",
+      "source_image_url": "https://cdn.prod.website-files.com/61d6f58347d69acf7aecd077/67dc36f572186352806f6a1b_6780f18913cc0ede76d40b92_6780ed9fef14fcfb8ec99588_Monkey%252520Business.jpeg",
+      "price_reference_page": "https://www.escape.my/pg",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/escape-penang-combo-child-real.jpg",
+      "sha256": "51e39aee4b18cc0821a8e04e24617e602269994d1ffc9b4573a7957117d568d8",
+      "artist": "ESCAPE Penang official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

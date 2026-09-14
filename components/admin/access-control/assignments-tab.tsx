@@ -10,12 +10,13 @@ import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { Button } from "@/components/ui/button";
 import { buildAccessControlQuery, errorMessage } from "@/components/admin/access-control/types";
 import type { ApiEnvelope, AssignmentRecord, AuditFocus, CapabilityRecord, MutationReceipt, PageResult } from "@/components/admin/access-control/types";
+import { getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
 
 const PAGE_SIZE = 25;
 const SUBJECT_TYPES = ["user", "role", "plan", "partner"];
 type AssignmentForm = { subjectType: string; subjectId: string; capabilityKey: string; effect: "allow" | "deny"; startsAt: string; expiresAt: string; reason: string };
 type PendingMutation = { type: "create"; form: AssignmentForm } | { type: "revoke"; assignment: AssignmentRecord; reason: string };
-const initialForm = (): AssignmentForm => ({ subjectType: "user", subjectId: "", capabilityKey: "recommendation.submit", effect: "allow", startsAt: new Date().toISOString().slice(0, 16), expiresAt: "", reason: "" });
+const initialForm = (): AssignmentForm => ({ subjectType: "user", subjectId: "", capabilityKey: "recommendation.submit", effect: "allow", startsAt: getMalaysiaDateTimeLocalValue(), expiresAt: "", reason: "" });
 
 type CapabilityAvailability = "available" | "system-managed" | "disabled";
 

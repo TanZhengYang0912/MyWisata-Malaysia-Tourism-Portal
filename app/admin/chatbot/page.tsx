@@ -24,6 +24,7 @@ interface ChatbotStats {
   topUnanswered: TopQuestion[];
   notHelpfulAnswered: TopQuestion[];
   escalationRate: number;
+  topEscalated: TopQuestion[];
 }
 
 interface KbDoc {
@@ -348,6 +349,41 @@ export default function AdminChatbotPage() {
         ) : (
           <div className="space-y-2">
             {stats.notHelpfulAnswered.map((q, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
+                <div className="min-w-0">
+                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+                    <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
+                    <span className="truncate">{q.question}</span>
+                  </span>
+                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
+                    {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={draftingQuestion === q.question}
+                  onClick={() => draftAnswer(q.question)}
+                >
+                  <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting") : t("chatbot.actions.aiDraft")}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+          <TrendingUp size={13} /> {t("chatbot.topEscalated.title")}
+        </p>
+        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topEscalated.description")}</p>
+        {stats.topEscalated.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("chatbot.topEscalated.empty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {stats.topEscalated.map((q, i) => (
               <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
                 <div className="min-w-0">
                   <span className="text-foreground flex items-center gap-1.5 min-w-0">

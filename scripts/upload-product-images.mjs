@@ -47,7 +47,7 @@ const files = [];
 
 for (const name of fs.readdirSync(SOURCE_DIR).sort()) {
   if (!name.match(/\.(jpe?g|png|webp)$/i)) continue;
-  files.push({ objectPath: name, absolutePath: path.join(SOURCE_DIR, name) });
+  files.push({ objectPath: `products/${name}`, absolutePath: path.join(SOURCE_DIR, name) });
 }
 
 // Upload from penang folder (for the 6 verified penang vendor/product images)

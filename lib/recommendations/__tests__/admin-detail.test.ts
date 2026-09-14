@@ -108,7 +108,7 @@ describe('buildAdminRecommendationDetail', () => {
     expect(detail.location).toBeNull();
     expect(detail.review).toBeNull();
     expect(detail.images).toEqual([]);
-    expect(detail.author.name).toBe('MyWisata member');
+    expect(detail.author.name).toBe('MyLawatan member');
   });
 
   it('exposes only translation drafts and internal Place summaries to the authorized admin view', () => {

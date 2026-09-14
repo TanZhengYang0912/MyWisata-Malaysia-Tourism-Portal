@@ -47,15 +47,18 @@ function draftResponse(row: Record<string, unknown>) {
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+  const managerOutletId = access.access.isOutletManager && access.access.outletIds.length === 1 ? access.access.outletIds[0] : null;
+  if (access.access.isOutletManager && !managerOutletId) return apiFail('FORBIDDEN', 'Outlet managers must have exactly one assigned outlet to manage voucher CSV drafts.', 403);
 
   const draftId = new URL(request.url).searchParams.get('id');
-  const baseQuery = access.access.serviceDb
+  let baseQuery = access.access.serviceDb
     .from('vendor_voucher_csv_drafts')
     .select('id,title,document,draft_version,created_at,updated_at')
     .eq('vendor_id', vendorId)
     .order('updated_at', { ascending: false });
+  if (access.access.isOutletManager) baseQuery = baseQuery.eq('created_by', access.access.userId);
   if (draftId) {
     const { data, error } = await baseQuery.eq('id', draftId).maybeSingle();
     if (error) return apiFail('DB_ERROR', error.message, 500);
@@ -69,33 +72,42 @@ export async function GET(request: Request, { params }: Props) {
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+  const managerOutletId = access.access.isOutletManager && access.access.outletIds.length === 1 ? access.access.outletIds[0] : null;
+  if (access.access.isOutletManager && !managerOutletId) return apiFail('FORBIDDEN', 'Outlet managers must have exactly one assigned outlet to manage voucher CSV drafts.', 403);
   const parsed = await parseBody(request, saveSchema);
   if (!parsed.ok) return parsed.response;
 
-  const document = normalizeVoucherCsvDraft(parsed.data.document as VoucherCsvDraftDocument);
+  const normalizedDocument = normalizeVoucherCsvDraft(parsed.data.document as VoucherCsvDraftDocument);
+  if (access.access.isOutletManager && normalizedDocument.rows.some((row) => row.outletId && row.outletId !== managerOutletId)) {
+    return apiFail('FORBIDDEN', 'Voucher CSV draft contains an outlet outside your assigned scope.', 403, { reason: 'outlet is outside your assigned scope' });
+  }
+  const document = access.access.isOutletManager
+    ? { ...normalizedDocument, rows: normalizedDocument.rows.map((row) => ({ ...row, outletId: managerOutletId })) }
+    : normalizedDocument;
   const db = access.access.serviceDb;
   if (parsed.data.id) {
-    const { data: existing, error: existingError } = await db
+    let existingQuery = db
       .from('vendor_voucher_csv_drafts')
       .select('draft_version')
       .eq('id', parsed.data.id)
-      .eq('vendor_id', vendorId)
-      .maybeSingle();
+      .eq('vendor_id', vendorId);
+    if (access.access.isOutletManager) existingQuery = existingQuery.eq('created_by', access.access.userId);
+    const { data: existing, error: existingError } = await existingQuery.maybeSingle();
     if (existingError) return apiFail('DB_ERROR', existingError.message, 500);
     if (!existing) return apiFail('NOT_FOUND', 'Voucher CSV draft not found', 404);
     const currentVersion = Number(existing.draft_version || 1);
     if (parsed.data.expectedDraftVersion !== undefined && parsed.data.expectedDraftVersion !== currentVersion) {
       return apiFail('STALE_DRAFT', 'This draft changed elsewhere. Reload before saving.', 409, { currentVersion });
     }
-    const { data, error } = await db
+    let updateQuery = db
       .from('vendor_voucher_csv_drafts')
       .update({ title: document.title, document, draft_version: currentVersion + 1, updated_at: new Date().toISOString() })
       .eq('id', parsed.data.id)
-      .eq('vendor_id', vendorId)
-      .select('id,title,document,draft_version,created_at,updated_at')
-      .single();
+      .eq('vendor_id', vendorId);
+    if (access.access.isOutletManager) updateQuery = updateQuery.eq('created_by', access.access.userId);
+    const { data, error } = await updateQuery.select('id,title,document,draft_version,created_at,updated_at').single();
     if (error) return apiFail('DB_ERROR', error.message, 500);
     return apiOk(draftResponse(data as Record<string, unknown>));
   }
@@ -111,15 +123,19 @@ export async function POST(request: Request, { params }: Props) {
 
 export async function DELETE(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+  const managerOutletId = access.access.isOutletManager && access.access.outletIds.length === 1 ? access.access.outletIds[0] : null;
+  if (access.access.isOutletManager && !managerOutletId) return apiFail('FORBIDDEN', 'Outlet managers must have exactly one assigned outlet to manage voucher CSV drafts.', 403);
   const draftId = new URL(request.url).searchParams.get('id');
   if (!draftId || !z.string().uuid().safeParse(draftId).success) return apiFail('INVALID_DRAFT', 'A valid draft id is required', 400);
-  const { error } = await access.access.serviceDb
+  let deleteQuery = access.access.serviceDb
     .from('vendor_voucher_csv_drafts')
     .delete()
     .eq('id', draftId)
     .eq('vendor_id', vendorId);
+  if (access.access.isOutletManager) deleteQuery = deleteQuery.eq('created_by', access.access.userId);
+  const { error } = await deleteQuery;
   if (error) return apiFail('DB_ERROR', error.message, 500);
   return apiOk({ id: draftId, deleted: true });
 }

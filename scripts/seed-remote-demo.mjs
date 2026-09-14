@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import { buildDemoBookingReference, buildDemoReviewCopy } from './lib/demo-content.mjs';
 
 // WARNING: this script encodes the older all-vendors-share-3-owners demo
 // model, which conflicts with the per-vendor-owner model established in
@@ -416,7 +417,7 @@ async function seedAdditionalVendors(categories) {
         description, product_type: typeSlug === 'cultural' ? 'experience' : 'activity',
         requires_booking: true, base_price: basePrice,
         cover_url: PHOTO_URLS[(vendorIndex + outletIndex + activityIndex + 3) % PHOTO_URLS.length],
-        tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-'), 'demo'],
+        tags: ['malaysia', outlet.state.toLowerCase().replaceAll(' ', '-')],
         status: 'active', review_status: 'approved',
       })),
     );
@@ -504,10 +505,18 @@ async function seedAdditionalVendorCommerce() {
       if (slot && ['paid', 'completed'].includes(status)) {
         slot.booked += quantity;
         slotBooked.set(slot.id, slot.booked);
-        extraBookings.push({ id: stableUuid('extra-booking:' + vendorSeed.slug + ':' + orderIndex), order_item_id: itemId, slot_id: slot.id, customer_id: CUSTOMER_IDS[(orderIndex + vendorIndex) % CUSTOMER_IDS.length], status: status === 'completed' ? (orderIndex % 4 === 0 ? 'checked_in' : 'confirmed') : 'confirmed', demo_qr_code: 'DEMO-QR-' + itemId.slice(0, 12), check_in_at: status === 'completed' && orderIndex % 4 === 0 ? new Date(createdAt.getTime() + 86400000).toISOString() : null });
+        extraBookings.push({ id: stableUuid('extra-booking:' + vendorSeed.slug + ':' + orderIndex), order_item_id: itemId, slot_id: slot.id, customer_id: CUSTOMER_IDS[(orderIndex + vendorIndex) % CUSTOMER_IDS.length], status: status === 'completed' ? (orderIndex % 4 === 0 ? 'checked_in' : 'confirmed') : 'confirmed', demo_qr_code: buildDemoBookingReference(itemId), check_in_at: status === 'completed' && orderIndex % 4 === 0 ? new Date(createdAt.getTime() + 86400000).toISOString() : null });
       }
       if (voucher && status === 'completed') extraRedemptions.push({ id: stableUuid('extra-redemption:' + vendorSeed.slug + ':' + orderIndex), voucher_id: voucher.id, order_id: orderId, user_id: CUSTOMER_IDS[(orderIndex + vendorIndex) % CUSTOMER_IDS.length], discount });
-      if (status === 'completed' && orderIndex % 2 === 0) extraReviews.push({ id: stableUuid('extra-review:' + vendorSeed.slug + ':' + orderIndex), user_id: CUSTOMER_IDS[(orderIndex + vendorIndex) % CUSTOMER_IDS.length], order_item_id: itemId, vendor_id: vendorId, outlet_id: product.outlet_id, product_id: product.id, rating: orderIndex % 4 === 0 ? 5 : 4, title: orderIndex % 4 === 0 ? 'A memorable local experience' : 'Friendly guide and smooth booking', body: 'The experience was well organised and felt genuinely local.', is_visible: true, created_at: new Date(createdAt.getTime() + 3 * 86400000).toISOString() });
+      if (status === 'completed' && orderIndex % 2 === 0) {
+        const reviewCopy = buildDemoReviewCopy({
+          product,
+          outlet: outlets?.find((candidate) => candidate.id === product.outlet_id),
+          reviewIndex: orderIndex,
+          scenarioKey: `legacy-${vendorSeed.slug}`,
+        });
+        extraReviews.push({ id: stableUuid('extra-review:' + vendorSeed.slug + ':' + orderIndex), user_id: CUSTOMER_IDS[(orderIndex + vendorIndex) % CUSTOMER_IDS.length], order_item_id: itemId, vendor_id: vendorId, outlet_id: product.outlet_id, product_id: product.id, rating: reviewCopy.rating, title: reviewCopy.title, body: reviewCopy.body, is_visible: true, created_at: new Date(createdAt.getTime() + 3 * 86400000).toISOString() });
+      }
     }
     summary = { orders: summary.orders + 80, bookings: summary.bookings + extraBookings.length - bookingsBefore, reviews: summary.reviews + extraReviews.filter((review) => review.vendor_id === vendorId).length };
   }
@@ -627,7 +636,7 @@ async function main() {
       category_id: CATEGORIES[categoryIndex][0],
       name,
       slug,
-      description: placeBound ? placeBound[3] : productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mywisata/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
+      description: placeBound ? placeBound[3] : productType === 'digital' ? `A self-guided digital travel companion for ${outlet.city}. Demo download: https://example.com/mylawatan/${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf` : baseDescription,
       product_type: productType,
       requires_booking: isPublicPlace ? false : requiresBooking,
       base_price: isPublicPlace ? 0 : basePrice + ((i % 5) * 2),
@@ -789,10 +798,10 @@ async function main() {
         fulfil_status: fulfilStatus, fulfilled_at: fulfilStatus === 'fulfilled' ? new Date(createdAt.getTime() + 86400000).toISOString() : null, created_at: createdAt.toISOString(),
       });
       if (slot && ['paid', 'completed'].includes(status)) {
-        bookings.push({ id: stableUuid(`booking:${itemId}`), order_item_id: itemId, slot_id: slot.id, customer_id: CUSTOMER_IDS[orderIndex % CUSTOMER_IDS.length], status: status === 'completed' ? (orderIndex % 5 === 0 ? 'checked_in' : 'confirmed') : 'confirmed', demo_qr_code: `DEMO-QR-${itemId.slice(0, 12)}`, check_in_at: status === 'completed' && orderIndex % 5 === 0 ? new Date(createdAt.getTime() + 86400000).toISOString() : null });
+        bookings.push({ id: stableUuid(`booking:${itemId}`), order_item_id: itemId, slot_id: slot.id, customer_id: CUSTOMER_IDS[orderIndex % CUSTOMER_IDS.length], status: status === 'completed' ? (orderIndex % 5 === 0 ? 'checked_in' : 'confirmed') : 'confirmed', demo_qr_code: buildDemoBookingReference(itemId), check_in_at: status === 'completed' && orderIndex % 5 === 0 ? new Date(createdAt.getTime() + 86400000).toISOString() : null });
         bookingCountBySlot.set(slot.id, (bookingCountBySlot.get(slot.id) || 0) + quantity);
       }
-      if (status === 'completed') reviewCandidates.push({ itemId, product, customerId: CUSTOMER_IDS[orderIndex % CUSTOMER_IDS.length], createdAt });
+      if (status === 'completed') reviewCandidates.push({ itemId, product, outlet: outlets.find((candidate) => candidate.id === product.outlet_id), customerId: CUSTOMER_IDS[orderIndex % CUSTOMER_IDS.length], createdAt });
     }
     const discount = orderIndex % 5 === 0 ? Number((subtotal * 0.1).toFixed(2)) : 0;
     const total = Number((subtotal - discount).toFixed(2));
@@ -812,11 +821,19 @@ async function main() {
   });
   await upsert('voucher_redemptions', redemptionRows);
 
-  const reviews = reviewCandidates.slice(0, 2000).map((candidate, index) => ({
-    id: stableUuid(`review:${candidate.itemId}`), user_id: candidate.customerId, order_item_id: candidate.itemId, vendor_id: vendorId,
-    outlet_id: candidate.product.outlet_id, product_id: candidate.product.id, rating: 4 + (index % 2), title: index % 3 ? 'A lovely Malaysian experience' : 'Worth the visit',
-    body: `Enjoyed ${candidate.product.name.toLowerCase()} and the warm local hospitality.`, is_visible: true, created_at: new Date(candidate.createdAt.getTime() + 3 * 86400000).toISOString(),
-  }));
+  const reviews = reviewCandidates.slice(0, 2000).map((candidate, index) => {
+    const reviewCopy = buildDemoReviewCopy({
+      product: candidate.product,
+      outlet: candidate.outlet,
+      reviewIndex: index,
+      scenarioKey: 'base-remote-seed',
+    });
+    return {
+      id: stableUuid(`review:${candidate.itemId}`), user_id: candidate.customerId, order_item_id: candidate.itemId, vendor_id: vendorId,
+      outlet_id: candidate.product.outlet_id, product_id: candidate.product.id, rating: reviewCopy.rating, title: reviewCopy.title,
+      body: reviewCopy.body, is_visible: true, created_at: new Date(candidate.createdAt.getTime() + 3 * 86400000).toISOString(),
+    };
+  });
   await upsert('reviews', reviews, 'order_item_id');
   await upsert('media_assets', allProductRows.map((product, index) => ({ id: stableUuid(`media:${product.id}`), vendor_id: product.vendor_id, outlet_id: product.outlet_id, product_id: product.id, url: product.cover_url, alt_text: `${product.name} in Malaysia`, media_type: 'image', sort_order: index % 4 })));
 

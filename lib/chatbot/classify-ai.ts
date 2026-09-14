@@ -17,7 +17,7 @@ import { classifyTicket, type TicketCategory } from './classify';
 const CLASSIFY_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const CLASSIFY_TIMEOUT_MS = 10_000;
 
-const VALID_CATEGORIES: readonly TicketCategory[] = ['booking', 'payment', 'withdrawal', 'affiliate', 'vendor', 'general'];
+const VALID_CATEGORIES: readonly TicketCategory[] = ['booking', 'payment', 'withdrawal', 'kyc', 'technical', 'affiliate', 'vendor', 'general'];
 
 function buildPrompt(subject: string, body: string): string {
   return `Classify this support ticket into exactly ONE category.
@@ -26,7 +26,9 @@ Reply with only the category word, nothing else.
 Categories:
 - booking     : bookings, orders, time slots, QR codes, cancellations
 - payment     : paying, cards, checkout failures, refunds
-- withdrawal  : withdrawing money, payouts, bank details, wallet balance
+- withdrawal  : withdrawing money, payouts, bank details, wallet balance/top-up
+- kyc         : identity verification, ID/passport documents, verification rejected or stuck
+- technical   : app or website errors, bugs, crashes, pages not loading
 - affiliate   : affiliate links, commission, referrals, sharing
 - vendor      : vendors, shops, listings, becoming a vendor
 - general     : anything else

@@ -143,6 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // The explicit getUser() above owns the initial load. Supabase also
+      // emits INITIAL_SESSION when this listener subscribes; handling it here
+      // would issue a duplicate /api/auth/me request on every app boot.
+      if (_event === "INITIAL_SESSION") return;
       if (!session?.user) {
         setCurrentUser(null);
         setCapabilities(GUEST_CAPABILITIES);

@@ -14,7 +14,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
   const pdfBuffer = await generateReceiptPdf(payload);
 
   const orderRef = payload.orderId.slice(-8).toUpperCase();
-  const subject = `Your MyWisata Order Receipt – ${orderRef}`;
+  const subject = `Your MyLawatan Order Receipt – ${orderRef}`;
 
   const html = `
 <!DOCTYPE html>
@@ -46,7 +46,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     </tr>
   </table>
   <p style="color:#777;font-size:13px">Order ID: ${payload.orderId}</p>
-  <p style="color:#777;font-size:13px">Questions? Email us at mywisatamalaysia@gmail.com</p>
+  <p style="color:#777;font-size:13px">Questions? Email us at support@mylawatan.my</p>
   <p>See you in Malaysia! 🌴</p>
 </body>
 </html>`;

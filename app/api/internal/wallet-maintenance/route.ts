@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { clearMaturedRecommendationRewards } from '@/lib/recommendations/reward-clearing';
+import { runVendorSettlementMaintenance } from '@/lib/vendor/settlement';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
 function currentMalaysiaMonthStart(now = new Date()) {
@@ -31,12 +32,20 @@ export async function POST(request: Request) {
     return apiFail('REWARD_CLEARANCE_FAILED', 'Unable to clear matured rewards', 500);
   }
 
+  let vendorSettlements: unknown;
+  try {
+    vendorSettlements = await runVendorSettlementMaintenance(service);
+  } catch (error) {
+    console.error('[wallet-maintenance] vendor settlement maintenance failed', error);
+    return apiFail('SETTLEMENT_MAINTENANCE_FAILED', 'Unable to run vendor settlement maintenance', 500);
+  }
+
   const periodStart = currentMalaysiaMonthStart(now);
   const { data: report, error: reportError } = await service.rpc('generate_monthly_payout_report', {
     p_period_start: periodStart, p_generated_by: 'scheduler',
   });
   if (reportError) return apiFail('REPORT_GENERATION_FAILED', 'Unable to generate the monthly payout report', 500);
-  return apiOk({ periodStart, escalated: Number(escalated ?? 0), rewardsCleared, report });
+  return apiOk({ periodStart, escalated: Number(escalated ?? 0), rewardsCleared, vendorSettlements, report });
 }
 
 export { currentMalaysiaMonthStart };

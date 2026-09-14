@@ -1,0 +1,107 @@
+{
+  "vendor": {
+    "id": "1b3a8768-f6a3-8ca3-89fe-fb0f14389baf",
+    "name": "Baba House",
+    "source_page": "https://www.babahouse.com.my/index.html",
+    "price_reference_page": "https://book.grabrooms.com/baba-house-melaka/select_package?checkin_date=2026-09-05&checkout_date=2026-09-06&num_adults=1&num_children=0"
+  },
+  "outlets": [
+    {
+      "id": "2e229147-c689-87d0-0b56-4146a8e1c9e2",
+      "name": "Baba House"
+    }
+  ],
+  "archive_legacy_slugs": ["accom-baba-house-deluxe"],
+  "products": [
+    {
+      "slug": "baba-house-deluxe-twin-bilek-hibiscus",
+      "name": "Deluxe Twin (Bilek Hibiscus)",
+      "description": "Baba House's official Deluxe Twin room, listed as Bilek Hibiscus with a 16–19 sqm room size.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 364.4,
+      "source_type": "official",
+      "source_page": "https://www.babahouse.com.my/rooms_hibiscus.html",
+      "source_image_url": "https://www.babahouse.com.my/images/rooms/superior/superior-room02b.jpg",
+      "price_reference_page": "https://book.grabrooms.com/baba-house-melaka/select_package?checkin_date=2026-09-05&checkout_date=2026-09-06&num_adults=1&num_children=0",
+      "observed_at": "2026-09-05",
+      "asset_path": "/assets/customer/products/baba-house-bilek-hibiscus.jpg",
+      "sha256": "1291b752cf0152efe093cf2e9be4c1df8e5dac891f0edd2ec0a5ba9febc47d32",
+      "artist": "Baba House Melaka",
+      "license": "Official vendor media; source attribution recorded",
+      "tags": ["melaka", "accommodation", "room"]
+    },
+    {
+      "slug": "baba-house-deluxe-plus-king-bilek-ruellia",
+      "name": "Deluxe Plus King (Bilek Ruellia King)",
+      "description": "Baba House's official Deluxe Plus King room, listed as Bilek Ruellia King with a 20–24 sqm room size.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 466.4,
+      "source_type": "official",
+      "source_page": "https://www.babahouse.com.my/rooms_Ruellia.html",
+      "source_image_url": "https://www.babahouse.com.my/images/rooms/Bilek-Ruellia/Bilek-Ruellia01.jpg",
+      "price_reference_page": "https://book.grabrooms.com/baba-house-melaka/select_package?checkin_date=2026-09-05&checkout_date=2026-09-06&num_adults=1&num_children=0",
+      "observed_at": "2026-09-05",
+      "asset_path": "/assets/customer/products/baba-house-bilek-ruellia.jpg",
+      "sha256": "686af3ad33d0d21dfc557096c54fdf4fd8a6f2b5361c1b78e158e0297128962d",
+      "artist": "Baba House Melaka",
+      "license": "Official vendor media; source attribution recorded",
+      "tags": ["melaka", "accommodation", "room"]
+    },
+    {
+      "slug": "baba-house-peranakan-high-tea-set",
+      "name": "Peranakan High Tea Set",
+      "description": "Peranakan High Tea set for two with savoury Nyonya bites, traditional kuih, Roti Jala with Banana Pengat and a beverage.",
+      "product_type": "food",
+      "requires_booking": true,
+      "base_price": 68,
+      "source_type": "official",
+      "source_page": "https://www.babahouse.com.my/offer-Peranakan-High-Tea.html",
+      "source_image_url": "https://babahouse.com.my/offers/Peranakan-High-Tea001.jpg",
+      "price_reference_page": "https://www.babahouse.com.my/offer-Peranakan-High-Tea.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/baba-house-peranakan-high-tea.jpg",
+      "sha256": "2dc18f9c77beb23591e27241d0e22affd77ff557cccbb9a59d0f7fbd40d115b2",
+      "artist": "Baba House Melaka",
+      "license": "Official vendor media; source attribution recorded",
+      "tags": ["melaka", "food", "nyonya"]
+    },
+    {
+      "slug": "baba-house-nyonya-laksa-iced-barley-set",
+      "name": "Nyonya Laksa Lemak with Iced Barley Set",
+      "description": "Baba House's official Nyonya Laksa Lemak with Iced Barley promotional set.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 28,
+      "source_type": "official",
+      "source_page": "https://babahouse.com.my/offers.html",
+      "source_image_url": "https://babahouse.com.my/offers/Nyonya-Laksa-Promo-2.jpg",
+      "price_reference_page": "https://babahouse.com.my/offers.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/baba-house-nyonya-laksa-promo.jpg",
+      "sha256": "e863513fefd315262f76ffb287595cbd6f8132e08adae5245d6874a1e63b4b68",
+      "artist": "Baba House Melaka",
+      "license": "Official vendor media; source attribution recorded",
+      "tags": ["melaka", "food", "nyonya"]
+    },
+    {
+      "slug": "baba-house-work-from-heritage-day-pass",
+      "name": "Work From Heritage Day Pass",
+      "description": "Baba House's official eight-hour heritage workday package with a room, lunch, Wi-Fi and heritage-house access; valid during the published offer period.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 180,
+      "source_type": "official",
+      "source_page": "https://babahouse.com.my/offer-Work-From-Heritage.html",
+      "source_image_url": "https://babahouse.com.my/offers/work-from-heritage001.jpg",
+      "price_reference_page": "https://babahouse.com.my/offer-Work-From-Heritage.html",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/baba-house-work-from-heritage.jpg",
+      "sha256": "c09792f16211c9ea803f274dc33451703e1c37acbf77318485f7fac01c55f8a0",
+      "artist": "Baba House Melaka",
+      "license": "Official vendor media; source attribution recorded",
+      "tags": ["melaka", "heritage", "day-pass"]
+    }
+  ]
+}

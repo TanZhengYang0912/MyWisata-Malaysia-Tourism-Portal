@@ -8,6 +8,13 @@ const pageSource = readFileSync(
 );
 
 describe("customer booking details", () => {
+  it("uses the shared customer page frame and title alignment", () => {
+    expect(pageSource).toContain('from "@/components/customer/customer-page-shell"');
+    expect(pageSource).toContain("CustomerPageShell");
+    expect(pageSource).toContain("CustomerPageTitle");
+    expect(pageSource).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
+  });
+
   it("shows the full receipt only when the order contains another booking at a different time", () => {
     expect(pageSource).toContain("getBookingForUser");
     expect(pageSource).toContain("getBookingsForOrder");

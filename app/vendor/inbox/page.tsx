@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound } from 'lucide-react';
+import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
+import { formatMYR } from '@/lib/i18n/format';
 import { useAuth } from '@/hooks/use-auth';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ChatThreadPanel } from '@/components/customer/chat-thread-panel';
@@ -22,7 +23,7 @@ interface Thread {
   outlets?: { id?: string; name?: string; city?: string; state?: string };
   chat_messages?: RawMessage[];
 }
-interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null; context_product_id?: string | null }
+interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null; context_product_id?: string | null; context_snapshot?: ChatMessage['context'] | null }
 
 const STATUS_CHIP_STYLES: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-500',
@@ -50,6 +51,7 @@ function toChatMessages(thread: Thread): ChatMessage[] {
       attachmentUrl: m.attachment_url ?? undefined,
       replyToId: m.reply_to_message_id ?? undefined,
       contextProductId: m.context_product_id ?? undefined,
+      context: m.context_snapshot ?? undefined,
     }));
 }
 
@@ -104,6 +106,16 @@ export default function VendorInboxPage() {
     const timer = window.setInterval(() => void loadThreads(false), 3000);
     return () => window.clearInterval(timer);
   }, [loadThreads]);
+
+  // Deep-link from a "New message" notification (/vendor/inbox?thread=<id>).
+  // One-shot: only before the user has opened a thread themselves.
+  useEffect(() => {
+    if (active || typeof window === 'undefined') return;
+    const threadId = new URLSearchParams(window.location.search).get('thread');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (threadId) setActive(threadId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -194,7 +206,7 @@ export default function VendorInboxPage() {
             return {
               ...thread,
               last_message_at: row.created_at,
-              chat_messages: [...(thread.chat_messages ?? []), { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id }],
+              chat_messages: [...(thread.chat_messages ?? []), { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id, context_snapshot: row.context_snapshot }],
             };
           }));
         },
@@ -276,17 +288,40 @@ export default function VendorInboxPage() {
       .sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? ''));
   }, [threads, unreadByThread, filter, query]);
 
-  async function sendReply(text: string, replyToId?: string): Promise<ChatMessage> {
+  async function sendReply(text: string, replyToId?: string, contextOrderId?: string): Promise<ChatMessage> {
     if (!active || !user?.activeVendorId) throw new Error(t('ui.inbox.noConversationSelected'));
     const response = await fetch(`/api/vendors/${user.activeVendorId}/inbox`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ threadId: active, body: text, replyToId }),
+      body: JSON.stringify({ threadId: active, body: text, replyToId, contextOrderId }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error?.message || t('ui.inbox.sendFailed'));
     const row: RawMessage = payload.data;
-    return { id: row.id, threadId: active, senderId: row.sender_id, senderRole: 'vendor', text: row.body, sentAt: row.created_at, replyToId: row.reply_to_message_id ?? undefined };
+    return { id: row.id, threadId: active, senderId: row.sender_id, senderRole: 'vendor', text: row.body, sentAt: row.created_at, replyToId: row.reply_to_message_id ?? undefined, context: row.context_snapshot ?? undefined };
+  }
+
+  const [orderPicker, setOrderPicker] = useState<{ open: boolean; loading: boolean; orders: { id: string; displayId: string | null; status: string; totalAmount: number; items: string[] }[] }>({ open: false, loading: false, orders: [] });
+
+  async function openOrderPicker() {
+    if (!selected || !user?.activeVendorId) return;
+    setOrderPicker({ open: true, loading: true, orders: [] });
+    try {
+      const res = await fetch(`/api/vendors/${user.activeVendorId}/inbox/orders?customerId=${selected.customer_id}`);
+      const body = await res.json().catch(() => ({}));
+      setOrderPicker({ open: true, loading: false, orders: res.ok ? (body.data ?? []) : [] });
+    } catch {
+      setOrderPicker({ open: true, loading: false, orders: [] });
+    }
+  }
+
+  async function attachOrder(orderId: string) {
+    setOrderPicker((p) => ({ ...p, open: false }));
+    try {
+      appendMessage(await sendReply('', undefined, orderId));
+    } catch {
+      handleSendError();
+    }
   }
 
   function appendMessage(message: ChatMessage) {
@@ -418,6 +453,7 @@ export default function VendorInboxPage() {
               }}
               onSend={(text, replyToId) => sendReply(text, replyToId).catch((error) => { handleSendError(); throw error; })}
               onMessageSent={appendMessage}
+              onAttachOrder={openOrderPicker}
               readByOthers={readByOthersIds}
               deliveredByOthers={deliveredByOthersIds}
               aiReply={{ draft: aiReplyDraft, busy: aiReplyBusy, error: aiReplyError, onGenerate: () => void generateAiReply(), onDiscard: () => setAiReplyDraft(null) }}
@@ -427,6 +463,34 @@ export default function VendorInboxPage() {
           )}
         </div>
       </div>
+
+      {orderPicker.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setOrderPicker((p) => ({ ...p, open: false }))}>
+          <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-foreground">{t('ui.inbox.attachOrder.title')}</h2>
+              <button type="button" onClick={() => setOrderPicker((p) => ({ ...p, open: false }))} aria-label={t('ui.inbox.attachOrder.close')} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+            </div>
+            {orderPicker.loading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t('ui.inbox.attachOrder.loading')}</p>
+            ) : orderPicker.orders.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t('ui.inbox.attachOrder.empty')}</p>
+            ) : (
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {orderPicker.orders.map((order) => (
+                  <button key={order.id} type="button" onClick={() => void attachOrder(order.id)} className="flex w-full items-start justify-between gap-3 rounded-xl border border-border p-3 text-left transition hover:bg-secondary">
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold text-foreground">{order.displayId ?? order.id.slice(0, 8)}</span>
+                      <span className="block truncate text-[0.6875rem] text-muted-foreground">{t('ui.inbox.attachOrder.itemCount', { count: order.items.length })} · {order.status}</span>
+                    </span>
+                    <span className="shrink-0 font-[family-name:var(--font-mono)] text-xs font-bold text-foreground">{formatMYR(order.totalAmount)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

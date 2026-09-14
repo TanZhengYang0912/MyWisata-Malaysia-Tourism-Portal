@@ -14,4 +14,14 @@ describe("cart provider catalogue error handling", () => {
     expect(initialLoad).toMatch(/getActivities\(\)[\s\S]+\.catch\(/);
     expect(initialLoad).toContain("setActivities([])");
   });
+
+  it("handles a failed authenticated cart load without an unhandled rejection", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/providers/cart.tsx"), "utf8");
+    const cartLoadStart = source.indexOf("if (currentUser)");
+    const cartLoad = source.slice(cartLoadStart, source.indexOf("else { setItems([]);", cartLoadStart));
+
+    expect(cartLoad).toMatch(/commerce\.getCart\(currentUser\.id\)[\s\S]+\.catch\(/);
+    expect(cartLoad).toContain("setItems([])");
+    expect(cartLoad).toContain("setMounted(true)");
+  });
 });

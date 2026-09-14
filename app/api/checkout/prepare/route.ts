@@ -413,7 +413,7 @@ export async function POST(request: Request) {
         price_data: {
           currency: 'myr',
           unit_amount: externalAmountSen,
-          product_data: { name: `MyWisata order ${String(prepared.order_id).slice(0, 8)}` },
+          product_data: { name: `MyLawatan order ${String(prepared.order_id).slice(0, 8)}` },
         },
         quantity: 1,
       }],

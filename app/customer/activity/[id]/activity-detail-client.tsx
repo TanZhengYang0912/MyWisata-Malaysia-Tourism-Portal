@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CheckCircle, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock3, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import { unitPrice } from "@/backend/core/helpers";
@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
+import { ActivityCard } from "@/components/customer/activity-card";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
 import type { OutletChoice } from "@/backend/domains/catalogue";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -21,30 +22,37 @@ import { outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
+import { formatMYR } from "@/lib/i18n/format";
 import { getDetailBody } from "./bodies";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import { useSupportChat } from "@/components/providers/support-chat";
+import { ProductChatButton } from "@/components/customer/product-chat-button";
+import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 
 export function ActivityDetailClient({
   initialActivity,
   initialSlots,
   initialReviews,
   outletChoices = [],
+  relatedProducts = [],
+  relatedScope = "outlet",
 }: {
   initialActivity: ComputedActivity | null;
   initialSlots: BookingSlot[];
   initialReviews: ProductReview[];
   /** Empty for a single-outlet product; otherwise every outlet selling it. */
   outletChoices?: OutletChoice[];
+  relatedProducts?: ComputedActivity[];
+  /** "vendor" when the visitor arrived from a vendor page; "outlet" otherwise. */
+  relatedScope?: "vendor" | "outlet";
 }) {
   const { t } = useTranslation("customer");
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
-  const { selectChat } = useSupportChat();
   const { addItem } = useCart();
+  const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
   const vendorDiscovery = searchParams.get("source") === "vendor";
   const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
   const outletSelectionRequired = shouldRequireOutletSelection(searchParams.get("source"), effectiveOutletCount);
@@ -95,6 +103,9 @@ export function ActivityDetailClient({
       state: activity.outlet.state,
       price: activity.price,
       open: activity.outlet.open,
+      currentlyOpen: activity.outlet.currentlyOpen,
+      hours: activity.outlet.hours,
+      operatingHours: activity.outlet.operatingHours,
       verified: activity.outlet.verified,
       vendorId: activity.outlet.vendorId,
       vendorName: activity.outlet.vendorName,
@@ -127,7 +138,6 @@ export function ActivityDetailClient({
   // What varies by category lives in the body; everything around it is shared.
   const body = getDetailBody(activity?.categorySlug);
   const namesOutlet = activity ? !placeBound : true;
-  const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
 
   if (activity === null) {
     return <EmptyState title={t("ui.activity.notFound")} description={t("ui.activity.removed")} />;
@@ -163,23 +173,6 @@ export function ActivityDetailClient({
     }
   }
 
-  async function handleChat() {
-    if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
-    const response = await fetch("/api/customer/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ outletId: selectedOutlet!.outletId }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.data?.id) return;
-    const messageResponse = await fetch(`/api/customer/chat/${payload.data.id}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: `Re: ${activity!.name}`, contextProductId: activity!.id }),
-    });
-    if (!messageResponse.ok) return;
-    selectChat({ kind: "vendor", threadId: payload.data.id });
-  }
 
   return (
     // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
@@ -254,11 +247,12 @@ export function ActivityDetailClient({
                     <span className="font-bold text-foreground">{selectedOutlet!.rating}</span>
                     <span className="text-muted-foreground">{t("strictMigration.activityDetail.reviewCount", { count: selectedOutlet!.reviews })}</span>
                   </div>
-                  <div className="flex items-center gap-1.5" style={{ color: selectedOutlet!.open ? "var(--nature-green-ink)" : "#64748b" }}>
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedOutlet!.open ? "var(--nature-green)" : "#94a3b8" }} />
-                    {selectedOutlet!.open ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
-                  </div>
-                </>}
+                   <div className="flex items-center gap-1.5" style={{ color: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green-ink)" : "#64748b" }}>
+                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green)" : "#94a3b8" }} />
+                     {(selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
+                   </div>
+                   {selectedOutlet!.operatingHours ? <OperatingHoursSummary hours={selectedOutlet!.operatingHours} currentlyOpen={selectedOutlet!.currentlyOpen ?? selectedOutlet!.open} compact /> : selectedOutlet!.hours && <div className="flex items-center gap-1.5 text-muted-foreground"><Clock3 size={13} /> <span><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedOutlet!.hours}</span></div>}
+                 </>}
               </div>
         </div>
       </div>
@@ -421,17 +415,13 @@ export function ActivityDetailClient({
                 title={activity.name}
                 leading={
                   vendorBacked ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-12 w-12 rounded-full border-2"
-                      onClick={handleChat}
-                      title={t("ui.activityDetail.chatVendor")}
-                      aria-label={t("ui.activityDetail.chatVendor")}
+                    <ProductChatButton
+                      outletId={selectedOutlet!.outletId}
+                      product={{ id: activity.id, name: activity.name, priceLabel: formatMYR(activity.price), imageUrl: activity.image ?? null }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-border text-foreground transition hover:bg-secondary"
                     >
                       <MessageCircle size={18} />
-                    </Button>
+                    </ProductChatButton>
                   ) : undefined
                 }
               />
@@ -464,6 +454,44 @@ export function ActivityDetailClient({
         )}
       </aside>
       </div>
+
+      {relatedProducts.length > 0 && selectedOutlet && (
+        <section className="mt-10 border-t border-border pt-8" aria-labelledby="more-from-outlet-heading">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              {relatedScope === "vendor" ? (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>
+                  <h2 id="more-from-outlet-heading" className="mt-2 text-2xl font-black tracking-tight">{t("ui.activity.moreFromVendor")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.moreFromVendorSubtitle", { vendor: selectedOutlet.vendorName ?? t("ui.labels.localVendor") })}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromOutlet")}</p>
+                  <h2 id="more-from-outlet-heading" className="mt-2 text-2xl font-black tracking-tight">{t("ui.activity.moreFromOutlet")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.chooseOutletForMoreProducts", { outlet: selectedOutlet.outletName })}</p>
+                </>
+              )}
+            </div>
+            {relatedScope === "vendor" ? (
+              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
+            ) : (
+              <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
+            )}
+          </div>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {relatedProducts.map((product) => (
+              <ActivityCard
+                key={product.id}
+                activity={product}
+                outletId={selectedOutlet.outletId}
+                returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`}
+                source={relatedScope === "vendor" ? "vendor" : undefined}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
        {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-3">

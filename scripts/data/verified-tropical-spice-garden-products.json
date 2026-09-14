@@ -1,0 +1,105 @@
+{
+  "vendor": {
+    "id": "4086a714-550e-5166-416c-e99557f64c3b",
+    "name": "Tropical Spice Garden",
+    "source_page": "https://tropicalspicegarden.com/shop",
+    "price_reference_page": "https://tropicalspicegarden.com/shop"
+  },
+  "outlets": [
+    {
+      "id": "383420f3-91cc-3e41-eec7-6ae63c163509",
+      "name": "Tropical Spice Garden"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "spice-garden-entry",
+    "spice-garden-guided-spice-tour"
+  ],
+  "products": [
+    {
+      "slug": "tropical-spice-garden-iran-saffron-1g",
+      "name": "Iran Saffron 1 gm",
+      "description": "Iran saffron sold through Tropical Spice Garden's official Garden Shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 60,
+      "source_type": "official",
+      "source_page": "https://tropicalspicegarden.com/shop",
+      "source_image_url": "https://images.squarespace-cdn.com/content/v1/6075b5ceb189503bf78fc262/71cd7052-1721-46f2-9bb3-e3573335a6d9/saffron.jpeg",
+      "price_reference_page": "https://tropicalspicegarden.com/shop",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tropical-spice-garden-iran-saffron-1g-real.jpg",
+      "sha256": "3dc4d1884b6ebf3b8d76d390bd6fde97025697344dfa6fe4e4a18dba853b0964",
+      "artist": "Tropical Spice Garden official Garden Shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tropical-spice-garden-natural-honey",
+      "name": "Natural Honey",
+      "description": "Natural honey sold through Tropical Spice Garden's official Garden Shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 49,
+      "source_type": "official",
+      "source_page": "https://tropicalspicegarden.com/shop",
+      "source_image_url": "https://images.squarespace-cdn.com/content/v1/6075b5ceb189503bf78fc262/8e38d336-0764-4fe7-80b2-351aa4472533/honey.jpeg",
+      "price_reference_page": "https://tropicalspicegarden.com/shop",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tropical-spice-garden-natural-honey-real.jpg",
+      "sha256": "9765db0676c3289c735579d0d8c611e56ea41ae87a469c51574d631a94a1186a",
+      "artist": "Tropical Spice Garden official Garden Shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tropical-spice-garden-nutmeg-syrup",
+      "name": "Nutmeg Syrup",
+      "description": "Nutmeg syrup sold through Tropical Spice Garden's official Garden Shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://tropicalspicegarden.com/shop",
+      "source_image_url": "https://images.squarespace-cdn.com/content/v1/6075b5ceb189503bf78fc262/8fd3e017-4cef-4d4c-92d8-36d286db1edb/nutmeg+syrup.jpeg",
+      "price_reference_page": "https://tropicalspicegarden.com/shop",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tropical-spice-garden-nutmeg-syrup-real.jpg",
+      "sha256": "1449943ad4d9fc35d65cfebdb7c6f66f577a87528d6658bcf70ab7c4eac8a2d2",
+      "artist": "Tropical Spice Garden official Garden Shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tropical-spice-garden-organic-brown-rice",
+      "name": "Organic Brown Rice",
+      "description": "Organic brown rice sold through Tropical Spice Garden's official Garden Shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 28,
+      "source_type": "official",
+      "source_page": "https://tropicalspicegarden.com/shop",
+      "source_image_url": "https://images.squarespace-cdn.com/content/v1/6075b5ceb189503bf78fc262/de3aefdc-335f-4712-8b60-4a511f0657a8/organic.jpeg",
+      "price_reference_page": "https://tropicalspicegarden.com/shop",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tropical-spice-garden-organic-brown-rice-real.jpg",
+      "sha256": "99f37c2316e21efb275008b47f603c9d1a58a08be7e0c947b6ce0117081fe082",
+      "artist": "Tropical Spice Garden official Garden Shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tropical-spice-garden-helichrysum-essential-oil",
+      "name": "Omalaya Botanicals Essential Oil — Helichrysum",
+      "description": "Helichrysum essential oil sold through Tropical Spice Garden's official Garden Shop.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 180,
+      "source_type": "official",
+      "source_page": "https://tropicalspicegarden.com/shop",
+      "source_image_url": "https://images.squarespace-cdn.com/content/v1/6075b5ceb189503bf78fc262/1672025798751-YQT023VLCYJ3G2TMTTJ2/TIM05920.jpg",
+      "price_reference_page": "https://tropicalspicegarden.com/shop",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tropical-spice-garden-helichrysum-essential-oil-real.jpg",
+      "sha256": "4dc7cf60724e90f3371e05ae82dc91045236132af704354f92125d21c92b2905",
+      "artist": "Tropical Spice Garden official Garden Shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

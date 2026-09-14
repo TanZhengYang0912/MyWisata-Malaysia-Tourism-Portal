@@ -22,6 +22,14 @@ describe("classifyTicket", () => {
     expect(classifyTicket("My affiliate link commission didn't show up after a referral")).toBe("affiliate");
   });
 
+  it("classifies a KYC question", () => {
+    expect(classifyTicket("My KYC verification keeps failing, can you verify my identity manually?")).toBe("kyc");
+  });
+
+  it("classifies a technical question", () => {
+    expect(classifyTicket("The app keeps showing an error and the page is frozen after I tap crash report")).toBe("technical");
+  });
+
   it("falls back to general for an unrelated question", () => {
     expect(classifyTicket("Is the tour wheelchair accessible?")).toBe("general");
   });
@@ -36,7 +44,7 @@ describe("classifyTicket", () => {
   // removed from) the classifier's real output set without updating that
   // exported array, this test catches the drift before the dropdown does.
   it("TICKET_CATEGORIES covers every value classifyTicket() can return", () => {
-    const sample = ["withdraw", "book", "pay", "vendor", "affiliate", "unrelated gibberish"];
+    const sample = ["withdraw", "book", "pay", "vendor", "affiliate", "kyc", "crash", "unrelated gibberish"];
     for (const text of sample) {
       expect(TICKET_CATEGORIES).toContain(classifyTicket(text));
     }

@@ -32,17 +32,24 @@ const PRODUCT_ROW = {
 };
 
 /** Minimal PostgREST stub: records which tables were queried, replays canned rows. */
-function makeDb(tables: Record<string, unknown[]>, seen: string[]) {
+function makeDb(tables: Record<string, unknown[]>, seen: string[], metricBatches: string[][] = []) {
   return {
     from(table: string) {
       seen.push(table);
       const rows = tables[table] ?? [];
+      let selectedRows = rows;
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
-        in: () => builder,
+        in: (_column: string, values: string[]) => {
+          if (table === "product_review_metrics") {
+            metricBatches.push(values);
+            selectedRows = rows.filter((row) => values.includes((row as { product_id: string }).product_id));
+          }
+          return builder;
+        },
         then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
-          resolve({ data: rows, error: null }),
+          resolve({ data: selectedRows, error: null }),
       };
       return builder;
     },
@@ -99,6 +106,21 @@ describe("getActivities review metrics", () => {
 
     expect(activities[0].rating).toBe(4.6);
     expect(activities[0].reviews).toBe(107);
+  });
+
+  it("bounds metric lookup IDs so large catalogues do not create oversized URLs", async () => {
+    const products = Array.from({ length: 201 }, (_, index) => ({
+      ...PRODUCT_ROW,
+      id: `p${index + 1}`,
+    }));
+    const metricBatches: string[][] = [];
+    const db = makeDb({ products, product_review_metrics: [] }, [], metricBatches);
+
+    await getActivities(db);
+
+    expect(metricBatches).toHaveLength(3);
+    expect(metricBatches.map((batch) => batch.length)).toEqual([100, 100, 1]);
+    expect(metricBatches.flat()).toEqual(products.map((product) => product.id));
   });
 });
 

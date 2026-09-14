@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightLeft, Bell, ChevronDown, Globe, ShoppingCart, Store, Tag } from "lucide-react";
+import { ArrowRightLeft, Bell, ChevronDown, ShoppingCart, Store, Tag } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -24,7 +25,7 @@ import { TripProvider } from "@/components/providers/trip";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
 import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, PARTNER_MENU_ITEMS, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
-import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { LOGO_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
@@ -199,26 +200,29 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-8 h-16">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
-              <Globe size={18} strokeWidth={2.2} />
-            </div>
-            <span className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight text-foreground">{BRAND_NAME}</span>
+              <Image
+                src="/branding/mywisata-logo-transparent.png?v=2"
+                alt={LOGO_BRAND_NAME}
+                width={758}
+                height={306}
+                priority
+                className="block h-auto w-[118px]"
+              />
           </Link>
 
           <div className="hidden flex-1 items-center gap-5 md:flex xl:gap-6">
-            {CUSTOMER_NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
-                aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
-                style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
-              >
-                <span>{tCustomer(item.labelKey)}</span>
-              </Link>
-            ))}
+              {CUSTOMER_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
+                  aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
+                  style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
+                >
+                  <span>{tCustomer(item.labelKey)}</span>
+                </Link>
+              ))}
           </div>
-
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <LanguageSwitcher compact className="hidden md:flex w-28" />
             <CurrencySwitcher compact className="w-20 md:w-24" />
@@ -293,26 +297,26 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
 
           <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
-            <button
-              type="button"
-              onClick={() => setAccountMenuOpen((open) => !open)}
-              aria-expanded={accountMenuOpen}
-              aria-haspopup="menu"
-              aria-label={currentUser
-                ? tCommon("account.openMenuFor", { name: customerDisplayName })
-                : tCommon("account.guestMenu")}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 p-1 pr-2 transition hover:border-primary/30 hover:bg-secondary"
-            >
-              <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
-                {currentUser?.avatarInitial ?? "G"}
-                {unreadTickets > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
-                )}
-              </span>
-              <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
-            </button>
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-expanded={accountMenuOpen}
+                aria-haspopup="menu"
+                aria-label={currentUser
+                  ? tCommon("account.openMenuFor", { name: customerDisplayName })
+                  : tCommon("account.guestMenu")}
+                className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 p-1 pr-2 transition hover:border-primary/30 hover:bg-secondary"
+              >
+                <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
+                  {currentUser?.avatarInitial ?? "G"}
+                  {unreadTickets > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
+                  )}
+                </span>
+                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
+              </button>
 
-            {accountMenuOpen && (
+              {accountMenuOpen && (
               // max-height derived from the real, known layout numbers, not a
               // guessed px: the nav row is h-16 (4rem) and this menu opens
               // top-[calc(100%+0.75rem)] below it, so 4.75rem is exactly how
@@ -322,68 +326,68 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               // exceeds that height; overflow-x-hidden keeps the rounded
               // corners clean now that overflow-hidden (which clipped both
               // axes but allowed no scrolling at all) is gone.
-              <div
-                role="menu"
-                aria-label={tCommon("account.menu")}
+                <div
+                  role="menu"
+                  aria-label={tCommon("account.menu")}
                 className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
                 style={{ maxHeight: "calc(100vh - 5.75rem)" }}
-              >
-                <div className="border-b border-border px-3 pb-3 pt-2">
-                  <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser?.email ?? tCommon("account.guestMenu")}</p>
-                </div>
-                <div className="pt-2">
-                  {ACCOUNT_MENU_GROUPS.map((group) => (
-                    <div key={group.labelKey} className="not-first:mt-2">
-                      <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(group.labelKey)}</p>
-                      {group.items.map((item) => {
-                        const active = isCustomerNavActive(pathname, item.href);
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            role="menuitem"
-                            aria-current={active ? "page" : undefined}
-                            aria-label={item.href === "/customer/vouchers" ? tCustomer("accountItems.vouchers.label") : undefined}
-                            onClick={() => setAccountMenuOpen(false)}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary ${active ? "bg-secondary" : ""}`}
-                          >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
-                              <item.icon size={16} />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
-                                <span className="flex items-center gap-2 truncate">
-                                  {tCustomer(`${item.labelKey}.label`)}
-                                  {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
-                                </span>
-                                {item.href === "/customer/saved" && savedCount > 0 && (
-                                  <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-bold text-primary">
-                                    {savedCount > 99 ? "99+" : savedCount}
-                                  </span>
-                                )}
+                >
+                  <div className="border-b border-border px-3 pb-3 pt-2">
+                    <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{currentUser?.email ?? tCommon("account.guestMenu")}</p>
+                  </div>
+                  <div className="pt-2">
+                    {ACCOUNT_MENU_GROUPS.map((group) => (
+                      <div key={group.labelKey} className="not-first:mt-2">
+                        <p className="px-3 pb-1 pt-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{tCustomer(group.labelKey)}</p>
+                        {group.items.map((item) => {
+                          const active = isCustomerNavActive(pathname, item.href);
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              role="menuitem"
+                              aria-current={active ? "page" : undefined}
+                              aria-label={item.href === "/customer/vouchers" ? tCustomer("accountItems.vouchers.label") : undefined}
+                              onClick={() => setAccountMenuOpen(false)}
+                              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-secondary ${active ? "bg-secondary" : ""}`}
+                            >
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary">
+                                <item.icon size={16} />
                               </span>
-                              <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
-                            </span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ))}
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                                  <span className="flex items-center gap-2 truncate">
+                                    {tCustomer(`${item.labelKey}.label`)}
+                                    {item.href === "/customer/support" && unreadTickets > 0 && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                                  </span>
+                                  {item.href === "/customer/saved" && savedCount > 0 && (
+                                    <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-bold text-primary">
+                                      {savedCount > 99 ? "99+" : savedCount}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 border-t border-border pt-2">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void switchAccount()}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
+                    >
+                      <ArrowRightLeft size={16} />
+                      {currentUser ? tCommon("account.switchAccount") : tCommon("account.signIn")}
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 border-t border-border pt-2">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void switchAccount()}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition hover:bg-secondary hover:text-primary"
-                  >
-                    <ArrowRightLeft size={16} />
-                    {currentUser ? tCommon("account.switchAccount") : tCommon("account.signIn")}
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
 

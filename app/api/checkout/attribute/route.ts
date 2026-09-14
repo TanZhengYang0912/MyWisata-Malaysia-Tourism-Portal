@@ -24,6 +24,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { attributeCheckoutSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
 import { attributeRecommendationReward } from '@/lib/recommendations/reward-attribution';
+import { settleOrderVendorEarnings } from '@/lib/vendor/settlement';
 import { enqueueUserTransactionEmail } from '@/lib/email/events';
 import { formatMYR } from '@/lib/i18n/format';
 
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
   }
 
   await onOrderPaid(orderId); // idempotent (UNIQUE(order_id)); never throws
+  await settleOrderVendorEarnings(service, orderId); // idempotent (order_settlements unique key); never throws
   try {
     const reward = await attributeRecommendationReward(service, orderId);
     if (reward.kind === 'created') {

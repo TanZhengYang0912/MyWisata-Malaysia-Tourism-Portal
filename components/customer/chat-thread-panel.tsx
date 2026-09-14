@@ -3,9 +3,10 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, Languages, MessageCircle, Mic, MicOff, Paperclip, Reply, Send, Tag, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, Languages, MessageCircle, Mic, MicOff, Paperclip, Receipt, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
+import type { PendingChatContext } from "@/components/providers/support-chat";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 
@@ -44,9 +45,16 @@ interface ChatThreadPanelProps {
   currentUserId: string;
   /** Who the viewer is talking to — a vendor/outlet for a customer, a traveller for a vendor. */
   counterpart: { name: string; subtitle?: string; badge?: string; online?: boolean };
-  /** Persists the message (RLS insert for customers, service-role API for vendors). */
-  onSend?: (text: string, replyToId?: string) => Promise<ChatMessage>;
+  /** Persists the message (RLS insert for customers, service-role API for vendors). `contextProductId` is passed on the first message of a product enquiry. */
+  onSend?: (text: string, replyToId?: string, contextProductId?: string) => Promise<ChatMessage>;
   onMessageSent?: (message: ChatMessage) => void;
+  /** The product the customer opened this chat to ask about — shows a dismissible "you're inquiring about this" banner above the composer until the next message is sent. */
+  pendingContext?: PendingChatContext | null;
+  onDismissContext?: () => void;
+  /** Vendor inbox only — opens the "attach an order" picker (renders a Receipt button in the composer row). */
+  onAttachOrder?: () => void;
+  /** Shows a persistent "reported — under review" line under the header (reporter + admin only, never the reported party). */
+  underReview?: boolean;
   /** Present only where chat is its own route (customer); vendor's inbox is a single page, no back link. */
   backHref?: string;
   /** Ids of my messages the counterpart has already read — renders the blue ✓✓ receipt. */
@@ -68,6 +76,10 @@ export function ChatThreadPanel({
   counterpart,
   onSend,
   onMessageSent,
+  pendingContext,
+  onDismissContext,
+  onAttachOrder,
+  underReview,
   backHref,
   readByOthers,
   deliveredByOthers,
@@ -192,7 +204,7 @@ export function ChatThreadPanel({
     setSending(true);
     setError(null);
     try {
-      const message = await onSend(messageText, replyingTo?.id);
+      const message = await onSend(messageText, replyingTo?.id, pendingContext?.productId);
       setText("");
       setReplyingTo(null);
       onMessageSent?.(message);
@@ -364,6 +376,12 @@ export function ChatThreadPanel({
       </header>
       )}
 
+      {underReview && (
+        <p className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800 sm:px-7">
+          <Flag size={12} className="shrink-0" /> {t("ui.chat.underReview")}
+        </p>
+      )}
+
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7">
         {messages.length === 0 ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
@@ -425,14 +443,34 @@ export function ChatThreadPanel({
                         </a>
                       )
                     )}
-                    {message.contextProductId ? (
+                    {message.context ? (
+                      <Link
+                        href={message.context.href ?? "#"}
+                        className="flex max-w-[280px] items-center gap-2.5 rounded-xl border border-border bg-card p-2 transition-colors hover:bg-secondary"
+                      >
+                        {message.context.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- remote signed/CDN URL, not an optimizable static asset
+                          <img src={message.context.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+                        ) : (
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                            {message.context.type === "order" ? <Receipt size={16} /> : <Tag size={16} />}
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-semibold text-foreground">{message.context.title}</span>
+                          {message.context.subtitle && <span className="block truncate text-[0.6875rem] text-muted-foreground">{message.context.subtitle}</span>}
+                          <span className="mt-0.5 block text-[0.625rem] font-semibold text-primary">{t("ui.chat.contextCard.view")}</span>
+                        </span>
+                      </Link>
+                    ) : message.contextProductId && !message.text ? (
                       <Link
                         href={`/customer/activity/${message.contextProductId}`}
                         className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-secondary px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
                       >
-                        <Tag size={12} /> {message.text}
+                        <Tag size={12} /> {t("ui.chat.contextCard.view")}
                       </Link>
-                    ) : message.text && (
+                    ) : null}
+                    {message.text && (
                       <>
                         <div
                           className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
@@ -487,6 +525,26 @@ export function ChatThreadPanel({
         <div className="border-t border-border bg-background px-5 py-4 sm:px-7">
           {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
           {speech.error && <p className="mb-2 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+          {pendingContext && (
+            <div className="mx-auto mb-2 flex max-w-2xl items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2">
+              {pendingContext.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- remote URL, not an optimizable static asset
+                <img src={pendingContext.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground"><Tag size={15} /></span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.6875rem] font-semibold text-muted-foreground">{t("ui.chat.inquiryBanner.title")}</p>
+                <p className="truncate text-xs font-semibold text-foreground">{pendingContext.title}</p>
+                {pendingContext.subtitle && <p className="truncate text-[0.6875rem] text-muted-foreground">{pendingContext.subtitle}</p>}
+              </div>
+              {onDismissContext && (
+                <button type="button" onClick={onDismissContext} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.chat.inquiryBanner.dismiss")}>
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          )}
           {replyingTo && (
             <div className="mx-auto mb-2 flex max-w-2xl items-center justify-between gap-2 rounded-xl bg-secondary px-3 py-2 text-xs">
               <div className="min-w-0">
@@ -547,6 +605,17 @@ export function ChatThreadPanel({
             >
               <Paperclip size={16} />
             </button>
+            {onAttachOrder && (
+              <button
+                type="button"
+                onClick={onAttachOrder}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label={t("ui.chat.attachOrder")}
+                title={t("ui.chat.attachOrder")}
+              >
+                <Receipt size={16} />
+              </button>
+            )}
             <textarea
               id="chat-message"
               value={text}

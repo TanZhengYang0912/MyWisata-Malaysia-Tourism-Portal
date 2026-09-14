@@ -4,6 +4,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { buildChatAttachmentPath, validateChatAttachment } from '@/lib/chat/attachment';
 import { maskChatBody } from '@/lib/chat/moderation';
 import { accessibleChatThreadIds } from '@/lib/chat/authorization';
+import { notifyNewChatMessage } from '@/lib/chat/notify';
 
 interface Props {
   params: Promise<{ threadId: string }>;
@@ -14,7 +15,7 @@ async function requireParticipant(threadId: string) {
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) return { error: apiFail('UNAUTHORIZED', 'Sign in required', 401) };
 
-  const { data: thread, error } = await authClient.from('chat_threads').select('id,customer_id,outlet_id').eq('id', threadId).maybeSingle();
+  const { data: thread, error } = await authClient.from('chat_threads').select('id,customer_id,outlet_id,vendor_id').eq('id', threadId).maybeSingle();
   if (error) return { error: apiFail('DB_ERROR', error.message, 500) };
   if (!thread) return { error: apiFail('NOT_FOUND', 'Conversation not found', 404) };
   if (!(await accessibleChatThreadIds(authClient, user.id, [thread])).has(thread.id)) {
@@ -60,6 +61,15 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('DB_ERROR', insertError.message, 500);
   }
   await service.from('chat_threads').update({ last_message_at: message.created_at }).eq('id', threadId);
+  await notifyNewChatMessage(service, {
+    threadId,
+    senderId: access.user.id,
+    senderRole: access.user.id === access.thread.customer_id ? 'customer' : 'vendor',
+    customerId: access.thread.customer_id,
+    vendorId: (access.thread as { vendor_id?: string | null }).vendor_id ?? null,
+    outletId: access.thread.outlet_id,
+    preview: caption || null,
+  });
 
   const signed = await service.storage.from('chat-attachments').createSignedUrl(path, 300);
 

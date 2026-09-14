@@ -29,6 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { getMalaysiaDateTimeRangeDefaults } from '@/lib/datetime/date-input';
+import { useAppDialog } from '@/components/providers/app-dialog';
 
 interface Option { id: string; name: string }
 
@@ -44,6 +46,8 @@ interface Props {
   open: boolean;
   outlets: Option[];
   products: Option[];
+  isOutletManager?: boolean;
+  assignedOutletId?: string;
   drafts: VoucherCsvDraftRecord[];
   initialDraft?: VoucherCsvDraftRecord | null;
   onLoadDraft: (id: string) => Promise<VoucherCsvDraftRecord | null>;
@@ -59,7 +63,17 @@ const selectClass = `${inputClass} appearance-none pr-7`;
 export const VOUCHER_CSV_AUTOSAVE_DELAY_MS = 8000;
 
 function blankDocument(title: string): VoucherCsvDraftDocument {
-  return { title, rows: [emptyVoucherCsvDraft()], autoGenerate: true, codePrefix: 'TRAVEL' };
+  return { title, rows: [defaultVoucherCsvDraft()], autoGenerate: true, codePrefix: 'TRAVEL' };
+}
+
+function defaultVoucherCsvDraft(): VoucherCsvDraft {
+  const defaults = getMalaysiaDateTimeRangeDefaults();
+  return { ...emptyVoucherCsvDraft(), validFrom: defaults.from, validUntil: defaults.to };
+}
+
+function scopeDocument(document: VoucherCsvDraftDocument, isOutletManager: boolean, assignedOutletId?: string) {
+  if (!isOutletManager || !assignedOutletId) return document;
+  return { ...document, rows: document.rows.map((row) => ({ ...row, outletId: assignedOutletId })) };
 }
 
 function formatSavedAt(value: string | undefined, locale: AppLocale, translate: TFunction) {
@@ -72,6 +86,8 @@ export default function VoucherCsvBuilder({
   open,
   outlets,
   products,
+  isOutletManager = false,
+  assignedOutletId,
   drafts,
   initialDraft,
   onLoadDraft,
@@ -82,7 +98,8 @@ export default function VoucherCsvBuilder({
 }: Props) {
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const [document, setDocument] = useState<VoucherCsvDraftDocument>(() => initialDraft?.document || blankDocument(t('voucher.csv.untitledBatch')));
+  const assignedOutlet = outlets.find((outlet) => outlet.id === assignedOutletId);
+  const [document, setDocument] = useState<VoucherCsvDraftDocument>(() => scopeDocument(initialDraft?.document || blankDocument(t('voucher.csv.untitledBatch')), isOutletManager, assignedOutletId));
   const [draftId, setDraftId] = useState(initialDraft?.id);
   const [draftVersion, setDraftVersion] = useState(initialDraft?.draftVersion);
   const [savedAt, setSavedAt] = useState(initialDraft?.updatedAt);
@@ -91,6 +108,7 @@ export default function VoucherCsvBuilder({
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const { confirm } = useAppDialog();
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [rowErrors, setRowErrors] = useState<Record<number, string[]>>({});
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -102,10 +120,10 @@ export default function VoucherCsvBuilder({
   }, [document, summary.blankCodes]);
 
   const updateDocument = useCallback((update: (current: VoucherCsvDraftDocument) => VoucherCsvDraftDocument) => {
-    setDocument((current) => update(current));
+    setDocument((current) => scopeDocument(update(current), isOutletManager, assignedOutletId));
     setDirty(true);
     setMessage('');
-  }, []);
+  }, [assignedOutletId, isOutletManager]);
 
   function updateRow(index: number, field: keyof VoucherCsvDraft, value: string) {
     updateDocument((current) => ({ ...current, rows: current.rows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row) }));
@@ -113,7 +131,7 @@ export default function VoucherCsvBuilder({
   }
 
   function addRow(copyFrom?: VoucherCsvDraft) {
-    updateDocument((current) => ({ ...current, rows: [...current.rows, copyFrom ? { ...copyFrom, code: '' } : emptyVoucherCsvDraft()] }));
+    updateDocument((current) => ({ ...current, rows: [...current.rows, copyFrom ? { ...copyFrom, code: '' } : defaultVoucherCsvDraft()] }));
   }
 
   function removeRows(indexes: number[]) {
@@ -130,7 +148,7 @@ export default function VoucherCsvBuilder({
     try {
       const loaded = await onLoadDraft(id);
       if (!loaded) return;
-      setDocument(loaded.document);
+      setDocument(scopeDocument(loaded.document, isOutletManager, assignedOutletId));
       setDraftId(loaded.id);
       setDraftVersion(loaded.draftVersion);
       setSavedAt(loaded.updatedAt);
@@ -149,9 +167,9 @@ export default function VoucherCsvBuilder({
     setSaving(true);
     setError('');
     try {
-      const saved = await onSaveDraft({ id: draftId, document: normalizeVoucherCsvDraft(document), expectedDraftVersion: draftVersion });
+      const saved = await onSaveDraft({ id: draftId, document: normalizeVoucherCsvDraft(scopeDocument(document, isOutletManager, assignedOutletId)), expectedDraftVersion: draftVersion });
       if (!saved) return false;
-      setDocument(saved.document);
+      setDocument(scopeDocument(saved.document, isOutletManager, assignedOutletId));
       setDraftId(saved.id);
       setDraftVersion(saved.draftVersion);
       setSavedAt(saved.updatedAt);
@@ -165,7 +183,7 @@ export default function VoucherCsvBuilder({
     } finally {
       setSaving(false);
     }
-  }, [document, draftId, draftVersion, onBack, onSaveDraft, t]);
+  }, [assignedOutletId, document, draftId, draftVersion, isOutletManager, onBack, onSaveDraft, t]);
 
   useEffect(() => {
     if (!open || !dirty || saving || previewOpen) return;
@@ -187,15 +205,15 @@ export default function VoucherCsvBuilder({
     setPreviewOpen(true);
   }
 
-  function closeBuilder() {
-    if (dirty && !window.confirm(t('voucher.csv.leaveUnsavedConfirm'))) return;
+  async function closeBuilder() {
+    if (dirty && !(await confirm(t('voucher.csv.leaveUnsavedConfirm')))) return;
     onBack();
   }
 
   async function discardDraft() {
-    if (!draftId || !window.confirm(t('voucher.csv.discardConfirm'))) return;
+    if (!draftId || !(await confirm(t('voucher.csv.discardConfirm')))) return;
     if (await onDeleteDraft(draftId)) {
-      setDocument(blankDocument(t('voucher.csv.untitledBatch')));
+      setDocument(scopeDocument(blankDocument(t('voucher.csv.untitledBatch')), isOutletManager, assignedOutletId));
       setDraftId(undefined);
       setDraftVersion(undefined);
       setSavedAt(undefined);
@@ -225,8 +243,8 @@ export default function VoucherCsvBuilder({
         <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.totalUses')}<Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className="mt-1 bg-white" /></label>
         <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.perCustomer')}<Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className="mt-1 bg-white" /></label>
         <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.validFrom')}<input value={row.validFrom} onChange={(event) => updateRow(index, 'validFrom', event.target.value)} type="datetime-local" className={inputClass} /></label>
-        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.validUntil')}<input value={row.validUntil} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} /></label>
-        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.outlet')}<select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.validUntil')}<input value={row.validUntil} min={row.validFrom || undefined} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} /></label>
+        <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.outlet')}{isOutletManager ? <span className={`${inputClass} mt-1 flex items-center bg-gray-50 text-gray-600`}>{assignedOutlet?.name || t('voucher.form.assignedOutlet')}</span> : <select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select>}</label>
         <label className="text-xs font-semibold text-gray-700">{t('voucher.csv.product')}<select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, t('voucher.csv.allProducts'))}</select></label>
         {row.voucherType === 'bogo' && <><label className="text-xs font-semibold text-gray-700">{t('voucher.csv.buy')} *<Input value={row.buyQuantity} onChange={(event) => updateRow(index, 'buyQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label><label className="text-xs font-semibold text-gray-700">{t('voucher.csv.free')} *<Input value={row.freeQuantity} onChange={(event) => updateRow(index, 'freeQuantity', event.target.value)} type="number" min="1" step="1" className="mt-1 bg-white" /></label></>}
       </div>
@@ -270,8 +288,8 @@ export default function VoucherCsvBuilder({
               <Input value={row.maxUses} onChange={(event) => updateRow(index, 'maxUses', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className={inputClass} />
               <Input value={row.perCustomerLimit} onChange={(event) => updateRow(index, 'perCustomerLimit', event.target.value)} type="number" min="1" placeholder={t('voucher.csv.unlimited')} className={inputClass} />
               <input value={row.validFrom} onChange={(event) => updateRow(index, 'validFrom', event.target.value)} type="datetime-local" className={inputClass} />
-              <input value={row.validUntil} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} />
-              <select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select>
+              <input value={row.validUntil} min={row.validFrom || undefined} onChange={(event) => updateRow(index, 'validUntil', event.target.value)} type="datetime-local" className={inputClass} />
+              {isOutletManager ? <div className={`${inputClass} flex items-center bg-gray-50 text-gray-600`}>{assignedOutlet?.name || t('voucher.form.assignedOutlet')}</div> : <select value={row.outletId} onChange={(event) => updateRow(index, 'outletId', event.target.value)} className={selectClass}>{renderSelectOptions(outlets, t('voucher.csv.allOutlets'))}</select>}
               <select value={row.productId} onChange={(event) => updateRow(index, 'productId', event.target.value)} className={selectClass}>{renderSelectOptions(products, t('voucher.csv.allProducts'))}</select>
               <Input value={row.buyQuantity} onChange={(event) => updateRow(index, 'buyQuantity', event.target.value)} disabled={row.voucherType !== 'bogo'} type="number" min="1" className={`${inputClass} disabled:bg-gray-100`} />
               <Input value={row.freeQuantity} onChange={(event) => updateRow(index, 'freeQuantity', event.target.value)} disabled={row.voucherType !== 'bogo'} type="number" min="1" className={`${inputClass} disabled:bg-gray-100`} />
@@ -291,7 +309,7 @@ export default function VoucherCsvBuilder({
         </div>
       </div>
 
-      {previewOpen && <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-950/35 p-4"><div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">{t('voucher.csv.finalReview')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{t('voucher.csv.readyToUpload')}</h2><p className="mt-2 text-sm leading-6 text-gray-600">{t('voucher.csv.uploadConfirmationNotice')}</p></div><button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100" aria-label={t('actions.close')}><X size={18} /></button></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.rowsLabel')}</p><p className="mt-1 text-lg font-bold text-gray-950">{formatNumber(summary.total, locale)}</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">{t('voucher.csv.ready')}</p><p className="mt-1 text-lg font-bold text-emerald-800">{formatNumber(summary.valid, locale)}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">{t('voucher.csv.blankCodes')}</p><p className="mt-1 text-lg font-bold text-amber-800">{formatNumber(summary.blankCodes, locale)}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.prefix')}</p><p className="mt-1 font-mono text-sm font-bold text-gray-950">{document.autoGenerate ? document.codePrefix : t('voucher.csv.off')}</p></div></div>{codePreview && <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p className="text-xs font-semibold text-amber-800">{t('voucher.csv.generatedPreview', { count: formatNumber(codePreview.generated, locale) })}</p><div className="mt-2 flex flex-wrap gap-2">{codePreview.sampleCodes.slice(0, 8).map((code, index) => <span key={`${code}-${index}`} className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-amber-800">{code}</span>)}</div></div>}<p className="mt-4 text-xs leading-5 text-gray-500">{t('voucher.csv.apiValidationNotice')}</p><DialogFooter className="mt-6"><Button type="button" variant="outline" onClick={() => setPreviewOpen(false)}>{t('voucher.csv.backToEdit')}</Button><Button type="button" onClick={() => { setPreviewOpen(false); onUseCsv(normalizeVoucherCsvDraft(document), draftId); }}>{t('voucher.csv.continueUpload')}</Button></DialogFooter></div></div>}
+      {previewOpen && <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-950/35 p-4"><div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">{t('voucher.csv.finalReview')}</p><h2 className="mt-1 text-xl font-bold text-gray-950">{t('voucher.csv.readyToUpload')}</h2><p className="mt-2 text-sm leading-6 text-gray-600">{t('voucher.csv.uploadConfirmationNotice')}</p></div><button type="button" onClick={() => setPreviewOpen(false)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100" aria-label={t('actions.close')}><X size={18} /></button></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.rowsLabel')}</p><p className="mt-1 text-lg font-bold text-gray-950">{formatNumber(summary.total, locale)}</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">{t('voucher.csv.ready')}</p><p className="mt-1 text-lg font-bold text-emerald-800">{formatNumber(summary.valid, locale)}</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">{t('voucher.csv.blankCodes')}</p><p className="mt-1 text-lg font-bold text-amber-800">{formatNumber(summary.blankCodes, locale)}</p></div><div className="rounded-xl bg-gray-50 p-3"><p className="text-xs text-gray-500">{t('voucher.csv.prefix')}</p><p className="mt-1 font-mono text-sm font-bold text-gray-950">{document.autoGenerate ? document.codePrefix : t('voucher.csv.off')}</p></div></div>{codePreview && <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p className="text-xs font-semibold text-amber-800">{t('voucher.csv.generatedPreview', { count: formatNumber(codePreview.generated, locale) })}</p><div className="mt-2 flex flex-wrap gap-2">{codePreview.sampleCodes.slice(0, 8).map((code, index) => <span key={`${code}-${index}`} className="rounded-md bg-white px-2 py-1 font-mono text-xs font-semibold text-amber-800">{code}</span>)}</div></div>}<p className="mt-4 text-xs leading-5 text-gray-500">{t('voucher.csv.apiValidationNotice')}</p><DialogFooter className="mt-6"><Button type="button" variant="outline" onClick={() => setPreviewOpen(false)}>{t('voucher.csv.backToEdit')}</Button><Button type="button" onClick={() => { setPreviewOpen(false); onUseCsv(normalizeVoucherCsvDraft(scopeDocument(document, isOutletManager, assignedOutletId)), draftId); }}>{t('voucher.csv.continueUpload')}</Button></DialogFooter></div></div>}
     </DialogContent>
   </Dialog>;
 }

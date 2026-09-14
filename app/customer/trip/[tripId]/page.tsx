@@ -5,11 +5,12 @@ import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { MapClient } from "./trip-planner-client";
 import { redirect, notFound } from "next/navigation";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
   return {
-    title: `${t("ui.map.yourTrip")} — MyWisata`,
+    title: `${t("ui.map.yourTrip")} — ${BRAND_NAME}`,
     description: t("ui.map.searchHint"),
   };
 }

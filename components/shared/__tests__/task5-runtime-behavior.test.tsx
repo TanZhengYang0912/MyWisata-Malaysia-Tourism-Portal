@@ -19,9 +19,9 @@ vi.mock("lucide-react", () => {
   // any of those files can render, not only ChatbotWidget's own.
   return {
     AlertTriangle: Icon, ArrowLeft: Icon, Bell: Icon, BellOff: Icon, Check: Icon, CheckCheck: Icon,
-    ChevronLeft: Icon, FileText: Icon, Flag: Icon, HelpCircle: Icon, Languages: Icon, MessageCircle: Icon,
-    Mic: Icon, MicOff: Icon, Paperclip: Icon, Reply: Icon, Search: Icon, Send: Icon, SlidersHorizontal: Icon,
-    Tag: Icon, X: Icon,
+    ChevronLeft: Icon, FileText: Icon, Flag: Icon, HelpCircle: Icon, Languages: Icon, Maximize2: Icon,
+    MessageCircle: Icon, Mic: Icon, MicOff: Icon, Minimize2: Icon, Paperclip: Icon, Reply: Icon,
+    Search: Icon, Send: Icon, SlidersHorizontal: Icon, Tag: Icon, X: Icon,
   };
 });
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));

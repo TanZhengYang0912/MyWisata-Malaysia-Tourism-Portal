@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "1661f4ea-c8e3-73e5-583d-a05f7e503ec2",
+    "name": "Hiap Joo Bakery",
+    "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+    "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945"
+  },
+  "outlets": [
+    {
+      "id": "0af6a16f-e207-9f2c-8b1f-644546bffb65",
+      "name": "Hiap Joo Bakery"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "hiap-joo-banana-cake",
+      "name": "Hiap Joo Banana Cake",
+      "description": "Banana cake sold by Hiap Joo Bakery at the price reported after a June 2026 bakery visit.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 13,
+      "source_type": "official",
+      "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "source_image_url": "https://web14.bernama.com/storage/photos/e0c670b295125e0edaeee8df31e6ff616a40770cadceb",
+      "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hiap-joo-banana-cake-real.jpg",
+      "sha256": "c3ccd0f2bf73a9576e939d85e4c36c2086ddd23199c7e361550c3d34f8b47fb7",
+      "artist": "BERNAMA / fotoBERNAMA 2026",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "hiap-joo-coconut-buns",
+      "name": "Hiap Joo Coconut Buns — Pack",
+      "description": "Coconut buns sold by Hiap Joo Bakery in a pack, with the price reported after a June 2026 bakery visit.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 6,
+      "source_type": "official",
+      "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "source_image_url": "https://web14.bernama.com/storage/photos/4c48b1c95ed8046edbe61ae8aac4fa6b6a4076b4b22fc",
+      "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hiap-joo-coconut-buns-real.jpg",
+      "sha256": "e946bef8cc50dc38ae0d5d54c0725394c653916f307dccbc5d51546866a82207",
+      "artist": "BERNAMA / fotoBERNAMA 2026",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "hiap-joo-raisin-buns",
+      "name": "Hiap Joo Raisin Buns — Pack",
+      "description": "Raisin buns sold by Hiap Joo Bakery in a pack, with the price reported after a June 2026 bakery visit.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 6,
+      "source_type": "official",
+      "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "source_image_url": "https://web14.bernama.com/storage/photos/ac1078bff3032a2d9c38f68b29e8487a6a4076d850baf",
+      "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hiap-joo-raisin-buns-real.jpg",
+      "sha256": "6f000aa0589560ed803170e849dfb8e9ad3c3bf2e2276673300fe929b52f7f3d",
+      "artist": "BERNAMA / fotoBERNAMA 2026",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "hiap-joo-peanut-buns",
+      "name": "Hiap Joo Peanut Buns — Pack",
+      "description": "Peanut buns sold by Hiap Joo Bakery in a pack, with the price reported after a June 2026 bakery visit.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 6,
+      "source_type": "official",
+      "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "source_image_url": "https://web14.bernama.com/storage/photos/d4bb754ef19591c546f53ef0d664bd746a4077605c2cc",
+      "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hiap-joo-peanut-buns-real.jpg",
+      "sha256": "1cbdced59b246dc196166084e2e013212c6285dafaddeea585bc4d1410dd4bf8",
+      "artist": "BERNAMA / fotoBERNAMA 2026",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "hiap-joo-kaya-buns",
+      "name": "Hiap Joo Kaya Buns — Pack",
+      "description": "Kaya buns sold by Hiap Joo Bakery in a pack, with the price reported after a June 2026 bakery visit.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 6,
+      "source_type": "official",
+      "source_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "source_image_url": "https://web14.bernama.com/storage/photos/ff2be70cf6900eae1ee338152fbfa97c6a4077903178a",
+      "price_reference_page": "https://www.bernama.com/en/general/news.php?id=2573945",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hiap-joo-kaya-buns-real.jpg",
+      "sha256": "4c91b58a78165161469141ec64940509049a83ac1ef046c354686f50d4d61fab",
+      "artist": "BERNAMA / fotoBERNAMA 2026",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

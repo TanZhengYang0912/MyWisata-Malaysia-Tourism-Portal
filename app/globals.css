@@ -342,7 +342,206 @@ body {
     overflow: hidden;
   }
 
-  .outlet-grid__cell > * {
+.outlet-grid__cell > * {
     height: 100%;
+  }
+}
+
+/* Customer event calendar: FullCalendar supplies behavior; these rules keep
+   its primitives in the MyLawatan visual system without changing its layout
+   or accessibility semantics. */
+.mw-customer-calendar .fc {
+  --fc-border-color: var(--border);
+  --fc-button-bg-color: var(--primary);
+  --fc-button-border-color: var(--primary);
+  --fc-button-hover-bg-color: color-mix(in srgb, var(--primary) 88%, black);
+  --fc-button-hover-border-color: color-mix(in srgb, var(--primary) 88%, black);
+  --fc-button-active-bg-color: var(--primary);
+  --fc-button-active-border-color: var(--primary);
+  --fc-today-bg-color: color-mix(in srgb, var(--highlight-yellow) 12%, transparent);
+  --fc-neutral-bg-color: color-mix(in srgb, var(--muted) 55%, transparent);
+  --fc-page-bg-color: var(--card);
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+.mw-customer-calendar .fc .fc-toolbar {
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mw-customer-calendar .fc .fc-toolbar-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+.mw-customer-calendar .fc .fc-button {
+  border-radius: 9999px;
+  box-shadow: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+}
+
+.mw-customer-calendar .fc .fc-daygrid-day-number,
+.mw-customer-calendar .fc .fc-col-header-cell-cushion {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.5rem;
+  text-decoration: none;
+}
+
+.mw-customer-calendar .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: var(--primary);
+}
+
+.mw-customer-calendar .fc .fc-event {
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: 0.65rem;
+  color: var(--foreground);
+  cursor: pointer;
+  margin: 0.15rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.mw-calendar-event-content {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.mw-calendar-event-time,
+.mw-calendar-event-outlet {
+  color: var(--primary);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.mw-calendar-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.mw-calendar-event-outlet {
+  color: var(--muted-foreground);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .mw-customer-calendar .fc .fc-toolbar-chunk {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .mw-customer-calendar .fc .fc-toolbar-title {
+    font-size: 1rem;
+  }
+
+  .mw-customer-calendar .fc .fc-button {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.55rem;
+  }
+
+  .mw-customer-calendar .fc .fc-daygrid-day-number,
+.mw-customer-calendar .fc .fc-col-header-cell-cushion {
+    padding: 0.35rem 0.2rem;
+  }
+}
+
+/* Shared selection control: native checkboxes keep their semantic form
+   behavior, while their browser-default square is replaced with the same
+   calm, indigo treatment used by the rest of the application. */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  place-content: center;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-radius: 0.4rem;
+  background-color: var(--card);
+  box-shadow: 0 1px 2px rgba(1, 0, 102, 0.08);
+  vertical-align: middle;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.58rem;
+  height: 0.34rem;
+  border-bottom: 2px solid var(--primary-foreground);
+  border-left: 2px solid var(--primary-foreground);
+  transform: rotate(-45deg) scale(0);
+  transform-origin: center;
+  transition: transform 140ms ease-out;
+}
+
+input[type="checkbox"]:hover:not(:disabled) {
+  border-color: var(--primary);
+  box-shadow: 0 3px 8px rgba(1, 0, 102, 0.14);
+}
+
+input[type="checkbox"]:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 92%, white), var(--primary));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+input[type="checkbox"]:indeterminate {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+input[type="checkbox"]:indeterminate::before {
+  width: 0.58rem;
+  height: 2px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--primary-foreground);
+  transform: scale(1);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent), 0 2px 6px rgba(1, 0, 102, 0.12);
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dark input[type="checkbox"]:not(:checked):not(:indeterminate) {
+  background-color: var(--card);
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"],
+  input[type="checkbox"]::before {
+    transition-duration: 0ms;
   }
 }

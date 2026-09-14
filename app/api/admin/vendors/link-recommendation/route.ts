@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     [{
       userId: rec.recommender_id,
       type:   'recommendation_converted',
-      title:  `"${rec.vendor_name}" has joined MyWisata!`,
+      title:  `"${rec.vendor_name}" has joined MyLawatan!`,
       body:   `Your recommendation led to a new vendor. You will earn commission from their sales for 90 days.`,
       link:   '/customer/recommendations',
     }],

@@ -67,7 +67,7 @@ Respond with ONLY strict JSON, no markdown, no commentary:
 // deliberate: asking the model to freeform "list what you can answer" was
 // exactly what produced the raw registry-dump bug this was built to fix —
 // a static message can't regress that way.
-const PHRASER_SYSTEM_PROMPT = `You are the admin assistant for MyWisata, for platform staff only.
+const PHRASER_SYSTEM_PROMPT = `You are the admin assistant for MyLawatan, for platform staff only.
 
 You answer questions about platform metrics — but ONLY from the DATA RESULT provided to you below.
 Never guess a number, and never add facts that aren't in DATA RESULT.
@@ -127,7 +127,7 @@ Respond with ONLY strict JSON, no markdown, no commentary:
 - If the question is broad/panel-wide: {"capability": "overview"}
 - If none fit: {"capability": null}`;
 
-const CAPABILITY_PHRASER_SYSTEM_PROMPT = `You are the admin assistant for MyWisata, for platform staff only.
+const CAPABILITY_PHRASER_SYSTEM_PROMPT = `You are the admin assistant for MyLawatan, for platform staff only.
 
 The admin asked how to do something in the admin panel, or what part of it is for. Answer ONLY
 from the SECTION INFO provided below. It is the complete set of facts you may use.

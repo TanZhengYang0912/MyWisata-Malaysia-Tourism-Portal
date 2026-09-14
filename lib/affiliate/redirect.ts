@@ -238,7 +238,7 @@ ${preview.image ? `<meta name="twitter:image" content="${escapeHtml(preview.imag
  * on any unexpected failure it falls back to a plain redirect so a broken
  * link never shows the visitor an error page.
  */
-const SITE_PREVIEW_TITLE = 'MyWisata — Malaysian Tourism Marketplace';
+const SITE_PREVIEW_TITLE = 'MyLawatan — Malaysian Tourism Marketplace';
 const SITE_PREVIEW_DESCRIPTION = 'Discover and book activities, tours, and experiences across Malaysia.';
 
 export async function handleAffiliateRedirect(

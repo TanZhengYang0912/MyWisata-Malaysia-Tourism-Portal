@@ -205,7 +205,7 @@ export function ShareButton({ shareType, contentId, title, slug, compact = false
       const res = await fetch(`/api/share-image/${imageType}/${contentId}`);
       if (!res.ok) throw new Error(`share-image fetch failed: ${res.status}`);
       const blob = await res.blob();
-      const fileName = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "mywisata"}.png`;
+      const fileName = `${title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "mylawatan"}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
       const url = await buildShareUrl();
 

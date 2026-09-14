@@ -8,7 +8,7 @@ const INVENTORY_CONTRACT_NAMES = new Set([
   "sitewide-i18n.contract.test.ts",
   "auth-lifecycle-i18n.contract.test.ts",
 ]);
-const SKIPPED_DIRECTORIES = new Set([".git", ".next", "Docs", "node_modules", "out", "build"]);
+const SKIPPED_DIRECTORIES = new Set([".git", ".next", ".worktrees", "Docs", "node_modules", "out", "build"]);
 
 function compareStrings(left, right) {
   if (left < right) return -1;

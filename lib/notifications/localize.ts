@@ -28,6 +28,7 @@ const TEMPLATES: Record<string, NotificationTemplate> = {
   wallet_adjustment: { title: 'notifications.events.walletAdjustment.title', body: 'notifications.events.walletAdjustment.body' },
   wallet_refund: { title: 'notifications.events.walletRefund.title', body: 'notifications.events.walletRefund.body' },
   recommendation_approved: { title: 'notifications.events.recommendationApprovedWithName.title', body: 'notifications.events.recommendationApprovedWithName.body' },
+  chat_message: { title: 'notifications.events.chatMessage.title', body: 'notifications.events.chatMessage.body' },
 };
 
 function safeMetadata(metadata: NotificationMetadata | undefined) {
@@ -65,6 +66,15 @@ export function localizeNotification(
     metadata.approval_cycle !== undefined
   ) {
     return { title: notification.title, body: notification.body };
+  }
+
+  if (notification.type === 'chat_message') {
+    return {
+      title: translate('notifications.events.chatMessage.title', metadata),
+      body: metadata.attachment === true
+        ? translate('notifications.events.chatMessage.attachmentBody', metadata)
+        : (typeof metadata.preview === 'string' && metadata.preview.length > 0 ? metadata.preview : notification.body),
+    };
   }
 
   return {

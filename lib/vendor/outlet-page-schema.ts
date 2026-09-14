@@ -24,10 +24,10 @@ export type OutletPageBlockType = typeof outletPageBlockTypes[number];
 export const BLOCK_DEFAULT_SIZE: Record<OutletPageBlockType, [number, number]> = {
   intro: [4, 2],
   text: [3, 2],
-  image: [3, 2],
-  image_text: [4, 2],
+  image: [2, 3],
+  image_text: [4, 3],
   product_grid: [4, 3],
-  gallery: [4, 2],
+  gallery: [4, 3],
   hours: [2, 2],
   contact: [2, 2],
   voucher_banner: [4, 2],
@@ -40,10 +40,10 @@ export const BLOCK_DEFAULT_SIZE: Record<OutletPageBlockType, [number, number]> =
 export const BLOCK_MIN_SIZE: Record<OutletPageBlockType, [number, number]> = {
   intro: [2, 1],
   text: [2, 1],
-  image: [2, 1],
-  image_text: [2, 2],
-  product_grid: [2, 2],
-  gallery: [2, 2],
+  image: [2, 3],
+  image_text: [4, 3],
+  product_grid: [4, 3],
+  gallery: [4, 3],
   hours: [2, 1],
   contact: [2, 1],
   voucher_banner: [2, 2],
@@ -61,7 +61,7 @@ export const BLOCK_MIN_SIZE: Record<OutletPageBlockType, [number, number]> = {
 export function canResizeBlockTo(blocks: OutletPageBlock[], block: OutletPageBlock, w: number, h: number): boolean {
   const [minW, minH] = BLOCK_MIN_SIZE[block.type];
   if (w < minW || h < minH) return false;
-  if (block.w === w && block.h === h) return true;
+  if (block.w === w && block.h === h) return w >= minW && h >= minH;
   const candidate = { x: block.x, y: block.y, w, h };
   return fits(blocks, candidate, GRID_COLS, gridRowCount([...blocks, candidate]), block.id);
 }
@@ -260,11 +260,11 @@ export function createDefaultOutletPageDocument(outletName: string): OutletPageD
     },
     blocks: [
       stableDefaultBlock('intro', 'Welcome to this outlet', 0, 0, 8, 2),
-      stableDefaultBlock('gallery', 'A glimpse of the place', 0, 2, 4, 2),
-      stableDefaultBlock('cta', 'Ready to explore?', 4, 2, 4, 2),
-      stableDefaultBlock('hours', 'Opening hours', 0, 4, 4, 2),
-      stableDefaultBlock('contact', 'Find this outlet', 4, 4, 4, 2),
-      stableDefaultBlock('product_grid', 'Featured experiences', 0, 6, 8, 3),
+      stableDefaultBlock('gallery', 'A glimpse of the place', 0, 2, 4, 3),
+      stableDefaultBlock('cta', 'Ready to explore?', 4, 2, 4, 3),
+      stableDefaultBlock('hours', 'Opening hours', 0, 5, 4, 2),
+      stableDefaultBlock('contact', 'Find this outlet', 4, 5, 4, 2),
+      stableDefaultBlock('product_grid', 'Featured experiences', 0, 7, 8, 3),
     ],
     gallery: [],
     brandColour: '#00004D',

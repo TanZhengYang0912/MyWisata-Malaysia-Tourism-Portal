@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const seedSource = readFileSync(resolve(root, "scripts/seed-all-vendor-customer-demo.mjs"), "utf8");
+const plannerSource = readFileSync(resolve(root, "scripts/lib/vendor-customer-demo.mjs"), "utf8");
 const verifySource = readFileSync(resolve(root, "scripts/verify-all-vendor-customer-demo.mjs"), "utf8");
 const aliceWalletSource = readFileSync(resolve(root, "scripts/lib/alice-wallet-demo.mjs"), "utf8");
+const legacySeedSource = readFileSync(resolve(root, "scripts/seed-remote-demo.mjs"), "utf8");
 
 describe("vendor customer demo scripts", () => {
   it("guards remote writes and loads the live catalogue before planning rows", () => {
@@ -85,6 +87,8 @@ describe("vendor customer demo scripts", () => {
     expect(verifySource).toContain("orderItemOwnershipMismatches");
     expect(verifySource).toContain("reviewOwnershipMismatches");
     expect(verifySource).toContain("chatThreadMismatches");
+    expect(verifySource).toContain("enabled-commerce-outlet-scope.json");
+    expect(verifySource).toContain("commerceVendorIds.has(match[1])");
     expect(verifySource).toContain('readAll("users"');
     expect(verifySource).toContain('readAll("chat_messages"');
     expect(verifySource).toContain("CUSTOMER_IDS");
@@ -124,5 +128,14 @@ describe("vendor customer demo scripts", () => {
     expect(verifySource).not.toContain(".upsert(");
     expect(verifySource).not.toContain(".update(");
     expect(verifySource).not.toContain(".delete(");
+  });
+
+  it("routes both customer demo seed paths through shared natural content", () => {
+    expect(plannerSource).toContain("buildDemoReviewCopy");
+    expect(plannerSource).toContain("buildDemoOrderNote");
+    expect(plannerSource).toContain("buildDemoVoucherCopy");
+    expect(legacySeedSource).toContain("buildDemoReviewCopy");
+    expect(legacySeedSource).toContain("buildDemoBookingReference");
+    expect(legacySeedSource).not.toContain("The experience was well organised and felt genuinely local.");
   });
 });

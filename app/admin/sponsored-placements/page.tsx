@@ -10,8 +10,10 @@ import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { SponsoredImpactDialog } from "@/components/admin/sponsored-placements/impact-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { Button } from "@/components/ui/button";
 import { STATES_MY } from "@/lib/customer/malaysia-states";
+import { getMalaysiaDateTimeRangeDefaults } from "@/lib/datetime/date-input";
 import { isInvalidDateTimeRange, malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
@@ -58,6 +60,7 @@ const LIFECYCLE_FILTERS: LifecycleFilter[] = ["active", "pending", "drafts", "pa
 
 export default function SponsoredPlacementsPage() {
   const { t, i18n } = useTranslation("admin");
+  const { prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -69,8 +72,8 @@ export default function SponsoredPlacementsPage() {
   const [lifecycle, setLifecycle] = useState<LifecycleFilter>("active");
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [productId, setProductId] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const [startsAt, setStartsAt] = useState(() => getMalaysiaDateTimeRangeDefaults().from);
+  const [endsAt, setEndsAt] = useState(() => getMalaysiaDateTimeRangeDefaults().to);
   const [position, setPosition] = useState(1);
   const [allStates, setAllStates] = useState(true);
   const [state, setState] = useState("");
@@ -183,8 +186,9 @@ export default function SponsoredPlacementsPage() {
       setPendingConfirmation(null);
       if (pendingConfirmation.intent === "create") {
         setProductId("");
-        setStartsAt("");
-        setEndsAt("");
+        const defaults = getMalaysiaDateTimeRangeDefaults();
+        setStartsAt(defaults.from);
+        setEndsAt(defaults.to);
       }
       setLifecycle(nextLifecycle);
       await load();
@@ -224,7 +228,7 @@ export default function SponsoredPlacementsPage() {
   }
 
   async function transition(placement: Placement, action: "submit" | "reject" | "pause") {
-    const reason = action === "reject" ? window.prompt(t("sponsoredPlacements.prompts.rejectReason")) : null;
+    const reason = action === "reject" ? await prompt(t("sponsoredPlacements.prompts.rejectReason")) : null;
     if (action === "reject" && reason === null) return;
     setBusy(true);
     setError(null);

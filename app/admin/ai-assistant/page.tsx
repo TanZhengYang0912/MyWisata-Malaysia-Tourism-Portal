@@ -24,6 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminAiMessage } from "@/components/admin/admin-ai-message";
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -36,16 +37,6 @@ const DRAFT_QUESTION_KEY = "mw_admin_ai_draft_question";
 /** Synchronous localStorage read — lazy initializer, not an effect (matches components/shared/chatbot-widget.tsx). */
 function readLocalStorage(key: string): string {
   return typeof window === "undefined" ? "" : (window.localStorage.getItem(key) ?? "");
-}
-
-export function AdminAiMessage({ role, text }: ChatMessage) {
-  return (
-    <div data-message-role={role} className={`flex w-full ${role === "user" ? "justify-end" : "justify-start"}`}>
-      <div className={`w-fit max-w-[85%] break-words rounded-xl px-3 py-2 text-sm whitespace-pre-wrap lg:max-w-3xl ${role === "user" ? "bg-primary text-white" : "bg-background text-foreground shadow-sm"}`}>
-        {text}
-      </div>
-    </div>
-  );
 }
 
 function AskPanel() {

@@ -132,6 +132,38 @@ describe('buildEvidenceChecks', () => {
       categories: [{ name: 'Food', is_active: true }],
     }, 1, 0).find((check) => check.field === 'category')?.status).toBe('passed');
   });
+
+  it('passes the links check when no URL is present anywhere', () => {
+    const check = buildEvidenceChecks(completeRow, 1, 0).find((c) => c.field === 'links');
+    expect(check?.status).toBe('passed');
+  });
+
+  it('passes an ordinary contact website', () => {
+    const check = buildEvidenceChecks({ ...completeRow, contact_website: 'https://kedaikopi.example.com' }, 1, 0)
+      .find((c) => c.field === 'links');
+    expect(check?.status).toBe('passed');
+    expect(check?.message).toContain('checked');
+  });
+
+  it('flags a link shortener as needing manual review', () => {
+    const check = buildEvidenceChecks({ ...completeRow, contact_website: 'https://bit.ly/promo123' }, 1, 0)
+      .find((c) => c.field === 'links');
+    expect(check?.status).toBe('needs_manual_review');
+    expect(check?.message).toContain('bit.ly');
+  });
+
+  it('flags a raw-IP link found inside free text, not just contact_website', () => {
+    const check = buildEvidenceChecks({ ...completeRow, description: 'Great place, book at http://192.168.1.10/deal for a discount' }, 1, 0)
+      .find((c) => c.field === 'links');
+    expect(check?.status).toBe('needs_manual_review');
+    expect(check?.message).toContain('IP address');
+  });
+
+  it('flags a malformed link', () => {
+    const check = buildEvidenceChecks({ ...completeRow, contact_website: 'http://[invalid' }, 1, 0)
+      .find((c) => c.field === 'links');
+    expect(check?.status).toBe('needs_manual_review');
+  });
 });
 
 it('selects category activity with the recommendation evidence', async () => {
@@ -260,6 +292,22 @@ describe('applyDecisionGuardrails', () => {
       suggestedAction: 'approve',
     }, checks, 0);
     expect(result.suggestedAction).toBe('request_changes');
+  });
+
+  it('blocks approve when a suspicious link is present, even though the AI never saw it', () => {
+    const checks = buildEvidenceChecks({ ...completeRow, contact_website: 'https://bit.ly/deal' }, 1, 0);
+    const result = applyDecisionGuardrails({ ...aiResult, suggestedAction: 'approve', findings: [] }, checks, 0);
+
+    expect(result.suggestedAction).toBe('request_changes');
+    expect(result.confidence).toBe('medium');
+    expect(result.feedbackDraft).toMatch(/links/i);
+  });
+
+  it('does not block approve for an ordinary, non-suspicious link', () => {
+    const checks = buildEvidenceChecks({ ...completeRow, contact_website: 'https://kedaikopi.example.com' }, 1, 0);
+    const result = applyDecisionGuardrails({ ...aiResult, suggestedAction: 'approve', findings: [] }, checks, 0);
+
+    expect(result.suggestedAction).toBe('approve');
   });
 
   it.each(['low', 'medium'] as const)('blocks approve for a %s-severity photo conflict finding', (severity) => {

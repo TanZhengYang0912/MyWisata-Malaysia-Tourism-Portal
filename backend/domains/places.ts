@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Outlet, Place, PlaceLevel, PlaceProduct, PlaceRelation } from "@/backend/core/types";
+import type { Outlet, Place, PlaceAccess, PlaceAccessType, PlaceInformationalActivity, PlaceInformationalActivityType, PlaceLevel, PlaceProduct, PlaceRelation } from "@/backend/core/types";
 import { getActivities, getOutlets, getVendors } from "@/backend/domains/catalogue";
 import { placeImageUrl } from "@/lib/storage/place-image";
 
@@ -180,6 +180,142 @@ export async function getPlaceProducts(placeId: string, db: SupabaseClient = sup
     result.push({ product, vendor, relation });
   }
   return result;
+}
+
+type PlaceAccessRow = {
+  id: string;
+  place_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  access_type: PlaceAccessType;
+  source_title: string;
+  source_url: string;
+  image_source_url: string | null;
+  image_path: string | null;
+};
+
+/**
+ * Source-backed free access belongs to the place, not a vendor catalogue.
+ * This deliberately keeps public access outside cart and checkout surfaces.
+ */
+export async function getPlaceAccesses(placeId: string, db: SupabaseClient = supabase): Promise<PlaceAccess[]> {
+  const { data, error } = await db
+    .from("place_accesses")
+    .select("id,place_id,slug,title,description,access_type,source_title,source_url,image_source_url,image_path")
+    .eq("place_id", placeId)
+    .eq("status", "active")
+    .order("title");
+  // The additive table can land after the application during a rolling
+  // deployment. Preserve existing place pages until the migration is live;
+  // the dedicated remote verifier still fails loudly for that condition.
+  if (error?.code === "PGRST205" || error?.code === "42P01") return [];
+  // The activity-media migration is additive. During its rolling deployment
+  // PostgREST may not know image_path yet; never break the place page while
+  // waiting for the schema cache to refresh.
+  if (error?.code === "PGRST204" || error?.code === "42703") {
+    const legacy = await db
+      .from("place_accesses")
+      .select("id,place_id,slug,title,description,access_type,source_title,source_url,image_source_url")
+      .eq("place_id", placeId)
+      .eq("status", "active")
+      .order("title");
+    if (legacy.error) throw legacy.error;
+    return ((legacy.data ?? []) as unknown as Omit<PlaceAccessRow, "image_path">[]).map((row) => ({
+      id: row.id,
+      placeId: row.place_id,
+      slug: row.slug,
+      title: row.title,
+      description: row.description,
+      accessType: row.access_type,
+      sourceTitle: row.source_title,
+      sourceUrl: row.source_url,
+      imageSourceUrl: row.image_source_url,
+      imageUrl: null,
+    }));
+  }
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as PlaceAccessRow[]).map((row) => ({
+    id: row.id,
+    placeId: row.place_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    accessType: row.access_type,
+    sourceTitle: row.source_title,
+    sourceUrl: row.source_url,
+    imageSourceUrl: row.image_source_url,
+    imageUrl: placeImageUrl(row.image_path),
+  }));
+}
+
+type PlaceInformationalActivityRow = {
+  id: string;
+  place_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  activity_type: PlaceInformationalActivityType;
+  price_label: string | null;
+  source_title: string;
+  source_url: string;
+  image_source_url: string | null;
+  image_path: string | null;
+};
+
+/**
+ * Official attraction information that is intentionally not made into a
+ * fictitious vendor product, cart item, or booking path.
+ */
+export async function getPlaceInformationalActivities(
+  placeId: string,
+  db: SupabaseClient = supabase,
+): Promise<PlaceInformationalActivity[]> {
+  const { data, error } = await db
+    .from("place_informational_activities")
+    .select("id,place_id,slug,title,description,activity_type,price_label,source_title,source_url,image_source_url,image_path")
+    .eq("place_id", placeId)
+    .eq("status", "active")
+    .order("title");
+  if (error?.code === "PGRST205" || error?.code === "42P01") return [];
+  if (error?.code === "PGRST204" || error?.code === "42703") {
+    const legacy = await db
+      .from("place_informational_activities")
+      .select("id,place_id,slug,title,description,activity_type,price_label,source_title,source_url,image_source_url")
+      .eq("place_id", placeId)
+      .eq("status", "active")
+      .order("title");
+    if (legacy.error) throw legacy.error;
+    return ((legacy.data ?? []) as unknown as Omit<PlaceInformationalActivityRow, "image_path">[]).map((row) => ({
+      id: row.id,
+      placeId: row.place_id,
+      slug: row.slug,
+      title: row.title,
+      description: row.description,
+      activityType: row.activity_type,
+      priceLabel: row.price_label,
+      sourceTitle: row.source_title,
+      sourceUrl: row.source_url,
+      imageSourceUrl: row.image_source_url,
+      imageUrl: null,
+    }));
+  }
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as PlaceInformationalActivityRow[]).map((row) => ({
+    id: row.id,
+    placeId: row.place_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    activityType: row.activity_type,
+    priceLabel: row.price_label,
+    sourceTitle: row.source_title,
+    sourceUrl: row.source_url,
+    imageSourceUrl: row.image_source_url,
+    imageUrl: placeImageUrl(row.image_path),
+  }));
 }
 
 /**

@@ -31,6 +31,7 @@ export default function SlotForm({ vendorId, outlets, products, onSuccess, onClo
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const selectedOutletId = watch('outletId');
+  const selectedStartsAt = watch('startsAt');
 
   const selectableProducts = products.filter((product) =>
     product.outlet_id === selectedOutletId && product.requires_booking && product.status === 'active',
@@ -99,7 +100,7 @@ export default function SlotForm({ vendorId, outlets, products, onSuccess, onClo
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('slotForm.endsAt')}</label>
-            <Input {...register('endsAt')} type="datetime-local" />
+            <Input {...register('endsAt')} type="datetime-local" min={selectedStartsAt || undefined} />
             {errors.endsAt && <p className="text-red-500 text-xs mt-1">{errors.endsAt.message}</p>}
           </div>
         </div>

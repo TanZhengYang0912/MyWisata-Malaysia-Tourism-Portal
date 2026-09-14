@@ -82,6 +82,34 @@ describe('admin capability registry', () => {
     expect(matchCapabilityByKeywords('everything is catalogued somewhere')).toBeNull();
   });
 
+  it('routes each newly added section on the fast path', () => {
+    expect(matchCapabilityByKeywords('how do I use the shadow report')?.name).toBe('access_control');
+    expect(matchCapabilityByKeywords('where is the reconciliation report')?.name).toBe('reconciliation');
+    expect(matchCapabilityByKeywords('how do I clear recommendation rewards')?.name).toBe('recommendation_rewards');
+    expect(matchCapabilityByKeywords('how do I approve a sponsored placement')?.name).toBe('sponsored_placements');
+    expect(matchCapabilityByKeywords('where do I review flagged conduct')?.name).toBe('staff_conduct');
+  });
+
+  it('keeps staff conduct and chat reports as distinct, non-colliding sections', () => {
+    // Both are about "reported" chats, but different surfaces — a shared
+    // keyword here would tie and silently break routing for both.
+    expect(matchCapabilityByKeywords('how do I handle a reported chat')?.name).toBe('chat_reports');
+    expect(matchCapabilityByKeywords('where do I see flagged conduct notes')?.name).toBe('staff_conduct');
+  });
+
+  it('no longer claims staff conduct now that it has its own section', () => {
+    const assistant = findCapability('ai_assistant')!;
+    expect(assistant.keywords).not.toContain('staff conduct');
+    expect(assistant.keywords).not.toContain('conduct flag');
+    expect(assistant.actions.join(' ')).not.toMatch(/conduct/i);
+  });
+
+  it('splits recommendation review from recommendation reward clearing', () => {
+    const recommendations = findCapability('recommendations')!;
+    expect(recommendations.actions.join(' ')).not.toMatch(/clearing/i);
+    expect(findCapability('recommendation_rewards')?.path).toBe('/admin/recommendations/rewards');
+  });
+
   it('builds an overview that lists paths without leaking internal slugs or sources', () => {
     const overview = capabilityOverviewContext();
     expect(overview).toContain('/admin/withdrawals');

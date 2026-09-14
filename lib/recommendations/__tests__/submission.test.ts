@@ -46,24 +46,24 @@ describe('mergeRecommendationImages', () => {
     ]);
   });
 
-  it('stops image selection when replacement is declined', () => {
+  it('stops image selection when replacement is declined', async () => {
     const confirmReplacement = vi.fn(() => false);
 
-    expect(allowRecommendationImageSelection(5, 0, confirmReplacement)).toBe(false);
+    expect(await allowRecommendationImageSelection(5, 0, confirmReplacement)).toBe(false);
     expect(confirmReplacement).toHaveBeenCalledOnce();
   });
 
-  it('does not ask for confirmation while the selection stays within five photos', () => {
+  it('does not ask for confirmation while the selection stays within five photos', async () => {
     const confirmReplacement = vi.fn(() => false);
 
-    expect(allowRecommendationImageSelection(3, 2, confirmReplacement)).toBe(true);
+    expect(await allowRecommendationImageSelection(3, 2, confirmReplacement)).toBe(true);
     expect(confirmReplacement).not.toHaveBeenCalled();
   });
 
-  it('asks for confirmation when a selection would overflow five photos', () => {
+  it('asks for confirmation when a selection would overflow five photos', async () => {
     const confirmReplacement = vi.fn(() => true);
 
-    expect(allowRecommendationImageSelection(4, 2, confirmReplacement)).toBe(true);
+    expect(await allowRecommendationImageSelection(4, 2, confirmReplacement)).toBe(true);
     expect(confirmReplacement).toHaveBeenCalledOnce();
   });
 });

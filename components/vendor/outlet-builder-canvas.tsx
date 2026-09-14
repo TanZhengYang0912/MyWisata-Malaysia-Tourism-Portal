@@ -21,9 +21,11 @@ import {
   cellFromPointer,
   fits,
   gridRowCount,
+  rectFromResizePointer,
   readingOrder,
+  type ResizeHandle,
 } from '@/lib/vendor/outlet-grid';
-import { canResizeBlockTo } from '@/lib/vendor/outlet-page-schema';
+import { BLOCK_MIN_SIZE, canResizeBlockTo } from '@/lib/vendor/outlet-page-schema';
 import type { OutletPageBlock, OutletPageDocument, OutletPageBlockType } from '@/lib/vendor/outlet-page-schema';
 import { useTranslation } from 'react-i18next';
 
@@ -44,6 +46,27 @@ interface Props {
   onEditBlock: (blockId: string, updates: Partial<OutletPageBlock>) => void;
   onEndInlineEdit: () => void;
 }
+
+type PointerGesture =
+  | {
+      kind: 'move';
+      blockId: string;
+      pointerId: number;
+      origin: OutletPageBlock;
+      offsetX: number;
+      offsetY: number;
+      moved: boolean;
+    }
+  | {
+      kind: 'resize';
+      blockId: string;
+      pointerId: number;
+      handle: ResizeHandle;
+      origin: OutletPageBlock;
+      moved: boolean;
+    };
+
+type InteractionGhost = { x: number; y: number; w: number; h: number; ok: boolean };
 
 export default function OutletBuilderCanvas({
   vendorId,
@@ -67,10 +90,158 @@ export default function OutletBuilderCanvas({
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const gridRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [ghost, setGhost] = useState<{ x: number; y: number; w: number; h: number; ok: boolean } | null>(null);
+  const [ghost, setGhost] = useState<InteractionGhost | null>(null);
   const [sizeMenuId, setSizeMenuId] = useState<string | null>(null);
+  const [pointerInteractionId, setPointerInteractionId] = useState<string | null>(null);
+  const pointerGestureRef = useRef<PointerGesture | null>(null);
+  const latestGhostRef = useRef<InteractionGhost | null>(null);
+  const documentRef = useRef(document);
+  const onPlaceRef = useRef(onPlace);
+  const onResizeRef = useRef(onResize);
+
+  useEffect(() => {
+    documentRef.current = document;
+    onPlaceRef.current = onPlace;
+    onResizeRef.current = onResize;
+  }, [document, onPlace, onResize]);
 
   const rows = gridRowCount(document.blocks);
+
+  function isInteractiveTarget(target: EventTarget | null) {
+    return target instanceof Element && Boolean(target.closest('input, textarea, button, a, select, [contenteditable="true"]'));
+  }
+
+  function clearPointerInteraction() {
+    pointerGestureRef.current = null;
+    latestGhostRef.current = null;
+    setPointerInteractionId(null);
+    setGhost(null);
+  }
+
+  function beginMove(event: React.PointerEvent<HTMLDivElement>, block: OutletPageBlock) {
+    if (view !== 'desktop' || event.button !== 0 || isInteractiveTarget(event.target) || pointerGestureRef.current) return;
+    const gridElement = gridRef.current;
+    const blockElement = blockRefs.current[block.id];
+    if (!gridElement || !blockElement) return;
+    const gridRect = gridElement.getBoundingClientRect();
+    const blockRect = blockElement.getBoundingClientRect();
+    const colPx = gridRect.width / GRID_COLS;
+    const rowPx = GRID_ROW_PX;
+
+    event.preventDefault();
+    onSelect(block.id);
+    pointerGestureRef.current = {
+      kind: 'move',
+      blockId: block.id,
+      pointerId: event.pointerId,
+      origin: block,
+      offsetX: Math.max(0, Math.min(block.w - 0.01, (event.clientX - blockRect.left) / colPx)),
+      offsetY: Math.max(0, Math.min(block.h - 0.01, (event.clientY - blockRect.top) / rowPx)),
+      moved: false,
+    };
+    setPointerInteractionId(block.id);
+  }
+
+  function beginResize(event: React.PointerEvent<HTMLButtonElement>, block: OutletPageBlock, handle: ResizeHandle) {
+    if (view !== 'desktop' || event.button !== 0 || pointerGestureRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(block.id);
+    pointerGestureRef.current = {
+      kind: 'resize',
+      blockId: block.id,
+      pointerId: event.pointerId,
+      handle,
+      origin: block,
+      moved: false,
+    };
+    setPointerInteractionId(block.id);
+  }
+
+  useEffect(() => {
+    if (!pointerInteractionId) return;
+
+    function handlePointerMove(event: PointerEvent) {
+      const gesture = pointerGestureRef.current;
+      const gridElement = gridRef.current;
+      const currentDocument = documentRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId || !gridElement) return;
+
+      const gridRect = gridElement.getBoundingClientRect();
+      const currentBlock = currentDocument.blocks.find((block) => block.id === gesture.blockId);
+      if (!currentBlock) return;
+      const currentRows = gridRowCount(currentDocument.blocks);
+      let nextRect: InteractionGhost;
+
+      if (gesture.kind === 'move') {
+        const colPx = gridRect.width / GRID_COLS;
+        const nextX = Math.max(0, Math.min(GRID_COLS - gesture.origin.w, Math.round((event.clientX - gridRect.left) / colPx - gesture.offsetX)));
+        const nextY = Math.max(0, Math.min(currentRows - gesture.origin.h, Math.round((event.clientY - gridRect.top) / GRID_ROW_PX - gesture.offsetY)));
+        nextRect = {
+          x: nextX,
+          y: nextY,
+          w: gesture.origin.w,
+          h: gesture.origin.h,
+          ok: fits(currentDocument.blocks, { x: nextX, y: nextY, w: gesture.origin.w, h: gesture.origin.h }, GRID_COLS, currentRows, gesture.blockId),
+        };
+      } else {
+        const [minW, minH] = BLOCK_MIN_SIZE[currentBlock.type];
+        const resized = rectFromResizePointer(
+          { left: gridRect.left, top: gridRect.top, width: gridRect.width },
+          event.clientX,
+          event.clientY,
+          gesture.origin,
+          GRID_ROW_PX,
+          GRID_COLS,
+          gesture.handle,
+          minW,
+          minH,
+        );
+        nextRect = {
+          ...resized,
+          ok: canResizeBlockTo(currentDocument.blocks, currentBlock, resized.w, resized.h),
+        };
+      }
+
+      if (nextRect.x === gesture.origin.x && nextRect.y === gesture.origin.y && nextRect.w === gesture.origin.w && nextRect.h === gesture.origin.h) {
+        gesture.moved = false;
+        latestGhostRef.current = null;
+        setGhost(null);
+        return;
+      }
+      gesture.moved = true;
+      event.preventDefault();
+      latestGhostRef.current = nextRect;
+      setGhost(nextRect);
+    }
+
+    function finishPointerInteraction(event: PointerEvent, commit: boolean) {
+      const gesture = pointerGestureRef.current;
+      if (!gesture || gesture.pointerId !== event.pointerId) return;
+      const finalRect = latestGhostRef.current;
+      if (commit && gesture.moved && finalRect?.ok) {
+        if (gesture.kind === 'move') onPlaceRef.current(gesture.blockId, finalRect.x, finalRect.y);
+        else onResizeRef.current(gesture.blockId, finalRect.w, finalRect.h);
+      }
+      clearPointerInteraction();
+    }
+
+    const handlePointerUp = (event: PointerEvent) => finishPointerInteraction(event, true);
+    const handlePointerCancel = (event: PointerEvent) => finishPointerInteraction(event, false);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearPointerInteraction();
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [pointerInteractionId]);
 
   useEffect(() => {
     if (!selectedBlockId || selectedBlockId === document.hero.id) return;
@@ -165,16 +336,22 @@ export default function OutletBuilderCanvas({
                 onDrop={handleGridDrop}
               >
                 {ghost && <div
-                  className={`pointer-events-none z-30 m-1 rounded-xl border-2 border-dashed ${ghost.ok ? 'border-amber-400 bg-amber-100/40' : 'border-red-400 bg-red-100/40'}`}
+                  className={`pointer-events-none relative z-30 m-1 rounded-xl border-2 border-dashed ${ghost.ok ? 'border-amber-400 bg-amber-100/40' : 'border-red-400 bg-red-100/40'}`}
                   style={{ gridColumn: `${ghost.x + 1} / span ${ghost.w}`, gridRow: `${ghost.y + 1} / span ${ghost.h}` }}
-                />}
+                >
+                  {pointerInteractionId && <span className={`absolute right-2 top-2 rounded-md px-2 py-1 text-[10px] font-bold shadow-sm ${ghost.ok ? 'bg-amber-400 text-primary' : 'bg-red-500 text-white'}`}>
+                    {ghost.w}×{ghost.h}
+                  </span>}
+                </div>}
                 {document.blocks.map((block) => {
                   const selected = selectedBlockId === block.id;
                   const blockLabel = block.title || t(`builder.blockTypes.${block.type}`);
                   return <div
                     key={block.id}
                     ref={(element) => { blockRefs.current[block.id] = element; }}
-                    className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id ? 'opacity-30' : ''}`}
+                    onPointerDown={(event) => beginMove(event, block)}
+                    aria-grabbed={pointerInteractionId === block.id}
+                    className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id || pointerInteractionId === block.id ? 'opacity-30' : ''}`}
                     style={{ gridColumn: `${block.x + 1} / span ${block.w}`, gridRow: `${block.y + 1} / span ${block.h}` }}
                   >
                     <div
@@ -198,6 +375,30 @@ export default function OutletBuilderCanvas({
                       <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={t('builder.duplicateLabel', { label: blockLabel })} title={t('builder.duplicate')}><Copy size={14} /></button>
                       <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={t('builder.deleteLabel', { label: blockLabel })} title={t('builder.delete')}><Trash2 size={14} /></button>
                     </div>
+
+                    {selected && <>
+                      <button
+                        type="button"
+                        onPointerDown={(event) => beginResize(event, block, 'east')}
+                        className="absolute right-[-5px] top-1/2 z-40 h-10 w-3 -translate-y-1/2 cursor-ew-resize rounded-full border-2 border-white bg-amber-400 shadow-sm"
+                        aria-label={t('builder.resizeWidthLabel', { label: blockLabel })}
+                        title={t('builder.resizeWidth')}
+                      />
+                      <button
+                        type="button"
+                        onPointerDown={(event) => beginResize(event, block, 'south')}
+                        className="absolute bottom-[-5px] left-1/2 z-40 h-3 w-10 -translate-x-1/2 cursor-ns-resize rounded-full border-2 border-white bg-amber-400 shadow-sm"
+                        aria-label={t('builder.resizeHeightLabel', { label: blockLabel })}
+                        title={t('builder.resizeHeight')}
+                      />
+                      <button
+                        type="button"
+                        onPointerDown={(event) => beginResize(event, block, 'south-east')}
+                        className="absolute bottom-[-6px] right-[-6px] z-40 h-4 w-4 cursor-nwse-resize rounded-full border-2 border-white bg-amber-400 shadow-sm"
+                        aria-label={t('builder.resizeBothLabel', { label: blockLabel })}
+                        title={t('builder.resizeBoth')}
+                      />
+                    </>}
 
                     {sizeMenuId === block.id && <>
                       <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />

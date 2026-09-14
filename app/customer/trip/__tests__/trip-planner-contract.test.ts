@@ -5,6 +5,14 @@ const plannerSource = readFileSync(new URL("../[tripId]/trip-planner-client.tsx"
 const actionsSource = readFileSync(new URL("../actions.ts", import.meta.url), "utf8");
 
 describe("trip planner layout contract", () => {
+  it("uses the shared customer title and page shell", () => {
+    expect(plannerSource).toContain('import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";');
+    expect(plannerSource).toContain("<CustomerPageTitle");
+    expect(plannerSource).toContain('<CustomerPageShell wide className="pt-0 sm:pt-0">');
+    expect(plannerSource).toContain("rounded-3xl border border-border bg-card");
+    expect(plannerSource).not.toContain("h-[calc(100vh-4rem)]");
+  });
+
   it("defines the approved itinerary, map, and listing regions", () => {
     expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.itinerary")}');
     expect(plannerSource).toContain('aria-label={tCustomer("strictMigration.tripPlanner.tripMap")}');

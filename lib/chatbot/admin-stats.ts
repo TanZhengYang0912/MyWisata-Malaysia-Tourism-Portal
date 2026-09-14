@@ -29,6 +29,8 @@ export interface ChatbotAdminStats {
   notHelpfulAnswered: UnansweredQuestion[];
   /** Of every "the bot failed the customer" case (unanswered OR not-helpful), the fraction that became a ticket. */
   escalationRate: number; // 0..1
+  /** Which specific questions most often end in a support ticket — escalationRate tells the admin HOW OFTEN that happens; this tells them WHICH topics, so Help Centre effort goes where it's actually needed. */
+  topEscalated: UnansweredQuestion[];
 }
 
 function topByCount(
@@ -120,5 +122,11 @@ export async function getChatbotAdminStats(service: SupabaseClient): Promise<Cha
   const escalatedRows = failedRows.filter((f) => f.opened_ticket);
   const escalationRate = failedRows.length > 0 ? escalatedRows.length / failedRows.length : 0;
 
-  return { totalQuestions, answeredCount, answerRate, topUnanswered, notHelpfulAnswered, escalationRate };
+  const topEscalated = topByCount(
+    escalatedRows
+      .filter((f): f is typeof f & { question: string } => Boolean(f.question))
+      .map((f) => ({ question: f.question, created_at: f.created_at })),
+  );
+
+  return { totalQuestions, answeredCount, answerRate, topUnanswered, notHelpfulAnswered, escalationRate, topEscalated };
 }

@@ -14,6 +14,7 @@ import { formatMYR, formatNumber } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import type { VendorAnalyticsSnapshot } from '@/lib/vendor/analytics';
 import { VendorShareAnalytics } from '@/components/vendor/vendor-share-analytics';
+import { useAuth } from '@/hooks/use-auth';
 
 const NAVY = '#10164a';
 const ORANGE = '#e89224';
@@ -24,6 +25,7 @@ type TrendMetric = 'revenue' | 'averageOrderValue' | 'orders';
 
 export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapshot }) {
   const { t, i18n } = useTranslation('vendor');
+  const { isVendorOwner } = useAuth();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('revenue');
   const [productMode, setProductMode] = useState<'revenue' | 'units'>('revenue');
@@ -178,10 +180,12 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
         </Panel>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-        <div className="flex items-start gap-3"><MousePointerClick className="mt-0.5 shrink-0 text-amber-700" size={18} /><div><h2 className="font-semibold text-gray-900">{t('ui.analytics.marketingAttribution.title')}</h2><p className="mt-1 text-sm leading-6 text-gray-600">{t('ui.analytics.marketingAttribution.description')}</p></div></div>
-        <div className="mt-5"><VendorShareAnalytics /></div>
-      </section>
+      {isVendorOwner && (
+        <section className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+          <div className="flex items-start gap-3"><MousePointerClick className="mt-0.5 shrink-0 text-amber-700" size={18} /><div><h2 className="font-semibold text-gray-900">{t('ui.analytics.marketingAttribution.title')}</h2><p className="mt-1 text-sm leading-6 text-gray-600">{t('ui.analytics.marketingAttribution.description')}</p></div></div>
+          <div className="mt-5"><VendorShareAnalytics /></div>
+        </section>
+      )}
 
       <div className="flex items-start gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 text-sm text-primary"><Sparkles className="mt-0.5 shrink-0" size={17} /><p><strong>{t('ui.analytics.dataNote.title')}</strong> {t('ui.analytics.dataNote.description')}</p></div>
     </div>

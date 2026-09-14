@@ -45,17 +45,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     getActivities()
       .then((nextActivities) => { if (active) setActivities(nextActivities); })
       .catch(() => { if (active) setActivities([]); });
-    if (currentUser) commerce.getCart(currentUser.id).then((nextItems) => {
-      if (!active) return;
-      setItems(nextItems);
-      try {
-        const saved = sessionStorage.getItem(`customer-cart-selection-${currentUser.id}`);
-        setSelectedKeysState(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
-      } catch {
-        setSelectedKeysState(new Set());
-      }
-      setMounted(true);
-    });
+    if (currentUser) {
+      commerce.getCart(currentUser.id)
+        .then((nextItems) => {
+          if (!active) return;
+          setItems(nextItems);
+          try {
+            const saved = sessionStorage.getItem(`customer-cart-selection-${currentUser.id}`);
+            setSelectedKeysState(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
+          } catch {
+            setSelectedKeysState(new Set());
+          }
+          setMounted(true);
+        })
+        .catch(() => {
+          if (!active) return;
+          setItems([]);
+          setSelectedKeysState(new Set());
+          setMounted(true);
+        });
+    }
     else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);

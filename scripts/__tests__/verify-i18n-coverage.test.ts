@@ -143,9 +143,20 @@ describe("verifyI18nCoverage", () => {
     expect(result.errors.join("\n")).toContain("tracked UI inventory file is missing");
   });
 
+  it("ignores inventory contracts from nested Git worktrees", async () => {
+    const root = createMiniRepository();
+    writeText(
+      root,
+      ".worktrees/legacy/app/customer/__tests__/sitewide-i18n.contract.test.ts",
+      `export const CUSTOMER_I18N_FILES = [\n  "app/customer/chat/page.tsx",\n] as const;\n`,
+    );
+
+    await expect(verify(root)).resolves.toEqual({ ok: true, errors: [] });
+  });
+
   it("defaults the CLI root to the current working directory", () => {
     expect(existsSync(scriptPath)).toBe(true);
     const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
     expect(result.status).toBe(0);
-  }, 15_000);
+  }, 60_000); // full-project coverage scan — grows with the key count, and spawnSync competes with parallel workers
 });

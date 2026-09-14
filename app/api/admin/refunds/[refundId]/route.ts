@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createHmac } from 'node:crypto';
 import { isSimulatorCheckoutProvider } from '@/lib/payments/providers';
 import { isPaymentSimulatorEnabled } from '@/lib/payments/simulator-config';
+import { reverseOrderVendorSettlement } from '@/lib/vendor/settlement';
 
 const schema = z.object({ action: z.enum(['approve', 'reject']), note: z.string().trim().max(500).optional() }).strict();
 interface Props { params: Promise<{ refundId: string }> }
@@ -77,5 +78,9 @@ export async function POST(request: Request, { params }: Props) {
   if (refundError) return apiFail('DB_ERROR', refundError.message, 500);
   await service.from('payments').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('id', refund.payment_id);
   await service.from('orders').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('id', refund.order_id);
+  // Claw back any already-cleared vendor settlement for this order. Pending
+  // settlements are reversed by clear_matured_vendor_settlements() on its next
+  // run (it sees the refunded order); this handles the confirmed case now.
+  await reverseOrderVendorSettlement(service, refund.order_id, Math.round(Number(refund.amount) * 100));
   return apiOk({ refundId, status: 'processed' });
 }

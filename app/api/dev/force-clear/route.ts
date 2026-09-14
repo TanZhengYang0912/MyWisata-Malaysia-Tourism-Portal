@@ -31,5 +31,6 @@ export async function POST() {
   }
 
   const result = await clearMaturedCommissions(service, { maxAgeDays: 0 });
-  return apiOk(result);
+  const { data: vendorSettlements } = await service.rpc('clear_matured_vendor_settlements', { p_ignore_hold: true });
+  return apiOk({ ...result, vendorSettlements });
 }

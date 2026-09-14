@@ -1,39 +1,59 @@
 {
   "shell": {
     "panel": "管理面板",
-    "signedInAs": "登录身份"
+    "signedInAs": "登录身份",
+    "portal": "商家门户",
+    "brand": "马来西亚旅游",
+    "navigation": "门户导航",
+    "context": {
+      "superAdmin": "治理工作区",
+      "approver": "钱包审批",
+      "admin": "管理工作区",
+      "staff": "已分配工作"
+    }
   },
   "roles": {
     "admin": "管理员",
     "approver": "审批员",
-    "super_admin": "超级管理员"
+    "super_admin": "超级管理员",
+    "staff": "工作人员"
   },
   "navigation": {
     "Overview": "概览",
-    "Vendor Approvals": "商家审批",
-    "Catalogue Review": "目录审核",
-    "User Management": "用户管理",
-    "KYC Review": "KYC 审核",
+    "Vendor Approvals": "商家审核",
+    "Catalogue Review": "目录",
+    "User Management": "用户",
+    "KYC Review": "KYC",
     "Withdrawals": "提现",
     "Refunds": "退款",
-    "Wallet Settings": "钱包设置",
-    "Wallet Approvers": "钱包审批人",
-    "Payout Reports": "提现报告",
+    "Wallet Settings": "钱包",
+    "Wallet Approvers": "审批人",
+    "Payout Reports": "提现",
+    "Reconciliation": "对账",
     "Recommendations": "推荐",
-    "Support Tickets": "支持工单",
+    "Support Tickets": "支持",
     "Chat Reports": "聊天举报",
     "Affiliate": "联盟",
     "Chatbot": "聊天机器人",
     "AI Assistant": "AI 助手",
     "Staff Conduct": "员工行为",
     "Access Control": "访问控制",
-    "Sponsored Placements": "赞助展示位"
+    "Sponsored Placements": "赞助"
+  },
+  "navigationSections": {
+    "workspace": "工作区",
+    "governance": "治理",
+    "finance": "财务",
+    "support": "支持",
+    "administration": "管理"
   },
   "sponsoredPlacements": {
     "eyebrow": "探索推广活动",
     "title": "赞助展示位",
     "description": "创建、审核和暂停带有清晰赞助标识的探索展示位。",
-    "accessibility": { "lifecycleFilters": "活动生命周期筛选" },
+    "accessibility": {
+      "lifecycleFilters": "活动生命周期筛选"
+    },
     "form": {
       "title": "创建活动草稿",
       "product": "产品",
@@ -67,10 +87,25 @@
       "empty": "暂无赞助展示活动。",
       "emptyGroup": "此分类目前没有活动。"
     },
-    "prompts": { "rejectReason": "请输入拒绝原因（至少 5 个字符）。" },
-    "actions": { "submit": "提交", "approve": "批准", "reject": "拒绝", "pause": "暂停" },
-    "categories": { "food": "美食", "activity": "活动", "accommodation": "住宿", "retail": "零售" },
-    "list": { "title": "活动", "position": "第 {{position}} 位" },
+    "prompts": {
+      "rejectReason": "请输入拒绝原因（至少 5 个字符）。"
+    },
+    "actions": {
+      "submit": "提交",
+      "approve": "批准",
+      "reject": "拒绝",
+      "pause": "暂停"
+    },
+    "categories": {
+      "food": "美食",
+      "activity": "活动",
+      "accommodation": "住宿",
+      "retail": "零售"
+    },
+    "list": {
+      "title": "活动",
+      "position": "第 {{position}} 位"
+    },
     "lifecycle": {
       "active": "生效中 / 已排期",
       "pending": "待批准",
@@ -91,8 +126,18 @@
       "confirmCreate": "确认创建草稿",
       "confirmApprove": "确认批准"
     },
-    "scope": { "allStates": "所有州属", "allCategories": "所有类别" },
-    "status": { "draft": "草稿", "pending_approval": "待批准", "approved": "已批准", "rejected": "已拒绝", "paused": "已暂停", "archived": "已归档" }
+    "scope": {
+      "allStates": "所有州属",
+      "allCategories": "所有类别"
+    },
+    "status": {
+      "draft": "草稿",
+      "pending_approval": "待批准",
+      "approved": "已批准",
+      "rejected": "已拒绝",
+      "paused": "已暂停",
+      "archived": "已归档"
+    }
   },
   "accessControl": {
     "eyebrow": "安全治理",
@@ -320,7 +365,33 @@
       "confirmTitle": "确认员工角色变更",
       "confirmDescription": "权限变更将记录到审计日志。",
       "confirmSave": "保存员工角色",
-      "inviteTitle": "邀请新员工", "inviteHelp": "选择一个自定义员工角色，把有效期七天的邀请发送到员工专用邮箱。员工会先查看准确权限，再自行接受。", "inviteRole": "自定义员工角色", "selectCustomRole": "选择自定义角色", "inviteEmail": "员工邮箱", "inviteEmailPlaceholder": "yuangong@example.com", "inviteReason": "治理原因", "inviteReasonPlaceholder": "说明为什么这位新员工需要这些权限。", "reviewInvitation": "复核邀请", "confirmInvitationTitle": "确认员工邀请", "sendInvitation": "发送邀请邮件", "pendingInvitations": "待接受邀请", "noPendingInvitations": "目前没有待接受邀请。", "resendInvitation": "重新发送", "revokeInvitation": "撤销", "revokeReasonPrompt": "请输入撤销原因（至少 10 个字符）。", "invitationSent": "邀请邮件已发送。", "invitationResent": "邀请已用新链接重新发送。", "invitationRevoked": "邀请已撤销。", "invitationError": "无法处理员工邀请。", "joinedEmployees": "已加入员工", "delivery": { "pending": "等待中", "sending": "发送中", "sent": "邮件已发送", "failed": "发送失败" }
+      "inviteTitle": "邀请新员工",
+      "inviteHelp": "选择一个自定义员工角色，把有效期七天的邀请发送到员工专用邮箱。员工会先查看准确权限，再自行接受。",
+      "inviteRole": "自定义员工角色",
+      "selectCustomRole": "选择自定义角色",
+      "inviteEmail": "员工邮箱",
+      "inviteEmailPlaceholder": "yuangong@example.com",
+      "inviteReason": "治理原因",
+      "inviteReasonPlaceholder": "说明为什么这位新员工需要这些权限。",
+      "reviewInvitation": "复核邀请",
+      "confirmInvitationTitle": "确认员工邀请",
+      "sendInvitation": "发送邀请邮件",
+      "pendingInvitations": "待接受邀请",
+      "noPendingInvitations": "目前没有待接受邀请。",
+      "resendInvitation": "重新发送",
+      "revokeInvitation": "撤销",
+      "revokeReasonPrompt": "请输入撤销原因（至少 10 个字符）。",
+      "invitationSent": "邀请邮件已发送。",
+      "invitationResent": "邀请已用新链接重新发送。",
+      "invitationRevoked": "邀请已撤销。",
+      "invitationError": "无法处理员工邀请。",
+      "joinedEmployees": "已加入员工",
+      "delivery": {
+        "pending": "等待中",
+        "sending": "发送中",
+        "sent": "邮件已发送",
+        "failed": "发送失败"
+      }
     },
     "confirm": {
       "capabilityTitle": "确认能力变更",
@@ -931,7 +1002,12 @@
     "reindexErrors_one": "，{{count}} 个错误",
     "reindexErrors_other": "，{{count}} 个错误",
     "questionMeta_one": "×{{count}} · 最近提问于 {{date}}",
-    "questionMeta_other": "×{{count}} · 最近提问于 {{date}}"
+    "questionMeta_other": "×{{count}} · 最近提问于 {{date}}",
+    "topEscalated": {
+      "title": "最常升级为工单的问题",
+      "description": "无论机器人怎么回答，客户仍不断升级这些问题——请优先改善这些主题的帮助中心内容。",
+      "empty": "目前还没有升级为工单的问题。"
+    }
   },
   "chatReports": {
     "eyebrow": "信任与安全",
@@ -1323,6 +1399,40 @@
       "count_other": "{{count}} 个账户"
     }
   },
+  "reconciliation": {
+    "eyebrow": "资金对账",
+    "title": "订单对账",
+    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广联盟和推荐佣金。",
+    "month": "月份",
+    "reload": "重新加载",
+    "loading": "加载中…",
+    "exportCsv": "导出 CSV",
+    "noOrders": "本月没有已结算的订单。",
+    "negativeWarning": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "negativeWarning_one": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "negativeWarning_other": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
+    "errors": {
+      "load": "无法加载对账报告。"
+    },
+    "metrics": {
+      "gross": "客户付款",
+      "platformFee": "平台佣金",
+      "vendorNet": "商家净额",
+      "affiliate": "联盟佣金支出",
+      "recommendation": "推荐佣金支出",
+      "platformNet": "平台净额"
+    },
+    "columns": {
+      "order": "订单",
+      "status": "状态",
+      "gross": "总额",
+      "fee": "佣金",
+      "vendorNet": "商家净额",
+      "affiliate": "联盟",
+      "recommendation": "推荐",
+      "platformNet": "平台净额"
+    }
+  },
   "payouts": {
     "allSources": "全部来源",
     "amountMetrics": {
@@ -1495,7 +1605,7 @@
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
       "description": "在联系商家前审核社区推荐。",
       "duplicate": "重复",
-      "member": "MyWisata 会员",
+      "member": "MyLawatan 会员",
       "noPending": "没有待审核推荐",
       "pending": "待审核（{{count}}）",
       "pendingLabel": "待审核推荐",
@@ -1593,7 +1703,8 @@
       "minutes_one": "{{count}} 分钟",
       "minutes_other": "{{count}} 分钟",
       "hours_one": "{{count}} 小时",
-      "hours_other": "{{count}} 小时"
+      "hours_other": "{{count}} 小时",
+      "routedToTeam": "根据工单类别路由至此团队"
     },
     "table": {
       "action": "操作",
@@ -1832,7 +1943,16 @@
       "outlets_one": "{{count}} 家门店",
       "outlets_other": "{{count}} 家门店",
       "listings_one": "{{count}} 个商品",
-      "listings_other": "{{count}} 个商品"
+      "listings_other": "{{count}} 个商品",
+      "reasonModal": {
+        "draft": "AI 起草",
+        "drafting": "起草中…",
+        "placeholder": "输入原因，或使用 AI 起草…",
+        "advisory": "AI 起草原因——确认前请检查并编辑。",
+        "cancel": "取消",
+        "error": "暂时无法起草原因——请手动输入。",
+        "close": "关闭"
+      }
     },
     "walletApprovers": {
       "active": "账户正常",
@@ -2123,7 +2243,8 @@
         "contactMethod": "联系方式",
         "photos": "照片",
         "imageRights": "图片权利",
-        "exactNameMatches": "名称完全匹配"
+        "exactNameMatches": "名称完全匹配",
+        "links": "链接"
       },
       "findingKinds": {
         "lowQuality": "质量较低",
@@ -2629,7 +2750,7 @@
       "eventStatus": "服务商状态",
       "amount": "金额",
       "providerTime": "服务商时间",
-      "receivedTime": "MyWisata 接收时间",
+      "receivedTime": "MyLawatan 接收时间",
       "signatureVerified": "签名已验证",
       "payloadHash": "载荷 SHA-256",
       "deliveryStatus": "Callback 投递状态",
@@ -2798,7 +2919,7 @@
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
-      "mywisataWallet": "MyWisata 钱包",
+      "mywisataWallet": "MyLawatan 钱包",
       "stripeSandbox": "Stripe 沙盒",
       "tngSimulator": "Touch ’n Go 电子钱包 — 模拟器",
       "unknown": "未知服务商"

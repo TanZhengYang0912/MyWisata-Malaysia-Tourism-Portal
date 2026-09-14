@@ -18,7 +18,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
   const bookingId = "bk-300";
   const passId = "pass-400";
 
-  function setupAuth() {
+  function setupAuth({ policy = 'group_entry', entryLimit = 2, entriesUsed = 0 }: { policy?: 'single_entry' | 'group_entry' | 'multi_entry'; entryLimit?: number; entriesUsed?: number } = {}) {
     vi.mocked(authorizeVendor).mockResolvedValue({
       ok: true,
       access: {
@@ -61,9 +61,9 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                       data: {
                         id: passId,
                         booking_id: bookingId,
-                        policy: "group_entry",
-                        entry_limit: 2,
-                        entries_used: 0,
+                        policy,
+                        entry_limit: entryLimit,
+                        entries_used: entriesUsed,
                         status: "active",
                       },
                       error: null,
@@ -161,6 +161,20 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error.code).toBe("EXCEEDS_ENTRY_LIMIT");
+  });
+
+  it('admits one visit at a time for a multi-entry pass even when a client asks for more', async () => {
+    setupAuth({ policy: 'multi_entry', entryLimit: 4 });
+
+    const req = new Request(`http://localhost:3000/api/vendors/${vendorId}/bookings/${bookingId}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entriesAdmitted: 2 }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('INVALID_ADMISSION_COUNT');
   });
 
   it("validates signed ticket tokens and rejects invalid tokens with 401", async () => {

@@ -10,6 +10,8 @@ import { ShareButton } from "@/components/shared/share-button";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { productImageUrl } from "@/lib/storage/product-image";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 
 export const dynamic = "force-dynamic";
 
@@ -19,41 +21,45 @@ interface Props {
 
 async function getPublicOutletPage(outletId: string, vendorId: string) {
   const db = await createClient();
-  const [{ data: outlet }, { data: page }, { data: outlets }] = await Promise.all([
+  const [{ data: outlet }, { data: page }, { data: outlets }, { data: media }] = await Promise.all([
     db
       .from("outlets")
-      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(id,name)")
+      .select("id,name,address,city,state,country,phone,email,operating_hours,wheelchair_accessible,pet_friendly,vendors(id,name,logo_url)")
       .eq("id", outletId)
       .eq("vendor_id", vendorId)
       .eq("status", "active")
+      .eq("review_status", "approved")
       .maybeSingle(),
     db.from("public_outlet_pages").select("*").eq("outlet_id", outletId).maybeSingle(),
-    db.from("outlets").select("id,name").eq("vendor_id", vendorId).eq("status", "active").order("name"),
+    db.from("outlets").select("id,name").eq("vendor_id", vendorId).eq("status", "active").eq("review_status", "approved").order("name"),
+    db.from("media_assets").select("url,alt_text,media_type,sort_order").eq("outlet_id", outletId).is("product_id", null).order("sort_order"),
   ]);
-  return { outlet, page, outlets: outlets || [] };
+  const entityRows = ((media || []) as Array<{ url: string; alt_text: string | null; media_type: string | null; sort_order: number | null }>).map((row): EntityMediaRow => ({ url: row.url, altText: row.alt_text, mediaType: row.media_type, sortOrder: row.sort_order }));
+  const gallery = selectEntityGallery(entityRows, 3);
+  return { outlet, page, outlets: outlets || [], gallery: gallery.length ? gallery : selectEntityGallery(entityRows), logoUrl: selectEntityLogo(entityRows) };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { outletId, vendorId } = await params;
-  const { outlet, page } = await getPublicOutletPage(outletId, vendorId);
+  const { outlet, page, gallery } = await getPublicOutletPage(outletId, vendorId);
   const { t } = await getServerTranslation("customer");
   if (!outlet) return { title: t("ui.outletPage.notFound") };
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
   return {
-    title: document.seoTitle || `${outlet.name}${vendor ? ` — ${vendor.name}` : ""} | MyWisata`,
+    title: document.seoTitle || `${outlet.name}${vendor ? ` — ${vendor.name}` : ""} | ${BRAND_NAME}`,
     description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
     openGraph: {
       title: document.seoTitle || outlet.name,
       description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
-      images: document.hero.imageUrl ? [{ url: document.hero.imageUrl }] : undefined,
+      images: document.hero.imageUrl || gallery[0]?.url ? [{ url: document.hero.imageUrl || gallery[0].url }] : undefined,
     },
   };
 }
 
 export default async function VendorOutletPage({ params }: Props) {
   const { outletId, vendorId } = await params;
-  const { outlet, page, outlets } = await getPublicOutletPage(outletId, vendorId);
+  const { outlet, page, outlets, gallery, logoUrl } = await getPublicOutletPage(outletId, vendorId);
   if (!outlet) notFound();
   const { t } = await getServerTranslation("customer");
 
@@ -76,6 +82,7 @@ export default async function VendorOutletPage({ params }: Props) {
   });
   const publicOutlet = {
     ...outlet,
+    vendorId: vendor?.id || vendorId,
     vendorName: vendor?.name ?? null,
     address: profile.address,
     city: profile.city,
@@ -84,11 +91,17 @@ export default async function VendorOutletPage({ params }: Props) {
     phone: profile.phone,
     email: profile.email,
     operating_hours: profile.operatingHours,
+    logoUrl: logoUrl || vendor?.logo_url || null,
   };
+  const availableGallery = gallery.length ? gallery : document.gallery;
+  const heroImageUrl = gallery[0]?.url || document.hero.imageUrl || document.gallery[0]?.url;
+  const visibleGallery = availableGallery.filter((item) => item.url !== heroImageUrl);
   const publicDocument = {
     ...document,
+    gallery: visibleGallery,
     hero: {
       ...document.hero,
+      imageUrl: heroImageUrl,
       title:
         document.hero.title === "Discover this outlet" || !document.hero.title.trim()
           ? t("ui.outletPage.heroTitle")
@@ -166,22 +179,21 @@ export default async function VendorOutletPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 pt-6">
+      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("ui.outletPage.verified")}</p>
-          <p className="mt-1 text-sm font-semibold text-muted-foreground">{outlet.name}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{vendor ? <a href={`/customer/vendor/${vendorId}`} className="hover:text-primary hover:underline">{vendor.name}</a> : t("ui.labels.mywisataOutlet")}</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{outlet.name}</p>
           {vendor && (
             <p className="mt-0.5 text-xs text-muted-foreground/60">
-              {t("ui.outletPage.by")} {" "}
-              <a href={`/customer/vendor/${vendorId}`} className="font-semibold text-primary hover:underline">
-                {vendor.name}
-              </a>
+              {t("ui.outletPage.verified")}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
           <ShareButton shareType="outlet" contentId={outlet.id} title={outlet.name} />
           <OutletChatButton outletId={outlet.id} />
+        </div>
         </div>
       </div>
       {outletNavigation.hasMultipleOutlets && <div className="mx-auto max-w-7xl px-6 pt-5">

@@ -10,6 +10,16 @@ describe("MALAYSIA_DESTINATIONS", () => {
   it("keeps one unique destination per Malaysian state in the 16-item source of truth", () => {
     expect(MALAYSIA_DESTINATIONS).toHaveLength(16);
     expect(new Set(MALAYSIA_DESTINATIONS.map((destination) => destination.state)).size).toBe(16);
+    expect(MALAYSIA_DESTINATIONS.slice(0, 8).map((destination) => destination.state)).toEqual([
+      "Kuala Lumpur",
+      "Penang",
+      "Kedah",
+      "Sabah",
+      "Melaka",
+      "Pahang",
+      "Terengganu",
+      "Sarawak",
+    ]);
     expect(
       MALAYSIA_DESTINATIONS.every((destination) =>
         destination.image.includes("/storage/v1/object/public/place-images/malaysia/"),

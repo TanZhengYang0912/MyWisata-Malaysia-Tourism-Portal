@@ -14,6 +14,9 @@ import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/custo
 import { productImageUrl } from "@/lib/storage/product-image";
 
 function productDetailHref(productId: string, outletId: string) {
+  // Always navigate with outlet scope: outletId pre-selects the outlet in the
+  // product detail page and returnTo points back to the outlet shop so that
+  // relatedScope resolves to "outlet" (not "vendor") on the server.
   return `/customer/activity/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlet/${outletId}`)}`;
 }
 
@@ -161,12 +164,13 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
 
 export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet; products: OutletRendererProduct[] }) {
   const { t } = useTranslation("customer");
+  const menuGridClass = products.length <= 2 ? "max-w-3xl sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4";
   return (
     <section id="full-menu" aria-labelledby="full-menu-title" className="rounded-3xl border border-primary/10 bg-card p-5 shadow-sm sm:p-7">
       <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("ui.labels.mywisataOutlet")}</p>
-          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt")}</h2>
+          <h2 id="full-menu-title" className="mt-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t("ui.outletMenu.availableAt", { outlet: outlet.name })}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.description")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">
@@ -180,7 +184,7 @@ export function OutletMenu({ outlet, products }: { outlet: OutletRendererOutlet;
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("ui.outletMenu.emptyDescription")}</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={`mt-6 grid gap-5 ${menuGridClass}`}>
           {products.map((product) => <OutletProductCard key={product.id} outlet={outlet} product={product} />)}
         </div>
       )}

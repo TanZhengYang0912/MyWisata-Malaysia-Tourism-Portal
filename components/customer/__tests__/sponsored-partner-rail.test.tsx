@@ -24,12 +24,13 @@ vi.mock("next/link", () => ({ default: (props: React.AnchorHTMLAttributes<HTMLAn
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => ({
-      "ui.search.sponsoredRecommendations": "Sponsored recommendations",
-      "ui.search.sponsoredDescription": "Paid placements matched to your current search.",
-      "ui.search.sponsoredCarousel": "Sponsored recommendations carousel",
+      "ui.search.featuredRecommendations": "Featured recommendations",
+      "ui.search.featuredDescription": "Featured experiences from verified local partners.",
+      "ui.search.featuredCarousel": "Featured recommendations carousel",
       "ui.search.previousAdvertisement": "Previous advertisement",
       "ui.search.nextAdvertisement": "Next advertisement",
-      "ui.labels.sponsored": "Sponsored",
+      "ui.labels.featured": "Featured",
+      "ui.labels.operatingHours": "Operating hours",
       "ui.search.providedBy": `By ${options?.vendor ?? ""}`,
       "ui.actions.viewDetails": "View experience",
     } as Record<string, string>)[key] ?? key,
@@ -184,8 +185,10 @@ describe("SponsoredPartnerRail", () => {
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
 
-    expect(container.textContent).toContain("Sponsored recommendations");
-    expect(container.textContent).toContain("Sponsored");
+    expect(container.textContent).toContain("Featured recommendations");
+    expect(container.textContent).toContain("Featured");
+    expect(container.textContent).not.toContain("Sponsored");
+    expect(container.textContent).toContain("Operating hours: 6:00 PM - 10:00 PM");
     expect(container.textContent).toContain("Advertisement activity-1");
     expect(container.textContent).not.toContain("Advertisement activity-2");
     expect(container.textContent).toContain("George Town Walks");
@@ -194,7 +197,7 @@ describe("SponsoredPartnerRail", () => {
     expect(findElements(container, (element) => element.tagName === "ARTICLE")).toHaveLength(1);
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    expect(viewport.getAttribute("aria-roledescription")).toBe("Sponsored recommendations carousel");
+    expect(viewport.getAttribute("aria-roledescription")).toBe("Featured recommendations carousel");
     expect(viewport.className).toContain("w-full");
     expect(viewport.className).toContain("overflow-hidden");
     expect(viewport.className).not.toContain("overflow-x-auto");

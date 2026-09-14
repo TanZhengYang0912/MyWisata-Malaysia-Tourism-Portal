@@ -47,6 +47,7 @@ async function getDestinationData(destinationId: string) {
       )
       .eq("state", destination.state)
       .eq("status", "active")
+      .eq("review_status", "approved")
       .limit(8),
     db
       .from("products")

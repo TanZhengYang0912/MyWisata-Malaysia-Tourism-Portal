@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "559e8e4d-a8e7-10f3-09f1-45656fd9f0d5",
+    "name": "Jonker 88 Heritage",
+    "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+    "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah"
+  },
+  "outlets": [
+    {
+      "id": "1d22d64f-de58-607d-15fa-130787aa2acf",
+      "name": "Jonker 88 Heritage"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "jonker-88-baba-cendol",
+      "name": "Jonker 88 Baba Cendol",
+      "description": "Baba Cendol listed on Jonker 88's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 7,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Cendol_in_Penang.jpg/960px-Cendol_in_Penang.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/jonker-88-baba-cendol-real.jpg",
+      "sha256": "38340ebc7927e3b496bf241adb6482aa6950a60778b0d8d2d4b93dd877f16cb9",
+      "artist": "Wikimedia Commons contributors; menu source Foodpanda listing",
+      "license": "Wikimedia Commons media; menu and prices observed from marketplace listing"
+    },
+    {
+      "slug": "jonker-88-baba-durian-cendol",
+      "name": "Jonker 88 Baba Durian Cendol",
+      "description": "Baba Durian Cendol listed on Jonker 88's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 9,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Cendol_Melaka_JohorBahru_Akaka_Malaysia.jpg/960px-Cendol_Melaka_JohorBahru_Akaka_Malaysia.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/jonker-88-baba-durian-cendol-real.jpg",
+      "sha256": "06968d257f9ca49660d3ce75b3fe65ca4eab73d0721ec1e1f61796f7be9e858a",
+      "artist": "Wikimedia Commons contributors; menu source Foodpanda listing",
+      "license": "Wikimedia Commons media; menu and prices observed from marketplace listing"
+    },
+    {
+      "slug": "jonker-88-ice-kacang",
+      "name": "Jonker 88 Ice Kacang",
+      "description": "Ice Kacang listed on Jonker 88's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 7,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/Ais_kacang.jpg/960px-Ais_kacang.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/jonker-88-ice-kacang-real.jpg",
+      "sha256": "0f1ea6a3e4675632e7ca8bbacb577209a989a53c537fb5887a3a1d805d945360",
+      "artist": "Wikimedia Commons contributors; menu source Foodpanda listing",
+      "license": "Wikimedia Commons media; menu and prices observed from marketplace listing"
+    },
+    {
+      "slug": "jonker-88-durian-ice-kacang",
+      "name": "Jonker 88 Durian Ice Kacang",
+      "description": "Durian Ice Kacang listed on Jonker 88's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 9,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Singapore_food_-_Ice_kacang_at_Food_Republic_Nov_2016.jpg/960px-Singapore_food_-_Ice_kacang_at_Food_Republic_Nov_2016.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/jonker-88-durian-ice-kacang-real.jpg",
+      "sha256": "77e824ee0437ead99ae1ddce035eef56dd27c1e4babab9eca22f6d86331c3096",
+      "artist": "Wikimedia Commons contributors; menu source Foodpanda listing",
+      "license": "Wikimedia Commons media; menu and prices observed from marketplace listing"
+    },
+    {
+      "slug": "jonker-88-eight-precious-cendol",
+      "name": "Jonker 88 Eight Precious Cendol",
+      "description": "Eight Precious Cendol listed on Jonker 88's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 9,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Cendol_mix_%2812593414285%29.jpg/960px-Cendol_mix_%2812593414285%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://www.foodpanda.my/ms/restaurant/xwqq/jonker-88-jalan-hang-tuah",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/jonker-88-eight-precious-cendol-real.jpg",
+      "sha256": "fdec7b3de683431957e02acb2d254e6a9aa730426cbbac19c6789739d8c72680",
+      "artist": "Wikimedia Commons contributors; menu source Foodpanda listing",
+      "license": "Wikimedia Commons media; menu and prices observed from marketplace listing"
+    }
+  ]
+}

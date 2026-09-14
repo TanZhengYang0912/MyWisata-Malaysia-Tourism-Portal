@@ -49,6 +49,12 @@ describe('GET /api/notifications', () => {
     expect(mocks.from).toHaveBeenCalledWith('notifications');
   });
 
+  it('accepts the messages category (chat notifications) as a real filter', async () => {
+    await GET(request('?category=messages'));
+    const query = mocks.from.mock.results[0]?.value;
+    expect(query.eq).toHaveBeenCalledWith('category', 'messages');
+  });
+
   it('ignores unknown category filters instead of returning an empty feed', async () => {
     await GET(request('?category=unknown'));
     const query = mocks.from.mock.results[0]?.value;

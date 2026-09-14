@@ -134,6 +134,7 @@
       "recommendations_affiliate": "推荐与联盟",
       "support": "客服支持",
       "account_security": "账户与安全",
+      "messages": "消息",
       "vendor_orders": "订单",
       "vendor_bookings": "预订",
       "vendor_products": "产品",
@@ -141,6 +142,11 @@
       "vendor_account": "账户"
     },
     "events": {
+      "chatMessage": {
+        "title": "来自 {{name}} 的新消息",
+        "body": "{{preview}}",
+        "attachmentBody": "发送了一个附件"
+      },
       "withdrawalApproved": {
         "title": "提现已批准——付款处理中",
         "body": "您的提现已获批准，很快会转入您选择的收款账户。"
@@ -240,9 +246,12 @@
       "stop": "停止聆听"
     },
     "list": {
-      "supportLabel": "MyWisata 客服",
+      "supportLabel": "MyLawatan 客服",
       "signInPrompt": "登录后即可与商家聊天。"
-    }
+    },
+    "expandChat": "展开为全屏",
+    "collapseChat": "退出全屏",
+    "resizeSidebar": "调整对话列表大小"
   },
   "account": {
     "menu": "账户菜单",
@@ -268,8 +277,8 @@
   },
   "command": {
     "title": "全局命令面板",
-    "searchAdminPlaceholder": "输入命令或搜索待办队列… (⌘K)",
-    "searchVendorPlaceholder": "输入命令或快速跳转工作区… (⌘K)",
+    "searchAdminPlaceholder": "输入命令或搜索待办队列…",
+    "searchVendorPlaceholder": "输入命令或快速跳转工作区…",
     "noResults": "未找到相关命令或页面。",
     "navigation": "导航直达",
     "queue": "待审队列",
@@ -294,9 +303,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan。版权所有。"
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "本地体验合作伙伴"
+    },
     "place": {
       "localNotes": {
         "justNow": "刚刚",

@@ -24,9 +24,11 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
+import { VendorReasonModal } from '@/components/admin/vendor-reason-modal';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 
 type VendorStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
@@ -113,6 +115,7 @@ function initials(name: string) {
 
 export default function AdminVendorsPage() {
   const { t } = useTranslation('admin');
+  const { confirm, prompt } = useAppDialog();
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, welcomed: 0, rejected: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
@@ -131,6 +134,7 @@ export default function AdminVendorsPage() {
   const [linkingVendor, setLinkingVendor] = useState<string | null>(null);
   const [selectedRec, setSelectedRec] = useState<Record<string, string>>({});
   const [approvalEmailTarget, setApprovalEmailTarget] = useState<{ id: string; name: string; defaultEmail?: string } | null>(null);
+  const [reasonModal, setReasonModal] = useState<{ vendor: VendorData; action: 'reject' | 'suspend' | 'request_information' } | null>(null);
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -210,18 +214,11 @@ export default function AdminVendorsPage() {
     if (!response.ok) throw new Error(result.error ?? result.message ?? t('ui.vendors.errors.action'));
   }
 
-  async function handleAction(vendor: VendorData, action: ActionType) {
+  async function runAction(vendor: VendorData, action: ActionType, reason?: string) {
     const actionLabel = action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`);
-    if (action === 'approve' && !window.confirm(t('ui.vendors.confirm.approve', { name: vendor.name }))) return;
-    if (action === 'unsuspend' && !window.confirm(t('ui.vendors.confirm.reactivate', { name: vendor.name }))) return;
-    const reason = action === 'reject' || action === 'suspend' || action === 'request_information'
-      ? window.prompt(t(`ui.vendors.reason.${action === 'reject' ? 'rejection' : action === 'request_information' ? 'informationRequest' : 'suspension'}`, { name: vendor.name }))
-      : undefined;
-    if ((action === 'reject' || action === 'suspend') && reason === null) return;
-
     setBusyAction(`${action}:${vendor.id}`);
     try {
-      await requestAction(vendor.id, action, reason ?? undefined);
+      await requestAction(vendor.id, action, reason);
       setNotice(t('ui.vendors.actionSuccess', { name: vendor.name, action: actionLabel }));
       setActiveVendor(null);
       await loadVendors();
@@ -230,6 +227,16 @@ export default function AdminVendorsPage() {
     } finally {
       setBusyAction(null);
     }
+  }
+
+  async function handleAction(vendor: VendorData, action: ActionType) {
+    if (action === 'approve' && !(await confirm(t('ui.vendors.confirm.approve', { name: vendor.name })))) return;
+    if (action === 'unsuspend' && !(await confirm(t('ui.vendors.confirm.reactivate', { name: vendor.name })))) return;
+    if (action === 'reject' || action === 'suspend' || action === 'request_information') {
+      setReasonModal({ vendor, action });
+      return;
+    }
+    await runAction(vendor, action);
   }
 
   async function runBatch(action: ActionType) {
@@ -243,8 +250,8 @@ export default function AdminVendorsPage() {
       setNotice(t('ui.vendors.batch.noneEligible', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`) }));
       return;
     }
-    if (!window.confirm(t('ui.vendors.batch.confirm', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`), count: eligible.length }))) return;
-    const reason = action === 'reject' || action === 'suspend' || action === 'request_information' ? window.prompt(t('ui.vendors.batch.reasonPrompt')) : undefined;
+    if (!(await confirm(t('ui.vendors.batch.confirm', { action: action === 'unsuspend' ? t('ui.actions.reactivate') : t(`ui.actions.${action}`), count: eligible.length })))) return;
+    const reason = action === 'reject' || action === 'suspend' || action === 'request_information' ? await prompt(t('ui.vendors.batch.reasonPrompt')) : undefined;
     if ((action === 'reject' || action === 'suspend' || action === 'request_information') && reason === null) return;
 
     setBusyAction(`batch:${action}`);
@@ -471,6 +478,20 @@ export default function AdminVendorsPage() {
           setActiveVendor(null);
           setNotice(t('ui.vendors.approvalEmail.sent'));
           void loadVendors();
+        }}
+      />
+
+      <VendorReasonModal
+        open={!!reasonModal}
+        action={reasonModal?.action ?? null}
+        vendorId={reasonModal?.vendor.id ?? null}
+        vendorName={reasonModal?.vendor.name ?? ''}
+        confirmLabel={reasonModal ? (reasonModal.action === 'request_information' ? t('ui.actions.requestInfo') : t(`ui.actions.${reasonModal.action}`)) : ''}
+        onClose={() => setReasonModal(null)}
+        onConfirm={(reason) => {
+          if (!reasonModal) return;
+          setReasonModal(null);
+          void runAction(reasonModal.vendor, reasonModal.action, reason);
         }}
       />
     </AdminPageShell>

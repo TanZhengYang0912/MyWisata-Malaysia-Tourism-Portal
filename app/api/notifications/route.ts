@@ -3,7 +3,7 @@ import { authorizeVendor, type VendorAccess } from '@/lib/vendor-authorization';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 
 const PAGE_SIZE_MAX = 50;
-const CATEGORIES = new Set(['wallet', 'bookings_purchases', 'recommendations_affiliate', 'support', 'account_security']);
+const CATEGORIES = new Set(['wallet', 'bookings_purchases', 'recommendations_affiliate', 'support', 'account_security', 'messages']);
 const VENDOR_CATEGORIES = new Set(['vendor_orders', 'vendor_bookings', 'vendor_products', 'vendor_wallet', 'vendor_account']);
 const VENDOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

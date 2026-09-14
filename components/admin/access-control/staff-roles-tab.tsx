@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import type {
   ApiEnvelope,
@@ -57,6 +58,7 @@ const PERMISSION_LABEL_KEYS: Partial<Record<string, string>> = {
 
 export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus) => void }) {
   const { t, i18n } = useTranslation("admin");
+  const { prompt } = useAppDialog();
   const [roles, setRoles] = useState<StaffRoleRecord[]>([]);
   const [assignments, setAssignments] = useState<StaffRoleAssignmentRecord[]>([]);
   const [employees, setEmployees] = useState<StaffEmployeeRecord[]>([]);
@@ -308,7 +310,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   }
 
   async function revokeInvitation(invitationId: string) {
-    const reason = window.prompt(t("accessControl.staffRoles.revokeReasonPrompt"))?.trim();
+    const reason = (await prompt(t("accessControl.staffRoles.revokeReasonPrompt")))?.trim();
     if (!reason || reason.length < 10) return;
     setSaving(true); setError("");
     try {

@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth";
 import { CartProvider } from "@/components/providers/cart";
 import { ActionFeedbackProvider } from "@/components/providers/action-feedback";
+import { AppDialogProvider } from "@/components/providers/app-dialog";
 import { ThemeProvider } from "@/components/providers/theme";
 import { FontSizeProvider, FontSizeScript } from "@/components/providers/font-size";
 import { AppI18nProvider, type AppI18nResources } from "@/components/providers/i18n-provider";
@@ -21,8 +22,21 @@ const plusJakartaSans = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta-sans"
 const ibmPlexMono = IBM_Plex_Mono({ variable: "--font-ibm-plex-mono", subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "MyWisata — Malaysia Tourism Portal",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  applicationName: "MyLawatan",
+  title: "MyLawatan — Malaysia Tourism Portal",
   description: "Discover, book and share authentic Malaysian tourism experiences.",
+  icons: {
+    icon: [{ url: "/icon.png?v=2", type: "image/png" }],
+    shortcut: ["/icon.png?v=2"],
+    apple: ["/icon.png?v=2"],
+  },
+  openGraph: {
+    title: "MyLawatan — Malaysia Tourism Portal",
+    description: "Discover, book and share authentic Malaysian tourism experiences.",
+    siteName: "MyLawatan",
+    type: "website",
+  },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -49,7 +63,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <ThemeProvider>
           <FontSizeProvider>
             <AppI18nProvider locale={locale} resources={resourcesByLocale}>
-              <ReferenceCurrencyProvider currency={currency} snapshot={referenceRate}>
+              <AppDialogProvider>
+                <ReferenceCurrencyProvider currency={currency} snapshot={referenceRate}>
                 <ActionFeedbackProvider>
                   <AuthProvider>
                     <CartProvider>
@@ -60,7 +75,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
                     </CartProvider>
                   </AuthProvider>
                 </ActionFeedbackProvider>
-              </ReferenceCurrencyProvider>
+                </ReferenceCurrencyProvider>
+              </AppDialogProvider>
             </AppI18nProvider>
           </FontSizeProvider>
         </ThemeProvider>

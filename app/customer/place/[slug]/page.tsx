@@ -9,6 +9,8 @@ import {
   getPlaceBySlug,
   getPlaceChildren,
   getPlaceAncestors,
+  getPlaceAccesses,
+  getPlaceInformationalActivities,
   getRegionsWithPois,
   getPlaceProducts,
   getNearbyOutlets,
@@ -18,6 +20,8 @@ import { PlaceBreadcrumb } from "@/components/customer/place-breadcrumb";
 import { PlaceCard } from "@/components/customer/place-card";
 import { PlaceList } from "@/components/customer/place-list";
 import { PlaceActivitySection } from "@/components/customer/place-activity-section";
+import { PlaceAccessSection } from "@/components/customer/place-access-section";
+import { PlaceInformationalActivitySection } from "@/components/customer/place-informational-activity-section";
 import { PlaceCommunitySection } from "@/components/customer/place-community-section";
 import { NearbyOutlets } from "@/components/customer/nearby-outlets";
 import type { Place } from "@/backend/core/types";
@@ -25,7 +29,7 @@ import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
 import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { formatMYRNumber } from "@/lib/i18n/format";
-import { MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { BRAND_NAME, MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +56,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t("ui.place.metaTitle", { name: place.name }),
     description: place.intro ?? place.tagline ?? t("ui.place.metaDescription", { name: place.name, state: stateLabel }),
     openGraph: {
-      title: `${place.name} | MyWisata`,
+      title: `${place.name} | ${BRAND_NAME}`,
       description: place.intro ?? undefined,
       images: heroImage ? [{ url: heroImage }] : undefined,
     },
@@ -68,10 +72,12 @@ export default async function PlacePage({ params }: Props) {
   const stateLabel = stateKey ? t(stateKey) : place.state;
   const heroImage = getPlaceHeroImage(place);
 
-  const [trail, children, regionGroups, products, nearby, vendors] = await Promise.all([
+  const [trail, children, regionGroups, accesses, informationalActivities, products, nearby, vendors] = await Promise.all([
     getPlaceAncestors(slug),
     getPlaceChildren(place.id),
     place.level === "state" ? getRegionsWithPois(place.slug) : Promise.resolve([]),
+    place.level === "poi" ? getPlaceAccesses(place.id) : Promise.resolve([]),
+    place.level === "poi" ? getPlaceInformationalActivities(place.id) : Promise.resolve([]),
     place.level === "poi" ? getPlaceProducts(place.id) : Promise.resolve([]),
     getNearbyOutlets({ lat: place.lat, lng: place.lng }, nearbyRadiusKm(place.level)),
     getVendors(),
@@ -237,8 +243,24 @@ export default async function PlacePage({ params }: Props) {
 
       {/* POI: vendor options, grouped by relation type through the filterable section. */}
       {place.level === "poi" && (
-        products.length > 0 ? (
-          <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />
+        accesses.length > 0 || informationalActivities.length > 0 || products.length > 0 ? (
+          <>
+            <PlaceAccessSection
+              accesses={accesses}
+              title={t("ui.place.activitiesHere")}
+              freeLabel={t("ui.place.freeEntry")}
+              freeToExplore={t("ui.labels.freeToExplore")}
+            />
+            <PlaceInformationalActivitySection
+              activities={informationalActivities}
+              eyebrow={t("ui.outlet.planVisit")}
+              title={t("ui.placeActivity.title")}
+              ticketLabel={t("ui.placeActivity.ticketRequired")}
+              informationLabel={t("ui.placeActivity.venueInformation")}
+              venueDetailsLabel={t("ui.placeActivity.venueDetails")}
+            />
+            {products.length > 0 && <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />}
+          </>
         ) : (
           <section className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">{t("ui.place.activitiesHere")}</h2>

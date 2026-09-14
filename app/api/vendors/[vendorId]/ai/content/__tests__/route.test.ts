@@ -58,7 +58,7 @@ describe('POST /api/vendors/[vendorId]/ai/content', () => {
     const response = await POST(request({ surface: 'outlet_page', outletId: '3197969f-d0ea-41c2-ac23-9bf666289453', outletName: 'Georgetown', heroTitle: 'Welcome', heroBody: 'Come by.' }), { params: Promise.resolve({ vendorId: 'vendor-1' }) });
 
     expect(response.status).toBe(200);
-    expect(mocks.authorizeOutlet).toHaveBeenCalledWith('vendor-1', '3197969f-d0ea-41c2-ac23-9bf666289453');
+    expect(mocks.authorizeOutlet).toHaveBeenCalledWith('vendor-1', '3197969f-d0ea-41c2-ac23-9bf666289453', ['outlet_manager']);
     await expect(response.json()).resolves.toMatchObject({ data: { draft: { title: 'Taste Georgetown' } } });
   });
 

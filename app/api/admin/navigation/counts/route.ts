@@ -50,7 +50,7 @@ export async function GET() {
       service.from('vendors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       service.from('outlets').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
       service.from('products').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
-      service.from('vouchers').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review'),
+      service.from('vouchers').select('id', { count: 'exact', head: true }).eq('review_status', 'pending_review').eq('vendor_review_status', 'approved'),
       service.from('refunds').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       service.from('chat_reports').select('id', { count: 'exact', head: true }).eq('status', 'open'),
     ]),

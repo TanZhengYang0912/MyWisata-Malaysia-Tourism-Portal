@@ -304,6 +304,15 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const bookingItems = currentItems.filter((item) => item.slot_id || item.slot_starts_at).length;
   const totalOutletSales = salesByOutlet.reduce((total, outlet) => total + outlet.revenue, 0);
 
+  const salesByProduct = [...productMap.entries()]
+    .sort(([, a], [, b]) => b.revenue - a.revenue)
+    .map(([, product], index) => ({
+      name: product.name,
+      revenue: Math.round(product.revenue * 100) / 100,
+      color: ['#010066', '#1d2a8a', '#b45309', '#be123c', '#7c3aed'][index % 5],
+    }));
+  const totalProductSales = salesByProduct.reduce((total, product) => total + product.revenue, 0);
+
   return {
     vendor,
     role,
@@ -323,6 +332,8 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     chart,
     salesByOutlet,
     totalOutletSales: Math.round(totalOutletSales * 100) / 100,
+    salesByProduct,
+    totalProductSales: Math.round(totalProductSales * 100) / 100,
     topSelling,
     topRated,
     recentTransactions,
