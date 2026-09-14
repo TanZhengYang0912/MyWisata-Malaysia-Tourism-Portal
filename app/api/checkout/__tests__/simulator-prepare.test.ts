@@ -8,6 +8,7 @@ const CART_ID = '55555555-5555-4555-8555-555555555555';
 const CART_ITEM_ID = '66666666-6666-4666-8666-666666666666';
 const CHECKOUT_ID = '77777777-7777-4777-8777-777777777777';
 const ORDER_ID = '88888888-8888-4888-8888-888888888888';
+let productOutletId: string | null = OUTLET_ID;
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -69,6 +70,7 @@ function request(provider = 'tng_ewallet_simulator') {
 describe('POST /api/checkout/prepare simulator provider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    productOutletId = OUTLET_ID;
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', 'local-simulator-secret');
@@ -105,7 +107,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
       }]);
       if (table === 'products') return queryResult([{
         id: PRODUCT_ID,
-        outlet_id: OUTLET_ID,
+        outlet_id: productOutletId,
         vendor_id: VENDOR_ID,
         name: 'Test activity',
         cover_url: null,
@@ -134,6 +136,17 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     expect(mocks.serviceFrom).toHaveBeenCalledWith('payments');
     expect(mocks.serviceFrom).toHaveBeenCalledWith('checkout_sessions');
     expect(mocks.stripeCreate).not.toHaveBeenCalled();
+  });
+
+  it('prepares a multi-outlet product with the outlet selected on the cart row', async () => {
+    productOutletId = null;
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+      p_lines: [expect.objectContaining({ outlet_id: OUTLET_ID })],
+    }));
   });
 
   it('fails closed when simulator configuration is unavailable', async () => {

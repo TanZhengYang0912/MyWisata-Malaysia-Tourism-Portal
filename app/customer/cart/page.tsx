@@ -9,9 +9,10 @@ import { cartItemKey, useCart } from "@/components/providers/cart";
 import { getActivities, getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
 import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
-import { formatDate, formatMYR, formatMYRNumber } from "@/lib/i18n/format";
+import { formatDate, formatMYRNumber } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 type VoucherOption = {
@@ -49,8 +50,7 @@ function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption
 }
 
 export default function CartPage() {
-  const { t: tCustomer, i18n } = useTranslation("customer");
-  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
+  const { t: tCustomer } = useTranslation("customer");
   const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const [code, setCode] = useState("");
@@ -387,7 +387,7 @@ export default function CartPage() {
                       : seatsLeft !== undefined && ` · ${seatsLeft} seats left`}
                   </p>
                 )}
-                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1">{formatMYR(price)} × {item.qty}</p>
+                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
                 {stockLimit !== undefined && (
                   <p className={`mt-1 text-[11px] font-semibold ${stockLimit === 0 || item.qty > stockLimit ? "text-red-600" : stockLimit <= (activity.lowStockThreshold ?? 5) ? "text-amber-700" : "text-emerald-700"}`}>
                     {stockLimit === 0 ? "Out of stock" : `${stockLimit} in stock${stockLimit <= (activity.lowStockThreshold ?? 5) ? " · Low stock" : ""}`}
@@ -395,7 +395,7 @@ export default function CartPage() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <p className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(lineTotal)}</p>
+                <ReferencePrice amountMYR={lineTotal} className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]" />
                 <div className="flex items-center gap-2">
                   <button onClick={() => updateQty(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
@@ -417,7 +417,7 @@ export default function CartPage() {
             </div>
             <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
               <span className="text-xs text-muted-foreground">{tCustomer("ui.cart.outletSubtotal")}</span>
-              <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(group.groupSubtotal)}</span>
+              <ReferencePrice amountMYR={group.groupSubtotal} className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]" />
             </footer>
           </section>
         ))}
@@ -526,17 +526,17 @@ export default function CartPage() {
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{tCustomer("ui.cart.subtotalSelected", { count: selectedKeys.size })}</span>
-          <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(subtotal)}</span>
+          <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground font-[family-name:var(--font-mono)]" />
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{tCustomer("ui.cart.discount")}</span>
-            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: formatMYR(discount, locale) })}</span>
+            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">−<ReferencePrice amountMYR={discount} /></span>
           </div>
         )}
         <div className="flex justify-between text-base pt-2 border-t border-border">
           <span className="font-bold text-foreground">{tCustomer("ui.cart.total")}</span>
-          <span className="font-bold text-primary font-[family-name:var(--font-mono)]">{formatMYR(total)}</span>
+          <ReferencePrice amountMYR={total} showSettlementMYR className="font-bold text-primary font-[family-name:var(--font-mono)]" />
         </div>
       </div>
 

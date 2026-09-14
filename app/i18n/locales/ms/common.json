@@ -9,6 +9,15 @@
     "saved": "Pilihan bahasa telah disimpan.",
     "saveError": "Tidak dapat menyimpan pilihan bahasa. Sila cuba lagi."
   },
+  "currency": {
+    "label": "Mata wang paparan",
+    "saved": "Mata wang paparan telah dikemas kini.",
+    "saveError": "Mata wang paparan tidak dapat disimpan. Sila cuba lagi.",
+    "referenceOnly": "Jumlah tukaran ialah anggaran untuk rujukan sahaja.",
+    "rateDate": "Kadar rujukan bertarikh {{date}}.",
+    "settlementAmount": "Dicaj sebagai {{amount}}",
+    "chargedInMYR": "Anda akan dicaj dalam Ringgit Malaysia (MYR)."
+  },
   "conductReport": {
     "submitFailed": "Laporan tidak dapat dihantar.",
     "success": "Laporan dihantar. Pasukan kami akan menyemaknya.",

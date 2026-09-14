@@ -17,7 +17,7 @@ import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCa
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import {
   rankPartnerDirectory,
   selectPartnerAdvertisements,
@@ -122,7 +122,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
             <Link href={`/customer/activity/${activity.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="line-clamp-2 text-sm font-bold leading-5 text-[#122b3a]">{activity.name}</h3></Link>
             <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? t("ui.search.guidedBookable") : vendorBacked ? t("ui.search.vendorExperience") : t("ui.labels.publicPlace")}</p>
           </div>
-          <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? formatMYR(Number(activity.price)) : t("ui.labels.freeToExplore")}</span>
+          <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? <ReferencePrice amountMYR={Number(activity.price)} /> : t("ui.labels.freeToExplore")}</span>
         </div>
         <p className="line-clamp-2 text-xs leading-5 text-[#6d7e83]">{activity.description}</p>
         <div className="flex items-center justify-between gap-3 text-[11px] text-[#6d7e83]">

@@ -186,7 +186,7 @@ export async function POST(request: Request) {
       variant_id: variant.id,
       slot_id: row.slot_id,
       vendor_id: product.vendor_id,
-      outlet_id: product.outlet_id,
+      outlet_id: row.outlet_id,
       product_name: product.name,
       image_url: product.cover_url,
       variant_name: variant.name,

@@ -8,7 +8,7 @@ import { useTrip } from "@/components/providers/trip";
 import type { BookingSlot, ComputedActivity } from "@/backend/core/types";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -67,12 +67,12 @@ export function ExperienceBookingSidebar({
   return (
     <aside className="self-start lg:sticky lg:top-24">
       <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-        <p className="text-3xl font-bold text-foreground">
-          {formatMYR(unitPrice)}
+        <div className="text-3xl font-bold text-foreground">
+          <ReferencePrice amountMYR={unitPrice} />
           <span className="ml-1 text-sm font-medium text-muted-foreground">
             {t("ui.experience.perPerson")}
           </span>
-        </p>
+        </div>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Star size={12} className="fill-yellow-400 text-yellow-400" />
           <span className="font-semibold text-foreground">
@@ -116,7 +116,7 @@ export function ExperienceBookingSidebar({
                       </div>
                       {v.label}
                     </div>
-                    {v.priceDelta > 0 && <span>+{formatMYR(v.priceDelta)}</span>}
+                    {v.priceDelta > 0 && <span>+<ReferencePrice amountMYR={v.priceDelta} /></span>}
                   </label>
                 ))}
               </div>
@@ -206,7 +206,7 @@ export function ExperienceBookingSidebar({
         {qty > 0 && (
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm font-bold text-foreground">
             <span>{t("ui.experience.total")}</span>
-            <span>{formatMYR(totalPrice)}</span>
+            <ReferencePrice amountMYR={totalPrice} />
           </div>
         )}
         

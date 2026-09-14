@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Building2, MapPin } from "lucide-react";
 import type { DiscoveryResult } from "@/backend/core/types";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 
 function placementIdFor(advertisement: DiscoveryResult): string | null {
   return advertisement.sponsorship?.placementId ?? null;
@@ -222,7 +222,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
                     <Building2 size={16} className="shrink-0" aria-hidden="true" />
                     {t("ui.search.providedBy", { vendor: activeAdvertisement.outlet.vendorName })}
                   </span>
-                  <span className="shrink-0 text-base font-bold text-foreground">{formatMYR(Number(activeAdvertisement.price))}</span>
+                  <ReferencePrice amountMYR={Number(activeAdvertisement.price)} className="shrink-0 text-base font-bold text-foreground" />
                 </div>
                 <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-bold text-primary">
                   {t("ui.actions.viewDetails")} <ArrowRight size={16} aria-hidden="true" />

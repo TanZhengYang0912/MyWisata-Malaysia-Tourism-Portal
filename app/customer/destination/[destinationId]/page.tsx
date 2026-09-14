@@ -7,7 +7,7 @@ import { productImageUrl } from "@/lib/storage/product-image";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 
 export const dynamic = "force-dynamic";
 
@@ -214,7 +214,7 @@ export default async function DestinationPage({ params }: Props) {
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                       <h3 className="text-sm font-bold text-foreground line-clamp-2">{product.name}</h3>
-                      <p className="mt-auto pt-2 text-sm font-bold text-primary">{formatMYR(price)}</p>
+                      <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
                   </Link>
                 );

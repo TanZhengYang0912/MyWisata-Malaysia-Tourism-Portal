@@ -22,7 +22,7 @@ import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
 import { getDetailBody } from "./bodies";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useSupportChat } from "@/components/providers/support-chat";
@@ -286,7 +286,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><p className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">{formatMYR(price)}</p><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><ReferencePrice amountMYR={price} className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
@@ -338,7 +338,7 @@ export function ActivityDetailClient({
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
-                        {formatMYR(choice.price)}
+                        <ReferencePrice amountMYR={choice.price} />
                       </span>
                     </button>
                   );
@@ -364,7 +364,7 @@ export function ActivityDetailClient({
                       color: variantId === v.id ? "white" : "var(--foreground)",
                     }}
                   >
-                        {v.label} {v.priceDelta !== 0 && `(${formatMYR(Math.abs(v.priceDelta))})`}
+                        {v.label} {v.priceDelta !== 0 && <> (<ReferencePrice amountMYR={Math.abs(v.priceDelta)} />)</>}
                   </button>
                 ))}
               </div>
@@ -469,7 +469,7 @@ export function ActivityDetailClient({
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
             <p className="truncate text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
-            <p className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary">{formatMYR(price * qty)}</p>
+            <ReferencePrice amountMYR={price * qty} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
           </div>
           {added ? (
             <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>

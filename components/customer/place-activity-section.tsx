@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatMYRNumber } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { ArrowUpRight, Compass, Ticket } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
@@ -109,7 +109,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                     </div>
                     <p className="shrink-0 text-right text-sm font-bold text-foreground">
                       <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>
-                      {product.price === 0 ? t("ui.placeActivity.free") : t("ui.placeActivity.price", { value: formatMYRNumber(product.price) })}
+                      {product.price === 0 ? t("ui.placeActivity.free") : <ReferencePrice amountMYR={product.price} />}
                     </p>
                   </div>
 

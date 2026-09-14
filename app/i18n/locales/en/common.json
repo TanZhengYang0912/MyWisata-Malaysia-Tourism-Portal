@@ -9,6 +9,15 @@
     "saved": "Language preference saved.",
     "saveError": "Unable to save language preference. Please try again."
   },
+  "currency": {
+    "label": "Display currency",
+    "saved": "Display currency updated.",
+    "saveError": "Unable to save display currency. Please try again.",
+    "referenceOnly": "Converted amounts are estimates for reference only.",
+    "rateDate": "Reference rate dated {{date}}.",
+    "settlementAmount": "Charged as {{amount}}",
+    "chargedInMYR": "You will be charged in Malaysian Ringgit (MYR)."
+  },
   "conductReport": {
     "submitFailed": "Could not submit report.",
     "success": "Reported. Our team will review it.",

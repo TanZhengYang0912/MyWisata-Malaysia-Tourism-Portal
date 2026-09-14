@@ -16,6 +16,7 @@ import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { CurrencySwitcher } from "@/components/shared/currency-switcher";
 import { useTranslation } from "react-i18next";
 import { WishlistProvider, useWishlist } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider, useSavedDestinations } from "@/components/providers/saved-destinations";
@@ -220,6 +221,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <LanguageSwitcher compact className="hidden md:flex w-28" />
+            <CurrencySwitcher compact className="w-20 md:w-24" />
             <AppearanceControl />
             {currentUser ? <NotificationBell key={currentUser.id} /> : (
               <button type="button" aria-label={tCommon("accessibility.notifications")} onClick={() => gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")} className={HEADER_ICON_BUTTON_CLASS}>
