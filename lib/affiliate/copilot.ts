@@ -36,10 +36,16 @@ const MIN_CLICKS_FOR_PERSONAL_SIGNAL = 3;
 const MIN_CLICKS_FOR_PLATFORM_SIGNAL = 3;
 const MIN_RATING_FOR_FALLBACK_OPPORTUNITY = 4;
 const MIN_REVIEWS_FOR_FALLBACK_OPPORTUNITY = 3;
+// A refund/cancellation is only a real pattern, not bad luck, once BOTH bars
+// clear: at least 2 reversed attributions, AND at least a third of this
+// listing's attributions ended up reversed.
+const MIN_REVERSED_FOR_REFUND_SIGNAL = 2;
+const MIN_REFUND_RATE_FOR_SIGNAL = 0.3;
 
 const TOP_CONVERTING_CAP = 3;
 const UNDERPERFORMING_CAP = 3;
 const OPPORTUNITY_CAP = 4;
+const REFUND_RISK_CAP = 2;
 
 export interface CopilotListingPerformance extends AffiliateProductStat {
   /** referrals / clicks, 0..1. null if clicks = 0 (nothing to divide by — never fabricated as 0%). */
@@ -59,6 +65,11 @@ export interface OpportunityListing {
   reviewCount?: number;
 }
 
+export interface RefundRiskListing extends AffiliateProductStat {
+  /** reversedReferrals / (referrals + reversedReferrals), 0..1 — this listing's own rate, not a platform average. */
+  refundRate: number;
+}
+
 export interface CopilotSignals {
   affiliateCode: string | null;
   /** False = this affiliate has never had a click on any link — drives the "share a few links first" empty state, never invented advice. */
@@ -72,6 +83,8 @@ export interface CopilotSignals {
   byCampaign: AffiliateCampaignStat[];
   /** Real, active, listings this affiliate has not yet driven any click to. Capped. Empty is a valid, honest result. */
   opportunities: OpportunityListing[];
+  /** This affiliate's own listings where a real, meaningful share of referrals were later reversed (order cancelled/refunded) — a heads-up, not blame. Capped. Empty is a valid, honest result. */
+  refundRisk: RefundRiskListing[];
   sourceTrackingActive: boolean;
 }
 
@@ -197,6 +210,20 @@ async function findHighlyRatedOpportunities(
     }));
 }
 
+/**
+ * This affiliate's own listings where refunds/cancellations are a real
+ * pattern, not bad luck — reuses stats.byProduct's reversedReferrals (already
+ * computed from data getAffiliateStats() already fetched; no new query).
+ */
+function findRefundRiskListings(byProduct: AffiliateProductStat[]): RefundRiskListing[] {
+  return byProduct
+    .filter((p) => p.reversedReferrals >= MIN_REVERSED_FOR_REFUND_SIGNAL)
+    .map((p) => ({ ...p, refundRate: p.reversedReferrals / (p.referrals + p.reversedReferrals) }))
+    .filter((p) => p.refundRate >= MIN_REFUND_RATE_FOR_SIGNAL)
+    .sort((a, b) => b.refundRate - a.refundRate || b.reversedReferrals - a.reversedReferrals)
+    .slice(0, REFUND_RISK_CAP);
+}
+
 export async function getCopilotSignals(service: SupabaseClient, userId: string): Promise<CopilotSignals> {
   const stats = await getAffiliateStats(service, userId);
 
@@ -221,6 +248,8 @@ export async function getCopilotSignals(service: SupabaseClient, userId: string)
   const highlyRated = await findHighlyRatedOpportunities(excludeForFallback, OPPORTUNITY_CAP - converting.length);
   const opportunities = [...converting, ...highlyRated];
 
+  const refundRisk = findRefundRiskListings(stats.byProduct);
+
   return {
     affiliateCode: stats.affiliateCode,
     hasActivity,
@@ -229,6 +258,7 @@ export async function getCopilotSignals(service: SupabaseClient, userId: string)
     byChannel: stats.funnel.byPlatform,
     byCampaign: stats.byCampaign,
     opportunities,
+    refundRisk,
     sourceTrackingActive: stats.funnel.sourceTrackingActive,
   };
 }
@@ -246,12 +276,12 @@ const LANGUAGE_NAME: Record<ChatLanguage, string> = {
   zh: 'Simplified Chinese',
 };
 
-export type CopilotActionKind = 'share_listing' | 'try_channel' | 'reconsider_listing' | 'general';
+export type CopilotActionKind = 'share_listing' | 'try_channel' | 'reconsider_listing' | 'refund_risk' | 'general';
 
 export interface CopilotAction {
   kind: CopilotActionKind;
   message: string;
-  /** Present for share_listing/reconsider_listing — always a real id, validated against the signals. */
+  /** Present for share_listing/reconsider_listing/refund_risk — always a real id, validated against the signals. */
   productId?: string;
   productName?: string;
   /** Present for try_channel — always a real platform present in byChannel. */
@@ -266,7 +296,7 @@ export interface CopilotActionsResult {
 const MAX_ACTIONS = 4;
 
 const llmActionSchema = z.object({
-  kind: z.enum(['share_listing', 'try_channel', 'reconsider_listing', 'general']),
+  kind: z.enum(['share_listing', 'try_channel', 'reconsider_listing', 'refund_risk', 'general']),
   message: z.string().min(1),
   productId: z.string().optional(),
   platform: z.string().optional(),
@@ -287,6 +317,7 @@ Suggest 2-4 concrete, actionable next steps as a JSON object. Ground every sugge
 - "share_listing" suggestions: the productId MUST be one of the ids in the "opportunities" list — never suggest a listing from anywhere else, and never invent one.
 - "try_channel" suggestions: the platform MUST be one of the platforms in "byChannel" — point out a channel/campaign that is genuinely working better for them, using their real numbers.
 - "reconsider_listing" suggestions: the productId MUST be one of the ids in "underperforming" — a listing getting clicks but not converting, worth rethinking.
+- "refund_risk" suggestions: the productId MUST be one of the ids in "refundRisk" — a listing where a real, meaningful share of this affiliate's own referrals were later cancelled/refunded. Phrase this as a neutral heads-up ("a number of orders from this listing were later refunded — worth double-checking the listing matches what's delivered"), never as blame on the affiliate and never guessing WHY it happened beyond what the data shows.
 - "general" suggestions: no listing/channel reference needed, but still grounded in the numbers given.
 
 NEVER promise or imply guaranteed earnings ("you'll earn RM50") — frame everything as an opportunity or observation, never a result ("this listing is converting well for other affiliates," "your Story shares convert better than your WhatsApp shares"). NEVER invent a listing, number, platform, or fact that is not in the data below. If the data is too thin to support a point, omit that point rather than guess — fewer than 4 honest actions is correct, never pad with invented ones.
@@ -296,12 +327,13 @@ All money amounts are already in Malaysian Ringgit — if you reference an amoun
 Reply in ${LANGUAGE_NAME[lang]}, for every message field.
 
 Respond with ONLY strict JSON, no markdown, no commentary, in this exact shape:
-{"actions": [{"kind": "share_listing" | "try_channel" | "reconsider_listing" | "general", "message": "<suggestion, in the target language>", "productId": "<only for share_listing/reconsider_listing>", "platform": "<only for try_channel>"}]}`;
+{"actions": [{"kind": "share_listing" | "try_channel" | "reconsider_listing" | "refund_risk" | "general", "message": "<suggestion, in the target language>", "productId": "<only for share_listing/reconsider_listing/refund_risk>", "platform": "<only for try_channel>"}]}`;
 }
 
 function validateActions(raw: z.infer<typeof llmActionSchema>[], signals: CopilotSignals): CopilotAction[] {
   const opportunityNames = new Map(signals.opportunities.map((o) => [o.productId, o.productName]));
   const underperformingNames = new Map(signals.underperforming.map((p) => [p.productId, p.productName]));
+  const refundRiskNames = new Map(signals.refundRisk.map((p) => [p.productId, p.productName]));
   const channelPlatforms = new Set(signals.byChannel.map((c) => c.platform));
 
   const validated: CopilotAction[] = [];
@@ -312,6 +344,9 @@ function validateActions(raw: z.infer<typeof llmActionSchema>[], signals: Copilo
     } else if (action.kind === 'reconsider_listing') {
       if (!action.productId || !underperformingNames.has(action.productId)) continue;
       validated.push({ kind: action.kind, message: action.message, productId: action.productId, productName: underperformingNames.get(action.productId) });
+    } else if (action.kind === 'refund_risk') {
+      if (!action.productId || !refundRiskNames.has(action.productId)) continue;
+      validated.push({ kind: action.kind, message: action.message, productId: action.productId, productName: refundRiskNames.get(action.productId) });
     } else if (action.kind === 'try_channel') {
       if (!action.platform || !channelPlatforms.has(action.platform)) continue;
       validated.push({ kind: action.kind, message: action.message, platform: action.platform });
@@ -338,6 +373,11 @@ export function ruleBasedCopilotActions(signals: CopilotSignals): CopilotAction[
       ? `it's converting well for other affiliates (${Math.round((topOpportunity.platformConversionRate ?? 0) * 100)}% of clicks)`
       : `it's highly rated (${topOpportunity.rating}★, ${topOpportunity.reviewCount} reviews)`;
     actions.push({ kind: 'share_listing', message: `Consider sharing "${topOpportunity.productName}" — ${reasonText}.`, productId: topOpportunity.productId, productName: topOpportunity.productName });
+  }
+
+  const topRefundRisk = signals.refundRisk[0];
+  if (topRefundRisk) {
+    actions.push({ kind: 'refund_risk', message: `${topRefundRisk.reversedReferrals} of "${topRefundRisk.productName}"'s recent orders from your links were later cancelled or refunded — worth checking the listing matches what's delivered.`, productId: topRefundRisk.productId, productName: topRefundRisk.productName });
   }
 
   const bestChannel = [...signals.byChannel].filter((c) => (c.clicks ?? 0) > 0).sort((a, b) => (b.conversions ?? 0) - (a.conversions ?? 0))[0];

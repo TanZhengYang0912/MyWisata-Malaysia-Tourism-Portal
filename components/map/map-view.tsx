@@ -36,6 +36,7 @@ export function MapView(props: {
   onUserLocationDrag?: (lat: number, lng: number) => void;
   onAddStop?: (pin: MapPin) => void;
   stopIds?: string[];
+  suggestedIds?: string[];
   routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
   routeColor?: string;
   routeDashed?: boolean;

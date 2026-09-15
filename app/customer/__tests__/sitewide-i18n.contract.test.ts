@@ -57,6 +57,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/support/[id]/page.tsx",
   "app/customer/support/page.tsx",
   "app/customer/trip/[tripId]/page.tsx",
+  "app/customer/trip/[tripId]/trip-budget-guard.tsx",
   "app/customer/trip/[tripId]/trip-place-discovery.ts",
   "app/customer/trip/[tripId]/trip-place-filter-panel.tsx",
   "app/customer/trip/[tripId]/trip-weather-hint.tsx",

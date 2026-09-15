@@ -20,9 +20,9 @@ interface Attribution {
   commission_amount: number; status: string; created_at: string; cleared_at: string | null;
 }
 
-function makeService(attributions: Attribution[]): SupabaseClient {
+function makeService(attributions: Attribution[], targetIdByClick: Record<string, string> = {}): SupabaseClient {
   const clickRows = [...new Set(attributions.map((a) => a.click_id))].map((id) => ({
-    id, target_type: 'product', target_id: null, source: null, campaign: null, created_at: '2026-09-01T00:00:00Z',
+    id, target_type: 'product', target_id: targetIdByClick[id] ?? null, source: null, campaign: null, created_at: '2026-09-01T00:00:00Z',
   }));
   return {
     from: (table: string) => {
@@ -65,6 +65,22 @@ describe('getAffiliateStats — totalEarnings', () => {
     const stats = await getAffiliateStats(makeService(attributions), 'user-1');
     expect(stats.totals.totalEarnings).toBe(30);
     expect(stats.totals.pendingEarnings).toBe(10);
+  });
+
+  it('byProduct: counts reversedReferrals separately from referrals/earnings, reusing the same attribution rows (no new query)', async () => {
+    const attributions: Attribution[] = [
+      { id: 'a1', click_id: 'c1', order_id: 'o1', commission_rate: 0.03, commission_amount: 10, status: 'confirmed', created_at: '2026-09-01T00:00:00Z', cleared_at: null },
+      { id: 'a2', click_id: 'c2', order_id: 'o2', commission_rate: 0.03, commission_amount: 20, status: 'reversed', created_at: '2026-09-02T00:00:00Z', cleared_at: null },
+      { id: 'a3', click_id: 'c3', order_id: 'o3', commission_rate: 0.03, commission_amount: 30, status: 'reversed', created_at: '2026-09-03T00:00:00Z', cleared_at: null },
+      { id: 'a4', click_id: 'c4', order_id: 'o4', commission_rate: 0.03, commission_amount: 40, status: 'rejected', created_at: '2026-09-04T00:00:00Z', cleared_at: null },
+    ];
+    mocks.resolveProductNames.mockResolvedValue(new Map([['p1', 'Product One']]));
+    const service = makeService(attributions, { c1: 'p1', c2: 'p1', c3: 'p1', c4: 'p1' });
+
+    const stats = await getAffiliateStats(service, 'user-1');
+
+    expect(stats.byProduct).toHaveLength(1);
+    expect(stats.byProduct[0]).toMatchObject({ productId: 'p1', referrals: 1, earnings: 10, reversedReferrals: 2 });
   });
 
   it('is 0 when there is no affiliate link at all', async () => {

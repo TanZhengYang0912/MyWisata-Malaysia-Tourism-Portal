@@ -40,6 +40,17 @@ describe("shared MapLibre composition contract", () => {
     expect(viewSource).toContain('className="h-full min-h-0 min-w-0 flex-1"');
   });
 
+  it("renders a distinct star marker and 'Suggested' badge for AI-suggested pins, never confused with an in-trip stop", () => {
+    expect(mapSource).toContain("suggestedIds?: string[]");
+    expect(mapSource).toContain("function SuggestedMarkerVisual");
+    expect(mapSource).toContain("{suggestedPins.map");
+    // The pin's own trip-membership always wins over "suggested" — a stop
+    // that also happens to be a past suggestion still reads "In trip".
+    const badgeLine = mapSource.split("\n").find((line) => line.includes("★ ${t(\"ui.actions.suggested\")}"));
+    expect(badgeLine).toBeDefined();
+    expect(viewSource).toContain("suggestedIds?: string[]");
+  });
+
   it("renders provider traffic segments as geographically anchored route colors", () => {
     expect(mapSource).toContain("trafficSegments?: RouteTrafficSegment[]");
     expect(viewSource).toContain("trafficSegments?: RouteTrafficSegment[]");

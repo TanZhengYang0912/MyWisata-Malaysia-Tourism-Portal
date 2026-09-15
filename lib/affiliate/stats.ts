@@ -51,6 +51,8 @@ export interface AffiliateProductStat {
   clicks: number;
   referrals: number;
   earnings: number;
+  /** Referrals that were later reversed (order cancelled/refunded) — a subset of this product's total attributions, NOT counted in `referrals`/`earnings` above. Real refund-risk signal for lib/affiliate/copilot.ts. */
+  reversedReferrals: number;
 }
 
 /**
@@ -201,25 +203,36 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
     clickRows.map((c) => [c.id, c.target_type === 'product' ? c.target_id : null]),
   );
 
-  const byProductMap = new Map<string, { shares: number; clicks: number; referrals: number; earnings: number }>();
+  const byProductMap = new Map<string, { shares: number; clicks: number; referrals: number; earnings: number; reversed: number }>();
   for (const click of clickRows) {
     if (click.target_type !== 'product' || !click.target_id) continue;
-    const entry = byProductMap.get(click.target_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0 };
+    const entry = byProductMap.get(click.target_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
     entry.clicks += 1;
     byProductMap.set(click.target_id, entry);
   }
   for (const share of shareRows) {
     if (share.content_type !== 'product') continue;
-    const entry = byProductMap.get(share.content_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0 };
+    const entry = byProductMap.get(share.content_id) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
     entry.shares += 1;
     byProductMap.set(share.content_id, entry);
   }
   for (const attribution of activeAttributions) {
     const productId = clickTarget.get(attribution.click_id);
     if (!productId) continue;
-    const entry = byProductMap.get(productId) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0 };
+    const entry = byProductMap.get(productId) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
     entry.referrals += 1;
     entry.earnings = add(entry.earnings, Number(attribution.commission_amount));
+    byProductMap.set(productId, entry);
+  }
+  // Reversed (order cancelled/refunded) counted separately from referrals/earnings
+  // above — a real refund-risk signal, not folded into the active-attribution
+  // totals. Reuses attributionRows already fetched above; no new query.
+  for (const attribution of attributionRows) {
+    if (attribution.status !== 'reversed') continue;
+    const productId = clickTarget.get(attribution.click_id);
+    if (!productId) continue;
+    const entry = byProductMap.get(productId) ?? { shares: 0, clicks: 0, referrals: 0, earnings: 0, reversed: 0 };
+    entry.reversed += 1;
     byProductMap.set(productId, entry);
   }
 
@@ -258,6 +271,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
       clicks: entry.clicks,
       referrals: entry.referrals,
       earnings: entry.earnings,
+      reversedReferrals: entry.reversed,
     };
   });
 

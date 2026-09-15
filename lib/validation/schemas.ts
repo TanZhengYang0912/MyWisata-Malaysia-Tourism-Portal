@@ -144,6 +144,17 @@ export const checkoutFinalizeSchema = z.object({
   outcome: z.enum(['succeeded', 'failed', 'cancelled', 'expired']),
 }).strict();
 
+// ── AI Budget Guard (lib/customer/budget-guard.ts) ──────────
+
+export const budgetGuardCheckSchema = z.object({
+  lines: z.array(z.object({
+    productId: uuid,
+    qty: z.number().int().min(1).max(99),
+  })).min(1).max(50),
+  budgetRM: z.number().min(0).max(1_000_000),
+  lang: z.enum(['en', 'bm', 'zh']).optional(),
+}).strict();
+
 // ── Response envelope ──────────────────────────────────────
 
 export function apiOk<T>(data: T, init?: { status?: number }) {

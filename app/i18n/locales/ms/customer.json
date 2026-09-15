@@ -316,6 +316,7 @@
       "getDirections": "Dapatkan arah",
       "addToTrip": "Tambah ke perjalanan",
       "inTrip": "Dalam perjalanan",
+      "suggested": "Dicadangkan",
       "exploreVendor": "Teroka vendor",
       "tunePreferences": "Laraskan pilihan saya",
       "sending": "Menghantar…",
@@ -1159,6 +1160,31 @@
       "subtotalSelected_other": "Jumlah kecil ({{count}} dipilih)",
       "seatsLeft_one": "{{count}} tempat tinggal",
       "seatsLeft_other": "{{count}} tempat tinggal"
+    },
+    "tripBudget": {
+      "title": "Bajet Perjalanan",
+      "setBudget": "Tetapkan bajet",
+      "edit": "Edit",
+      "budgetPlaceholder": "cth. 500",
+      "currencyPrefix": "RM",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "noBudgetSet": "Tetapkan bajet untuk menjejaki jumlah kos perjalanan anda.",
+      "spentOfBudget": "{{spent}} daripada bajet {{budget}} anda",
+      "overBudgetWarning": "Melebihi bajet sebanyak {{amount}} — ketik untuk cadangan",
+      "checking": "Menyemak alternatif lebih murah…",
+      "checkFailed": "Tidak dapat menyemak bajet anda sekarang.",
+      "noAlternatives": "Tiada alternatif lebih murah ditemui untuk pilihan termahal anda buat masa ini.",
+      "viewAlternative": "Lihat penyenaraian",
+      "showOnMap": "Tunjuk pada peta",
+      "savings": "Jimat {{amount}}"
+    },
+    "tripCheckout": {
+      "button_one": "Checkout ({{count}} item)",
+      "button_other": "Checkout ({{count}} item)",
+      "nothingToCheckout": "Tiada apa-apa dalam itinerari anda yang boleh dibeli lagi.",
+      "allNeedSlot": "Tiada satu pun perhentian berjadual anda mempunyai slot tempahan terbuka pada hari yang dirancang — pilih masa pada halaman setiap aktiviti dahulu.",
+      "someNeedSlot": "Ditambah ke troli. {{names}} masih memerlukan slot masa dipilih pada halaman masing-masing — semak hari yang dirancang mempunyai slot terbuka."
     },
     "preferencesPage": {
       "eyebrow": "Keutamaan",

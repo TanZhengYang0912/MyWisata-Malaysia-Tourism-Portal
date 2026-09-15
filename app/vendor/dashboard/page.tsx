@@ -14,6 +14,7 @@ import DashboardRealtime from '@/components/vendor/dashboard-realtime';
 import RecentTransactions from '@/components/vendor/recent-transactions';
 import PerformanceRankingCard from '@/components/vendor/performance-ranking-card';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
+import { VendorRevenueAssistantCard } from '@/components/vendor/revenue-assistant-card';
 import { dashboardFilterLabel } from '@/lib/vendor/performance-ranking';
 import { getServerTranslation } from '@/lib/i18n/server';
 
@@ -104,6 +105,8 @@ export default async function VendorDashboard({ searchParams }: Props) {
         </div>
         {data.stockAlerts.length ? <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.stockAlerts.map((alert) => <div key={alert.variantId} className={`flex items-center gap-3 rounded-xl border p-3 ${alert.available === 0 ? 'border-red-200 bg-red-50/60' : 'border-amber-200 bg-amber-50/40'}`}><CompactThumbnail src={alert.coverUrl} alt={alert.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900">{alert.productName}</p><p className="mt-1 truncate text-xs text-gray-600">{alert.variantName} · {alert.available === 0 ? t('ui.dashboard.outOfStock') : t('ui.dashboard.availableCount', { count: alert.available })} · {t('ui.dashboard.alertAt', { threshold: alert.threshold })}</p></div></div>)}</div> : <div className="px-5 py-8 text-sm text-gray-500">{t('ui.dashboard.noLowStock')}</div>}
       </section>
+
+      <VendorRevenueAssistantCard />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>

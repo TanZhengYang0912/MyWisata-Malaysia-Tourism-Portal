@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
-import { CATEGORIES, searchActivities } from "@/backend/domains/catalogue";
+import { CATEGORIES, getBookingSlots, searchActivities } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ORS_PROFILE, buildRouteDepartureTime, type GeoHit, type RouteResult } from "@/lib/routing";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, computeSwapTargetOrder } from "@/lib/customer/trip-planner";
 import { addTripItemAction, deleteTripItemAction, reorderTripItemsAction, updateTripItemLocationAction, updateTripItemScheduleAction } from "../actions";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
@@ -28,6 +28,10 @@ import type { WeatherMapMode } from "@/lib/weather/types";
 import { TripPlaceFilterPanel } from "./trip-place-filter-panel";
 import { DEFAULT_TRIP_PLACE_FILTERS, countActiveTripPlaceFilters, filterAndRankTripPlaces, type TripPlaceFilters } from "./trip-place-discovery";
 import { buildSimulatedWeatherOverlay, buildSimulatedWeatherResult, simulatedWeatherConditionKeyForHour } from "./trip-weather-simulation";
+import { TripBudgetGuard } from "./trip-budget-guard";
+import { useRouter } from "next/navigation";
+import { useCart, cartItemKey } from "@/components/providers/cart";
+import { resolveTripCheckoutLines } from "@/lib/customer/trip-checkout";
 
 export interface TripStop {
   id: string; // e.g., experience_id or custom id
@@ -114,6 +118,24 @@ function useSyncTrip(tripId: string, initialItems: TripItem[]) {
       setItems(newItems);
       try {
         await reorderTripItemsAction(tripId, newItems.map(i => i.id));
+      } catch {
+        setItems(previousItems);
+        await alert(t("strictMigration.tripPlanner.scheduleFailed"));
+      }
+    },
+    // Resequences exactly the given ids, in the given order — unlike move()
+    // this doesn't need a flat-array index (which would require reading
+    // fresh state right after an await, unreliable from a stale closure).
+    // Used to put a swapped-in item back into the same day-relative slot the
+    // item it replaced held, without touching any other day's ordering.
+    reorderIds: async (orderedIds: string[]) => {
+      const previousItems = items;
+      setItems((prev) => {
+        const sequenceById = new Map(orderedIds.map((id, index) => [id, index]));
+        return prev.map((item) => (sequenceById.has(item.id) ? { ...item, sequence: sequenceById.get(item.id)! } : item));
+      });
+      try {
+        await reorderTripItemsAction(tripId, orderedIds);
       } catch {
         setItems(previousItems);
         await alert(t("strictMigration.tripPlanner.scheduleFailed"));
@@ -222,6 +244,10 @@ export function MapClient({
 }) {
   const trip = useSyncTrip(tripData.id, initialItems);
   const { t: tCustomer } = useTranslation("customer");
+  const { alert: showAlert } = useAppDialog();
+  const router = useRouter();
+  const cart = useCart();
+  const [checkingOut, setCheckingOut] = useState(false);
   const [placeFilters, setPlaceFilters] = useState<TripPlaceFilters>(DEFAULT_TRIP_PLACE_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
@@ -266,6 +292,11 @@ export function MapClient({
   const [placesPage, setPlacesPage] = useState(1);
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
   const focusTokenRef = useRef(0);
+  // Budget Guard alternatives shown via "Show on map" — kept here (not just
+  // focused) so the pin is actually present in `pins` for the popup to find,
+  // and so it renders with the distinct "Suggested" marker/badge rather than
+  // vanishing once the transient focus highlight ends.
+  const [suggestedPins, setSuggestedPins] = useState<MapPin[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(tripData.start_date);
   const [overlayHour, setOverlayHour] = useState(12);
   const [weatherNow, setWeatherNow] = useState(() => new Date());
@@ -507,8 +538,32 @@ export function MapClient({
   }
 
   function toggleStop(pin: MapPin) {
+    if (pin.replacesId) {
+      void swapSuggestedStop(pin, pin.replacesId);
+      return;
+    }
     if (trip.has(pin.id)) trip.remove(pin.id);
     else trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" });
+  }
+
+  // Budget Guard "Suggested" pin: replace the real over-budget item in its
+  // exact day/sequence slot, rather than removing nothing and appending the
+  // suggestion as a new unscheduled item.
+  async function swapSuggestedStop(pin: MapPin, replacesId: string) {
+    const existing = trip.items.find((item) => item.id === replacesId || item.experience_id === replacesId);
+    if (!existing) {
+      // The item it was meant to replace isn't in the trip anymore — nothing to swap into, just add it normally.
+      if (!trip.has(pin.id)) trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" });
+      return;
+    }
+    const schedule = { date: existing.scheduled_date, time: existing.scheduled_time };
+    // Captured BEFORE mutating — the day's real item order with the removed
+    // item's slot replaced by the new one, used to reorder into place after.
+    const targetOrder = computeSwapTargetOrder(trip.items, existing.id, pin.id);
+
+    await trip.remove(existing.id);
+    await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor" }, schedule);
+    if (targetOrder && targetOrder.length > 1) await trip.reorderIds(targetOrder);
   }
   function chooseStopSuggestion(hit: GeoHit) {
     trip.add({ lat: hit.lat, lng: hit.lng, label: hit.label, source: "location", locationKind: "custom" });
@@ -610,6 +665,47 @@ export function MapClient({
     () => new Map([...initialActivities, ...(activities ?? [])].map((activity) => [activity.id, activity])),
     [activities, initialActivities],
   );
+  // Checks out every scheduled stop in one go: real vendor items go straight
+  // into the cart, a stop that requires booking is only ever matched to a
+  // real open `booking_slots` row on its exact scheduled day (never a
+  // fabricated or shifted one) — anything that can't be matched is reported,
+  // not silently dropped or silently mis-booked.
+  async function handleCheckout() {
+    if (checkingOut) return;
+    const scheduledItems = trip.items.filter((item) => item.scheduled_date && item.experience_id);
+    if (scheduledItems.length === 0) return;
+    setCheckingOut(true);
+    try {
+      const bookingActivityIds = [...new Set(
+        scheduledItems
+          .map((item) => activitiesById.get(item.experience_id!))
+          .filter((activity): activity is ComputedActivity => Boolean(activity?.requiresBooking))
+          .map((activity) => activity.id),
+      )];
+      const slotLists = await Promise.all(bookingActivityIds.map((id) => getBookingSlots(id)));
+      const slotsByActivityId = new Map(bookingActivityIds.map((id, index) => [id, slotLists[index]]));
+
+      const { lines, needsSlot } = resolveTripCheckoutLines(scheduledItems, activitiesById, slotsByActivityId);
+      if (lines.length === 0) {
+        await showAlert(needsSlot.length > 0 ? tCustomer("ui.tripCheckout.allNeedSlot") : tCustomer("ui.tripCheckout.nothingToCheckout"));
+        return;
+      }
+
+      const addedKeys: string[] = [];
+      for (const line of lines) {
+        await cart.addItem({ activityId: line.activityId, variantId: line.variantId, outletId: line.outletId, slotId: line.slotId, qty: line.qty });
+        addedKeys.push(cartItemKey(line));
+      }
+      cart.setSelectedKeys(addedKeys);
+
+      if (needsSlot.length > 0) {
+        await showAlert(tCustomer("ui.tripCheckout.someNeedSlot", { names: needsSlot.map((entry) => entry.label).join(", ") }));
+      }
+      router.push("/customer/cart");
+    } finally {
+      setCheckingOut(false);
+    }
+  }
   const weatherPlan = useMemo(
     () => buildItineraryWeatherPlan(groupedItems.days, activitiesById),
     [activitiesById, groupedItems.days],
@@ -653,7 +749,7 @@ export function MapClient({
   const vendorPins: MapPin[] = showAllVendors
     ? filteredActivities.filter((a) => !stopIdSet.has(a.id)).map((a) => ({ id: a.id, lat: a.outlet.lat, lng: a.outlet.lng, label: a.name, sublabel: `${formatMYR(Number(a.price))} · ${a.outlet.city}`, href: `/customer/activity/${a.id}`, imageUrl: a.image }))
     : [];
-  const pins: MapPin[] = [...stopPins, ...vendorPins];
+  const pins: MapPin[] = [...stopPins, ...vendorPins, ...suggestedPins.filter((p) => !stopIdSet.has(p.id) && !vendorPins.some((v) => v.id === p.id))];
 
   const directionsUrl = buildGoogleMapsDirectionsUrl(origin, selectedRouteStops.filter((stop) => stop.id !== origin?.id), mode);
   const hasRouteInputs = selectedRouteStops.length >= 2;
@@ -908,9 +1004,29 @@ export function MapClient({
               </div>
               <span className="mr-10 shrink-0 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold text-primary">{tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</span>
             </div>
+            <button
+              type="button"
+              onClick={handleCheckout}
+              disabled={checkingOut || scheduledItemCount === 0}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {checkingOut ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
+              {tCustomer("ui.tripCheckout.button", { count: scheduledItemCount })}
+            </button>
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <TripBudgetGuard
+              tripId={tripData.id}
+              items={trip.items}
+              activities={activities}
+              onShowOnMap={(pin) => {
+                setSuggestedPins((current) => (current.some((existing) => existing.id === pin.id) ? current : [...current, pin]));
+                focusPin(pin);
+                setActivePanel("map");
+              }}
+            />
+
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.buildRoute")}</p>
               <button type="button" onClick={() => setShowAllVendors((value) => !value)} aria-pressed={showAllVendors} className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
@@ -1006,7 +1122,7 @@ export function MapClient({
         </aside>
 
         <main aria-label={tCustomer("strictMigration.tripPlanner.tripMap")} className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 bg-muted md:flex"}>
-          <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near && placeFilters.distanceKm !== null ? [near.lat, near.lng] : undefined} radiusKm={near ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
+          <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={near && placeFilters.distanceKm !== null ? [near.lat, near.lng] : undefined} radiusKm={near ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} suggestedIds={suggestedPins.map((pin) => pin.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
             <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} liveRadarAvailable={liveRadarAvailable} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
           </MapView>
         </main>

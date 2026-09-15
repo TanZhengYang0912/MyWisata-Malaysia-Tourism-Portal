@@ -7,6 +7,7 @@ import {
   hasChronologicalTripTimes,
   isValidTripCoordinate,
   selectTripDayWeatherAnchor,
+  computeSwapTargetOrder,
 } from "@/lib/customer/trip-planner";
 
 const trip: Trip = {
@@ -142,5 +143,37 @@ describe("trip planner scheduling helpers", () => {
     [5.4, -181, false],
   ])("validates trip coordinates %s, %s", (lat, lng, expected) => {
     expect(isValidTripCoordinate(lat, lng)).toBe(expected);
+  });
+
+  describe("computeSwapTargetOrder (Budget Guard swap-in-place)", () => {
+    it("substitutes the new id into the replaced item's exact day-relative slot", () => {
+      const items = [
+        item("morning", { scheduled_date: "2026-08-15", sequence: 0 }),
+        item("midday", { scheduled_date: "2026-08-15", sequence: 1 }),
+        item("evening", { scheduled_date: "2026-08-15", sequence: 2 }),
+      ];
+
+      expect(computeSwapTargetOrder(items, "midday", "new-alt")).toEqual(["morning", "new-alt", "evening"]);
+    });
+
+    it("only reorders the same day, ignoring items scheduled on other days", () => {
+      const items = [
+        item("day1-a", { scheduled_date: "2026-08-15", sequence: 0 }),
+        item("day1-b", { scheduled_date: "2026-08-15", sequence: 1 }),
+        item("day2-a", { scheduled_date: "2026-08-16", sequence: 2 }),
+      ];
+
+      expect(computeSwapTargetOrder(items, "day1-b", "new-alt")).toEqual(["day1-a", "new-alt"]);
+    });
+
+    it("returns null when the item being replaced is unscheduled — nothing to preserve", () => {
+      const items = [item("unscheduled", { scheduled_date: null })];
+
+      expect(computeSwapTargetOrder(items, "unscheduled", "new-alt")).toBeNull();
+    });
+
+    it("returns null when the item being replaced is no longer in the trip", () => {
+      expect(computeSwapTargetOrder([], "gone", "new-alt")).toBeNull();
+    });
   });
 });

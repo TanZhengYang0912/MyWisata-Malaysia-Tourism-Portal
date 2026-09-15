@@ -384,6 +384,16 @@
       "itemsInPeriod_one": "{{count}} item dalam tempoh ini",
       "itemsInPeriod_other": "{{count}} item dalam tempoh ini"
     },
+    "revenueAssistant": {
+      "title": "Pembantu Hasil",
+      "regenerate": "Jana semula",
+      "generating": "Menjana…",
+      "generatingActions": "Menyemak penyenaraian, tempahan dan ulasan anda…",
+      "generateFailed": "Tidak dapat menjana cadangan sekarang.",
+      "noData": "Tiada isu ditemui pada penyenaraian, tempahan atau ulasan anda buat masa ini — semak semula apabila lebih banyak aktiviti berlaku.",
+      "aiGenerated": "Dijana AI",
+      "ruleBased": "Ringkasan berasaskan peraturan (AI tidak tersedia)"
+    },
     "analytics": {
       "noVendor": "Tiada vendor diluluskan dipautkan kepada akaun ini.",
       "malaysiaPerformance": "Prestasi seluruh Malaysia",

@@ -148,6 +148,25 @@ export function getTripItemTimeBounds(items: TripItem[], itemId: string): TripIt
   };
 }
 
+/**
+ * Given the trip's full item list, the id of an item being replaced (e.g. a
+ * Budget Guard swap), and the new item's id, returns the real day-relative
+ * item order with the replacement substituted in place — the target order
+ * to pass to a reorder call so the new item lands in the exact slot the old
+ * one held. Returns null when the item being replaced isn't found or was
+ * never scheduled — nothing to preserve in that case, the caller should
+ * just add the new item without a follow-up reorder.
+ */
+export function computeSwapTargetOrder(items: TripItem[], existingId: string, newId: string): string[] | null {
+  const existing = items.find((item) => item.id === existingId);
+  if (!existing?.scheduled_date) return null;
+
+  return items
+    .filter((item) => item.scheduled_date === existing.scheduled_date)
+    .sort((a, b) => a.sequence - b.sequence)
+    .map((item) => (item.id === existingId ? newId : item.id));
+}
+
 export function formatTripDay(date: string) {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-MY", {
     weekday: "short",

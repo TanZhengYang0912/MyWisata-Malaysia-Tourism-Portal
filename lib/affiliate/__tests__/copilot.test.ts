@@ -95,6 +95,29 @@ describe('getCopilotSignals', () => {
     expect(signals.underperforming.some((p) => p.productId === 'p-below-floor')).toBe(false);
   });
 
+  it('refund risk: flags a listing only once BOTH the reversed-count and refund-rate floors clear', async () => {
+    mocks.getAffiliateStats.mockResolvedValue({
+      ...BASE_STATS,
+      byProduct: [
+        // 3 reversed of 4 total (75%) — clears both floors (>=2 reversed, >=30% rate).
+        { productId: 'p-risky', productName: 'Sunset Catamaran Cruise', shares: 1, clicks: 6, referrals: 1, earnings: 0.3, reversedReferrals: 3 },
+        // Only 1 reversed — below the MIN_REVERSED_FOR_REFUND_SIGNAL(2) count floor even though the rate (100%) would qualify.
+        { productId: 'p-one-refund', productName: 'One Refund', shares: 1, clicks: 2, referrals: 0, earnings: 0, reversedReferrals: 1 },
+        // 2 reversed of 10 total (20%) — clears the count floor but not the MIN_REFUND_RATE_FOR_SIGNAL(0.3) rate floor.
+        { productId: 'p-low-rate', productName: 'Low Rate', shares: 1, clicks: 12, referrals: 8, earnings: 8, reversedReferrals: 2 },
+        // No reversals at all — never flagged.
+        { productId: 'p-clean', productName: 'Clean Listing', shares: 1, clicks: 5, referrals: 5, earnings: 5, reversedReferrals: 0 },
+      ],
+    });
+    mockPlatformData({});
+
+    const signals = await getCopilotSignals(anyService, 'user-1');
+
+    expect(signals.refundRisk.map((r) => r.productId)).toEqual(['p-risky']);
+    expect(signals.refundRisk[0].refundRate).toBeCloseTo(0.75);
+    expect(signals.refundRisk[0].reversedReferrals).toBe(3);
+  });
+
   it('opportunity query: ranks by real platform-wide conversion rate and excludes listings this affiliate already shared', async () => {
     mocks.getAffiliateStats.mockResolvedValue({
       ...BASE_STATS,

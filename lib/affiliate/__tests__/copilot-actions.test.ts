@@ -10,10 +10,10 @@ const SIGNALS_WITH_DATA: CopilotSignals = {
   affiliateCode: 'AF-TEST01',
   hasActivity: true,
   topConverting: [
-    { productId: 'p-strong', productName: 'Mutton Briyani', shares: 2, clicks: 5, referrals: 2, earnings: 0.66, conversionRate: 0.4 },
+    { productId: 'p-strong', productName: 'Mutton Briyani', shares: 2, clicks: 5, referrals: 2, earnings: 0.66, reversedReferrals: 0, conversionRate: 0.4 },
   ],
   underperforming: [
-    { productId: 'p-weak', productName: 'Heritage Family Room', shares: 0, clicks: 3, referrals: 0, earnings: 0, conversionRate: 0 },
+    { productId: 'p-weak', productName: 'Heritage Family Room', shares: 0, clicks: 3, referrals: 0, earnings: 0, reversedReferrals: 0, conversionRate: 0 },
   ],
   byChannel: [
     { platform: 'native', shares: 3, clicks: 5, conversions: 2 },
@@ -24,6 +24,9 @@ const SIGNALS_WITH_DATA: CopilotSignals = {
   ],
   opportunities: [
     { productId: 'p-opp-1', productName: 'White Coffee', reason: 'highly_rated', rating: 5, reviewCount: 3 },
+  ],
+  refundRisk: [
+    { productId: 'p-risky', productName: 'Sunset Catamaran Cruise', shares: 1, clicks: 4, referrals: 1, earnings: 0.3, reversedReferrals: 3, refundRate: 0.75 },
   ],
   sourceTrackingActive: true,
 };
@@ -36,6 +39,7 @@ const NO_ACTIVITY_SIGNALS: CopilotSignals = {
   byChannel: [],
   byCampaign: [],
   opportunities: [],
+  refundRisk: [],
   sourceTrackingActive: false,
 };
 
@@ -115,7 +119,32 @@ describe('generateCopilotActions', () => {
 
     expect(result.mode).toBe('rule-based');
     expect(result.actions.length).toBeGreaterThan(0);
-    expect(result.actions.every((a) => !a.productId || ['p-opp-1', 'p-weak'].includes(a.productId))).toBe(true);
+    expect(result.actions.every((a) => !a.productId || ['p-opp-1', 'p-weak', 'p-risky'].includes(a.productId))).toBe(true);
+  });
+
+  it('accepts a refund_risk action citing a real refundRisk listing', async () => {
+    mocks.callGemini.mockResolvedValue(JSON.stringify({
+      actions: [{ kind: 'refund_risk', productId: 'p-risky', message: 'Several orders from this listing were later refunded.' }],
+    }));
+
+    const result = await generateCopilotActions(SIGNALS_WITH_DATA, 'en');
+
+    expect(result.mode).toBe('llm');
+    expect(result.actions[0]).toMatchObject({ kind: 'refund_risk', productId: 'p-risky', productName: 'Sunset Catamaran Cruise' });
+  });
+
+  it('drops a refund_risk action citing a productId NOT in refundRisk (hallucination guard)', async () => {
+    mocks.callGemini.mockResolvedValue(JSON.stringify({
+      actions: [
+        { kind: 'refund_risk', productId: 'p-strong', message: 'This one has refund problems.' },
+        { kind: 'general', message: 'Keep sharing regularly.' },
+      ],
+    }));
+
+    const result = await generateCopilotActions(SIGNALS_WITH_DATA, 'en');
+
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].kind).toBe('general');
   });
 
   it('falls back to rule-based output when Gemini returns malformed JSON', async () => {
@@ -160,7 +189,7 @@ describe('ruleBasedCopilotActions', () => {
   it('every productId/platform it references is real, present in the signals it was given', () => {
     const actions = ruleBasedCopilotActions(SIGNALS_WITH_DATA);
 
-    const validProductIds = new Set([...SIGNALS_WITH_DATA.opportunities.map((o) => o.productId), ...SIGNALS_WITH_DATA.underperforming.map((p) => p.productId)]);
+    const validProductIds = new Set([...SIGNALS_WITH_DATA.opportunities.map((o) => o.productId), ...SIGNALS_WITH_DATA.underperforming.map((p) => p.productId), ...SIGNALS_WITH_DATA.refundRisk.map((p) => p.productId)]);
     const validPlatforms = new Set(SIGNALS_WITH_DATA.byChannel.map((c) => c.platform));
     for (const action of actions) {
       if (action.productId) expect(validProductIds.has(action.productId)).toBe(true);

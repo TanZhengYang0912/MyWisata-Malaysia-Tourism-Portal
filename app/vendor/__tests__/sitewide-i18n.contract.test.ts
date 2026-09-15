@@ -48,6 +48,7 @@ export const VENDOR_I18N_FILES = [
   'components/vendor/product-form.tsx',
   'components/vendor/product-media-uploader.tsx',
   'components/vendor/recent-transactions.tsx',
+  'components/vendor/revenue-assistant-card.tsx',
   'components/vendor/sales-chart.tsx',
   'components/vendor/slot-form.tsx',
   'components/vendor/variant-manager.tsx',

@@ -316,6 +316,7 @@
       "getDirections": "获取路线",
       "addToTrip": "加入行程",
       "inTrip": "已在行程中",
+      "suggested": "推荐",
       "exploreVendor": "探索商家",
       "tunePreferences": "调整我的偏好",
       "sending": "正在发送…",
@@ -1159,6 +1160,31 @@
       "subtotalSelected_other": "小计（已选择 {{count}} 项）",
       "seatsLeft_one": "剩余 {{count}} 个名额",
       "seatsLeft_other": "剩余 {{count}} 个名额"
+    },
+    "tripBudget": {
+      "title": "行程预算",
+      "setBudget": "设置预算",
+      "edit": "编辑",
+      "budgetPlaceholder": "例如 500",
+      "currencyPrefix": "RM",
+      "save": "保存",
+      "cancel": "取消",
+      "noBudgetSet": "设置预算以追踪您行程的总花费。",
+      "spentOfBudget": "已用 {{spent}}，预算为 {{budget}}",
+      "overBudgetWarning": "超出预算 {{amount}} — 点击查看建议",
+      "checking": "正在查找更便宜的替代选项…",
+      "checkFailed": "暂时无法检查您的预算。",
+      "noAlternatives": "暂时未找到更便宜的替代选项。",
+      "viewAlternative": "查看详情",
+      "showOnMap": "在地图上查看",
+      "savings": "节省 {{amount}}"
+    },
+    "tripCheckout": {
+      "button_one": "结账（{{count}} 项）",
+      "button_other": "结账（{{count}} 项）",
+      "nothingToCheckout": "您的行程中还没有可购买的项目。",
+      "allNeedSlot": "您已安排的行程在计划当天都没有可预订的时段 — 请先在各活动页面选择时段。",
+      "someNeedSlot": "已加入购物车。{{names}} 仍需在各自页面选择时段 — 请确认计划当天有可预订的时段。"
     },
     "preferencesPage": {
       "eyebrow": "偏好",

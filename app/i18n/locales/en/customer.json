@@ -316,6 +316,7 @@
       "getDirections": "Get directions",
       "addToTrip": "Add to trip",
       "inTrip": "In trip",
+      "suggested": "Suggested",
       "exploreVendor": "Explore vendor",
       "tunePreferences": "Tune my preferences",
       "sending": "Sending…",
@@ -1159,6 +1160,31 @@
       "subtotalSelected_other": "Subtotal ({{count}} selected)",
       "seatsLeft_one": "{{count}} seats left",
       "seatsLeft_other": "{{count}} seats left"
+    },
+    "tripBudget": {
+      "title": "Trip Budget",
+      "setBudget": "Set budget",
+      "edit": "Edit",
+      "budgetPlaceholder": "e.g. 500",
+      "currencyPrefix": "RM",
+      "save": "Save",
+      "cancel": "Cancel",
+      "noBudgetSet": "Set a budget to track your trip's total cost.",
+      "spentOfBudget": "{{spent}} of your {{budget}} budget",
+      "overBudgetWarning": "Over budget by {{amount}} — tap for suggestions",
+      "checking": "Checking for cheaper alternatives…",
+      "checkFailed": "Couldn't check your budget right now.",
+      "noAlternatives": "No cheaper alternatives found for your priciest picks right now.",
+      "viewAlternative": "View listing",
+      "showOnMap": "Show on map",
+      "savings": "Save {{amount}}"
+    },
+    "tripCheckout": {
+      "button_one": "Checkout ({{count}} item)",
+      "button_other": "Checkout ({{count}} items)",
+      "nothingToCheckout": "Nothing in your itinerary is available to purchase yet.",
+      "allNeedSlot": "None of your scheduled stops have an open booking slot on their planned day — pick a time on each activity's page first.",
+      "someNeedSlot": "Added to cart. {{names}} still need a time slot picked on their own page — check their planned day has an open slot."
     },
     "preferencesPage": {
       "eyebrow": "Preferences",

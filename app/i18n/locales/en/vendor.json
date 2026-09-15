@@ -384,6 +384,16 @@
       "itemsInPeriod_one": "{{count}} items in this period",
       "itemsInPeriod_other": "{{count}} items in this period"
     },
+    "revenueAssistant": {
+      "title": "Revenue Assistant",
+      "regenerate": "Regenerate",
+      "generating": "Generating…",
+      "generatingActions": "Reviewing your listings, bookings and reviews…",
+      "generateFailed": "Couldn't generate suggestions right now.",
+      "noData": "No issues found in your listings, bookings, or reviews right now — check back as more activity comes in.",
+      "aiGenerated": "AI-generated",
+      "ruleBased": "Rule-based summary (AI unavailable)"
+    },
     "analytics": {
       "noVendor": "No approved vendor is linked to this account.",
       "malaysiaPerformance": "Malaysia-wide performance",

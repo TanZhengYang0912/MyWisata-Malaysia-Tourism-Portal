@@ -384,6 +384,16 @@
       "itemsInPeriod_one": "此期间 {{count}} 项",
       "itemsInPeriod_other": "此期间 {{count}} 项"
     },
+    "revenueAssistant": {
+      "title": "收益助手",
+      "regenerate": "重新生成",
+      "generating": "生成中…",
+      "generatingActions": "正在检查您的商品、预订和评价…",
+      "generateFailed": "暂时无法生成建议。",
+      "noData": "您的商品、预订和评价暂时未发现问题 — 随着更多活动发生，请稍后再查看。",
+      "aiGenerated": "AI 生成",
+      "ruleBased": "基于规则的摘要（AI 不可用）"
+    },
     "analytics": {
       "noVendor": "此账户未关联已批准的商家。",
       "malaysiaPerformance": "马来西亚整体表现",

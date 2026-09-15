@@ -18,6 +18,8 @@ export interface MapPin {
   href?: string;
   imageUrl?: string | null;
   order?: number;
+  /** Set on a Budget Guard suggestion pin — the real trip item (id or experience_id) it's meant to replace when added, so onAddStop can swap in place instead of appending. */
+  replacesId?: string;
 }
 
 // OpenFreeMap — free hosted vector tiles, no API key / signup / card. Swap to
@@ -103,6 +105,34 @@ function StopMarkerVisual({ pin, number }: { pin: MapPin; number: number }) {
   );
 }
 
+// Same photo-thumbnail treatment as an in-trip stop, but a distinct star
+// badge instead of a sequence number — visually marks "this is an AI
+// suggestion, not yet part of your itinerary" at a glance.
+function SuggestedMarkerVisual({ pin }: { pin: MapPin }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  if (pin.imageUrl && !imageFailed) {
+    return (
+      <div
+        data-map-pin-image={pin.id}
+        aria-label={pin.label}
+        className="relative h-14 w-14 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-white bg-white shadow-[0_12px_30px_rgba(15,23,42,0.24)]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={pin.imageUrl} alt="" onError={() => setImageFailed(true)} className="h-full w-full object-cover" />
+        <span className="absolute bottom-0.5 left-0.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-amber-500 px-1 text-[10px] font-black text-white">
+          ★
+        </span>
+      </div>
+    );
+  }
+  return (
+    <svg width="30" height="38" viewBox="0 0 30 38" style={{ cursor: "pointer", display: "block" }} aria-label={pin.label}>
+      <path d="M15 37C15 37 28 22.5 28 14C28 6.82 21.9 1 15 1C8.1 1 2 6.82 2 14C2 22.5 15 37 15 37Z" fill="#D97706" stroke="#ffffff" strokeWidth="2" />
+      <text x="15" y="19" textAnchor="middle" fontSize="13" fontWeight="700" fill="#ffffff" fontFamily="sans-serif">★</text>
+    </svg>
+  );
+}
+
 export function MaplibreMap({
   pins,
   center,
@@ -116,6 +146,7 @@ export function MaplibreMap({
   onUserLocationDrag,
   onAddStop,
   stopIds,
+  suggestedIds,
   routes,
   routeColor = "#2563EB",
   routeDashed,
@@ -135,6 +166,8 @@ export function MaplibreMap({
   onUserLocationDrag?: (lat: number, lng: number) => void;
   onAddStop?: (pin: MapPin) => void;
   stopIds?: string[];
+  /** Pins from an AI suggestion (e.g. Budget Guard) not yet in the trip — rendered with a distinct star marker, and the popup reads "Suggested" instead of "+ Add to trip". */
+  suggestedIds?: string[];
   routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
   routeColor?: string;
   routeDashed?: boolean;
@@ -148,11 +181,18 @@ export function MaplibreMap({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
 
-  // Trip-stop pins render as numbered DOM markers below, not the GL dot layer.
-  const dotPins = useMemo(() => pins.filter((p) => !stopIds?.includes(p.id)), [pins, stopIds]);
+  // Trip-stop and suggested pins render as DOM markers below, not the GL dot layer.
+  const dotPins = useMemo(
+    () => pins.filter((p) => !stopIds?.includes(p.id) && !suggestedIds?.includes(p.id)),
+    [pins, stopIds, suggestedIds],
+  );
   const stopPins = useMemo(
     () => (stopIds ?? []).map((id, i) => ({ pin: pins.find((p) => p.id === id), number: i + 1 })).filter((s): s is { pin: MapPin; number: number } => !!s.pin),
     [pins, stopIds],
+  );
+  const suggestedPins = useMemo(
+    () => (suggestedIds ?? []).filter((id) => !stopIds?.includes(id)).map((id) => pins.find((p) => p.id === id)).filter((p): p is MapPin => !!p),
+    [pins, stopIds, suggestedIds],
   );
   const pinsGeoJSON = useMemo(() => pinsToGeoJSON(dotPins), [dotPins]);
   const selectedPin = pins.find((p) => p.id === selectedId) ?? null;
@@ -359,6 +399,21 @@ export function MaplibreMap({
         </Marker>
       ))}
 
+      {suggestedPins.map((pin) => (
+        <Marker
+          key={pin.id}
+          longitude={pin.lng}
+          latitude={pin.lat}
+          anchor="bottom"
+          onClick={(e) => {
+            e.originalEvent.stopPropagation();
+            setSelectedId(pin.id);
+          }}
+        >
+          <SuggestedMarkerVisual pin={pin} />
+        </Marker>
+      ))}
+
       {selectedPin && (
         <Popup longitude={selectedPin.lng} latitude={selectedPin.lat} onClose={() => setSelectedId(null)} closeOnClick={false} offset={12}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedPin.label}</div>
@@ -377,14 +432,18 @@ export function MaplibreMap({
                   fontSize: 11,
                   fontWeight: 700,
                   color: "#fff",
-                  background: stopIds?.includes(selectedPin.id) ? "#16A34A" : "#010066",
+                  background: stopIds?.includes(selectedPin.id)
+                    ? "#16A34A"
+                    : suggestedIds?.includes(selectedPin.id) ? "#D97706" : "#010066",
                   border: "none",
                   borderRadius: 8,
                   padding: "5px 9px",
                   cursor: "pointer",
                 }}
               >
-                {stopIds?.includes(selectedPin.id) ? `✓ ${t("ui.actions.inTrip")}` : `+ ${t("ui.actions.addToTrip")}`}
+                {stopIds?.includes(selectedPin.id)
+                  ? `✓ ${t("ui.actions.inTrip")}`
+                  : suggestedIds?.includes(selectedPin.id) ? `★ ${t("ui.actions.suggested")}` : `+ ${t("ui.actions.addToTrip")}`}
               </button>
             )}
           </div>
