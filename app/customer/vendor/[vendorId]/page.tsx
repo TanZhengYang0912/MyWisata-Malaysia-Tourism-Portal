@@ -202,11 +202,18 @@ async function getVendor(vendorId: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ vendorId: string }> }): Promise<Metadata> {
-  const result = await getVendor((await params).vendorId);
+  const { vendorId } = await params;
+  const result = await getVendor(vendorId);
   const { t } = await getServerTranslation('customer');
   if (!result) return { title: t('ui.vendor.notFound') };
   const vendorVisual = getVendorVisual({ name: result.vendor.name, coverUrl: result.vendor.cover_url, logoUrl: result.vendor.logo_url });
-  return { title: `${result.vendor.name} | ${BRAND_NAME}`, description: result.vendor.description ?? t('ui.vendor.metadataDescription', { vendor: result.vendor.name }), openGraph: { title: result.vendor.name, description: result.vendor.description ?? undefined, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
+  const baseDescription = result.vendor.description ?? t('ui.vendor.metadataDescription', { vendor: result.vendor.name });
+  // Rating prefix for the WhatsApp/social preview card — reuses the exact
+  // same weighted rating the page itself displays, never a fabricated
+  // number (result.reviewSummary.rating is null with zero reviews).
+  const description = result.reviewSummary.rating !== null ? `★ ${result.reviewSummary.rating.toFixed(1)} · ${baseDescription}` : baseDescription;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendorId}`;
+  return { title: `${result.vendor.name} | ${BRAND_NAME}`, description, openGraph: { title: result.vendor.name, description, url, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
 }
 
 function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {

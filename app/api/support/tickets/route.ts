@@ -90,8 +90,9 @@ export async function POST(request: Request) {
   // for content. Classification runs on the cleaned (masked) text too, so a
   // masked swear word doesn't skew category detection any differently than
   // the real one would have.
-  const cleanedSubject = cleanUserContent(subject);
-  const cleanedBody = cleanUserContent(body);
+  const moderationService = createServiceClient();
+  const cleanedSubject = await cleanUserContent(subject, moderationService);
+  const cleanedBody = await cleanUserContent(body, moderationService);
 
   // AI classification (Gemini) with the keyword classifier as a safety net —
   // CLAUDE-FIXES-2.md item 6. classifyTicketSmart() never throws: no

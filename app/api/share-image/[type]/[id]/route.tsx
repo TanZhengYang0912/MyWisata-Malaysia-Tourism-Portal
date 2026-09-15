@@ -23,6 +23,7 @@ import { selectPublicDocument } from '@/lib/vendor/outlet-page-persistence';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { ratingFromRows } from '@/lib/reviews/rating-summary';
 
 export const runtime = 'edge';
 
@@ -43,12 +44,6 @@ interface CardData {
   priceLabel: string | null;
   rating: number | null;
   reviewCount: number;
-}
-
-async function ratingFromRows(rows: Array<{ rating: number }>): Promise<{ rating: number | null; reviewCount: number }> {
-  if (rows.length === 0) return { rating: null, reviewCount: 0 };
-  const rating = Math.round((rows.reduce((sum, r) => sum + Number(r.rating), 0) / rows.length) * 10) / 10;
-  return { rating, reviewCount: rows.length };
 }
 
 async function loadListing(type: ShareType, id: string): Promise<CardData | null> {

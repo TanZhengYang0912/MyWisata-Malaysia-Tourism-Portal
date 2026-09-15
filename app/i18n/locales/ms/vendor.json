@@ -2082,6 +2082,21 @@
       "ruleBased": "Ringkasan berasaskan peraturan (AI tidak tersedia)",
       "title": "Wawasan"
     },
+    "copilot": {
+      "aiGenerated": "Dijana AI",
+      "captionCopied": "Disalin!",
+      "captionFailed": "Tidak dapat menjana kapsyen sekarang.",
+      "copyCaption": "Salin",
+      "draftCaption": "Jana kapsyen",
+      "draftingCaption": "Menjana…",
+      "generateFailed": "Tidak dapat menjana cadangan sekarang.",
+      "generating": "Menjana…",
+      "generatingActions": "Mencari tindakan terbaik seterusnya untuk anda…",
+      "noActivity": "Kongsi penyenaraian pertama anda untuk membuka cadangan peribadi.",
+      "regenerate": "Jana semula",
+      "ruleBased": "Ringkasan berasaskan peraturan (AI tidak tersedia)",
+      "title": "Copilot"
+    },
     "rank": {
       "earnings": "mengikut pendapatan — {{amount}} bulan ini",
       "empty": "Kongsi pautan untuk menyertai papan kedudukan.",

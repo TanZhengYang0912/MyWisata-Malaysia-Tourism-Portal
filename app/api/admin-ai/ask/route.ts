@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   // CLAUDE-MODERATION.md Part 3: same single entry point as the customer
   // chatbot — admins shouldn't be typing slurs into an AI either. Applied
   // before storage AND before the LLM call, same as the customer route.
-  const cleaned = cleanUserContent(question);
+  const cleaned = await cleanUserContent(question, service);
   const userId = user.id;
 
   async function logUserMessage(): Promise<string | null> {

@@ -16,20 +16,25 @@
 import type { Metadata } from 'next';
 import { createServiceClient } from '@/lib/supabase/service';
 import { productImageUrl } from '@/lib/storage/product-image';
+import { ratingFromRows } from '@/lib/reviews/rating-summary';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 export async function buildActivityMetadata(productId: string, path: string): Promise<Metadata> {
   const service = createServiceClient();
-  const { data: product } = await service
-    .from('products')
-    .select('name,description,cover_url')
-    .eq('id', productId)
-    .maybeSingle();
+  const [{ data: product }, { data: reviewRows }] = await Promise.all([
+    service.from('products').select('name,description,cover_url').eq('id', productId).maybeSingle(),
+    service.from('reviews').select('rating').eq('product_id', productId).eq('is_visible', true),
+  ]);
 
   if (!product) return {};
 
-  const description = product.description ?? undefined;
+  // Rating prefix for the WhatsApp/social preview card — never fabricated,
+  // omitted entirely when there are zero visible reviews.
+  const { rating } = await ratingFromRows(reviewRows ?? []);
+  const description = [rating !== null ? `★ ${rating.toFixed(1)}` : null, product.description]
+    .filter(Boolean)
+    .join(' · ') || undefined;
 
   return {
     title: product.name,

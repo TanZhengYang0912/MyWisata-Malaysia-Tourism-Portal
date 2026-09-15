@@ -829,7 +829,11 @@
     "referralCount_one": "{{count}} rujukan",
     "referralCount_other": "{{count}} rujukan",
     "accept": "Terima",
-    "reject": "Tolak"
+    "reject": "Tolak",
+    "minSalesAmount": "Jualan min (RM)",
+    "activePeriodDays": "Aktif dalam (hari)",
+    "maxFraudRate": "Kadar penipuan maks",
+    "noLimit": "—"
   },
   "aiAssistant": {
     "ask": {
@@ -2969,5 +2973,45 @@
     "recommendationFindingMeta": "{{kindLabel}}: {{kind}} · {{severityLabel}}: {{severity}}",
     "recommendationEvidence": "{{label}}: {{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
+  },
+  "moderationWords": {
+    "eyebrow": "Moderasi",
+    "title": "Perkataan Moderasi",
+    "description": "Tambah perkataan untuk disamar secara automatik merentasi tiket, komen, chatbot, dan sembang — melengkapi senarai terbina dalam, terutamanya untuk bahasa lain.",
+    "loading": "Memuatkan…",
+    "empty": "Belum ada perkataan tersuai ditambah.",
+    "confirmDelete": "Buang \"{{term}}\" daripada senarai penyamaran automatik?",
+    "form": {
+      "term": "Perkataan",
+      "termPlaceholder": "Masukkan perkataan untuk disamar",
+      "category": "Kategori",
+      "language": "Bahasa (pilihan)",
+      "languagePlaceholder": "cth. ms, zh",
+      "add": "Tambah perkataan"
+    },
+    "category": {
+      "profanity": "Bahasa kesat",
+      "slur": "Hinaan"
+    },
+    "status": {
+      "active": "Aktif",
+      "inactive": "Tidak aktif"
+    },
+    "table": {
+      "term": "Perkataan",
+      "category": "Kategori",
+      "language": "Bahasa",
+      "status": "Status",
+      "remove": "Buang"
+    },
+    "success": {
+      "added": "Perkataan ditambah",
+      "removed": "Perkataan dibuang"
+    },
+    "errors": {
+      "add": "Tidak dapat menambah perkataan",
+      "update": "Tidak dapat mengemas kini perkataan",
+      "remove": "Tidak dapat membuang perkataan"
+    }
   }
 }

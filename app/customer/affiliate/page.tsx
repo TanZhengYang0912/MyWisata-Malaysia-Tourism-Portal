@@ -13,6 +13,7 @@ import { sanitizeCampaign } from "@/lib/affiliate/campaign";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
+import { AffiliateCopilotCard } from "@/components/customer/affiliate-copilot-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
@@ -31,7 +32,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 interface StatsResponse {
   affiliateCode: string | null;
   affiliateUrl: string | null;
-  totals: { clicks: number; referrals: number; pendingEarnings: number; availableToWithdraw: number };
+  totals: { clicks: number; referrals: number; pendingEarnings: number; availableToWithdraw: number; totalEarnings: number };
   byProduct: AffiliateProductStat[];
   byCampaign: AffiliateCampaignStat[];
   clicksByDay: AffiliateDailyClicks[];
@@ -304,6 +305,12 @@ export default function AffiliateDashboardPage() {
             <p className="text-[0.625rem] text-muted-foreground">{tCustomer("strictMigration.affiliate.earnToWithdraw")}</p>
           )}
         </div>
+        <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
+          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("strictMigration.affiliate.totalEarnings")}</p>
+          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
+            {formatMYR(stats.totals.totalEarnings)}
+          </p>
+        </div>
       </div>
 
       <div className="mb-8 rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6">
@@ -445,6 +452,10 @@ export default function AffiliateDashboardPage() {
 
       <div className="mb-8">
         <AffiliateInsightCard scope="user" requiredCapability="affiliate.earn_commission" nextPath="/customer/affiliate" />
+      </div>
+
+      <div className="mb-8">
+        <AffiliateCopilotCard />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
