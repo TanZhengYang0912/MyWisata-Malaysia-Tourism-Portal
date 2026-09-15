@@ -99,7 +99,7 @@ async function selectValue(element: TestElement, value: string) {
   });
 }
 
-async function selectPermission(key: string) {
+async function selectModule(key: string) {
   const label = findOne(container, (element) =>
     element.tagName === "LABEL" && element.textContent.includes(key));
   const checkbox = findOne(label, (element) =>
@@ -119,7 +119,7 @@ describe("StaffRolesTab", () => {
     mocks.fetch.mockReset();
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === "/api/admin/access-control/staff-permissions") {
+      if (url === "/api/admin/access-control/staff-modules" && !init?.method) {
         return response({
           data: {
             permissions: [
@@ -127,6 +127,17 @@ describe("StaffRolesTab", () => {
               { id: "p2", key: "admin.withdrawal.approve", module: "admin", action: "withdrawal.approve", description: "Approve withdrawals" },
               { id: "p3", key: "admin.vendor.manage", module: "admin", action: "vendor.manage", description: "Manage vendors" },
               { id: "p4", key: "admin.map_campaign.manage", module: "admin", action: "map_campaign.manage", description: "Manage campaigns" },
+              { id: "p5", key: "admin.catalogue.review", module: "catalogue", action: "review", description: "Review catalogue" },
+            ],
+            groups: [{ id: "g1", key: "catalogue_governance", name: "Catalogue governance", description: "Locked workflow", isSystem: true, isActive: true, moduleKeys: ["catalogue_review", "vendor_approvals"] }],
+            modules: [
+              { id: "m1", key: "vendor_approvals", label: "Vendor Approvals", labelKey: null, description: "Manage vendors", sectionKey: "governance", sectionLabel: "Governance", sectionLabelKey: null, sectionSortOrder: 20, href: "/admin/vendors", iconKey: "package", sortOrder: 10, isActive: true, isSystem: true, groupKey: "catalogue_governance", groupName: "Catalogue governance", permissionKeys: ["admin.vendor.manage"] },
+              { id: "m2", key: "catalogue_review", label: "Catalogue Review", labelKey: null, description: "Review catalogue", sectionKey: "governance", sectionLabel: "Governance", sectionLabelKey: null, sectionSortOrder: 20, href: "/admin/catalogue", iconKey: "clipboard-check", sortOrder: 20, isActive: true, isSystem: true, groupKey: "catalogue_governance", groupName: "Catalogue governance", permissionKeys: ["admin.catalogue.review"] },
+              { id: "m3", key: "kyc_review", label: "KYC Review", labelKey: null, description: "Review KYC", sectionKey: "governance", sectionLabel: "Governance", sectionLabelKey: null, sectionSortOrder: 20, href: "/admin/kyc", iconKey: "shield", sortOrder: 30, isActive: true, isSystem: true, groupKey: null, groupName: null, permissionKeys: ["admin.kyc.review"] },
+              { id: "m4", key: "withdrawals", label: "Withdrawals", labelKey: null, description: "Approve withdrawals", sectionKey: "finance", sectionLabel: "Finance", sectionLabelKey: null, sectionSortOrder: 30, href: "/admin/withdrawals", iconKey: "dollar-sign", sortOrder: 10, isActive: true, isSystem: true, groupKey: null, groupName: null, permissionKeys: ["admin.withdrawal.approve"] },
+              { id: "m5", key: "sponsored_placements", label: "Sponsored Placements", labelKey: null, description: "Manage campaigns", sectionKey: "governance", sectionLabel: "Governance", sectionLabelKey: null, sectionSortOrder: 20, href: "/admin/sponsored-placements", iconKey: "megaphone", sortOrder: 40, isActive: true, isSystem: true, groupKey: null, groupName: null, permissionKeys: ["admin.map_campaign.manage"] },
+              { id: "m6", key: "support_tickets", label: "Support Tickets", labelKey: null, description: "Support queue", sectionKey: "support", sectionLabel: "Support", sectionLabelKey: null, sectionSortOrder: 40, href: "/admin/support", iconKey: "inbox", sortOrder: 10, isActive: true, isSystem: true, groupKey: null, groupName: null, permissionKeys: [] },
+              { id: "m7", key: "chat_reports", label: "Chat Reports", labelKey: null, description: "Chat moderation queue", sectionKey: "support", sectionLabel: "Support", sectionLabelKey: null, sectionSortOrder: 40, href: "/admin/chat-reports", iconKey: "flag", sortOrder: 20, isActive: true, isSystem: true, groupKey: null, groupName: null, permissionKeys: [] },
             ],
           },
           error: null,
@@ -136,10 +147,10 @@ describe("StaffRolesTab", () => {
         return response({
           data: {
             roles: [
-              { id: "legacy-admin", name: "Legacy Admin", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.kyc.review", "admin.vendor.manage"], createdBy: null, createdAt: null, updatedAt: null },
-              { id: "legacy-wallet", name: "Legacy Wallet Approver", description: "Compatibility role", isSystem: true, isActive: true, permissionKeys: ["admin.withdrawal.approve"], createdBy: null, createdAt: null, updatedAt: null },
-              { id: "sponsor-template", name: "Sponsored Placement Manager", description: "Sponsored Placements template", isSystem: true, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: null, createdAt: null, updatedAt: null },
-              { id: "custom-role", name: "Campaign Manager", description: "Campaign access", isSystem: false, isActive: true, permissionKeys: ["admin.map_campaign.manage"], createdBy: "actor", createdAt: null, updatedAt: null },
+              { id: "legacy-admin", name: "Legacy Admin", description: "Compatibility role", isSystem: true, isActive: true, moduleKeys: ["vendor_approvals", "catalogue_review", "kyc_review"], permissionKeys: ["admin.kyc.review", "admin.vendor.manage", "admin.catalogue.review"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "legacy-wallet", name: "Legacy Wallet Approver", description: "Compatibility role", isSystem: true, isActive: true, moduleKeys: ["withdrawals"], permissionKeys: ["admin.withdrawal.approve"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "sponsor-template", name: "Sponsored Placement Manager", description: "Sponsored Placements template", isSystem: true, isActive: true, moduleKeys: ["sponsored_placements"], permissionKeys: ["admin.map_campaign.manage"], createdBy: null, createdAt: null, updatedAt: null },
+              { id: "custom-role", name: "Campaign Manager", description: "Campaign access", isSystem: false, isActive: true, moduleKeys: ["sponsored_placements"], permissionKeys: ["admin.map_campaign.manage"], createdBy: "actor", createdAt: null, updatedAt: null },
             ],
             assignments: roleAssignments,
             employees: [],
@@ -155,6 +166,9 @@ describe("StaffRolesTab", () => {
       }
       if (url === "/api/admin/access-control/staff-roles" && init?.method === "POST") {
         return response({ data: { roleId: "role-1", auditEventId: "audit-1" }, error: null }, 201);
+      }
+      if (url === "/api/admin/access-control/staff-modules" && init?.method === "POST") {
+        return response({ data: { moduleId: "module-new", auditEventId: "audit-module" }, error: null }, 201);
       }
       if (url === "/api/admin/access-control/staff-candidates?search=Ali") {
         return response({
@@ -189,7 +203,7 @@ describe("StaffRolesTab", () => {
     vi.unstubAllGlobals();
   });
 
-  it("creates a role with exactly the selected permission keys and governance reason", async () => {
+  it("creates a role with exactly the selected Module keys and governance reason", async () => {
     await act(async () => {
       root?.render(<StaffRolesTab onViewAudit={vi.fn()} />);
     });
@@ -201,12 +215,13 @@ describe("StaffRolesTab", () => {
 
     const inputs = findElements(container, (element) => element.tagName === "INPUT");
     const textareas = findElements(container, (element) => element.tagName === "TEXTAREA");
-    expect(container.textContent).toContain("admin.kyc.review");
+    expect(container.textContent).toContain("kyc_review");
     await setValue(inputs.find((input) => (input as TestElement & { name?: string }).name === "role-name")!, "Operations Reviewer");
     await setValue(textareas[0]!, "Reviews vendors and KYC");
-    await selectPermission("admin.kyc.review");
-    await selectPermission("admin.vendor.manage");
-    expect(inputs.filter((input) => input.type === "checkbox")).toHaveLength(4);
+    await selectModule("kyc_review");
+    await selectModule("vendor_approvals");
+    await selectModule("support_tickets");
+    await selectModule("chat_reports");
     await setValue(textareas[1]!, "Lecturer demonstration role");
 
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewSave")));
@@ -218,9 +233,27 @@ describe("StaffRolesTab", () => {
     expect(JSON.parse(String((post?.[1] as RequestInit).body))).toEqual({
       name: "Operations Reviewer",
       description: "Reviews vendors and KYC",
-      permissionKeys: ["admin.kyc.review", "admin.vendor.manage"],
+      moduleKeys: ["catalogue_review", "chat_reports", "kyc_review", "support_tickets", "vendor_approvals"],
       reason: "Lecturer demonstration role",
     });
+  });
+
+  it("checks and unchecks the Catalogue governance Module group atomically", async () => {
+    await act(async () => { root?.render(<StaffRolesTab onViewAudit={vi.fn()} />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+
+    await selectModule("vendor_approvals");
+    const vendorLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("vendor_approvals"));
+    const catalogueLabel = findOne(container, (element) => element.tagName === "LABEL" && element.textContent.includes("catalogue_review"));
+    expect((findOne(vendorLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(true);
+    expect((findOne(catalogueLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(true);
+    expect(container.textContent).toContain("accessControl.staffRoles.lockedGroup");
+
+    const catalogueCheckbox = findOne(catalogueLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean };
+    catalogueCheckbox.checked = false;
+    await click(catalogueCheckbox);
+    expect((findOne(vendorLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(false);
+    expect((findOne(catalogueLabel, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked).toBe(false);
   });
 
   it("shows Legacy presets as inspectable permission roles without making them editable", async () => {
@@ -271,13 +304,13 @@ describe("StaffRolesTab", () => {
       (element as TestElement & { name?: string }).name === "role-name");
     expect(roleName.value).toBe("Sponsor Manager");
 
-    const permissionLabels = findElements(container, (element) =>
-      element.tagName === "LABEL" && element.textContent.includes("admin."));
-    const selectedPermissionKeys = permissionLabels
+    const moduleLabels = findElements(container, (element) =>
+      element.tagName === "LABEL" && element.textContent.includes("sponsored_placements"));
+    const selectedModuleKeys = moduleLabels
       .filter((label) => (findOne(label, (element) => element.tagName === "INPUT") as TestElement & { checked: boolean }).checked)
       .map((label) => label.textContent);
-    expect(selectedPermissionKeys).toHaveLength(1);
-    expect(selectedPermissionKeys[0]).toContain("admin.map_campaign.manage");
+    expect(selectedModuleKeys).toHaveLength(1);
+    expect(selectedModuleKeys[0]).toContain("sponsored_placements");
   });
 
   it("reviews and sends a new employee invitation using only a custom role", async () => {
@@ -312,7 +345,7 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    const roleSelect = findElements(container, (element) => element.tagName === "SELECT").at(-1)!;
+    const roleSelect = findOne(container, (element) => element.getAttribute("id") === "assignment-role");
     await selectValue(roleSelect, "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
@@ -325,8 +358,7 @@ describe("StaffRolesTab", () => {
     await click(candidate);
     expect(container.textContent).toContain("Ali Staff");
 
-    const textareas = findElements(container, (element) => element.tagName === "TEXTAREA");
-    const assignmentReason = textareas[textareas.length - 1];
+    const assignmentReason = findOne(container, (element) => element.getAttribute("id") === "assignment-reason");
     await setValue(assignmentReason, "Add a second wallet approver");
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant")));
@@ -367,7 +399,7 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    const roleSelect = findElements(container, (element) => element.tagName === "SELECT").at(-1)!;
+    const roleSelect = findOne(container, (element) => element.getAttribute("id") === "assignment-role");
     await selectValue(roleSelect, "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
@@ -375,7 +407,7 @@ describe("StaffRolesTab", () => {
     await submit(findOne(container, (element) => element.tagName === "FORM"));
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("ali@example.com")));
-    const assignmentReason = findElements(container, (element) => element.tagName === "TEXTAREA").at(-1)!;
+    const assignmentReason = findOne(container, (element) => element.getAttribute("id") === "assignment-reason");
     await setValue(assignmentReason, "Keep wallet review coverage");
 
     expect(container.textContent).toContain("accessControl.staffRoles.alreadyAssigned");
@@ -403,14 +435,14 @@ describe("StaffRolesTab", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
     });
 
-    await selectValue(findElements(container, (element) => element.tagName === "SELECT").at(-1)!, "custom-role");
+    await selectValue(findOne(container, (element) => element.getAttribute("id") === "assignment-role"), "custom-role");
     const searchInput = findOne(container, (element) =>
       (element as TestElement & { name?: string }).name === "staff-search");
     await setValue(searchInput, "Ali");
     await submit(findOne(container, (element) => element.tagName === "FORM"));
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("ali@example.com")));
-    await setValue(findElements(container, (element) => element.tagName === "TEXTAREA").at(-1)!, "Restore wallet review coverage");
+    await setValue(findOne(container, (element) => element.getAttribute("id") === "assignment-reason"), "Restore wallet review coverage");
 
     expect(container.textContent).not.toContain("accessControl.staffRoles.alreadyAssigned");
     expect(findOne(container, (element) =>

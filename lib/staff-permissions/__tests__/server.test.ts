@@ -83,11 +83,14 @@ describe("requireStaffPermission", () => {
     expect(mocks.rpc).toHaveBeenCalledOnce();
   });
 
-  it("rejects unknown permission keys at compile time", () => {
-    if (false) {
-      // @ts-expect-error permission keys are a closed compile-time vocabulary
-      void requireStaffPermission("admin.staff.impersonate");
-    }
+  it("accepts a dynamically stored permission key", async () => {
+    const result = await requireStaffPermission("admin.staff.impersonate");
+
+    expect(result.response).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledWith("has_staff_permission", {
+      p_user_id: "staff-1",
+      p_permission_key: "admin.staff.impersonate",
+    });
   });
 });
 

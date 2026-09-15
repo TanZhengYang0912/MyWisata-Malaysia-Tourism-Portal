@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { Store, MapPin, X } from "lucide-react";
 import type { DiscoveryPin } from "@/lib/demo-map/discovery-pins";
-import { formatMYR } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 
 /**
  * Renders whatever is selected on the dev discovery map — a single outlet, a
@@ -52,7 +52,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
           <li key={product.id}>
             <Link href={`/customer/activity/${product.id}`} className="flex items-center justify-between gap-2 text-xs text-foreground hover:text-primary">
               <span className="truncate">{product.name}</span>
-              <span className="shrink-0 font-[family-name:var(--font-mono)] font-semibold">{formatMYR(Number(product.price))}</span>
+              <ReferencePrice amountMYR={Number(product.price)} className="shrink-0 font-[family-name:var(--font-mono)] font-semibold" />
             </Link>
           </li>
         ))}
@@ -77,7 +77,7 @@ function ActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity" }
       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin size={11} /> {pin.activity.place?.district ? `${pin.activity.place.district}, ${pin.activity.place.state}` : pin.activity.place?.state}
       </p>
-      <p className="mt-2 font-[family-name:var(--font-mono)] text-sm font-bold text-primary">{formatMYR(Number(pin.activity.price))}</p>
+      <ReferencePrice amountMYR={Number(pin.activity.price)} className="mt-2 font-[family-name:var(--font-mono)] text-sm font-bold text-primary" />
     </div>
   );
 }

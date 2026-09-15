@@ -6,11 +6,11 @@ const mocks = vi.hoisted(() => ({
   role: "approver" as Role,
   pathname: "/admin/withdrawals",
   replace: vi.fn(),
-  staffPermissionKeys: [] as string[],
+  staffModules: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("@/components/providers/auth", () => ({
-  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, staffPermissionKeys: mocks.staffPermissionKeys, loading: false }),
+  useRequireRole: () => ({ currentUser: { id: "staff-test", name: "Test staff", role: mocks.role }, staffModules: mocks.staffModules, loading: false }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
@@ -32,11 +32,31 @@ function navigationHrefs(markup: string) {
   return [...markup.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
 }
 
+function moduleFor(href: string, index: number) {
+  const key = href.replace(/^\/admin\/?/, "").replaceAll("/", "_") || "overview";
+  return {
+    id: `module-${index}`, key, label: key, labelKey: null, description: null,
+    sectionKey: "dynamic", sectionLabel: "Dynamic", sectionLabelKey: null, sectionSortOrder: 10,
+    href, iconKey: "activity", sortOrder: index, groupKey: null, groupName: null, permissionKeys: [],
+  };
+}
+
+const SUPER_ADMIN_HREFS = [
+  "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/kyc", "/admin/recommendations",
+  "/admin/withdrawals", "/admin/refunds", "/admin/wallet/settings", "/admin/wallet/approvers", "/admin/reports/payouts", "/admin/reports/reconciliation",
+  "/admin/support", "/admin/chat-reports", "/admin/affiliate", "/admin/chatbot",
+  "/admin/users", "/admin/access-control", "/admin/ai-assistant", "/admin/staff-conduct", "/admin/moderation-words",
+];
+const ADMIN_HREFS = [
+  "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/kyc", "/admin/recommendations",
+  "/admin/refunds", "/admin/support", "/admin/chat-reports", "/admin/affiliate", "/admin/chatbot",
+];
+
 describe("admin navigation role rendering", () => {
   beforeEach(() => {
     mocks.role = "approver";
     mocks.pathname = "/admin/withdrawals";
-    mocks.staffPermissionKeys = [];
+    mocks.staffModules = [moduleFor("/admin/withdrawals", 0)];
   });
 
   it("shows only Withdrawals to wallet approvers", () => {
@@ -58,27 +78,21 @@ describe("admin navigation role rendering", () => {
   it("preserves all 21 Super Admin navigation entries", () => {
     mocks.role = "super_admin";
     mocks.pathname = "/admin/dashboard";
-    expect(navigationHrefs(renderLayout())).toEqual([
-      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/kyc", "/admin/recommendations",
-      "/admin/withdrawals", "/admin/refunds", "/admin/wallet/settings", "/admin/wallet/approvers", "/admin/reports/payouts", "/admin/reports/reconciliation",
-      "/admin/support", "/admin/chat-reports", "/admin/affiliate", "/admin/chatbot",
-      "/admin/users", "/admin/access-control", "/admin/ai-assistant", "/admin/staff-conduct", "/admin/moderation-words",
-    ]);
+    mocks.staffModules = SUPER_ADMIN_HREFS.map(moduleFor);
+    expect(navigationHrefs(renderLayout())).toEqual(SUPER_ADMIN_HREFS);
   });
 
   it("preserves content admin navigation", () => {
     mocks.role = "admin";
     mocks.pathname = "/admin/dashboard";
-    expect(navigationHrefs(renderLayout())).toEqual([
-      "/admin/dashboard", "/admin/vendors", "/admin/catalogue", "/admin/sponsored-placements", "/admin/kyc", "/admin/recommendations",
-      "/admin/refunds", "/admin/support", "/admin/chat-reports", "/admin/affiliate", "/admin/chatbot",
-    ]);
+    mocks.staffModules = ADMIN_HREFS.map(moduleFor);
+    expect(navigationHrefs(renderLayout())).toEqual(ADMIN_HREFS);
   });
 
   it("shows Staff only the work areas granted by effective permissions", () => {
     mocks.role = "staff";
     mocks.pathname = "/admin/kyc";
-    mocks.staffPermissionKeys = ["admin.kyc.review", "admin.vendor.manage"];
+    mocks.staffModules = [moduleFor("/admin/vendors", 0), moduleFor("/admin/kyc", 1)];
     const markup = renderLayout();
     expect(navigationHrefs(markup)).toEqual(["/admin/vendors", "/admin/kyc"]);
     expect(markup).not.toContain("command.searchAdminPlaceholder");

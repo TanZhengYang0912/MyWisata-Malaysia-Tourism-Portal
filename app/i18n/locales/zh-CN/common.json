@@ -9,6 +9,15 @@
     "saved": "语言偏好已保存。",
     "saveError": "无法保存语言偏好，请重试。"
   },
+  "currency": {
+    "label": "参考币种",
+    "saved": "参考币种已更新。",
+    "saveError": "无法保存参考币种，请重试。",
+    "referenceOnly": "换算金额仅为估算，供参考使用。",
+    "rateDate": "参考汇率日期：{{date}}。",
+    "settlementAmount": "实际以 {{amount}} 结算",
+    "chargedInMYR": "最终将以马来西亚令吉（MYR）收费。"
+  },
   "conductReport": {
     "submitFailed": "无法提交举报。",
     "success": "举报已提交，我们的团队会进行审核。",

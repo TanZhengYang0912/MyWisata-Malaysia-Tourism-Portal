@@ -10,6 +10,37 @@ export interface GroupedTripItems {
   unscheduled: TripItem[];
 }
 
+export interface TripItemTimeBounds {
+  min?: string;
+  max?: string;
+  disabled?: boolean;
+}
+
+export type TripDayWeatherAnchor = Pick<
+  TripItem,
+  "id" | "experience_id" | "lat" | "lng" | "label" | "scheduled_date"
+>;
+
+export function isValidTripCoordinate(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+export function selectTripDayWeatherAnchor(items: TripItem[]): TripDayWeatherAnchor | null {
+  const item = [...items]
+    .sort((a, b) => a.sequence - b.sequence)
+    .find((candidate) => isValidTripCoordinate(candidate.lat, candidate.lng));
+
+  if (!item) return null;
+  return {
+    id: item.id,
+    experience_id: item.experience_id,
+    lat: item.lat,
+    lng: item.lng,
+    label: item.label,
+    scheduled_date: item.scheduled_date,
+  };
+}
+
 export function getTripDayDates(trip: Pick<Trip, "start_date" | "end_date">): string[] {
   if (!trip.start_date || !trip.end_date) return [];
 
@@ -37,6 +68,83 @@ export function groupTripItemsByDay(trip: Pick<Trip, "start_date" | "end_date">,
     unscheduled: items
       .filter((item) => !item.scheduled_date || !daySet.has(item.scheduled_date))
       .sort((a, b) => a.sequence - b.sequence),
+  };
+}
+
+function tripTimeToMinutes(time: string | null): number | null {
+  if (time === null) return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!match) return Number.NaN;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return Number.NaN;
+  return hours * 60 + minutes;
+}
+
+function minutesToTripTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+export function hasChronologicalTripTimes(items: TripItem[]): boolean {
+  const scheduledDates = new Set(items.flatMap((item) => item.scheduled_date ? [item.scheduled_date] : []));
+
+  for (const date of scheduledDates) {
+    let previousMinutes: number | null = null;
+    const dayItems = items
+      .filter((item) => item.scheduled_date === date)
+      .sort((a, b) => a.sequence - b.sequence);
+
+    for (const item of dayItems) {
+      const minutes = tripTimeToMinutes(item.scheduled_time);
+      if (Number.isNaN(minutes)) return false;
+      if (minutes === null) continue;
+      if (previousMinutes !== null && minutes <= previousMinutes) return false;
+      previousMinutes = minutes;
+    }
+  }
+
+  return true;
+}
+
+export function getTripItemTimeBounds(items: TripItem[], itemId: string): TripItemTimeBounds {
+  const target = items.find((item) => item.id === itemId);
+  if (!target?.scheduled_date) return {};
+
+  const dayItems = items
+    .filter((item) => item.scheduled_date === target.scheduled_date)
+    .sort((a, b) => a.sequence - b.sequence);
+  const targetIndex = dayItems.findIndex((item) => item.id === itemId);
+  if (targetIndex < 0) return {};
+
+  let previousMinutes: number | null = null;
+  for (let index = targetIndex - 1; index >= 0; index -= 1) {
+    const minutes = tripTimeToMinutes(dayItems[index].scheduled_time);
+    if (minutes !== null && !Number.isNaN(minutes)) {
+      previousMinutes = minutes;
+      break;
+    }
+  }
+
+  let nextMinutes: number | null = null;
+  for (let index = targetIndex + 1; index < dayItems.length; index += 1) {
+    const minutes = tripTimeToMinutes(dayItems[index].scheduled_time);
+    if (minutes !== null && !Number.isNaN(minutes)) {
+      nextMinutes = minutes;
+      break;
+    }
+  }
+
+  const minimum = previousMinutes === null ? null : previousMinutes + 1;
+  const maximum = nextMinutes === null ? null : nextMinutes - 1;
+  if ((minimum !== null && minimum > 23 * 60 + 59)
+    || (maximum !== null && maximum < 0)
+    || (minimum !== null && maximum !== null && minimum > maximum)) {
+    return { disabled: true };
+  }
+
+  return {
+    ...(minimum === null ? {} : { min: minutesToTripTime(minimum) }),
+    ...(maximum === null ? {} : { max: minutesToTripTime(maximum) }),
   };
 }
 

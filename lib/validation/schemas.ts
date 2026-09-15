@@ -161,9 +161,38 @@ export function apiFail(code: string, message: string, status = 400, details?: u
 export async function parseBody<T extends z.ZodTypeAny>(
   request: Request,
   schema: T,
+  options: { maxBytes?: number } = {},
 ): Promise<{ ok: true; data: z.infer<T> } | { ok: false; response: Response }> {
   let raw: unknown;
-  try { raw = await request.json(); }
+  try {
+    if (options.maxBytes === undefined) {
+      raw = await request.json();
+    } else {
+      const declaredLength = Number(request.headers.get('content-length'));
+      if (Number.isFinite(declaredLength) && declaredLength > options.maxBytes) {
+        return { ok: false, response: apiFail('REQUEST_TOO_LARGE', 'Request body is too large', 413) };
+      }
+
+      const reader = request.body?.getReader();
+      const decoder = new TextDecoder();
+      let totalBytes = 0;
+      let text = '';
+      if (reader) {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          totalBytes += chunk.value.byteLength;
+          if (totalBytes > options.maxBytes) {
+            await reader.cancel();
+            return { ok: false, response: apiFail('REQUEST_TOO_LARGE', 'Request body is too large', 413) };
+          }
+          text += decoder.decode(chunk.value, { stream: true });
+        }
+        text += decoder.decode();
+      }
+      raw = JSON.parse(text);
+    }
+  }
   catch { return { ok: false, response: apiFail('INVALID_JSON', 'Body is not valid JSON', 400) }; }
 
   const result = schema.safeParse(raw);

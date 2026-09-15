@@ -1,12 +1,18 @@
 import { z } from 'zod';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueWithdrawalEmail } from '@/lib/email/events';
-import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
+import { verifyWalletModerationCredential } from '@/lib/wallet/moderation-credential';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 import { requestIp } from '@/lib/wallet/request-ip';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
-const rejectSchema = z.object({ reasonCategory: z.string().trim().min(1), reason: z.string().trim().min(10).max(500) }).strict();
+const rejectSchema = z.object({
+  reasonCategory: z.string().trim().min(1),
+  reason: z.string().trim().min(10).max(500),
+  moderationCredential: z.string().min(1).max(4096).optional(),
+  advisoryAccepted: z.boolean().default(false),
+}).strict();
 
 export const dynamic = 'force-dynamic';
 
@@ -15,19 +21,47 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const { db, user, response } = await requireStaffPermission('admin.withdrawal.approve');
+  const { user, response } = await requireStaffPermission('admin.withdrawal.approve');
   if (response) return response;
 
   const parsed = await parseBody(request, rejectSchema);
   if (!parsed.ok) return parsed.response;
-  const validated = walletReasonSchema.safeParse({ action: 'reject', ...parsed.data });
+  const validated = walletReasonSchema.safeParse({
+    action: 'reject',
+    reasonCategory: parsed.data.reasonCategory,
+    reason: parsed.data.reason,
+  });
   if (!validated.success) return apiFail('VALIDATION_FAILED', validated.error.issues[0]?.message ?? 'Invalid rejection reason', 422);
-  const moderation = await moderateWalletAction({ actorId: user.id, withdrawalId: id, action: 'reject', reasonCategory: validated.data.reasonCategory, reason: validated.data.reason });
-  if (!moderation.ok) return apiFail(moderation.code, moderation.message, moderation.code === 'MODERATION_UNAVAILABLE' ? 503 : moderation.code === 'RATE_LIMITED' ? 429 : 422);
+  if (!parsed.data.moderationCredential) {
+    return apiFail('MODERATION_REVIEW_REQUIRED', 'Review the rejection reason before continuing.', 422);
+  }
 
-  const { data, error } = await db.rpc('reject_wallet_withdrawal', {
+  let verification;
+  try {
+    verification = verifyWalletModerationCredential(parsed.data.moderationCredential, {
+      actorId: user.id,
+      withdrawalId: id,
+      action: 'reject',
+      reasonCategory: validated.data.reasonCategory,
+      reason: validated.data.reason,
+    });
+  } catch (credentialError) {
+    if (credentialError instanceof Error && credentialError.message === 'wallet_moderation_secret_invalid') {
+      return apiFail('MODERATION_REVIEW_UNAVAILABLE', 'Reason review is temporarily unavailable; please try again.', 503);
+    }
+    throw credentialError;
+  }
+  if (!verification.valid) {
+    return apiFail('MODERATION_REVIEW_REQUIRED', 'The reason review expired or no longer matches. Review it again.', 422);
+  }
+  if (verification.claims.verdict === 'advisory' && !parsed.data.advisoryAccepted) {
+    return apiFail('ADVISORY_ACKNOWLEDGEMENT_REQUIRED', 'Review and acknowledge the Gemini Assistant suggestion before continuing.', 422);
+  }
+
+  const { data, error } = await createServiceClient().rpc('reject_wallet_withdrawal_server', {
+    p_actor_id: user.id,
     p_id: id,
-    p_reason: parsed.data.reason,
+    p_reason: validated.data.reason,
     p_ip: requestIp(request),
     p_reason_category: validated.data.reasonCategory,
   });

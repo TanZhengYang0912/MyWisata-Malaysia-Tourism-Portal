@@ -22,12 +22,43 @@ export type StaffPermissionRecord = {
   isSystem?: boolean;
 };
 
+export type StaffModuleRecord = {
+  id: string;
+  key: string;
+  label: string;
+  labelKey: string | null;
+  description: string | null;
+  sectionKey: string;
+  sectionLabel: string;
+  sectionLabelKey: string | null;
+  sectionSortOrder: number;
+  href: string;
+  iconKey: string;
+  sortOrder: number;
+  isActive: boolean;
+  isSystem: boolean;
+  groupKey: string | null;
+  groupName: string | null;
+  permissionKeys: string[];
+};
+
+export type StaffModuleGroupRecord = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  isActive: boolean;
+  moduleKeys: string[];
+};
+
 export type StaffRoleRecord = {
   id: string;
   name: string;
   description: string | null;
   isSystem: boolean;
   isActive: boolean;
+  moduleKeys: string[];
   permissionKeys: string[];
   createdBy: string | null;
   createdAt: string | null;

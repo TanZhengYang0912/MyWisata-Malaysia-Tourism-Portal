@@ -1,29 +1,20 @@
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { contentReviewSchema } from '@/lib/validation/vendor-schemas';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { auditAndNotify } from '@/lib/audit';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { getSuperAdminReviewUpdate } from '@/lib/vendor/voucher-review';
+import { requireStaffPermission } from '@/lib/staff-permissions/server';
 
-function relation(value: unknown) { return Array.isArray(value) ? value[0] : value; }
-
-async function requireAdmin() {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return { error: apiFail('UNAUTHORIZED', 'Sign in required', 401) } as const;
-  const { data: roles, error } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  if (error) return { error: apiFail('DB_ERROR', error.message, 500) } as const;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const names = (roles ?? []).map((row: any) => relation(row.roles)?.name);
-  if (!names.includes('super_admin')) {
-    return { error: apiFail('FORBIDDEN', 'Administrator access required', 403) } as const;
-  }
-  return { db: createServiceClient(), user } as const;
+async function requireCatalogueReview() {
+  const auth = await requireStaffPermission("admin.catalogue.review");
+  if (auth.response) return { error: auth.response } as const;
+  if (!auth.user) return { error: apiFail('UNAUTHORIZED', 'Sign in required', 401) } as const;
+  return { db: createServiceClient(), user: auth.user } as const;
 }
 
 export async function GET() {
-  const auth = await requireAdmin();
+  const auth = await requireCatalogueReview();
   if ('error' in auth) return auth.error;
   const { db } = auth;
   const [outlets, products, vouchers] = await Promise.all([
@@ -46,7 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireCatalogueReview();
   if ('error' in auth) return auth.error;
   const { db, user } = auth;
   const parsed = await parseBody(request, contentReviewSchema);

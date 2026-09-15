@@ -10,10 +10,12 @@ import { useCart } from "@/components/providers/cart";
 import { getActivities, getBookingSlots, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
-import { formatMYR, formatMYRFromSen } from "@/lib/i18n/format";
+import { formatMYRFromSen } from "@/lib/i18n/format";
+import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
@@ -60,6 +62,8 @@ type WalletSummary = {
 
 export default function CheckoutPage() {
   const { t: tCustomer } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
+  const { currency, snapshot } = useReferenceCurrency();
   const router = useRouter();
   const { currentUser, capabilities } = useAuth();
   const gate = useCustomerCapabilityGate();
@@ -326,7 +330,7 @@ export default function CheckoutPage() {
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-bold text-foreground truncate">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
                         <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
-                          {lineTotal === 0 ? "RM0.00" : formatMYR(lineTotal)}
+                          {lineTotal === 0 ? "RM0.00" : <ReferencePrice amountMYR={lineTotal} />}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{outlet?.name ?? ""} {variant?.label ? `· ${variant.label}` : ""}</p>
@@ -438,19 +442,28 @@ export default function CheckoutPage() {
             <div className="space-y-2 border-b border-border pb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
-                <span className="font-semibold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(subtotal)}</span>
+                <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground font-[family-name:var(--font-mono)]" />
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{tCustomer("strictMigration.checkout.discountWithCode", { code: voucherCode })}</span>
-                  <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">{tCustomer("strictMigration.cart.discountValue", { amount: formatMYR(discount) })}</span>
+                  <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">−<ReferencePrice amountMYR={discount} /></span>
                 </div>
               )}
             </div>
             <div className="flex justify-between text-lg font-bold">
               <span className="text-foreground">{tCustomer("ui.checkout.total")}</span>
-              <span className="text-primary font-[family-name:var(--font-mono)]">{formatMYR(total)}</span>
+              <ReferencePrice amountMYR={total} showSettlementMYR className="text-primary font-[family-name:var(--font-mono)]" />
             </div>
+
+            {!isFreeReservation && (
+              <p className="text-xs font-semibold text-foreground">{tCommon("currency.chargedInMYR")}</p>
+            )}
+            {currency !== "MYR" && snapshot && (
+              <p className="text-xs leading-5 text-muted-foreground">
+                {tCommon("currency.referenceOnly")} {tCommon("currency.rateDate", { date: snapshot.date })}
+              </p>
+            )}
 
             <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying} onClick={() => void handlePay()}>
               {paying

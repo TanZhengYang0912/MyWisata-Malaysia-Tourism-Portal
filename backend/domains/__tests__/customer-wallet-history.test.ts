@@ -9,7 +9,7 @@ vi.mock("@/backend/supabase", async () => {
   }) };
 });
 
-import { getCustomerWalletTransactionPage } from "../commerce";
+import { getCustomerWalletTransactionPage, getMyWithdrawals } from "../commerce";
 import { DEFAULT_CUSTOMER_HISTORY_FILTERS } from "@/lib/wallet/customer-transaction-filters";
 
 function pageResponse(rows: object[], total = rows.length, status = 200) {
@@ -115,6 +115,25 @@ describe("customer wallet history database query", () => {
       }),
       expect.objectContaining({ id: "tx-earning", type: "earnings", amount: 6.6 }),
     ]);
+  });
+
+  it("forwards an optional abort signal to every active history query", async () => {
+    const controller = new AbortController();
+
+    await getCustomerWalletTransactionPage("alice", DEFAULT_CUSTOMER_HISTORY_FILTERS, controller.signal);
+
+    expect(request).toHaveBeenCalledTimes(3);
+    for (const [, init] of request.mock.calls) expect(init.signal).toBe(controller.signal);
+  });
+
+  it("forwards an optional abort signal to the customer withdrawal query", async () => {
+    request.mockResolvedValue(pageResponse([], 0));
+    const controller = new AbortController();
+
+    await getMyWithdrawals("alice", controller.signal);
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][1].signal).toBe(controller.signal);
   });
 
   it("queries only ledger and external refund sources for the Refunds filter", async () => {

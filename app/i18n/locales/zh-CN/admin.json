@@ -307,6 +307,8 @@
       "description": "说明",
       "active": "角色已启用",
       "permissions": "按模块划分的权限",
+      "modules": "模块",
+      "lockedGroup": "不可拆分模块组合：{{group}}",
       "reviewSave": "复核角色变更",
       "rolesTitle": "可用权限角色",
       "rolesHelp": "先查看每个角色会授予哪些权限，再选择一个用于员工。",
@@ -392,6 +394,27 @@
         "sent": "邮件已发送",
         "failed": "发送失败"
       }
+    },
+    "staffModules": {
+      "title": "模块管理",
+      "help": "创建并维护员工角色和后台菜单使用的模块。系统组合不可拆分。",
+      "key": "模块键",
+      "label": "菜单名称",
+      "href": "后台路径",
+      "sectionKey": "分区键",
+      "sectionLabel": "分区名称",
+      "iconKey": "图标键",
+      "sectionOrder": "分区顺序",
+      "order": "模块顺序",
+      "group": "模块组合",
+      "noGroup": "不加入组合",
+      "description": "说明",
+      "permissions": "此模块授予的权限",
+      "active": "模块已启用",
+      "update": "更新模块",
+      "create": "创建模块",
+      "edit": "编辑",
+      "saveError": "无法保存模块。"
     },
     "confirm": {
       "capabilityTitle": "确认能力变更",
@@ -2540,6 +2563,14 @@
       "title": "钱包余额",
       "topUp": "充值",
       "withdrawn": "已提现"
+    },
+    "assistant": {
+      "title": "Gemini Assistant 建议",
+      "reviewing": "正在审核理由…",
+      "clear": "该理由可以进入确认步骤。",
+      "returnToEdit": "返回修改",
+      "continueAnyway": "仍然继续",
+      "advisoryNotice": "此内容仅为辅助建议；授权管理员审阅后仍可继续。"
     },
     "enumValues": {
       "accountDisabled": "账户已停用",

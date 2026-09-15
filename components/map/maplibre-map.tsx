@@ -2,9 +2,11 @@
 
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type ReactNode } from "react";
 import Map, { Layer, Marker, Popup, Source, type MapRef, type MarkerDragEvent } from "react-map-gl/maplibre";
 import type { GeoJSONSource, MapMouseEvent } from "maplibre-gl";
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from "geojson";
+import type { RouteTrafficSegment } from "@/lib/routing";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export interface MapPin {
@@ -14,6 +16,8 @@ export interface MapPin {
   label: string;
   sublabel?: string;
   href?: string;
+  imageUrl?: string | null;
+  order?: number;
 }
 
 // OpenFreeMap — free hosted vector tiles, no API key / signup / card. Swap to
@@ -60,6 +64,45 @@ function routeGeoJSON(path: [number, number][]): Feature<LineString> {
   return { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: path.map(([lat, lng]) => [lng, lat]) } };
 }
 
+function trafficRouteGeoJSON(segments: RouteTrafficSegment[]): FeatureCollection<LineString> {
+  return {
+    type: "FeatureCollection",
+    features: segments
+      .filter((segment) => segment.geometry.length > 1)
+      .map((segment) => ({
+        type: "Feature",
+        properties: { trafficLevel: segment.level },
+        geometry: { type: "LineString", coordinates: segment.geometry.map(([lat, lng]) => [lng, lat]) },
+      })),
+  };
+}
+
+function StopMarkerVisual({ pin, number }: { pin: MapPin; number: number }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const order = pin.order ?? number;
+  if (pin.imageUrl && !imageFailed) {
+    return (
+      <div
+        data-map-pin-image={pin.id}
+        aria-label={pin.label}
+        className="relative h-14 w-14 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-white bg-white shadow-[0_12px_30px_rgba(15,23,42,0.24)]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={pin.imageUrl} alt="" onError={() => setImageFailed(true)} className="h-full w-full object-cover" />
+        <span className="absolute bottom-0.5 left-0.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-primary px-1 text-[10px] font-black text-white">
+          {order}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <svg width="30" height="38" viewBox="0 0 30 38" style={{ cursor: "pointer", display: "block" }} aria-label={pin.label}>
+      <path d="M15 37C15 37 28 22.5 28 14C28 6.82 21.9 1 15 1C8.1 1 2 6.82 2 14C2 22.5 15 37 15 37Z" fill="#DC2626" stroke="#ffffff" strokeWidth="2" />
+      <text x="15" y="18.5" textAnchor="middle" fontSize="13" fontWeight="700" fill="#ffffff" fontFamily="sans-serif">{order}</text>
+    </svg>
+  );
+}
+
 export function MaplibreMap({
   pins,
   center,
@@ -77,6 +120,8 @@ export function MaplibreMap({
   routeColor = "#2563EB",
   routeDashed,
   focusRequest,
+  onMapMovingChange,
+  children,
 }: {
   pins: MapPin[];
   center: [number, number];
@@ -90,11 +135,13 @@ export function MaplibreMap({
   onUserLocationDrag?: (lat: number, lng: number) => void;
   onAddStop?: (pin: MapPin) => void;
   stopIds?: string[];
-  routes?: { path: [number, number][]; selected: boolean }[];
+  routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
   routeColor?: string;
   routeDashed?: boolean;
   /** Bumping `token` (even for the same pin) re-triggers the pan+select. */
   focusRequest?: { pin: MapPin; token: number } | null;
+  onMapMovingChange?: (moving: boolean) => void;
+  children?: ReactNode;
 }) {
   const { t } = useTranslation("customer");
   const mapRef = useRef<MapRef | null>(null);
@@ -162,6 +209,8 @@ export function MaplibreMap({
       onMouseEnter={() => setCursor("pointer")}
       onMouseLeave={() => setCursor("grab")}
       onLoad={() => onApiLoaded?.()}
+      onMoveStart={() => onMapMovingChange?.(true)}
+      onMoveEnd={() => onMapMovingChange?.(false)}
       onClick={handleMapClick}
     >
       <Source id={SOURCE_ID} type="geojson" data={pinsGeoJSON} cluster={cluster} clusterMaxZoom={14} clusterRadius={50}>
@@ -201,6 +250,8 @@ export function MaplibreMap({
         />
       </Source>
 
+      {children}
+
       {routes
         ?.filter((r) => !r.selected)
         .map((r, i) => r.path.length > 1 && (
@@ -216,14 +267,43 @@ export function MaplibreMap({
       {routes
         ?.filter((r) => r.selected)
         .map((r, i) => r.path.length > 1 && (
-          <Source key={`sel-${i}`} id={`route-sel-${i}`} type="geojson" data={routeGeoJSON(r.path)}>
-            <Layer
-              id={`route-sel-line-${i}`}
-              type="line"
-              layout={{ "line-cap": "round", "line-join": "round" }}
-              paint={{ "line-color": routeColor, "line-width": 5, "line-opacity": 0.9, ...(routeDashed ? { "line-dasharray": [2, 2] } : {}) }}
-            />
-          </Source>
+          <Fragment key={`sel-${i}`}>
+            <Source id={`route-sel-${i}`} type="geojson" data={routeGeoJSON(r.path)}>
+              <Layer
+                id={`route-sel-casing-${i}`}
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": "#FFFFFF", "line-width": 8, "line-opacity": 0.78, ...(routeDashed ? { "line-dasharray": [2, 2] } : {}) }}
+              />
+              <Layer
+                id={`route-sel-line-${i}`}
+                type="line"
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{ "line-color": routeColor, "line-width": 5.5, "line-opacity": 0.95, ...(routeDashed ? { "line-dasharray": [2, 2] } : {}) }}
+              />
+            </Source>
+            {!!r.trafficSegments?.length && (
+              <Source id={`route-traffic-${i}`} type="geojson" data={trafficRouteGeoJSON(r.trafficSegments)}>
+                <Layer
+                  id={`route-traffic-line-${i}`}
+                  type="line"
+                  layout={{ "line-cap": "round", "line-join": "round" }}
+                  paint={{
+                    "line-color": [
+                      "match",
+                      ["get", "trafficLevel"],
+                      "slow", "#FACC15",
+                      "congested", "#EF4444",
+                      "severe", "#B91C1C",
+                      "#2563EB",
+                    ],
+                    "line-width": 5.5,
+                    "line-opacity": 0.98,
+                  }}
+                />
+              </Source>
+            )}
+          </Fragment>
         ))}
 
       {radiusGeoJSON && (
@@ -275,10 +355,7 @@ export function MaplibreMap({
             setSelectedId(pin.id);
           }}
         >
-          <svg width="30" height="38" viewBox="0 0 30 38" style={{ cursor: "pointer", display: "block" }}>
-            <path d="M15 37C15 37 28 22.5 28 14C28 6.82 21.9 1 15 1C8.1 1 2 6.82 2 14C2 22.5 15 37 15 37Z" fill="#DC2626" stroke="#ffffff" strokeWidth="2" />
-            <text x="15" y="18.5" textAnchor="middle" fontSize="13" fontWeight="700" fill="#ffffff" fontFamily="sans-serif">{number}</text>
-          </svg>
+          <StopMarkerVisual pin={pin} number={number} />
         </Marker>
       ))}
 

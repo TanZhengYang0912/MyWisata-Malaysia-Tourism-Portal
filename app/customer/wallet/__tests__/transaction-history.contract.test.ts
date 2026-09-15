@@ -21,4 +21,12 @@ describe("customer wallet ledger integration", () => {
     expect(source).toContain("if (!isActiveRef.current) return;");
     expect(source).toContain('key={currentUser?.id ?? "guest"}');
   });
+
+  it("bounds Wallet reads and exposes a retry action", () => {
+    expect(source).toContain("const WALLET_READ_TIMEOUT_MS = 8_000");
+    expect(source).toContain("new AbortController()");
+    expect(source).toContain("signal: controller.signal");
+    expect(source).toContain('tCustomer("ui.wallet.retryWallet")');
+    expect(source).toContain("loadWallet");
+  });
 });

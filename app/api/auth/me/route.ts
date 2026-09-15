@@ -6,7 +6,7 @@ import type { RoleName } from '@/lib/constants';
 import { resolveServerCustomerCapabilities } from '@/lib/auth/customer-capabilities.server';
 import type { VerificationFacts } from '@/lib/entitlements/types';
 import { computeProfileVerification } from '@/lib/verification/eligibility';
-import { isStaffPermissionKey, type StaffPermissionKey } from '@/lib/staff-permissions/types';
+import { isStaffPermissionKey, parseStaffModules, type StaffModule, type StaffPermissionKey } from '@/lib/staff-permissions/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +72,8 @@ export async function GET() {
   }
   let staffRoleNames: string[] = [];
   let staffPermissionKeys: StaffPermissionKey[] = [];
-  if (roles.includes('staff')) {
+  let staffModules: StaffModule[] = [];
+  if (roles.some((role) => ['admin', 'approver', 'staff', 'super_admin'].includes(role))) {
     const { data: staffAccess, error: staffAccessError } = await supabase.rpc('get_my_staff_access');
     if (staffAccessError) return NextResponse.json({ error: 'Staff access unavailable' }, { status: 503 });
     const access = staffAccess && typeof staffAccess === 'object' ? staffAccess as Record<string, unknown> : {};
@@ -82,6 +83,7 @@ export async function GET() {
     staffPermissionKeys = Array.isArray(access.permissionKeys)
       ? access.permissionKeys.filter((key): key is StaffPermissionKey => typeof key === 'string' && isStaffPermissionKey(key))
       : [];
+    staffModules = parseStaffModules(access.modules);
   }
   const managerAssignments = (managerRows || []) as ManagerAssignmentRow[];
   const vendorIds = [...new Set([
@@ -148,6 +150,7 @@ export async function GET() {
       entitlementGeneration,
       staffRoleNames,
       staffPermissionKeys,
+      staffModules,
     },
   });
 }

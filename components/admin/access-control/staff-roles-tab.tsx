@@ -13,12 +13,15 @@ import type {
   MutationReceipt,
   StaffEmployeeRecord,
   StaffInvitationRecord,
+  StaffModuleGroupRecord,
+  StaffModuleRecord,
   StaffRoleCandidate,
   StaffPermissionRecord,
   StaffRoleAssignmentRecord,
   StaffRoleRecord,
 } from "@/components/admin/access-control/types";
 import { errorMessage } from "@/components/admin/access-control/types";
+import { StaffModulesPanel } from "@/components/admin/access-control/staff-modules-panel";
 import { Button } from "@/components/ui/button";
 
 type RolesPayload = {
@@ -27,7 +30,11 @@ type RolesPayload = {
   employees: StaffEmployeeRecord[];
 };
 
-type PermissionsPayload = { permissions: StaffPermissionRecord[] };
+type ModulesPayload = {
+  modules: StaffModuleRecord[];
+  permissions: StaffPermissionRecord[];
+  groups: StaffModuleGroupRecord[];
+};
 type CandidatesPayload = { candidates: StaffRoleCandidate[] };
 type InvitationsPayload = { invitations: StaffInvitationRecord[] };
 
@@ -35,7 +42,7 @@ type RoleForm = {
   id: string | null;
   name: string;
   description: string;
-  permissionKeys: string[];
+  moduleKeys: string[];
   active: boolean;
   reason: string;
 };
@@ -44,7 +51,7 @@ const EMPTY_FORM: RoleForm = {
   id: null,
   name: "",
   description: "",
-  permissionKeys: [],
+  moduleKeys: [],
   active: true,
   reason: "",
 };
@@ -64,6 +71,8 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   const [employees, setEmployees] = useState<StaffEmployeeRecord[]>([]);
   const [invitations, setInvitations] = useState<StaffInvitationRecord[]>([]);
   const [permissions, setPermissions] = useState<StaffPermissionRecord[]>([]);
+  const [modules, setModules] = useState<StaffModuleRecord[]>([]);
+  const [moduleGroups, setModuleGroups] = useState<StaffModuleGroupRecord[]>([]);
   const [form, setForm] = useState<RoleForm>(EMPTY_FORM);
   const [assignmentRoleId, setAssignmentRoleId] = useState("");
   const [staffSearch, setStaffSearch] = useState("");
@@ -89,16 +98,16 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     setLoading(true);
     setError("");
     try {
-      const [permissionsResponse, rolesResponse, invitationsResponse] = await Promise.all([
-        fetch("/api/admin/access-control/staff-permissions", { cache: "no-store" }),
+      const [modulesResponse, rolesResponse, invitationsResponse] = await Promise.all([
+        fetch("/api/admin/access-control/staff-modules", { cache: "no-store" }),
         fetch("/api/admin/access-control/staff-roles", { cache: "no-store" }),
         fetch("/api/admin/access-control/staff-invitations", { cache: "no-store" }),
       ]);
-      const permissionsBody = await permissionsResponse.json() as ApiEnvelope<PermissionsPayload>;
+      const modulesBody = await modulesResponse.json() as ApiEnvelope<ModulesPayload>;
       const rolesBody = await rolesResponse.json() as ApiEnvelope<RolesPayload>;
       const invitationsBody = await invitationsResponse.json() as ApiEnvelope<InvitationsPayload>;
-      if (!permissionsResponse.ok || !permissionsBody.data) {
-        throw new Error(errorMessage(permissionsBody, t("accessControl.errors.loadStaffRoles")));
+      if (!modulesResponse.ok || !modulesBody.data) {
+        throw new Error(errorMessage(modulesBody, t("accessControl.errors.loadStaffRoles")));
       }
       if (!rolesResponse.ok || !rolesBody.data) {
         throw new Error(errorMessage(rolesBody, t("accessControl.errors.loadStaffRoles")));
@@ -106,7 +115,9 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       if (!invitationsResponse.ok || !invitationsBody.data) {
         throw new Error(errorMessage(invitationsBody, t("accessControl.errors.loadStaffRoles")));
       }
-      setPermissions(permissionsBody.data.permissions);
+      setPermissions(modulesBody.data.permissions);
+      setModules(modulesBody.data.modules);
+      setModuleGroups(modulesBody.data.groups);
       setRoles(rolesBody.data.roles);
       setAssignments(rolesBody.data.assignments);
       setEmployees(rolesBody.data.employees ?? []);
@@ -126,13 +137,13 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     return () => clearTimeout(timeoutId);
   }, [load]);
 
-  const permissionsByModule = useMemo(() => {
-    const grouped = new Map<string, StaffPermissionRecord[]>();
-    for (const permission of permissions) {
-      grouped.set(permission.module, [...(grouped.get(permission.module) ?? []), permission]);
+  const modulesBySection = useMemo(() => {
+    const grouped = new Map<string, StaffModuleRecord[]>();
+    for (const staffModule of modules.filter((item) => item.isActive)) {
+      grouped.set(staffModule.sectionLabel, [...(grouped.get(staffModule.sectionLabel) ?? []), staffModule]);
     }
     return [...grouped.entries()];
-  }, [permissions]);
+  }, [modules]);
 
   const permissionsByKey = useMemo(
     () => new Map(permissions.map((permission) => [permission.key, permission])),
@@ -166,7 +177,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       id: role.id,
       name: role.name,
       description: role.description ?? "",
-      permissionKeys: [...role.permissionKeys],
+      moduleKeys: [...role.moduleKeys],
       active: role.isActive,
       reason: "",
     });
@@ -184,17 +195,20 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       : role.name === "Legacy Wallet Approver"
         ? "Wallet Approver"
         : role.name === "Legacy Admin" ? "Admin Reviewer" : `${role.name} Copy`.slice(0, 20);
-    setForm({ ...EMPTY_FORM, name: proposedName, description: role.description ?? "", permissionKeys: [...role.permissionKeys] });
+    setForm({ ...EMPTY_FORM, name: proposedName, description: role.description ?? "", moduleKeys: [...role.moduleKeys] });
     setFeedbackMessage("");
     setReceipt(null);
   }
 
-  function togglePermission(key: string, selected: boolean) {
+  function toggleModule(module: StaffModuleRecord, selected: boolean) {
+    const groupedKeys = module.groupKey
+      ? moduleGroups.find((group) => group.key === module.groupKey)?.moduleKeys ?? [module.key]
+      : [module.key];
     setForm((current) => ({
       ...current,
-      permissionKeys: selected
-        ? [...current.permissionKeys, key]
-        : current.permissionKeys.filter((permissionKey) => permissionKey !== key),
+      moduleKeys: selected
+        ? [...current.moduleKeys, ...groupedKeys.filter((key) => !current.moduleKeys.includes(key))]
+        : current.moduleKeys.filter((key) => !groupedKeys.includes(key)),
     }));
   }
 
@@ -211,7 +225,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
           body: JSON.stringify({
             name: form.name.trim(),
             description: form.description.trim(),
-            permissionKeys: form.permissionKeys,
+            moduleKeys: [...form.moduleKeys].sort(),
             ...(editing ? { active: form.active } : {}),
             reason: form.reason.trim(),
           }),
@@ -385,12 +399,16 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         </div>
         {form.id && <label className="mt-3 flex items-center gap-2 text-sm font-medium" htmlFor="role-active"><input id="role-active" type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>{t("accessControl.staffRoles.active")}</span></label>}
         <fieldset className="mt-4 space-y-4">
-          <legend className="text-sm font-semibold">{t("accessControl.staffRoles.permissions")}</legend>
-          {permissionsByModule.map(([module, modulePermissions]) => <div key={module} className="rounded-xl border border-border p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{module}</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">{modulePermissions.map((permission) => <label key={permission.key} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm">
-              <input type="checkbox" checked={form.permissionKeys.includes(permission.key)} onChange={(event) => togglePermission(permission.key, event.target.checked)} />
-              <span><span className="block font-medium">{permissionLabel(permission.key)}</span><span className="mt-1 block font-mono text-xs text-muted-foreground">{permission.key}</span></span>
+          <legend className="text-sm font-semibold">{t("accessControl.staffRoles.modules")}</legend>
+          {modulesBySection.map(([section, sectionModules]) => <div key={section} className="rounded-xl border border-border p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section}</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">{sectionModules.map((module) => <label key={module.key} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm">
+              <input type="checkbox" checked={form.moduleKeys.includes(module.key)} onChange={(event) => toggleModule(module, event.target.checked)} />
+              <span>
+                <span className="block font-medium">{module.label}</span>
+                <span className="mt-1 block font-mono text-xs text-muted-foreground">{module.key}</span>
+                {module.groupKey && <span className="mt-1 block text-xs text-primary">{t("accessControl.staffRoles.lockedGroup", { group: module.groupName })}</span>}
+              </span>
             </label>)}</div>
           </div>)}
         </fieldset>
@@ -410,10 +428,11 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span>
             </div>
-            <ul className="mt-3 space-y-1.5">{role.permissionKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
-              <span className="block text-xs font-medium">{permissionLabel(key)}</span>
+            <ul className="mt-3 space-y-1.5">{role.moduleKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
+              <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key}</span>
               <span className="block font-mono text-[11px] text-muted-foreground">{key}</span>
             </li>)}</ul>
+            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="font-mono text-[11px] text-muted-foreground">{permissionLabel(key)} · {key}</li>)}</ul>
             <div className="mt-3 flex justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
@@ -479,6 +498,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         </section>
       </div>
     </div>
+    <StaffModulesPanel modules={modules} permissions={permissions} groups={moduleGroups} onSaved={load} />
     <AdminConfirmDialog open={confirmOpen} title={t("accessControl.staffRoles.confirmTitle")} description={t("accessControl.staffRoles.confirmDescription")} confirmLabel="accessControl.staffRoles.confirmSave" busy={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void saveRole()} />
     <AdminConfirmDialog open={inviteConfirmOpen} title={t("accessControl.staffRoles.confirmInvitationTitle")} description={selectedInvitationRole ? <div className="space-y-2 text-sm"><p>{invitationEmail.trim()}</p><p className="font-semibold">{selectedInvitationRole.name}</p><ul>{selectedInvitationRole.permissionKeys.map((key) => <li key={key}>{permissionLabel(key)}</li>)}</ul><p>{invitationReason.trim()}</p></div> : t("accessControl.staffRoles.inviteHelp")} confirmLabel="accessControl.staffRoles.sendInvitation" busy={saving} onCancel={() => setInviteConfirmOpen(false)} onConfirm={() => void sendInvitation()} />
     <AdminConfirmDialog

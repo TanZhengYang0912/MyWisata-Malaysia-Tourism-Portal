@@ -12,7 +12,7 @@ import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/
 import { isAppLocale } from "@/lib/i18n/locale";
 import type { VerificationFacts } from "@/lib/entitlements/types";
 import type { Role, User } from "@/backend/core/types";
-import type { StaffPermissionKey } from "@/lib/staff-permissions/types";
+import type { StaffModule, StaffPermissionKey } from "@/lib/staff-permissions/types";
 
 interface AuthContextValue {
   currentUser: User | null;
@@ -25,6 +25,7 @@ interface AuthContextValue {
   entitlementGeneration: number;
   staffRoleNames: string[];
   staffPermissionKeys: StaffPermissionKey[];
+  staffModules: StaffModule[];
   loading: boolean;
   switchUser: (id: string, user?: User) => Promise<User | null>;
   refreshUser: () => Promise<void>;
@@ -52,6 +53,7 @@ type AuthMeUser = {
   entitlementGeneration: number;
   staffRoleNames: string[];
   staffPermissionKeys: StaffPermissionKey[];
+  staffModules: StaffModule[];
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOutletName, setActiveOutletName] = useState<string | null>(null);
   const [staffRoleNames, setStaffRoleNames] = useState<string[]>([]);
   const [staffPermissionKeys, setStaffPermissionKeys] = useState<StaffPermissionKey[]>([]);
+  const [staffModules, setStaffModules] = useState<StaffModule[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
   const pathname = usePathname();
@@ -93,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       entitlementGeneration: row.entitlementGeneration,
       staffRoleNames: row.staffRoleNames,
       staffPermissionKeys: row.staffPermissionKeys,
+      staffModules: row.staffModules ?? [],
       vendorId: row.activeVendorId ?? undefined,
       outletId: row.activeOutletIds[0] ?? undefined,
     };
@@ -103,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setActiveOutletName(row.activeOutletName);
     setStaffRoleNames(row.staffRoleNames);
     setStaffPermissionKeys(row.staffPermissionKeys);
+    setStaffModules(row.staffModules ?? []);
     setCurrentUserId(authUserId);
     return user;
   }, [tAuth]);
@@ -123,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setActiveOutletName(null);
         setStaffRoleNames([]);
         setStaffPermissionKeys([]);
+        setStaffModules([]);
         setLoading(false);
         return;
       }
@@ -139,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setActiveOutletName(null);
       setStaffRoleNames([]);
       setStaffPermissionKeys([]);
+      setStaffModules([]);
       setLoading(false);
     });
 
@@ -154,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setEntitlementGeneration(0);
         setStaffRoleNames([]);
         setStaffPermissionKeys([]);
+        setStaffModules([]);
         setLoading(false);
         return;
       }
@@ -167,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setActiveOutletName(null);
           setStaffRoleNames([]);
           setStaffPermissionKeys([]);
+          setStaffModules([]);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -226,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     entitlementGeneration,
     staffRoleNames,
     staffPermissionKeys,
+    staffModules,
     loading,
     switchUser,
     refreshUser,

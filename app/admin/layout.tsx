@@ -2,15 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, ClipboardCheck, Flag, Gem, Inbox, LogOut, Package, Search, Shield, ShieldBan, DollarSign, Link2, Bot, Sparkles, UserX, UsersRound, Settings2, FileBarChart2, RotateCcw, UserRoundCheck, ShieldCog, Megaphone, Scale, type LucideIcon } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { GlobalCommandPalette } from "@/components/shared/global-command-palette";
-import { isWalletApproverPath } from "@/lib/auth/post-login-destination";
-import { staffDestinations } from "@/lib/staff-permissions/navigation";
+import { staffNavigationSections } from "@/lib/staff-permissions/navigation";
 import { useCommandShortcutLabel } from "@/components/shared/command-shortcut";
 import { PortalSidebar, type PortalSidebarSection } from "@/components/layout/portal-sidebar";
 
@@ -36,71 +35,8 @@ const EMPTY_PENDING_COUNTS: PendingCounts = {
   recommendations: 0,
 };
 
-const CONTENT_REVIEW_ROLES = ["admin", "super_admin"] as const;
-const WITHDRAWAL_REVIEW_ROLES = ["approver", "super_admin"] as const;
-
-type AdminNavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-  superAdminOnly?: boolean;
-  allowedRoles?: readonly string[];
-};
-
-type AdminNavSection = { labelKey: string; items: AdminNavItem[] };
-
-const NAV_SECTIONS: AdminNavSection[] = [
-  { labelKey: "workspace", items: [{ href: "/admin/dashboard", label: "Overview", icon: Activity }] },
-  {
-    labelKey: "governance",
-    items: [
-      { href: "/admin/vendors", label: "Vendor Approvals", icon: Package },
-      { href: "/admin/catalogue", label: "Catalogue Review", icon: ClipboardCheck },
-      { href: "/admin/sponsored-placements", label: "Sponsored Placements", icon: Megaphone, allowedRoles: CONTENT_REVIEW_ROLES },
-      { href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES },
-      { href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES },
-    ],
-  },
-  {
-    labelKey: "finance",
-    items: [
-      { href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES },
-      { href: "/admin/refunds", label: "Refunds", icon: RotateCcw },
-      { href: "/admin/wallet/settings", label: "Wallet Settings", icon: Settings2, superAdminOnly: true },
-      { href: "/admin/wallet/approvers", label: "Wallet Approvers", icon: UserRoundCheck, superAdminOnly: true },
-      { href: "/admin/reports/payouts", label: "Payout Reports", icon: FileBarChart2, superAdminOnly: true },
-      { href: "/admin/reports/reconciliation", label: "Reconciliation", icon: Scale, superAdminOnly: true },
-    ],
-  },
-  {
-    labelKey: "support",
-    items: [
-      { href: "/admin/support", label: "Support Tickets", icon: Inbox },
-      { href: "/admin/chat-reports", label: "Chat Reports", icon: Flag },
-      { href: "/admin/affiliate", label: "Affiliate", icon: Link2 },
-      { href: "/admin/chatbot", label: "Chatbot", icon: Bot },
-    ],
-  },
-  {
-    labelKey: "administration",
-    items: [
-      { href: "/admin/users", label: "User Management", icon: UsersRound, superAdminOnly: true },
-      { href: "/admin/access-control", label: "Access Control", icon: ShieldCog, superAdminOnly: true },
-      // CLAUDE-ADMIN-AI.md: "Gate on super_admin" — stricter than the rest of
-      // this NAV. Filtered in render below.
-      { href: "/admin/ai-assistant", label: "AI Assistant", icon: Sparkles, superAdminOnly: true },
-      // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: moved out of the AI Assistant
-      // page into its own nav entry — it's staff-conduct review, not an AI
-      // capability, and was only ever co-located there because that page was
-      // already super-admin-gated.
-      { href: "/admin/staff-conduct", label: "Staff Conduct", icon: UserX, superAdminOnly: true },
-      { href: "/admin/moderation-words", label: "Moderation Words", icon: ShieldBan, superAdminOnly: true },
-    ],
-  },
-];
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, staffPermissionKeys = [], loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
+  const { currentUser, staffModules = [], loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   const commandShortcutLabel = useCommandShortcutLabel();
@@ -115,10 +51,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [pathname]);
 
-  const approverOutsideWallet = currentUser?.role === "approver" && !isWalletApproverPath(pathname);
-  const staffNavigationHrefs = new Set(staffDestinations(staffPermissionKeys).map((destination) => destination.href));
-  const staffOutsideAssignedWork = currentUser?.role === "staff"
-    && ![...staffNavigationHrefs].some((href) => pathname === href || pathname.startsWith(`${href}/`));
+  const dynamicNavigation = useMemo(() => staffNavigationSections(staffModules), [staffModules]);
+  const navigationHrefs = useMemo(
+    () => dynamicNavigation.flatMap((section) => section.items.map((item) => item.href)),
+    [dynamicNavigation],
+  );
+  const outsideAssignedWork = Boolean(currentUser)
+    && !navigationHrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   const supabase = useMemo(() => createClient(), []);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
@@ -129,12 +68,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && approverOutsideWallet) router.replace("/admin/withdrawals");
-  }, [loading, approverOutsideWallet, router]);
-
-  useEffect(() => {
-    if (!loading && staffOutsideAssignedWork) router.replace("/staff");
-  }, [loading, router, staffOutsideAssignedWork]);
+    if (loading || !currentUser || !outsideAssignedWork) return;
+    router.replace(currentUser.role === "staff" ? "/staff" : navigationHrefs[0] ?? "/login");
+  }, [currentUser, loading, navigationHrefs, outsideAssignedWork, router]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -246,7 +182,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, [currentUser?.role]);
 
-  if (loading || !currentUser || approverOutsideWallet || staffOutsideAssignedWork) {
+  if (loading || !currentUser || outsideAssignedWork) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -263,27 +199,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return 0;
   }
 
-  const sidebarSections = NAV_SECTIONS.map<PortalSidebarSection>((section) => ({
-    label: tAdmin(`navigationSections.${section.labelKey}`),
-    items: section.items
-      .filter((item) =>
-        (currentUser.role !== "staff" || staffNavigationHrefs.has(item.href))
-        && (!item.superAdminOnly || currentUser.role === "super_admin")
-        && (currentUser.role === "staff" || !item.allowedRoles || item.allowedRoles.includes(currentUser.role))
-        && (currentUser.role !== "approver" || isWalletApproverPath(item.href)),
-      )
-      .map((item) => {
+  const sidebarSections = dynamicNavigation.map<PortalSidebarSection>((section) => ({
+    label: section.labelKey ? tAdmin(section.labelKey) : section.label,
+    items: section.items.map((item) => {
         // item.href === "/admin/recommendations" uses its pending queue count for Super Admins.
         const count = currentUser.role === "staff" ? 0 : item.href === "/admin/support" ? unreadTickets : pendingCountFor(item.href);
         return {
           href: item.href,
-          label: tAdmin(`navigation.${item.label}`),
+          label: item.labelKey ? tAdmin(item.labelKey) : item.label,
           icon: item.icon,
           count,
           countLabel: count > 0 ? tAdmin("accessibility.pendingItems", { count }) : undefined,
         };
       }),
-  })).filter((section) => section.items.length > 0);
+  }));
+
+  const commandNavigationItems = sidebarSections.flatMap((section, sectionIndex) => section.items.map((item) => ({
+    id: `admin-module-${sectionIndex}-${item.href}`,
+    title: typeof item.label === "string" ? item.label : String(item.label),
+    category: typeof section.label === "string" ? section.label : String(section.label),
+    href: item.href,
+    icon: item.icon,
+    badge: item.count,
+  })));
 
   const contextDetail = currentUser.role === "super_admin"
     ? tAdmin("shell.context.superAdmin")
@@ -333,8 +271,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
         {currentUser.role !== "staff" && <GlobalCommandPalette
           scope="admin"
-          userRole={currentUser.role}
-          pendingCounts={pendingCounts}
+          navigationItems={commandNavigationItems}
           triggerOpen={commandPaletteOpen}
           onOpenChange={setCommandPaletteOpen}
         />}

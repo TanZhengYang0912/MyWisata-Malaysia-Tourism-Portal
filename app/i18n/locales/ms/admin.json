@@ -307,6 +307,8 @@
       "description": "Penerangan",
       "active": "Peranan aktif",
       "permissions": "Kebenaran mengikut modul",
+      "modules": "Modul",
+      "lockedGroup": "Modul tergabung: {{group}}",
       "reviewSave": "Semak perubahan peranan",
       "rolesTitle": "Peranan kebenaran tersedia",
       "rolesHelp": "Semak dengan tepat perkara yang diberikan oleh setiap peranan, kemudian pilih satu untuk kakitangan.",
@@ -392,6 +394,27 @@
         "sent": "E-mel dihantar",
         "failed": "Penghantaran gagal"
       }
+    },
+    "staffModules": {
+      "title": "Pengurusan modul",
+      "help": "Cipta dan urus modul yang muncul dalam peranan kakitangan dan menu Admin. Gabungan sistem tidak boleh dipisahkan.",
+      "key": "Kunci modul",
+      "label": "Label menu",
+      "href": "Laluan Admin",
+      "sectionKey": "Kunci bahagian",
+      "sectionLabel": "Label bahagian",
+      "iconKey": "Kunci ikon",
+      "sectionOrder": "Susunan bahagian",
+      "order": "Susunan modul",
+      "group": "Gabungan modul",
+      "noGroup": "Tiada gabungan",
+      "description": "Penerangan",
+      "permissions": "Kebenaran yang diberikan oleh modul ini",
+      "active": "Modul aktif",
+      "update": "Kemas kini modul",
+      "create": "Cipta modul",
+      "edit": "Sunting",
+      "saveError": "Tidak dapat menyimpan modul."
     },
     "confirm": {
       "capabilityTitle": "Sahkan perubahan keupayaan",
@@ -2540,6 +2563,14 @@
       "title": "Baki dompet",
       "topUp": "Tambah nilai",
       "withdrawn": "Dikeluarkan"
+    },
+    "assistant": {
+      "title": "Cadangan Pembantu Gemini",
+      "reviewing": "Menyemak sebab…",
+      "clear": "Sebab sedia untuk pengesahan.",
+      "returnToEdit": "Kembali untuk sunting",
+      "continueAnyway": "Teruskan juga",
+      "advisoryNotice": "Ini ialah cadangan sahaja. Pentadbir yang diberi kuasa boleh meneruskan selepas menyemaknya."
     },
     "batch": {
       "noCommonAction": "Tiada tindakan tunggal yang sah untuk setiap pengeluaran yang dipilih."

@@ -45,7 +45,7 @@ describe("GET /api/auth/me", () => {
         },
       },
     });
-    mocks.rpc.mockResolvedValue({ data: { roleNames: [], permissionKeys: [] }, error: null });
+    mocks.rpc.mockResolvedValue({ data: { roleNames: [], permissionKeys: [], modules: [] }, error: null });
     mocks.from.mockImplementation((table: string) => {
       if (table === "users") {
         return queryResult({
@@ -131,7 +131,17 @@ describe("GET /api/auth/me", () => {
       throw new Error(`unexpected table ${table}`);
     });
     mocks.rpc.mockResolvedValue({
-      data: { roleNames: ["KYC Reviewer"], permissionKeys: ["admin.kyc.review"] },
+      data: {
+        roleNames: ["KYC Reviewer"],
+        permissionKeys: ["admin.kyc.review"],
+        modules: [{
+          id: "module-1", key: "kyc_review", label: "KYC Review", labelKey: "navigation.KYC Review",
+          description: "Review KYC", sectionKey: "governance", sectionLabel: "Governance",
+          sectionLabelKey: "navigationSections.governance", sectionSortOrder: 20, href: "/admin/kyc",
+          iconKey: "shield", sortOrder: 40, groupKey: null, groupName: null,
+          permissionKeys: ["admin.kyc.review"],
+        }],
+      },
       error: null,
     });
 
@@ -140,6 +150,28 @@ describe("GET /api/auth/me", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("get_my_staff_access");
     expect(body.user.staffRoleNames).toEqual(["KYC Reviewer"]);
     expect(body.user.staffPermissionKeys).toEqual(["admin.kyc.review"]);
+    expect(body.user.staffModules).toEqual([expect.objectContaining({ key: "kyc_review", href: "/admin/kyc" })]);
+  });
+
+  it("loads database navigation Modules for a legacy Admin identity", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "users") return queryResult({
+        id: "user-1", email: "admin@example.com", full_name: "Admin", avatar_url: null,
+        kyc_status: "unverified", tier: "email_verified", email_verified_at: "2026-08-01T00:00:00.000Z",
+        phone_verified_at: null, profile_completed_at: null, status: "active",
+      });
+      if (table === "user_roles") return queryResult([{ vendor_id: null, outlet_id: null, roles: { name: "admin" }, outlets: null }]);
+      if (table === "outlet_managers") return queryResult([]);
+      if (table === "preference_survey_responses") return queryResult({ interests: [] });
+      throw new Error(`unexpected table ${table}`);
+    });
+    mocks.rpc.mockResolvedValue({ data: { roleNames: [], permissionKeys: ["admin.catalogue.review"], modules: [] }, error: null });
+
+    const body = await (await GET()).json();
+
+    expect(mocks.rpc).toHaveBeenCalledWith("get_my_staff_access");
+    expect(body.user.staffPermissionKeys).toEqual(["admin.catalogue.review"]);
+    expect(body.user.staffModules).toEqual([]);
   });
 
   it("keeps a claimed but unaccepted Staff invitation identity roleless", async () => {

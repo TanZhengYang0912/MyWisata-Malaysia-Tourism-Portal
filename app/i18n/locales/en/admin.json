@@ -307,6 +307,8 @@
       "description": "Description",
       "active": "Role is active",
       "permissions": "Permissions by module",
+      "modules": "Modules",
+      "lockedGroup": "Bundled module: {{group}}",
       "reviewSave": "Review role change",
       "rolesTitle": "Available permission roles",
       "rolesHelp": "Review exactly what each role grants, then choose one to use for an employee.",
@@ -392,6 +394,27 @@
         "sent": "Email sent",
         "failed": "Delivery failed"
       }
+    },
+    "staffModules": {
+      "title": "Module management",
+      "help": "Create and maintain the modules that appear in staff roles and the Admin menu. System bundles cannot be split.",
+      "key": "Module key",
+      "label": "Menu label",
+      "href": "Admin path",
+      "sectionKey": "Section key",
+      "sectionLabel": "Section label",
+      "iconKey": "Icon key",
+      "sectionOrder": "Section order",
+      "order": "Module order",
+      "group": "Module bundle",
+      "noGroup": "No bundle",
+      "description": "Description",
+      "permissions": "Permissions granted by this module",
+      "active": "Module is active",
+      "update": "Update module",
+      "create": "Create module",
+      "edit": "Edit",
+      "saveError": "Unable to save the module."
     },
     "confirm": {
       "capabilityTitle": "Confirm capability change",
@@ -2540,6 +2563,14 @@
       "title": "Wallet balances",
       "topUp": "Top-up",
       "withdrawn": "Withdrawn"
+    },
+    "assistant": {
+      "title": "Gemini Assistant suggestion",
+      "reviewing": "Reviewing the reason…",
+      "clear": "The reason is ready for confirmation.",
+      "returnToEdit": "Return to edit",
+      "continueAnyway": "Continue anyway",
+      "advisoryNotice": "This is an advisory suggestion. An authorized administrator may continue after reviewing it."
     },
     "batch": {
       "noCommonAction": "No single action is valid for every selected withdrawal."

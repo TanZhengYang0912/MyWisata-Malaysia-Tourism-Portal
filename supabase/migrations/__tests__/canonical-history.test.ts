@@ -32,11 +32,13 @@ const approvedForwardMigrations = [
   "20260909082900_sponsored_position_governance.sql",
   "20260909182946_add_bookings_updated_at.sql",
   "20260910005600_sponsored_placement_staff_role_template.sql",
+  "20260910114500_fix_multi_outlet_checkout.sql",
   "20260911000000_vendor_order_settlement.sql",
   "20260911100000_chat_message_context.sql",
   "20260912000000_moderation_custom_words.sql",
   "20260912010000_affiliate_tier_signals.sql",
   "20260912140000_voucher_owner_approval.sql",
+  "20260912173000_withdrawal_trust_boundary.sql",
   "20260912180000_voucher_store_redemption.sql",
   "20260912190000_vendor_featured_products.sql",
   "20260912210000_place_community_mock_data_v2.sql",
@@ -54,6 +56,7 @@ const approvedForwardMigrations = [
   "20260913140000_allow_shared_product_booking_slots.sql",
   "20260913142000_repair_demo_vendor_earning_lineage.sql",
   "20260913180000_unique_product_cover_images.sql",
+  "20260915222000_dynamic_staff_modules.sql",
 ];
 
 function migrationFiles() {

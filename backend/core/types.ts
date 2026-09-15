@@ -31,6 +31,7 @@ export interface User {
   entitlementGeneration?: number;
   staffRoleNames?: string[];
   staffPermissionKeys?: import("@/lib/staff-permissions/types").StaffPermissionKey[];
+  staffModules?: import("@/lib/staff-permissions/types").StaffModule[];
   vendorId?: string; // set for vendor_owner
   outletId?: string; // set for outlet_manager
 }
@@ -46,6 +47,7 @@ export interface AuthState {
   entitlementGeneration: number;
   staffRoleNames: string[];
   staffPermissionKeys: import("@/lib/staff-permissions/types").StaffPermissionKey[];
+  staffModules: import("@/lib/staff-permissions/types").StaffModule[];
 }
 
 // ─── Catalogue domain (P2 — Vendor/Outlet/Catalogue) ───────────────────────

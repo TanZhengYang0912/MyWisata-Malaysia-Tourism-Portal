@@ -6,7 +6,8 @@ const source = readFileSync(new URL("../page.tsx", import.meta.url), "utf8");
 describe("Staff home", () => {
   it("requires the Staff identity and renders only permission-derived destinations", () => {
     expect(source).toContain('useRequireRole(["staff"])');
-    expect(source).toContain("staffDestinations(staffPermissionKeys)");
+    expect(source).toContain("staffModules");
+    expect(source).not.toContain("staffDestinations");
     expect(source).toContain("destinations.map");
   });
 

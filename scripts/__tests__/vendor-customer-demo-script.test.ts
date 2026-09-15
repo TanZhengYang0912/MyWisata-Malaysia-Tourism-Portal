@@ -69,6 +69,15 @@ describe("vendor customer demo scripts", () => {
     expect(aliceWalletSource).toContain('ocr.status === "matched"');
   });
 
+  it("uses the service-only withdrawal trust RPCs for the Alice Wallet demo", () => {
+    expect(aliceWalletSource).toContain('service.rpc("submit_wallet_withdrawal_server"');
+    expect(aliceWalletSource).toContain('service.rpc("reject_wallet_withdrawal_server"');
+    expect(aliceWalletSource).toContain('p_expected_tng_phone: verifiedPhone');
+    expect(aliceWalletSource).toContain('p_expected_provider_reference: DEMO_DESTINATION_REFERENCE');
+    expect(aliceWalletSource).not.toContain('aliceClient.rpc("submit_wallet_withdrawal"');
+    expect(aliceWalletSource).not.toContain('adminClient.rpc("reject_wallet_withdrawal"');
+  });
+
   it("provides a read-only coverage and ownership verifier", () => {
     expect(packageJson.scripts["verify:vendor-customer-demo"]).toBe(
       "node scripts/verify-all-vendor-customer-demo.mjs",

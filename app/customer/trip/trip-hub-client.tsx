@@ -1,24 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/backend/domains/trips";
-import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { createTripAction, deleteTripAction } from "./actions";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { filterTrips, type TripFilters, type TripFilterStatus, type TripSort } from "@/lib/customer/trip-filters";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import { useAppDialog } from "@/components/providers/app-dialog";
+import { DEFAULT_LOCALE, matchAcceptedLocale } from "@/lib/i18n/locale";
+import { isMeaningfulTripIdea, nextDefaultTripName, tripDuration } from "@/lib/customer/trip-name";
 
 const DEFAULT_TRIP_FILTERS: TripFilters = { query: "", status: "all", from: "", to: "", sort: "newest" };
 const TRIP_STATUS_OPTIONS: TripFilterStatus[] = ["all", "upcoming", "past", "unscheduled"];
 
-export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
-  const { t } = useTranslation("customer");
+export function TripHubClient({ initialTrips, initialTripNameSequence }: { initialTrips: Trip[]; initialTripNameSequence: number }) {
+  const { t, i18n } = useTranslation("customer");
   const { confirm } = useAppDialog();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [isCreating, setIsCreating] = useState(false);
+  const initialDateRange = useMemo(() => getMalaysiaDateRangeDefaults(), []);
+  const initialDefaultTripName = useMemo(
+    () => nextDefaultTripName(initialTrips, initialTripNameSequence),
+    [initialTripNameSequence, initialTrips],
+  );
+  const [defaultTripName, setDefaultTripName] = useState(initialDefaultTripName);
+  const [tripName, setTripName] = useState(initialDefaultTripName);
+  const [createStartDate, setCreateStartDate] = useState(initialDateRange.from);
+  const [createEndDate, setCreateEndDate] = useState(initialDateRange.to);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [nameSuggestionsLoading, setNameSuggestionsLoading] = useState(false);
+  const [nameSuggestionsFallback, setNameSuggestionsFallback] = useState(false);
+  const [nameSuggestionError, setNameSuggestionError] = useState<"phone" | "generic" | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [tripFilters, setTripFilters] = useState<TripFilters>(DEFAULT_TRIP_FILTERS);
   const today = useMemo(() => getMalaysiaDateRangeDefaults().from, []);
   const visibleTrips = useMemo(() => filterTrips(trips, tripFilters, today), [today, tripFilters, trips]);
@@ -36,6 +52,78 @@ export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
 
   const clearFilters = () => setTripFilters(DEFAULT_TRIP_FILTERS);
 
+  const openCreateForm = () => {
+    const nextName = nextDefaultTripName(trips, initialTripNameSequence);
+    const dates = getMalaysiaDateRangeDefaults();
+    setDefaultTripName(nextName);
+    setTripName(nextName);
+    setCreateStartDate(dates.from);
+    setCreateEndDate(dates.to);
+    setNameSuggestions([]);
+    setNameSuggestionsFallback(false);
+    setNameSuggestionError(null);
+    setIsCreating(true);
+  };
+
+  const closeCreateForm = () => {
+    setIsCreating(false);
+    setNameSuggestions([]);
+    setNameSuggestionsFallback(false);
+    setNameSuggestionError(null);
+  };
+
+  useEffect(() => {
+    if (!isCreating) return;
+    nameInputRef.current?.focus();
+    nameInputRef.current?.select();
+  }, [defaultTripName, isCreating]);
+
+  const canRequestNameSuggestions = useMemo(() => {
+    if (!isMeaningfulTripIdea(tripName, defaultTripName)) return false;
+    try {
+      tripDuration(createStartDate, createEndDate);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [createEndDate, createStartDate, defaultTripName, tripName]);
+
+  const requestNameSuggestions = async () => {
+    if (!canRequestNameSuggestions || nameSuggestionsLoading) return;
+    setNameSuggestionsLoading(true);
+    setNameSuggestionError(null);
+    setNameSuggestionsFallback(false);
+    try {
+      const language = i18n.resolvedLanguage || i18n.language;
+      const locale = matchAcceptedLocale(language) ?? DEFAULT_LOCALE;
+      const response = await fetch("/api/trips/name-suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea: tripName.trim(),
+          startDate: createStartDate,
+          endDate: createEndDate,
+          locale,
+        }),
+      });
+      const body = await response.json() as {
+        data: { suggestions: string[]; aiAvailable: boolean } | null;
+        error: { code?: string } | null;
+      };
+      if (!response.ok || !body.data?.suggestions.length) {
+        setNameSuggestionError(body.error?.code === "PHONE_VERIFICATION_REQUIRED" ? "phone" : "generic");
+        return;
+      }
+      setNameSuggestions(body.data.suggestions);
+      setTripName(body.data.suggestions[0]);
+      setNameSuggestionsFallback(!body.data.aiAvailable);
+    } catch {
+      setNameSuggestionError("generic");
+    } finally {
+      setNameSuggestionsLoading(false);
+    }
+  };
+
   const handleDelete = async (tripId: string) => {
     if (!(await confirm(t("ui.trip.confirmDelete")))) return;
     setTrips(trips.filter((t) => t.id !== tripId));
@@ -51,7 +139,7 @@ export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
         icon={<Navigation size={14} />}
         actions={
           <button
-            onClick={() => setIsCreating(true)}
+            onClick={openCreateForm}
             className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <Plus size={16} /> {t("ui.trip.create")}
@@ -66,19 +154,39 @@ export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("ui.trip.name")}</label>
-                <input name="name" required placeholder={t("ui.trip.namePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input ref={nameInputRef} name="name" required maxLength={60} value={tripName} onChange={(event) => { setTripName(event.target.value); setNameSuggestions([]); setNameSuggestionsFallback(false); setNameSuggestionError(null); }} placeholder={t("ui.trip.namePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <button type="button" onClick={requestNameSuggestions} disabled={!canRequestNameSuggestions || nameSuggestionsLoading} className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-secondary/50 px-3 py-1.5 text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-45">
+                  <Sparkles size={13} aria-hidden="true" />
+                  {nameSuggestionsLoading ? t("ui.trip.aiNameLoading") : t("ui.trip.aiNameAction")}
+                </button>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("ui.trip.startDate")}</label>
-                <input name="start_date" type="date" defaultValue={getMalaysiaDateRangeDefaults().from} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="start_date" type="date" value={createStartDate} onChange={(event) => setCreateStartDate(event.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("ui.trip.endDate")}</label>
-                <input name="end_date" type="date" defaultValue={getMalaysiaDateRangeDefaults().to} min={getMalaysiaDateRangeDefaults().from} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                <input name="end_date" type="date" value={createEndDate} min={createStartDate} onChange={(event) => setCreateEndDate(event.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
               </div>
             </div>
+            <div className="mt-3" aria-live="polite">
+              {nameSuggestions.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground">{t("ui.trip.aiNameAlternatives")}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {nameSuggestions.map((suggestion) => (
+                      <button key={suggestion} type="button" onClick={() => { setTripName(suggestion); nameInputRef.current?.focus(); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${tripName === suggestion ? "border-primary bg-primary text-white" : "border-border bg-background text-foreground hover:border-primary/40"}`}>
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {nameSuggestionsFallback && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{t("ui.trip.aiNameFallback")}</p>}
+              {nameSuggestionError && <p className="mt-2 text-xs text-destructive">{t(nameSuggestionError === "phone" ? "ui.trip.aiNamePhoneRequired" : "ui.trip.aiNameError")}</p>}
+            </div>
             <div className="mt-5 flex justify-end gap-3">
-              <button type="button" onClick={() => setIsCreating(false)} className="rounded-full px-4 py-2 text-sm font-bold text-muted-foreground hover:bg-muted">{t("ui.actions.cancel")}</button>
+              <button type="button" onClick={closeCreateForm} className="rounded-full px-4 py-2 text-sm font-bold text-muted-foreground hover:bg-muted">{t("ui.actions.cancel")}</button>
               <button type="submit" className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primary/90">{t("ui.trip.createAndStart")}</button>
             </div>
           </form>
@@ -146,7 +254,7 @@ export function TripHubClient({ initialTrips }: { initialTrips: Trip[] }) {
             <Navigation className="mb-4 h-12 w-12 text-primary opacity-50" />
             <h3 className="text-lg font-bold text-foreground">{t("ui.trip.emptyTitle")}</h3>
             <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{t("ui.trip.emptyDescription")}</p>
-            <button onClick={() => setIsCreating(true)} className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <button onClick={openCreateForm} className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30">
               {t("ui.trip.createFirst")}
             </button>
           </div>

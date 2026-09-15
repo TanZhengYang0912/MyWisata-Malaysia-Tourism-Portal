@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { getPageItems } from "@/components/customer/directory-pagination";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => `${key}${values ? ` ${Object.values(values).join(" ")}` : ""}`,
+  }),
+}));
+
+const { DirectoryPagination, getPageItems } = await import("@/components/customer/directory-pagination");
 
 describe("getPageItems", () => {
   it("lists every page when there are seven or fewer", () => {
@@ -21,5 +30,22 @@ describe("getPageItems", () => {
 
   it("never emits a page outside the range", () => {
     expect(getPageItems(1, 1)).toEqual([1]);
+  });
+
+  it("renders a compact current-page status with only previous and next controls", () => {
+    const markup = renderToStaticMarkup(createElement(DirectoryPagination, {
+      ariaLabel: "Place pages",
+      currentPage: 2,
+      itemLabel: "places",
+      onPageChange: () => undefined,
+      pageSize: 15,
+      totalItems: 46,
+      totalPages: 4,
+      variant: "compact",
+    }));
+
+    expect(markup).toContain('data-pagination-variant="compact"');
+    expect(markup).toContain("ui.pagination.pageOf 2 4");
+    expect(markup.match(/<button/g)).toHaveLength(2);
   });
 });

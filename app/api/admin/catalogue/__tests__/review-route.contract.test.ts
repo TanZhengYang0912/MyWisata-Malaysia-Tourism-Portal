@@ -10,4 +10,9 @@ describe("Admin voucher review gate", () => {
     expect(source).toContain("vendor_review_status === 'approved'");
     expect(source).toContain("vendor_review_status !== 'approved'");
   });
+
+  it("uses the dynamic Catalogue Review permission guard", () => {
+    expect(source).toContain('requireStaffPermission("admin.catalogue.review")');
+    expect(source).not.toContain("names.includes('super_admin')");
+  });
 });

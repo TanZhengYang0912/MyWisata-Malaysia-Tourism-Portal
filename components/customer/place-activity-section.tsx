@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatMYRNumber } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { ArrowUpRight, Compass, Ticket } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
@@ -87,7 +87,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                 badge={<><RelationIcon relation={relation} />{t(`ui.place.relations.${relation}`)}</>}
                 title={product.name}
                 supportingText={vendor.name}
-                price={<><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>{product.price === 0 ? t("ui.placeActivity.free") : t("ui.placeActivity.price", { value: formatMYRNumber(product.price) })}</>}
+                price={<><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>{product.price === 0 ? t("ui.placeActivity.free") : <ReferencePrice amountMYR={product.price} />}</>}
                 description={product.description || t("ui.place.activityFallback")}
                 footer={t(product.requiresBooking ? "ui.place.reserveSpot" : "ui.place.availablePurchase")}
                 action={<Link href={activityHref} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.viewDetails")}<ArrowUpRight size={14} aria-hidden="true" /></Link>}

@@ -442,8 +442,10 @@ export async function getWithdrawals(): Promise<WithdrawalRequest[]> {
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
 }
 
-export async function getMyWithdrawals(userId: string): Promise<WithdrawalRequest[]> {
-  const { data, error } = await supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId);
+export async function getMyWithdrawals(userId: string, signal?: AbortSignal): Promise<WithdrawalRequest[]> {
+  let query = supabase.from("withdrawal_requests").select(WITHDRAWAL_SELECT).eq("user_id", userId);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
   if (error) throw error;
   return (data as unknown as WithdrawalRow[]).map(mapWithdrawal);
 }
@@ -541,7 +543,11 @@ export async function getWalletTransactions(userId: string, limit = 100): Promis
   return (data as unknown as WalletTransactionRow[]).map(mapWalletTransaction);
 }
 
-export async function getCustomerWalletTransactionPage(userId: string, filters: CustomerHistoryFilters): Promise<{ transactions: WalletTransaction[]; total: number }> {
+export async function getCustomerWalletTransactionPage(
+  userId: string,
+  filters: CustomerHistoryFilters,
+  signal?: AbortSignal,
+): Promise<{ transactions: WalletTransaction[]; total: number }> {
   const filter = buildCustomerHistoryQuery(filters);
   if (!userId.trim() || !filter.ok) throw new Error("Invalid customer history query");
   const fetchLimit = filter.offset + filter.pageSize;
@@ -554,10 +560,11 @@ export async function getCustomerWalletTransactionPage(userId: string, filters: 
   if (filter.direction) walletQuery = walletQuery.eq("direction", filter.direction);
   if (filter.fromInclusive) walletQuery = walletQuery.gte("created_at", filter.fromInclusive);
   if (filter.toExclusive) walletQuery = walletQuery.lt("created_at", filter.toExclusive);
-  const walletPromise = walletQuery
+  let walletPromise = walletQuery
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .range(0, fetchLimit - 1);
+  if (signal) walletPromise = walletPromise.abortSignal(signal);
 
   const includeExternalPurchases = (!filter.types || filter.types.includes("spend"))
     && (!filter.direction || filter.direction === "debit");
@@ -570,10 +577,12 @@ export async function getCustomerWalletTransactionPage(userId: string, filters: 
           .not("payment_method", "in", "(wallet,wallet_split)");
         if (filter.fromInclusive) query = query.gte("created_at", filter.fromInclusive);
         if (filter.toExclusive) query = query.lt("created_at", filter.toExclusive);
-        return query
+        let purchaseQuery = query
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .range(0, fetchLimit - 1);
+        if (signal) purchaseQuery = purchaseQuery.abortSignal(signal);
+        return purchaseQuery;
       })()
     : Promise.resolve({ data: [], error: null, count: 0 });
 
@@ -588,10 +597,12 @@ export async function getCustomerWalletTransactionPage(userId: string, filters: 
           .not("orders.payment_method", "in", "(wallet,wallet_split)");
         if (filter.fromInclusive) query = query.gte("processed_at", filter.fromInclusive);
         if (filter.toExclusive) query = query.lt("processed_at", filter.toExclusive);
-        return query
+        let refundQuery = query
           .order("processed_at", { ascending: false })
           .order("id", { ascending: false })
           .range(0, fetchLimit - 1);
+        if (signal) refundQuery = refundQuery.abortSignal(signal);
+        return refundQuery;
       })()
     : Promise.resolve({ data: [], error: null, count: 0 });
 

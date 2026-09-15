@@ -68,7 +68,7 @@ function request(method: string, body?: Record<string, unknown>) {
 const createBody = {
   name: "Campaign Editors",
   description: "Can administer sponsored map campaigns",
-  permissionKeys: ["admin.map_campaign.manage"],
+  moduleKeys: ["sponsored_placements"],
   reason: "Create the campaign operations role",
 };
 
@@ -97,6 +97,9 @@ describe("staff role management API", () => {
       }
       if (table === "staff_role_permissions") {
         return queryBuilder([{ role_id: ROLE_ID, staff_permissions: { key: "admin.map_campaign.manage" } }]);
+      }
+      if (table === "staff_role_modules") {
+        return queryBuilder([{ role_id: ROLE_ID, staff_modules: { key: "sponsored_placements" } }]);
       }
       if (table === "staff_role_assignments") {
         return queryBuilder([{ id: ASSIGNMENT_ID, role_id: ROLE_ID, user_id: USER_ID, revoked_at: null }]);
@@ -152,7 +155,7 @@ describe("staff role management API", () => {
     });
     expect(await roles.json()).toMatchObject({
       data: {
-        roles: [{ id: ROLE_ID, permissionKeys: ["admin.map_campaign.manage"] }],
+        roles: [{ id: ROLE_ID, moduleKeys: ["sponsored_placements"], permissionKeys: ["admin.map_campaign.manage"] }],
         assignments: [{ id: ASSIGNMENT_ID, roleId: ROLE_ID, userId: USER_ID }],
       },
       error: null,
@@ -165,10 +168,10 @@ describe("staff role management API", () => {
     const response = await rolesRoute.POST(request("POST", createBody));
 
     expect(response.status).toBe(201);
-    expect(mocks.rpc).toHaveBeenCalledWith("create_staff_role", {
+    expect(mocks.rpc).toHaveBeenCalledWith("create_staff_role_with_modules", {
       p_name: createBody.name,
       p_description: createBody.description,
-      p_permission_keys: createBody.permissionKeys,
+      p_module_keys: createBody.moduleKeys,
       p_reason: createBody.reason,
     });
     expect(await response.json()).toMatchObject({
@@ -183,11 +186,11 @@ describe("staff role management API", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith("update_staff_role", {
+    expect(mocks.rpc).toHaveBeenCalledWith("update_staff_role_with_modules", {
       p_role_id: ROLE_ID,
       p_name: updateBody.name,
       p_description: updateBody.description,
-      p_permission_keys: updateBody.permissionKeys,
+      p_module_keys: updateBody.moduleKeys,
       p_active: true,
       p_reason: updateBody.reason,
     });
@@ -227,17 +230,26 @@ describe("staff role management API", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("rejects unknown and duplicate permission keys", async () => {
-    const unknown = await rolesRoute.POST(request("POST", {
+  it("accepts future database Module keys but rejects malformed and duplicate keys", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: ROLE_ID, error: null });
+    const future = await rolesRoute.POST(request("POST", {
       ...createBody,
-      permissionKeys: ["admin.staff.impersonate"],
+      moduleKeys: ["future_support_module"],
+    }));
+    expect(future.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith("create_staff_role_with_modules", expect.objectContaining({ p_module_keys: ["future_support_module"] }));
+
+    mocks.rpc.mockClear();
+    const malformed = await rolesRoute.POST(request("POST", {
+      ...createBody,
+      moduleKeys: ["Future Support"],
     }));
     const duplicate = await rolesRoute.POST(request("POST", {
       ...createBody,
-      permissionKeys: ["admin.kyc.review", "admin.kyc.review"],
+      moduleKeys: ["kyc_review", "kyc_review"],
     }));
 
-    expect(unknown.status).toBe(422);
+    expect(malformed.status).toBe(422);
     expect(duplicate.status).toBe(422);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
@@ -280,6 +292,7 @@ describe("staff role management API", () => {
 
     expect(mocks.from).not.toHaveBeenCalledWith("staff_roles");
     expect(mocks.from).not.toHaveBeenCalledWith("staff_role_permissions");
+    expect(mocks.from).not.toHaveBeenCalledWith("staff_role_modules");
     expect(mocks.from).not.toHaveBeenCalledWith("staff_role_assignments");
   });
 });

@@ -4,29 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import {
-  Activity,
-  Banknote,
-  Bot,
   CalendarDays,
   CirclePlus,
-  ClipboardCheck,
   CornerDownLeft,
-  DollarSign,
-  Gem,
-  Inbox,
   LayoutDashboard,
   MapPinned,
   Moon,
-  Package,
   Search,
-  Settings2,
-  Shield,
-  ShieldCog,
   ShoppingBag,
-  Sparkles,
   Sun,
   TicketPercent,
-  UsersRound,
   UtensilsCrossed,
   Wallet,
   type LucideIcon,
@@ -48,20 +35,18 @@ export interface CommandItem {
 
 interface Props {
   scope: 'admin' | 'vendor';
-  userRole?: string;
-  pendingCounts?: Record<string, number>;
+  navigationItems?: CommandItem[];
   triggerOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, triggerOpen, onOpenChange }: Props) {
+export function GlobalCommandPalette({ scope, navigationItems = [], triggerOpen, onOpenChange }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const router = useRouter();
   const { t: tCommon } = useTranslation('common');
-  const { t: tAdmin } = useTranslation('admin');
   const { t: tVendor } = useTranslation('vendor');
   const { theme, setTheme } = useTheme();
   const commandShortcutLabel = useCommandShortcutLabel();
@@ -97,128 +82,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
 
   const items = useMemo<CommandItem[]>(() => {
     if (scope === 'admin') {
-      const isSuperAdmin = userRole === 'super_admin';
-      const isApprover = userRole === 'approver';
-
-      const adminItems: CommandItem[] = [
-        {
-          id: 'admin-overview',
-          title: tAdmin('navigation.Overview'),
-          category: tCommon('command.navigation'),
-          href: '/admin/dashboard',
-          icon: Activity,
-          keywords: ['home', 'dashboard', 'overview'],
-        },
-        {
-          id: 'admin-vendors',
-          title: tAdmin('navigation.Vendor Approvals'),
-          category: tCommon('command.queue'),
-          href: '/admin/vendors',
-          icon: Package,
-          badge: pendingCounts.vendors,
-          keywords: ['vendor', 'approval', 'onboarding'],
-        },
-        {
-          id: 'admin-catalogue',
-          title: tAdmin('navigation.Catalogue Review'),
-          category: tCommon('command.queue'),
-          href: '/admin/catalogue',
-          icon: ClipboardCheck,
-          badge: pendingCounts.catalogue,
-          keywords: ['catalogue', 'listing', 'product', 'experience'],
-        },
-        {
-          id: 'admin-kyc',
-          title: tAdmin('navigation.KYC Review'),
-          category: tCommon('command.queue'),
-          href: '/admin/kyc',
-          icon: Shield,
-          badge: pendingCounts.kyc,
-          keywords: ['kyc', 'identity', 'verification', 'customer'],
-        },
-        {
-          id: 'admin-withdrawals',
-          title: tAdmin('navigation.Withdrawals'),
-          category: tCommon('command.queue'),
-          href: '/admin/withdrawals',
-          icon: DollarSign,
-          badge: pendingCounts.withdrawals,
-          keywords: ['withdrawal', 'payout', 'money', 'finance'],
-        },
-        {
-          id: 'admin-support',
-          title: tAdmin('navigation.Support Tickets'),
-          category: tCommon('command.queue'),
-          href: '/admin/support',
-          icon: Inbox,
-          badge: pendingCounts.tickets,
-          keywords: ['support', 'ticket', 'help', 'inbox'],
-        },
-        {
-          id: 'admin-recommendations',
-          title: tAdmin('navigation.Recommendations'),
-          category: tCommon('command.queue'),
-          href: '/admin/recommendations',
-          icon: Gem,
-          badge: pendingCounts.recommendations,
-          keywords: ['recommendations', 'gems', 'featured'],
-        },
-        {
-          id: 'admin-reports',
-          title: tAdmin('navigation.Payout Reports'),
-          category: tCommon('command.navigation'),
-          href: '/admin/reports/payouts',
-          icon: Banknote,
-          keywords: ['reports', 'payouts', 'statements'],
-        },
-        {
-          id: 'admin-chatbot',
-          title: tAdmin('navigation.Chatbot'),
-          category: tCommon('command.navigation'),
-          href: '/admin/chatbot',
-          icon: Bot,
-          keywords: ['ai', 'chatbot', 'faq', 'knowledge'],
-        },
-      ];
-
-      if (isSuperAdmin) {
-        adminItems.push(
-          {
-            id: 'admin-users',
-            title: tAdmin('navigation.User Management'),
-            category: tCommon('command.admin'),
-            href: '/admin/users',
-            icon: UsersRound,
-            keywords: ['users', 'roles', 'customers', 'vendors'],
-          },
-          {
-            id: 'admin-access-control',
-            title: tAdmin('navigation.Access Control'),
-            category: tCommon('command.admin'),
-            href: '/admin/access-control',
-            icon: ShieldCog,
-            keywords: ['security', 'permissions', 'access'],
-          },
-          {
-            id: 'admin-wallet-settings',
-            title: tAdmin('navigation.Wallet Settings'),
-            category: tCommon('command.admin'),
-            href: '/admin/wallet/settings',
-            icon: Settings2,
-            keywords: ['wallet', 'limits', 'thresholds'],
-          },
-          {
-            id: 'admin-ai-assistant',
-            title: tAdmin('navigation.AI Assistant'),
-            category: tCommon('command.admin'),
-            href: '/admin/ai-assistant',
-            icon: Sparkles,
-            keywords: ['ai', 'copilot', 'assistant'],
-          }
-        );
-      }
-
-      // Actions
+      const adminItems = [...navigationItems];
       adminItems.push({
         id: 'toggle-theme',
         title: theme === 'dark' ? tCommon('theme.light') : tCommon('theme.dark'),
@@ -228,7 +92,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         keywords: ['theme', 'dark', 'light', 'mode'],
       });
 
-      return isApprover ? adminItems.filter((i) => i.href?.includes('withdrawal')) : adminItems;
+      return adminItems;
     }
 
     // Vendor Scope
@@ -314,7 +178,7 @@ export function GlobalCommandPalette({ scope, userRole, pendingCounts = {}, trig
         keywords: ['theme', 'dark', 'light', 'mode'],
       },
     ];
-  }, [scope, userRole, pendingCounts, tAdmin, tVendor, tCommon, theme, setTheme]);
+  }, [scope, navigationItems, tVendor, tCommon, theme, setTheme]);
 
   // Filtered items
   const filtered = useMemo(() => {

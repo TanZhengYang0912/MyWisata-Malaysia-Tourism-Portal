@@ -27,9 +27,10 @@ describe('transaction display helpers', () => {
     expect(filterTransactions(transactions, 'all' as TransactionFilter)).toHaveLength(3);
   });
 
-  it('formats credits and debits without negative money values', () => {
-    expect(signedTransactionAmount({ type: 'topup', direction: 'credit', amount: 50 })).toBe('RM50.00');
-    expect(signedTransactionAmount({ type: 'spend', direction: 'debit', amount: 12.3 })).toBe('RM12.30');
+  it('formats credits with plus and debits with minus', () => {
+    expect(signedTransactionAmount({ type: 'topup', direction: 'credit', amount: 50 })).toBe('+RM50.00');
+    expect(signedTransactionAmount({ type: 'spend', direction: 'debit', amount: 12.3 })).toBe('-RM12.30');
+    expect(signedTransactionAmount({ type: 'refund', direction: 'credit', amount: -7 })).toBe('+RM7.00');
   });
 
   it('hides withdrawal settlement audit rows without hiding the reserve or return', () => {
