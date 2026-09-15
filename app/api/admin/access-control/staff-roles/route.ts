@@ -2,19 +2,18 @@ import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
-import { STAFF_PERMISSION_KEYS } from "@/lib/staff-permissions/types";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
 const reasonSchema = z.string().trim().min(10).max(500);
-const permissionKeySchema = z.enum(STAFF_PERMISSION_KEYS);
+const moduleKeySchema = z.string().regex(/^[a-z][a-z0-9_]*$/);
 
 const createStaffRoleSchema = z.object({
   name: z.string().trim().min(1).max(20),
   description: z.string().trim().max(100).nullable().optional().default(null),
-  permissionKeys: z.array(permissionKeySchema).max(STAFF_PERMISSION_KEYS.length)
-    .refine((keys) => new Set(keys).size === keys.length, "Permission keys must be unique"),
+  moduleKeys: z.array(moduleKeySchema).max(100)
+    .refine((keys) => new Set(keys).size === keys.length, "Module keys must be unique"),
   reason: reasonSchema,
 }).strict();
 
@@ -22,6 +21,10 @@ function permissionKeyFromRelation(value: unknown): string | null {
   const relation = Array.isArray(value) ? value[0] : value;
   if (typeof relation !== "object" || relation === null || !("key" in relation)) return null;
   return typeof relation.key === "string" ? relation.key : null;
+}
+
+function moduleKeyFromRelation(value: unknown): string | null {
+  return permissionKeyFromRelation(value);
 }
 
 function staffRoleFailure(message: string) {
@@ -45,7 +48,7 @@ function staffRoleFailure(message: string) {
   }
   if (message.includes("staff_reason_required") || message.includes("staff_role_name_required")
       || message.includes("staff_role_description_too_long")
-      || message.includes("invalid_permission_key") || message.includes("duplicate_permission_key")) {
+      || message.includes("invalid_module_key") || message.includes("duplicate_module_key")) {
     return apiFail("VALIDATION_FAILED", "Request body failed validation", 422);
   }
   return apiFail("STAFF_ROLE_OPERATION_FAILED", "Unable to complete the staff role operation", 500);
@@ -55,18 +58,20 @@ export async function GET() {
   const { db, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
 
-  const [rolesResult, permissionsResult, assignmentsResult] = await Promise.all([
+  const [rolesResult, permissionsResult, modulesResult, assignmentsResult] = await Promise.all([
     db.from("staff_roles")
       .select("id,name,description,is_system,is_active,created_by,created_at,updated_at")
       .order("name", { ascending: true }),
     db.from("staff_role_permissions")
       .select("role_id,staff_permissions(key)"),
+    db.from("staff_role_modules")
+      .select("role_id,staff_modules(key)"),
     db.from("staff_role_assignments")
       .select("id,role_id,user_id,assigned_by,revoked_at,created_at")
       .order("created_at", { ascending: false }),
   ]);
 
-  if (rolesResult.error || permissionsResult.error || assignmentsResult.error) {
+  if (rolesResult.error || permissionsResult.error || modulesResult.error || assignmentsResult.error) {
     return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
   }
 
@@ -86,6 +91,12 @@ export async function GET() {
     if (!key) continue;
     keysByRole.set(row.role_id, [...(keysByRole.get(row.role_id) ?? []), key]);
   }
+  const moduleKeysByRole = new Map<string, string[]>();
+  for (const row of modulesResult.data ?? []) {
+    const key = moduleKeyFromRelation(row.staff_modules);
+    if (!key) continue;
+    moduleKeysByRole.set(row.role_id, [...(moduleKeysByRole.get(row.role_id) ?? []), key]);
+  }
 
   const activeAssignments = (assignmentsResult.data ?? []).filter((assignment) => assignment.revoked_at === null);
 
@@ -99,6 +110,7 @@ export async function GET() {
       createdBy: role.created_by,
       createdAt: role.created_at,
       updatedAt: role.updated_at,
+      moduleKeys: moduleKeysByRole.get(role.id) ?? [],
       permissionKeys: keysByRole.get(role.id) ?? [],
     })),
     assignments: (assignmentsResult.data ?? []).map((assignment) => ({
@@ -129,10 +141,10 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, createStaffRoleSchema);
   if (!parsed.ok) return parsed.response;
 
-  const { data: roleId, error } = await db.rpc("create_staff_role", {
+  const { data: roleId, error } = await db.rpc("create_staff_role_with_modules", {
     p_name: parsed.data.name,
     p_description: parsed.data.description,
-    p_permission_keys: parsed.data.permissionKeys,
+    p_module_keys: parsed.data.moduleKeys,
     p_reason: parsed.data.reason,
   });
 

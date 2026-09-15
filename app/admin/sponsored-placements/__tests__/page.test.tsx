@@ -335,8 +335,8 @@ describe("SponsoredPlacementsPage", () => {
   });
 
   it("is linked from the existing localized Admin navigation", () => {
-    const layout = readFileSync(resolve(process.cwd(), "app/admin/layout.tsx"), "utf8");
-    expect(layout).toContain('href: "/admin/sponsored-placements"');
-    expect(layout).toContain('label: "Sponsored Placements"');
+    const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20260915222000_dynamic_staff_modules.sql"), "utf8");
+    expect(migration).toContain("'/admin/sponsored-placements'");
+    expect(migration).toContain("'Sponsored Placements'");
   });
 });

@@ -18,6 +18,7 @@ const routes = import.meta.glob('../**/route.ts');
 type Handler = (request: Request, context: { params: Promise<Record<string, string>> }) => Promise<Response>;
 const id = '11111111-1111-4111-8111-111111111111';
 let roles: string[];
+let grantedPermissions: string[];
 
 const staffRoutes: [string, string, Record<string, unknown>?][] = [
   ['admin/affiliate/stats', 'GET'], ['admin/affiliate/report', 'GET'],
@@ -70,14 +71,23 @@ async function call(path: string, method: string, body: Record<string, unknown> 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  roles = ['approver'];
+    roles = ['approver'];
+    grantedPermissions = [];
   mocks.getUser.mockResolvedValue({ data: { user: { id: 'actor' } }, error: null });
   mocks.from.mockImplementation((table: string) => {
     if (table === 'user_roles') return query(roles.map((name) => ({ roles: { name } })));
     throw reachedBusinessData;
   });
-  mocks.rpc.mockImplementation((name: string) => {
-    if (name === 'has_staff_permission') return Promise.resolve({ data: roles.some((role) => ['admin', 'super_admin'].includes(role)), error: null });
+  mocks.rpc.mockImplementation((name: string, args?: { p_permission_key?: string }) => {
+    if (name === 'has_staff_permission') {
+      const permissionKey = args?.p_permission_key ?? '';
+      const legacyAdminPermission = roles.includes('admin')
+        && ['admin.vendor.manage', 'admin.kyc.review'].includes(permissionKey);
+      return Promise.resolve({
+        data: roles.includes('super_admin') || legacyAdminPermission || grantedPermissions.includes(permissionKey),
+        error: null,
+      });
+    }
     if (name === 'is_admin' || name === 'is_approver') return Promise.resolve({ data: roles.some((r) => ['super_admin', 'approver'].includes(r)), error: null });
     if (name === 'is_super_admin') return Promise.resolve({ data: roles.includes('super_admin'), error: null });
     throw reachedBusinessData;
@@ -102,6 +112,16 @@ describe('Wallet Approver cannot call unrelated management APIs', () => {
   it('preserves content-admin claimed-vendor approval authority', async () => {
     roles = ['admin'];
     expect(await call('admin/vendors/[id]/approve', 'POST', { action: 'approve' })).toBe(reachedBusinessData);
+  });
+
+  it('lets Staff with the dynamic Catalogue Review permission reach the review data boundary', async () => {
+    roles = ['staff'];
+    grantedPermissions = ['admin.catalogue.review'];
+    expect(await call('admin/catalogue/reviews', 'GET')).toBe(reachedBusinessData);
+    expect(mocks.rpc).toHaveBeenCalledWith('has_staff_permission', {
+      p_user_id: 'actor',
+      p_permission_key: 'admin.catalogue.review',
+    });
   });
 
   it('preserves cron-secret checkout expiry', async () => {

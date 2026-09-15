@@ -56,6 +56,7 @@ const approvedForwardMigrations = [
   "20260913140000_allow_shared_product_booking_slots.sql",
   "20260913142000_repair_demo_vendor_earning_lineage.sql",
   "20260913180000_unique_product_cover_images.sql",
+  "20260915222000_dynamic_staff_modules.sql",
 ];
 
 function migrationFiles() {

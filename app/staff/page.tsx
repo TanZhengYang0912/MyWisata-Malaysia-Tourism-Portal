@@ -6,13 +6,12 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { useRequireRole } from "@/components/providers/auth";
-import { staffDestinations } from "@/lib/staff-permissions/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function StaffHomePage() {
   const { t } = useTranslation("auth");
-  const { currentUser, staffRoleNames, staffPermissionKeys, loading } = useRequireRole(["staff"]);
-  const destinations = staffDestinations(staffPermissionKeys);
+  const { currentUser, staffRoleNames, staffModules = [], loading } = useRequireRole(["staff"]);
+  const destinations = staffModules;
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -35,7 +34,7 @@ export default function StaffHomePage() {
       <section className="mt-7">
         <h2 className="text-lg font-bold text-foreground">{t("staffHome.assignedWork")}</h2>
         {destinations.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center"><BriefcaseBusiness className="mx-auto text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">{t("staffHome.empty")}</p><p className="mt-1 text-sm text-muted-foreground">{t("staffHome.emptyDescription")}</p></div>
-          : <div className="mt-4 grid gap-4 sm:grid-cols-2">{destinations.map((destination) => <Link key={destination.permission} href={destination.href} className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:border-primary/40 hover:shadow-md"><div className="flex items-start justify-between gap-4"><div><h3 className="font-bold text-foreground">{t(destination.labelKey)}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{t(destination.descriptionKey)}</p></div><ArrowRight className="shrink-0 text-primary transition-transform group-hover:translate-x-1" size={18} /></div></Link>)}</div>}
+          : <div className="mt-4 grid gap-4 sm:grid-cols-2">{destinations.map((destination) => <Link key={destination.key} href={destination.href} className="group rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:border-primary/40 hover:shadow-md"><div className="flex items-start justify-between gap-4"><div><h3 className="font-bold text-foreground">{destination.label}</h3>{destination.description && <p className="mt-2 text-sm leading-6 text-muted-foreground">{destination.description}</p>}</div><ArrowRight className="shrink-0 text-primary transition-transform group-hover:translate-x-1" size={18} /></div></Link>)}</div>}
       </section>
     </div>
   </main>;

@@ -10,11 +10,16 @@ const sharedSidebarSource = readFileSync(
   resolve(process.cwd(), 'components/layout/portal-sidebar.tsx'),
   'utf8',
 );
+const moduleMigrationSource = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20260915222000_dynamic_staff_modules.sql'),
+  'utf8',
+);
 
 describe('admin navigation shell', () => {
   it('routes approvers away from unrelated pages and does not poll support unread counts', () => {
     expect(layoutSource).toContain('if (!currentUser || currentUser.role === "approver") return;');
-    expect(layoutSource).toContain('router.replace("/admin/withdrawals")');
+    expect(layoutSource).toContain('router.replace(currentUser.role === "staff" ? "/staff" : navigationHrefs[0] ?? "/login")');
+    expect(moduleMigrationSource).toContain("('withdrawals', 'approver', TRUE)");
     expect(readFileSync(resolve(process.cwd(), 'app/page.tsx'), 'utf8')).toContain('approver: "/admin/withdrawals"');
   });
 
@@ -27,7 +32,7 @@ describe('admin navigation shell', () => {
   });
 
   it('provides a localized label for the staff conduct navigation item', () => {
-    expect(layoutSource).toContain('label: "Staff Conduct"');
+    expect(moduleMigrationSource).toContain("('staff_conduct', 'Staff Conduct', 'navigation.Staff Conduct'");
     expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/en/admin.json'), 'utf8')).toContain('"Staff Conduct": "Staff Conduct"');
     expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/zh-CN/admin.json'), 'utf8')).toContain('"Staff Conduct": "员工行为"');
     expect(readFileSync(resolve(process.cwd(), 'app/i18n/locales/ms/admin.json'), 'utf8')).toContain('"Staff Conduct": "Tatakelakuan"');
@@ -50,21 +55,22 @@ describe('admin navigation shell', () => {
   });
 
   it('shows content-review queues only to content reviewers and withdrawals only to wallet approvers', () => {
-    expect(layoutSource).toContain('{ href: "/admin/kyc", label: "KYC Review", icon: Shield, allowedRoles: CONTENT_REVIEW_ROLES }');
-    expect(layoutSource).toContain('{ href: "/admin/recommendations", label: "Recommendations", icon: Gem, allowedRoles: CONTENT_REVIEW_ROLES }');
-    expect(layoutSource).toContain('{ href: "/admin/withdrawals", label: "Withdrawals", icon: DollarSign, allowedRoles: WITHDRAWAL_REVIEW_ROLES }');
-    expect(layoutSource).toContain('item.allowedRoles.includes(currentUser.role)');
+    expect(layoutSource).toContain('staffNavigationSections(staffModules)');
+    expect(layoutSource).not.toContain('CONTENT_REVIEW_ROLES');
+    expect(layoutSource).not.toContain('WITHDRAWAL_REVIEW_ROLES');
+    expect(moduleMigrationSource).toContain("('kyc_review', 'admin', TRUE)");
+    expect(moduleMigrationSource).toContain("('withdrawals', 'approver', TRUE)");
   });
 
   it('exposes wallet approver governance only to super admins', () => {
-    expect(layoutSource).toContain('{ href: "/admin/wallet/approvers", label: "Wallet Approvers"');
-    expect(layoutSource).toMatch(/href: "\/admin\/wallet\/approvers"[\s\S]*?superAdminOnly: true/);
+    expect(moduleMigrationSource).toContain("'wallet_approvers', 'Wallet Approvers'");
+    expect(moduleMigrationSource).not.toMatch(/\('wallet_approvers', '(?:admin|approver|staff)',/);
   });
 
   it('exposes one unified Access Control destination only to super admins', () => {
-    expect(layoutSource).toContain('{ href: "/admin/access-control", label: "Access Control"');
-    expect(layoutSource).toMatch(/href: "\/admin\/access-control"[\s\S]*?superAdminOnly: true/);
-    expect(layoutSource).not.toMatch(/href: "\/admin\/(?:entitlements|audit-log)"/);
+    expect(moduleMigrationSource).toContain("'access_control', 'Access Control'");
+    expect(moduleMigrationSource).not.toMatch(/\('access_control', '(?:admin|approver|staff)',/);
+    expect(moduleMigrationSource).not.toMatch(/'\/admin\/(?:entitlements|audit-log)'/);
   });
 
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {

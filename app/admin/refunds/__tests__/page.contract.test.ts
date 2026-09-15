@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const pageSource = readFileSync(resolve(process.cwd(), 'app/admin/refunds/page.tsx'), 'utf8');
-const layoutSource = readFileSync(resolve(process.cwd(), 'app/admin/layout.tsx'), 'utf8');
+const moduleMigrationSource = readFileSync(resolve(process.cwd(), 'supabase/migrations/20260915222000_dynamic_staff_modules.sql'), 'utf8');
 
 describe('admin refund simulator UI', () => {
   it('labels simulated flows and exposes governed refund actions', () => {
@@ -18,8 +18,8 @@ describe('admin refund simulator UI', () => {
   });
 
   it('adds the refund queue to the admin navigation', () => {
-    expect(layoutSource).toContain('href: "/admin/refunds"');
-    expect(layoutSource).toContain('label: "Refunds"');
+    expect(moduleMigrationSource).toContain("'/admin/refunds'");
+    expect(moduleMigrationSource).toContain("'Refunds'");
   });
 
   it('keeps failure codes and messages visible in refund rows', () => {
