@@ -1,24 +1,26 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createTrip, deleteTrip } from "@/backend/domains/trips";
+import { createTrip, deleteTrip, getTripNameSequence } from "@/backend/domains/trips";
+import type { AddTripItemInput } from "@/backend/domains/trips";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { nextDefaultTripName, parseSubmittedTripDates, parseSubmittedTripName } from "@/lib/customer/trip-name";
 
 export async function createTripAction(formData: FormData) {
   const db = await createClient();
-  const name = formData.get("name") as string;
-  const startDate = formData.get("start_date") as string;
-  const endDate = formData.get("end_date") as string;
+  const submittedName = parseSubmittedTripName(formData.get("name"));
+  const { startDate, endDate } = parseSubmittedTripDates(
+    formData.get("start_date"),
+    formData.get("end_date"),
+  );
 
-  if (!name) {
-    throw new Error("Trip name is required");
-  }
+  const name = submittedName || nextDefaultTripName([], await getTripNameSequence(db));
 
   const trip = await createTrip({
     name,
-    start_date: startDate || undefined,
-    end_date: endDate || undefined,
+    start_date: startDate,
+    end_date: endDate,
   }, db);
 
   const tripId = trip?.id;
@@ -35,19 +37,11 @@ export async function deleteTripAction(tripId: string) {
   revalidatePath("/customer/trip");
 }
 
-export async function addTripItemAction(input: {
-  trip_id: string; 
-  experience_id?: string; 
-  source: "vendor" | "location";
-  kind?: "custom" | "gps";
-  lat: number;
-  lng: number;
-  label: string;
-  sublabel?: string;
-}) {
+export async function addTripItemAction(input: AddTripItemInput) {
   const db = await createClient();
-  await import("@/backend/domains/trips").then(m => m.addTripItem(input, db));
+  const item = await import("@/backend/domains/trips").then(m => m.addTripItem(input, db));
   revalidatePath(`/customer/trip/${input.trip_id}`);
+  return item;
 }
 
 export async function deleteTripItemAction(tripId: string, itemId: string) {

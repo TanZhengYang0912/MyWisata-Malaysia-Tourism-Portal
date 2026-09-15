@@ -31,6 +31,7 @@ export function DirectoryPagination({
   previousPageLabel,
   totalItems,
   totalPages,
+  variant = "default",
 }: {
   ariaLabel: string;
   currentPage: number;
@@ -41,9 +42,23 @@ export function DirectoryPagination({
   previousPageLabel?: string;
   totalItems: number;
   totalPages: number;
+  variant?: "default" | "compact";
 }) {
   const { t } = useTranslation("customer");
   if (totalPages <= 1) return null;
+  if (variant === "compact") {
+    return (
+      <nav aria-label={ariaLabel} data-pagination-variant="compact" className="flex shrink-0 items-center justify-between border-t border-border bg-card px-3 py-2.5">
+        <p aria-live="polite" className="text-[11px] font-semibold text-muted-foreground">
+          {t("ui.pagination.pageOf", { current: currentPage, total: totalPages })}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} aria-label={previousPageLabel ?? t("ui.pagination.previousPage", { item: itemLabel })} className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-primary disabled:cursor-not-allowed disabled:opacity-35"><ChevronLeft size={14} /></button>
+          <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} aria-label={nextPageLabel ?? t("ui.pagination.nextPage", { item: itemLabel })} className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-primary disabled:cursor-not-allowed disabled:opacity-35"><ChevronRight size={14} /></button>
+        </div>
+      </nav>
+    );
+  }
   const pageItems = getPageItems(currentPage, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
   const pageEnd = Math.min(pageStart + pageSize, totalItems);

@@ -1,3 +1,5 @@
+import "server-only";
+
 // P4 — Member 4: shared low-level Gemini caller for the admin-ai module.
 // CLAUDE-ADMIN-AI.md Part 2 reuses "same Gemini client, same key" across
 // three call sites (drafting, query-picking, moderation review) — factored
@@ -46,7 +48,7 @@ export async function callGemini(systemPrompt: string, userText: string, options
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
-  const { clean } = redactPII(userText);
+  const { clean, found } = redactPII(userText);
   const parts = [
     { text: clean },
     ...(options.images ?? []).flatMap((image) => [
@@ -60,8 +62,9 @@ export async function callGemini(systemPrompt: string, userText: string, options
   // dev)." Dev-only — this is the redacted payload, post-boundary.
   if (process.env.NODE_ENV !== 'production') {
     console.log('[admin-ai] outgoing Gemini payload metadata:', JSON.stringify({
-      systemPrompt,
-      userText: clean,
+      systemPromptLength: systemPrompt.length,
+      userTextLength: clean.length,
+      piiDetected: found,
       imageCount: options.images?.length ?? 0,
       imageIds: options.images?.map((image) => image.id) ?? [],
       imageMimeTypes: options.images?.map((image) => image.mimeType) ?? [],

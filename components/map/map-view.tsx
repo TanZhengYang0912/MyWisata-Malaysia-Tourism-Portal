@@ -2,7 +2,9 @@
 
 import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 import type { MapPin } from "./maplibre-map";
+import type { RouteTrafficSegment } from "@/lib/routing";
 
 export type { MapPin };
 
@@ -34,11 +36,17 @@ export function MapView(props: {
   onUserLocationDrag?: (lat: number, lng: number) => void;
   onAddStop?: (pin: MapPin) => void;
   stopIds?: string[];
-  routes?: { path: [number, number][]; selected: boolean }[];
+  routes?: { path: [number, number][]; selected: boolean; trafficSegments?: RouteTrafficSegment[] }[];
   routeColor?: string;
   routeDashed?: boolean;
   focusRequest?: { pin: MapPin; token: number } | null;
+  onMapMovingChange?: (moving: boolean) => void;
+  children?: ReactNode;
 }) {
   const { t } = useTranslation("customer");
-  return <div aria-label={t("ui.map.mapRegion")}><MaplibreMap {...props} /></div>;
+  return (
+    <div aria-label={t("ui.map.mapRegion")} className="h-full min-h-0 min-w-0 flex-1">
+      <MaplibreMap {...props} />
+    </div>
+  );
 }

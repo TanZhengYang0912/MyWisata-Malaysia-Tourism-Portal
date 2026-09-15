@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { getTrips } from "@/backend/domains/trips";
+import { getTripNameSequence, getTrips } from "@/backend/domains/trips";
 import { TripHubClient } from "./trip-hub-client";
 import { redirect } from "next/navigation";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -23,6 +23,7 @@ export default async function TripPage() {
   }
 
   const trips = await getTrips(db);
+  const tripNameSequence = await getTripNameSequence(db);
 
-  return <TripHubClient initialTrips={trips} />;
+  return <TripHubClient initialTrips={trips} initialTripNameSequence={tripNameSequence} />;
 }

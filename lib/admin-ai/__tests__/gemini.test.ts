@@ -15,7 +15,7 @@ describe('callGemini multimodal payload', () => {
     vi.stubGlobal('fetch', fetchMock);
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    await callGemini('system', 'Email: person@example.com', {
+    await callGemini('system', 'Private family plan. Email: person@example.com', {
       images: [{ id: 'image-1', mimeType: 'image/jpeg', data: 'base64-image-data' }],
     });
 
@@ -26,6 +26,8 @@ describe('callGemini multimodal payload', () => {
       { inlineData: { mimeType: 'image/jpeg', data: 'base64-image-data' } },
     ]);
     expect(log.mock.calls.flat().join(' ')).not.toContain('base64-image-data');
+    expect(log.mock.calls.flat().join(' ')).not.toContain('Private family plan');
+    expect(log.mock.calls.flat().join(' ')).not.toContain('person@example.com');
     log.mockRestore();
   });
 });

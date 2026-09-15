@@ -57,7 +57,15 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/support/[id]/page.tsx",
   "app/customer/support/page.tsx",
   "app/customer/trip/[tripId]/page.tsx",
+  "app/customer/trip/[tripId]/trip-place-discovery.ts",
+  "app/customer/trip/[tripId]/trip-place-filter-panel.tsx",
+  "app/customer/trip/[tripId]/trip-weather-hint.tsx",
+  "app/customer/trip/[tripId]/trip-weather-map-overlay.tsx",
+  "app/customer/trip/[tripId]/trip-weather-simulation.ts",
   "app/customer/trip/[tripId]/trip-planner-client.tsx",
+  "app/customer/trip/[tripId]/use-itinerary-weather.ts",
+  "app/customer/trip/[tripId]/use-weather-overlay.ts",
+  "app/customer/trip/[tripId]/use-weather-radar.ts",
   "app/customer/trip/page.tsx",
   "app/customer/trip/trip-hub-client.tsx",
   "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx",
@@ -216,12 +224,18 @@ const delegatingFiles = new Set([
   "components/customer/customer-page-shell.tsx",
   "components/customer/save-toggle-button.tsx",
   "components/customer/media-gallery.tsx",
+  // Data-only hook; all user-facing overlay copy is owned by the rendering component.
+  "app/customer/trip/[tripId]/trip-place-discovery.ts",
+  "app/customer/trip/[tripId]/trip-weather-simulation.ts",
+  "app/customer/trip/[tripId]/use-weather-overlay.ts",
+  "app/customer/trip/[tripId]/use-weather-radar.ts",
   // Presentation-only cards receive translated labels from their owners.
   "components/customer/place-access-section.tsx",
   "components/customer/place-activity-card.tsx",
   "components/customer/place-informational-activity-section.tsx",
   "components/customer/use-customer-capability-gate.ts",
   "components/customer/voucher-barcode.tsx",
+  "app/customer/trip/[tripId]/use-itinerary-weather.ts",
 ]);
 
 describe("customer and guest sitewide i18n contract", () => {
@@ -258,6 +272,54 @@ describe("customer and guest sitewide i18n contract", () => {
     for (const [locale, values] of Object.entries(expected)) {
       for (const [key, value] of Object.entries(values)) {
         expect(resourceValue(resources[locale as keyof typeof resources], key), `${locale}:${key}`).toBe(value);
+      }
+    }
+  });
+
+  it("keeps itinerary weather guidance complete in every locale", () => {
+    const resources = ["en", "ms", "zh-CN"].map((locale) => ({
+      locale,
+      resource: JSON.parse(read(`app/i18n/locales/${locale}/customer.json`)),
+    }));
+    const keys = [
+      "loading",
+      "basedOnForecast",
+      "forecastUnavailable",
+      "forecastAvailableNearerDeparture",
+      "stale",
+      "lastRetrieved",
+      "location",
+      "providerAttribution",
+      "now",
+      "forecast",
+      "liveRadar",
+      "radarUpdated",
+      "radarUnavailable",
+      "radarStale",
+      "rainViewerAttribution",
+      "mayAffectOutdoorPlans",
+      "checkTimingOrIndoorAlternative",
+      "levels.none",
+      "levels.caution",
+      "levels.high",
+      "levels.unknown",
+      "reasons.thunderstorm",
+      "reasons.heavyRain",
+      "reasons.rain",
+      "reasons.strongWind",
+      "reasons.extremeUv",
+      "metrics.temperatureRange",
+      "metrics.precipitation",
+      "metrics.windGust",
+      "metrics.uvIndex",
+    ];
+
+    for (const { locale, resource } of resources) {
+      for (const key of keys) {
+        expect(
+          resourceValue(resource, `strictMigration.tripPlanner.weather.${key}`),
+          `${locale}:${key}`,
+        ).toEqual(expect.any(String));
       }
     }
   });
